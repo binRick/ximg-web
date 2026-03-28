@@ -13,6 +13,12 @@ A mock Linux terminal running entirely in the browser via [xterm.js](https://xte
 ### [butterfly.ximg.app](https://butterfly.ximg.app)
 Interactive parametric animation built on the [butterfly curve](https://en.wikipedia.org/wiki/Butterfly_curve_(transcendental)) equation. Particles trace butterfly-shaped paths and drift toward the mouse cursor. Click or tap anywhere to spawn a burst of new particles. Served by Apache httpd.
 
+### [ascii.ximg.app](https://ascii.ximg.app)
+Three interactive ASCII art demos rendered frame-by-frame onto an HTML5 canvas: a spinning 3D torus (the classic [a1k0n donut](https://www.a1k0n.net/2011/07/20/donut-math.html)), a Matrix-style character rain, and a sine-wave plasma effect. Switch demos with the buttons or keys 1–3. Served by Apache httpd.
+
+### [json.ximg.app](https://json.ximg.app)
+A visual reference card for JSON. Syntax-highlighted example covering all six JSON types, a colour-coded legend, and individual type cards explaining each one. Served by Apache httpd.
+
 ### [logs.ximg.app](https://logs.ximg.app)
 Live nginx log viewer. A Node.js WebSocket server tails the per-site nginx access logs and streams new entries to the browser in real time. Newest events appear at the top. Features a tab switcher between all subdomains, colour-coded HTTP status codes, live per-class request counters, and pause/resume without disconnecting.
 

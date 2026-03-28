@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ascii.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#020402;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
+    .stage{flex:1;position:relative;overflow:hidden}
+    canvas{display:block;width:100%;height:100%}
+    .controls{display:flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;
+      background:#020402;border-top:1px solid rgba(0,255,65,.1);
+      flex-shrink:0;z-index:50;font-family:'Courier New',monospace}
+    .demo-btn{font-family:'Courier New',monospace;font-size:.82rem;font-weight:600;
+      padding:.35rem .9rem;border-radius:4px;cursor:pointer;
+      border:1px solid rgba(0,255,65,.2);background:transparent;
+      color:#394939;transition:all .2s}
+    .demo-btn.active{color:#00ff41;border-color:rgba(0,255,65,.55);
+      background:rgba(0,255,65,.07);text-shadow:0 0 8px rgba(0,255,65,.7)}
+    .demo-btn:hover:not(.active){color:#888;border-color:rgba(0,255,65,.35)}
+    .hint{margin-left:auto;font-size:.7rem;color:#253025;font-family:'Courier New',monospace}
+  </style>
+</head>
+<body>
+  <script src="/nav.js"></script>
+
+  <div class="stage"><canvas id="c"></canvas></div>
+
+  <div class="controls">
+    <button class="demo-btn active" data-demo="donut">[ donut ]</button>
+    <button class="demo-btn"        data-demo="matrix">[ matrix ]</button>
+    <button class="demo-btn"        data-demo="plasma">[ plasma ]</button>
+    <span class="hint">keys 1 · 2 · 3 to switch</span>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx    = canvas.getContext('2d');
+    const FS = 14, CW = 8, CH = 16;
+    let W, H, COLS, ROWS;
+
+    function resize() {
+      const s = canvas.parentElement;
+      W = canvas.width  = s.offsetWidth;
+      H = canvas.height = s.offsetHeight;
+      COLS = Math.floor(W / CW);
+      ROWS = Math.floor(H / CH);
+      initDemo(currentDemo);
+    }
+    window.addEventListener('resize', resize);
+
+    // ── Donut ─────────────────────────────────────────────────────────────────
+    // Classic a1k0n torus renderer, adapted for variable grid size.
+    // Variable mapping from original C: c=sinI d=cosJ e=sinA f=sinJ g=cosA
+    //   h=cosJ+2  l=cosI  m=cosB  n=sinB  t=c*h*g-f*e
+    const DONUT_CHARS = '.,-~:;=!*#$@';
+    let dA = 0, dB = 0;
+    function donutFrame() {
+      const z = new Float32Array(COLS * ROWS);
+      const b = new Uint8Array(COLS * ROWS);
+      const sinA = Math.sin(dA), cosA = Math.cos(dA);
+      const sinB = Math.sin(dB), cosB = Math.cos(dB);
+      const pxS  = Math.min(W, H) * 0.38;
+
+      for (let j = 0; j < 6.2832; j += 0.05) {
+        const sinJ = Math.sin(j), cosJ = Math.cos(j);
+        const h = cosJ + 2;
+        for (let i = 0; i < 6.2832; i += 0.015) {
+          const sinI = Math.sin(i), cosI = Math.cos(i);
+          const D  = 1 / (sinI * h * sinA + sinJ * cosA + 5);
+          const t  = sinI * h * cosA - sinJ * sinA;
+          const xp = Math.floor(COLS / 2 + (pxS / CW) * D * (cosI * h * cosB - t * sinB));
+          const yp = Math.floor(ROWS / 2 + (pxS / CH) * D * (cosI * h * sinB + t * cosB));
+          const ix = xp + COLS * yp;
+          const N  = Math.floor(8 * ((sinJ * sinA - sinI * cosJ * cosA) * cosB
+                                    - sinI * cosJ * sinA - sinJ * cosA
+                                    - cosI * cosJ * sinB));
+          if (yp >= 0 && yp < ROWS && xp >= 0 && xp < COLS && D > z[ix]) {
+            z[ix] = D;
+            b[ix] = N > 0 ? (N % DONUT_CHARS.length) + 1 : 1;
+          }
+        }
+      }
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.font        = FS + 'px "Courier New",monospace';
+      ctx.fillStyle   = '#00ff41';
+      ctx.shadowColor = '#00ff41';
+      ctx.shadowBlur  = 4;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) {
+          const ci = b[c + COLS * r];
+          if (ci) ctx.fillText(DONUT_CHARS[ci - 1], c * CW, r * CH + FS);
+        }
+      ctx.shadowBlur = 0;
+      dA += 0.04; dB += 0.02;
+    }
+
+    // ── Matrix rain ───────────────────────────────────────────────────────────
+    const MAT_CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%!?+=-_';
+    const TRAIL  = 22;
+    let mDrops, mSpeeds, mGrid;
+    function initMatrix() {
+      mDrops  = Array.from({length: COLS}, () => -(Math.random() * ROWS | 0));
+      mSpeeds = Array.from({length: COLS}, () => Math.random() * 0.45 + 0.2);
+      mGrid   = Array.from({length: COLS}, () =>
+        Array.from({length: ROWS + TRAIL}, () => MAT_CH[Math.random() * MAT_CH.length | 0]));
+    }
+    function matrixFrame() {
+      ctx.fillStyle = 'rgba(2,4,2,0.18)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.font = FS + 'px "Courier New",monospace';
+      for (let col = 0; col < COLS; col++) {
+        const head = mDrops[col] | 0;
+        for (let row = Math.max(0, head - TRAIL); row <= head && row < ROWS; row++) {
+          const dist = head - row;
+          if (dist === 0) {
+            ctx.fillStyle = '#dfffdf'; ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 8;
+          } else {
+            const g = ((1 - dist / TRAIL) * 210 + 15) | 0;
+            ctx.fillStyle = `rgb(0,${g},${g * 0.2 | 0})`; ctx.shadowBlur = 0;
+          }
+          if (Math.random() < 0.015)
+            mGrid[col][row] = MAT_CH[Math.random() * MAT_CH.length | 0];
+          ctx.fillText(mGrid[col][row], col * CW, row * CH + FS);
+        }
+        ctx.shadowBlur = 0;
+        mDrops[col] += mSpeeds[col];
+        if (mDrops[col] > ROWS + TRAIL) {
+          mDrops[col] = -(Math.random() * ROWS * 0.5 | 0);
+          mSpeeds[col] = Math.random() * 0.45 + 0.2;
+        }
+      }
+    }
+
+    // ── Plasma ────────────────────────────────────────────────────────────────
+    const PL_CH = " `.-':\"~^=+*!|1IltoO0XH#@MW";
+    let plasmaT = 0;
+    function plasmaFrame() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.font = FS + 'px "Courier New",monospace';
+      const t = plasmaT * 0.038;
+      for (let row = 0; row < ROWS; row++) {
+        const y = row / ROWS * 7;
+        for (let col = 0; col < COLS; col++) {
+          const x = col / COLS * 9;
+          const v = (Math.sin(x + t)
+                   + Math.sin(y + t * 0.8)
+                   + Math.sin((x + y) * 0.55 + t * 1.4)
+                   + Math.sin(Math.sqrt(x * x + y * y) * 0.5 - t * 1.1)) * 0.25;
+          const ci = Math.floor((v + 1) * 0.5 * (PL_CH.length - 1));
+          const ch = PL_CH[ci];
+          if (ch === ' ') continue;
+          const g = ((v + 1) * 0.5 * 210 + 20) | 0;
+          ctx.fillStyle = `rgb(0,${g},${g * 0.25 | 0})`;
+          ctx.fillText(ch, col * CW, row * CH + FS);
+        }
+      }
+      plasmaT++;
+    }
+
+    // ── Demo runner ───────────────────────────────────────────────────────────
+    let currentDemo = 'donut';
+    const DEMOS = { donut: donutFrame, matrix: matrixFrame, plasma: plasmaFrame };
+
+    function initDemo(name) {
+      if (!COLS || !ROWS) return;
+      ctx.clearRect(0, 0, W, H);
+      if (name === 'matrix') initMatrix();
+      if (name === 'donut')  { dA = 0; dB = 0; }
+      if (name === 'plasma') plasmaT = 0;
+    }
+    function setDemo(name) {
+      currentDemo = name;
+      document.querySelectorAll('.demo-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.demo === name));
+      initDemo(name);
+    }
+
+    document.querySelectorAll('.demo-btn').forEach(btn =>
+      btn.addEventListener('click', () => setDemo(btn.dataset.demo)));
+
+    window.addEventListener('keydown', e => {
+      if (e.key === '1') setDemo('donut');
+      if (e.key === '2') setDemo('matrix');
+      if (e.key === '3') setDemo('plasma');
+    });
+
+    function loop() { DEMOS[currentDemo](); requestAnimationFrame(loop); }
+    requestAnimationFrame(() => { resize(); loop(); });
+  </script>
+</body>
+</html>

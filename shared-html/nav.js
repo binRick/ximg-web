@@ -24,6 +24,8 @@
     '<a class="nav-item" href="https://ximg.app"><div class="nav-dot"></div>ximg.app</a>' +
     '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux.ximg.app</a>' +
     '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly.ximg.app</a>' +
+    '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii.ximg.app</a>' +
+    '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json.ximg.app</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs.ximg.app</a>';
 
   // Highlight the current site

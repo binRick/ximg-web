@@ -10,6 +10,8 @@ const LOG_FILES = {
   ximg:      'ximg.access.log',
   linux:     'linux.access.log',
   butterfly: 'butterfly.access.log',
+  ascii:     'ascii.access.log',
+  json:      'json.access.log',
 };
 
 // ── Read last N lines from end of file ───────────────────────────────────────
@@ -119,6 +121,8 @@ const HTML = `<!DOCTYPE html>
     <button class="tab active" data-site="ximg">ximg.app</button>
     <button class="tab"        data-site="linux">linux.ximg.app</button>
     <button class="tab"        data-site="butterfly">butterfly.ximg.app</button>
+    <button class="tab"        data-site="ascii">ascii.ximg.app</button>
+    <button class="tab"        data-site="json">json.ximg.app</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>

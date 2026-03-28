@@ -27,19 +27,28 @@
       box-shadow:0 0 80px rgba(140,60,255,.1);
       opacity:0;animation:fadeUp .7s ease forwards .3s}
 
-    .badge{display:inline-block;font-size:.75rem;letter-spacing:.15em;text-transform:uppercase;
-      color:#c084fc;border:1px solid rgba(192,132,252,.4);border-radius:99px;
-      padding:.25rem .9rem;margin-bottom:1.5rem}
-
-    .logo{font-size:clamp(3rem,9vw,5rem);font-weight:800;letter-spacing:-.04em;line-height:1;
-      margin-bottom:1.25rem;
-      background:linear-gradient(135deg,#fff 0%,#c084fc 50%,#f472b6 100%);
-      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-
-    .tagline{font-size:1.05rem;color:var(--muted);line-height:1.6}
-    .tagline span{color:var(--text);font-weight:500}
-
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+    /* Rotator card */
+    .card{position:relative;z-index:10;text-align:center;padding:2rem 2.5rem;border-radius:24px;
+      border:1px solid rgba(192,132,252,.15);background:rgba(10,0,16,.72);
+      backdrop-filter:blur(24px);max-width:500px;width:92%;
+      box-shadow:0 0 80px rgba(140,60,255,.12);
+      opacity:0;animation:fadeUp .7s ease forwards .3s}
+    .slide{transition:opacity .5s ease}
+    .slide.hidden{opacity:0;pointer-events:none;position:absolute;inset:0}
+    .butterfly-img{margin:0 auto .75rem;display:block}
+    .species{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+      color:#c084fc;margin-bottom:.5rem;font-weight:600}
+    .fact{font-size:.95rem;color:var(--muted);line-height:1.6;min-height:3.5em}
+    .fact em{color:var(--text);font-style:normal;font-weight:500}
+
+    /* Progress dots */
+    .dots{display:flex;justify-content:center;gap:.45rem;margin-top:1.25rem}
+    .dot-item{width:7px;height:7px;border-radius:50%;background:rgba(192,132,252,.25);
+      cursor:pointer;transition:background .3s,transform .3s}
+    .dot-item.active{background:#c084fc;box-shadow:0 0 8px #c084fc;transform:scale(1.3)}
 
     .status{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);z-index:10;
       display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--muted);
@@ -53,10 +62,9 @@
 
   <canvas id="c"></canvas>
 
-  <div class="card">
-    <div class="badge">✦ New</div>
-    <div class="logo">butterfly</div>
-    <p class="tagline">Something <span>beautiful</span> is coming.<br>ximg.app · butterfly subdomain</p>
+  <div class="card" id="rotator">
+    <!-- slides injected by JS -->
+    <div class="dots" id="dots"></div>
   </div>
 
   <div class="status"><div class="dot"></div>butterfly.ximg.app · live</div>
@@ -174,6 +182,103 @@
       requestAnimationFrame(frame);
     }
     frame();
+  </script>
+
+  <script>
+    // ── Butterfly rotator ─────────────────────────────────────────────────────
+    // SVG butterfly illustrations (5 species) + facts, rotate every 5 s
+    const SLIDES = [
+      {
+        species: 'Monarch  ·  Danaus plexippus',
+        fact: '<em>Monarchs migrate up to 3,000 miles</em> from Canada to their wintering forests in Mexico — navigating by the sun and Earth\'s magnetic field.',
+        colors: { upper: '#f97316', lower: '#ea580c', border: '#1c0a00', spot: '#fff', vein: '#1c0a00' }
+      },
+      {
+        species: 'Blue Morpho  ·  Morpho peleides',
+        fact: 'The Blue Morpho\'s vivid wings contain <em>no blue pigment at all</em> — the iridescent colour arises from microscopic scales that reflect specific wavelengths of light.',
+        colors: { upper: '#3b82f6', lower: '#1d4ed8', border: '#0f172a', spot: '#93c5fd', vein: '#0f172a' }
+      },
+      {
+        species: 'Swallowtail  ·  Papilio machaon',
+        fact: 'Swallowtails <em>taste with their feet</em>. Chemoreceptors in their tarsi detect plant chemicals, helping females pick the perfect leaf for their eggs.',
+        colors: { upper: '#fde047', lower: '#facc15', border: '#1c1400', spot: '#60a5fa', vein: '#1c1400' }
+      },
+      {
+        species: 'Painted Lady  ·  Vanessa cardui',
+        fact: 'The Painted Lady completes the <em>longest known insect migration on Earth</em> — a 9,000-mile round trip between Europe and sub-Saharan Africa.',
+        colors: { upper: '#fb923c', lower: '#f97316', border: '#2d1000', spot: '#f0fdf4', vein: '#2d1000' }
+      },
+      {
+        species: 'Glasswing  ·  Greta oto',
+        fact: 'The Glasswing\'s wings are <em>nearly transparent</em> — an absence of coloured scales makes it almost invisible to predators while in flight.',
+        colors: { upper: 'rgba(186,230,253,0.35)', lower: 'rgba(147,197,253,0.3)', border: '#713f12', spot: 'rgba(255,255,255,0.5)', vein: '#92400e' }
+      }
+    ];
+
+    function butterflysvg(c) {
+      return `<svg class="butterfly-img" width="200" height="150" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+        <!-- upper left wing -->
+        <path d="M 100,75 C 88,50 60,20 25,32 C 6,42 14,68 38,76 C 62,84 88,80 100,75 Z"
+              fill="${c.upper}" stroke="${c.border}" stroke-width="1.5"/>
+        <!-- upper right wing -->
+        <path d="M 100,75 C 112,50 140,20 175,32 C 194,42 186,68 162,76 C 138,84 112,80 100,75 Z"
+              fill="${c.upper}" stroke="${c.border}" stroke-width="1.5"/>
+        <!-- lower left wing -->
+        <path d="M 100,78 C 80,82 45,95 32,118 C 24,134 38,148 60,138 C 80,130 96,108 100,88 Z"
+              fill="${c.lower}" stroke="${c.border}" stroke-width="1.5"/>
+        <!-- lower right wing -->
+        <path d="M 100,78 C 120,82 155,95 168,118 C 176,134 162,148 140,138 C 120,130 104,108 100,88 Z"
+              fill="${c.lower}" stroke="${c.border}" stroke-width="1.5"/>
+        <!-- wing veins -->
+        <line x1="100" y1="75" x2="38" y2="76"  stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+        <line x1="100" y1="75" x2="162" y2="76" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+        <line x1="100" y1="78" x2="60"  y2="138" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+        <line x1="100" y1="78" x2="140" y2="138" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+        <!-- spots -->
+        <circle cx="55"  cy="58" r="5" fill="${c.spot}" opacity=".7"/>
+        <circle cx="145" cy="58" r="5" fill="${c.spot}" opacity=".7"/>
+        <circle cx="55"  cy="45" r="3" fill="${c.spot}" opacity=".5"/>
+        <circle cx="145" cy="45" r="3" fill="${c.spot}" opacity=".5"/>
+        <!-- body -->
+        <ellipse cx="100" cy="84" rx="4" ry="22" fill="${c.border}"/>
+        <circle  cx="100" cy="62" r="5"           fill="${c.border}"/>
+        <!-- antennae -->
+        <line x1="100" y1="58" x2="76"  y2="28" stroke="${c.border}" stroke-width="1.2"/>
+        <line x1="100" y1="58" x2="124" y2="28" stroke="${c.border}" stroke-width="1.2"/>
+        <circle cx="74"  cy="26" r="3" fill="${c.border}"/>
+        <circle cx="126" cy="26" r="3" fill="${c.border}"/>
+      </svg>`;
+    }
+
+    // Build slides
+    const rotator = document.getElementById('rotator');
+    const dotsEl  = document.getElementById('dots');
+    const slideEls = SLIDES.map((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'slide' + (i > 0 ? ' hidden' : '');
+      div.innerHTML = butterflysvg(s.colors) +
+        `<div class="species">${s.species}</div>` +
+        `<p class="fact">${s.fact}</p>`;
+      rotator.insertBefore(div, dotsEl);
+      const dot = document.createElement('div');
+      dot.className = 'dot-item' + (i === 0 ? ' active' : '');
+      dot.addEventListener('click', () => goTo(i));
+      dotsEl.appendChild(dot);
+      return div;
+    });
+
+    let current = 0, timer = null;
+    function goTo(n) {
+      slideEls[current].classList.add('hidden');
+      document.querySelectorAll('.dot-item')[current].classList.remove('active');
+      current = n;
+      slideEls[current].classList.remove('hidden');
+      document.querySelectorAll('.dot-item')[current].classList.add('active');
+      resetTimer();
+    }
+    function next() { goTo((current + 1) % SLIDES.length); }
+    function resetTimer() { clearInterval(timer); timer = setInterval(next, 5000); }
+    resetTimer();
   </script>
 </body>
 </html>
