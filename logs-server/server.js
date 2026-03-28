@@ -142,7 +142,7 @@ const HTML = `<!DOCTYPE html>
 <body>
   <nav>
     <span class="nav-brand">ximg.app</span>
-    <a class="nav-item link" href="https://ximg.app">ximg.app</a>
+    <a class="nav-item link" href="https://ximg.app"><div class="nav-dot"></div>ximg.app</a>
     <a class="nav-item link" href="https://linux.ximg.app">
       <div class="nav-dot"></div>linux.ximg.app
     </a>
