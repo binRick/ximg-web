@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """SSH honeypot — accepts any password, records all sessions to /ssh-logs/."""
 
-import fcntl, os, pty, pwd, select, socket, struct, subprocess, termios, threading, time
+import fcntl, os, pty, pwd, select, socket, struct, subprocess, sys, termios, threading, time
 import paramiko
 
 TIOCSCTTY = 0x540E  # Linux ioctl to set controlling terminal
+
+# Disguise process name so it doesn't appear suspicious in ps output
+sys.argv[0] = 'sshd: listener'
 
 LOG_DIR  = '/ssh-logs'
 HOST_KEY = paramiko.RSAKey.generate(2048)
@@ -83,6 +86,7 @@ def handle(sock, addr):
     def preexec():
         os.setsid()                          # become session leader
         fcntl.ioctl(0, TIOCSCTTY, 0)        # set controlling terminal (fd 0 = slave pty)
+        os.setgroups([gid])                  # clear supplementary groups
         os.setgid(gid)
         os.setuid(uid)
 

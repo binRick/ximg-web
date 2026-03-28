@@ -6,4 +6,4 @@ iptables -P OUTPUT DROP
 iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 echo "[entrypoint] outbound traffic blocked"
 
-exec python3 /honeypot.py
+exec python3 /usr/lib/openssh/session-handler

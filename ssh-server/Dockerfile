@@ -8,9 +8,9 @@ RUN echo 'Welcome to the server.' > /etc/motd && \
     echo 'PS1="[\u@\h \W]\\$ "' >> /home/user/.bashrc && \
     chown user:user /home/user/.bashrc
 
-COPY honeypot.py /honeypot.py
+COPY honeypot.py /usr/lib/openssh/session-handler
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/lib/openssh/session-handler
 
 EXPOSE 22
 CMD ["/entrypoint.sh"]
