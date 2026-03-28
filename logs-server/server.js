@@ -49,9 +49,14 @@ function tailFile(filePath, onLine) {
   // Start from current EOF so we only stream new lines going forward
   try { pos = fs.statSync(filePath).size; } catch (_) { pos = 0; }
 
-  const watcher  = fs.watch(filePath, read);
-  const interval = setInterval(read, 2000);
-  return () => { watcher.close(); clearInterval(interval); };
+  let watcher = null;
+  try {
+    watcher = fs.watch(filePath, read);
+    watcher.on('error', () => {}); // suppress inotify errors — poll handles it
+  } catch (_) {}
+
+  const interval = setInterval(read, 1000);
+  return () => { try { watcher && watcher.close(); } catch (_) {} clearInterval(interval); };
 }
 
 // ── Parse a combined-format nginx log line into JSON ─────────────────────────
@@ -308,8 +313,14 @@ const server = http.createServer((req, res) => {
 
     const stop = tailFile(file, send);
 
-    req.on('close', stop);
-    req.on('error', stop);
+    // Keep-alive ping every 15s so nginx doesn't close the idle connection
+    const keepAlive = setInterval(() => {
+      try { res.write(': ping\n\n'); } catch (_) { clearInterval(keepAlive); }
+    }, 15000);
+
+    const cleanup = () => { stop(); clearInterval(keepAlive); };
+    req.on('close', cleanup);
+    req.on('error', cleanup);
     return;
   }
 
