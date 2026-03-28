@@ -228,7 +228,7 @@ const HTML = `<!DOCTYPE html>
 // ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
-  if (req.url === '/nav.js') {
+  if (req.url === '/shared/nav.js') {
     try {
       const js = fs.readFileSync('/app/shared/nav.js', 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
