@@ -74,7 +74,7 @@ const HTML = `<!DOCTYPE html>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--bg:#0d1117;--green:#00ff41;--dim:#484f58;--text:#c9d1d9}
     body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;
-      min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+      height:100vh;display:flex;flex-direction:column;overflow:hidden}
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
       background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
 
@@ -182,9 +182,8 @@ const HTML = `<!DOCTYPE html>
         el.className = 'raw-line';
         el.textContent = data.raw || '';
       }
-      container.appendChild(el);
-      while (container.children.length > MAX_LINES) container.removeChild(container.firstChild);
-      container.scrollTop = container.scrollHeight;
+      container.prepend(el);
+      while (container.children.length > MAX_LINES) container.removeChild(container.lastChild);
     }
 
     function connect(site) {
