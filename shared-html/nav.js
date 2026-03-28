@@ -5,7 +5,7 @@
     'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
     'gap:.25rem;padding:.75rem 1.5rem;background:rgba(10,10,15,.85);backdrop-filter:blur(16px);' +
     'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace}' +
-    '.nav-brand{font-weight:700;font-size:.95rem;color:#f1f5f9;margin-right:auto;letter-spacing:-.02em}' +
+    '.nav-brand{font-weight:700;font-size:.95rem;color:#f1f5f9;margin-right:auto;letter-spacing:-.02em;text-decoration:none}' +
     '.nav-item{display:inline-flex;align-items:center;gap:.45rem;font-size:.85rem;font-weight:600;' +
     'text-decoration:none;padding:.4rem 1rem;border-radius:6px;transition:all .2s;' +
     'color:#c9d1d9;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}' +
@@ -20,12 +20,12 @@
   // Build nav
   var nav = document.createElement('nav');
   nav.innerHTML =
-    '<span class="nav-brand">ximg.app</span>' +
-    '<a class="nav-item" href="https://ximg.app"><div class="nav-dot"></div>ximg.app</a>' +
+    '<a class="nav-brand" href="https://ximg.app">ximg.app</a>' +
     '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux.ximg.app</a>' +
     '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly.ximg.app</a>' +
     '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii.ximg.app</a>' +
     '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json.ximg.app</a>' +
+    '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker.ximg.app</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs.ximg.app</a>';
 
   // Highlight the current site

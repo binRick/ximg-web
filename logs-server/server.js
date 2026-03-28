@@ -3,8 +3,16 @@ const fs   = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 
-const LOGS_DIR = '/logs';
-const PORT     = 3000;
+const LOGS_DIR   = '/logs';
+const SSH_DIR    = '/ssh-logs';
+const PORT       = 3000;
+
+function stripAnsi(s) {
+  return s.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '')
+          .replace(/\x1B[()][AB012]/g, '')
+          .replace(/\r\n/g, '\n')
+          .replace(/\r/g, '\n');
+}
 
 const LOG_FILES = {
   ximg:      'ximg.access.log',
@@ -12,6 +20,8 @@ const LOG_FILES = {
   butterfly: 'butterfly.access.log',
   ascii:     'ascii.access.log',
   json:      'json.access.log',
+  poker:     'poker.access.log',
+  logs:      'logs.access.log',
 };
 
 // ── Read last N lines from end of file ───────────────────────────────────────
@@ -100,6 +110,25 @@ const HTML = `<!DOCTYPE html>
     #log-container::-webkit-scrollbar{width:6px}
     #log-container::-webkit-scrollbar-track{background:transparent}
     #log-container::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+    #ssh-container{flex:1;overflow:hidden;display:none;flex-direction:row}
+    #ssh-list{width:280px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);
+      overflow-y:auto;padding:.5rem}
+    #ssh-list::-webkit-scrollbar{width:4px}
+    #ssh-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+    .ssh-session-item{padding:.45rem .7rem;border-radius:5px;cursor:pointer;font-size:.75rem;
+      border:1px solid transparent;transition:all .15s;margin-bottom:3px}
+    .ssh-session-item:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+    .ssh-session-item.active{background:rgba(0,255,65,.06);border-color:rgba(0,255,65,.3);color:var(--green)}
+    .ssh-session-name{color:var(--text);word-break:break-all}
+    .ssh-session-meta{color:var(--dim);font-size:.68rem;margin-top:1px}
+    #ssh-content{flex:1;overflow-y:auto;padding:1rem;font-size:.76rem;line-height:1.6;
+      white-space:pre-wrap;word-break:break-all}
+    #ssh-content::-webkit-scrollbar{width:6px}
+    #ssh-content::-webkit-scrollbar-track{background:transparent}
+    #ssh-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
+    .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
     .log-line{display:grid;grid-template-columns:180px 130px 48px 1fr;gap:.75rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
     .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -124,6 +153,9 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="butterfly">butterfly.ximg.app</button>
     <button class="tab"        data-site="ascii">ascii.ximg.app</button>
     <button class="tab"        data-site="json">json.ximg.app</button>
+    <button class="tab"        data-site="poker">poker.ximg.app</button>
+    <button class="tab"        data-site="logs">logs.ximg.app</button>
+    <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>
@@ -136,6 +168,11 @@ const HTML = `<!DOCTYPE html>
 
   <div id="log-container">
     <div class="connecting">connecting…</div>
+  </div>
+
+  <div id="ssh-container">
+    <div id="ssh-list"><div class="ssh-empty">Loading sessions…</div></div>
+    <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
   </div>
 
   <script>
@@ -222,6 +259,82 @@ const HTML = `<!DOCTYPE html>
     });
 
     connect(currentSite);
+
+    // ── SSH session viewer ────────────────────────────────────────────────────
+    const sshTab       = document.getElementById('ssh-tab');
+    const sshContainer = document.getElementById('ssh-container');
+    const logContainer = document.getElementById('log-container');
+    const sshList      = document.getElementById('ssh-list');
+    const sshContent   = document.getElementById('ssh-content');
+    let sshMode = false;
+
+    function enterSshMode() {
+      sshMode = true;
+      sshTab.classList.add('active');
+      document.querySelectorAll('.tab:not(#ssh-tab)').forEach(b => b.classList.remove('active'));
+      document.getElementById('pause-btn').style.display = 'none';
+      document.querySelector('.stats').style.display = 'none';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      logContainer.style.display = 'none';
+      sshContainer.style.display = 'flex';
+      loadSshSessions();
+    }
+
+    function leaveSshMode() {
+      sshMode = false;
+      sshTab.classList.remove('active');
+      document.getElementById('pause-btn').style.display = '';
+      document.querySelector('.stats').style.display = '';
+      sshContainer.style.display = 'none';
+      logContainer.style.display = '';
+    }
+
+    function loadSshSessions() {
+      sshList.innerHTML = '<div class="ssh-empty">Loading…</div>';
+      fetch('/ssh-sessions')
+        .then(r => r.json())
+        .then(files => {
+          if (!files.length) {
+            sshList.innerHTML = '<div class="ssh-empty">No sessions yet.</div>';
+            return;
+          }
+          sshList.innerHTML = '';
+          files.forEach(f => {
+            const el = document.createElement('div');
+            el.className = 'ssh-session-item';
+            const kb = (f.size / 1024).toFixed(1);
+            el.innerHTML =
+              '<div class="ssh-session-name">' + esc(f.name) + '</div>' +
+              '<div class="ssh-session-meta">' + kb + ' KB</div>';
+            el.addEventListener('click', () => {
+              document.querySelectorAll('.ssh-session-item').forEach(i => i.classList.remove('active'));
+              el.classList.add('active');
+              loadSession(f.name);
+            });
+            sshList.appendChild(el);
+          });
+        })
+        .catch(() => { sshList.innerHTML = '<div class="ssh-empty">Failed to load sessions.</div>'; });
+    }
+
+    function loadSession(filename) {
+      sshContent.textContent = 'Loading…';
+      fetch('/ssh-session?file=' + encodeURIComponent(filename))
+        .then(r => r.text())
+        .then(text => { sshContent.textContent = text; sshContent.scrollTop = 0; })
+        .catch(() => { sshContent.textContent = 'Failed to load session.'; });
+    }
+
+    sshTab.addEventListener('click', () => {
+      if (!sshMode) enterSshMode();
+    });
+
+    document.querySelectorAll('.tab:not(#ssh-tab)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (sshMode) leaveSshMode();
+      });
+    });
   </script>
 </body>
 </html>`;
@@ -229,6 +342,30 @@ const HTML = `<!DOCTYPE html>
 // ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
+
+  if (req.url === '/ssh-sessions') {
+    try {
+      const files = fs.readdirSync(SSH_DIR)
+        .filter(f => f.endsWith('.log'))
+        .sort().reverse()
+        .map(f => { const st = fs.statSync(path.join(SSH_DIR, f)); return { name: f, size: st.size }; });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(files));
+    } catch (_) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('[]'); }
+    return;
+  }
+
+  const sm = req.url.match(/^\/ssh-session\?file=([^&]+)$/);
+  if (sm) {
+    const filename = decodeURIComponent(sm[1]);
+    if (!/^[\w.-]+\.log$/.test(filename)) { res.writeHead(400); res.end(); return; }
+    try {
+      const raw = fs.readFileSync(path.join(SSH_DIR, filename), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(stripAnsi(raw));
+    } catch (_) { res.writeHead(404); res.end(); }
+    return;
+  }
   if (req.url === '/shared/nav.js') {
     try {
       const js = fs.readFileSync('/app/shared/nav.js', 'utf8');

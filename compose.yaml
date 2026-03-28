@@ -34,12 +34,32 @@ services:
       - ./json-html:/usr/local/apache2/htdocs
       - ./shared-html:/usr/local/apache2/htdocs/shared:ro
 
+  poker:
+    image: httpd:2.4-alpine
+    restart: unless-stopped
+    volumes:
+      - ./poker-html:/usr/local/apache2/htdocs
+      - ./shared-html:/usr/local/apache2/htdocs/shared:ro
+
   logs:
     build: ./logs-server
     restart: unless-stopped
     volumes:
       - ./logs:/logs:ro
+      - ./ssh-logs:/ssh-logs:ro
       - ./shared-html:/app/shared:ro
+
+  ssh:
+    build: ./ssh-server
+    restart: unless-stopped
+    ports:
+      - "22:22"
+    volumes:
+      - ./ssh-logs:/ssh-logs
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - ssh-net
 
   nginx:
     image: nginx:alpine
@@ -58,4 +78,9 @@ services:
       - butterfly
       - ascii
       - json
+      - poker
       - logs
+
+networks:
+  ssh-net:
+    driver: bridge
