@@ -4,238 +4,552 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>linux.ximg.app</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg: #0d1117;
-      --green: #00ff41;
-      --green-dim: #00c832;
-      --text: #c9d1d9;
-      --muted: #484f58;
-    }
-
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Courier New', Courier, monospace;
-      min-height: 100vh;
+      background: #0d1117;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 2.5rem;
+      min-height: 100vh;
+      font-family: monospace;
       overflow: hidden;
-      position: relative;
-      padding: 2rem 1rem;
     }
 
-    /* scanline effect */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    /* CRT glow */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background: radial-gradient(ellipse at center, rgba(0,255,65,0.04) 0%, transparent 70%);
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px
+      );
       pointer-events: none;
-      z-index: 0;
+      z-index: 100;
     }
 
-    /* ── Tux ── */
-    .tux-wrap {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-      opacity: 0;
-      animation: fadeUp 0.7s ease forwards 0.1s;
-    }
-
-    .tux-wrap svg {
-      width: 140px;
-      height: auto;
-      filter: drop-shadow(0 0 18px rgba(0,255,65,0.5)) drop-shadow(0 0 40px rgba(0,255,65,0.2));
-      animation: float 4s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-10px); }
-    }
-
-    .tux-label {
-      font-size: 0.72rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--green-dim);
-    }
-
-    /* ── Terminal card ── */
-    .terminal {
-      position: relative;
-      z-index: 1;
-      width: 90%;
-      max-width: 680px;
-      background: rgba(0,0,0,0.6);
-      border: 1px solid rgba(0,255,65,0.3);
-      border-radius: 8px;
-      box-shadow: 0 0 40px rgba(0,255,65,0.15), inset 0 0 40px rgba(0,0,0,0.5);
+    .window {
+      width: min(860px, 96vw);
+      border-radius: 10px;
       overflow: hidden;
-      opacity: 0;
-      animation: fadeUp 0.7s ease forwards 0.3s;
+      border: 1px solid rgba(0,255,65,0.25);
+      box-shadow: 0 0 60px rgba(0,255,65,0.12), 0 24px 80px rgba(0,0,0,0.6);
     }
 
     .titlebar {
-      background: rgba(0,255,65,0.08);
-      border-bottom: 1px solid rgba(0,255,65,0.2);
-      padding: 0.6rem 1rem;
+      background: #1a1f2e;
+      border-bottom: 1px solid rgba(0,255,65,0.15);
+      padding: 0.55rem 1rem;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      font-size: 0.75rem;
-      color: var(--green-dim);
+      gap: 0.45rem;
+      user-select: none;
     }
 
-    .titlebar-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .titlebar-dot.red    { background: #ff5f57; }
-    .titlebar-dot.yellow { background: #febc2e; }
-    .titlebar-dot.green  { background: #28c840; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; }
+    .dot.y { background: #febc2e; }
+    .dot.g { background: #28c840; }
 
-    .titlebar-label {
-      margin-left: auto;
-      margin-right: auto;
-      transform: translateX(-18px);
+    .title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.72rem;
+      color: #4a5568;
+      margin-right: 33px;
     }
 
-    .body {
-      padding: 1.5rem 2rem 2rem;
-      font-size: 0.9rem;
-      line-height: 1.8;
+    #terminal {
+      background: #0d1117;
+      padding: 8px;
     }
 
-    .line {
-      opacity: 0;
-      animation: appear 0s forwards;
-      white-space: pre;
-    }
-
-    .line.l1  { animation-delay: 0.5s; }
-    .line.l2  { animation-delay: 0.8s; }
-    .line.l3  { animation-delay: 1.1s; }
-    .line.l4  { animation-delay: 1.4s; }
-    .line.l5  { animation-delay: 1.7s; }
-    .line.l6  { animation-delay: 2.0s; }
-    .line.l7  { animation-delay: 2.3s; }
-    .line.l8  { animation-delay: 2.6s; }
-    .line.l9  { animation-delay: 2.9s; }
-    .line.l10 { animation-delay: 3.2s; }
-    .line.l11 { animation-delay: 3.5s; }
-    .line.l12 { animation-delay: 3.8s; }
-
-    @keyframes appear  { to { opacity: 1; } }
-    @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-
-    .prompt { color: var(--green); }
-    .cmd    { color: #fff; }
-    .out    { color: var(--text); }
-    .ok     { color: var(--green); }
-    .hi     { color: #79c0ff; }
-    .muted  { color: var(--muted); }
-
-    .cursor {
-      display: inline-block;
-      width: 9px; height: 1.1em;
-      background: var(--green);
-      vertical-align: text-bottom;
-      opacity: 0;
-      animation: blink 1s step-end infinite;
-      animation-delay: 4.1s;
-      animation-fill-mode: forwards;
-    }
-
-    @keyframes blink {
-      0%,100% { opacity: 1; }
-      50%      { opacity: 0; }
-    }
+    .xterm-viewport { background: transparent !important; }
   </style>
 </head>
 <body>
-
-  <!-- Tux -->
-  <div class="tux-wrap">
-    <svg viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">
-      <!-- body -->
-      <ellipse cx="100" cy="155" rx="62" ry="72" fill="#111"/>
-      <!-- belly -->
-      <ellipse cx="100" cy="168" rx="38" ry="50" fill="#f5e6c8"/>
-      <!-- head -->
-      <ellipse cx="100" cy="68" rx="46" ry="48" fill="#111"/>
-      <!-- face / beak area -->
-      <ellipse cx="100" cy="82" rx="28" ry="22" fill="#f5c842"/>
-      <!-- eyes whites -->
-      <ellipse cx="85"  cy="62" rx="11" ry="12" fill="#fff"/>
-      <ellipse cx="115" cy="62" rx="11" ry="12" fill="#fff"/>
-      <!-- pupils -->
-      <ellipse cx="87"  cy="64" rx="6"  ry="7"  fill="#111"/>
-      <ellipse cx="117" cy="64" rx="6"  ry="7"  fill="#111"/>
-      <!-- eye shine -->
-      <circle  cx="89"  cy="61" r="2"   fill="#fff"/>
-      <circle  cx="119" cy="61" r="2"   fill="#fff"/>
-      <!-- beak -->
-      <ellipse cx="100" cy="89" rx="13" ry="8"  fill="#f0a500"/>
-      <!-- feet -->
-      <ellipse cx="78"  cy="222" rx="20" ry="8"  fill="#f0a500" transform="rotate(-15 78 222)"/>
-      <ellipse cx="122" cy="222" rx="20" ry="8"  fill="#f0a500" transform="rotate(15 122 222)"/>
-      <!-- wings -->
-      <ellipse cx="44"  cy="155" rx="18" ry="46" fill="#111" transform="rotate(-12 44 155)"/>
-      <ellipse cx="156" cy="155" rx="18" ry="46" fill="#111" transform="rotate(12 156 155)"/>
-      <!-- green glow ring (decorative) -->
-      <ellipse cx="100" cy="155" rx="66" ry="76" fill="none" stroke="#00ff41" stroke-width="1.5" opacity="0.25"/>
-    </svg>
-    <span class="tux-label">Tux — Linux 6.12.0</span>
-  </div>
-
-  <!-- Terminal -->
-  <div class="terminal">
+  <div class="window">
     <div class="titlebar">
-      <div class="titlebar-dot red"></div>
-      <div class="titlebar-dot yellow"></div>
-      <div class="titlebar-dot green"></div>
-      <span class="titlebar-label">root@ximg — bash</span>
+      <div class="dot r"></div>
+      <div class="dot y"></div>
+      <div class="dot g"></div>
+      <span class="title">root@linux.ximg.app — bash</span>
     </div>
-    <div class="body">
-      <div class="line l1"><span class="prompt">root@ximg</span><span class="muted">:</span><span class="hi">~</span><span class="muted">$</span> <span class="cmd">uname -a</span></div>
-      <div class="line l2"><span class="out">Linux ximg 6.12.0 #1 SMP x86_64 GNU/Linux</span></div>
-      <div class="line l3">&nbsp;</div>
-      <div class="line l4"><span class="prompt">root@ximg</span><span class="muted">:</span><span class="hi">~</span><span class="muted">$</span> <span class="cmd">docker ps --format "table {{.Names}}\t{{.Status}}"</span></div>
-      <div class="line l5"><span class="muted">NAMES                    STATUS</span></div>
-      <div class="line l6"><span class="ok">ximg-web-nginx-1         Up</span></div>
-      <div class="line l7"><span class="ok">ximg-web-web-1           Up</span></div>
-      <div class="line l8"><span class="ok">ximg-web-linux-1         Up</span></div>
-      <div class="line l9">&nbsp;</div>
-      <div class="line l10"><span class="prompt">root@ximg</span><span class="muted">:</span><span class="hi">~</span><span class="muted">$</span> <span class="cmd">curl -s https://linux.ximg.app</span></div>
-      <div class="line l11"><span class="ok"># you're looking at it</span></div>
-      <div class="line l12">&nbsp;</div>
-      <div class="line l12"><span class="prompt">root@ximg</span><span class="muted">:</span><span class="hi">~</span><span class="muted">$</span> <span class="cursor"></span></div>
-    </div>
+    <div id="terminal"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script>
+  const term = new Terminal({
+    theme: {
+      background:  '#0d1117',
+      foreground:  '#c9d1d9',
+      cursor:      '#00ff41',
+      cursorAccent:'#0d1117',
+      black:       '#0d1117',
+      green:       '#00ff41',
+      brightGreen: '#00c832',
+      cyan:        '#79c0ff',
+      brightBlack: '#484f58',
+      white:       '#c9d1d9',
+      brightWhite: '#f0f6fc',
+      yellow:      '#f0c040',
+      red:         '#ff7b72',
+    },
+    fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',
+    fontSize: 14,
+    lineHeight: 1.4,
+    cursorBlink: true,
+    cursorStyle: 'block',
+    scrollback: 1000,
+    convertEol: true,
+  });
+
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById('terminal'));
+  fit.fit();
+  window.addEventListener('resize', () => fit.fit());
+
+  // ── Filesystem ──────────────────────────────────────────────────────────────
+  const fs = {
+    '/': ['home', 'etc', 'var', 'proc', 'usr', 'root'],
+    '/root': ['projects', '.bashrc', '.bash_history', 'tux.txt'],
+    '/root/projects': ['ximg-web'],
+    '/root/projects/ximg-web': ['compose.yaml', 'nginx', 'public-html', 'linux-html', 'logs', 'README.md'],
+    '/root/projects/ximg-web/nginx': ['nginx.conf'],
+    '/root/projects/ximg-web/public-html': ['index.html'],
+    '/root/projects/ximg-web/linux-html': ['index.html'],
+    '/etc': ['hostname', 'os-release', 'passwd', 'hosts'],
+    '/var': ['log'],
+    '/var/log': ['nginx'],
+    '/var/log/nginx': ['access.log', 'error.log'],
+    '/proc': ['cpuinfo', 'meminfo', 'version'],
+    '/usr': ['bin', 'local'],
+  };
+
+  const fileContents = {
+    '/root/.bashrc': `# .bashrc\nexport PS1='\\[\\e[38;5;196m\\]⚡ root\\[\\e[0m\\]@\\[\\e[38;5;39m\\]\\h\\[\\e[0m\\] \\[\\e[38;5;183m\\]\\w\\[\\e[0m\\] ❯ '\nexport PATH="$HOME/.local/bin:$PATH"\nalias ll='ls -la'\nalias gs='git status'`,
+    '/root/tux.txt': `    .--.
+   |o_o |
+   |:_/ |
+  //   \\ \\
+ (|     | )
+/'\\_   _/\`\\
+\\___)=(___/\n\nTux — The Linux Penguin`,
+    '/etc/hostname': 'linux.ximg.app',
+    '/etc/os-release': `NAME="AlmaLinux"\nVERSION="10"\nID=almalinux\nPRETTY_NAME="AlmaLinux 10"\nHOME_URL="https://almalinux.org/"`,
+    '/etc/hosts': `127.0.0.1   localhost\n::1         localhost\n172.238.205.61  linux.ximg.app ximg.app`,
+    '/proc/version': 'Linux version 6.12.0-134.el10.x86_64 (gcc version 14.2.1) #1 SMP PREEMPT_DYNAMIC',
+    '/proc/cpuinfo': `processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: Intel(R) Xeon(R) CPU E5-2670 @ 2.60GHz\ncpu MHz\t\t: 2600.000\ncache size\t: 20480 KB\ncpu cores\t: 1`,
+    '/proc/meminfo': `MemTotal:        2048000 kB\nMemFree:          614400 kB\nMemAvailable:     921600 kB\nBuffers:           48128 kB\nCached:           409600 kB`,
+    '/root/.bash_history': `uname -a\ndocker ps\ncertbot renew --dry-run\nnginx -s reload\ngit log --oneline\nls -la /etc/letsencrypt/live/\ntail -f /var/log/nginx/access.log`,
+    '/root/projects/ximg-web/README.md': `# ximg-web\nProduction web stack for ximg.app\nnginx + Apache + Docker + Let's Encrypt`,
+    '/etc/passwd': `root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin`,
+    '/var/log/nginx/access.log': `172.68.42.1 - - [28/Mar/2026:10:14:01 +0000] "GET / HTTP/2.0" 200 4321 "-" "Mozilla/5.0"\n172.68.42.2 - - [28/Mar/2026:10:14:45 +0000] "GET / HTTP/2.0" 200 4321 "-" "curl/7.88.1"\n172.68.42.3 - - [28/Mar/2026:11:37:02 +0000] "GET / HTTP/2.0" 200 2048 "-" "Mozilla/5.0"`,
+    '/var/log/nginx/error.log': '',
+    '/root/projects/ximg-web/compose.yaml': `services:\n  web:\n    image: httpd:2.4-alpine\n    restart: unless-stopped\n    volumes:\n      - ./public-html:/usr/local/apache2/htdocs\n\n  linux:\n    image: httpd:2.4-alpine\n    restart: unless-stopped\n    volumes:\n      - ./linux-html:/usr/local/apache2/htdocs\n\n  nginx:\n    image: nginx:alpine\n    restart: unless-stopped\n    ports:\n      - "80:80"\n      - "443:443"`,
+  };
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let cwd = '/root';
+  let inputBuffer = '';
+  let historyList = [];
+  let historyIdx = -1;
+  let savedInput = '';
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const g  = s => `\x1b[32m${s}\x1b[0m`;
+  const b  = s => `\x1b[94m${s}\x1b[0m`;
+  const y  = s => `\x1b[33m${s}\x1b[0m`;
+  const r  = s => `\x1b[31m${s}\x1b[0m`;
+  const d  = s => `\x1b[90m${s}\x1b[0m`;
+  const w  = s => `\x1b[97m${s}\x1b[0m`;
+  const bo = s => `\x1b[1m${s}\x1b[0m`;
+
+  function resolvePath(p) {
+    if (!p || p === '~') return '/root';
+    if (p.startsWith('~/')) p = '/root/' + p.slice(2);
+    if (!p.startsWith('/')) p = cwd.replace(/\/$/, '') + '/' + p;
+    const parts = p.split('/').filter(Boolean);
+    const resolved = [];
+    for (const part of parts) {
+      if (part === '.') continue;
+      if (part === '..') resolved.pop();
+      else resolved.push(part);
+    }
+    return '/' + resolved.join('/');
+  }
+
+  function isDir(p)  { return fs[p] !== undefined; }
+  function isFile(p) { return fileContents[p] !== undefined; }
+  function exists(p) { return isDir(p) || isFile(p); }
+
+  function displayPath(p) { return p.startsWith('/root') ? p.replace('/root', '~') : p; }
+
+  function prompt() {
+    return `${g('root')}${d('@')}${b('ximg')}${d(':')}${b(displayPath(cwd))}${d('$')} `;
+  }
+
+  function println(s = '') { term.writeln(s); }
+  function writePrompt()   { term.write('\r\n' + prompt()); }
+
+  // ── Commands ─────────────────────────────────────────────────────────────────
+  const commands = {
+
+    help() {
+      println(`\r\n${bo(g('Available commands:'))}`);
+      const cmds = [
+        ['ls','list directory contents'],   ['cd','change directory'],
+        ['pwd','print working directory'],  ['cat','print file contents'],
+        ['echo','print text'],              ['clear','clear screen'],
+        ['uname','system information'],     ['whoami','current user'],
+        ['hostname','show hostname'],       ['date','current date/time'],
+        ['uptime','system uptime'],         ['free','memory usage'],
+        ['df','disk usage'],                ['ps','running processes'],
+        ['docker','container management'],  ['curl','transfer data'],
+        ['history','command history'],      ['env','environment variables'],
+        ['neofetch','system info + logo'],  ['exit','close terminal'],
+      ];
+      const col = 22;
+      cmds.forEach(([c, d]) => println(`  ${y(c.padEnd(col))}${d}`));
+    },
+
+    ls(args) {
+      const showHidden = args.includes('-a') || args.includes('-la') || args.includes('-al');
+      const longFmt    = args.includes('-l') || args.includes('-la') || args.includes('-al') || args.includes('-lh');
+      const target     = args.filter(a => !a.startsWith('-'))[0];
+      const path       = target ? resolvePath(target) : cwd;
+
+      if (!isDir(path)) { println(r(`ls: cannot access '${target}': No such file or directory`)); return; }
+
+      let entries = [...(fs[path] || [])];
+      if (showHidden) entries = ['.', '..', ...entries.filter(e => !e.startsWith('.')), ...entries.filter(e => e.startsWith('.'))];
+      else entries = entries.filter(e => !e.startsWith('.'));
+
+      if (!longFmt) {
+        println('\r\n' + entries.map(e => {
+          const full = path.replace(/\/$/, '') + '/' + e;
+          return isDir(full) ? b(e) + '/' : (e.endsWith('.sh') ? g(e) : e);
+        }).join('  '));
+        return;
+      }
+
+      println('');
+      const now = new Date();
+      entries.forEach(e => {
+        const full = path.replace(/\/$/, '') + '/' + e;
+        const dir  = isDir(full);
+        const perms = dir ? 'drwxr-xr-x' : '-rw-r--r--';
+        const size  = dir ? '4096' : String(Math.floor(Math.random()*4000+200));
+        const mo    = now.toLocaleString('en',{month:'short'}).padStart(3);
+        const day   = String(now.getDate()).padStart(2);
+        const time  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const name  = dir ? b(e)+'/' : e;
+        println(`${perms}  1 root root ${size.padStart(6)} ${mo} ${day} ${time} ${name}`);
+      });
+    },
+
+    cd(args) {
+      const target = args[0] || '/root';
+      const path = resolvePath(target);
+      if (!isDir(path)) { println(r(`bash: cd: ${target}: No such file or directory`)); return; }
+      cwd = path;
+    },
+
+    pwd() { println('\r\n' + cwd); },
+
+    cat(args) {
+      if (!args.length) { println(r('cat: missing operand')); return; }
+      args.forEach(a => {
+        const path = resolvePath(a);
+        if (isDir(path)) { println(r(`cat: ${a}: Is a directory`)); return; }
+        if (!isFile(path)) { println(r(`cat: ${a}: No such file or directory`)); return; }
+        println('\r\n' + fileContents[path]);
+      });
+    },
+
+    echo(args) { println('\r\n' + args.join(' ').replace(/\$USER/g,'root').replace(/\$HOME/g,'/root').replace(/\$PWD/g,cwd)); },
+
+    uname(args) {
+      if (args.includes('-a')) println('\r\nLinux linux.ximg.app 6.12.0-134.el10.x86_64 #1 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux');
+      else if (args.includes('-r')) println('\r\n6.12.0-134.el10.x86_64');
+      else if (args.includes('-m')) println('\r\nx86_64');
+      else println('\r\nLinux');
+    },
+
+    whoami()   { println('\r\nroot'); },
+    hostname() { println('\r\nlinux.ximg.app'); },
+
+    date() { println('\r\n' + new Date().toString()); },
+
+    uptime() {
+      const u = Math.floor(Math.random()*30+5);
+      println(`\r\n ${new Date().toTimeString().slice(0,8)} up ${u} days,  3:42,  1 user,  load average: 0.08, 0.04, 0.01`);
+    },
+
+    free(args) {
+      const h = args.includes('-h');
+      const fmt = (n) => h ? (n/1024).toFixed(1)+'G' : String(n*1024).padStart(10);
+      println('\r\n              total        used        free      shared  buff/cache   available');
+      println(`Mem:    ${fmt(2)}    ${fmt(0.5)}    ${fmt(0.9)}    ${fmt(0.01)}    ${fmt(0.6)}    ${fmt(1.2)}`);
+      println(`Swap:   ${fmt(0)}    ${fmt(0)}    ${fmt(0)}`);
+    },
+
+    df(args) {
+      println('\r\nFilesystem      Size  Used Avail Use% Mounted on');
+      println('/dev/sda1        40G   12G   26G  32% /');
+      println('tmpfs           1.0G     0  1.0G   0% /dev/shm');
+      println('overlay          40G   12G   26G  32% /var/lib/docker');
+    },
+
+    ps(args) {
+      println('\r\n    PID TTY          TIME CMD');
+      println(`      1 ?        00:00:01 ${g('bash')}`);
+      println(`     42 ?        00:00:00 ${g('ps')}`);
+    },
+
+    history() {
+      const all = [...historyList].reverse().slice(0, 20).reverse();
+      println('');
+      all.forEach((cmd, i) => println(`  ${String(i+1).padStart(4)}  ${cmd}`));
+    },
+
+    env() {
+      println('');
+      [
+        `USER=root`, `HOME=/root`, `PWD=${cwd}`, `SHELL=/bin/bash`,
+        `TERM=xterm-256color`, `LANG=en_US.UTF-8`, `PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin`,
+        `HOSTNAME=linux.ximg.app`,
+      ].forEach(e => println(e));
+    },
+
+    curl(args) {
+      const url = args.find(a => !a.startsWith('-'));
+      if (!url) { println(r('curl: no URL specified')); return; }
+      if (url.includes('ximg.app')) { println(`\r\n${g('<!DOCTYPE html>')}\n<html>...</html>\n${d('# 200 OK')}`); return; }
+      if (url.includes('ifconfig.me') || url.includes('icanhazip')) { println('\r\n172.238.205.61'); return; }
+      println(`\r\n${r(`curl: (6) Could not resolve host: ${url}`)}`);
+    },
+
+    docker(args) {
+      const sub = args[0];
+      if (sub === 'ps') {
+        println(`\r\n${bo('CONTAINER ID   IMAGE              COMMAND              STATUS          NAMES')}`);
+        println(`d4aa21416eaf   ${b('nginx:alpine')}       "/docker-entry..."   ${g('Up 3 days')}       ximg-web-nginx-1`);
+        println(`efcee97740fd   ${b('httpd:2.4-alpine')}   "httpd-foregrou..."  ${g('Up 3 days')}       ximg-web-web-1`);
+        println(`1279bed64327   ${b('httpd:2.4-alpine')}   "httpd-foregrou..."  ${g('Up 3 days')}       ximg-web-linux-1`);
+        return;
+      }
+      if (sub === 'images') {
+        println(`\r\n${bo('REPOSITORY   TAG       IMAGE ID       CREATED       SIZE')}`);
+        println(`nginx        alpine    3f8a4339aadd   2 weeks ago   43.2MB`);
+        println(`httpd        2.4-alpine  8f26f33a7002   3 weeks ago   59.3MB`);
+        return;
+      }
+      if (sub === 'stats' && args.includes('--no-stream')) {
+        println(`\r\n${bo('NAME                     CPU %   MEM USAGE / LIMIT   MEM %')}`);
+        println(`ximg-web-nginx-1         0.01%   12.4MiB / 2GiB      0.6%`);
+        println(`ximg-web-web-1           0.00%   8.1MiB  / 2GiB      0.4%`);
+        println(`ximg-web-linux-1         0.00%   7.9MiB  / 2GiB      0.4%`);
+        return;
+      }
+      println(r(`docker: '${sub}' is not a recognized command. Try 'docker ps' or 'docker images'.`));
+    },
+
+    neofetch() {
+      println('');
+      const tux = [
+        `    ${d('.--.') }`,
+        `   ${d('|o_o |')}`,
+        `   ${d('|:_/ |')}`,
+        `  ${d('//   \\ \\')}`,
+        ` ${d('(|     | )')}`,
+        `${d("/'\\_   _/`\\")}`,
+        `${d('\\___)=(___/')}`,
+      ];
+      const info = [
+        `${g('root')}${d('@')}${b('linux.ximg.app')}`,
+        d('─────────────────────────────'),
+        `${y('OS:')}      AlmaLinux 10 x86_64`,
+        `${y('Kernel:')} 6.12.0-134.el10.x86_64`,
+        `${y('Shell:')}  bash 5.2.26`,
+        `${y('CPU:')}    Intel Xeon E5-2670 (1 core)`,
+        `${y('Memory:')} 614MiB / 2000MiB`,
+        `${y('Uptime:')} 3 days, 3:42`,
+        '',
+        ['#000','#f00','#0f0','#ff0','#00f','#f0f','#0ff','#fff'].map(
+          c => `\x1b[48;2;${hexToRgb(c)}m   \x1b[0m`
+        ).join(''),
+      ];
+      const rows = Math.max(tux.length, info.length);
+      for (let i = 0; i < rows; i++) {
+        const l = (tux[i] || '').padEnd(28);
+        const r = info[i] || '';
+        println(l + r);
+      }
+    },
+
+    clear() { term.clear(); },
+
+    exit() {
+      println(`\r\n${d('logout')}\r\n`);
+      setTimeout(() => {
+        term.clear();
+        printBanner();
+        writePrompt();
+      }, 800);
+    },
+  };
+
+  function hexToRgb(hex) {
+    const h = hex.replace('#','');
+    const r = parseInt(h.slice(0,2).padStart(2,'0'),16);
+    const g = parseInt(h.slice(2,4).padStart(2,'0').replace(/^(.{0})(.{0})/,'$100'),16);
+    const b2 = parseInt(h.slice(4,6).padStart(2,'0'),16);
+    // simplified
+    const map = {'#000':'0;0;0','#f00':'255;0;0','#0f0':'0;255;0','#ff0':'255;255;0','#00f':'0;0;255','#f0f':'255;0;255','#0ff':'0;255;255','#fff':'255;255;255'};
+    return map[hex] || '128;128;128';
+  }
+
+  // ── Banner ───────────────────────────────────────────────────────────────────
+  function printBanner() {
+    const lines = [
+      '',
+      `  ${g('██╗     ██╗███╗  ██╗██╗   ██╗██╗  ██╗')}`,
+      `  ${g('██║     ██║████╗ ██║██║   ██║╚██╗██╔╝')}`,
+      `  ${g('██║     ██║██╔██╗██║██║   ██║ ╚███╔╝ ')}`,
+      `  ${g('██║     ██║██║╚████║██║   ██║ ██╔██╗ ')}`,
+      `  ${g('███████╗██║██║ ╚███║╚██████╔╝██╔╝╚██╗')}`,
+      `  ${g('╚══════╝╚═╝╚═╝  ╚══╝ ╚═════╝ ╚═╝  ╚═╝')}`,
+      '',
+      `  ${d('Welcome to')} ${b('linux.ximg.app')} ${d('— AlmaLinux 10 — Kernel 6.12.0')}`,
+      `  ${d('Type')} ${y('help')} ${d('to see available commands.')}`,
+      '',
+    ];
+    lines.forEach(l => println(l));
+  }
+
+  // ── Input handling ───────────────────────────────────────────────────────────
+  function runCommand(line) {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    historyList.push(trimmed);
+    historyIdx = -1;
+
+    const [cmd, ...args] = trimmed.split(/\s+/);
+
+    if (commands[cmd]) {
+      commands[cmd](args);
+    } else {
+      println(r(`\r\nbash: ${cmd}: command not found`));
+    }
+  }
+
+  term.onKey(({ key, domEvent }) => {
+    const code = domEvent.keyCode;
+
+    // Enter
+    if (code === 13) {
+      const line = inputBuffer;
+      inputBuffer = '';
+      historyIdx  = -1;
+      term.write('\r\n');
+      runCommand(line);
+      writePrompt();
+      return;
+    }
+
+    // Backspace
+    if (code === 8) {
+      if (inputBuffer.length > 0) {
+        inputBuffer = inputBuffer.slice(0, -1);
+        term.write('\b \b');
+      }
+      return;
+    }
+
+    // Up arrow — history prev
+    if (code === 38) {
+      if (!historyList.length) return;
+      if (historyIdx === -1) { savedInput = inputBuffer; historyIdx = historyList.length - 1; }
+      else if (historyIdx > 0) historyIdx--;
+      const entry = historyList[historyIdx];
+      term.write('\r' + prompt() + entry + ' '.repeat(Math.max(0, inputBuffer.length - entry.length)));
+      inputBuffer = entry;
+      return;
+    }
+
+    // Down arrow — history next
+    if (code === 40) {
+      if (historyIdx === -1) return;
+      historyIdx++;
+      let entry;
+      if (historyIdx >= historyList.length) { historyIdx = -1; entry = savedInput; }
+      else entry = historyList[historyIdx];
+      term.write('\r' + prompt() + entry + ' '.repeat(Math.max(0, inputBuffer.length - entry.length)));
+      inputBuffer = entry;
+      return;
+    }
+
+    // Ctrl+C
+    if (domEvent.ctrlKey && domEvent.key === 'c') {
+      inputBuffer = '';
+      term.write('^C');
+      writePrompt();
+      return;
+    }
+
+    // Ctrl+L
+    if (domEvent.ctrlKey && domEvent.key === 'l') {
+      term.clear();
+      term.write(prompt());
+      return;
+    }
+
+    // Tab — basic completion
+    if (code === 9) {
+      const parts = inputBuffer.split(/\s+/);
+      const completing = parts[parts.length - 1];
+      const isCmd = parts.length === 1;
+
+      let candidates = [];
+      if (isCmd) {
+        candidates = Object.keys(commands).filter(c => c.startsWith(completing));
+      } else {
+        const prefix = resolvePath(completing);
+        const dir    = completing.endsWith('/') ? prefix : resolvePath(completing.split('/').slice(0,-1).join('/') || '.');
+        const partial = completing.split('/').pop();
+        candidates = (fs[dir] || []).filter(e => e.startsWith(partial));
+      }
+
+      if (candidates.length === 1) {
+        const completion = candidates[0].slice(completing.split('/').pop().length);
+        inputBuffer += completion;
+        term.write(completion);
+      } else if (candidates.length > 1) {
+        term.write('\r\n' + candidates.join('  '));
+        term.write('\r\n' + prompt() + inputBuffer);
+      }
+      return;
+    }
+
+    // Printable chars
+    if (key.length === 1 && !domEvent.ctrlKey && !domEvent.metaKey) {
+      inputBuffer += key;
+      term.write(key);
+    }
+  });
+
+  // ── Boot ─────────────────────────────────────────────────────────────────────
+  printBanner();
+  writePrompt();
+  term.focus();
+  </script>
 </body>
 </html>
