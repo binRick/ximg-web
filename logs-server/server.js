@@ -11,7 +11,23 @@ const LOG_FILES = {
   linux: { access: 'linux.access.log', error: 'linux.error.log' },
 };
 
-// ── Tail a file from the end, emit new lines as they arrive ──────────────────
+// ── Read the last N lines of a file ──────────────────────────────────────────
+function lastLines(filePath, n) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.size) return [];
+    // Read up to 64KB from the end — enough for ~200 lines
+    const chunkSize = Math.min(65536, stat.size);
+    const buf = Buffer.alloc(chunkSize);
+    const fd  = fs.openSync(filePath, 'r');
+    fs.readSync(fd, buf, 0, chunkSize, stat.size - chunkSize);
+    fs.closeSync(fd);
+    const lines = buf.toString('utf8').split('\n').filter(l => l.trim());
+    return lines.slice(-n);
+  } catch (_) { return []; }
+}
+
+// ── Tail a file, emit new lines as they arrive ────────────────────────────────
 function tailFile(filePath, onLine) {
   let pos = 0;
 
@@ -20,22 +36,21 @@ function tailFile(filePath, onLine) {
       const stat = fs.statSync(filePath);
       if (stat.size < pos) pos = 0; // rotated
       if (stat.size === pos) return;
-      const fd   = fs.openSync(filePath, 'r');
-      const len  = stat.size - pos;
-      const buf  = Buffer.alloc(len);
+      const fd  = fs.openSync(filePath, 'r');
+      const len = stat.size - pos;
+      const buf = Buffer.alloc(len);
       fs.readSync(fd, buf, 0, len, pos);
       fs.closeSync(fd);
       pos = stat.size;
-      const lines = buf.toString('utf8').split('\n');
-      lines.forEach(l => { if (l.trim()) onLine(l); });
+      buf.toString('utf8').split('\n').forEach(l => { if (l.trim()) onLine(l); });
     } catch (_) {}
   }
 
-  // Seek to end on startup so we only stream new lines
+  // Start from current EOF so we only stream new lines going forward
   try { pos = fs.statSync(filePath).size; } catch (_) { pos = 0; }
 
-  const watcher = fs.watch(filePath, read);
-  const interval = setInterval(read, 2000); // fallback poll
+  const watcher  = fs.watch(filePath, read);
+  const interval = setInterval(read, 2000);
   return () => { watcher.close(); clearInterval(interval); };
 }
 
@@ -285,6 +300,9 @@ const server = http.createServer((req, res) => {
       const parsed = parseLine(line);
       res.write(`event: log\ndata: ${JSON.stringify(parsed)}\n\n`);
     };
+
+    // Send last 100 lines immediately so the screen isn't empty on connect
+    lastLines(file, 100).forEach(send);
 
     const stop = tailFile(file, send);
 
