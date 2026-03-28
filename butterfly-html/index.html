@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>butterfly.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0a0010;--text:#f0e6ff;--muted:#7c6a99}
+
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;overflow:hidden;position:relative}
+
+    /* starfield */
+    body::before{content:'';position:fixed;inset:0;
+      background:radial-gradient(ellipse at 60% 40%,rgba(140,60,255,.12) 0%,transparent 60%),
+                 radial-gradient(ellipse at 20% 80%,rgba(255,100,200,.08) 0%,transparent 50%);
+      z-index:0;pointer-events:none}
+
+    canvas{position:fixed;inset:0;z-index:1;pointer-events:none}
+
+    .card{position:relative;z-index:10;text-align:center;padding:3rem 4rem;border-radius:24px;
+      border:1px solid rgba(192,132,252,.15);background:rgba(255,255,255,.02);
+      backdrop-filter:blur(20px);max-width:560px;width:90%;
+      box-shadow:0 0 80px rgba(140,60,255,.1);
+      opacity:0;animation:fadeUp .7s ease forwards .3s}
+
+    .badge{display:inline-block;font-size:.75rem;letter-spacing:.15em;text-transform:uppercase;
+      color:#c084fc;border:1px solid rgba(192,132,252,.4);border-radius:99px;
+      padding:.25rem .9rem;margin-bottom:1.5rem}
+
+    .logo{font-size:clamp(3rem,9vw,5rem);font-weight:800;letter-spacing:-.04em;line-height:1;
+      margin-bottom:1.25rem;
+      background:linear-gradient(135deg,#fff 0%,#c084fc 50%,#f472b6 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    .tagline{font-size:1.05rem;color:var(--muted);line-height:1.6}
+    .tagline span{color:var(--text);font-weight:500}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+    .status{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);z-index:10;
+      display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--muted);
+      white-space:nowrap;opacity:0;animation:fadeUp .5s ease forwards 1s}
+    .dot{width:7px;height:7px;border-radius:50%;background:#c084fc;
+      box-shadow:0 0 8px #c084fc;animation:navpulse 2s ease-in-out infinite;flex-shrink:0}
+  </style>
+</head>
+<body>
+  <script src="/nav.js"></script>
+
+  <canvas id="c"></canvas>
+
+  <div class="card">
+    <div class="badge">✦ New</div>
+    <div class="logo">butterfly</div>
+    <p class="tagline">Something <span>beautiful</span> is coming.<br>ximg.app · butterfly subdomain</p>
+  </div>
+
+  <div class="status"><div class="dot"></div>butterfly.ximg.app · live</div>
+
+  <script>
+    // Butterfly particle system — interactive
+    const canvas = document.getElementById('c');
+    const ctx    = canvas.getContext('2d');
+    let W, H, particles = [];
+    const mouse = { x: null, y: null, active: false };
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Track mouse / touch
+    function setMouse(x, y) { mouse.x = x; mouse.y = y; mouse.active = true; }
+    window.addEventListener('mousemove',  e => setMouse(e.clientX, e.clientY));
+    window.addEventListener('touchmove',  e => { e.preventDefault(); setMouse(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    window.addEventListener('mouseleave', () => { mouse.active = false; });
+    window.addEventListener('touchend',   () => { mouse.active = false; });
+
+    // Click / tap → spawn burst of particles at cursor
+    function spawnBurst(x, y) {
+      const count = 6;
+      for (let i = 0; i < count; i++) {
+        const p = new Particle();
+        p.cx = x; p.cy = y;
+        p.alpha = 0; p.targetAlpha = Math.random() * .6 + .25;
+        p.scale = Math.random() * 40 + 15;
+        p.spd   = (Math.random() * 0.018 + 0.006) * (Math.random() < .5 ? 1 : -1);
+        particles.push(p);
+      }
+    }
+    canvas.style.pointerEvents = 'auto'; // allow click on canvas
+    window.addEventListener('click',      e => spawnBurst(e.clientX, e.clientY));
+    window.addEventListener('touchstart', e => spawnBurst(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+
+    // Butterfly wing curve (parametric)
+    function butterflyX(t) { return Math.sin(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t)); }
+    function butterflyY(t) { return Math.cos(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t)); }
+
+    class Particle {
+      constructor() { this.reset(true); }
+      reset(init) {
+        this.t     = Math.random() * Math.PI * 2;
+        this.spd   = (Math.random() * 0.012 + 0.004) * (Math.random() < .5 ? 1 : -1);
+        this.scale = Math.random() * 55 + 25;
+        this.cx    = Math.random() * W;
+        this.cy    = Math.random() * H;
+        this.vx    = (Math.random() - .5) * .4;
+        this.vy    = (Math.random() - .5) * .4;
+        this.alpha = init ? Math.random() : 0;
+        this.targetAlpha = Math.random() * .5 + .15;
+        const hue = Math.random() * 60 + 260; // purple–pink
+        this.color = `hsl(${hue},80%,70%)`;
+        this.size  = Math.random() * 2 + 1;
+        this.trail = [];
+      }
+      update() {
+        this.t += this.spd;
+        const x = butterflyX(this.t) * this.scale + this.cx;
+        const y = butterflyY(this.t) * this.scale + this.cy;
+        this.trail.push({x, y});
+        if (this.trail.length > 18) this.trail.shift();
+
+        // Gentle drift toward mouse when active
+        if (mouse.active) {
+          const dx = mouse.x - this.cx;
+          const dy = mouse.y - this.cy;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          const strength = Math.min(200 / (dist * dist), 0.06);
+          this.vx += dx / dist * strength;
+          this.vy += dy / dist * strength;
+        }
+
+        // Dampen velocity
+        this.vx *= 0.98; this.vy *= 0.98;
+        this.cx += this.vx; this.cy += this.vy;
+
+        if (this.cx < -200 || this.cx > W+200 || this.cy < -200 || this.cy > H+200) this.reset(false);
+        this.alpha += (this.targetAlpha - this.alpha) * .03;
+      }
+      draw() {
+        if (this.trail.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(this.trail[0].x, this.trail[0].y);
+        for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+        ctx.strokeStyle = this.color;
+        ctx.globalAlpha = this.alpha;
+        ctx.lineWidth   = this.size;
+        ctx.lineCap     = 'round';
+        ctx.stroke();
+        const h = this.trail[this.trail.length - 1];
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, this.size * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    for (let i = 0; i < 18; i++) particles.push(new Particle());
+
+    // Cap total particle count to avoid runaway growth from clicks
+    const MAX_PARTICLES = 80;
+
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+      if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
+      particles.forEach(p => { p.update(); p.draw(); });
+      requestAnimationFrame(frame);
+    }
+    frame();
+  </script>
+</body>
+</html>

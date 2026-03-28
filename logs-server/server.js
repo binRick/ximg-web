@@ -7,8 +7,9 @@ const LOGS_DIR = '/logs';
 const PORT     = 3000;
 
 const LOG_FILES = {
-  ximg:  'ximg.access.log',
-  linux: 'linux.access.log',
+  ximg:      'ximg.access.log',
+  linux:     'linux.access.log',
+  butterfly: 'butterfly.access.log',
 };
 
 // ── Read last N lines from end of file ───────────────────────────────────────
@@ -77,19 +78,6 @@ const HTML = `<!DOCTYPE html>
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
       background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
 
-    nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:.25rem;
-      padding:.75rem 1.5rem;background:rgba(10,10,15,.85);backdrop-filter:blur(16px);
-      border-bottom:1px solid rgba(255,255,255,.06);font-family:'Courier New',monospace;flex-shrink:0}
-    .nav-brand{font-weight:700;font-size:.95rem;color:#f1f5f9;margin-right:auto;letter-spacing:-.02em}
-    .nav-item{display:inline-flex;align-items:center;gap:.45rem;font-size:.85rem;font-weight:600;
-      text-decoration:none;padding:.4rem 1rem;border-radius:6px;transition:all .2s;
-      color:#c9d1d9;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}
-    .nav-item:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);transform:translateY(-1px)}
-    .nav-item.active{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07);pointer-events:none;cursor:default}
-    .nav-dot{width:7px;height:7px;border-radius:50%;background:#00ff41;box-shadow:0 0 6px #00ff41;
-      animation:navpulse 2s ease-in-out infinite;flex-shrink:0}
-    @keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}
-
     .toolbar{display:flex;align-items:center;gap:.5rem;padding:.6rem 1.5rem;
       background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0}
     .tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
@@ -125,23 +113,12 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <nav>
-    <span class="nav-brand">ximg.app</span>
-    <a class="nav-item" href="https://ximg.app"><div class="nav-dot"></div>ximg.app</a>
-    <a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux.ximg.app</a>
-    <a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs.ximg.app</a>
-  </nav>
-  <script>
-    document.querySelectorAll('nav .nav-item').forEach(a => {
-      if (new URL(a.href).hostname === window.location.hostname) {
-        a.classList.add('active'); a.removeAttribute('href');
-      }
-    });
-  </script>
+  <script src="/nav.js"></script>
 
   <div class="toolbar">
     <button class="tab active" data-site="ximg">ximg.app</button>
     <button class="tab"        data-site="linux">linux.ximg.app</button>
+    <button class="tab"        data-site="butterfly">butterfly.ximg.app</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>
@@ -248,6 +225,14 @@ const HTML = `<!DOCTYPE html>
 // ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
+  if (req.url === '/nav.js') {
+    try {
+      const js = fs.readFileSync('/app/nav.js', 'utf8');
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
+      res.end(js);
+    } catch (_) { res.writeHead(404); res.end(); }
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(HTML);
 });
