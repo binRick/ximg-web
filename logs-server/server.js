@@ -1,73 +1,64 @@
 const http = require('http');
 const fs   = require('fs');
 const path = require('path');
+const { WebSocketServer } = require('ws');
 
 const LOGS_DIR = '/logs';
 const PORT     = 3000;
 
-// ── Log file map ─────────────────────────────────────────────────────────────
 const LOG_FILES = {
-  ximg:  { access: 'ximg.access.log',  error: 'ximg.error.log'  },
-  linux: { access: 'linux.access.log', error: 'linux.error.log' },
+  ximg:  'ximg.access.log',
+  linux: 'linux.access.log',
 };
 
-// ── Read the last N lines of a file ──────────────────────────────────────────
+// ── Read last N lines from end of file ───────────────────────────────────────
 function lastLines(filePath, n) {
   try {
     const stat = fs.statSync(filePath);
     if (!stat.size) return [];
-    // Read up to 64KB from the end — enough for ~200 lines
     const chunkSize = Math.min(65536, stat.size);
     const buf = Buffer.alloc(chunkSize);
     const fd  = fs.openSync(filePath, 'r');
     fs.readSync(fd, buf, 0, chunkSize, stat.size - chunkSize);
     fs.closeSync(fd);
-    const lines = buf.toString('utf8').split('\n').filter(l => l.trim());
-    return lines.slice(-n);
+    return buf.toString('utf8').split('\n').filter(l => l.trim()).slice(-n);
   } catch (_) { return []; }
 }
 
-// ── Tail a file, emit new lines as they arrive ────────────────────────────────
+// ── Tail a file, call onLine for each new line ───────────────────────────────
 function tailFile(filePath, onLine) {
   let pos = 0;
+  try { pos = fs.statSync(filePath).size; } catch (_) {}
 
   function read() {
     try {
       const stat = fs.statSync(filePath);
-      if (stat.size < pos) pos = 0; // rotated
+      if (stat.size < pos) pos = 0;
       if (stat.size === pos) return;
       const fd  = fs.openSync(filePath, 'r');
-      const len = stat.size - pos;
-      const buf = Buffer.alloc(len);
-      fs.readSync(fd, buf, 0, len, pos);
+      const buf = Buffer.alloc(stat.size - pos);
+      fs.readSync(fd, buf, 0, buf.length, pos);
       fs.closeSync(fd);
       pos = stat.size;
       buf.toString('utf8').split('\n').forEach(l => { if (l.trim()) onLine(l); });
     } catch (_) {}
   }
 
-  // Start from current EOF so we only stream new lines going forward
-  try { pos = fs.statSync(filePath).size; } catch (_) { pos = 0; }
-
   let watcher = null;
-  try {
-    watcher = fs.watch(filePath, read);
-    watcher.on('error', () => {}); // suppress inotify errors — poll handles it
-  } catch (_) {}
-
+  try { watcher = fs.watch(filePath, read); watcher.on('error', () => {}); } catch (_) {}
   const interval = setInterval(read, 1000);
   return () => { try { watcher && watcher.close(); } catch (_) {} clearInterval(interval); };
 }
 
-// ── Parse a combined-format nginx log line into JSON ─────────────────────────
+// ── Parse nginx combined log line ────────────────────────────────────────────
 function parseLine(raw) {
   const m = raw.match(
     /^(\S+)\s+-\s+-\s+\[([^\]]+)\]\s+"([^"]+)"\s+(\d+)\s+(\d+)\s+"([^"]*)"\s+"([^"]*)"/
   );
   if (!m) return { raw };
   const [, ip, ts, req, status, bytes, ref, ua] = m;
-  const [method, path, proto] = req.split(' ');
-  return { ip, ts, method, path, proto, status: +status, bytes: +bytes, ref, ua, raw };
+  const [method, urlPath] = req.split(' ');
+  return { ip, ts, method, path: urlPath, status: +status, bytes: +bytes, ref, ua };
 }
 
 // ── HTML ─────────────────────────────────────────────────────────────────────
@@ -83,8 +74,6 @@ const HTML = `<!DOCTYPE html>
     :root{--bg:#0d1117;--green:#00ff41;--dim:#484f58;--text:#c9d1d9}
     body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;
       min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
-
-    /* scanlines */
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
       background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
 
@@ -108,7 +97,6 @@ const HTML = `<!DOCTYPE html>
       font-family:'Courier New',monospace;transition:all .2s}
     .tab.active{color:var(--green);border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07)}
     .tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
-
     .stats{margin-left:auto;display:flex;gap:1.25rem;font-size:.75rem;color:var(--dim)}
     .stat-val{color:var(--text)}
     #pause-btn{font-size:.75rem;padding:.25rem .7rem;border-radius:5px;cursor:pointer;
@@ -122,23 +110,16 @@ const HTML = `<!DOCTYPE html>
     #log-container::-webkit-scrollbar{width:6px}
     #log-container::-webkit-scrollbar-track{background:transparent}
     #log-container::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-
-    .log-line{display:grid;grid-template-columns:180px 60px 55px 1fr;gap:.5rem;
+    .log-line{display:grid;grid-template-columns:180px 90px 55px 1fr;gap:.5rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;white-space:nowrap;overflow:hidden}
     .log-line:hover{background:rgba(255,255,255,.03)}
     .log-line.new{animation:flashIn .4s ease}
     @keyframes flashIn{from{background:rgba(0,255,65,.08)}to{background:transparent}}
-
-    .col-ts    {color:var(--dim);overflow:hidden;text-overflow:ellipsis}
-    .col-ip    {color:#79c0ff}
-    .col-status{}
-    .col-path  {color:var(--text);overflow:hidden;text-overflow:ellipsis}
-    .col-ua    {color:var(--dim);overflow:hidden;text-overflow:ellipsis;font-size:.72rem}
+    .col-ts{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+    .col-ip{color:#79c0ff}
+    .col-path{color:var(--text);overflow:hidden;text-overflow:ellipsis}
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
-
     .raw-line{color:var(--dim);font-size:.75rem;padding:.1rem .25rem}
-
-    .empty{color:var(--dim);text-align:center;padding:3rem;font-size:.85rem}
     .connecting{color:var(--dim);padding:1rem;animation:blink2 1s step-end infinite}
     @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
   </style>
@@ -172,23 +153,27 @@ const HTML = `<!DOCTYPE html>
   </div>
 
   <div id="log-container">
-    <div class="connecting">connecting to log stream…</div>
+    <div class="connecting">connecting…</div>
   </div>
 
   <script>
     const MAX_LINES = 500;
     let currentSite = 'ximg';
-    let es = null;
+    let ws = null;
     let paused = false;
+    let reconnectTimer = null;
     const stats = { total:0, '2xx':0, '3xx':0, '4xx':0, '5xx':0 };
 
-    const container  = document.getElementById('log-container');
-    const pauseBtn   = document.getElementById('pause-btn');
-    const stTotal    = document.getElementById('st-total');
-    const st2xx      = document.getElementById('st-2xx');
-    const st3xx      = document.getElementById('st-3xx');
-    const st4xx      = document.getElementById('st-4xx');
-    const st5xx      = document.getElementById('st-5xx');
+    const container = document.getElementById('log-container');
+    const stTotal   = document.getElementById('st-total');
+    const st2xx     = document.getElementById('st-2xx');
+    const st3xx     = document.getElementById('st-3xx');
+    const st4xx     = document.getElementById('st-4xx');
+    const st5xx     = document.getElementById('st-5xx');
+
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 
     function statusClass(s) {
       if (!s) return 's0';
@@ -200,67 +185,46 @@ const HTML = `<!DOCTYPE html>
 
     function addLine(data) {
       if (paused) return;
+      if (container.querySelector('.connecting')) container.innerHTML = '';
       const el = document.createElement('div');
-
       if (data.path) {
-        el.className = 'log-line new';
         const sc = statusClass(data.status);
+        el.className = 'log-line new';
         el.innerHTML =
-          '<span class="col-ts">'     + escHtml(data.ts)                        + '</span>' +
-          '<span class="col-ip">'     + escHtml(data.ip)                        + '</span>' +
-          '<span class="col-status ' + sc + '">' + data.status                 + '</span>' +
-          '<span class="col-path">'   + escHtml((data.method||'') + ' ' + (data.path||'')) + '</span>';
-      } else {
-        el.className = 'raw-line';
-        el.textContent = data.raw || JSON.stringify(data);
-      }
-
-      container.appendChild(el);
-
-      // prune
-      while (container.children.length > MAX_LINES) container.removeChild(container.firstChild);
-
-      // auto-scroll
-      container.scrollTop = container.scrollHeight;
-
-      // stats
-      if (data.status) {
+          '<span class="col-ts">'  + esc(data.ts)                             + '</span>' +
+          '<span class="col-ip">'  + esc(data.ip)                             + '</span>' +
+          '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
+          '<span class="col-path">' + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
         stats.total++;
         const key = Math.floor(data.status / 100) + 'xx';
         if (stats[key] !== undefined) stats[key]++;
         stTotal.textContent = stats.total;
-        st2xx.textContent   = stats['2xx'];
-        st3xx.textContent   = stats['3xx'];
-        st4xx.textContent   = stats['4xx'];
-        st5xx.textContent   = stats['5xx'];
+        st2xx.textContent = stats['2xx']; st3xx.textContent = stats['3xx'];
+        st4xx.textContent = stats['4xx']; st5xx.textContent = stats['5xx'];
+      } else {
+        el.className = 'raw-line';
+        el.textContent = data.raw || '';
       }
-    }
-
-    function escHtml(s) {
-      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      container.appendChild(el);
+      while (container.children.length > MAX_LINES) container.removeChild(container.firstChild);
+      container.scrollTop = container.scrollHeight;
     }
 
     function connect(site) {
-      if (es) es.close();
-      container.innerHTML = '<div class="connecting">connecting to ' + site + ' log stream…</div>';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); }
+      container.innerHTML = '<div class="connecting">connecting…</div>';
       stats.total = stats['2xx'] = stats['3xx'] = stats['4xx'] = stats['5xx'] = 0;
       stTotal.textContent = st2xx.textContent = st3xx.textContent = st4xx.textContent = st5xx.textContent = '0';
 
-      es = new EventSource('/stream?site=' + site);
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(proto + '//' + location.host + '/ws?site=' + site);
 
-      es.addEventListener('log', e => {
-        if (container.querySelector('.connecting')) container.innerHTML = '';
-        try { addLine(JSON.parse(e.data)); } catch(_) {}
-      });
-
-      es.onerror = () => {
-        if (es.readyState === EventSource.CLOSED) {
-          setTimeout(() => connect(site), 3000);
-        }
-      };
+      ws.onmessage = e => { try { addLine(JSON.parse(e.data)); } catch(_) {} };
+      ws.onclose   = ()  => { reconnectTimer = setTimeout(() => connect(site), 3000); };
+      ws.onerror   = ()  => { ws.close(); };
     }
 
-    // tabs
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -270,11 +234,10 @@ const HTML = `<!DOCTYPE html>
       });
     });
 
-    // pause
-    pauseBtn.addEventListener('click', () => {
+    document.getElementById('pause-btn').addEventListener('click', function() {
       paused = !paused;
-      pauseBtn.textContent = paused ? '▶ resume' : '⏸ pause';
-      pauseBtn.classList.toggle('paused', paused);
+      this.textContent = paused ? '▶ resume' : '⏸ pause';
+      this.classList.toggle('paused', paused);
     });
 
     connect(currentSite);
@@ -282,51 +245,30 @@ const HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// ── HTTP server ───────────────────────────────────────────────────────────────
+// ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, `http://localhost`);
-
-  if (url.pathname === '/health') {
-    res.writeHead(200); res.end('ok'); return;
-  }
-
-  if (url.pathname === '/stream') {
-    const site = url.searchParams.get('site') || 'ximg';
-    const cfg  = LOG_FILES[site] || LOG_FILES.ximg;
-    const file = path.join(LOGS_DIR, cfg.access);
-
-    res.writeHead(200, {
-      'Content-Type':  'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection':    'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
-    res.write('retry: 3000\n\n');
-
-    const send = line => {
-      const parsed = parseLine(line);
-      res.write(`event: log\ndata: ${JSON.stringify(parsed)}\n\n`);
-    };
-
-    // Send last 100 lines immediately so the screen isn't empty on connect
-    lastLines(file, 100).forEach(send);
-
-    const stop = tailFile(file, send);
-
-    // Keep-alive ping every 15s so nginx doesn't close the idle connection
-    const keepAlive = setInterval(() => {
-      try { res.write(': ping\n\n'); } catch (_) { clearInterval(keepAlive); }
-    }, 15000);
-
-    const cleanup = () => { stop(); clearInterval(keepAlive); };
-    req.on('close', cleanup);
-    req.on('error', cleanup);
-    return;
-  }
-
-  // Serve HTML for all other routes
+  if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(HTML);
 });
 
-server.listen(PORT, () => console.log(`logs server listening on :${PORT}`));
+const wss = new WebSocketServer({ server, path: '/ws' });
+
+wss.on('connection', (ws, req) => {
+  const site    = new URL(req.url, 'http://x').searchParams.get('site') || 'ximg';
+  const logFile = path.join(LOGS_DIR, LOG_FILES[site] || LOG_FILES.ximg);
+
+  const send = line => {
+    if (ws.readyState !== ws.OPEN) return;
+    try { ws.send(JSON.stringify(parseLine(line))); } catch (_) {}
+  };
+
+  // Replay last 100 lines on connect
+  lastLines(logFile, 100).forEach(send);
+
+  const stop = tailFile(logFile, send);
+  ws.on('close', stop);
+  ws.on('error', stop);
+});
+
+server.listen(PORT, () => console.log('logs server listening on :' + PORT));
