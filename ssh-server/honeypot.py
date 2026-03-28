@@ -27,10 +27,10 @@ class HoneypotServer(paramiko.ServerInterface):
         return paramiko.AUTH_SUCCESSFUL
 
     def check_auth_publickey(self, username, key):
-        return paramiko.AUTH_SUCCESSFUL
+        return paramiko.AUTH_FAILED
 
     def get_allowed_auths(self, username):
-        return 'password,publickey'
+        return 'password'
 
     def check_channel_pty_request(self, ch, term, w, h, pw, ph, modes):
         self.pty_w, self.pty_h = w, h
