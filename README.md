@@ -1,6 +1,6 @@
 # ximg-web
 
-Production web stack for [ximg.app](https://ximg.app) running on a single Linux VM. nginx sits in front of Apache as a reverse proxy, handles SSL termination via a Let's Encrypt certificate, and enforces HTTPS. Apache serves the static site content internally and is never exposed directly to the internet.
+Production web stack for [ximg.app](https://ximg.app) running on a single Linux VM. nginx sits in front of Apache as a reverse proxy, handles SSL termination via a Let's Encrypt certificate, and enforces HTTPS. Apache serves static content on the internal Docker network — all public traffic enters through nginx only.
 
 ## Architecture
 
