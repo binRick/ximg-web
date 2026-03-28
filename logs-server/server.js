@@ -115,7 +115,7 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <script src="/nav.js"></script>
+  <script src="/shared/nav.js"></script>
 
   <div class="toolbar">
     <button class="tab active" data-site="ximg">ximg.app</button>
@@ -230,7 +230,7 @@ const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
   if (req.url === '/nav.js') {
     try {
-      const js = fs.readFileSync('/app/nav.js', 'utf8');
+      const js = fs.readFileSync('/app/shared/nav.js', 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
       res.end(js);
     } catch (_) { res.writeHead(404); res.end(); }
