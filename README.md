@@ -4,12 +4,17 @@ Production multi-site web stack running on a single Linux VM at `172.238.205.61`
 
 ## Live Sites
 
-| URL | Description |
-|-----|-------------|
-| [ximg.app](https://ximg.app) | Main landing page |
-| [linux.ximg.app](https://linux.ximg.app) | Interactive Linux terminal emulator in the browser |
-| [butterfly.ximg.app](https://butterfly.ximg.app) | Interactive parametric butterfly particle simulation |
-| [logs.ximg.app](https://logs.ximg.app) | Live nginx log viewer (WebSocket streaming) |
+### [ximg.app](https://ximg.app)
+The main landing page. Animated grid background, floating colour orbs, frosted-glass card, and a set of tech chips showing the stack. Served by Apache httpd.
+
+### [linux.ximg.app](https://linux.ximg.app)
+A mock Linux terminal running entirely in the browser via [xterm.js](https://xtermjs.org/). Supports ~20 commands (`ls`, `cat`, `neofetch`, `docker`, `curl`, …), arrow-key history, and Tab completion. A Tux penguin SVG bounces around the background DVD-screensaver style, changing glow colour on each wall hit. Served by Apache httpd.
+
+### [butterfly.ximg.app](https://butterfly.ximg.app)
+Interactive parametric animation built on the [butterfly curve](https://en.wikipedia.org/wiki/Butterfly_curve_(transcendental)) equation. Particles trace butterfly-shaped paths and drift toward the mouse cursor. Click or tap anywhere to spawn a burst of new particles. Served by Apache httpd.
+
+### [logs.ximg.app](https://logs.ximg.app)
+Live nginx log viewer. A Node.js WebSocket server tails the per-site nginx access logs and streams new entries to the browser in real time. Newest events appear at the top. Features a tab switcher between all subdomains, colour-coded HTTP status codes, live per-class request counters, and pause/resume without disconnecting.
 
 ## Architecture
 
