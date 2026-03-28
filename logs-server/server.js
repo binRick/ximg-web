@@ -100,14 +100,15 @@ const HTML = `<!DOCTYPE html>
     #log-container::-webkit-scrollbar{width:6px}
     #log-container::-webkit-scrollbar-track{background:transparent}
     #log-container::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-    .log-line{display:grid;grid-template-columns:180px 90px 55px 1fr;gap:.5rem;
-      padding:.1rem .25rem;border-radius:3px;transition:background .15s;white-space:nowrap;overflow:hidden}
+    .log-line{display:grid;grid-template-columns:180px 130px 48px 1fr;gap:.75rem;
+      padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
+    .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .log-line:hover{background:rgba(255,255,255,.03)}
     .log-line.new{animation:flashIn .4s ease}
     @keyframes flashIn{from{background:rgba(0,255,65,.08)}to{background:transparent}}
-    .col-ts{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+    .col-ts{color:var(--dim)}
     .col-ip{color:#79c0ff}
-    .col-path{color:var(--text);overflow:hidden;text-overflow:ellipsis}
+    .col-path{color:var(--text)}
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
     .raw-line{color:var(--dim);font-size:.75rem;padding:.1rem .25rem}
     .connecting{color:var(--dim);padding:1rem;animation:blink2 1s step-end infinite}
