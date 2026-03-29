@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pizza.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #120a04;
+      --card:   rgba(28,14,6,.8);
+      --red:    #e8391a;
+      --orange: #f97316;
+      --gold:   #fbbf24;
+      --cream:  #fdf6ec;
+      --text:   #f5e6d3;
+      --muted:  #9d7b5e;
+      --border: rgba(249,115,22,.18);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 110% 55% at 50% 0%, #3d1206 0%, transparent 65%),
+        radial-gradient(ellipse 70% 40% at 85% 100%, #2a0d04 0%, transparent 60%),
+        linear-gradient(180deg, #120a04 0%, #0a0602 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(249,115,22,.02) 0, rgba(249,115,22,.02) 1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(249,115,22,.015) 0, rgba(249,115,22,.015) 1px, transparent 1px, transparent 72px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(249,115,22,.7)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #f97316 0%, #fbbf24 45%, #e8391a 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 500px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--orange), transparent);
+    }
+
+    /* ── Tabs ── */
+    .pizza-tabs { display: flex; gap: .5rem; border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: .6rem; }
+    .pizza-tab {
+      font-size: .8rem; padding: .35rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; transition: all .2s;
+    }
+    .pizza-tab.active { color: var(--orange); border-color: rgba(249,115,22,.45); background: rgba(249,115,22,.08); }
+    .pizza-tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.18); }
+    .pizza-section { display: flex; flex-direction: column; gap: 1.5rem; }
+    .pizza-section.hidden { display: none; }
+
+    /* ── Grid ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .pizza-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .pizza-card:hover {
+      border-color: rgba(249,115,22,.45);
+      box-shadow: 0 8px 40px rgba(249,115,22,.12);
+      transform: translateY(-3px);
+    }
+
+    /* ── Image area ── */
+    .card-img-wrap {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: #1e0c04;
+      overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block; transition: opacity .4s; position: relative; z-index: 1;
+    }
+    .card-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .4rem;
+    }
+    .ph-num  { font-size: 3.5rem; font-weight: 900; color: rgba(249,115,22,.12); line-height: 1; }
+    .ph-icon { font-size: 2.2rem; opacity: .15; }
+
+    .badge-rank {
+      position: absolute; top: .75rem; left: .75rem; z-index: 2;
+      background: rgba(0,0,0,.72); border: 1px solid rgba(249,115,22,.45);
+      color: var(--gold); font-size: .65rem; font-weight: 700;
+      padding: .2rem .65rem; border-radius: 99px; letter-spacing: .08em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+    }
+    .badge-meta {
+      position: absolute; top: .75rem; right: .75rem; z-index: 2;
+      background: rgba(180,30,10,.82); border: 1px solid rgba(249,115,22,.35);
+      color: #fcd7a0; font-size: .65rem; font-weight: 700;
+      padding: .2rem .65rem; border-radius: 99px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+    }
+
+    /* ── Card body ── */
+    .card-body { padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+    .card-title { font-size: 1.15rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+    .card-sub   {
+      font-size: .72rem; color: var(--muted); margin-top: .2rem;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Stats ── */
+    .card-stats { display: flex; flex-wrap: wrap; gap: .5rem; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .stat-chip {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px; padding: .35rem .75rem; min-width: 74px;
+    }
+    .stat-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .stat-val   { font-size: .85rem; font-weight: 700; color: var(--gold); margin-top: .1rem; }
+
+    /* ── Tags ── */
+    .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .tag {
+      font-size: .62rem; padding: .18rem .58rem; border-radius: 99px;
+      border: 1px solid rgba(249,115,22,.28); background: rgba(249,115,22,.07);
+      color: #fb923c; font-family: 'Segoe UI', system-ui, sans-serif; white-space: nowrap;
+    }
+
+    /* ── Facts ── */
+    .facts-label {
+      font-size: .62rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .35rem;
+    }
+    .facts-list { display: flex; flex-direction: column; gap: .5rem; }
+    .fact {
+      display: flex; gap: .6rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.55; color: #c9ab90;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .fact-icon { flex-shrink: 0; font-size: .8rem; margin-top: .05rem; opacity: .8; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    .hero { animation: fadeUp .7s ease both; }
+    .pizza-tabs { animation: fadeUp .7s ease both .1s; }
+    .pizza-section { animation: fadeUp .7s ease both .2s; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🍕</div>
+      <h1>Pizza</h1>
+      <p class="hero-sub">America's favourite slice — the biggest chains and the boldest styles, from coal-fired Neapolitan to Detroit's crispy-edged squares.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="pizza-tabs">
+      <button class="pizza-tab active" onclick="switchTab('companies')">Top Companies</button>
+      <button class="pizza-tab" onclick="switchTab('styles')">Top Styles</button>
+    </div>
+
+    <div id="section-companies" class="pizza-section">
+      <div class="cards" id="companies-grid"></div>
+    </div>
+
+    <div id="section-styles" class="pizza-section hidden">
+      <div class="cards" id="styles-grid"></div>
+    </div>
+  </div>
+
+<script>
+/* ── Data ──────────────────────────────────────────────────────────────── */
+
+const COMPANIES = [
+  {
+    rank: 1, name: "Domino's Pizza", meta: 'Est. 1960',
+    sub: 'Ann Arbor, Michigan · Tom Monaghan',
+    wiki: "Domino%27s_Pizza",
+    stats: [
+      { label: 'Founded', val: '1960' },
+      { label: 'Locations', val: '20,000+' },
+      { label: 'Countries', val: '90+' },
+      { label: 'Rank', val: '#1 Global' },
+    ],
+    tags: ['Delivery', 'Pan', 'Thin Crust', 'Stuffed Crust', 'Digital-First'],
+    facts: [
+      { icon: '🚗', text: "Tom Monaghan bought a failing pizza store called DomiNick's in 1960 for $500. He renamed it Domino's and built an empire on a simple promise: fast delivery." },
+      { icon: '📱', text: "Domino's is often cited as a tech company that happens to sell pizza — over 75% of US orders are placed digitally. They built their own ordering app, GPS tracker, and even a drone delivery program." },
+      { icon: '🌍', text: "The largest pizza chain in the world by global retail sales, with over 20,000 locations across 90+ countries. In many markets it outsells Pizza Hut and McDonald's combined." },
+      { icon: '🍕', text: "In 2009 Domino's publicly admitted its pizza was terrible and relaunched with a completely new recipe. The \"Pizza Turnaround\" campaign is now a Harvard Business School case study in radical brand honesty." },
+    ],
+  },
+  {
+    rank: 2, name: 'Pizza Hut', meta: 'Est. 1958',
+    sub: 'Wichita, Kansas · Dan & Frank Carney',
+    wiki: 'Pizza_Hut',
+    stats: [
+      { label: 'Founded', val: '1958' },
+      { label: 'Locations', val: '18,700+' },
+      { label: 'Countries', val: '100+' },
+      { label: 'Parent', val: 'Yum! Brands' },
+    ],
+    tags: ['Dine-In', 'Pan Pizza', 'Stuffed Crust', 'Buffet', 'Delivery'],
+    facts: [
+      { icon: '🏠', text: "Brothers Dan and Frank Carney borrowed $600 from their mother to open the first Pizza Hut in Wichita in 1958. The building only had room for 9 letters on its sign — \"Pizza Hut\" fit perfectly." },
+      { icon: '🚀', text: "Pizza Hut made history in 2001 by delivering a pizza to the International Space Station — a vacuum-sealed salami pizza paid for by a reported $1 million marketing deal with the Russian Space Agency." },
+      { icon: '📺', text: "The iconic red-roof restaurant design made Pizza Hut one of the most recognisable buildings in American suburbs. At its 1990s peak it operated over 600 restaurants with the classic dine-in format." },
+      { icon: '🧀', text: "Pizza Hut invented the stuffed crust pizza in 1995 — a move so successful that competitors scrambled to copy it. The launch ad famously showed Donald Trump eating it crust-first." },
+    ],
+  },
+  {
+    rank: 3, name: 'Little Caesars', meta: 'Est. 1959',
+    sub: 'Detroit, Michigan · Mike & Marian Ilitch',
+    wiki: 'Little_Caesars',
+    stats: [
+      { label: 'Founded', val: '1959' },
+      { label: 'Locations', val: '5,500+' },
+      { label: 'Countries', val: '27+' },
+      { label: 'Model', val: 'Carryout' },
+    ],
+    tags: ['Carryout', 'Hot-N-Ready', 'Detroit Roots', 'Value', 'Crazy Bread'],
+    facts: [
+      { icon: '🍕', text: "The Hot-N-Ready $5 pizza — a large pepperoni ready to grab at any time with no ordering wait — became one of fast food's most disruptive value propositions and drove massive growth in the 2000s." },
+      { icon: '🏒', text: "Founder Mike Ilitch used profits from Little Caesars to buy the Detroit Tigers and Detroit Red Wings. He is credited with revitalising downtown Detroit and building Little Caesars Arena." },
+      { icon: '📣', text: "\"Pizza! Pizza!\" — the two-pizza-for-the-price-of-one slogan launched in 1979 — became one of the most recognised taglines in fast food history and a pop culture touchstone." },
+      { icon: '🏆', text: "Little Caesars is the third-largest pizza chain in the US by number of locations and the world's largest carryout-only chain. Their deep-dish Crazy Bread has a cult following rivalling the pizza itself." },
+    ],
+  },
+  {
+    rank: 4, name: "Papa John's", meta: 'Est. 1984',
+    sub: 'Jeffersonville, Indiana · John Schnatter',
+    wiki: "Papa_John%27s",
+    stats: [
+      { label: 'Founded', val: '1984' },
+      { label: 'Locations', val: '5,900+' },
+      { label: 'Countries', val: '50+' },
+      { label: 'Slogan', val: '"Better Ingredients"' },
+    ],
+    tags: ['Delivery', 'Original Crust', 'Garlic Sauce', 'Thin Crust', 'Epic Stuffed'],
+    facts: [
+      { icon: '🍺', text: "John Schnatter started Papa John's by selling his car to buy a used pizza oven, then set it up in a broom closet in his father's tavern in Indiana. He was 22 years old." },
+      { icon: '🧄', text: "The iconic garlic dipping sauce that comes with every Papa John's order was not a marketing invention — it was a happy accident. Customers started dipping and the company never looked back." },
+      { icon: '🍅', text: "Papa John's has consistently marketed fresh, never-frozen dough and a proprietary tomato sauce as differentiators — \"Better Ingredients, Better Pizza\" became one of the most litigated slogans in fast food." },
+      { icon: '🏈', text: "Papa John's was the official pizza of the NFL for many years and leveraged the partnership into Super Bowl promotions that drove measurable nationwide sales spikes with every touchdown scored." },
+    ],
+  },
+  {
+    rank: 5, name: 'California Pizza Kitchen', meta: 'Est. 1985',
+    sub: 'Beverly Hills, California · Rosenfield & Rosenfield',
+    wiki: 'California_Pizza_Kitchen',
+    stats: [
+      { label: 'Founded', val: '1985' },
+      { label: 'Locations', val: '180+' },
+      { label: 'Style', val: 'Casual Dining' },
+      { label: 'Known For', val: 'Gourmet Pizza' },
+    ],
+    tags: ['Gourmet', 'California Style', 'Wood-Fired', 'Frozen Retail', 'Full Bar'],
+    facts: [
+      { icon: '🥑', text: "CPK pioneered the California-style pizza, putting unconventional toppings like BBQ chicken, artichoke hearts, and avocado on thin crusts at a time when the industry was defined by pepperoni and sausage." },
+      { icon: '🍗', text: "The Original BBQ Chicken Pizza — wood-grilled chicken, smoky sauce, gouda, red onion — launched in 1985 and became CPK's signature dish. It is credited with popularising BBQ chicken pizza nationwide." },
+      { icon: '🛒', text: "CPK's frozen pizza line, launched in collaboration with Kraft Foods, brought California-style gourmet pizza to supermarket freezer aisles and became one of the top-selling premium frozen pizza brands." },
+      { icon: '👨‍⚖️', text: "Founded by two attorneys — Rick Rosenfield and Larry Flax — who left their law careers to open a pizza restaurant in Beverly Hills. Their location near movie studios quickly attracted Hollywood clientele." },
+    ],
+  },
+  {
+    rank: 6, name: "Papa Murphy's", meta: 'Est. 1981',
+    sub: 'Vancouver, Washington · Terry Collins',
+    wiki: "Papa_Murphy%27s",
+    stats: [
+      { label: 'Founded', val: '1981' },
+      { label: 'Locations', val: '1,300+' },
+      { label: 'Model', val: 'Take-and-Bake' },
+      { label: 'Fresh', val: 'Never Frozen' },
+    ],
+    tags: ['Take-and-Bake', 'Fresh Dough', 'Stuffed Pizza', 'Family Size', 'No Oven On-Site'],
+    facts: [
+      { icon: '🏠', text: "Papa Murphy's operates with no ovens in-store — customers take raw, fresh-assembled pizzas home to bake themselves. It is the largest take-and-bake pizza chain in the world by a wide margin." },
+      { icon: '🧊', text: "Because the pizza is never cooked on-site, Papa Murphy's cannot accept food stamps in most states — but after a federal rule change it became one of the first fast food chains to accept SNAP benefits." },
+      { icon: '📏', text: "The stuffed pizza — two layers of fresh dough sandwiching fillings — is the menu's crown jewel. It can reach 2 inches thick and weigh over 4 pounds, requiring 30–40 minutes in a home oven." },
+      { icon: '🤝', text: "Papa Murphy's was born from the merger of two regional take-and-bake chains: Papa Aldo's (Oregon) and Murphy's Pizza (California). The combined brand became a northwest phenomenon before going national." },
+    ],
+  },
+  {
+    rank: 7, name: "Marco's Pizza", meta: 'Est. 1978',
+    sub: 'Toledo, Ohio · Pasquale "Pat" Giammarco',
+    wiki: "Marco%27s_Pizza",
+    stats: [
+      { label: 'Founded', val: '1978' },
+      { label: 'Locations', val: '1,100+' },
+      { label: 'Origin', val: 'Toledo, Ohio' },
+      { label: 'Founder', val: 'Italian immigrant' },
+    ],
+    tags: ['Delivery', 'Carryout', 'Dine-In', 'Fresh Dough', 'Italian Heritage'],
+    facts: [
+      { icon: '🇮🇹', text: "Marco's was founded by Pasquale Giammarco, who immigrated from Italy as a child and insisted on authentic Italian techniques. He trademarked the tagline \"Pizza Ristorante Italiana\" to distinguish it from American-style chains." },
+      { icon: '📈', text: "For several years running, Marco's was the fastest-growing pizza chain in America — expanding from regional Ohio obscurity to a genuine national presence in under a decade." },
+      { icon: '🧀', text: "Marco's blends fresh, never-frozen dough daily and uses a three-cheese blend they call \"CheezyBread\" — a proprietary ratio of mozzarella, Asiago, and provolone that has become their signature flavour." },
+      { icon: '🏙️', text: "Unlike most chains that began on the coasts, Marco's grew outward from the Midwest, which gave it unusual strength in markets like Ohio, Indiana, and Tennessee that other chains had largely written off as secondary." },
+    ],
+  },
+  {
+    rank: 8, name: 'Sbarro', meta: 'Est. 1956',
+    sub: 'Brooklyn, New York · Gennaro Sbarro',
+    wiki: 'Sbarro',
+    stats: [
+      { label: 'Founded', val: '1956' },
+      { label: 'Locations', val: '600+' },
+      { label: 'Known For', val: 'Mall Pizza' },
+      { label: 'Style', val: 'NY Slice' },
+    ],
+    tags: ['NY Style', 'Food Court', 'By-the-Slice', 'Stromboli', 'Stuffed Pizza'],
+    facts: [
+      { icon: '🛍️', text: "Sbarro is synonymous with the American mall food court — for decades it was the dominant pizza presence in enclosed shopping centres across the country, feeding millions of teenage shoppers." },
+      { icon: '🏙️', text: "The Sbarro family emigrated from Naples and opened an Italian grocery in Brooklyn in 1956. The pizza counter they added became so popular that it eventually consumed the whole store." },
+      { icon: '💸', text: "Sbarro filed for bankruptcy twice — in 2011 and 2014 — casualties of the decline of the American mall. The brand survived both by shedding locations and pivoting toward non-mall venues and international markets." },
+      { icon: '🍕', text: "Sbarro's wide, floppy New York-style slices sold by the piece became a cultural touchstone. The giant triangles are still considered by many food writers the definitive American mall food experience." },
+    ],
+  },
+  {
+    rank: 9, name: 'MOD Pizza', meta: 'Est. 2008',
+    sub: 'Seattle, Washington · Scott & Ally Svenson',
+    wiki: 'MOD_Pizza',
+    stats: [
+      { label: 'Founded', val: '2008' },
+      { label: 'Locations', val: '500+' },
+      { label: 'Model', val: 'Fast Casual' },
+      { label: 'Concept', val: 'Build-Your-Own' },
+    ],
+    tags: ['Fast Casual', 'Build-Your-Own', 'Artisan', 'One Price', 'Mission-Driven'],
+    facts: [
+      { icon: '🎨', text: "MOD pioneered the Chipotle-for-pizza model: choose your crust, sauce, and unlimited toppings at a single flat price, assembled in under 5 minutes in a stone-fired oven. The format spawned dozens of imitators." },
+      { icon: '❤️', text: "MOD became famous for hiring workers others overlooked — people re-entering the workforce, those with criminal records, or those with disabilities. The social mission attracted a fiercely loyal customer base." },
+      { icon: '🚀', text: "From a single Seattle store in 2008, MOD was for several years the fastest-growing restaurant chain in US history by unit count, opening hundreds of locations in under a decade." },
+      { icon: '🍕', text: "The name \"MOD\" stands for Made On Demand — a direct challenge to the pre-made, heat-lamp pizza culture that had dominated fast food pizza for 30 years." },
+    ],
+  },
+  {
+    rank: 10, name: 'Round Table Pizza', meta: 'Est. 1959',
+    sub: 'Menlo Park, California · William Larson',
+    wiki: 'Round_Table_Pizza',
+    stats: [
+      { label: 'Founded', val: '1959' },
+      { label: 'Locations', val: '400+' },
+      { label: 'Region', val: 'West Coast' },
+      { label: 'Motto', val: '"Last Honest Pizza"' },
+    ],
+    tags: ['Dine-In', 'Beer & Wine', 'Video Games', 'West Coast', 'King Arthur Theme'],
+    facts: [
+      { icon: '⚔️', text: "Round Table was founded on an Arthurian legend theme — booths named for knights, menus styled like royal decrees. The medieval branding was a radical departure from Italian-American pizzeria norms of the 1950s." },
+      { icon: '🎮', text: "Round Table locations were among the first pizza restaurants to install arcade games, making them a destination for families with children in the 1980s well before Chuck E. Cheese existed." },
+      { icon: '🍺', text: "A full beer and wine license — rare for pizza chains of its era — turned Round Table into a neighbourhood social hub on the West Coast, particularly in California and the Pacific Northwest." },
+      { icon: '🏆', text: "\"The Last Honest Pizza\" slogan reflected a commitment to quality toppings that competitors were cutting corners on. Round Table's Gourmet Veggie and King Arthur's Supreme became regional cult classics." },
+    ],
+  },
+];
+
+const STYLES = [
+  {
+    rank: 1, name: 'Neapolitan', meta: 'Naples, Italy',
+    sub: 'The original — certified by the Associazione Verace Pizza Napoletana',
+    wiki: 'Neapolitan_pizza',
+    stats: [
+      { label: 'Origin', val: 'Naples' },
+      { label: 'Oven', val: 'Wood-fired' },
+      { label: 'Temp', val: '900°F+' },
+      { label: 'Bake', val: '60–90 sec' },
+    ],
+    tags: ['VPN Certified', 'San Marzano', 'Mozzarella di Bufala', 'Leopard Char', 'Soft Center'],
+    facts: [
+      { icon: '🇮🇹', text: "Neapolitan pizza is protected by law in Italy and by the Associazione Verace Pizza Napoletana. True VPN certification requires San Marzano tomatoes, mozzarella di bufala, 00 flour, and a wood-fired oven reaching 900°F." },
+      { icon: '🔥', text: "The intensely hot wood-fired oven (forno a legna) bakes a Neapolitan pizza in under 90 seconds, creating the characteristic charred spots — called \"leoparding\" — on the cornicione (raised crust edge)." },
+      { icon: '💧', text: "Authentic Neapolitan dough uses only flour, water, salt, and yeast — no oil, no sugar. The extended fermentation (up to 48 hours) creates the complex flavour and airy, blistered crust that defines the style." },
+      { icon: '👑', text: "The Margherita — tomato, mozzarella, and basil — was supposedly created in 1889 for Queen Margherita of Savoy. The colours represent the Italian flag. Whether the story is true or legend, it made pizza history." },
+    ],
+  },
+  {
+    rank: 2, name: 'New York Style', meta: 'New York City',
+    sub: 'The iconic wide, foldable slice of the city that never sleeps',
+    wiki: 'New_York-style_pizza',
+    stats: [
+      { label: 'Origin', val: 'NYC, 1905' },
+      { label: 'Crust', val: 'Thin & crisp' },
+      { label: 'Slice', val: 'Wide & foldable' },
+      { label: 'Oven', val: 'Gas deck' },
+    ],
+    tags: ['By-the-Slice', 'Foldable', 'Mozzarella', 'Deck Oven', 'NYC Water'],
+    facts: [
+      { icon: '🗽', text: "New York-style pizza traces to Gennaro Lombardi, who opened America's first pizzeria in Manhattan in 1905. The style spread through Italian immigrant neighborhoods and became the country's dominant pizza format." },
+      { icon: '💧', text: "New York pizza makers swear the unique softness of their dough comes from the city's soft, low-mineral water. Some pizza makers outside NYC ship New York water in or use filtration systems to replicate it." },
+      { icon: '🔄', text: "The New York fold — bending a wide slice lengthwise to eat it — is a practical innovation born of the slice's size and flexibility. It is considered a native rite of passage and a social marker of pizza literacy." },
+      { icon: '🍕', text: "A classic NY slice is cooked at medium heat (500–550°F) on a deck oven, creating a crisp bottom with a chewy interior. The large 18–20-inch pies are sliced into 8 triangles sold individually for under $5." },
+    ],
+  },
+  {
+    rank: 3, name: 'Chicago Deep Dish', meta: 'Chicago, Illinois',
+    sub: 'Thick, buttery crust loaded in reverse — a pie, not just a pizza',
+    wiki: 'Chicago-style_pizza',
+    stats: [
+      { label: 'Origin', val: 'Chicago, 1943' },
+      { label: 'Crust', val: 'Deep & buttery' },
+      { label: 'Layers', val: 'Inverted' },
+      { label: 'Bake', val: '35–45 min' },
+    ],
+    tags: ['Deep Dish', 'Butter Crust', 'Inverted Layers', 'Chunky Tomatoes', 'Cast Iron Pan'],
+    facts: [
+      { icon: '🏙️', text: "Deep dish was invented at Pizzeria Uno in Chicago in 1943, attributed to Ike Sewell or Rudy Malnati (both are claimed). The thick, pie-like format was a deliberate break from Neapolitan tradition." },
+      { icon: '🔄', text: "In a deep dish pizza, the layers are inverted: cheese goes directly on the crust, toppings go on top of the cheese, and crushed or whole tomatoes go on top. This prevents the cheese from burning during the long bake." },
+      { icon: '🧈', text: "Authentic Chicago deep dish dough contains butter or oil in far higher quantities than standard pizza dough, giving the crust a flaky, almost shortbread-like texture more akin to a pot pie than a flatbread." },
+      { icon: '⚔️', text: "The ongoing feud between Chicago deep dish fans and New York thin crust loyalists is one of American food culture's most enduring rivalries — presidents, celebrities, and food critics have all been forced to choose sides." },
+    ],
+  },
+  {
+    rank: 4, name: 'Detroit Style', meta: 'Detroit, Michigan',
+    sub: 'Thick, airy rectangles with crispy caramelised cheese edges',
+    wiki: 'Detroit-style_pizza',
+    stats: [
+      { label: 'Origin', val: 'Detroit, 1946' },
+      { label: 'Shape', val: 'Rectangular' },
+      { label: 'Pan', val: 'Steel auto tray' },
+      { label: 'Sauce', val: 'On top' },
+    ],
+    tags: ['Square Pizza', 'Frico Crust', 'Steel Pan', 'Sauce on Top', 'Brick Cheese'],
+    facts: [
+      { icon: '🚗', text: "Detroit-style pizza was invented at Buddy's Rendezvous in 1946 by Gus Guerra, who baked his first pizza in a square steel tray originally used to hold automotive parts in Detroit's factories." },
+      { icon: '🧀', text: "The defining feature is \"frico\" — cheese (traditionally Wisconsin brick cheese) spread all the way to the pan edges, where it caramelises against the hot steel into a crispy, lacy border of pure cheese." },
+      { icon: '🍅', text: "Sauce goes on top of the cheese, not underneath — a reversal of normal pizza assembly. This keeps the cheese from drying out and creates pockets of fresh tomato flavour sitting above the molten cheese layer." },
+      { icon: '📈', text: "Detroit-style spent 60 years as a beloved regional secret before Jet's Pizza began franchising it nationally in the 2000s. By the 2020s, it had become the trendiest pizza format in America, appearing on menus nationwide." },
+    ],
+  },
+  {
+    rank: 5, name: 'Sicilian', meta: 'Sicily, Italy',
+    sub: 'Thick, spongy rectangular pizza with ancient origins in sfincione',
+    wiki: 'Sicilian_pizza',
+    stats: [
+      { label: 'Origin', val: 'Sicily' },
+      { label: 'Shape', val: 'Rectangular' },
+      { label: 'Crust', val: 'Thick & airy' },
+      { label: 'American', val: 'Brooklyn style' },
+    ],
+    tags: ['Thick Crust', 'Focaccia Base', 'Sfincione', 'Rectangular', 'Olive Oil'],
+    facts: [
+      { icon: '🏺', text: "The Sicilian style descends from sfincione — a street food from Palermo made with thick bread dough, a loose tomato sauce, onions, anchovies, and breadcrumbs, sold by vendors on the streets of Sicily for centuries." },
+      { icon: '🍕', text: "American Sicilian pizza, popular in New York and New Jersey, evolved into a puffier, more cheese-forward version than its Italian ancestor. The Brooklyn slice shop Sicilian is considered a distinct style in its own right." },
+      { icon: '🫒', text: "Olive oil is generously applied to the pan and the dough, frying the bottom of the pizza as it bakes and creating a crunchy, golden undercarriage beneath the soft, airy interior — a textural combination unlike any other style." },
+      { icon: '⬛', text: "The traditional Sicilian is baked in a rectangular deep pan at moderate heat, giving it time to fully rise and develop an open, bread-like crumb. A properly made Sicilian can be an inch and a half tall." },
+    ],
+  },
+  {
+    rank: 6, name: 'New Haven (Apizza)', meta: 'New Haven, Connecticut',
+    sub: 'Coal-fired, chewy, charred — Frank Pepe's gift to the world',
+    wiki: 'New_Haven-style_pizza',
+    stats: [
+      { label: 'Origin', val: 'New Haven, 1925' },
+      { label: 'Oven', val: 'Coal-fired' },
+      { label: 'Char', val: 'Heavy' },
+      { label: 'Pronounced', val: '"ah-BEETS"' },
+    ],
+    tags: ['Coal-Fired', 'Clam Pizza', 'Heavy Char', 'Chewy Crust', 'Frank Pepe\'s'],
+    facts: [
+      { icon: '⛏️', text: "New Haven apizza is coal-fired at extremely high temperatures, producing a thin, charred, blistered crust with a distinctive flavour profile no gas oven can replicate. The coal char is not a flaw — it is the point." },
+      { icon: '🦪', text: "The white clam pizza — littleneck clams, olive oil, garlic, oregano, and grated cheese on a charred crust with no tomato sauce — was invented at Frank Pepe Pizzeria Napoletana and is considered one of America's greatest dishes." },
+      { icon: '🎓', text: "Frank Pepe opened his New Haven pizzeria in 1925, and the city developed a fierce pizza culture tied to Yale University. Students, professors, and food writers have been making pilgrimages to Wooster Street for a century." },
+      { icon: '🗣️', text: "The local pronunciation \"apizza\" (ah-beets) derives from the Neapolitan dialect word for pizza. New Haven's pizza culture is so insular that locals can tell a Pepe's pizza from a Sally's pizza blindfolded." },
+    ],
+  },
+  {
+    rank: 7, name: 'California Style', meta: 'Los Angeles, California',
+    sub: 'Gourmet toppings, thin crust, and California dreaming since 1980',
+    wiki: 'California-style_pizza',
+    stats: [
+      { label: 'Origin', val: 'LA, 1980' },
+      { label: 'Crust', val: 'Thin & crisp' },
+      { label: 'Known For', val: 'Exotic toppings' },
+      { label: 'Pioneer', val: 'Ed LaDou' },
+    ],
+    tags: ['Gourmet', 'Unconventional', 'Avocado', 'BBQ Chicken', 'Smoked Salmon', 'Seasonal'],
+    facts: [
+      { icon: '🥑', text: "California-style pizza was pioneered by chef Ed LaDou at Spago in Los Angeles, where he made pizzas topped with smoked salmon, caviar, and crème fraîche for Hollywood celebrities in the early 1980s." },
+      { icon: '🍗', text: "Ed LaDou later joined California Pizza Kitchen and designed their original menu, including the BBQ Chicken Pizza that popularised the style nationwide and sparked a wave of gourmet pizza restaurants." },
+      { icon: '🌱', text: "California-style pizza embraces seasonal, locally-sourced produce in a way no other pizza tradition does — roasted beets, grilled asparagus, fresh figs, goat cheese, and arugula are all canonical California toppings." },
+      { icon: '🏖️', text: "The style reflects California's broader food culture: lighter, more vegetable-forward, and concerned with ingredient provenance. The thin, crisp crust exists to showcase the toppings rather than the dough." },
+    ],
+  },
+  {
+    rank: 8, name: 'St. Louis Style', meta: 'St. Louis, Missouri',
+    sub: 'Cracker-thin, Provel cheese, party-cut squares — Missouri's own',
+    wiki: 'St._Louis-style_pizza',
+    stats: [
+      { label: 'Origin', val: 'St. Louis, MO' },
+      { label: 'Crust', val: 'Cracker-thin' },
+      { label: 'Cheese', val: 'Provel' },
+      { label: 'Cut', val: 'Square (tavern)' },
+    ],
+    tags: ['Cracker Crust', 'Provel Cheese', 'Tavern Cut', 'No Yeast', 'Ultra-Thin'],
+    facts: [
+      { icon: '🧀', text: "St. Louis pizza uses Provel — a processed blend of cheddar, Swiss, and provolone invented specifically for St. Louis pizza in the 1940s. It melts into a gooey, buttery pool with a distinct flavour New Yorkers find deeply controversial." },
+      { icon: '✂️', text: "St. Louis pizza is cut in squares, not triangles — a style called \"tavern cut\" or \"party cut\" that dates to Midwestern bar culture, where small squares were served as bar snacks alongside drinks." },
+      { icon: '🥐', text: "The crust contains no yeast, giving it an extremely crisp, cracker-like texture with no chew whatsoever. It is simultaneously the thinnest and the crunchiest mainstream American pizza crust." },
+      { icon: '🏙️', text: "St. Louis-style pizza is almost exclusively a local phenomenon — it rarely appears outside Missouri. Imos Pizza, founded in 1964, is the dominant regional chain and the unofficial keeper of the style." },
+    ],
+  },
+  {
+    rank: 9, name: 'Grandma Style', meta: 'Long Island, New York',
+    sub: 'Pan-baked, olive-oil-fried, sauced-on-top rectangular slices',
+    wiki: 'Grandma_pizza',
+    stats: [
+      { label: 'Origin', val: 'Long Island, NY' },
+      { label: 'Pan', val: 'Flat rectangular' },
+      { label: 'Crust', val: 'Dense & oily' },
+      { label: 'Sauce', val: 'On top' },
+    ],
+    tags: ['Rectangular', 'Pan-Baked', 'Olive Oil', 'Long Island', 'Home-Style'],
+    facts: [
+      { icon: '👵', text: "Grandma pizza is named for the style of home pizza-making practiced by Italian-American grandmothers on Long Island — a simple pan pizza made without a pizza stone or wood-fired oven, just a sheet tray, olive oil, and an oven." },
+      { icon: '🫒', text: "A generous pool of olive oil in the pan fries the bottom of the dough as it bakes, creating a crunchy, oily underside. The interior stays dense and moist — more bread than Neapolitan, less airy than Sicilian." },
+      { icon: '🍅', text: "Like Detroit style, grandma pizza usually has sauce on top of the cheese. A chunky, barely-cooked tomato sauce is ladled over mozzarella and finished with fresh basil and a drizzle of more olive oil." },
+      { icon: '📰', text: "For decades, grandma pizza was virtually unknown outside Long Island pizzerias. Food writers discovered it around 2010 and it became a national trend, with serious pizza restaurants adding it to menus in cities far from New York." },
+    ],
+  },
+  {
+    rank: 10, name: 'Greek Style', meta: 'New England & Mid-Atlantic',
+    sub: 'Thick, oily pan pizza with a tangy oregano-forward sauce',
+    wiki: 'Greek_pizza',
+    stats: [
+      { label: 'Origin', val: 'New England' },
+      { label: 'Pan', val: 'Oiled shallow pan' },
+      { label: 'Crust', val: 'Thick & chewy' },
+      { label: 'Sauce', val: 'Tangy & herby' },
+    ],
+    tags: ['Pan Pizza', 'Olive Oil', 'Oregano', 'Greek Cheese', 'New England', 'Chewy Crust'],
+    facts: [
+      { icon: '🫒', text: "Greek-style pizza, developed by Greek immigrants in New England, is baked in a shallow oiled pan like a focaccia. The crust is thick, chewy, and saturated with olive oil — lighter than deep dish but denser than NY style." },
+      { icon: '🌿', text: "The sauce is the defining flavour: tangy, oregano-heavy, and often slightly sweet. It leans into Mediterranean herb flavours more than any other American pizza style, reflecting its Greek-American heritage." },
+      { icon: '🏘️', text: "Greek pizza became the dominant takeout and delivery style across Connecticut, Massachusetts, and Rhode Island — an entire region largely unaware that the style is considered exotic everywhere else in the country." },
+      { icon: '🧀', text: "Greek pizzerias traditionally use a blend of cheeses including cheddar and a crumbled Greek cheese like feta or kasseri alongside mozzarella, giving it a sharper, saltier flavour profile than Italian-American styles." },
+    ],
+  },
+];
+
+/* ── Render ─────────────────────────────────────────────────────────────── */
+
+async function fetchWikiThumb(wiki, imgEl, placeholderEl) {
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wiki}`);
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      const src = data.thumbnail.source.replace(/\/\d+px-/, '/640px-');
+      imgEl.src = src;
+      imgEl.style.opacity = '0';
+      imgEl.onload = () => {
+        imgEl.style.transition = 'opacity .4s';
+        imgEl.style.opacity = '1';
+        placeholderEl.style.display = 'none';
+      };
+      imgEl.onerror = () => {};
+    }
+  } catch(e) {}
+}
+
+function buildCards(data, containerId, rankLabel, phIcon) {
+  const container = document.getElementById(containerId);
+  data.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'pizza-card';
+
+    const statsHtml = d.stats.map(s =>
+      `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`
+    ).join('');
+    const tagsHtml = d.tags.map(t => `<span class="tag">${t}</span>`).join('');
+    const factsHtml = d.facts.map(f =>
+      `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <div class="card-img-placeholder">
+          <div class="ph-num">${d.rank}</div>
+          <div class="ph-icon">${phIcon}</div>
+        </div>
+        <img src="" alt="${d.name}" style="opacity:0;position:relative;z-index:1">
+        <div class="badge-rank">${rankLabel} ${d.rank}</div>
+        <div class="badge-meta">${d.meta}</div>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">${d.name}</div>
+          <div class="card-sub">${d.sub}</div>
+        </div>
+        <div class="card-stats">${statsHtml}</div>
+        <div class="card-tags">${tagsHtml}</div>
+        <div>
+          <div class="facts-label">🍕 Fun Facts</div>
+          <div class="facts-list">${factsHtml}</div>
+        </div>
+      </div>`;
+
+    container.appendChild(card);
+    const imgEl = card.querySelector('img');
+    const placeholderEl = card.querySelector('.card-img-placeholder');
+    fetchWikiThumb(d.wiki, imgEl, placeholderEl);
+  });
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.pizza-tab').forEach(function(t, i) {
+    t.classList.toggle('active', (i === 0 ? 'companies' : 'styles') === name);
+  });
+  document.getElementById('section-companies').classList.toggle('hidden', name !== 'companies');
+  document.getElementById('section-styles').classList.toggle('hidden', name !== 'styles');
+  localStorage.setItem('pizza_tab', name);
+}
+
+buildCards(COMPANIES, 'companies-grid', 'RANK', '🍕');
+buildCards(STYLES, 'styles-grid', 'STYLE', '🔥');
+switchTab(localStorage.getItem('pizza_tab') || 'companies');
+</script>
+</body>
+</html>

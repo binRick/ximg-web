@@ -33,6 +33,7 @@
     '<a class="nav-item" href="https://doom.ximg.app"><div class="nav-dot"></div>doom</a>' +
     '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
     '<a class="nav-item" href="https://docker.ximg.app"><div class="nav-dot"></div>docker</a>' +
+    '<a class="nav-item" href="https://pizza.ximg.app"><div class="nav-dot"></div>pizza</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
 
   // Highlight the current site
