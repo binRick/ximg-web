@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tampa — tampa.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #040d17;
+      --panel:  #071624;
+      --teal:   #0ea5e9;
+      --sky:    #38bdf8;
+      --sun:    #f59e0b;
+      --coral:  #fb923c;
+      --text:   #dff4ff;
+      --muted:  #4d7a8f;
+      --card:   rgba(5,22,42,.84);
+      --border: rgba(14,165,233,.18);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 130% 50% at 50% 0%, #042040 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 100% 100%, #071830 0%, transparent 60%),
+        linear-gradient(180deg, #040d17 0%, #020508 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(14,165,233,.015) 0, rgba(14,165,233,.015) 1px, transparent 1px, transparent 72px),
+        repeating-linear-gradient(90deg, rgba(14,165,233,.01)  0, rgba(14,165,233,.01)  1px, transparent 1px, transparent 96px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1080px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; animation: fadeUp .7s ease both; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 24px rgba(14,165,233,.65)); }
+    .hero h1 {
+      font-size: clamp(2.2rem, 7vw, 4rem);
+      font-weight: 900; line-height: 1.04;
+      background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 30%, #f59e0b 70%, #fb923c 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.03em;
+    }
+    .hero-sub { font-size: .9rem; color: var(--muted); letter-spacing: .02em; max-width: 480px; line-height: 1.65; }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--teal), transparent);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex; gap: .5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: .65rem;
+      animation: fadeUp .7s ease both .1s;
+    }
+    .tab-btn {
+      font-size: .78rem; padding: .36rem 1.1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
+      font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      transition: all .2s; font-family: inherit;
+    }
+    .tab-btn.active { color: var(--teal); border-color: rgba(14,165,233,.5); background: rgba(14,165,233,.08); }
+    .tab-btn:hover:not(.active) { color: var(--text); border-color: rgba(14,165,233,.28); }
+
+    .tab-panel { display: flex; flex-direction: column; gap: 1.75rem; animation: fadeUp .6s ease both .15s; }
+    .tab-panel.hidden { display: none; }
+
+    /* ── Section header ── */
+    .sec-header {
+      display: flex; align-items: center; gap: 1rem;
+      font-size: .6rem; text-transform: uppercase; letter-spacing: .2em;
+      color: var(--teal); font-weight: 700;
+    }
+    .sec-header::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(14,165,233,.35), transparent); }
+
+    /* ── Cards grid ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+      gap: 1.4rem;
+    }
+    @media(max-width:540px){ .cards-grid { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .card:hover {
+      border-color: rgba(14,165,233,.45);
+      box-shadow: 0 8px 40px rgba(14,165,233,.1);
+      transform: translateY(-3px);
+    }
+
+    /* Card image */
+    .card-img-wrap {
+      position: relative; aspect-ratio: 16/9;
+      background: var(--panel); overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block; position: relative; z-index: 1;
+      opacity: 0; transition: opacity .4s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.4rem; opacity: .13;
+    }
+    .card-badge {
+      position: absolute; top: .75rem; left: .75rem;
+      background: rgba(0,0,0,.75); border: 1px solid rgba(14,165,233,.5);
+      color: var(--teal); font-size: .58rem; font-weight: 700;
+      padding: .18rem .58rem; border-radius: 99px; letter-spacing: .1em;
+      text-transform: uppercase; backdrop-filter: blur(4px); z-index: 2;
+    }
+    .card-tag {
+      position: absolute; top: .75rem; right: .75rem;
+      background: rgba(20,40,60,.88); border: 1px solid rgba(245,158,11,.35);
+      color: #f5c060; font-size: .58rem; font-weight: 700;
+      padding: .18rem .58rem; border-radius: 99px; letter-spacing: .05em;
+      backdrop-filter: blur(4px); z-index: 2;
+    }
+
+    /* Card body */
+    .card-body { padding: 1.2rem 1.35rem; display: flex; flex-direction: column; gap: .9rem; flex: 1; }
+    .card-name    { font-size: 1.1rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+    .card-sub     { font-size: .7rem; color: var(--muted); margin-top: .12rem; font-style: italic; }
+
+    /* Stats */
+    .card-stats { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .stat-chip {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 8px; padding: .32rem .65rem; min-width: 72px;
+    }
+    .stat-label { font-size: .5rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .stat-val   { font-size: .8rem; font-weight: 700; color: var(--sun); margin-top: .08rem; }
+
+    /* Pills */
+    .pills-label { font-size: .54rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: .32rem; }
+    .pills-list  { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .pill {
+      font-size: .6rem; padding: .16rem .52rem; border-radius: 99px;
+      border: 1px solid rgba(14,165,233,.28); background: rgba(14,165,233,.06);
+      color: #7dd3f0; white-space: nowrap;
+    }
+
+    /* Facts */
+    .facts-label { font-size: .54rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: .32rem; }
+    .facts-list  { display: flex; flex-direction: column; gap: .5rem; }
+    .fact {
+      display: flex; gap: .55rem; align-items: flex-start;
+      font-size: .76rem; line-height: 1.55; color: #9ab8ca;
+    }
+    .fact-icon { flex-shrink: 0; font-size: .78rem; margin-top: .05rem; opacity: .8; }
+
+    /* ── Map tab ── */
+    #map-container {
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 40px rgba(14,165,233,.08);
+      height: 600px;
+    }
+    #map { width: 100%; height: 100%; }
+
+    .map-legend {
+      display: flex; flex-wrap: wrap; gap: .4rem;
+      padding: .75rem 0;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .68rem; color: var(--muted);
+    }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Leaflet popup style */
+    .leaflet-popup-content-wrapper {
+      background: #0a1e30 !important;
+      border: 1px solid rgba(14,165,233,.35) !important;
+      color: var(--text) !important;
+      border-radius: 10px !important;
+      box-shadow: 0 4px 24px rgba(0,0,0,.6) !important;
+    }
+    .leaflet-popup-tip { background: #0a1e30 !important; }
+    .leaflet-popup-content { margin: .7rem .9rem !important; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .popup-name { font-size: .85rem; font-weight: 700; color: var(--teal); margin-bottom: .25rem; }
+    .popup-desc { font-size: .72rem; color: #9ab8ca; line-height: 1.5; }
+    .popup-cat  { font-size: .6rem; text-transform: uppercase; letter-spacing: .1em; color: var(--sun); margin-top: .3rem; }
+
+    /* ── Traffic tab ── */
+    .traffic-info {
+      display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+      font-size: .72rem; color: var(--muted);
+    }
+    .traffic-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .22rem .7rem; border-radius: 99px;
+      border: 1px solid rgba(14,165,233,.3); background: rgba(14,165,233,.06);
+      color: var(--teal); font-size: .65rem; font-weight: 700; letter-spacing: .06em;
+    }
+    .traffic-live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #22c55e; box-shadow: 0 0 6px #22c55e;
+      animation: livepulse 2s ease-in-out infinite;
+    }
+    @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    #traffic-frame-wrap {
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 40px rgba(14,165,233,.08);
+      height: 600px;
+    }
+    #traffic-frame-wrap iframe {
+      width: 100%; height: 100%; border: none; display: block;
+    }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js"></script>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🌴</div>
+      <h1>Tampa, Florida</h1>
+      <p class="hero-sub">The Bay City — where Cuban coffee meets craft beer, Ybor City meets the waterfront, and sunshine is the default setting.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('eats')">🍽️ Eats</button>
+      <button class="tab-btn" onclick="switchTab('map')">🗺️ Map</button>
+      <button class="tab-btn" onclick="switchTab('traffic')">🚦 Traffic</button>
+    </div>
+
+    <!-- ── Eats ── -->
+    <div id="tab-eats" class="tab-panel">
+      <div class="sec-header">Best Places to Eat in Tampa</div>
+      <div class="cards-grid" id="eats-grid"></div>
+    </div>
+
+    <!-- ── Map ── -->
+    <div id="tab-map" class="tab-panel hidden">
+      <div class="sec-header">Explore Tampa</div>
+      <div class="map-legend" id="map-legend"></div>
+      <div id="map-container"><div id="map"></div></div>
+    </div>
+
+    <!-- ── Traffic ── -->
+    <div id="tab-traffic" class="tab-panel hidden">
+      <div class="sec-header">Live Tampa Traffic</div>
+      <div class="traffic-info">
+        <span class="traffic-badge"><span class="traffic-live-dot"></span> LIVE</span>
+        Real-time traffic conditions · Tampa Bay area · Powered by Waze
+      </div>
+      <div id="traffic-frame-wrap">
+        <iframe
+          src="https://embed.waze.com/iframe?zoom=12&lat=27.9506&lon=-82.4572&ct=livemap&pin=0"
+          allowfullscreen
+          title="Tampa live traffic map">
+        </iframe>
+      </div>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+/* ── Tab switching ── */
+const TABS = ['eats','map','traffic'];
+let mapInited = false;
+
+function switchTab(name) {
+  TABS.forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  });
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', TABS[i] === name);
+  });
+  if (name === 'map' && !mapInited) { initMap(); mapInited = true; }
+  localStorage.setItem('tampa_tab', name);
+}
+
+/* ── Eats data ── */
+const EATS = [
+  {
+    name: 'Columbia Restaurant',
+    sub: 'Ybor City · Spanish & Cuban',
+    badge: 'SINCE 1905',
+    tag: "Florida's Oldest",
+    wiki: 'Columbia_Restaurant',
+    ph: '💃',
+    stats: [
+      { label: 'Founded',  val: '1905' },
+      { label: 'Seats',    val: '1,700+' },
+      { label: 'Rooms',    val: '15' },
+      { label: 'Flamenco', val: 'Nightly' },
+    ],
+    pills: ['1905 Salad', 'Cuban Sandwich', 'Paella Valenciana', 'Sangria', 'Flamenco Show'],
+    facts: [
+      { icon: '🏛️', text: "Florida's oldest restaurant — opened by Cuban immigrant Casimiro Hernandez Sr. in Ybor City. Now run by the 5th generation of the Gonzmart family, spanning four city blocks with 1,700 seats across 15 dining rooms." },
+      { icon: '💃', text: "The nightly flamenco show in the Don Quijote Room is one of the only professional Spanish dinner shows in America. Dancers perform seven nights a week, year-round, for over 400 nightly guests." },
+      { icon: '🥪', text: "Columbia's Cuban sandwich is the Tampa original — distinct from Miami's version by the inclusion of salami, a tradition started by the Italian immigrant community that settled alongside Cubans in Ybor City in the early 1900s." },
+    ],
+  },
+  {
+    name: "Bern's Steak House",
+    sub: 'Hyde Park · American Steakhouse',
+    badge: 'LEGENDARY',
+    tag: 'Wine: 500,000 btls',
+    wiki: "Bern's_Steak_House",
+    ph: '🥩',
+    stats: [
+      { label: 'Founded',  val: '1956' },
+      { label: 'Wine',     val: '500,000 btls' },
+      { label: 'Aged',     val: '4–8 weeks' },
+      { label: 'Organic',  val: 'Own Farm' },
+    ],
+    pills: ['Dry-Aged USDA Prime', 'Harry Waugh Dessert Room', 'Caviar', 'Chateaubriand', 'Own Wine Cellar'],
+    facts: [
+      { icon: '🍷', text: "Bern's wine cellar holds over 500,000 bottles — one of the largest private wine collections in the world, with vintages stretching back to the 1800s. The list has 6,500+ selections and runs to over 180 pages." },
+      { icon: '🥩', text: "Bern Laxer aged his own beef, grew his own organic vegetables on a dedicated farm, and roasted his own coffee decades before farm-to-table was a trend. Each steak is custom-cut to the ounce by hand in the on-site butcher shop." },
+      { icon: '🍰', text: "The Harry Waugh Dessert Room upstairs seats guests inside individual wine barrel booths — over 40 intimate private booths carved from original French oak barrels, where dessert and after-dinner drinks are served tableside." },
+    ],
+  },
+  {
+    name: 'Armature Works',
+    sub: 'Tampa Heights · Food Hall',
+    badge: 'FOOD HALL',
+    tag: 'Riverview Terrace',
+    wiki: 'Tampa_Riverwalk',
+    ph: '🏭',
+    stats: [
+      { label: 'Built',    val: '1910' },
+      { label: 'Vendors',  val: '10+' },
+      { label: 'Sq Ft',   val: ''    },
+      { label: 'Views',    val: 'Hillsborough' },
+    ],
+    pills: ['Rooftop Bar', 'River Views', 'Event Space', 'Craft Cocktails', 'Global Street Food'],
+    facts: [
+      { icon: '🏭', text: "The 1910 Tampa Electric Company streetcar barn was restored into Tampa's premier food hall and event space. The building's industrial bones — exposed steel trusses, original brick — were preserved throughout the renovation." },
+      { icon: '🌊', text: "The Heights Bar & Market sits directly on the Hillsborough River with one of Tampa's best waterfront terraces. At sunset, the view across the river toward downtown Tampa is as good as anything the city offers." },
+      { icon: '🍻', text: "The rotating roster of vendors covers everything from wood-fired pizza to Venezuelan arepas to Japanese ramen. The central bar program is run by some of Tampa's most talented mixologists, with a serious craft cocktail menu." },
+    ],
+  },
+  {
+    name: 'Cigar City Brewing',
+    sub: 'Westshore · Craft Brewery',
+    badge: 'CRAFT BEER',
+    tag: 'National Icon',
+    wiki: 'Ybor_City',
+    ph: '🍺',
+    stats: [
+      { label: 'Founded',   val: '2009' },
+      { label: 'Flagship',  val: 'Jai Alai IPA' },
+      { label: 'Taproom',   val: 'On-site' },
+      { label: 'Medals',    val: 'GABF Gold' },
+    ],
+    pills: ['Jai Alai IPA', 'Maduro Brown Ale', 'Floridian Hefeweizen', 'Hunahpu Imperial Stout', 'Tasting Room'],
+    facts: [
+      { icon: '🏆', text: "Cigar City Brewing's Jai Alai IPA became one of the best-selling IPAs in the American Southeast. Named after the fast-paced Basque sport once popular in Tampa, it helped put Florida craft beer on the national map." },
+      { icon: '🌶️', text: "The annual Hunahpu's Day release of their imperial stout aged on cacao, cinnamon, vanilla, and ancho/pasilla chiles draws thousands of beer enthusiasts to Tampa — it's become one of the most anticipated craft beer events in America." },
+      { icon: '🍋', text: "The Tampa taproom reflects the city's Cuban and Spanish heritage throughout the menu — Florida citrus hops, Cuban coffee additions, and recipes inspired by Ybor City's culinary history define the brewery's identity." },
+    ],
+  },
+  {
+    name: 'Ulele',
+    sub: 'Tampa Heights · Native American Inspired',
+    badge: 'WATERFRONT',
+    tag: 'On The River',
+    wiki: 'Hillsborough_River_(Florida)',
+    ph: '🌿',
+    stats: [
+      { label: 'Setting',  val: 'Riverside' },
+      { label: 'Cuisine',  val: 'Native-inspired' },
+      { label: 'Bar',      val: 'Craft Brewery' },
+      { label: 'Location', val: 'Tampa Heights' },
+    ],
+    pills: ['Gator Hush Puppies', 'Native Florida Ingredients', 'Spring-fed Water Tower', 'Waterfront Patio', 'Own Brewed Beers'],
+    facts: [
+      { icon: '🌿', text: "Ulele (yoo-LAY-lay) is named after the daughter of a Mocoso chief from Tampa's pre-colonial history. The menu celebrates Native American and early Florida ingredients: datil peppers, alligator, heart of palm, and wild boar." },
+      { icon: '🏗️', text: "The restaurant occupies a restored 1903 Tampa Water Works pump house on the Hillsborough River. The original 1904 standpipe water tower still stands on the property, now incorporated into the outdoor patio design." },
+      { icon: '🍺', text: "The on-site Spring-Fed Brewing Company produces a rotating line of craft beers brewed with native Florida spring water. Sitting on the river deck with a cold Ulele pilsner at sunset is one of Tampa's purest pleasures." },
+    ],
+  },
+  {
+    name: 'Oxford Exchange',
+    sub: 'Hyde Park · Cafe & Bookshop',
+    badge: 'HISTORIC',
+    tag: 'Est. 1891',
+    wiki: 'Tampa_Bay',
+    ph: '📚',
+    stats: [
+      { label: 'Building',  val: '1891' },
+      { label: 'Style',     val: 'British Club' },
+      { label: 'Menu',      val: 'All-day' },
+      { label: 'Bookshop',  val: 'On-site' },
+    ],
+    pills: ['Brunch', 'Afternoon Tea', 'Bookshop', 'British Aesthetics', 'Craft Coffee'],
+    facts: [
+      { icon: '📚', text: "Oxford Exchange opened in 2012 in an 1891 building that once served as a stable. The restoration preserved the soaring ceilings and skylights while adding a curated bookshop, gift shop, and a British men's club aesthetic that became instantly iconic." },
+      { icon: '☕', text: "The coffee program and all-day brunch menu earned Oxford Exchange a devoted following well beyond Tampa. Their eggs Benedict, avocado toast, and weekend brunch are consistently rated among the best in the state." },
+      { icon: '🌿', text: "The greenhouse-style bar area and vine-covered walls made Oxford Exchange one of Tampa's most photographed interiors. It hosts everything from morning work sessions to private wedding dinners in the same beautifully lit space." },
+    ],
+  },
+  {
+    name: 'The Refinery',
+    sub: 'Seminole Heights · New American',
+    badge: 'FARM TO TABLE',
+    tag: 'Seminole Heights',
+    wiki: 'Craft_beer',
+    ph: '🌱',
+    stats: [
+      { label: 'Founded',  val: '2010' },
+      { label: 'Menu',     val: 'Changes weekly' },
+      { label: 'Style',    val: 'Seasonal' },
+      { label: 'Hood',     val: 'Seminole Heights' },
+    ],
+    pills: ['Seasonal Menu', 'Local Farms', 'Craft Cocktails', 'House-made Everything', 'Creative Small Plates'],
+    facts: [
+      { icon: '🌱', text: "The Refinery was one of the first restaurants to plant a flag in Seminole Heights' revitalization, helping transform the neighborhood into Tampa's most exciting dining destination. The menu changes every week based on what local farms have available." },
+      { icon: '👨‍🍳', text: "Chef Greg Baker built The Refinery on the principle that no ingredient is too humble — chicken liver mousse, pork belly, and smoked collard greens sit alongside more refined preparations, elevated by exceptional technique and local sourcing." },
+      { icon: '🍸', text: "The cocktail program is as serious as the kitchen. House-made bitters, fresh-pressed juices, and barrel-aged spirits have made The Refinery's bar one of the most respected in Tampa's craft cocktail scene." },
+    ],
+  },
+  {
+    name: 'Datz',
+    sub: 'South Tampa · Comfort Food',
+    badge: 'INDULGENT',
+    tag: 'South Tampa',
+    wiki: 'South_Tampa',
+    ph: '🧀',
+    stats: [
+      { label: 'Style',    val: 'Elevated comfort' },
+      { label: 'Market',   val: 'On-site deli' },
+      { label: 'Brunch',   val: 'Weekend' },
+      { label: 'Specials', val: 'Rotating' },
+    ],
+    pills: ['Mac & Cheese', 'Monster Burgers', 'Weekend Brunch', 'Deli Market', 'Craft Beer Selection'],
+    facts: [
+      { icon: '🧀', text: "Datz built its reputation on gloriously excessive comfort food: towering burgers stuffed with multiple proteins, lobster mac and cheese, and the kind of brunch plates that require a post-meal nap. Everything is made in-house, including all breads and cured meats." },
+      { icon: '🏪', text: "The adjoining Datz Deli is a gourmet market stocking house-cured charcuterie, artisan cheeses, craft beers, and prepared foods to take home. It became a South Tampa institution in its own right, separate from the restaurant." },
+      { icon: '🍳', text: "Weekend brunch at Datz is a Tampa institution, with lines stretching out the door most Saturdays and Sundays. The combination of creative egg dishes, boozy cocktails, and absurdly large portions kept it at the top of Tampa brunch rankings for years." },
+    ],
+  },
+];
+
+/* ── Map places ── */
+const PLACES = [
+  // Food & Drink
+  { name: 'Columbia Restaurant', cat: 'food', icon: '💃', lat: 27.9601, lng: -82.4392, desc: "Florida's oldest restaurant (1905) — nightly flamenco, legendary Cuban sandwiches and paella." },
+  { name: "Bern's Steak House",   cat: 'food', icon: '🥩', lat: 27.9312, lng: -82.4674, desc: 'World-class dry-aged steaks and a 500,000-bottle wine cellar. One of America\'s best steakhouses.' },
+  { name: 'Armature Works',        cat: 'food', icon: '🍺', lat: 27.9612, lng: -82.4638, desc: 'Restored 1910 streetcar barn turned food hall with stunning Hillsborough River terrace views.' },
+  { name: 'Cigar City Brewing',    cat: 'food', icon: '🍻', lat: 27.9669, lng: -82.5108, desc: 'Tampa\'s craft beer icon — home of Jai Alai IPA and the legendary Hunahpu\'s imperial stout.' },
+  { name: 'Ulele',                 cat: 'food', icon: '🌿', lat: 27.9622, lng: -82.4636, desc: 'Native Florida ingredients in a restored 1903 pump house on the Hillsborough River.' },
+  // Culture & History
+  { name: 'Ybor City',             cat: 'culture', icon: '🏛️', lat: 27.9601, lng: -82.4380, desc: 'Historic cigar-manufacturing district. Cobblestone streets, Latin heritage, and Tampa\'s best nightlife.' },
+  { name: 'Tampa Theatre',         cat: 'culture', icon: '🎭', lat: 27.9480, lng: -82.4587, desc: '1926 atmospheric movie palace — one of America\'s most beautiful and best-preserved historic cinemas.' },
+  { name: 'Tampa Museum of Art',   cat: 'culture', icon: '🎨', lat: 27.9468, lng: -82.4578, desc: 'Striking modernist building on the Riverwalk housing ancient Greek and Roman art plus contemporary works.' },
+  { name: 'Henry B. Plant Museum', cat: 'culture', icon: '🕌', lat: 27.9393, lng: -82.4629, desc: 'Gilded Age palace built by railroad baron Henry Plant in 1891 — Moorish Revival architecture on the Hillsborough.' },
+  // Nature & Parks
+  { name: 'Bayshore Boulevard',    cat: 'nature', icon: '🌊', lat: 27.9250, lng: -82.4733, desc: 'The world\'s longest continuous sidewalk — 4.5 miles along Tampa Bay with stunning downtown views.' },
+  { name: 'Tampa Riverwalk',       cat: 'nature', icon: '🚶', lat: 27.9462, lng: -82.4566, desc: '2.6-mile waterfront promenade connecting downtown museums, parks, and restaurants along the Hillsborough River.' },
+  { name: 'Philippe Park',         cat: 'nature', icon: '🌴', lat: 28.0162, lng: -82.7137, desc: 'Beautiful waterfront park in Safety Harbor with ancient Native American shell mound and sweeping Old Tampa Bay views.' },
+  // Attractions
+  { name: 'Busch Gardens Tampa',   cat: 'attraction', icon: '🎢', lat: 28.0381, lng: -82.4224, desc: 'World-class theme park with top-tier roller coasters, African safari, and live entertainment — open since 1959.' },
+  { name: 'Florida Aquarium',      cat: 'attraction', icon: '🦈', lat: 27.9402, lng: -82.4488, desc: 'Award-winning aquarium at Channelside with 20,000+ aquatic plants and animals including sharks and sea turtles.' },
+  { name: 'ZooTampa at Lowry Park', cat: 'attraction', icon: '🦁', lat: 28.0216, lng: -82.4728, desc: 'Consistently ranked one of America\'s top zoos — manatee hospital, Florida wildlife, and global species.' },
+  { name: 'MOSI',                  cat: 'attraction', icon: '🔭', lat: 28.0614, lng: -82.4138, desc: 'Museum of Science and Industry with Florida\'s largest IMAX dome, butterfly garden, and hands-on science exhibits.' },
+  // Sports
+  { name: 'Amalie Arena',          cat: 'sports', icon: '🏒', lat: 27.9426, lng: -82.4517, desc: 'Home of the Tampa Bay Lightning (NHL). Multi-purpose arena hosting concerts, events, and championship hockey.' },
+  { name: 'Raymond James Stadium', cat: 'sports', icon: '🏈', lat: 27.9759, lng: -82.5033, desc: 'Home of the Tampa Bay Buccaneers (NFL). Hosted Super Bowls XXV, XXXV, and LV. Capacity 69,000.' },
+  { name: 'George M. Steinbrenner Field', cat: 'sports', icon: '⚾', lat: 27.9815, lng: -82.5077, desc: "New York Yankees spring training home since 1996 — Tampa's own George Steinbrenner built the original stadium." },
+];
+
+const CAT_COLORS = {
+  food:       '#f59e0b',
+  culture:    '#a78bfa',
+  nature:     '#34d399',
+  attraction: '#f97316',
+  sports:     '#60a5fa',
+};
+const CAT_LABELS = {
+  food:       '🍽️ Food & Drink',
+  culture:    '🏛️ Culture & History',
+  nature:     '🌿 Nature & Parks',
+  attraction: '🎢 Attractions',
+  sports:     '⚾ Sports',
+};
+
+/* ── Build eats cards ── */
+async function loadWikiImage(img) {
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(img.dataset.wiki));
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) img.src = data.thumbnail.source;
+  } catch(e) {}
+}
+
+function buildEatsCard(item) {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const statsHtml = item.stats.map(s =>
+    `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val || '—'}</div></div>`
+  ).join('');
+  const pillsHtml = item.pills.map(p => `<span class="pill">${p}</span>`).join('');
+  const factsHtml = item.facts.map(f =>
+    `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="card-img-wrap">
+      <div class="card-img-placeholder">${item.ph}</div>
+      <img data-wiki="${item.wiki}" alt="${item.name}"
+           onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'"
+           onerror="this.style.display='none'">
+      <div class="card-badge">${item.badge}</div>
+      <div class="card-tag">${item.tag}</div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="card-name">${item.name}</div>
+        <div class="card-sub">${item.sub}</div>
+      </div>
+      <div class="card-stats">${statsHtml}</div>
+      <div>
+        <div class="pills-label">&#9656; Must Try</div>
+        <div class="pills-list">${pillsHtml}</div>
+      </div>
+      <div>
+        <div class="facts-label">&#9881; Facts</div>
+        <div class="facts-list">${factsHtml}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('eats-grid').appendChild(card);
+  loadWikiImage(card.querySelector('img'));
+}
+
+/* ── Build map ── */
+function initMap() {
+  const map = L.map('map', { center: [27.9506, -82.4572], zoom: 12 });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  PLACES.forEach(p => {
+    const color = CAT_COLORS[p.cat];
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        background:${color};
+        width:32px;height:32px;border-radius:50% 50% 50% 4px;
+        display:flex;align-items:center;justify-content:center;
+        font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.55);
+        border:2px solid rgba(255,255,255,.3);
+        transform:rotate(-45deg)">
+        <span style="transform:rotate(45deg)">${p.icon}</span>
+      </div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 30],
+      popupAnchor: [0, -32],
+    });
+
+    L.marker([p.lat, p.lng], { icon })
+      .addTo(map)
+      .bindPopup(`
+        <div class="popup-name">${p.icon} ${p.name}</div>
+        <div class="popup-desc">${p.desc}</div>
+        <div class="popup-cat">${CAT_LABELS[p.cat]}</div>
+      `);
+  });
+
+  // Legend
+  const legend = document.getElementById('map-legend');
+  Object.entries(CAT_LABELS).forEach(([key, label]) => {
+    legend.innerHTML +=
+      `<span class="legend-item">
+        <span class="legend-dot" style="background:${CAT_COLORS[key]}"></span>
+        ${label}
+      </span>`;
+  });
+}
+
+/* ── Init ── */
+EATS.forEach(buildEatsCard);
+const saved = localStorage.getItem('tampa_tab');
+if (saved && TABS.includes(saved)) switchTab(saved);
+</script>
+</body>
+</html>

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>india.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #050200;
+      --card:   rgba(22,10,3,.88);
+      --saffron:#f97316;
+      --turmeric:#d97706;
+      --gold:   #f59e0b;
+      --cream:  #fef3e2;
+      --text:   #fdf0e0;
+      --muted:  #9d7040;
+      --border: rgba(249,115,22,.2);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 110% 55% at 50% 0%, #3d1200 0%, transparent 65%),
+        radial-gradient(ellipse 70% 40% at 85% 100%, #1a0800 0%, transparent 60%),
+        linear-gradient(180deg, #050200 0%, #030100 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(249,115,22,.02) 0, rgba(249,115,22,.02) 1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(245,158,11,.015) 0, rgba(245,158,11,.015) 1px, transparent 1px, transparent 72px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(249,115,22,.7)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #f97316 0%, #f59e0b 45%, #c2410c 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 500px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--saffron), transparent);
+    }
+
+    .tabs { display: flex; gap: .5rem; border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: .6rem; }
+    .tab {
+      font-size: .8rem; padding: .35rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; transition: all .2s;
+    }
+    .tab.active { color: var(--saffron); border-color: rgba(249,115,22,.45); background: rgba(249,115,22,.08); }
+    .tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.18); }
+    .section { display: flex; flex-direction: column; gap: 1.5rem; }
+    .section.hidden { display: none; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .card:hover {
+      border-color: rgba(249,115,22,.45);
+      box-shadow: 0 8px 40px rgba(249,115,22,.12);
+      transform: translateY(-3px);
+    }
+
+    .card-img-wrap {
+      position: relative; aspect-ratio: 16/9;
+      background: #180800; overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block; position: relative; z-index: 1;
+      opacity: 0; transition: opacity .4s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .4rem;
+    }
+    .ph-num  { font-size: 3.5rem; font-weight: 900; color: rgba(249,115,22,.12); line-height: 1; }
+    .ph-icon { font-size: 2.2rem; opacity: .15; }
+
+    .badge-rank {
+      position: absolute; top: .75rem; left: .75rem; z-index: 2;
+      background: rgba(0,0,0,.72); border: 1px solid rgba(249,115,22,.45);
+      color: var(--gold); font-size: .65rem; font-weight: 700;
+      padding: .2rem .55rem; border-radius: 5px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .badge-meta {
+      position: absolute; bottom: .75rem; right: .75rem; z-index: 2;
+      background: rgba(0,0,0,.65); color: rgba(255,255,255,.7);
+      font-size: .65rem; padding: .18rem .5rem; border-radius: 4px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .card-body { padding: 1.1rem 1.2rem 1.25rem; display: flex; flex-direction: column; gap: .85rem; flex: 1; }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: var(--cream); letter-spacing: -.01em; }
+    .card-sub { font-size: .78rem; color: var(--muted); margin-top: .2rem; line-height: 1.45; }
+
+    .card-stats { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .stat-chip {
+      background: rgba(249,115,22,.08); border: 1px solid rgba(249,115,22,.18);
+      border-radius: 7px; padding: .3rem .65rem; display: flex; flex-direction: column; gap: .1rem;
+    }
+    .stat-label { font-size: .6rem; color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-val   { font-size: .82rem; color: var(--gold); font-weight: 700; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .card-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .tag {
+      font-size: .68rem; padding: .2rem .55rem; border-radius: 12px;
+      background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2);
+      color: rgba(245,158,11,.9); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600;
+    }
+
+    .facts-label { font-size: .7rem; font-weight: 700; color: var(--saffron); font-family: 'Segoe UI', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; }
+    .facts-list { display: flex; flex-direction: column; gap: .55rem; }
+    .fact { display: flex; gap: .55rem; align-items: flex-start; font-size: .8rem; line-height: 1.55; color: rgba(253,240,224,.8); }
+    .fact-icon { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🍛</div>
+      <h1>Indian Food</h1>
+      <p class="hero-sub">Eight great regional cuisines and the iconic dishes that define one of the world's oldest and most complex food cultures.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('cuisines')">Regional Cuisines</button>
+      <button class="tab" onclick="switchTab('dishes')">Dishes</button>
+    </div>
+
+    <div id="section-cuisines" class="section">
+      <div class="cards" id="cuisines-grid"></div>
+    </div>
+
+    <div id="section-dishes" class="section hidden">
+      <div class="cards" id="dishes-grid"></div>
+    </div>
+  </div>
+
+<script>
+const CUISINES = [
+  {
+    rank: 1, name: 'North Indian', meta: 'Punjab & Delhi',
+    sub: 'Punjab & Uttar Pradesh · The cuisine that defined Indian food for the world',
+    wiki: 'North Indian cuisine',
+    stats: [
+      { label: 'Region', val: 'North India' },
+      { label: 'Base', val: 'Wheat & dairy' },
+      { label: 'Technique', val: 'Tandoor' },
+      { label: 'Known For', val: 'Butter Chicken' },
+    ],
+    tags: ['Tandoor', 'Naan', 'Butter Chicken', 'Dal Makhani', 'Rich Gravies', 'Mughal'],
+    facts: [
+      { icon: '🔥', text: "The tandoor — a cylindrical clay oven reaching over 900°F — is the defining tool of North Indian cooking. Naan, tandoori chicken, and seekh kebabs all owe their existence to this ancient Persian-derived technique that has been in use on the subcontinent for 5,000 years." },
+      { icon: '🧅', text: "Punjabi cuisine gave the world most of what is understood as 'Indian food' outside India — butter chicken, dal makhani, palak paneer, and naan. The 1947 Partition scattered Punjabi cooks across the subcontinent and diaspora, spreading the cuisine globally almost overnight." },
+      { icon: '👑', text: "Mughal cuisine — the cooking of India's Mughal emperors — merged Persian, Central Asian, and Indian traditions over 300 years. The result: dum cooking, biryani, korma, and the use of dried fruits and saffron in savoury dishes that still define North Indian festive cooking." },
+      { icon: '🛣️', text: "The dhaba — roadside truck-stop restaurant — is Punjab's great culinary institution. Dhaba cooking is rustic, generous, and cooked over open flames in massive iron pots. The best dhabas on NH1 attract food critics from Delhi and tourists from abroad." },
+    ],
+  },
+  {
+    rank: 2, name: 'South Indian', meta: 'Tamil Nadu, Kerala, Karnataka',
+    sub: 'Tamil Nadu, Kerala, Karnataka, Andhra Pradesh · Rice, coconut, and the world\'s greatest breakfast',
+    wiki: 'South Indian cuisine',
+    stats: [
+      { label: 'Region', val: 'South India' },
+      { label: 'Base', val: 'Rice & coconut' },
+      { label: 'Technique', val: 'Steaming & frying' },
+      { label: 'Known For', val: 'Dosa & idli' },
+    ],
+    tags: ['Dosa', 'Idli', 'Sambar', 'Rasam', 'Coconut Chutney', 'Curry Leaves'],
+    facts: [
+      { icon: '🫓', text: "The dosa — a crisp, fermented rice and lentil crepe — has been made in South India for over 2,000 years. Today it is arguably India's most recognisable and internationally successful dish, with dedicated dosa restaurants across five continents." },
+      { icon: '🧫', text: "South Indian cuisine is among the world's most sophisticated fermentation traditions. Idli and dosa batters are fermented overnight; sambars and chutneys are soured with tamarind, kokum, and raw mango in techniques that predate modern food science." },
+      { icon: '🍌', text: "Tamil Nadu's banana-leaf thali — dozens of small preparations, rice, and curries, continuously refilled for as long as you eat — is one of the world's great set meals. The tradition of eating on banana leaves goes back to ancient Sangam literature (c. 300 BCE)." },
+      { icon: '🥥', text: "Kerala cuisine uses coconut in every form: oil for cooking, fresh grated in chutneys, coconut milk in fish curries. The Malabar Coast's spice trade made Kerala the epicentre of the global spice economy for 2,000 years — the reason Europeans sailed to India." },
+    ],
+  },
+  {
+    rank: 3, name: 'Bengali', meta: 'West Bengal & Bangladesh',
+    sub: 'West Bengal & Bangladesh · Fish, mustard, and the world\'s finest sweet tradition',
+    wiki: 'Bengali cuisine',
+    stats: [
+      { label: 'Region', val: 'West Bengal' },
+      { label: 'Base', val: 'Fish & rice' },
+      { label: 'Technique', val: 'Mustard paste' },
+      { label: 'Known For', val: 'Mishti & hilsa' },
+    ],
+    tags: ['Hilsa Fish', 'Mustard Oil', 'Rasgulla', 'Mishti Doi', 'Panch Phoron', 'River Fish'],
+    facts: [
+      { icon: '🐟', text: "Bengalis are defined by their love of hilsa (ilish) — a silver, bony river fish considered the king of Bengali cuisine. The devotion to hilsa is cultural as much as culinary: it is eaten at festivals, referenced in literature, and sparks fierce annual debates about the best preparation." },
+      { icon: '🌿', text: "Panch phoron — a blend of fenugreek, nigella, cumin, mustard, and fennel seeds fried in mustard oil at the start of cooking — is the flavour fingerprint of Bengali cooking, present in almost every savoury dish in a way that no other regional cuisine replicates." },
+      { icon: '🏆', text: "Bengal gave the world the rasgulla and sparked a decades-long legal dispute between West Bengal and Odisha over its origin. West Bengal won a Geographical Indication in 2017 — the Bengali sweet is now a nationally protected product." },
+      { icon: '🍮', text: "Bengali sweets (mishti) are a civilisation in themselves. The region's dairy-based confectionery — sandesh, rosogolla, mishti doi, chomchom — is considered the finest in India, supported by an entire guild of sweet-makers (moidals) with techniques passed father to son for 300 years." },
+    ],
+  },
+  {
+    rank: 4, name: 'Rajasthani', meta: 'Rajasthan',
+    sub: 'Rajasthan · Desert cooking that turns scarcity into spectacular flavour',
+    wiki: 'Rajasthani cuisine',
+    stats: [
+      { label: 'Region', val: 'Rajasthan' },
+      { label: 'Character', val: 'Spicy & hearty' },
+      { label: 'Base', val: 'Wheat & gram' },
+      { label: 'Known For', val: 'Dal Baati Churma' },
+    ],
+    tags: ['Dal Baati Churma', 'Laal Maas', 'Ker Sangri', 'Ghee', 'Desert Cuisine', 'Royal Feast'],
+    facts: [
+      { icon: '🏜️', text: "Rajasthani cuisine was shaped by scarcity — water was precious, fresh vegetables scarce, the harsh desert climate favoured long-keeping preserved foods. The cuisine developed techniques to make dry, sun-baked ingredients taste extraordinary." },
+      { icon: '🔥', text: "Dal Baati Churma is the state dish: hard wheat rolls (baati) baked in a cow-dung fire, served with a rich five-lentil dal, and churma (crushed baati mixed with ghee and sugar). Each element represents the region's landscape and the ingenuity of desert cooking." },
+      { icon: '🐑', text: "Laal Maas — fiery red mutton curry made with Mathania chilis and yogurt — is one of India's most intense meat dishes. Originally a hunting preparation cooked by Rajput warriors in the wild, it is now the centrepiece of royal Rajasthani feasts." },
+      { icon: '🫙', text: "Ghee is used with extraordinary generosity in Rajasthani cooking — a reflection of the region's cattle culture and Marwari merchant tradition of lavish hospitality. A proper Rajasthani thali arrives with a bowl of ghee and the expectation that you will use all of it." },
+    ],
+  },
+  {
+    rank: 5, name: 'Gujarati', meta: 'Gujarat',
+    sub: 'Gujarat · The vegetarian thali tradition that perfected the sweet-salty balance',
+    wiki: 'Gujarati cuisine',
+    stats: [
+      { label: 'Region', val: 'Gujarat' },
+      { label: 'Style', val: 'Vegetarian' },
+      { label: 'Flavour', val: 'Sweet & savory' },
+      { label: 'Known For', val: 'Thali' },
+    ],
+    tags: ['Thali', 'Dhokla', 'Fafda', 'Jalebi', 'Kadhi', 'Undhiyu'],
+    facts: [
+      { icon: '🌱', text: "Gujarat is almost entirely vegetarian — the influence of Jain and Vaishnava communities made plant-based cooking so deeply embedded that even onion and garlic are avoided in many Jain households. The cuisine proves that vegetarian cooking can reach extraordinary complexity." },
+      { icon: '🥗', text: "The Gujarati thali is the benchmark of Indian thali culture: small bowls of kadhi, dal, vegetables, rice, roti, pickles, and dessert, continuously refilled. The sweet kadhi alongside the savoury dishes confounds first-time diners — sweetness in savoury food is a Gujarati signature." },
+      { icon: '🫕', text: "Dhokla — a steamed fermented chickpea flour cake with mustard seed and green chili tempering — is Gujarat's most exported snack. It is sold in every Indian city and every Indian grocery store abroad, with a strong claim to being India's most popular fermented food." },
+      { icon: '🛳️', text: "Gujarat's trade history shaped its cuisine globally. The Silk Road passed through Gujarat, and the Gujarati diaspora — in East Africa, the UK, and the US — brought their food culture with them. British Indian food leans sweet and mild largely because of Gujarati immigration." },
+    ],
+  },
+  {
+    rank: 6, name: 'Maharashtrian', meta: 'Maharashtra',
+    sub: 'Maharashtra · Street food capital of India, from Vada Pav to Misal',
+    wiki: 'Vada pav',
+    stats: [
+      { label: 'Region', val: 'Maharashtra' },
+      { label: 'Style', val: 'Varied & bold' },
+      { label: 'Known For', val: 'Vada Pav' },
+      { label: 'Base', val: 'Rice & wheat' },
+    ],
+    tags: ['Vada Pav', 'Misal Pav', 'Puran Poli', 'Poha', 'Kolhapuri Chicken', 'Street Food'],
+    facts: [
+      { icon: '🥔', text: "Vada Pav — a battered deep-fried potato dumpling in a bread roll with dry garlic chutney — is Mumbai's most beloved street food. It feeds billionaires and labourers at the same roadside stall for under 20 rupees, making it arguably India's most democratic dish." },
+      { icon: '🌊', text: "Maharashtrian cuisine splits between coastal and inland: the Konkan coast brings coconut milk fish curries; inland Maharashtra, especially Vidarbha and Marathwada, produces drier, spicier, red-chili-heavy preparations using jowar (sorghum) as the staple grain." },
+      { icon: '🌶️', text: "Misal Pav — sprouted moth bean curry in fiery tomato broth, topped with farsan, onion, and lemon — is Pune's signature breakfast. The 'katkat misal' of Kolhapur, with extra-spicy rassa, is considered so hot it has its own regional warning culture among first-time visitors." },
+      { icon: '🔑', text: "Kolhapuri masala — a blend of 16+ spices including stone flower and dry coconut — is among India's most complex spice blends. Most Kolhapuri restaurants keep their specific ratio a trade secret, and the cuisine has a national reputation for heat that even Andhra cooks respect." },
+    ],
+  },
+  {
+    rank: 7, name: 'Goan', meta: 'Goa',
+    sub: 'Goa · 450 years of Portuguese influence on India\'s most distinctive coastal cuisine',
+    wiki: 'Vindaloo',
+    stats: [
+      { label: 'Region', val: 'Goa' },
+      { label: 'Influence', val: 'Portuguese' },
+      { label: 'Base', val: 'Seafood & pork' },
+      { label: 'Known For', val: 'Vindaloo' },
+    ],
+    tags: ['Vindaloo', 'Xacuti', 'Fish Curry', 'Sorpotel', 'Bebinca', 'Feni'],
+    facts: [
+      { icon: '⚓', text: "Goa was a Portuguese colony for 450 years (1510–1961), leaving an indelible mark on its cuisine. Vinegar, pork, and a Portuguese technique of marinating meat in wine and spices produced vindaloo — India's most internationally famous curry." },
+      { icon: '🍷', text: "'Vindaloo' derives from the Portuguese 'vinha d'alhos' — wine and garlic. The Portuguese version was pork preserved in vinegar for sea voyages; Goan cooks adapted it with Kashmiri chilis, local vinegar, and spices to create something entirely new and fiercer." },
+      { icon: '🐠', text: "Goa's fish curry rice (xit ani uddamethi) is the daily staple: a fragrant coconut milk and kokum curry with mackerel, kingfish, or prawns, served on rice. It is eaten twice a day by most Goans and is the purest expression of Konkan coastal cooking." },
+      { icon: '🥃', text: "Feni — Goa's indigenous spirit distilled from cashew fruit — is a Geographical Indication product. The cashew feni season lasts only six weeks and involves traditional foot-pressing of cashew apples, a technique unchanged for 400 years." },
+    ],
+  },
+  {
+    rank: 8, name: 'Kashmiri', meta: 'Kashmir',
+    sub: 'Kashmir · The Wazwan feast and the cuisine of saffron, walnut, and slow-cooked lamb',
+    wiki: 'Kashmiri cuisine',
+    stats: [
+      { label: 'Region', val: 'Kashmir' },
+      { label: 'Style', val: 'Rich & aromatic' },
+      { label: 'Base', val: 'Lamb & rice' },
+      { label: 'Known For', val: 'Wazwan' },
+    ],
+    tags: ['Wazwan', 'Rogan Josh', 'Dum Aloo', 'Saffron', 'Kahwa', 'Seekh Kebab'],
+    facts: [
+      { icon: '🏔️', text: "The Wazwan is Kashmir's grand feast — a 36-course meal prepared by a master cook (waza) for weddings and celebrations, featuring up to 30 lamb dishes served on a copper tramis shared by four guests. It is one of the world's most extraordinary culinary ceremonies." },
+      { icon: '🌸', text: "Kashmiri cuisine uses saffron — harvested from the crocus fields of Pampore — more generously than almost any other cuisine in the world. Kashmir produces 90% of India's saffron and it appears in biryanis, sweets, kahwa tea, and meat dishes alike." },
+      { icon: '⚖️', text: "Kashmiri Pandits and Kashmiri Muslims have distinct culinary traditions — Hindu Kashmiri cooking avoids onion and garlic, using asafoetida instead, while Muslim Kashmiri cooking is defined by slow-braised meats. Together they form one of the world's most complex regional food cultures." },
+      { icon: '🍵', text: "Noon chai (sheer chai) — a pink salty tea made from gunpowder tea, salt, baking soda, and milk — is Kashmir's daily beverage. The pink colour comes from the baking soda reacting with the tea. Visitors expecting sweet chai invariably experience a moment of profound confusion." },
+    ],
+  },
+];
+
+const DISHES = [
+  {
+    rank: 1, name: 'Butter Chicken (Murgh Makhani)', meta: 'Delhi, c. 1948',
+    sub: 'Delhi · The accidental invention that became India\'s most famous dish',
+    wiki: 'Butter chicken',
+    stats: [
+      { label: 'Origin', val: 'Delhi' },
+      { label: 'Age', val: '75+ years' },
+      { label: 'Sauce', val: 'Tomato & cream' },
+      { label: 'Creator', val: 'Kundan Lal Gujral' },
+    ],
+    tags: ['Makhani Gravy', 'Tandoori Chicken', 'Cream', 'Tomato', 'Fenugreek', 'Mild'],
+    facts: [
+      { icon: '💡', text: "Butter chicken was invented by accident at Moti Mahal restaurant in Delhi in 1948. Chef Kundan Lal Gujral had leftover tandoori chicken and no customers — he simmered the pieces in a tomato, butter, and cream sauce to keep them moist. The dish never left the menu." },
+      { icon: '🌍', text: "The makhani gravy — smooth, buttery, tomato-based with kasuri methi — became the template for 90% of 'Indian restaurant curry' worldwide. Canada declared it its unofficial national dish after a poll showed it was the country's most ordered takeaway food." },
+      { icon: '⚖️', text: "In 2024, two Delhi families — descendants of Moti Mahal's founders — fought a court case over who invented butter chicken. The judge ruled the recipe had been 'independently created' by both claimants. Both sides considered the verdict a draw." },
+      { icon: '🍗', text: "The dish's genius is structural: by separating the marination and grilling of the chicken from the sauce-making, it allowed each element to develop independently. The charred tandoor flavour of the chicken bleeding into the creamy sauce is what makes it irreplaceable." },
+    ],
+  },
+  {
+    rank: 2, name: 'Biryani (بریانی)', meta: 'India',
+    sub: 'India · A layered rice dish with 50+ regional variations and absolute devotion',
+    wiki: 'Biryani',
+    stats: [
+      { label: 'Origin', val: 'India & Persia' },
+      { label: 'Variations', val: '50+' },
+      { label: 'Method', val: 'Dum cooking' },
+      { label: 'Base', val: 'Basmati rice' },
+    ],
+    tags: ['Dum Cooking', 'Basmati', 'Saffron', 'Caramelised Onions', 'Hyderabadi', 'Kacchi'],
+    facts: [
+      { icon: '🗺️', text: "Biryani divides India like nothing else. Hyderabadi (kacchi, raw meat cooked with rice), Lucknowi (pakki, pre-cooked meat layered with rice), Kolkata (subtle, potato-included), and Malabar (short-grain rice with roasted coconut) — every city claims its version is the only correct one." },
+      { icon: '♨️', text: "The dum technique — sealing the pot with dough and cooking on slow heat so steam cannot escape — was perfected in the Mughal court kitchens of Agra and Delhi. The trapped steam creates a pressure environment that cooks the rice in the fat and aromatics of the meat below." },
+      { icon: '👑', text: "Hyderabadi biryani is a UNESCO-nominated culinary tradition. The Nizam's court maintained hundreds of cooks, and state banquet biryanis used whole legs of mutton, saffron imported from Iran, and kewra water distilled on-site." },
+      { icon: '📱', text: "Biryani is India's most-ordered food delivery item by a massive margin. During Eid, biryani orders on Swiggy and Zomato spike by 400%. The dish has its own national day and a subculture of food critics who rate the country's 50+ regional versions obsessively." },
+    ],
+  },
+  {
+    rank: 3, name: 'Masala Dosa', meta: 'Karnataka',
+    sub: 'Karnataka · A crisp fermented crepe that redefined Indian breakfast globally',
+    wiki: 'Masala dosa',
+    stats: [
+      { label: 'Origin', val: 'Karnataka' },
+      { label: 'Age', val: '1,500+ years' },
+      { label: 'Fermentation', val: '12–16 hrs' },
+      { label: 'Serve', val: 'Sambar & chutney' },
+    ],
+    tags: ['Fermented Crepe', 'Potato Masala', 'Sambar', 'Coconut Chutney', 'Udupi', 'Crispy'],
+    facts: [
+      { icon: '🛕', text: "The masala dosa likely originated in the temple kitchens of Udupi, Karnataka, where Brahmin cooks developed the potato filling as a way to make the plain rice crepe a complete meal. Udupi restaurants became a pan-Indian institution, spreading dosa culture from Bangalore to Delhi." },
+      { icon: '🧫', text: "Making dosa batter is a 24-hour process: rice and urad dal are soaked separately, ground together, then fermented overnight. The fermentation develops lactic acid bacteria that give the dosa its sour depth. Skilled cooks know the batter is ready by its smell and the slight dome of the surface." },
+      { icon: '📏', text: "A perfect masala dosa is simultaneously crisp outside and slightly soft inside, with a potato filling tempered with mustard seeds and curry leaves. The paper dosa (kagdi dosa) — stretched to 2 feet of near-weightless translucent crispness — is the showpiece version." },
+      { icon: '🌐', text: "Dosas have conquered the world through the South Indian diaspora. In Silicon Valley — with its large Tamil and Telugu tech workforce — the dosa is an almost daily breakfast for tens of thousands of people, and dedicated dosa restaurants now exist in 40+ countries." },
+    ],
+  },
+  {
+    rank: 4, name: 'Samosa', meta: 'Central Asia → India',
+    sub: 'India · The triangular pastry that conquered the world',
+    wiki: 'Samosa',
+    stats: [
+      { label: 'Origin', val: 'Central Asia' },
+      { label: 'Age', val: '1,000+ years' },
+      { label: 'Shape', val: 'Triangular' },
+      { label: 'Filling', val: 'Spiced potato' },
+    ],
+    tags: ['Fried Pastry', 'Spiced Potato', 'Chutney', 'Street Food', 'Amchur', 'Global'],
+    facts: [
+      { icon: '🛤️', text: "The samosa did not originate in India — it arrived from Central Asia via the Silk Road around the 10th century, where it was called 'sambosa.' Arab traders brought it to the Middle East, Persian merchants to India, Portuguese traders to East Africa, where it became the mandazi." },
+      { icon: '🥔', text: "The Indian samosa is defined by its spiced potato filling — with peas, green chilis, ginger, and the holy trinity of cumin, coriander, and amchur (dried mango powder). The pastry must fry to a shattering crisp without the inside drying out — a balance achieved by resting the filling before sealing." },
+      { icon: '🏭', text: "India produces an estimated 5 billion samosas per year. It is the country's most ubiquitous snack, found identically at five-star hotels, railway stations, and street corners for a price range of 5 to 500 rupees depending purely on the setting." },
+      { icon: '🗞️', text: "The samosa became a cultural flashpoint in modern India — its association with Muslim street food culture led to it being briefly banned at some Hindu nationalist events in 2023, a controversy that was quickly overwhelmed by the public's devotion to the snack." },
+    ],
+  },
+  {
+    rank: 5, name: 'Dal Makhani', meta: 'Punjab, c. 1947',
+    sub: 'Punjab · A slow-cooked lentil dish that takes 24 hours to make properly',
+    wiki: 'Dal makhani',
+    stats: [
+      { label: 'Origin', val: 'Punjab' },
+      { label: 'Lentils', val: 'Black urad & kidney' },
+      { label: 'Cook Time', val: '24 hrs (ideal)' },
+      { label: 'Base', val: 'Butter & cream' },
+    ],
+    tags: ['Black Lentils', 'Kidney Beans', 'Butter', 'Cream', 'Overnight Cook', 'Punjabi'],
+    facts: [
+      { icon: '🌙', text: "Dal makhani is traditionally cooked overnight on a dying wood fire — the lentils go in at midnight and are eaten for breakfast, having simmered unattended for 8–12 hours. The slow cook breaks down the lentils gradually without disintegrating them, creating a silky, thick texture." },
+      { icon: '🏠', text: "The dish was invented or popularised at Moti Mahal in Delhi alongside butter chicken — the same restaurant credited with two of India's most globally successful dishes. Kundan Lal Gujral applied the same butter-and-cream philosophy to lentils that he had applied to chicken." },
+      { icon: '🧈', text: "Restaurant dal makhani uses staggering quantities of butter and cream — a proper restaurant portion may contain 100g of butter. The home version is leaner, simmered in ghee rather than cream, with a deeper smoky flavour from the fire that no restaurant can fully replicate." },
+      { icon: '🪵', text: "The 'dhungar' technique — placing a piece of charcoal smoking in ghee inside the sealed dal pot — adds a campfire smokiness that references the original wood-fire preparation. The best Delhi restaurants spend 48 hours on a dal makhani that takes a home cook 12." },
+    ],
+  },
+  {
+    rank: 6, name: 'Chicken Tikka Masala', meta: 'UK & India, c. 1970s',
+    sub: 'Britain & India · The accidental fusion that Britain claimed as its own national dish',
+    wiki: 'Chicken tikka masala',
+    stats: [
+      { label: 'Origin', val: 'UK or India' },
+      { label: 'Status', val: 'UK national dish' },
+      { label: 'Sauce', val: 'Tomato & spice' },
+      { label: 'Base', val: 'Grilled chicken' },
+    ],
+    tags: ['Grilled Chicken', 'Tomato Sauce', 'Cream', 'Garam Masala', 'British-Indian', 'Global'],
+    facts: [
+      { icon: '🇬🇧', text: "Chicken tikka masala is simultaneously India's most globally famous dish and one it never fully claimed. British Foreign Secretary Robin Cook declared it 'a true British national dish' in 2001, citing it as proof of multicultural Britain — while Indian food historians noted the dish's ancestor existed in India decades earlier." },
+      { icon: '🥫', text: "The most popular origin story: a Bangladeshi chef in Glasgow in the 1970s added a tin of tomato soup and cream to grilled tandoori chicken because a customer complained it was too dry. Whether true or not, the story encapsulates the entire history of British-Indian cooking in one gesture." },
+      { icon: '📊', text: "At its peak in the early 2000s, chicken tikka masala was ordered in 23 million British portions per year — more than fish and chips. British supermarkets sold pre-made tikka masala sauces as a pantry staple. The dish funded a generation of South Asian immigration and restaurant culture." },
+      { icon: '🎨', text: "The 'masala' sauce — tomato, cream, garam masala, often a touch of food colouring — has no fixed recipe. The 48 different versions catalogued by food writer Pat Chapman ranged from orange-red to bright pink and differed completely in flavour. The only fixed element is the grilled chicken." },
+    ],
+  },
+  {
+    rank: 7, name: 'Rogan Josh', meta: 'Kashmir',
+    sub: 'Kashmir · The crimson slow-braised lamb curry of the Wazwan tradition',
+    wiki: 'Rogan josh',
+    stats: [
+      { label: 'Origin', val: 'Kashmir' },
+      { label: 'Meat', val: 'Lamb' },
+      { label: 'Colour', val: 'Deep crimson' },
+      { label: 'Technique', val: 'Dum braising' },
+    ],
+    tags: ['Kashmiri Chili', 'Lamb', 'Dum Cooked', 'Alkanet Root', 'Fennel', 'Slow-Braised'],
+    facts: [
+      { icon: '🔴', text: "Rogan Josh gets its brilliant colour not from heat — Kashmiri chilis (Deghi Mirch) are mild but deeply pigmented — but traditionally from alkanet root (ratan jot), a natural dye that produces vivid crimson without adding flavour. The colour is the visual signature before you taste it." },
+      { icon: '🕌', text: "The name combines Persian 'rogan' (clarified butter) and 'josh' (heat, intensity) — a Persian-influenced dish that arrived in Kashmir with Emperor Akbar's court in the 16th century and was transformed by local Kashmiri spices and the dum technique into something entirely its own." },
+      { icon: '🙏', text: "Kashmiri Pandit rogan josh uses no onion or garlic — replaced by asafoetida and yogurt, cooked in mustard oil. Muslim Kashmiri versions include onion and garlic. The two versions taste so different they could be classified as different dishes entirely." },
+      { icon: '🍽️', text: "At the Wazwan feast, rogan josh is always one of the first dishes served — a single piece of lamb in intense red gravy on the tramis plate. Its role as the meal's opening statement mirrors its importance in Kashmiri cultural identity." },
+    ],
+  },
+  {
+    rank: 8, name: 'Palak Paneer', meta: 'North India',
+    sub: 'North India · The dish that turned Indian vegetarian cooking into a global force',
+    wiki: 'Palak paneer',
+    stats: [
+      { label: 'Origin', val: 'North India' },
+      { label: 'Style', val: 'Vegetarian' },
+      { label: 'Base', val: 'Spinach & paneer' },
+      { label: 'Technique', val: 'Blanch & purée' },
+    ],
+    tags: ['Spinach', 'Paneer', 'Vegetarian', 'Mughal Heritage', 'Cream', 'Garam Masala'],
+    facts: [
+      { icon: '🧀', text: "Paneer — fresh, unaged pressed cheese — is mentioned in Vedic texts dating back 3,000 years. Unlike most cheeses, it does not melt when heated, making it uniquely suited to being cubed and cooked in hot gravies without dissolving into the sauce." },
+      { icon: '💚', text: "The vibrant green colour of palak paneer comes from blanching spinach and immediately plunging it into ice water before blending — a technique that locks in the chlorophyll. Restaurants that skip this step produce a grey-green version that tastes identical but looks significantly less appetising." },
+      { icon: '🌍', text: "Palak paneer became a gateway dish for global diners discovering Indian food. Its mild heat, familiar texture (spinach and cheese), and striking colour made it more accessible than intensely spiced meat curries, and it appears on virtually every Indian restaurant menu worldwide." },
+      { icon: '🏭', text: "India produces 6 million tonnes of paneer per year — the world's largest volume of fresh cheese. Amul's industrialisation of paneer in the 1980s transformed it from a home-made product into a packaged commodity, enabling the globalisation of North Indian cooking." },
+    ],
+  },
+  {
+    rank: 9, name: 'Chole Bhature', meta: 'Punjab & Delhi',
+    sub: 'Delhi · The punishingly good deep-fried breakfast that Punjabis eat for lunch',
+    wiki: 'Chole bhature',
+    stats: [
+      { label: 'Origin', val: 'Punjab & Delhi' },
+      { label: 'Chole', val: 'Spiced chickpeas' },
+      { label: 'Bhature', val: 'Deep-fried dough' },
+      { label: 'Meal', val: 'Brunch' },
+    ],
+    tags: ['Chickpeas', 'Deep-Fried Bread', 'Punjabi', 'Pickled Onion', 'Anardana', 'Brunch'],
+    facts: [
+      { icon: '🍳', text: "Chole bhature is Delhi's most beloved brunch: spiced black chickpea curry served with a puffed, deep-fried leavened bread. The combination of richly spiced legume and airy fried dough is so satisfying that eating it before a full day is considered mildly reckless." },
+      { icon: '🖤', text: "The chole in chole bhature uses black chickpeas (kala chana), darkened with black tea bags or tamarind, and includes anardana (dried pomegranate seeds) for tartness. The result is almost black in colour and more intense than standard chickpea curry." },
+      { icon: '🫓', text: "Bhatura dough contains yogurt, which activates gluten and creates the elastic structure that fills with steam when dropped into hot oil. A perfect bhatura inflates to the size of a football and collapses slowly when removed. An overworked bhatura becomes dense and oily." },
+      { icon: '🏘️', text: "The cultural home of chole bhature is Old Delhi's Paharganj and the legendary Sitaram Diwan Chand, serving the dish since 1950 and consistently ranked among India's greatest street food institutions by food writers across five decades." },
+    ],
+  },
+  {
+    rank: 10, name: 'Gulab Jamun', meta: 'India',
+    sub: 'India · Deep-fried milk solids in rose-scented sugar syrup — India\'s most beloved dessert',
+    wiki: 'Gulab jamun',
+    stats: [
+      { label: 'Origin', val: 'India & Persia' },
+      { label: 'Base', val: 'Khoya' },
+      { label: 'Syrup', val: 'Rose & saffron' },
+      { label: 'Serve', val: 'Warm or cold' },
+    ],
+    tags: ['Khoya', 'Sugar Syrup', 'Rose Water', 'Saffron', 'Deep-Fried', 'Festive'],
+    facts: [
+      { icon: '🌹', text: "Gulab jamun's name comes from Persian: 'gulab' (rose water) and 'jamun' (a dark Indian berry the shape of the finished dumpling). The dessert arrived in India with Persian or Central Asian influence and was adapted using khoya — reduced milk solids unique to South Asian cooking." },
+      { icon: '🍳', text: "The dough is made from khoya, flour, and sometimes milk powder, formed into small balls and fried at very low heat. If the oil is too hot, the outside sets before the inside cooks, resulting in a hard shell and doughy centre — a failure that takes experience to avoid." },
+      { icon: '♨️', text: "In Rajasthan and UP, gulab jamun is served warm from the syrup and eaten immediately — it melts on contact with the tongue. The Bengali equivalent, golap jam, is smaller and softer, kept at room temperature. The texture difference is radical despite the near-identical recipe." },
+      { icon: '✈️', text: "Gulab jamun appears at South Asian weddings from Toronto to Dubai, in the freezer sections of Indian grocery stores worldwide, and on the dessert menus of Indian restaurants across six continents. Haldiram's tinned gulab jamun is one of the best-selling packaged Indian food products globally." },
+    ],
+  },
+];
+
+function buildCards(data, containerId, rankLabel, phIcon) {
+  const container = document.getElementById(containerId);
+  data.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const statsHtml = d.stats.map(s =>
+      `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`
+    ).join('');
+    const tagsHtml = d.tags.map(t => `<span class="tag">${t}</span>`).join('');
+    const factsHtml = d.facts.map(f =>
+      `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+    ).join('');
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <div class="card-img-placeholder">
+          <div class="ph-num">${d.rank}</div>
+          <div class="ph-icon">${phIcon}</div>
+        </div>
+        <img data-wiki="${d.wiki}" alt="${d.name}" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'">
+        <div class="badge-rank">${rankLabel} ${d.rank}</div>
+        <div class="badge-meta">${d.meta}</div>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">${d.name}</div>
+          <div class="card-sub">${d.sub}</div>
+        </div>
+        <div class="card-stats">${statsHtml}</div>
+        <div class="card-tags">${tagsHtml}</div>
+        <div>
+          <div class="facts-label">🍛 Fun Facts</div>
+          <div class="facts-list">${factsHtml}</div>
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+async function loadWikiImage(img) {
+  if (!img.dataset.wiki) return;
+  const title = img.dataset.wiki;
+  try {
+    const res = await fetch(
+      'https://en.wikipedia.org/w/api.php?action=query&titles=' +
+      encodeURIComponent(title) +
+      '&prop=pageimages&format=json&pithumbsize=800&origin=*'
+    );
+    const data = await res.json();
+    const pages = data.query.pages;
+    const page = Object.values(pages)[0];
+    if (page && page.thumbnail && page.thumbnail.source) {
+      img.src = page.thumbnail.source;
+      return;
+    }
+  } catch(e) {}
+  // fallback: REST summary API
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      img.src = data.thumbnail.source;
+    }
+  } catch(e) {}
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', (i === 0 ? 'cuisines' : 'dishes') === name);
+  });
+  document.getElementById('section-cuisines').classList.toggle('hidden', name !== 'cuisines');
+  document.getElementById('section-dishes').classList.toggle('hidden', name !== 'dishes');
+  localStorage.setItem('india_tab', name);
+}
+
+buildCards(CUISINES, 'cuisines-grid', 'CUISINE', '🍛');
+buildCards(DISHES, 'dishes-grid', 'DISH', '🌶️');
+document.querySelectorAll('img[data-wiki]').forEach(loadWikiImage);
+switchTab(localStorage.getItem('india_tab') || 'cuisines');
+</script>
+</body>
+</html>

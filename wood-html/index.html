@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Woodworking — wood.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070502;
+      --panel:  #120d06;
+      --amber:  #b45309;
+      --gold:   #d97706;
+      --hi:     #f59e0b;
+      --text:   #fef3c7;
+      --muted:  #92683a;
+      --card:   rgba(20,12,4,.88);
+      --border: rgba(180,83,9,.22);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 110% 55% at 50% 0%, #2d1400 0%, transparent 65%),
+        radial-gradient(ellipse 70% 40% at 85% 100%, #1a0c00 0%, transparent 60%),
+        linear-gradient(180deg, #070502 0%, #040300 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(180,83,9,.02)  0, rgba(180,83,9,.02)  1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(217,119,6,.015) 0, rgba(217,119,6,.015) 1px, transparent 1px, transparent 72px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* Hero */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(180,83,9,.8)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 40%, #92400e 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 500px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex; gap: .4rem; flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: .6rem;
+    }
+    .tab {
+      font-size: .8rem; padding: .35rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; transition: all .2s;
+    }
+    .tab.active { color: var(--hi); border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.08); }
+    .tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.18); }
+    .section { display: flex; flex-direction: column; gap: 1.5rem; }
+    .section.hidden { display: none; }
+
+    /* Card grid */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .card:hover {
+      border-color: rgba(180,83,9,.5);
+      box-shadow: 0 8px 40px rgba(180,83,9,.14);
+      transform: translateY(-3px);
+    }
+
+    /* Card image */
+    .card-img-wrap {
+      position: relative; aspect-ratio: 16/9;
+      background: var(--panel); overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block; position: relative; z-index: 1;
+      opacity: 0; transition: opacity .4s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .4rem;
+    }
+    .ph-num  { font-size: 3.5rem; font-weight: 900; color: rgba(180,83,9,.15); line-height: 1; }
+    .ph-icon { font-size: 2.2rem; opacity: .15; }
+
+    .badge-left {
+      position: absolute; top: .75rem; left: .75rem; z-index: 2;
+      background: rgba(0,0,0,.72); border: 1px solid rgba(180,83,9,.45);
+      color: var(--hi); font-size: .65rem; font-weight: 700;
+      padding: .2rem .55rem; border-radius: 5px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .badge-right {
+      position: absolute; bottom: .75rem; right: .75rem; z-index: 2;
+      background: rgba(0,0,0,.65); color: rgba(255,255,255,.7);
+      font-size: .65rem; padding: .18rem .5rem; border-radius: 4px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* Card body */
+    .card-body { padding: 1.1rem 1.2rem 1.25rem; display: flex; flex-direction: column; gap: .85rem; flex: 1; }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+    .card-sub { font-size: .78rem; color: var(--muted); margin-top: .2rem; line-height: 1.45; }
+
+    .card-stats { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .stat-chip {
+      background: rgba(180,83,9,.08); border: 1px solid rgba(180,83,9,.2);
+      border-radius: 7px; padding: .3rem .65rem; display: flex; flex-direction: column; gap: .1rem;
+    }
+    .stat-label { font-size: .6rem; color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-val   { font-size: .82rem; color: var(--gold); font-weight: 700; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .card-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .tag {
+      font-size: .68rem; padding: .2rem .55rem; border-radius: 12px;
+      background: rgba(217,119,6,.07); border: 1px solid rgba(217,119,6,.22);
+      color: rgba(245,158,11,.9); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600;
+    }
+
+    .facts-label { font-size: .7rem; font-weight: 700; color: var(--amber); font-family: 'Segoe UI', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; }
+    .facts-list { display: flex; flex-direction: column; gap: .55rem; }
+    .fact { display: flex; gap: .55rem; align-items: flex-start; font-size: .8rem; line-height: 1.55; color: rgba(254,243,199,.82); }
+    .fact-icon { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    .hero { animation: fadeUp .7s ease both; }
+    .tabs, .section { animation: fadeUp .7s ease both; animation-delay: .12s; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=4"></script>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🪵</div>
+      <h1>Woodworking</h1>
+      <p class="hero-sub">From timber to treasure — the tools, techniques, joints, species, and finishes that define the craft of working wood.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('species')">Wood Species</button>
+      <button class="tab" onclick="switchTab('joinery')">Joinery</button>
+      <button class="tab" onclick="switchTab('handtools')">Hand Tools</button>
+      <button class="tab" onclick="switchTab('powertools')">Power Tools</button>
+      <button class="tab" onclick="switchTab('finishing')">Finishing</button>
+    </div>
+
+    <div id="section-species"    class="section"><div class="cards" id="species-grid"></div></div>
+    <div id="section-joinery"    class="section hidden"><div class="cards" id="joinery-grid"></div></div>
+    <div id="section-handtools"  class="section hidden"><div class="cards" id="handtools-grid"></div></div>
+    <div id="section-powertools" class="section hidden"><div class="cards" id="powertools-grid"></div></div>
+    <div id="section-finishing"  class="section hidden"><div class="cards" id="finishing-grid"></div></div>
+  </div>
+
+<script>
+/* ── Data ── */
+const SPECIES = [
+  {
+    rank: 1, name: 'White Oak', badge: 'Hardwood',
+    sub: 'Quercus alba · The backbone of American furniture, cooperage, and flooring',
+    wiki: 'Quercus_alba',
+    stats: [
+      { label: 'Janka', val: '1,360 lbf' },
+      { label: 'Weight', val: '47 lb/ft³' },
+      { label: 'Category', val: 'Ring-porous' },
+      { label: 'Use', val: 'Furniture & barrels' },
+    ],
+    tags: ['Hardwood', 'Ring-porous', 'Tannin-rich', 'Tyloses', 'American native', 'Quarter-sawn'],
+    facts: [
+      { icon: '🍷', text: 'White oak is the wood of choice for whiskey and wine barrels because its pores are sealed by tyloses — waxy outgrowths that make it naturally liquid-tight. The wood imparts vanilla, caramel, and spice compounds into spirits during aging.' },
+      { icon: '🌊', text: 'Shipwrights prized white oak for centuries because its tight grain and tyloses resist rot and water penetration. The USS Constitution ("Old Ironsides"), launched in 1797, is framed in white oak that has lasted over 225 years.' },
+      { icon: '📐', text: 'Quarter-sawn white oak exposes a striking ray fleck pattern on the face — the signature look of Arts & Crafts and Mission-style furniture. The rays run perpendicular to growth rings, producing a silver-dollar shimmer unique to this species.' },
+      { icon: '⚒️', text: 'Working white oak requires sharp tools — its interlocked grain tears easily with dull blades. Despite its hardness, it glues, stains, and finishes exceptionally well, and its consistent grain makes it ideal for bent laminations.' },
+    ],
+  },
+  {
+    rank: 2, name: 'Black Walnut', badge: 'Hardwood',
+    sub: 'Juglans nigra · The most prized cabinet wood in North America',
+    wiki: 'Juglans_nigra',
+    stats: [
+      { label: 'Janka', val: '1,010 lbf' },
+      { label: 'Weight', val: '38 lb/ft³' },
+      { label: 'Color', val: 'Chocolate brown' },
+      { label: 'Use', val: 'Fine furniture & gunstocks' },
+    ],
+    tags: ['Hardwood', 'Ring-porous', 'Straight grain', 'Gunstocks', 'Steaming', 'Premium'],
+    facts: [
+      { icon: '🔫', text: 'Black walnut has been the standard gunstock wood for centuries. Its combination of strength, dimensional stability, shock resistance, and beauty made it the choice for everything from Revolutionary War muskets to modern hunting rifles.' },
+      { icon: '🎨', text: 'The rich chocolate-brown heartwood is unique in North American hardwoods and needs no stain to achieve a stunning finish. The contrast between the pale sapwood and dark heartwood is so dramatic that some craftspeople deliberately include both in their work.' },
+      { icon: '⚠️', text: 'Walnut contains juglone — a natural herbicide in its roots and husks that is toxic to many plants. Fresh walnut sawdust and shavings can cause contact dermatitis in sensitive individuals, and the fine dust is a known respiratory sensitizer.' },
+      { icon: '💰', text: 'High-quality figured walnut — crotch, curly, or quilted — commands $30–60 per board foot at specialty lumber dealers. A single large figured walnut slab can sell for several thousand dollars; its value rivals furniture-grade rosewood at a fraction of the environmental cost.' },
+    ],
+  },
+  {
+    rank: 3, name: 'Hard Maple', badge: 'Hardwood',
+    sub: 'Acer saccharum · The hardest North American commercial hardwood',
+    wiki: 'Acer_saccharum',
+    stats: [
+      { label: 'Janka', val: '1,450 lbf' },
+      { label: 'Weight', val: '44 lb/ft³' },
+      { label: 'Category', val: 'Diffuse-porous' },
+      { label: 'Use', val: 'Flooring & workbenches' },
+    ],
+    tags: ['Hardwood', 'Diffuse-porous', 'Bowling alleys', 'Dance floors', 'Figured maple', 'Sugar maple'],
+    facts: [
+      { icon: '🎳', text: 'Hard maple\'s extreme hardness and wear resistance made it the standard for bowling alley lanes and professional sports flooring for over a century. The NBA mandates hard maple for its courts — every NBA game is played on a floor of this single species.' },
+      { icon: '✨', text: 'Hard maple produces some of the most spectacular figure in any temperate-zone hardwood. Bird\'s eye, curly, quilted, and tiger maple are all growth anomalies of hard maple prized by luthiers and furniture makers for their mesmerizing optical depth.' },
+      { icon: '🔧', text: 'Maple\'s hardness means it dulls tools faster than softer species and requires slower feed rates on power tools. Sharp blades, carbide tooling, and frequent sharpening sessions are non-negotiable when working this species extensively.' },
+      { icon: '🍁', text: 'The same tree that makes the finest woodworking lumber also gives Canada its national symbol and produces maple syrup. A single sugar maple tree can be tapped for 40 years or more, producing 10–20 gallons of sap per season, which boils down to about 1 quart of syrup.' },
+    ],
+  },
+  {
+    rank: 4, name: 'Black Cherry', badge: 'Hardwood',
+    sub: 'Prunus serotina · The wood that ages like fine wine',
+    wiki: 'Prunus_serotina',
+    stats: [
+      { label: 'Janka', val: '950 lbf' },
+      { label: 'Weight', val: '35 lb/ft³' },
+      { label: 'Aging', val: 'Darkens over years' },
+      { label: 'Use', val: 'Fine furniture & cabinets' },
+    ],
+    tags: ['Hardwood', 'Diffuse-porous', 'Photosensitive', 'Fine grain', 'Cabinet wood', 'American classic'],
+    facts: [
+      { icon: '🌅', text: 'Fresh-cut cherry is a pale pinkish-tan, but exposure to UV light transforms it over 6–12 months into the deep, rich red-brown that makes antique cherry furniture so desirable. Finishers often sun-bleach fresh cherry for weeks to accelerate this darkening before applying any finish.' },
+      { icon: '✋', text: 'Cherry is one of the most pleasant hardwoods to hand-tool. Its fine, uniform grain planes smoothly without tearout, takes edge tools cleanly, and produces tight, crisp joinery. Many hand-tool woodworkers cite cherry as their favorite everyday wood.' },
+      { icon: '🎸', text: 'The warm, clear tone and beautiful figure of cherry make it a prized tone wood for acoustic guitars and mandolins. It sits tonally between mahogany and maple, offering warm mids with good sustain and clear highs — often used for backs and sides.' },
+      { icon: '🏛️', text: 'Cherry was the premier American cabinet wood of the 18th century. Philadelphia and New England cabinetmakers favored cherry for its elegant figure, workability, and rich finish. Original Chippendale-era cherry pieces now command six-figure prices at auction.' },
+    ],
+  },
+  {
+    rank: 5, name: 'White Ash', badge: 'Hardwood',
+    sub: 'Fraxinus americana · The shock-resistant wood of tools, sports, and trades',
+    wiki: 'Fraxinus_americana',
+    stats: [
+      { label: 'Janka', val: '1,320 lbf' },
+      { label: 'Weight', val: '41 lb/ft³' },
+      { label: 'Category', val: 'Ring-porous' },
+      { label: 'Use', val: 'Tool handles & bats' },
+    ],
+    tags: ['Hardwood', 'Ring-porous', 'Shock-resistant', 'Bent steam', 'Baseball bats', 'Tool handles'],
+    facts: [
+      { icon: '⚾', text: 'For most of baseball history, ash was the standard bat wood. Babe Ruth, Hank Aaron, and Ted Williams all hit their home runs with white ash bats. Though maple has gained ground since the 1990s, many players still prefer ash for its flex and feel at contact.' },
+      { icon: '💪', text: 'Ash\'s combination of high Janka hardness, strength, and shock resistance makes it the go-to for striking tool handles — axes, hammers, sledgehammers, and oars. The wood flexes slightly under impact and returns to shape, absorbing vibration better than most hardwoods.' },
+      { icon: '🪑', text: 'White ash bends beautifully with steam, making it a classic choice for Windsor chair backs, bent boat ribs, and curved cabinet doors. Sam Maloof, considered America\'s greatest furniture maker, used ash extensively in his rocker designs.' },
+      { icon: '⚠️', text: 'The emerald ash borer, an invasive beetle from Asia first detected in Michigan in 2002, has killed billions of ash trees across North America. The beetle has devastated ash populations so severely that several states now restrict moving ash wood to slow its spread.' },
+    ],
+  },
+  {
+    rank: 6, name: 'Eastern White Pine', badge: 'Softwood',
+    sub: 'Pinus strobus · The wood that built colonial America',
+    wiki: 'Pinus_strobus',
+    stats: [
+      { label: 'Janka', val: '380 lbf' },
+      { label: 'Weight', val: '25 lb/ft³' },
+      { label: 'Category', val: 'Softwood' },
+      { label: 'Use', val: 'Furniture & millwork' },
+    ],
+    tags: ['Softwood', 'Conifer', 'Colonial furniture', 'Knotty pine', 'Easy to work', 'American history'],
+    facts: [
+      { icon: '🏛️', text: 'Eastern white pine built the American colonies. The British Crown marked the tallest, straightest trees with a broad arrow — reserving them for Royal Navy masts. American colonists\' fury at these restrictions, which deprived them of valuable lumber, contributed to revolutionary sentiment.' },
+      { icon: '🪚', text: 'Old-growth white pine from colonial-era houses is among the most prized reclaimed lumber available. Boards 18–24 inches wide were once common; today, due to centuries of logging, a 12-inch-wide clear pine board is considered exceptional. The difference in quality is remarkable.' },
+      { icon: '🎨', text: 'Pine\'s softness is a feature for paint finishes — it takes paint and milk paint beautifully, with knots adding rustic character. Knotty pine paneling and pine kitchen furniture have had periodic revivals from the 1950s cabin era through modern farmhouse style.' },
+      { icon: '🔨', text: 'Its low Janka rating means white pine can dent and scratch easily in high-traffic applications, but it also means it\'s one of the most rewarding hand-tool woods. A sharp hand plane glides through pine effortlessly, making it ideal for beginners learning to use hand tools.' },
+    ],
+  },
+];
+
+const JOINERY = [
+  {
+    rank: 1, name: 'Dovetail Joint', badge: 'Joinery',
+    sub: 'The signature joint of fine case work — interlocking tails and pins cut at 8–14° angles',
+    wiki: 'Dovetail_joint',
+    stats: [
+      { label: 'Strength', val: 'Excellent' },
+      { label: 'Difficulty', val: 'Advanced' },
+      { label: 'Application', val: 'Drawers & boxes' },
+      { label: 'Angle', val: '1:8 to 1:6' },
+    ],
+    tags: ['Case work', 'Drawers', 'Boxes', 'Hand-cut', 'Interlocking', 'Pull-resistant'],
+    facts: [
+      { icon: '📜', text: 'Dovetail joints have been found in Egyptian furniture and Chinese coffins from over 4,000 years ago. The joint\'s trapezoidal shape — named for the dove\'s tail it resembles — creates mechanical resistance to being pulled apart that no amount of glue alone can match.' },
+      { icon: '🔬', text: 'The ratio of the dovetail angle matters: hardwoods typically use 1:8 (about 7°) while softwoods use 1:6 (about 9.5°). Too shallow an angle and the joint can slip; too steep and short-grain failures weaken the pins. Finding the right ratio is fundamental woodworking knowledge.' },
+      { icon: '✋', text: 'Hand-cut dovetails are considered the hallmark skill of a fine hand-tool woodworker. A tight, gap-free half-blind dovetail at the front of a drawer demonstrates mastery of sawing, paring with a chisel, and fitting — all in a single joint visible only when the drawer is pulled out.' },
+      { icon: '🤖', text: 'Router jigs can cut dovetails quickly and consistently, but the resulting uniform spacing and appearance is immediately distinguishable from hand-cut work to an experienced eye. Many craftspeople consider hand-cut dovetails an act of respect for the tradition of the craft.' },
+    ],
+  },
+  {
+    rank: 2, name: 'Mortise & Tenon', badge: 'Joinery',
+    sub: 'The ancient universal joint — a projecting tenon fits precisely into a mortise cavity',
+    wiki: 'Mortise_and_tenon',
+    stats: [
+      { label: 'Strength', val: 'Excellent' },
+      { label: 'Age', val: '7,000+ years' },
+      { label: 'Application', val: 'Chairs & frames' },
+      { label: 'Glue area', val: 'Very large' },
+    ],
+    tags: ['Chairs', 'Frames', 'Tables', 'Timber framing', 'Ancient', 'Foundation joint'],
+    facts: [
+      { icon: '🏺', text: 'Mortise and tenon joints have been found in furniture from 3000 BCE and in ancient boat construction from even earlier. Every timber-framed building, every Arts & Crafts table leg, every Windsor chair relies on some variation of this enduring joint.' },
+      { icon: '📐', text: 'The standard rule is that tenon thickness should be one-third the thickness of the mortised piece. The tenon should fit snugly — tight enough to require a mallet but loose enough to prevent hydraulic lock when glue is applied. Achieving this fit by hand is a fundamental skill.' },
+      { icon: '🏠', text: 'Wedged mortise-and-tenon joints — where the tenon is split and a wooden wedge driven in — can assemble without any glue and be disassembled centuries later. This technique was standard in timber framing for barns and buildings, some of which stand after 500 years.' },
+      { icon: '🪑', text: 'Chair making demands the most complex mortise-and-tenon work, because chair legs meet rails at compound angles that are not square in any plane. Accurately laying out and cutting these compound-angle joints is the defining challenge of chairmaking.' },
+    ],
+  },
+  {
+    rank: 3, name: 'Box Joint', badge: 'Joinery',
+    sub: 'Finger joint with square interlocking pins — strong, fast, and visually distinctive',
+    wiki: 'Box_joint',
+    stats: [
+      { label: 'Strength', val: 'Very good' },
+      { label: 'Difficulty', val: 'Beginner–Med.' },
+      { label: 'Application', val: 'Boxes & drawers' },
+      { label: 'Glue area', val: 'Very large' },
+    ],
+    tags: ['Box making', 'Drawers', 'Router jig', 'Table saw', 'Decorative', 'Mechanical'],
+    facts: [
+      { icon: '📦', text: 'Box joints are cut with equal-width square fingers that interlock at corners. The large gluing surface area created by the interlocking fingers makes a box joint stronger in shear than a simple miter or butt joint — even before considering the mechanical interlocking.' },
+      { icon: '🔧', text: 'A box joint jig for the table saw is one of the first shopmade jigs most woodworkers build. Once the jig is set, a box joint can be cut consistently and quickly — making box joints faster to produce than dovetails while delivering comparable strength.' },
+      { icon: '🎨', text: 'Contrasting wood species in box joints — walnut and maple, cherry and ash — create striking visual patterns. The joint itself becomes a decorative feature, and some craftspeople design boxes specifically to display the interplay of alternating light and dark wood at the corners.' },
+      { icon: '📏', text: 'The spacing between fingers must be exactly consistent for the joint to fit. The traditional box joint jig uses a key pin to index each cut — the cut piece is moved by one finger width for each pass through the saw, guaranteeing uniformity across dozens of cuts.' },
+    ],
+  },
+  {
+    rank: 4, name: 'Dado Joint', badge: 'Joinery',
+    sub: 'A groove cut across the grain to accept a shelf or panel — the backbone of casework',
+    wiki: 'Dado_(joinery)',
+    stats: [
+      { label: 'Strength', val: 'Good' },
+      { label: 'Difficulty', val: 'Beginner' },
+      { label: 'Application', val: 'Shelves & cabinets' },
+      { label: 'Tool', val: 'Dado stack or router' },
+    ],
+    tags: ['Shelving', 'Casework', 'Dado stack', 'Router', 'Bookshelves', 'Cabinet making'],
+    facts: [
+      { icon: '📚', text: 'A dado is simply a flat-bottomed channel cut across the grain of a board. When cut precisely to the thickness of the mating board, a dado joint supports a shelf or panel on three sides — the two walls and the floor of the groove — distributing load far better than screws alone.' },
+      { icon: '🔨', text: 'A dado stack — multiple saw blades and chippers ganged together on a table saw arbor — is the production tool of choice for cutting dado joints quickly and consistently. Adjusting the set of chippers and shims lets craftspeople dial in the exact width needed.' },
+      { icon: '🪵', text: 'The stopped dado — where the groove does not run the full width of the board — hides the joint from the front face of a cabinet. A small notch is cut in the front corner of the mating piece so it can slide into the blind end of the groove.' },
+      { icon: '🏠', text: 'In American construction the term "dado" confusingly refers to a router bit that cuts the groove; in British English a dado is the lower portion of a wall. The woodworking joint is called a "housing joint" in British woodworking tradition.' },
+    ],
+  },
+  {
+    rank: 5, name: 'Lap Joint', badge: 'Joinery',
+    sub: 'Half the material removed from each piece so they overlap flush — simple but surprisingly strong',
+    wiki: 'Lap_joint',
+    stats: [
+      { label: 'Strength', val: 'Moderate–good' },
+      { label: 'Difficulty', val: 'Beginner' },
+      { label: 'Application', val: 'Frames & grids' },
+      { label: 'Glue area', val: 'Large flat faces' },
+    ],
+    tags: ['Frames', 'Grids', 'Half-lap', 'Cross-lap', 'Face frame', 'Rabbet'],
+    facts: [
+      { icon: '🖼️', text: 'The half-lap joint removes exactly half the thickness from each mating piece so the joint sits flush. Its large flat gluing surface makes it surprisingly strong despite its simplicity, and it is easier to clamp properly than most other joints because both surfaces are flat.' },
+      { icon: '⊞', text: 'A cross-lap joint — where two pieces of equal thickness intersect at right angles in the middle of a board — allows a grid structure without fasteners. This technique is used in everything from traditional Japanese shoji screens to modern furniture frameworks.' },
+      { icon: '⚡', text: 'Half-laps are among the fastest joints to cut. A table saw with a dado stack can produce a half-lap in a single pass; alternatively, the cheeks can be cut with a hand saw and the waste removed with a router plane or shoulder plane in just a few minutes.' },
+      { icon: '🏛️', text: 'Traditional timber framing uses the scarf joint — a lap joint cut on a long diagonal — to join two timbers end-to-end into a structural beam. A well-cut tabled scarf joint can handle both tension and compression loads, allowing beam lengths impossible from a single tree.' },
+    ],
+  },
+  {
+    rank: 6, name: 'Bridle Joint', badge: 'Joinery',
+    sub: 'An open mortise and tenon at the end of a piece — strong, visible, and elegant in frames',
+    wiki: 'Bridle_joint',
+    stats: [
+      { label: 'Strength', val: 'Very good' },
+      { label: 'Difficulty', val: 'Intermediate' },
+      { label: 'Application', val: 'Frames & gates' },
+      { label: 'Visibility', val: 'Feature joint' },
+    ],
+    tags: ['Frames', 'Gates', 'Open mortise', 'Racking resistance', 'Timber framing', 'Hand-cut'],
+    facts: [
+      { icon: '🏗️', text: 'The bridle joint\'s open mortise wraps around the tenon on three sides, giving it excellent resistance to racking — the tendency of a frame to parallelogram under lateral loads. This makes it superior to a regular mortise-and-tenon for frame construction where a corner sees shear forces.' },
+      { icon: '🔍', text: 'Unlike a standard mortise and tenon where the joint is hidden, the bridle joint is fully visible from the side. This makes it a "feature joint" — craftspeople who use it are making a deliberate aesthetic choice to display the joinery as part of the design.' },
+      { icon: '⚙️', text: 'Cutting a bridle joint by hand requires accurate sawing on the tenon cheeks and walls of the open mortise, then careful chisel work to pare the bottom of the slot flat. The open design makes it easy to check for fit without the joint fully assembled — a welcome advantage.' },
+      { icon: '🌲', text: 'Traditional wooden gate frames in Britain are typically joined with bridle joints — the joint\'s racking resistance is critical in a gate that swings on one side and is latched on the other, creating decades of repeated lateral stress on every corner joint.' },
+    ],
+  },
+];
+
+const HANDTOOLS = [
+  {
+    rank: 1, name: 'Bench Plane (No. 4)', badge: 'Hand Tool',
+    sub: 'Stanley / Lie-Nielsen · The single most versatile hand tool in the shop',
+    wiki: 'Hand_plane',
+    stats: [
+      { label: 'Sole', val: '9.75 in' },
+      { label: 'Blade', val: '2 in' },
+      { label: 'Purpose', val: 'Smoothing & truing' },
+      { label: 'Type', val: 'Bailey pattern' },
+    ],
+    tags: ['Smoothing', 'Truing', 'Face work', 'Bailey pattern', 'Stanley', 'Lie-Nielsen'],
+    facts: [
+      { icon: '✨', text: 'A well-tuned No. 4 bench plane can produce a surface smoother than any sandpaper — the fine, translucent shaving produced by a razor-sharp blade set for a whisper-thin cut creates a surface so reflective it needs no further preparation before finishing.' },
+      { icon: '📜', text: 'Leonard Bailey patented his adjustable metal bench plane in 1867, and Stanley bought the patent. The "Bailey pattern" design — with a frog, cap iron, and brass adjusting nut — became the global standard. Hundreds of millions of Bailey-pattern planes have been manufactured since.' },
+      { icon: '🔧', text: 'Setting up a bench plane correctly is a fundamental skill: the back of the blade must be perfectly flat, the cutting edge must be square and razor-sharp, the cap iron must be set close to the edge, and the mouth must be adjusted to prevent tearout. Each step matters.' },
+      { icon: '💰', text: 'Premium planes from Lie-Nielsen or Veritas cost $250–450 but arrive ready to use. Vintage Stanley planes from the 1920s–1960s can be restored to equal quality for $30–80 and are often more available — learning to restore and tune vintage planes is itself an important skill.' },
+    ],
+  },
+  {
+    rank: 2, name: 'Bench Chisel', badge: 'Hand Tool',
+    sub: 'The fundamental cutting tool — paring, mortising, and trimming joinery to a perfect fit',
+    wiki: 'Chisel',
+    stats: [
+      { label: 'Bevel', val: '25–30°' },
+      { label: 'Sizes', val: '¼ in to 1½ in' },
+      { label: 'Steel', val: 'A2 / O1 / PMV-11' },
+      { label: 'Use', val: 'Joinery & paring' },
+    ],
+    tags: ['Paring', 'Mortising', 'Dovetails', 'Sharpening', 'A2 steel', 'O1 steel'],
+    facts: [
+      { icon: '🗡️', text: 'A sharp chisel sharpened to 25° will shave arm hair and pare end grain cleanly across the full width of the bevel. An edge maintained at this level can trim a dovetail joint to a perfect fit with one or two confident paring strokes — the difference from a dull chisel is dramatic.' },
+      { icon: '🏋️', text: 'Mortising chisels have thick, rectangular cross-sections designed to lever out waste against the sides of a mortise. The thick blade withstands the sideways force of prying without flexing. Using a bench chisel for mortising is a common mistake that ruins both the joint and the tool.' },
+      { icon: '⚗️', text: 'A2 and O1 are the two dominant chisel steels for premium hand tools. O1 is easier to sharpen and reaches a finer initial edge; A2 holds its edge somewhat longer. PMV-11, a modern powdered metallurgy steel from Veritas, combines both advantages but costs more.' },
+      { icon: '⏰', text: 'Sharpening chisels flat-backed on waterstones or diamond plates before their first use — "back preparation" — is the first task in any new chisel\'s life. Skipping this step guarantees that even an expensive chisel will perform poorly until it is done properly.' },
+    ],
+  },
+  {
+    rank: 3, name: 'Card Scraper', badge: 'Hand Tool',
+    sub: 'A thin rectangle of hardened steel that removes tearout where sandpaper and planes fail',
+    wiki: 'Card_scraper',
+    stats: [
+      { label: 'Thickness', val: '0.025 in' },
+      { label: 'Steel', val: 'Hardened spring steel' },
+      { label: 'Edge', val: 'Burnished hook' },
+      { label: 'Use', val: 'Fine surface prep' },
+    ],
+    tags: ['Surface prep', 'Tearout', 'Figured wood', 'Burnisher', 'No sandpaper', 'Cabinet scraper'],
+    facts: [
+      { icon: '🔬', text: 'The cutting action of a card scraper is microscopic: a burnisher turns the steel\'s edge over to create a tiny hook of about 3–5°. This hook removes extremely fine translucent shavings from wood — far thinner than sandpaper abrasives — without the swirl marks that orbital sanders leave.' },
+      { icon: '🌳', text: 'Card scrapers are the tool of choice for highly figured wood — curly maple, quilted walnut, bird\'s-eye — where a hand plane creates tearout in any direction of travel. The scraper cuts cleanly regardless of grain direction, making it indispensable for the most valuable boards.' },
+      { icon: '💡', text: 'Properly tuned and sharpened, a card scraper produces thin, curling shavings just like a plane. If it produces dust instead of shavings, the edge needs re-burnishing. The distinction between shavings and dust is the key diagnostic for scraper performance.' },
+      { icon: '🏆', text: 'James Krenov — the influential furniture maker who founded the College of the Redwoods program — considered the card scraper the most important surface-preparation tool in his shop. His students learned to use scrapers before touching sandpaper, and many never needed sandpaper for flat surfaces.' },
+    ],
+  },
+  {
+    rank: 4, name: 'Marking Gauge', badge: 'Hand Tool',
+    sub: 'Scribes a precise line parallel to an edge — the foundation of accurate layout',
+    wiki: 'Marking_gauge',
+    stats: [
+      { label: 'Types', val: 'Pin / wheel / mortise' },
+      { label: 'Accuracy', val: '±0.005 in' },
+      { label: 'Use', val: 'Joinery layout' },
+      { label: 'Material', val: 'Rosewood & brass' },
+    ],
+    tags: ['Layout', 'Joinery', 'Scribing', 'Marking knife', 'Fence', 'Accuracy'],
+    facts: [
+      { icon: '📐', text: 'A marking gauge scribes a line by running a pin, knife, or wheel against the wood while a fence rides the reference surface. The scribed line — pressed slightly into the wood\'s surface — creates a groove that a chisel or plane blade can register against, making the cut inherently self-registering.' },
+      { icon: '🔪', text: 'Wheel gauges with a small circular cutter are generally preferred over pin gauges for marking across grain. The wheel slices rather than tears, leaving a cleaner, crisper line especially on figured wood. For long-grain work, both types perform similarly.' },
+      { icon: '📏', text: 'The mortise gauge carries two pins — or two wheels — that can be set to mark both walls of a mortise simultaneously. This ensures the mortise and tenon are always centered on the same reference face, which is critical for joints that must align across a frame.' },
+      { icon: '🎓', text: 'Learning to set a marking gauge to a precise dimension without a ruler — by transferring directly from the mating piece — is a fundamental hand-tool skill that eliminates measurement error. "Measure twice, cut once" becomes "mark directly from the piece" in advanced hand-tool work.' },
+    ],
+  },
+  {
+    rank: 5, name: 'Hand Saw', badge: 'Hand Tool',
+    sub: 'The original cutting tool — rip saws work with the grain, crosscut saws against it',
+    wiki: 'Handsaw',
+    stats: [
+      { label: 'Rip TPI', val: '5–7 TPI' },
+      { label: 'X-cut TPI', val: '10–12 TPI' },
+      { label: 'Fleam', val: '0° rip / 20° cross' },
+      { label: 'Types', val: 'Panel / dovetail / tenon' },
+    ],
+    tags: ['Rip cut', 'Cross cut', 'TPI', 'Fleam angle', 'Panel saw', 'Back saw'],
+    facts: [
+      { icon: '✂️', text: 'Rip saws and crosscut saws cut on different principles: rip-saw teeth are filed straight across like tiny chisels and cut along the grain, while crosscut teeth are filed at an angle (fleam) to sever wood fibers at an angle across the grain. Using the wrong type dramatically increases cutting effort.' },
+      { icon: '🎯', text: 'Back saws — dovetail, tenon, and gent\'s saws — have a stiff brass or steel spine along the back of the blade that prevents the thin, finely-set blade from bending during precise cuts. The spine limits how deep a cut can be made, restricting back saws to joinery work.' },
+      { icon: '🇯🇵', text: 'Japanese saws (nokogiri) cut on the pull stroke rather than the push stroke, allowing thinner, harder blades. The pull stroke keeps the blade in tension rather than compression, preventing buckling. Many Western woodworkers now prefer Japanese saws for their effortless cutting action.' },
+      { icon: '⚙️', text: 'Saw set — the amount the teeth are bent alternately to each side — determines kerf width and binding resistance. Too much set produces a wide, rough kerf; too little causes the saw to bind. Properly set saw teeth leave a kerf just slightly wider than the blade body.' },
+    ],
+  },
+  {
+    rank: 6, name: 'Router Plane', badge: 'Hand Tool',
+    sub: 'A hand plane that flattens the bottom of grooves, dadoes, and mortises to a precise depth',
+    wiki: 'Router_plane',
+    stats: [
+      { label: 'Depth', val: 'Adjustable ±0.001 in' },
+      { label: 'Sizes', val: '¼ in to 1 in cutters' },
+      { label: 'Use', val: 'Dadoes & mortises' },
+      { label: 'Classic', val: 'Stanley No. 71' },
+    ],
+    tags: ['Dadoes', 'Mortises', 'Tenon cheeks', 'Inlay work', 'Stanley No. 71', 'Depth setting'],
+    facts: [
+      { icon: '✋', text: 'The router plane was the standard tool for flattening groove and mortise bottoms to an exact, consistent depth before power routers existed. Unlike a power router, it works in complete silence, leaves a glass-smooth surface, and requires no setup time beyond adjusting the depth.' },
+      { icon: '🔑', text: 'Key uses include cleaning out the walls of hand-cut mortises, establishing a precise reference depth in dadoes for shelving, and leveling the bottoms of inlay recesses. In each case, the router plane works to a registered depth set by the adjustment screw.' },
+      { icon: '🔄', text: 'The Stanley No. 71 router plane, produced from 1884 to the 1980s, is the most collected router plane. Original examples in good condition are sought after because they accept a wide variety of cutters. Modern versions from Lie-Nielsen and Veritas have improved the design without changing the concept.' },
+      { icon: '🪵', text: 'Tenon shoulder work benefits enormously from a router plane: once the shoulders are sawn and the cheeks are roughed in with a saw, a router plane can pare the cheeks to a precise, flat reference plane that ensures the tenon fits perfectly without rocking.' },
+    ],
+  },
+];
+
+const POWERTOOLS = [
+  {
+    rank: 1, name: 'Table Saw', badge: 'Power Tool',
+    sub: 'The central machine of the modern woodworking shop — rips, crosscuts, and dados',
+    wiki: 'Table_saw',
+    stats: [
+      { label: 'Blade', val: '10 in, 40–80T' },
+      { label: 'Motor', val: '1.5–5 HP' },
+      { label: 'Fence', val: 'Biesemeyer style' },
+      { label: 'Types', val: 'Contractor / Cabinet / Hybrid' },
+    ],
+    tags: ['Rip cuts', 'Bevel cuts', 'Dado stack', 'Fence', 'Sled', 'Cabinet saw'],
+    facts: [
+      { icon: '⚡', text: 'The table saw is involved in more serious shop injuries than any other woodworking machine. Kickback — where the blade catches a piece and hurls it back at the operator at up to 120 mph — is the primary danger. SawStop\'s flesh-detection brake technology stops the blade in under 5 milliseconds on contact with skin.' },
+      { icon: '📐', text: 'A well-calibrated table saw with a quality fence is capable of ripping boards to ±0.001-inch consistency. This precision is impossible by hand and is the reason the table saw remains central to production woodworking even as CNC machines handle more tasks.' },
+      { icon: '🔧', text: 'The crosscut sled — a shopmade fixture that rides in the saw\'s miter slots — is considered one of the most important improvements to table-saw safety and accuracy. A precisely built sled holds the workpiece square to the blade and eliminates miter gauge wobble during crosscutting.' },
+      { icon: '💡', text: 'Cabinet saws — heavy, direct-drive machines with enclosed bases — are the professional standard for furniture shops. Their mass absorbs vibration, producing smoother cuts; their arbor runs true over decades of use; and their powerful motors handle hardwood without bogging down.' },
+    ],
+  },
+  {
+    rank: 2, name: 'Band Saw', badge: 'Power Tool',
+    sub: 'A continuous loop blade for curves, resawing thick stock, and cutting irregular shapes',
+    wiki: 'Band_saw',
+    stats: [
+      { label: 'Blade', val: '¼ in to 1 in wide' },
+      { label: 'Resaw cap.', val: '6–12 in typical' },
+      { label: 'Motor', val: '1–3 HP' },
+      { label: 'Use', val: 'Curves & resawing' },
+    ],
+    tags: ['Curves', 'Resawing', 'Veneer', 'Bookmatching', 'Blade drift', 'Fence'],
+    facts: [
+      { icon: '🌳', text: 'Resawing — ripping thick boards into thinner ones on the band saw — is the technique that turns a $40 slab of walnut into book-matched panels for a cabinet door. The two pieces cut from either side of a single board mirror each other perfectly, a visual effect impossible to achieve any other way.' },
+      { icon: '🔄', text: 'Band saw blades bend continuously through two wheels, creating fatigue stress in the metal. Blades must be tensioned correctly — not too tight or they break, not too loose or they flex during cuts. The "flutter test" and dial-indicator tension guides help set the correct tension.' },
+      { icon: '🎨', text: 'Curved work that would be impossible on a table saw is straightforward on the band saw. Chair legs with tapered profiles, cabriole legs with compound curves, sculptural forms for contemporary furniture — all of these require the band saw\'s ability to guide a piece freely in two dimensions.' },
+      { icon: '⚗️', text: 'Blade drift — the tendency of a band saw blade to cut at an angle to the fence — is caused by set inconsistency or blade tension issues. Compensating by angling the fence to match the blade\'s natural drift direction is a standard technique, though properly tensioned blades with consistent set minimize drift.' },
+    ],
+  },
+  {
+    rank: 3, name: 'Router', badge: 'Power Tool',
+    sub: 'A high-speed spinning bit for edge profiles, dadoes, mortises, and template routing',
+    wiki: 'Router_(woodworking)',
+    stats: [
+      { label: 'Speed', val: '8,000–24,000 RPM' },
+      { label: 'Motor', val: '1.25–3.25 HP' },
+      { label: 'Bits', val: '¼ in or ½ in shank' },
+      { label: 'Types', val: 'Fixed base / Plunge' },
+    ],
+    tags: ['Edge profiles', 'Dadoes', 'Mortises', 'Template routing', 'Dovetail jig', 'Router table'],
+    facts: [
+      { icon: '💨', text: 'Router bits spin between 8,000 and 24,000 RPM — far faster than any other woodworking tool. At these speeds, the geometry of the cut matters enormously: proper feed direction (climb cut vs. standard cut), depth of pass, and bit sharpness all affect surface quality dramatically.' },
+      { icon: '📐', text: 'A plunge router with a mortising bit and guide fence can cut a precise mortise in seconds — work that would take minutes by hand with chisel and mallet. This speed advantage made the router the most transformative power tool in woodworking after the table saw.' },
+      { icon: '🔄', text: 'The router table — mounting a router upside down beneath a table with the bit projecting through — inverts the cutting action and allows fence-guided profiling and joinery. Router table work is generally safer for smaller pieces because the bit is fixed and the workpiece moves.' },
+      { icon: '⚠️', text: 'Climb cutting — feeding the router so the bit\'s rotation pulls the router in the direction of feed — can produce a cleaner cut on certain operations but is dangerous if not controlled: the router can self-feed rapidly if the operator loses grip. Only experienced operators should attempt it on narrow stock.' },
+    ],
+  },
+  {
+    rank: 4, name: 'Wood Lathe', badge: 'Power Tool',
+    sub: 'Rotates wood against a fixed cutting tool to produce symmetrical rounded forms',
+    wiki: 'Lathe',
+    stats: [
+      { label: 'Swing', val: '10–20 in' },
+      { label: 'Speed', val: '500–4,000 RPM' },
+      { label: 'Tools', val: 'Gouges, skews, scrapers' },
+      { label: 'Use', val: 'Bowls & spindles' },
+    ],
+    tags: ['Bowls', 'Spindles', 'Chair legs', 'Turning', 'Roughing gouge', 'Skew chisel'],
+    facts: [
+      { icon: '🏺', text: 'The lathe is one of humanity\'s oldest machine tools — Egyptian tomb paintings show bow-driven lathes from around 1300 BCE. The fundamental principle — rotating a workpiece against a stationary cutting edge — has not changed in over 3,000 years of continuous use.' },
+      { icon: '🌀', text: 'Bowl turning requires the wood to be mounted so the face grain is perpendicular to the lathe axis — this is called "faceplate turning." The grain orientation means the tool alternates between cutting with the grain and across it as the piece rotates, requiring constant tool adjustment.' },
+      { icon: '⚠️', text: 'Green wood — freshly cut, unseasoned wood — is the preferred medium for bowl turners because it cuts easily and moves with a fluidity that dry wood lacks. The catch: green bowls warp as they dry, which turners use creatively. Some turn to final thickness green, others rough-turn and allow to dry before finish-turning.' },
+      { icon: '🪵', text: 'Natural-edge bowls — turned from sections of log with the bark still on, leaving the rim of the bowl as live wood edge — became a signature of the American craft movement in the 1960s. Sam Maloof, David Ellsworth, and Mark Lindquist pioneered the aesthetic that made wood turning a fine art.' },
+    ],
+  },
+  {
+    rank: 5, name: 'Drill Press', badge: 'Power Tool',
+    sub: 'A vertically mounted drill for precise, repeatable holes at exact depths and angles',
+    wiki: 'Drill_press',
+    stats: [
+      { label: 'Spindle', val: 'JT33 or JT6 taper' },
+      { label: 'Speed', val: '250–3,000 RPM' },
+      { label: 'Motor', val: '½–¾ HP' },
+      { label: 'Accuracy', val: '±0.005 in' },
+    ],
+    tags: ['Boring', 'Mortising', 'Consistent depth', 'Table tilt', 'Forstner bits', 'Depth stop'],
+    facts: [
+      { icon: '🎯', text: 'The drill press\'s rigid quill assembly keeps the bit perpendicular to the table regardless of hand pressure — something a handheld drill cannot guarantee. For operations requiring precisely located, perfectly vertical holes, the drill press is indispensable.' },
+      { icon: '🌀', text: 'Forstner bits — used almost exclusively in drill presses — produce flat-bottomed holes with clean walls and can bore overlapping holes or holes at the edge of a board without wandering. They are the standard tool for hinge cup holes, shelf-pin holes, and blind mortises.' },
+      { icon: '🏗️', text: 'A mortising attachment — a hollow chisel that surrounds a drill bit — converts a drill press into a dedicated mortising machine. The drill bit removes most of the waste while the chisel squares the corners in one plunge. A quality hollow-chisel mortiser dramatically accelerates mortise-and-tenon work.' },
+      { icon: '⚙️', text: 'Drill-press speed selection matters far more than most beginners realize. Forstner bits require slow speeds (250–500 RPM) for clean cuts in hardwood; twist bits work at medium speeds (500–1,500 RPM). Running a large Forstner bit at high speed scorches the wood and destroys the bit.' },
+    ],
+  },
+  {
+    rank: 6, name: 'Random Orbital Sander', badge: 'Power Tool',
+    sub: 'Combines rotation and orbital motion to sand without leaving directional swirl marks',
+    wiki: 'Random_orbital_sander',
+    stats: [
+      { label: 'Orbit', val: '3/32 in or 5/32 in' },
+      { label: 'Speed', val: '5,000–12,000 OPM' },
+      { label: 'Disc', val: '5 in or 6 in' },
+      { label: 'Hook', val: 'Hook-and-loop' },
+    ],
+    tags: ['Surface prep', 'Swirl-free', 'Dust collection', 'Hook-and-loop', 'Grits 80–320', 'Finish sanding'],
+    facts: [
+      { icon: '🔵', text: 'The random orbital sander moves the disc in two simultaneous motions: a rotation about the disc\'s center and a small eccentric orbit that constantly changes the cut angle. This combination prevents any single abrasive grain from tracing the same path twice, eliminating the swirl marks that plague standard orbital sanders.' },
+      { icon: '💨', text: 'Dust collection in random orbital sanders is not optional for serious work. Fine sanding dust — particles under 10 microns — penetrates deep into lung tissue and is a known carcinogen. A sander connected to a shop vacuum or dust extractor with a HEPA filter captures 95%+ of this dust before it reaches the operator.' },
+      { icon: '📊', text: 'The grit sequence for sanding hardwood typically runs 80 → 120 → 150 → 180 → 220, removing the scratch pattern of each preceding grit before moving finer. Skipping grits saves little time but dramatically increases the effort needed at finer grits to remove the coarser scratches.' },
+      { icon: '✋', text: 'The random orbital sander is probably the most misused tool in woodworking. Common mistakes include pressing too hard (which slows the orbit and creates swirls), spending insufficient time at each grit, and stopping the sander while it is still in contact with the wood (leaving a visible ring).' },
+    ],
+  },
+];
+
+const FINISHING = [
+  {
+    rank: 1, name: 'Danish Oil', badge: 'Finishing',
+    sub: 'A penetrating oil-varnish blend that soaks into wood — easy to apply, forgiving, replenishable',
+    wiki: 'Danish_oil',
+    stats: [
+      { label: 'Type', val: 'Penetrating oil' },
+      { label: 'Coats', val: '3–5' },
+      { label: 'Dry time', val: '4–8 hrs between' },
+      { label: 'Sheen', val: 'Satin / low-lustre' },
+    ],
+    tags: ['Penetrating', 'Oil-varnish', 'Easy apply', 'Wipe-on', 'Replenishable', 'Beginner-friendly'],
+    facts: [
+      { icon: '🌿', text: 'Danish oil is not a single formulation — manufacturers use different blends of linseed or tung oil, mineral spirits, and varnish resins. This means the drying time, sheen level, and durability vary widely between brands despite using the same name. Waterlox, Minwax Tung Oil Finish, and Daly\'s all market similar products differently.' },
+      { icon: '🔥', text: 'Rags and applicators soaked with Danish oil or any drying oil can spontaneously combust as the oil oxidizes and generates heat. Piles of oil-soaked rags have caused serious shop fires. The safe disposal protocol is to spread rags flat outdoors to dry fully before disposal, or submerge them in water in a sealed metal container.' },
+      { icon: '✋', text: 'Danish oil\'s application method is its greatest advantage: wipe on with a rag, let soak for 15 minutes, wipe off the excess, and repeat. There is no brush, no runs, no drips. Multiple coats build a protective film within the wood surface that cannot chip or peel because there is no surface film to fail.' },
+      { icon: '🔄', text: 'Unlike film finishes, Danish oil can be refreshed on existing furniture by simply cleaning the surface and wiping on a new coat. Worn dining table surfaces, scratched cutting boards, and weathered outdoor furniture all respond well to a fresh application — something impossible with lacquer or polyurethane.' },
+    ],
+  },
+  {
+    rank: 2, name: 'Shellac', badge: 'Finishing',
+    sub: 'A natural resin secreted by lac beetles — food-safe, fast-drying, and universally compatible',
+    wiki: 'Shellac',
+    stats: [
+      { label: 'Type', val: 'Evaporative' },
+      { label: 'Source', val: 'Lac insect' },
+      { label: 'Solvent', val: 'Denatured alcohol' },
+      { label: 'Sheen', val: 'Gloss / matte dewaxed' },
+    ],
+    tags: ['Natural resin', 'Food-safe', 'Fast dry', 'Universal sealer', 'Blonde / orange', 'Dewaxed'],
+    facts: [
+      { icon: '🐛', text: 'Shellac is secreted by the lac insect (Kerria lacca) onto trees in India and Thailand. The insects secrete the resin as a protective coating; harvesters scrape it off branches and process it into flakes. It takes approximately 100,000 insects to produce 1 kg of raw shellac.' },
+      { icon: '🥄', text: 'Dewaxed shellac — shellac processed to remove its natural wax content — is the only finish compatible with everything. It can go over oil or wax finishes and can have any other finish applied over it. In finishing systems, dewaxed shellac is the universal interface layer between incompatible materials.' },
+      { icon: '⚡', text: 'Shellac dries by solvent evaporation — the alcohol evaporates and the shellac cures within minutes rather than hours. A French polished surface — built up from dozens of thin shellac coats applied with a rubber pad — can be walked on within an hour of the final coat. No other finish matches this speed.' },
+      { icon: '🍽️', text: 'The FDA lists shellac as GRAS (Generally Recognized As Safe) for food contact — it is used to coat candy, fruits, and pills. This makes shellac the finish of choice for children\'s toys, wooden spoons, salad bowls, and any wooden object that will contact food.' },
+    ],
+  },
+  {
+    rank: 3, name: 'Oil-Based Polyurethane', badge: 'Finishing',
+    sub: 'The most durable consumer finish — tough, water-resistant, and long-lasting',
+    wiki: 'Polyurethane',
+    stats: [
+      { label: 'Type', val: 'Reactive varnish' },
+      { label: 'Coats', val: '3' },
+      { label: 'Dry time', val: '24 hrs between' },
+      { label: 'Durability', val: 'Excellent' },
+    ],
+    tags: ['Durable', 'Water-resistant', 'Film finish', 'Brush application', 'Floors & tables', 'Amber tint'],
+    facts: [
+      { icon: '🛡️', text: 'Oil-based polyurethane is the most durable finish available to the non-professional finisher. Its crosslinked polymer structure resists scratching, water, heat (to about 120°F), and most household chemicals. It is the standard finish for hardwood floors that see decades of foot traffic.' },
+      { icon: '🎨', text: 'Oil-based polyurethane imparts a warm amber tone to wood — perceptible even in satin formulations. This warmth is beloved on walnut and cherry, where it enriches the natural color. On maple or ash, the same amber tint can make the wood appear yellowed; water-based poly is the neutral-toned alternative.' },
+      { icon: '⏰', text: 'The slow drying time of oil-based poly — 24 hours between coats versus 2 hours for water-based — is its primary drawback. A three-coat finish takes three days minimum. The flip side is that the extended open time allows brush marks to level out, reducing the skill required for a smooth application.' },
+      { icon: '⚠️', text: 'Over time, polyurethane develops "alligatoring" — a network of cracks in the finish as the wood moves seasonally and the rigid film cannot flex with it. Refinishing requires complete removal of the old finish — stripping or sanding — before any new finish can adhere properly.' },
+    ],
+  },
+  {
+    rank: 4, name: 'Lacquer', badge: 'Finishing',
+    sub: 'A fast-drying, sprayable evaporative finish — the professional standard for cabinets and furniture',
+    wiki: 'Lacquer',
+    stats: [
+      { label: 'Type', val: 'Evaporative' },
+      { label: 'Application', val: 'Spray gun' },
+      { label: 'Dry time', val: '30 min recoat' },
+      { label: 'Solvent', val: 'Lacquer thinner' },
+    ],
+    tags: ['Spray finish', 'Fast dry', 'Repair', 'Nitrocellulose', 'Catalyzed', 'Professional'],
+    facts: [
+      { icon: '🎸', text: 'Nitrocellulose lacquer has been the standard guitar finish since the 1940s. Gibson and Fender originally used nitro for its fast application and easy repairability; vintage guitar collectors pay premiums for original nitro finishes because they are believed to allow the wood to breathe, contributing to the acoustic properties of aged instruments.' },
+      { icon: '⚡', text: 'Lacquer\'s greatest advantage over all other finishes is its speed: fresh coats can be applied every 30 minutes, and a complete, sanded, and polished finish can be achieved in a single day. This throughput is why professional furniture and cabinet shops overwhelmingly choose lacquer as their production finish.' },
+      { icon: '🔧', text: 'Lacquer\'s repairability is legendary: fresh lacquer dissolves into existing lacquer, making repairs nearly invisible. A scratch can be filled with a drop of lacquer, allowed to cure, and level-sanded to seamlessly blend with the surrounding finish — a repair invisible under professional lighting.' },
+      { icon: '💧', text: 'Catalyzed lacquer — activated by a hardener that causes a chemical crosslinking reaction — is far more durable than conventional lacquer. CV (conversion varnish) and pre-catalyzed lacquers are the professional cabinet shop standard, offering polyurethane-level durability with lacquer-speed application.' },
+    ],
+  },
+  {
+    rank: 5, name: 'Hard Wax Oil', badge: 'Finishing',
+    sub: 'Rubio Monocoat / Osmo — a modern penetrating oil-wax blend with single-coat coverage',
+    wiki: 'Wood_finishing',
+    stats: [
+      { label: 'Type', val: 'Penetrating oil-wax' },
+      { label: 'Coats', val: '1 (Rubio) / 2–3 (Osmo)' },
+      { label: 'Dry time', val: '24–36 hrs' },
+      { label: 'Base', val: 'Plant oils & waxes' },
+    ],
+    tags: ['Rubio Monocoat', 'Osmo', 'Single coat', 'Water-resistant', 'Replenishable', 'European'],
+    facts: [
+      { icon: '🌱', text: 'Rubio Monocoat, developed in Belgium in 2007, uses a patented reaction process where the oil bonds molecularly to the first layer of wood cells — and only to those cells. This means a second coat simply will not absorb, making single-coat coverage a real property of the chemistry rather than a marketing claim.' },
+      { icon: '💧', text: 'Hard wax oils provide excellent water resistance despite being penetrating finishes — water beads on the surface and prolonged exposure leaves no white rings. Osmo Polyx-Oil, a German product widely used in European interiors, is certified food-safe and can withstand red wine, coffee, and cleaning agents.' },
+      { icon: '🔄', text: 'Maintenance of hard wax oil floors and surfaces is far simpler than film finishes: spot repairs require no stripping, just cleaning and applying a small amount of fresh product. The entire surface does not need refinishing when a local area is damaged — an enormous advantage in commercial settings.' },
+      { icon: '🌍', text: 'Hard wax oils dominate the European interior finishing market in a way they have not yet achieved in North America. Scandinavian and German furniture makers have used Osmo and similar products as their standard interior finish since the 1990s, while American shops are still largely film-finish oriented.' },
+    ],
+  },
+  {
+    rank: 6, name: 'Milk Paint', badge: 'Finishing',
+    sub: 'A historic casein-based paint — authentic to period furniture, deeply matte, and zero-VOC',
+    wiki: 'Milk_paint',
+    stats: [
+      { label: 'Base', val: 'Casein (milk protein)' },
+      { label: 'Sheen', val: 'Ultra-matte' },
+      { label: 'VOCs', val: 'Zero' },
+      { label: 'Mix', val: 'Powder + water' },
+    ],
+    tags: ['Historic', 'Casein', 'Milk protein', 'Zero-VOC', 'Chippy finish', 'Period furniture'],
+    facts: [
+      { icon: '🏺', text: 'Milk paint is the oldest known paint — casein-based paints have been found in caves dating to 10,000 BCE. In colonial America, it was the standard interior and furniture paint; authentic period reproductions require milk paint to achieve the depth and patina that latex or oil paint cannot replicate.' },
+      { icon: '🥛', text: 'True milk paint is mixed from powder (casein, lime, pigment) and water just before use — it has a pot life of only a few hours before the casein begins to spoil. The mixing process is part of the experience; the slight variation between batches is considered a feature rather than a flaw by period furniture restorers.' },
+      { icon: '✨', text: 'On bare wood without a bonding agent, milk paint adheres unpredictably — producing the "chippy" finish beloved by antique reproduction painters. Adding a bonding agent creates a fully adhered surface. Both results are intentional; choosing which to produce is part of the design decision.' },
+      { icon: '🌿', text: 'Miss Mustard Seed\'s Milk Paint and The Old Fashioned Milk Paint Company have brought milk paint to a modern audience. Zero VOCs, biodegradable ingredients, and food-safe formulations (casein is used in cheese-making) make it the most environmentally benign decorative finish available.' },
+    ],
+  },
+];
+
+/* ── Tab switching ── */
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('section-' + id).classList.remove('hidden');
+}
+
+/* ── Wikipedia image fetch ── */
+async function loadWikiImage(img) {
+  const title = img.dataset.wiki;
+  try {
+    const res = await fetch(
+      'https://en.wikipedia.org/w/api.php?action=query&titles=' +
+      encodeURIComponent(title) +
+      '&prop=pageimages&format=json&pithumbsize=800&origin=*'
+    );
+    const data = await res.json();
+    const page = Object.values(data.query.pages)[0];
+    if (page && page.thumbnail && page.thumbnail.source) {
+      img.src = page.thumbnail.source;
+      return;
+    }
+  } catch(e) {}
+  // fallback: REST summary API
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      img.src = data.thumbnail.source;
+    }
+  } catch(e) {}
+}
+
+/* ── Render cards ── */
+function buildCards(data, gridId) {
+  const grid = document.getElementById(gridId);
+  data.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const statsHtml = item.stats.map(s =>
+      `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`
+    ).join('');
+
+    const tagsHtml = item.tags.map(t => `<span class="tag">${t}</span>`).join('');
+
+    const factsHtml = item.facts.map(f =>
+      `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <div class="card-img-placeholder">
+          <div class="ph-num">${String(i + 1).padStart(2, '0')}</div>
+          <div class="ph-icon">🪵</div>
+        </div>
+        <img data-wiki="${item.wiki}" alt="${item.name}" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'">
+        <div class="badge-left">${item.badge}</div>
+        <div class="badge-right">${item.name}</div>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">${item.name}</div>
+          <div class="card-sub">${item.sub}</div>
+        </div>
+        <div class="card-stats">${statsHtml}</div>
+        <div class="card-tags">${tagsHtml}</div>
+        <div>
+          <div class="facts-label">&#9775; Notable Facts</div>
+          <div class="facts-list">${factsHtml}</div>
+        </div>
+      </div>`;
+
+    grid.appendChild(card);
+  });
+}
+
+buildCards(SPECIES,    'species-grid');
+buildCards(JOINERY,    'joinery-grid');
+buildCards(HANDTOOLS,  'handtools-grid');
+buildCards(POWERTOOLS, 'powertools-grid');
+buildCards(FINISHING,  'finishing-grid');
+document.querySelectorAll('img[data-wiki]').forEach(loadWikiImage);
+</script>
+</body>
+</html>

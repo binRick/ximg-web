@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>chinese.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #0a0204;
+      --card:   rgba(22,6,8,.85);
+      --red:    #c41230;
+      --crimson:#9b1527;
+      --gold:   #d4a017;
+      --amber:  #f59e0b;
+      --cream:  #fdf0e6;
+      --text:   #f5e6e0;
+      --muted:  #9d6b5e;
+      --border: rgba(196,18,48,.2);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 110% 55% at 50% 0%, #3d0608 0%, transparent 65%),
+        radial-gradient(ellipse 70% 40% at 85% 100%, #2a0406 0%, transparent 60%),
+        linear-gradient(180deg, #0a0204 0%, #060102 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(196,18,48,.02) 0, rgba(196,18,48,.02) 1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(212,160,23,.015) 0, rgba(212,160,23,.015) 1px, transparent 1px, transparent 72px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(196,18,48,.7)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #c41230 0%, #d4a017 45%, #9b1527 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 500px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+    }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: .5rem; border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: .6rem; }
+    .tab {
+      font-size: .8rem; padding: .35rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; transition: all .2s;
+    }
+    .tab.active { color: var(--red); border-color: rgba(196,18,48,.45); background: rgba(196,18,48,.08); }
+    .tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.18); }
+    .section { display: flex; flex-direction: column; gap: 1.5rem; }
+    .section.hidden { display: none; }
+
+    /* ── Grid ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .card:hover {
+      border-color: rgba(196,18,48,.45);
+      box-shadow: 0 8px 40px rgba(196,18,48,.12);
+      transform: translateY(-3px);
+    }
+
+    /* ── Image area ── */
+    .card-img-wrap {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: #180306;
+      overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block; position: relative; z-index: 1;
+      opacity: 0; transition: opacity .4s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .4rem;
+    }
+    .ph-num  { font-size: 3.5rem; font-weight: 900; color: rgba(196,18,48,.12); line-height: 1; }
+    .ph-icon { font-size: 2.2rem; opacity: .15; }
+
+    .badge-rank {
+      position: absolute; top: .75rem; left: .75rem; z-index: 2;
+      background: rgba(0,0,0,.72); border: 1px solid rgba(196,18,48,.45);
+      color: var(--amber); font-size: .65rem; font-weight: 700;
+      padding: .2rem .55rem; border-radius: 5px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .badge-meta {
+      position: absolute; bottom: .75rem; right: .75rem; z-index: 2;
+      background: rgba(0,0,0,.65); color: rgba(255,255,255,.7);
+      font-size: .65rem; padding: .18rem .5rem; border-radius: 4px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Card body ── */
+    .card-body { padding: 1.1rem 1.2rem 1.25rem; display: flex; flex-direction: column; gap: .85rem; flex: 1; }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: var(--cream); letter-spacing: -.01em; }
+    .card-sub { font-size: .78rem; color: var(--muted); margin-top: .2rem; line-height: 1.45; }
+
+    .card-stats { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .stat-chip {
+      background: rgba(196,18,48,.08); border: 1px solid rgba(196,18,48,.18);
+      border-radius: 7px; padding: .3rem .65rem; display: flex; flex-direction: column; gap: .1rem;
+    }
+    .stat-label { font-size: .6rem; color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-val   { font-size: .82rem; color: var(--amber); font-weight: 700; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .card-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .tag {
+      font-size: .68rem; padding: .2rem .55rem; border-radius: 12px;
+      background: rgba(212,160,23,.07); border: 1px solid rgba(212,160,23,.18);
+      color: rgba(212,160,23,.9); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600;
+    }
+
+    .facts-label { font-size: .7rem; font-weight: 700; color: var(--red); font-family: 'Segoe UI', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; }
+    .facts-list { display: flex; flex-direction: column; gap: .55rem; }
+    .fact { display: flex; gap: .55rem; align-items: flex-start; font-size: .8rem; line-height: 1.55; color: rgba(245,230,224,.8); }
+    .fact-icon { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🥢</div>
+      <h1>Chinese Food</h1>
+      <p class="hero-sub">Eight great regional cuisines and the iconic dishes that define one of the world's oldest and most complex food cultures.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('cuisines')">Regional Cuisines</button>
+      <button class="tab" onclick="switchTab('dishes')">Iconic Dishes</button>
+    </div>
+
+    <div id="section-cuisines" class="section">
+      <div class="cards" id="cuisines-grid"></div>
+    </div>
+
+    <div id="section-dishes" class="section hidden">
+      <div class="cards" id="dishes-grid"></div>
+    </div>
+  </div>
+
+<script>
+/* ── Data ──────────────────────────────────────────────────────────────── */
+
+const CUISINES = [
+  {
+    rank: 1, name: 'Cantonese (粤菜)', meta: 'Guangdong',
+    sub: 'Guangdong Province · The most exported Chinese cuisine in the world',
+    wiki: 'Cantonese cuisine',
+    stats: [
+      { label: 'Province', val: 'Guangdong' },
+      { label: 'Style', val: 'Light & fresh' },
+      { label: 'Base', val: 'Seafood & rice' },
+      { label: 'Technique', val: 'Steam & stir-fry' },
+    ],
+    tags: ['Dim Sum', 'Seafood', 'Steamed Fish', 'Wonton', 'Roast Meats', 'Delicate Flavours'],
+    facts: [
+      { icon: '🌏', text: "Cantonese is the dominant Chinese cuisine exported worldwide — most Chinese restaurants outside China serve some variant of Cantonese food, from dim sum to wonton noodle soup to roast meats." },
+      { icon: '🫖', text: "Dim sum (点心) was born in Cantonese tea houses — yum cha culture means 'drink tea' and the small steamed dishes were originally just snacks alongside the tea. Over centuries they multiplied into an entire cuisine of 100+ varieties." },
+      { icon: '🐟', text: "Cantonese cooking prizes freshness above all else. Seafood is kept alive until moments before cooking; vegetables are flash-stir-fried to preserve colour and crunch. Heavy sauces and spices are avoided to let ingredients speak." },
+      { icon: '🍖', text: "Char siu (叉烧) — the iconic sweet, crimson-glazed BBQ pork — is a Cantonese invention. Hung on hooks and roasted in wood ovens, it became a defining Chinese takeaway ingredient across five continents." },
+    ],
+  },
+  {
+    rank: 2, name: 'Sichuan (川菜)', meta: 'Sichuan',
+    sub: 'Sichuan Province · Fiery, numbing, and utterly addictive',
+    wiki: 'Sichuan cuisine',
+    stats: [
+      { label: 'Province', val: 'Sichuan' },
+      { label: 'Style', val: 'Bold & spicy' },
+      { label: 'Spice', val: 'Má là (麻辣)' },
+      { label: 'Known For', val: 'Hot pot' },
+    ],
+    tags: ['Má Là', 'Sichuan Pepper', 'Doubanjiang', 'Chili Oil', 'Hot Pot', 'Dry-Fried'],
+    facts: [
+      { icon: '🌶️', text: "Sichuan cuisine is defined by 'má là' (麻辣) — the numbing-spicy combination of Sichuan peppercorns and chili. The peppercorns create a tingling paralysis on the tongue unlike any other spice in any cuisine." },
+      { icon: '🫙', text: "Doubanjiang (豆瓣酱) — fermented broad bean and chili paste — is called the 'soul of Sichuan cooking.' Every major Sichuan dish, from mapo tofu to twice-cooked pork, begins with a spoonful in hot oil." },
+      { icon: '🔥', text: "Chongqing hotpot sends diners into a red-oil broth boiling with Sichuan peppercorns and dozens of dried chilis. It is one of China's most socially iconic meals and a multi-billion dollar industry." },
+      { icon: '🎨', text: "Despite its reputation for heat, Sichuan cuisine uses 23 distinct flavour profiles — including fish-fragrant (鱼香) and strange-flavour (怪味) profiles that involve no fish or strangeness, just brilliant sauce combinations." },
+    ],
+  },
+  {
+    rank: 3, name: 'Hunan (湘菜)', meta: 'Hunan',
+    sub: 'Hunan Province · Fresher and smokier than Sichuan, with its own fierce identity',
+    wiki: 'Hunan cuisine',
+    stats: [
+      { label: 'Province', val: 'Hunan' },
+      { label: 'Style', val: 'Spicy & smoky' },
+      { label: 'Chilis', val: 'Fresh & dried' },
+      { label: 'Known For', val: "Mao's braised pork" },
+    ],
+    tags: ['Fresh Chilis', 'Smoked Meats', 'Steamed Fish Head', 'Dry Wok', 'Preserved Foods', 'Fermented'],
+    facts: [
+      { icon: '🌶️', text: "Hunan spice is different from Sichuan spice: where Sichuan numbs, Hunan burns cleanly. Fresh red and green chilis dominate, used whole and in generous quantities with none of the numbing Sichuan pepper." },
+      { icon: '🐷', text: "Mao Zedong was from Hunan and famously ate a version of the province's red-braised pork belly (红烧肉) almost daily. The dish is now served in restaurants across China under the name 'Chairman Mao's pork.'" },
+      { icon: '🪵', text: "Smoking is fundamental to Hunan cuisine in a way it is not elsewhere in China. Preserved smoked meats — especially bacon and sausage — are dried over wood smoke and used to flavour stir-fries and braises throughout the year." },
+      { icon: '🐠', text: "Steamed fish head with chopped chili (剁椒鱼头) — a whole fish head blanketed in fresh minced red chilis and steamed — is one of the most iconic and confronting dishes in Chinese cuisine." },
+    ],
+  },
+  {
+    rank: 4, name: 'Shandong (鲁菜)', meta: 'Shandong',
+    sub: 'Shandong Province · The oldest and most formally prestigious of China\'s great cuisines',
+    wiki: 'Shandong cuisine',
+    stats: [
+      { label: 'Province', val: 'Shandong' },
+      { label: 'Character', val: 'Robust & savory' },
+      { label: 'Base', val: 'Wheat & seafood' },
+      { label: 'Influence', val: 'Imperial court' },
+    ],
+    tags: ['Braised Dishes', 'Wheat-Based', 'Seafood', 'Yellow River', 'Soup', 'Imperial'],
+    facts: [
+      { icon: '📜', text: "Shandong cuisine (鲁菜) is the oldest of China's Eight Great Cuisines, with recipes recorded in Confucian texts from the 6th century BC. It was the cuisine of the imperial court for much of China's dynastic history." },
+      { icon: '🥩', text: "The technique of 'red-braising' (红烧) — slow-cooking meat in soy sauce, Shaoxing wine, and sugar until deeply coloured and sticky — was developed in Shandong and spread to virtually every other Chinese regional cuisine." },
+      { icon: '🦀', text: "Shandong's coastal and wheat-growing geography gives its cuisine unusual range: from delicate seafood preparations like sea cucumber with spring onion to thick wheat noodles and hearty braised lamb dishes." },
+      { icon: '🍜', text: "The concept of 'umami' was understood in Shandong kitchens millennia before it was named in Japan in 1908. Shandong cooks were building deep savoury broths from bones, shellfish, and dried scallops long before anyone named the flavour." },
+    ],
+  },
+  {
+    rank: 5, name: 'Jiangsu (苏菜)', meta: 'Jiangsu',
+    sub: 'Jiangsu Province · Refined, elegant, and beloved by emperors',
+    wiki: 'Jiangsu cuisine',
+    stats: [
+      { label: 'Province', val: 'Jiangsu' },
+      { label: 'Style', val: 'Refined & delicate' },
+      { label: 'Flavour', val: 'Slightly sweet' },
+      { label: 'Technique', val: 'Red-braising' },
+    ],
+    tags: ['Red-Braised', 'Sweet & Savory', 'Delicate', 'River Seafood', 'Sculpted Dishes', 'Imperial'],
+    facts: [
+      { icon: '🎨', text: "Jiangsu cuisine is considered among the most refined in China — its dishes are known for precise knife work, beautiful presentation, and flavours that balance sweet and savoury without either dominating." },
+      { icon: '🍡', text: "Lion's Head meatballs (狮子头) — enormous minced pork spheres braised in broth until silky and tender — are one of Jiangsu's most celebrated preparations, requiring a technique that takes years to master." },
+      { icon: '🏛️', text: "The city of Suzhou was called by Marco Polo the 'Venice of the East,' and its cuisine reflected that prosperity: dishes were ornate, expensive, and slow-cooked. Suzhou-style food directly influenced the refined cooking of Shanghai." },
+      { icon: '🐟', text: "Squirrel-shaped Mandarin fish (松鼠桂鱼) is a Jiangsu showpiece — the fish is scored, fried into the shape of a squirrel, then doused tableside in sweet-and-sour sauce. A skilled chef takes three years to perfect the cut alone." },
+    ],
+  },
+  {
+    rank: 6, name: 'Zhejiang (浙菜)', meta: 'Zhejiang',
+    sub: 'Zhejiang Province · Fresh, light, and defined by exceptional seafood',
+    wiki: 'Zhejiang cuisine',
+    stats: [
+      { label: 'Province', val: 'Zhejiang' },
+      { label: 'Style', val: 'Fresh & light' },
+      { label: 'Base', val: 'Seafood' },
+      { label: 'Known For', val: 'Dongpo pork' },
+    ],
+    tags: ['Seafood', 'West Lake', 'Shaoxing Wine', 'Dongpo Pork', 'Freshwater Fish', 'Hangzhou'],
+    facts: [
+      { icon: '🌿', text: "Zhejiang cuisine is centred on freshness — fish must be swimming-fresh, vegetables picked that morning, cooking times kept short to preserve natural sweetness. The motto is 'taste the ingredient, not the seasoning.'" },
+      { icon: '🐖', text: "Dongpo Pork (东坡肉) — slow-braised pork belly named for the Song dynasty poet Su Dongpo — is one of China's most famous dishes. Cooked in equal parts soy, wine, and sugar until trembling-tender, it embodies Zhejiang's luxurious simplicity." },
+      { icon: '🏞️', text: "West Lake Vinegar Fish (西湖醋鱼) from Hangzhou has been eaten for centuries — a grass carp poached and dressed with a sweet-sour ginger sauce. Hangzhou's West Lake gave China some of its most romanticised culinary history." },
+      { icon: '🍾', text: "Shaoxing wine — the amber-coloured rice wine central to all Chinese cooking — comes from Zhejiang. Shaoxing is to Chinese cuisine what cognac is to French cooking, and Zhejiang's cooks use it with unmatched skill." },
+    ],
+  },
+  {
+    rank: 7, name: 'Fujian (闽菜)', meta: 'Fujian',
+    sub: "Fujian Province · Umami-rich soups, seafood, and China's most prestigious dish",
+    wiki: 'Fujian cuisine',
+    stats: [
+      { label: 'Province', val: 'Fujian' },
+      { label: 'Style', val: 'Umami & savory' },
+      { label: 'Base', val: 'Seafood & soups' },
+      { label: 'Known For', val: 'Buddha Jumps Wall' },
+    ],
+    tags: ['Seafood', 'Soups', 'Umami', 'Red Yeast Rice', 'Oyster Omelette', 'Buddha Jumps Wall'],
+    facts: [
+      { icon: '🌊', text: "Fujian's cuisine is defined by 'umami first' — the province's cooks build complex, deeply savoury broths from dried seafood, mushrooms, and bones, then use them as the base for almost everything." },
+      { icon: '🏺', text: "Buddha Jumps Over the Wall (佛跳墙) is China's most prestigious dish: a slow-cooked ceramic pot of abalone, sea cucumber, scallops, pork knuckle, and chicken, fermented over two days. A single serving can cost hundreds of dollars." },
+      { icon: '🦪', text: "Fujian's seafaring tradition gave the world oyster omelette (蚵仔煎) — a crispy egg pancake packed with fresh oysters and sweet potato starch, now one of the most popular street foods across Taiwan and Southeast Asia." },
+      { icon: '✈️', text: "Fujian emigration shaped Chinese food globally. The Hokkien-speaking diaspora spread to the Philippines, Malaysia, Indonesia, and Singapore, bringing Fujian-influenced dishes that became the foundation of Southeast Asian Chinese cooking." },
+    ],
+  },
+  {
+    rank: 8, name: 'Anhui (徽菜)', meta: 'Anhui',
+    sub: 'Anhui Province · Wild mountain ingredients and ancient preservation techniques',
+    wiki: 'Anhui cuisine',
+    stats: [
+      { label: 'Province', val: 'Anhui' },
+      { label: 'Style', val: 'Earthy & wild' },
+      { label: 'Base', val: 'Mountain herbs' },
+      { label: 'Technique', val: 'Braising & stewing' },
+    ],
+    tags: ['Wild Herbs', 'Bamboo Shoots', 'Stinky Tofu', 'Mountain Game', 'Preserved Foods', 'Huizhou'],
+    facts: [
+      { icon: '🏔️', text: "Anhui cuisine grew out of the Huizhou merchant tradition — traders who ranged across China but preserved the tastes of their mountainous home. Preserved, smoked, and dried foods were essential to their long journeys." },
+      { icon: '🧫', text: "Hairy tofu (毛豆腐) — tofu deliberately inoculated with white mould then pan-fried — is a quintessential Anhui street food. The white fur is edible and intensifies the flavour. It challenges most Western palates on first encounter." },
+      { icon: '🌾', text: "Wild ingredients from Anhui's mountains define the cuisine: bamboo shoots, freshwater turtle, stone frog, wild mushrooms, and dozens of mountain herbs rarely found in any other Chinese culinary tradition." },
+      { icon: '🐟', text: "Stinky Mandarin fish (臭鳜鱼) is Anhui's most controversial dish: the fish is salted and fermented for 7 days until it smells of ammonia, then braised. Devotees compare it to aged cheese — pungent on the nose, transcendent on the tongue." },
+    ],
+  },
+];
+
+const DISHES = [
+  {
+    rank: 1, name: 'Peking Duck (北京烤鸭)', meta: 'Beijing, c. 1420',
+    sub: 'Beijing · The dish that defines a civilisation',
+    wiki: 'Peking duck',
+    stats: [
+      { label: 'Origin', val: 'Beijing' },
+      { label: 'Age', val: '600+ years' },
+      { label: 'Serve', val: 'Pancakes & hoisin' },
+      { label: 'Style', val: 'Imperial' },
+    ],
+    tags: ['Roast Duck', 'Hoisin Sauce', 'Pancakes', 'Scallion', 'Imperial', 'Wood-Fired'],
+    facts: [
+      { icon: '👑', text: "Peking duck has been prepared in imperial kitchens since the Yuan dynasty (1271–1368). It became the centrepiece of the Ming dynasty imperial banquet — a dish literally cooked for emperors for 600 years." },
+      { icon: '🦆', text: "The preparation is meticulous: the duck is inflated with air to separate skin from fat, blanched, coated in malt sugar, dried for 24–48 hours, then roasted in a wood-fired oven. The skin must shatter when tapped." },
+      { icon: '📜', text: "At Quanjude, Beijing's most famous Peking duck restaurant (founded 1864), each duck receives a numbered certificate. By 2023 they had served over 300 million ducks — a production line of the world's most prestigious poultry." },
+      { icon: '🔪', text: "The proper ritual: the chef carves exactly 108 slices tableside, each bearing skin and fat. The crispy skin is eaten first, plain, to savour it without distraction before the pancake wraps begin." },
+    ],
+  },
+  {
+    rank: 2, name: 'Dim Sum (点心)', meta: 'Guangdong',
+    sub: 'Cantonese · The art of eating many small things slowly',
+    wiki: 'Dim sum',
+    stats: [
+      { label: 'Origin', val: 'Guangdong' },
+      { label: 'Dining', val: 'Yum cha' },
+      { label: 'Varieties', val: '100+' },
+      { label: 'Time', val: 'Morning to noon' },
+    ],
+    tags: ['Har Gow', 'Siu Mai', 'Char Siu Bao', 'Cheung Fun', 'Egg Tart', 'Tea'],
+    facts: [
+      { icon: '🫖', text: "Dim sum evolved from yum cha (饮茶) — the Cantonese tradition of going to teahouses in the morning. The small dishes were originally just snacks alongside tea; over centuries they multiplied into an entire cuisine." },
+      { icon: '🦐', text: "Har gow (虾饺) — steamed shrimp dumplings in translucent wheat starch skin — is the benchmark of a dim sum kitchen's skill. A properly made har gow must have at least seven pleats and skin thin enough to see the shrimp through." },
+      { icon: '🀄', text: "The bamboo steamer basket became the symbol of dim sum not just for aesthetics but for function: steam keeps dumplings moist while baskets can be stacked a dozen high, with each type visually identifiable by its container." },
+      { icon: '🌉', text: "Dim sum culture crossed the Pacific with Cantonese immigrants in the 19th century. San Francisco's Chinatown had dim sum teahouses in the 1850s — one of the first genuine Chinese dining traditions to take root in the West." },
+    ],
+  },
+  {
+    rank: 3, name: 'Xiaolongbao (小笼包)', meta: 'Shanghai',
+    sub: 'Shanghai · The soup dumpling that defies physics',
+    wiki: 'Xiaolongbao',
+    stats: [
+      { label: 'Origin', val: 'Shanghai' },
+      { label: 'Filling', val: 'Pork & gelatin broth' },
+      { label: 'Skin', val: 'Paper-thin' },
+      { label: 'Pleats', val: '18 (standard)' },
+    ],
+    tags: ['Soup Dumpling', 'Pork', 'Gelatin Broth', 'Thin Skin', 'Shanghai', 'Din Tai Fung'],
+    facts: [
+      { icon: '🧪', text: "The liquid inside a xiaolongbao is not injected — it solidifies. Gelatin-rich pork stock is chilled into a jelly, mixed with minced pork, then wrapped in thin dough. When steamed, the jelly melts back into hot broth sealed inside." },
+      { icon: '🔢', text: "Each wrapper has exactly 18 pleats — the industry standard in high-end restaurants. The pleats must be fine enough not to bunch into doughy knots. Street vendors average 12; a master averages 18 in under 10 seconds." },
+      { icon: '🥵', text: "The correct technique: place the dumpling on a spoon, bite a small hole, let the broth run out, sip it, then eat the rest. First-time eaters reliably burn their tongues or burst the broth across the table." },
+      { icon: '🌟', text: "Din Tai Fung, the Taiwanese chain, turned xiaolongbao into a global phenomenon. From its origin as a cooking oil shop in 1958, it grew into a Michelin-starred chain with outposts from Sydney to Dubai." },
+    ],
+  },
+  {
+    rank: 4, name: 'Mapo Tofu (麻婆豆腐)', meta: 'Chengdu, c. 1860',
+    sub: 'Sichuan · Silken tofu in a lava-hot chili oil broth',
+    wiki: 'Mapo tofu',
+    stats: [
+      { label: 'Origin', val: 'Chengdu' },
+      { label: 'Heat', val: 'Extreme' },
+      { label: 'Flavour', val: 'Má là' },
+      { label: 'Age', val: '160+ years' },
+    ],
+    tags: ['Doubanjiang', 'Sichuan Pepper', 'Silken Tofu', 'Ground Pork', 'Chili Oil', 'Má Là'],
+    facts: [
+      { icon: '👵', text: "Mapo Tofu is named for 'pockmarked old woman's tofu' — invented by a scarred-faced widow named Chen in Chengdu in the 1860s, who fed dock workers from a stall near the Wanfu Bridge." },
+      { icon: '📋', text: "A proper mapo tofu has six elements: má (numbness), là (heat), tàng (hot temperature), nèn (tender tofu), xiāng (fragrant oil), and sū (crispy ground meat) — a checklist Sichuan chefs still recite before service." },
+      { icon: '🇯🇵', text: "The dish arrived in Japan in the 1970s where it was adapted into a milder form and became one of the most popular Chinese dishes in Japan. Japanese supermarkets sell more mapo tofu sauce kits than any other Chinese cooking product." },
+      { icon: '🫙', text: "The best doubanjiang for mapo tofu comes from Pixian county, 20 km from Chengdu, where the fermented chili bean paste is aged in clay pots in the sun for up to 3 years. Pixian doubanjiang is a protected geographical product." },
+    ],
+  },
+  {
+    rank: 5, name: 'Kung Pao Chicken (宫保鸡丁)', meta: 'Sichuan, c. 1870s',
+    sub: 'Sichuan · The stir-fry that conquered the world',
+    wiki: 'Kung Pao chicken',
+    stats: [
+      { label: 'Origin', val: 'Sichuan' },
+      { label: 'Named For', val: 'Official Ding Baozhen' },
+      { label: 'Heat', val: 'Medium-hot' },
+      { label: 'Texture', val: 'Wok-charred' },
+    ],
+    tags: ['Stir-Fry', 'Dried Chilis', 'Sichuan Pepper', 'Peanuts', 'Velveted Chicken', 'Wok Hei'],
+    facts: [
+      { icon: '🏛️', text: "Kung Pao Chicken is named after Ding Baozhen, a Qing dynasty governor of Sichuan who loved the dish so much it was named for his honorary title: Gongbao (宫保), meaning 'guardian of the palace.'" },
+      { icon: '🚫', text: "The dish was banned during China's Cultural Revolution (1966–1976) — its name referred to an imperial official, making it politically suspect. It was cooked underground and renamed 'fast-fried chicken' until the 1978 reforms restored it." },
+      { icon: '🌍', text: "The version served in most Western Chinese restaurants is not authentic Sichuan — it is a Cantonese-American adaptation with sweeter sauce and more vegetables. Authentic versions are drier, darker, and significantly more numbing." },
+      { icon: '🥚', text: "'Velveting' — coating the chicken in egg white and cornstarch before cooking — is a Sichuan technique that keeps the meat impossibly tender at extreme wok heat. Without it, the chicken would toughen and dry out in seconds." },
+    ],
+  },
+  {
+    rank: 6, name: 'Char Siu (叉烧)', meta: 'Guangdong',
+    sub: 'Cantonese · The crimson-glazed BBQ pork at the heart of Cantonese cooking',
+    wiki: 'Char siu',
+    stats: [
+      { label: 'Origin', val: 'Guangdong' },
+      { label: 'Cut', val: 'Pork shoulder' },
+      { label: 'Colour', val: 'Crimson' },
+      { label: 'Method', val: 'Hung & roasted' },
+    ],
+    tags: ['BBQ Pork', 'Honey Glaze', 'Maltose', 'Soy Sauce', 'Cantonese', 'Five Spice'],
+    facts: [
+      { icon: '🍢', text: "'Char siu' (叉烧) literally means 'fork roasted' — the pork was originally skewered on long forks and hung in wood-burning ovens, rotating in the heat. The method is virtually unchanged after a thousand years." },
+      { icon: '🔴', text: "The brilliant red colour comes traditionally from red fermented tofu (腐乳) and maltose — not from chili. The sticky glaze of honey, maltose, hoisin, and soy is applied repeatedly during roasting to build up a lacquered crust." },
+      { icon: '🥟', text: "Char siu bao (叉烧包) — fluffy steamed or baked buns filled with char siu — became one of the most ubiquitous Chinese foods in the world. Some version of the pork bun exists in Chinese communities from London to Lima." },
+      { icon: '🏙️', text: "In Hong Kong, the window displays of BBQ roast meat shops (烧腊店) — hanging ducks, chickens, and char siu — became one of the city's most iconic visual signatures, treated as cultural landmarks by preservation groups." },
+    ],
+  },
+  {
+    rank: 7, name: 'Hot Pot (火锅)', meta: 'China, c. 1000 AD',
+    sub: 'China · A boiling communal feast with 1,000 years of history',
+    wiki: 'Hot pot (food)',
+    stats: [
+      { label: 'Origin', val: 'Northern China' },
+      { label: 'Setting', val: 'Communal' },
+      { label: 'Broth', val: 'Varies by region' },
+      { label: 'Session', val: '2–3 hours' },
+    ],
+    tags: ['Communal Dining', 'Chongqing', 'Broth', 'Raw Ingredients', 'Sesame Sauce', 'Social'],
+    facts: [
+      { icon: '⚔️', text: "Hot pot traces to the Mongol warriors of the Yuan dynasty, who cooked mutton in iron helmets over open fires. As the Mongols settled in northern China, the communal cooking-pot tradition spread and evolved into the modern format." },
+      { icon: '🌋', text: "The Chongqing mala hot pot — with its petroleum-red broth choked with Sichuan peppercorns, dried chilis, and beef tallow — is considered the spiciest widely consumed food in China. First-time eaters routinely cannot finish a single bowl." },
+      { icon: '💰', text: "Hot pot is one of China's largest restaurant industries, generating over $70 billion in annual revenue. Haidilao is famous for theatrical service: noodle-stretching performances, free hand massages, and tableside birthday songs." },
+      { icon: '🤝', text: "The slowness of hot pot — two to three hours per meal — makes it the designated format for Chinese celebrations and reconciliations. The act of cooking together in a shared pot carries deep social meaning beyond the food itself." },
+    ],
+  },
+  {
+    rank: 8, name: 'Dan Dan Noodles (担担面)', meta: 'Chengdu, c. 1840s',
+    sub: 'Sichuan · Street noodles that defined a generation of global Chinese food',
+    wiki: 'Dan dan noodles',
+    stats: [
+      { label: 'Origin', val: 'Chengdu' },
+      { label: 'Sauce', val: 'Sesame & chili' },
+      { label: 'Heat', val: 'High' },
+      { label: 'History', val: 'Street food' },
+    ],
+    tags: ['Sesame Paste', 'Chili Oil', 'Sichuan Pepper', 'Street Food', 'Preserved Veg', 'Dry Noodles'],
+    facts: [
+      { icon: '🎒', text: "Dan dan noodles take their name from the shoulder pole (担担 dàndàn) that street vendors used to carry two baskets through Chengdu in the 1840s — one with a stove and broth pot, one with noodles and toppings." },
+      { icon: '🍜', text: "Authentic dan dan noodles contain no broth — they are a dry noodle dish, tossed with sesame paste, chili oil, Sichuan pepper, preserved mustard greens (芽菜), and ground pork. The watery Western peanut version is a loose adaptation." },
+      { icon: '🌐', text: "The dish was one of the first Sichuan exports to the international food world — appearing in American Chinese restaurants in the 1980s as a mild, peanutty noodle dish, a gateway to Sichuan cuisine for millions of non-Chinese diners." },
+      { icon: '⚖️', text: "The balance of a perfect bowl is precise: sesame paste for richness, chili oil for heat, Sichuan pepper for fragrance and numbness, preserved vegetables for acidity and crunch. Remove any one element and the dish falls apart." },
+    ],
+  },
+  {
+    rank: 9, name: 'Sweet and Sour Pork (糖醋里脊)', meta: 'Guangdong',
+    sub: 'Cantonese · The dish that introduced Chinese food to the world',
+    wiki: 'Sweet and sour pork',
+    stats: [
+      { label: 'Origin', val: 'Guangdong' },
+      { label: 'Sauce', val: 'Sweet & tangy' },
+      { label: 'Export', val: 'Global' },
+      { label: 'Cut', val: 'Pork loin' },
+    ],
+    tags: ['Sweet & Sour', 'Crispy Pork', 'Bell Pepper', 'Pineapple', 'Cantonese', 'Global Export'],
+    facts: [
+      { icon: '🏺', text: "Sweet and sour sauce has roots in ancient Chinese cooking — the pairing of vinegar and sugar was recorded in Shandong recipes from the Tang dynasty (618–907 AD). Cantonese cooks adapted it into the pork dish in the 19th century." },
+      { icon: '⛏️', text: "When Cantonese immigrants arrived in North America during the Gold Rush, they adapted sweet and sour pork for Western palates: more sugar, more vinegar, ketchup in place of plum sauce. The result became the foundation of Chinese-American restaurant culture." },
+      { icon: '🍽️', text: "In Hong Kong and Guangdong, the authentic version uses pork tenderloin fried in light batter and tossed in a sauce made from plum juice, Zhenjiang black vinegar, and rock sugar — far more nuanced than its overseas reputation suggests." },
+      { icon: '🌍', text: "The dish's international success made it simultaneously beloved and controversial in China. Food critics deride it as 'overseas Chinese food' — a simplified export product. Chinese Americans defend it as a distinct cuisine in its own right." },
+    ],
+  },
+  {
+    rank: 10, name: 'Wonton Soup (馄饨)', meta: 'Guangdong',
+    sub: 'Cantonese · Silk-wrapped parcels in golden broth',
+    wiki: 'Wonton',
+    stats: [
+      { label: 'Origin', val: 'Guangdong' },
+      { label: 'Skin', val: 'Thin egg dough' },
+      { label: 'Filling', val: 'Pork & shrimp' },
+      { label: 'Serve', val: 'In broth' },
+    ],
+    tags: ['Wontons', 'Pork & Shrimp', 'Egg Noodles', 'Broth', 'Cantonese', 'Comfort Food'],
+    facts: [
+      { icon: '☁️', text: "Wonton (馄饨) means 'swallowing clouds' in Cantonese — a name that reflects the gauzy, floating appearance of the thin-skinned dumplings as they drift through the broth. The etymology is disputed; the poetry is not." },
+      { icon: '🦐', text: "A proper Cantonese wonton is made from thin egg dough and filled with whole shrimp and minced pork seasoned with sesame oil and white pepper. The skin should be translucent enough to see the orange shrimp through it before cooking." },
+      { icon: '🏙️', text: "Wonton noodle soup (云吞面) — wontons with thin egg noodles in shrimp roe broth — is the canonical street breakfast of Hong Kong. The noodles must be made fresh daily with a bamboo pole pressed by body weight to achieve the correct springy texture." },
+      { icon: '🗺️', text: "Wontons are one of China's most geographically diverse dishes — Shanghainese versions are larger, Sichuan versions come in red chili oil without broth, and Cantonese versions are the global benchmark. Each province insists its version is correct." },
+    ],
+  },
+];
+
+/* ── Render ─────────────────────────────────────────────────────────────── */
+
+function buildCards(data, containerId, rankLabel, phIcon) {
+  const container = document.getElementById(containerId);
+  data.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const statsHtml = d.stats.map(s =>
+      `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`
+    ).join('');
+    const tagsHtml = d.tags.map(t => `<span class="tag">${t}</span>`).join('');
+    const factsHtml = d.facts.map(f =>
+      `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <div class="card-img-placeholder">
+          <div class="ph-num">${d.rank}</div>
+          <div class="ph-icon">${phIcon}</div>
+        </div>
+        <img data-wiki="${d.wiki}" alt="${d.name}" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'">
+        <div class="badge-rank">${rankLabel} ${d.rank}</div>
+        <div class="badge-meta">${d.meta}</div>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="card-title">${d.name}</div>
+          <div class="card-sub">${d.sub}</div>
+        </div>
+        <div class="card-stats">${statsHtml}</div>
+        <div class="card-tags">${tagsHtml}</div>
+        <div>
+          <div class="facts-label">🥢 Fun Facts</div>
+          <div class="facts-list">${factsHtml}</div>
+        </div>
+      </div>`;
+
+    container.appendChild(card);
+  });
+}
+
+async function loadWikiImage(img) {
+  const title = img.dataset.wiki;
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      img.src = data.thumbnail.source;
+    }
+  } catch(e) {}
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', (i === 0 ? 'cuisines' : 'dishes') === name);
+  });
+  document.getElementById('section-cuisines').classList.toggle('hidden', name !== 'cuisines');
+  document.getElementById('section-dishes').classList.toggle('hidden', name !== 'dishes');
+  localStorage.setItem('chinese_tab', name);
+}
+
+buildCards(CUISINES, 'cuisines-grid', 'CUISINE', '🥢');
+buildCards(DISHES, 'dishes-grid', 'DISH', '🍜');
+document.querySelectorAll('img[data-wiki]').forEach(loadWikiImage);
+switchTab(localStorage.getItem('chinese_tab') || 'cuisines');
+</script>
+</body>
+</html>

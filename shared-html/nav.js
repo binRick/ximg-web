@@ -3,10 +3,8 @@
   var s = document.createElement('style');
   s.textContent =
     'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
-    'gap:.2rem;padding:.5rem 1rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
-    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;' +
-    'overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}' +
-    'nav::-webkit-scrollbar{display:none}' +
+    'flex-wrap:wrap;gap:.2rem;padding:.4rem .75rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
+    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;}' +
     '.nav-brand{font-weight:700;font-size:.88rem;color:#f1f5f9;margin-right:.4rem;letter-spacing:-.02em;text-decoration:none;flex-shrink:0}' +
     '.nav-item{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;' +
     'text-decoration:none;padding:.3rem .65rem;border-radius:6px;transition:all .2s;white-space:nowrap;flex-shrink:0;' +
@@ -34,6 +32,14 @@
     '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
     '<a class="nav-item" href="https://docker.ximg.app"><div class="nav-dot"></div>docker</a>' +
     '<a class="nav-item" href="https://pizza.ximg.app"><div class="nav-dot"></div>pizza</a>' +
+    '<a class="nav-item" href="https://kombat.ximg.app"><div class="nav-dot"></div>kombat</a>' +
+    '<a class="nav-item" href="https://chinese.ximg.app"><div class="nav-dot"></div>chinese</a>' +
+    '<a class="nav-item" href="https://wargames.ximg.app"><div class="nav-dot"></div>wargames</a>' +
+    '<a class="nav-item" href="https://moto.ximg.app"><div class="nav-dot"></div>moto</a>' +
+    '<a class="nav-item" href="https://india.ximg.app"><div class="nav-dot"></div>india</a>' +
+    '<a class="nav-item" href="https://wood.ximg.app"><div class="nav-dot"></div>wood</a>' +
+    '<a class="nav-item" href="https://guns.ximg.app"><div class="nav-dot"></div>guns</a>' +
+    '<a class="nav-item" href="https://tampa.ximg.app"><div class="nav-dot"></div>tampa</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
 
   // Highlight the current site
@@ -47,8 +53,13 @@
   // Spacer — keeps content below the fixed nav in flex-column layouts
   var spacer = document.createElement('div');
   spacer.setAttribute('aria-hidden', 'true');
-  spacer.style.cssText = 'height:44px;width:100%;flex-shrink:0;pointer-events:none';
+  spacer.style.cssText = 'width:100%;flex-shrink:0;pointer-events:none';
 
   document.body.prepend(spacer);
   document.body.prepend(nav);
+
+  // Match spacer height to actual nav height (handles wrapping)
+  function syncSpacer() { spacer.style.height = nav.offsetHeight + 'px'; }
+  syncSpacer();
+  window.addEventListener('resize', syncSpacer);
 })();

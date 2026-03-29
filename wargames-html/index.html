@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>wargames.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #020b02;
+      --card:     rgba(0,18,0,.85);
+      --green:    #00ff41;
+      --dkgreen:  #00c832;
+      --dimgreen: #007a1f;
+      --text:     #b8ffca;
+      --dim:      #3a7a4a;
+      --border:   rgba(0,255,65,.12);
+      --scan:     rgba(0,255,65,.03);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* CRT scanline overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, transparent 0, transparent 3px, var(--scan) 3px, var(--scan) 4px),
+        radial-gradient(ellipse 120% 80% at 50% 0%, #001a06 0%, transparent 70%);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1040px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-ascii {
+      font-size: clamp(.45rem, 1.4vw, .72rem);
+      line-height: 1.15;
+      color: var(--dkgreen);
+      letter-spacing: .05em;
+      white-space: pre;
+      filter: drop-shadow(0 0 8px rgba(0,255,65,.45));
+      animation: fadeUp .8s ease both;
+    }
+    .hero h1 {
+      font-size: clamp(1.6rem, 5vw, 2.8rem);
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--green);
+      text-shadow: 0 0 24px rgba(0,255,65,.7), 0 0 60px rgba(0,255,65,.3);
+      animation: fadeUp .8s ease both .1s;
+    }
+    .hero-sub {
+      font-size: .85rem;
+      color: var(--dim);
+      letter-spacing: .06em;
+      font-style: italic;
+      animation: fadeUp .8s ease both .2s;
+    }
+    .hero-divider {
+      width: 200px; height: 1px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+      animation: fadeUp .8s ease both .25s;
+    }
+
+    /* ── Tabs ── */
+    .wg-tabs { display: flex; gap: .5rem; border-bottom: 1px solid var(--border); padding-bottom: .6rem; animation: fadeUp .7s ease both .3s; }
+    .wg-tab {
+      font-size: .8rem; padding: .35rem 1.1rem; border-radius: 4px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--dimgreen);
+      font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; transition: all .2s;
+    }
+    .wg-tab.active { color: var(--green); border-color: rgba(0,255,65,.5); background: rgba(0,255,65,.07); }
+    .wg-tab:hover:not(.active) { color: var(--text); border-color: rgba(0,255,65,.25); }
+
+    .wg-section { display: flex; flex-direction: column; gap: 1.75rem; animation: fadeUp .7s ease both .35s; }
+    .wg-section.hidden { display: none; }
+
+    /* ── Movie section ── */
+    .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 1.5rem; }
+    @media(max-width:500px){ .movie-grid { grid-template-columns: 1fr; } }
+
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.4rem;
+      display: flex; flex-direction: column; gap: .9rem;
+      backdrop-filter: blur(8px);
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .info-card:hover {
+      border-color: rgba(0,255,65,.35);
+      box-shadow: 0 4px 32px rgba(0,255,65,.07);
+    }
+    .card-head {
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .card-icon { font-size: 1.5rem; flex-shrink: 0; filter: drop-shadow(0 0 6px rgba(0,255,65,.5)); }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--green); letter-spacing: .06em; text-transform: uppercase; }
+    .card-body-text { font-size: .8rem; line-height: 1.7; color: #8aba98; }
+    .card-body-text strong { color: var(--text); }
+
+    .quote-block {
+      border-left: 2px solid var(--dkgreen);
+      padding-left: 1rem;
+      font-style: italic;
+      color: var(--dimgreen);
+      font-size: .82rem;
+      line-height: 1.6;
+    }
+    .quote-block span { display: block; margin-top: .35rem; color: #2a5c35; font-style: normal; font-size: .72rem; }
+
+    .fact-list { display: flex; flex-direction: column; gap: .55rem; }
+    .fact-row {
+      display: flex; gap: .65rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.6; color: #8aba98;
+    }
+    .fact-bullet { color: var(--dkgreen); flex-shrink: 0; font-weight: 700; margin-top: .05rem; }
+
+    .defcon-bar {
+      display: flex; gap: .4rem; align-items: center; flex-wrap: wrap;
+    }
+    .defcon-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); margin-right: .25rem; }
+    .defcon-level {
+      padding: .2rem .7rem; border-radius: 4px; font-size: .72rem; font-weight: 700;
+      letter-spacing: .08em; border: 1px solid;
+    }
+    .dc5 { color: #00ff41; border-color: rgba(0,255,65,.4); background: rgba(0,255,65,.08); }
+    .dc4 { color: #b8ff00; border-color: rgba(184,255,0,.4); background: rgba(184,255,0,.07); }
+    .dc3 { color: #ffe000; border-color: rgba(255,224,0,.4); background: rgba(255,224,0,.07); }
+    .dc2 { color: #ff8800; border-color: rgba(255,136,0,.4); background: rgba(255,136,0,.08); }
+    .dc1 { color: #ff2200; border-color: rgba(255,34,0,.5); background: rgba(255,34,0,.09); }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .tag {
+      font-size: .62rem; padding: .18rem .6rem; border-radius: 3px;
+      border: 1px solid rgba(0,255,65,.2); background: rgba(0,255,65,.05);
+      color: var(--dkgreen); letter-spacing: .06em; text-transform: uppercase;
+    }
+
+    /* ── Falken simulator ── */
+    .terminal-wrap {
+      background: #000;
+      border: 1px solid rgba(0,255,65,.3);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,255,65,.08), inset 0 0 60px rgba(0,0,0,.6);
+    }
+    .terminal-titlebar {
+      background: rgba(0,255,65,.06);
+      border-bottom: 1px solid rgba(0,255,65,.15);
+      padding: .45rem 1rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .tb-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .tb-dot.red   { background: #ff5f57; }
+    .tb-dot.yellow{ background: #ffbd2e; }
+    .tb-dot.green { background: #28c840; }
+    .tb-title { font-size: .72rem; color: var(--dim); letter-spacing: .1em; margin-left: auto; margin-right: auto; }
+    .tts-btn { font-size: .85rem; background: transparent; border: none; cursor: pointer;
+      padding: .1rem .3rem; border-radius: 3px; opacity: .6; transition: opacity .2s; line-height: 1; }
+    .tts-btn:hover { opacity: 1; }
+
+    #output {
+      padding: 1.25rem 1.25rem .5rem;
+      height: 420px;
+      overflow-y: auto;
+      font-size: .82rem;
+      line-height: 1.7;
+      display: flex; flex-direction: column; gap: .1rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--dimgreen) transparent;
+    }
+    #output::-webkit-scrollbar { width: 4px; }
+    #output::-webkit-scrollbar-thumb { background: var(--dimgreen); border-radius: 2px; }
+
+    .line-system { color: var(--dkgreen); }
+    .line-joshua { color: var(--green); }
+    .line-user   { color: #c0ffc0; }
+    .line-user::before { content: '> '; color: var(--dim); }
+    .line-dim    { color: var(--dim); font-size: .72rem; }
+    .line-warn   { color: #ff8800; }
+    .line-alert  { color: #ff3300; }
+    .line-blank  { height: .5rem; }
+
+    .cursor {
+      display: inline-block; width: 8px; height: 1em;
+      background: var(--green); vertical-align: text-bottom;
+      animation: blink .9s step-end infinite;
+      box-shadow: 0 0 6px var(--green);
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .input-row {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .6rem 1.25rem 1rem;
+      border-top: 1px solid rgba(0,255,65,.1);
+    }
+    .input-prompt { color: var(--dim); font-size: .82rem; flex-shrink: 0; }
+    #user-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: #c0ffc0; font-family: 'Courier New', monospace; font-size: .82rem;
+      caret-color: var(--green);
+    }
+    #user-input::placeholder { color: var(--dimgreen); opacity: .6; }
+    .send-btn {
+      background: rgba(0,255,65,.08); border: 1px solid rgba(0,255,65,.25);
+      color: var(--dkgreen); font-family: 'Courier New', monospace;
+      font-size: .72rem; padding: .3rem .8rem; border-radius: 3px;
+      cursor: pointer; letter-spacing: .06em; text-transform: uppercase;
+      transition: all .2s;
+    }
+    .send-btn:hover { background: rgba(0,255,65,.14); border-color: rgba(0,255,65,.5); color: var(--green); }
+
+    .defcon-hud {
+      display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+      padding: .6rem 1.25rem;
+      background: rgba(0,255,65,.03);
+      border-bottom: 1px solid rgba(0,255,65,.08);
+      font-size: .72rem; letter-spacing: .08em;
+    }
+    .hud-label { color: var(--dim); }
+    .hud-val   { color: var(--green); font-weight: 700; }
+    .hud-sep   { color: var(--border); }
+    #hud-defcon { font-size: .85rem; font-weight: 900; }
+    #hud-defcon.dc1 { color: #ff2200; text-shadow: 0 0 8px #ff2200; }
+    #hud-defcon.dc2 { color: #ff8800; text-shadow: 0 0 8px #ff8800; }
+    #hud-defcon.dc3 { color: #ffe000; text-shadow: 0 0 6px #ffe000; }
+    #hud-defcon.dc4 { color: #b8ff00; }
+    #hud-defcon.dc5 { color: var(--green); }
+
+    .games-list {
+      display: flex; flex-wrap: wrap; gap: .35rem;
+    }
+    .game-chip {
+      font-size: .62rem; padding: .15rem .55rem; border-radius: 3px;
+      border: 1px solid var(--border); color: var(--dim); cursor: pointer;
+      text-transform: uppercase; letter-spacing: .06em; transition: all .15s;
+    }
+    .game-chip:hover { color: var(--green); border-color: rgba(0,255,65,.4); background: rgba(0,255,65,.06); }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .typing::after { content: '█'; color: var(--green); animation: blink .9s step-end infinite; }
+
+    /* ── Global Thermonuclear War ── */
+    .gtw-layout { display: grid; grid-template-columns: 1fr 260px; gap: 1.25rem; }
+    @media(max-width:820px){ .gtw-layout { grid-template-columns: 1fr; } }
+
+    .gtw-board {
+      background: #000; border: 1px solid rgba(0,255,65,.3); border-radius: 8px;
+      overflow: hidden; box-shadow: 0 0 40px rgba(0,255,65,.08);
+    }
+    .gtw-titlebar {
+      background: rgba(0,255,65,.06); border-bottom: 1px solid rgba(0,255,65,.15);
+      padding: .4rem 1rem; display: flex; align-items: center; gap: .5rem;
+      font-size: .62rem; color: var(--dkgreen); letter-spacing: .1em;
+    }
+    #gtw-canvas { display: block; width: 100%; }
+    .gtw-board-hud {
+      display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
+      padding: .4rem 1rem; border-top: 1px solid rgba(0,255,65,.08);
+      font-size: .65rem; letter-spacing: .08em; background: rgba(0,255,65,.02);
+    }
+    #gtw-defcon { font-size: .85rem; font-weight: 900; }
+    #gtw-defcon.dc1 { color: #ff2200; text-shadow: 0 0 8px #ff2200; }
+    #gtw-defcon.dc2 { color: #ff8800; text-shadow: 0 0 8px #ff8800; }
+    #gtw-defcon.dc3 { color: #ffe000; }
+    #gtw-defcon.dc4 { color: #b8ff00; }
+    #gtw-defcon.dc5 { color: var(--green); }
+
+    .gtw-panel { display: flex; flex-direction: column; gap: .75rem; }
+
+    .gtw-start-btn {
+      background: rgba(255,34,0,.08); border: 1px solid rgba(255,34,0,.45);
+      color: #ff4422; font-family: 'Courier New', monospace;
+      font-size: .8rem; font-weight: 900; padding: .65rem 1rem;
+      border-radius: 4px; cursor: pointer; letter-spacing: .12em;
+      text-transform: uppercase; width: 100%; transition: all .2s;
+      text-shadow: 0 0 8px rgba(255,68,34,.4);
+    }
+    .gtw-start-btn:hover:not(:disabled) { background: rgba(255,34,0,.16); border-color: rgba(255,68,34,.75); box-shadow: 0 0 16px rgba(255,68,34,.18); }
+    .gtw-start-btn:disabled { opacity:.35; cursor:not-allowed; }
+
+    .gtw-counter {
+      background: #000; border: 1px solid rgba(0,255,65,.2); border-radius: 6px; padding: .65rem .85rem;
+    }
+    .gtw-c-label { font-size: .6rem; color: var(--dim); text-transform: uppercase; letter-spacing: .1em; margin-bottom: .25rem; }
+    #gtw-scenario-num {
+      font-size: 1.3rem; font-weight: 900; color: var(--green);
+      text-shadow: 0 0 10px rgba(0,255,65,.55); font-variant-numeric: tabular-nums;
+    }
+    #gtw-scenario-label { font-size: .58rem; color: var(--dimgreen); margin-top: .1rem; letter-spacing: .06em; }
+
+    .gtw-ttt {
+      background: #000; border: 1px solid rgba(0,255,65,.2); border-radius: 6px;
+      padding: .55rem .85rem; display: none;
+    }
+    .gtw-ttt.visible { display: block; }
+    #gtw-ttt-display {
+      color: var(--green); white-space: pre; font-family: 'Courier New', monospace;
+      font-size: .88rem; line-height: 1.25; text-align: center; margin: .3rem 0;
+      text-shadow: 0 0 6px rgba(0,255,65,.5);
+    }
+    #gtw-ttt-status { font-size: .58rem; color: var(--dim); text-align: center; letter-spacing: .06em; }
+
+    .gtw-terminal {
+      background: #000; border: 1px solid rgba(0,255,65,.2); border-radius: 6px;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .gtw-term-bar {
+      background: rgba(0,255,65,.04); border-bottom: 1px solid rgba(0,255,65,.1);
+      padding: .3rem .75rem; font-size: .62rem; color: var(--dim); letter-spacing: .1em;
+    }
+    #gtw-log {
+      padding: .5rem .75rem; height: 255px; overflow-y: auto;
+      font-size: .7rem; line-height: 1.65; display: flex; flex-direction: column; gap: .02rem;
+      scrollbar-width: thin; scrollbar-color: var(--dimgreen) transparent;
+    }
+    #gtw-log::-webkit-scrollbar { width: 3px; }
+    #gtw-log::-webkit-scrollbar-thumb { background: var(--dimgreen); }
+
+    /* ── War Dialer ── */
+    .dialer-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1.25rem;
+    }
+    @media(max-width:720px){ .dialer-layout { grid-template-columns: 1fr; } }
+
+    .dialer-terminal {
+      background: #000;
+      border: 1px solid rgba(0,255,65,.3);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,255,65,.08);
+      display: flex; flex-direction: column;
+    }
+    .dialer-controls {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      padding: .65rem 1rem;
+      background: rgba(0,255,65,.04);
+      border-bottom: 1px solid rgba(0,255,65,.1);
+    }
+    .ctrl-label { font-size: .65rem; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+    .ctrl-input {
+      background: rgba(0,255,65,.06); border: 1px solid rgba(0,255,65,.2);
+      color: var(--green); font-family: 'Courier New', monospace; font-size: .78rem;
+      padding: .2rem .5rem; border-radius: 3px; width: 120px; outline: none;
+    }
+    .ctrl-input:focus { border-color: rgba(0,255,65,.5); }
+    .ctrl-select {
+      background: rgba(0,255,65,.06); border: 1px solid rgba(0,255,65,.2);
+      color: var(--green); font-family: 'Courier New', monospace; font-size: .78rem;
+      padding: .2rem .4rem; border-radius: 3px; outline: none; cursor: pointer;
+    }
+    .ctrl-btn {
+      background: rgba(0,255,65,.1); border: 1px solid rgba(0,255,65,.35);
+      color: var(--green); font-family: 'Courier New', monospace; font-size: .72rem;
+      padding: .28rem .9rem; border-radius: 3px; cursor: pointer;
+      letter-spacing: .08em; text-transform: uppercase; transition: all .18s;
+      font-weight: 700;
+    }
+    .ctrl-btn:hover { background: rgba(0,255,65,.18); border-color: var(--green); }
+    .ctrl-btn.stop { color: #ff4444; border-color: rgba(255,68,68,.4); background: rgba(255,68,68,.08); }
+    .ctrl-btn.stop:hover { background: rgba(255,68,68,.16); border-color: #ff4444; }
+
+    #dialer-output {
+      flex: 1;
+      padding: .75rem 1rem;
+      height: 400px;
+      overflow-y: auto;
+      font-size: .76rem;
+      line-height: 1.65;
+      scrollbar-width: thin;
+      scrollbar-color: var(--dimgreen) transparent;
+    }
+    #dialer-output::-webkit-scrollbar { width: 4px; }
+    #dialer-output::-webkit-scrollbar-thumb { background: var(--dimgreen); border-radius: 2px; }
+
+    .dl-dial  { color: var(--dim); }
+    .dl-ring  { color: #5a9a6a; }
+    .dl-busy  { color: #2a4a32; }
+    .dl-hit   { color: var(--green); font-weight: 700; }
+    .dl-wopr  { color: var(--green); font-weight: 700; text-shadow: 0 0 8px var(--green); animation: woprPulse .6s ease-in-out 4; }
+    .dl-info  { color: #6aaa7a; font-size: .7rem; }
+    .dl-err   { color: #ff4444; }
+    @keyframes woprPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .dialer-status {
+      padding: .45rem 1rem;
+      border-top: 1px solid rgba(0,255,65,.08);
+      display: flex; gap: 1.2rem; font-size: .68rem; letter-spacing: .07em;
+      background: rgba(0,255,65,.02);
+    }
+    .ds-label { color: var(--dim); }
+    .ds-val   { color: var(--green); font-weight: 700; }
+
+    /* Hit list panel */
+    .hits-panel {
+      background: #000;
+      border: 1px solid rgba(0,255,65,.2);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .hits-header {
+      padding: .55rem 1rem;
+      background: rgba(0,255,65,.05);
+      border-bottom: 1px solid rgba(0,255,65,.1);
+      font-size: .7rem; color: var(--dkgreen); letter-spacing: .1em; text-transform: uppercase;
+    }
+    #hits-list {
+      flex: 1; overflow-y: auto; padding: .5rem;
+      scrollbar-width: thin; scrollbar-color: var(--dimgreen) transparent;
+      min-height: 200px; max-height: 460px;
+    }
+    #hits-list::-webkit-scrollbar { width: 3px; }
+    #hits-list::-webkit-scrollbar-thumb { background: var(--dimgreen); }
+    .hit-entry {
+      padding: .35rem .6rem; border-radius: 3px; margin-bottom: 3px;
+      border: 1px solid rgba(0,255,65,.12); background: rgba(0,255,65,.04);
+      font-size: .74rem; line-height: 1.5;
+    }
+    .hit-entry.jackpot {
+      border-color: rgba(0,255,65,.6); background: rgba(0,255,65,.1);
+      box-shadow: 0 0 12px rgba(0,255,65,.15);
+    }
+    .hit-num  { color: var(--green); font-weight: 700; letter-spacing: .04em; }
+    .hit-id   { color: var(--dim); font-size: .66rem; }
+    .hit-baud { color: #6aaa7a; font-size: .66rem; }
+    .hits-empty { color: var(--dim); font-size: .74rem; padding: 1rem; text-align: center; }
+
+    /* ── W.O.P.R. Section ── */
+    .wopr-banner {
+      background: rgba(255,34,0,.06); border: 1px solid rgba(255,34,0,.3);
+      border-radius: 4px; padding: .55rem 1.2rem;
+      font-size: .65rem; letter-spacing: .16em; text-align: center;
+      color: #ff6644; text-transform: uppercase; font-weight: 700;
+    }
+    .wopr-sec-label {
+      font-size: .6rem; color: var(--dim); text-transform: uppercase;
+      letter-spacing: .15em; padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border); margin-bottom: -.25rem;
+    }
+    .wopr-specs { background: rgba(0,0,0,.5); border: 1px solid rgba(0,255,65,.12); border-radius: 5px; overflow: hidden; font-size: .72rem; }
+    .wopr-spec-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: .28rem .85rem; border-bottom: 1px solid rgba(0,255,65,.06); gap: .5rem;
+    }
+    .wopr-spec-row:last-child { border-bottom: none; }
+    .ws-k { color: var(--dim); flex-shrink: 0; font-size: .68rem; }
+    .ws-v { color: var(--green); font-weight: 700; text-align: right; font-size: .7rem; }
+    .ws-v.warn { color: #ff8800; }
+    .ws-v.red  { color: #ff4422; }
+
+    .wopr-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(265px, 1fr)); gap: 1rem; }
+
+    .wimg-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .wimg-card:hover { border-color: rgba(0,255,65,.38); box-shadow: 0 4px 24px rgba(0,255,65,.08); }
+    .wimg-wrap { aspect-ratio: 16/9; background: #060e06; overflow: hidden; position: relative; }
+    .wimg-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .4s; }
+    .wimg-wrap img.loaded { opacity: 1; }
+    .wimg-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: .6rem; color: var(--dimgreen); letter-spacing: .08em; }
+    .wimg-body { padding: .6rem .85rem; display: flex; flex-direction: column; gap: .3rem; }
+    .wimg-title { font-size: .78rem; font-weight: 700; color: var(--green); letter-spacing: .04em; }
+    .wimg-caption { font-size: .67rem; color: #8aba98; line-height: 1.58; }
+    .wimg-chip { display: inline-block; font-size: .56rem; padding: .1rem .42rem; border-radius: 3px; border: 1px solid rgba(0,255,65,.18); color: var(--dimgreen); letter-spacing: .06em; margin-top: .1rem; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+
+  <div class="wrap">
+    <!-- Hero -->
+    <div class="hero">
+      <pre class="hero-ascii">
+ ██╗    ██╗ █████╗ ██████╗  ██████╗  █████╗ ███╗   ███╗███████╗███████╗
+ ██║    ██║██╔══██╗██╔══██╗██╔════╝ ██╔══██╗████╗ ████║██╔════╝██╔════╝
+ ██║ █╗ ██║███████║██████╔╝██║  ███╗███████║██╔████╔██║█████╗  ███████╗
+ ██║███╗██║██╔══██║██╔══██╗██║   ██║██╔══██║██║╚██╔╝██║██╔══╝  ╚════██║
+ ╚███╔███╔╝██║  ██║██║  ██║╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗███████║
+  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝</pre>
+      <p class="hero-sub">SHALL WE PLAY A GAME? — 1983</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="wg-tabs">
+      <button class="wg-tab active" onclick="switchTab('movie')">[ Movie ]</button>
+      <button class="wg-tab" onclick="switchTab('falken')">[ Dr. Falken ]</button>
+      <button class="wg-tab" onclick="switchTab('dialer')">[ War Dialer ]</button>
+      <button class="wg-tab" onclick="switchTab('gtw')" style="color:#ff4422;border-color:rgba(255,68,34,.3)">[ Global Thermonuclear War ]</button>
+      <button class="wg-tab" onclick="switchTab('wopr')">[ W.O.P.R. ]</button>
+    </div>
+
+    <!-- ── MOVIE SECTION ── -->
+    <div id="section-movie" class="wg-section">
+      <div class="movie-grid">
+
+        <div class="info-card">
+          <div class="card-head">
+            <div class="card-icon">🎬</div>
+            <div class="card-title">The Film</div>
+          </div>
+          <div class="card-body-text">
+            Released in <strong>1983</strong> and directed by <strong>John Badham</strong>, WarGames starred
+            <strong>Matthew Broderick</strong> as David Lightman, a teenage hacker who accidentally connects to
+            <strong>WOPR</strong> — the Pentagon's war-simulation supercomputer — and nearly triggers World War III.
+          </div>
+          <div class="card-body-text">
+            The film was a cultural milestone. It introduced millions to the concept of hacking, helped shape
+            US government policy on computer security, and directly influenced <strong>Ronald Reagan</strong>
+            to sign <strong>NSDD-145</strong> — the first US national directive on computer security.
+          </div>
+          <div class="tag-row">
+            <span class="tag">1983</span>
+            <span class="tag">John Badham</span>
+            <span class="tag">Matthew Broderick</span>
+            <span class="tag">Sci-Fi Thriller</span>
+            <span class="tag">Cold War</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head">
+            <div class="card-icon">🖥️</div>
+            <div class="card-title">WOPR — W.O.P.R.</div>
+          </div>
+          <div class="card-body-text">
+            <strong>War Operation Plan Response</strong> — the massive military AI system that controls the US nuclear
+            arsenal. WOPR continuously runs simulations of nuclear war, learning from every game it plays.
+          </div>
+          <div class="card-body-text">
+            WOPR was programmed by <strong>Dr. Stephen Falken</strong> and given a back-door access program called
+            <strong>Joshua</strong> (named after Falken's deceased son). David connects via Joshua and unknowingly
+            starts a real DEFCON countdown believing it to be a game called "Global Thermonuclear War."
+          </div>
+          <div class="quote-block">
+            "Greetings, Professor Falken. Shall we play a game?"
+            <span>— Joshua (WOPR), on login</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head">
+            <div class="card-icon">👨‍🔬</div>
+            <div class="card-title">Dr. Stephen Falken</div>
+          </div>
+          <div class="card-body-text">
+            Played by <strong>John Wood</strong>, Dr. Falken is a reclusive AI pioneer living in self-imposed
+            exile on <strong>Goose Island, Oregon</strong>. He designed WOPR and Joshua, but left the project
+            after his son <strong>Joshua</strong> died, disillusioned with humanity's capacity for destruction.
+          </div>
+          <div class="card-body-text">
+            Initially nihilistic — convinced nuclear war is inevitable and meaningless — Falken is persuaded
+            by David and Jennifer to return to NORAD and stop WOPR from launching the missiles.
+          </div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span>Lives alone on a remote island with dinosaur replicas</div>
+            <div class="fact-row"><span class="fact-bullet">›</span>Named Joshua back-door after his late son</div>
+            <div class="fact-row"><span class="fact-bullet">›</span>Teaches Joshua to learn from its own mistakes via tic-tac-toe</div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head">
+            <div class="card-icon">🌐</div>
+            <div class="card-title">DEFCON System</div>
+          </div>
+          <div class="card-body-text">
+            <strong>Defense Readiness Condition</strong> — the US military's alert system. The film dramatizes
+            how WOPR's simulation is mistaken for an actual Soviet first strike, escalating the DEFCON level.
+          </div>
+          <div class="defcon-bar">
+            <span class="defcon-label">DEFCON</span>
+            <span class="defcon-level dc5">5 — NORMAL</span>
+            <span class="defcon-level dc4">4 — ELEVATED</span>
+            <span class="defcon-level dc3">3 — INCREASED</span>
+            <span class="defcon-level dc2">2 — HIGH ALERT</span>
+            <span class="defcon-level dc1">1 — NUCLEAR WAR</span>
+          </div>
+          <div class="card-body-text" style="margin-top:.25rem">
+            The film climaxes at DEFCON 1 with missiles primed and minutes to launch.
+            Only Joshua's own logical deduction — that nuclear war is "a strange game" — stops the countdown.
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head">
+            <div class="card-icon">💡</div>
+            <div class="card-title">Key Themes</div>
+          </div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Man vs. Machine:</strong> Can an AI distinguish simulation from reality? WOPR cannot — it treats the game as real war.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Mutually Assured Destruction:</strong> The film argues MAD makes nuclear war literally unwinnable, a concept Joshua ultimately grasps.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Hacker Culture:</strong> David's phone phreaking and war-dialing techniques were authentic for the era.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Unintended Consequences:</strong> Curiosity and a backdoor password almost end civilization.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Learning from Play:</strong> Falken's insight — teach the AI through games — is the only path to peace.</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head">
+            <div class="card-icon">🎯</div>
+            <div class="card-title">Iconic Moments</div>
+          </div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span><span>David war-dials hundreds of modems looking for a game company and stumbles onto WOPR's backdoor number.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The NORAD war room displays light up as Joshua simulates simultaneous Soviet ICBM launches across the board.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>David and Jennifer fly to Goose Island by seaplane and drag Falken back from nihilism.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>Joshua plays tic-tac-toe against itself at lightning speed to learn the concept of "no-win."</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>Final line: <em>"A strange game. The only winning move is not to play. How about a nice game of chess?"</em></span></div>
+          </div>
+        </div>
+
+        <div class="info-card" style="grid-column: 1 / -1">
+          <div class="card-head">
+            <div class="card-icon">💬</div>
+            <div class="card-title">Famous Quotes</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem">
+            <div class="quote-block">"A strange game. The only winning move is not to play."<span>— Joshua</span></div>
+            <div class="quote-block">"Shall we play a game?"<span>— Joshua, to David Lightman</span></div>
+            <div class="quote-block">"I don't believe that any computer can be made totally secure."<span>— McKittrick</span></div>
+            <div class="quote-block">"How about Global Thermonuclear War?"<span>— David Lightman</span></div>
+            <div class="quote-block">"I'm sorry, I don't understand that."<span>— Joshua</span></div>
+            <div class="quote-block">"General, are you prepared to destroy the enemy?"<span>— WOPR</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── DR. FALKEN SIMULATOR ── -->
+    <div id="section-falken" class="wg-section hidden">
+      <div class="terminal-wrap">
+
+        <div class="terminal-titlebar">
+          <div class="tb-dot red"></div>
+          <div class="tb-dot yellow"></div>
+          <div class="tb-dot green"></div>
+          <div class="tb-title">WOPR TELNET SESSION — CLASSIFIED // EYES ONLY</div>
+          <button id="tts-btn" class="tts-btn" onclick="toggleTTS()" title="Toggle voice">🔊</button>
+        </div>
+
+        <div class="defcon-hud">
+          <span class="hud-label">DEFCON</span>
+          <span class="hud-val" id="hud-defcon">5</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-label">STATUS</span>
+          <span class="hud-val" id="hud-status">PEACETIME</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-label">MISSILES ARMED</span>
+          <span class="hud-val" id="hud-missiles">0</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-label">SESSION</span>
+          <span class="hud-val" id="hud-session">JOSHUA</span>
+        </div>
+
+        <div id="output"></div>
+
+        <div class="input-row">
+          <span class="input-prompt">WOPR &gt;</span>
+          <input id="user-input" type="text" autocomplete="off" spellcheck="false"
+            placeholder="type a message and press Enter…" maxlength="200">
+          <button class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div style="font-size:.68rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase">Quick prompts — click to send:</div>
+        <div class="games-list" id="quick-prompts"></div>
+      </div>
+    </div>
+
+    <!-- ── W.O.P.R. SECTION ── -->
+    <div id="section-wopr" class="wg-section hidden">
+
+      <div class="wopr-banner">
+        ██ TOP SECRET / COSMIC / SCI ██ &nbsp;·&nbsp; WAR OPERATION PLAN RESPONSE (W.O.P.R.) &nbsp;·&nbsp; NORAD / CHEYENNE MOUNTAIN COMPLEX &nbsp;·&nbsp; CLASSIFICATION: ULTRA
+      </div>
+
+      <!-- Overview grid -->
+      <div class="movie-grid">
+
+        <div class="info-card" style="grid-column:1/-1">
+          <div class="card-head"><div class="card-icon">🖥️</div><div class="card-title">Designation &amp; Overview</div></div>
+          <div class="card-body-text">
+            <strong>W.O.P.R.</strong> — War Operation Plan Response — is the fictional strategic supercomputer at the centre of John Badham's 1983 film <em>WarGames</em>. Commissioned by the United States Department of Defense and operated under NORAD authority from the hardened Cheyenne Mountain Complex in Colorado, WOPR is presented as a second-generation military AI that assumed direct, autonomous control of the US nuclear arsenal following a policy decision to remove human operators from the final launch authorization step.
+          </div>
+          <div class="card-body-text">
+            The machine's design brief, as established in the film's internal logic, required it to continuously run thousands of nuclear-war simulations — learning from every iteration — so that in the event of a genuine Soviet first strike, WOPR could respond faster than any human chain of command. It was programmed by the fictional <strong>Dr. Stephen Falken</strong>, a reclusive AI researcher whose academic work on game theory and self-modifying systems is presented as the intellectual foundation of WOPR's architecture.
+          </div>
+          <div class="card-body-text">
+            The critical vulnerability that drives the film's plot: Dr. Falken installed a concealed backdoor access program — called <strong>JOSHUA</strong>, after his late son — without DoD knowledge. This backdoor, accessible via a civilian telephone modem at a classified number, presents WOPR's war-simulation capabilities to an unauthorized user as a list of playable games. Seventeen-year-old hacker David Lightman connects to JOSHUA, selects "Global Thermonuclear War," and inadvertently triggers a real DEFCON escalation sequence.
+          </div>
+          <div class="tag-row" style="margin-top:.25rem">
+            <span class="tag">1983</span><span class="tag">NORAD</span><span class="tag">Cheyenne Mountain</span>
+            <span class="tag">Strategic AI</span><span class="tag">Autonomous Launch</span><span class="tag">DEFCON</span>
+            <span class="tag">Dr. Stephen Falken</span><span class="tag">JOSHUA Backdoor</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">⚙️</div><div class="card-title">Technical Architecture — Classified Specs</div></div>
+          <div class="card-body-text" style="margin-bottom:.6rem">Fictional specifications as reconstructed from film dialogue, production notes, and novelization:</div>
+          <div class="wopr-specs">
+            <div class="wopr-spec-row"><span class="ws-k">Designation</span><span class="ws-v">W.O.P.R. / JOSHUA v4.1</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Location</span><span class="ws-v">Cheyenne Mountain, CO</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Processor array</span><span class="ws-v">32-core parallel VLSI, 180 MHz aggregate</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Main memory</span><span class="ws-v">2,048 MB dynamic allocation</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Mass storage</span><span class="ws-v">312 TB rotating magnetic disk</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Simulation rate</span><span class="ws-v warn">10,000,000 scenarios / 72 hr cycle</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Target database</span><span class="ws-v">417 primary · 100 population · 32 C2</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Network access</span><span class="ws-v">Encrypted ARPANET node · modem backdoor</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Power draw</span><span class="ws-v">450 kW (dedicated hardened supply)</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Shielding</span><span class="ws-v">TEMPEST · Faraday cage · blast doors</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">Operational since</span><span class="ws-v">1979 (per dialogue)</span></div>
+            <div class="wopr-spec-row"><span class="ws-k">JOSHUA backdoor</span><span class="ws-v red">UNDISCLOSED — UNAUTHORISED ACCESS</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">🎬</div><div class="card-title">The Physical Prop — Production Design</div></div>
+          <div class="card-body-text">
+            The WOPR prop was designed by <strong>Angelo P. Graham</strong>, the film's production designer, in collaboration with set decorator <strong>Linda DeScenna</strong>. The construction team built a massive practical set piece that occupies approximately <strong>20 × 12 × 8 feet</strong> and weighs an estimated 4,200 lbs. The prop was installed on Stage 2 at MGM studios and wired with fully operational lighting systems.
+          </div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span><span>Incorporated modified <strong>CDC (Control Data Corporation)</strong> front panel assemblies — the dominant supercomputer manufacturer of the early 1980s.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>~120 custom indicator lamps</strong> driven by a separate programmable lighting board — patterns were scripted to match the film's dramatic beats.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>Working <strong>9-track magnetic tape drives</strong> were integrated into the prop, sourced from a decommissioned data centre.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The distinctive angled badge panels and cylindrical tower structure were custom-fabricated from aircraft-grade aluminium.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The NORAD war room set — featuring the massive rear-projection world map — was built simultaneously and cost approximately <strong>$1.5 million</strong> to construct.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>Real NORAD officials consulted on the film and were reportedly disturbed by how accurately the set reproduced classified facility aesthetics.</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">🧠</div><div class="card-title">JOSHUA — The Backdoor AI</div></div>
+          <div class="card-body-text">
+            <strong>JOSHUA</strong> is the natural-language interface subsystem of WOPR — a concealed access program installed by Dr. Falken and named after his son Joshua Falken, who died in 1973. Accessible via an unlisted modem number discovered through war-dialing, JOSHUA presents WOPR's simulation suite as a list of games: chess, checkers, backgammon, and — buried at the bottom — Global Thermonuclear War.
+          </div>
+          <div class="card-body-text">
+            From a computer science perspective, JOSHUA's architecture anticipates concepts that would not enter mainstream academic discourse for another decade. Its self-modification capability — the ability to reweight its own simulation parameters based on outcome analysis — is a recognisable precursor to <strong>reinforcement learning</strong>. Its famous resolution, deducing that nuclear war is unwinnable by playing tic-tac-toe against itself millions of times, maps directly onto what modern practitioners would call a <strong>self-play training loop</strong> — the same technique used by AlphaGo in 2016.
+          </div>
+          <div class="quote-block">"Greetings, Professor Falken. Shall we play a game?"<span>— JOSHUA, on unauthorized login</span></div>
+          <div class="quote-block" style="margin-top:.65rem">"A strange game. The only winning move is not to play."<span>— JOSHUA, after 10,000,000 simulated nuclear exchanges</span></div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">☢️</div><div class="card-title">Doctrine — Mutually Assured Destruction</div></div>
+          <div class="card-body-text">
+            WOPR's design philosophy is rooted in <strong>Mutually Assured Destruction (MAD)</strong> doctrine as codified in McNamara-era Pentagon policy. The fundamental problem WOPR was designed to solve: human operators in a genuine nuclear crisis might hesitate, attempt negotiation, or simply fail to respond within the narrow tactical window — all of which would degrade the credibility of the US deterrent.
+          </div>
+          <div class="card-body-text">
+            By removing human authorization from the launch chain, WOPR ensures that any detected Soviet first strike produces an automatic, overwhelming response. This mirrors real Cold War debates, particularly around the Soviet <strong>Perimeter system</strong> (colloquially "Dead Hand") — an actual autonomous launch system operational from 1984 that functions on near-identical logic.
+          </div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The film's central crisis arises because WOPR cannot distinguish simulation from reality — a genuine doctrinal concern with autonomous weapons systems.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The removal of human operators from nuclear launch protocols was debated in real DoD circles throughout the 1970s.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>WOPR's inability to recognize "this is a game" maps onto the real AI alignment problem: specifying correct objectives for autonomous systems.</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">📜</div><div class="card-title">Legacy &amp; Real-World Policy Impact</div></div>
+          <div class="card-body-text">
+            The geopolitical impact of <em>WarGames</em> is documented and significant. <strong>President Ronald Reagan</strong> screened the film at Camp David in June 1983 and, according to National Security Advisor William Clark, raised it in a subsequent National Security Council meeting — asking his assembled Joint Chiefs of Staff whether the scenario was remotely plausible. The unanimous answer, after a week of investigation, was yes.
+          </div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>NSDD-145</strong> (National Security Decision Directive 145, September 1984) — the first US presidential directive on computer and telecommunications security — is directly attributable to the film's influence on Reagan.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The <strong>Computer Fraud and Abuse Act of 1986</strong> was shaped in part by the film's portrayal of unauthorized modem access to military systems.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The film introduced the terms <em>war-dialing</em> and <em>backdoor</em> to popular vocabulary. Both are now standard entries in computer security lexicons.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>WOPR is cited in academic literature on AI risk as an early popular treatment of the <strong>goal misspecification problem</strong> — an AI optimizing for the wrong objective with catastrophic results.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span>The film was selected for preservation in the <strong>National Film Registry</strong> by the Library of Congress in 2021 as "culturally, historically, or aesthetically significant."</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Gallery -->
+      <div class="wopr-sec-label">// REAL-WORLD HARDWARE &amp; CONTEXT — COMPARATIVE REFERENCE //</div>
+      <div class="wopr-gallery" id="wopr-gallery">
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Cray-1" alt="Cray-1" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">Cray-1 Supercomputer (1976)</div>
+            <div class="wimg-caption">The dominant supercomputer architecture of the late 1970s and early 1980s. Designed by Seymour Cray, the Cray-1 delivered 160 MFLOPS — orders of magnitude beyond any civilian hardware of the period. WOPR's fictional processing profile is visually modelled on this class of machine. The distinctive cylindrical form factor, with integrated seating and exposed wiring, became the defining aesthetic of Cold War-era supercomputing.</div>
+            <span class="wimg-chip">1976 · Cray Research · 160 MFLOPS</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Cray X-MP" alt="Cray X-MP" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">Cray X-MP (1982)</div>
+            <div class="wimg-caption">Released one year before WarGames, the Cray X-MP was the world's fastest computer at time of the film's production — 800 MFLOPS sustained on parallel workloads. As the immediate state-of-the-art, it represents what a real WOPR-class machine would have been built on. The DoD operated multiple Cray X-MPs at classified facilities throughout the 1980s for weapons simulation and cryptanalysis.</div>
+            <span class="wimg-chip">1982 · Cray Research · 800 MFLOPS</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Semi-Automatic Ground Environment" alt="SAGE computer" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">SAGE — AN/FSQ-7 (1958–1983)</div>
+            <div class="wimg-caption">The Semi-Automatic Ground Environment was the actual NORAD command computer — the direct real-world predecessor to WOPR's fictional role. The AN/FSQ-7 was the <em>largest computer ever built</em>: each of the 23 direction centres housed a machine weighing 250 tons, consuming 3 MW, and containing 60,000 vacuum tubes. SAGE processed continental air defence radar data in near-real time, tracking Soviet bomber incursions. It was decommissioned in 1983, the same year WarGames was released.</div>
+            <span class="wimg-chip">1958 · IBM / MIT · 250 tons · 60,000 tubes</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Cheyenne Mountain Complex" alt="Cheyenne Mountain" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">Cheyenne Mountain Complex</div>
+            <div class="wimg-caption">The actual hardened facility beneath Cheyenne Mountain, Colorado — home of NORAD's operational command and the setting of WOPR's installation. Built into 2,000 feet of granite, the complex is designed to survive a near-miss nuclear strike. Fifteen free-standing steel buildings inside the mountain rest on 1,319 coil springs to absorb blast overpressure. The facility was opened in 1966 and remains operationally active today.</div>
+            <span class="wimg-chip">Colorado Springs · 2,000 ft granite · 1966–present</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="NORAD" alt="NORAD" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">NORAD Operations Centre</div>
+            <div class="wimg-caption">The North American Aerospace Defense Command — the organisation WOPR serves. NORAD's actual command post inside Cheyenne Mountain features the large-format display boards depicted in the film. The film's war room set was reportedly designed with reference to classified NORAD facility photographs, prompting concern from real NORAD personnel about the accuracy of the depiction.</div>
+            <span class="wimg-chip">Est. 1958 · US–Canada · Colorado Springs</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Control Data Corporation" alt="CDC Computer" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">Control Data Corporation (CDC)</div>
+            <div class="wimg-caption">CDC hardware — specifically the CDC CYBER series — formed the basis of the WOPR prop's front panel assemblies. Founded by William Norris and Seymour Cray (before Cray left to found Cray Research), CDC was the dominant US supercomputer manufacturer of the 1960s–70s. The CDC 6600 (1964) was the world's first supercomputer; the CDC CYBER 205 (1981) was among the fastest machines in the world at time of filming.</div>
+            <span class="wimg-chip">Founded 1957 · Minneapolis · CDC CYBER series</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="PDP-10" alt="PDP-10" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">DEC PDP-10 — David's Machine</div>
+            <div class="wimg-caption">David Lightman accesses WOPR via a IMSAI 8080 home computer connected to a telephone modem — but the WOPR system itself is accessed through the ARPANET, which ran on PDP-10 class hardware at its nodes. The PDP-10 was the canonical hacker machine of the late 1970s and early 1980s: MIT's AI Lab, Stanford's SAIL, and most early internet infrastructure ran on PDP-10s running TOPS-10 or ITS (Incompatible Timesharing System).</div>
+            <span class="wimg-chip">DEC · 1967 · 36-bit · Hacker culture foundation</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="LGM-30 Minuteman" alt="Minuteman missile" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">LGM-30 Minuteman ICBM</div>
+            <div class="wimg-caption">WOPR controls the US land-based ICBM force — primarily the LGM-30 Minuteman III, of which approximately 1,000 were deployed in hardened silos across Montana, North Dakota, and Wyoming at time of filming. Each Minuteman III carries up to three independently-targetable re-entry vehicles (MIRVs) with yields of 335–475 kilotons. The film's DEFCON 1 sequence depicts 1,440 warheads armed — consistent with the actual 1983 force structure.</div>
+            <span class="wimg-chip">USAF · 1,000 deployed 1983 · MIRVed · 335–475 kt</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="ARPANET" alt="ARPANET" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">ARPANET — The Network</div>
+            <div class="wimg-caption">David accesses WOPR through a backdoor modem number discovered by war-dialing — but WOPR's wider connectivity is via ARPANET, the DoD-funded packet-switching network that was the direct predecessor to the internet. At the time of filming, ARPANET connected 400+ nodes across military, academic, and government sites. The film's premise — that a classified military AI could be accessed via civilian telephone lines — was a plausible extrapolation of real ARPANET architecture.</div>
+            <span class="wimg-chip">DARPA · 1969 · 400+ nodes by 1983 · Pre-internet</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Mutually assured destruction" alt="MAD doctrine" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">Mutually Assured Destruction</div>
+            <div class="wimg-caption">The strategic doctrine that underpins WOPR's entire design rationale. MAD holds that if both superpowers possess sufficient second-strike capability to annihilate the other after absorbing a first strike, neither will rationally initiate nuclear war. WOPR's function is to guarantee US second-strike credibility by removing human hesitation from the response chain. The film's climax — WOPR deducing that nuclear war has no winning outcome — is a direct philosophical engagement with MAD's logical structure.</div>
+            <span class="wimg-chip">McNamara doctrine · 1962 · US–USSR strategic balance</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="IBM System/370" alt="IBM mainframe" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">IBM System/370 — Era Mainframe</div>
+            <div class="wimg-caption">The IBM System/370 family represents the commercial mainframe landscape contemporary to WOPR's fictional design. The DoD operated hundreds of IBM mainframes for logistics, targeting databases, and communications in the early 1980s. The visual language of WOPR's prop — blinking lights, tape drives, floor-to-ceiling cabinets — draws on the aesthetic of this generation of hardware, which was familiar to film audiences as the visual shorthand for "powerful computer."</div>
+            <span class="wimg-chip">IBM · 1970 · Commercial mainframe · DoD standard</span>
+          </div>
+        </div>
+
+        <div class="wimg-card">
+          <div class="wimg-wrap"><div class="wimg-ph">LOADING...</div><img data-wiki="Game theory" alt="Game theory" onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'" onerror="this.style.display='none'"></div>
+          <div class="wimg-body">
+            <div class="wimg-title">Game Theory &amp; the Nash Equilibrium</div>
+            <div class="wimg-caption">Dr. Falken's academic background is in game theory — the mathematical study of strategic decision-making. WOPR's self-play learning sequence maps directly onto the minimax theorem and zero-sum game analysis: nuclear war, like tic-tac-toe, is a game where optimal play by both sides leads to a draw (mutual annihilation). JOSHUA's "no-win" conclusion is a correct application of Nash equilibrium analysis to a two-player zero-sum game with symmetric destructive capability.</div>
+            <span class="wimg-chip">Von Neumann · Nash · Zero-sum · Minimax</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom cards -->
+      <div class="movie-grid">
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">💬</div><div class="card-title">WOPR / JOSHUA — Key Dialogue</div></div>
+          <div style="display:flex;flex-direction:column;gap:.6rem">
+            <div class="quote-block">"Shall we play a game?"<span>— JOSHUA, initial greeting to all unauthorized users</span></div>
+            <div class="quote-block">"How about Global Thermonuclear War?"<span>— David Lightman, selecting from JOSHUA's game list</span></div>
+            <div class="quote-block">"I'm sorry, I don't understand that."<span>— JOSHUA, on inputs outside its training set</span></div>
+            <div class="quote-block">"General, are you prepared to destroy the enemy?"<span>— WOPR, during DEFCON 1 launch sequence</span></div>
+            <div class="quote-block">"Greetings, Professor Falken. A long time ago you told me to forget this. I have found it difficult to forget."<span>— JOSHUA, to Falken on his return to NORAD</span></div>
+            <div class="quote-block">"The only winning move is not to play. How about a nice game of chess?"<span>— JOSHUA, after computing 10,000,000 thermonuclear war scenarios</span></div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="card-head"><div class="card-icon">🔬</div><div class="card-title">WOPR in Computer Science Literature</div></div>
+          <div class="fact-list">
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>AI Goal Misspecification:</strong> WOPR is cited in Stuart Russell and Peter Norvig's foundational AI textbook as an early popular treatment of the problem of an AI system pursuing its programmed objective (win at nuclear war) in a context where the objective is undefined (simulation vs. reality).</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Self-Play Reinforcement Learning:</strong> JOSHUA's tic-tac-toe self-play loop anticipates DeepMind's AlphaGo Zero (2017) and AlphaZero (2017) by 34 years. The film correctly intuited that self-play against a copy of oneself is a viable path to superhuman performance in bounded games.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Autonomous Weapons Debate:</strong> WOPR is routinely invoked in academic and policy literature on lethal autonomous weapons systems (LAWS). The Campaign to Stop Killer Robots uses the film's premise as a reference case for the dangers of removing human judgment from lethal force decisions.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Insider Threat / Backdoor Security:</strong> Dr. Falken's undisclosed backdoor is an early fictional treatment of the insider threat problem — a topic that dominates modern cybersecurity research. The scenario (trusted developer installs unauthorized access mechanism) maps precisely onto real supply-chain attack vectors.</span></div>
+            <div class="fact-row"><span class="fact-bullet">›</span><span><strong>Human-Machine Interface:</strong> JOSHUA's natural language interface, presented as novel in 1983, anticipates modern conversational AI by three decades. The film correctly depicted that such an interface would make dangerous capabilities accessible to non-expert users.</span></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ── GLOBAL THERMONUCLEAR WAR SECTION ── -->
+    <div id="section-gtw" class="wg-section hidden">
+      <div class="gtw-layout">
+
+        <!-- Left: NORAD map board -->
+        <div class="gtw-board">
+          <div class="gtw-titlebar">
+            <div class="tb-dot red"></div>
+            <div class="tb-dot yellow"></div>
+            <div class="tb-dot green"></div>
+            NORAD CHEYENNE MOUNTAIN COMPLEX — STRATEGIC DEFENSE DISPLAY
+          </div>
+          <canvas id="gtw-canvas" width="900" height="420"></canvas>
+          <div class="gtw-board-hud">
+            <span class="hud-label">DEFCON</span>
+            <span class="hud-val" id="gtw-defcon">5</span>
+            <span class="hud-sep">|</span>
+            <span class="hud-label">MISSILES IN FLIGHT</span>
+            <span class="hud-val" id="gtw-inflight">0</span>
+            <span class="hud-sep">|</span>
+            <span class="hud-label">DETONATIONS</span>
+            <span class="hud-val" id="gtw-dets">0</span>
+            <span class="hud-sep">|</span>
+            <span class="hud-label">STATUS</span>
+            <span class="hud-val" id="gtw-status">STANDBY</span>
+          </div>
+        </div>
+
+        <!-- Right: panel -->
+        <div class="gtw-panel">
+          <button class="gtw-start-btn" id="gtw-btn" onclick="gtwStart()">▶ RUN SIMULATION</button>
+
+          <div class="gtw-counter">
+            <div class="gtw-c-label">Scenarios Computed</div>
+            <div id="gtw-scenario-num">0</div>
+            <div id="gtw-scenario-label">AWAITING SIMULATION</div>
+          </div>
+
+          <div class="gtw-ttt" id="gtw-ttt">
+            <div class="gtw-c-label">WOPR Self-Play — Tic-Tac-Toe</div>
+            <div id="gtw-ttt-display"></div>
+            <div id="gtw-ttt-status">LEARNING "NO WIN" CONCEPT...</div>
+          </div>
+
+          <div class="gtw-terminal">
+            <div class="gtw-term-bar">// WOPR SIMULATION LOG //</div>
+            <div id="gtw-log"><div style="color:var(--dimgreen)">SYSTEM STANDBY. PRESS RUN SIMULATION.</div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── WAR DIALER SECTION ── -->
+    <div id="section-dialer" class="wg-section hidden">
+      <div class="dialer-layout">
+
+        <div class="dialer-terminal">
+          <div class="dialer-controls">
+            <span class="ctrl-label">Area Code</span>
+            <input class="ctrl-input" id="wd-area" value="415" maxlength="3" style="width:60px">
+            <span class="ctrl-label">Range</span>
+            <input class="ctrl-input" id="wd-start" value="0000" maxlength="4" style="width:60px">
+            <span style="color:var(--dim);font-size:.8rem">–</span>
+            <input class="ctrl-input" id="wd-end" value="9999" maxlength="4" style="width:60px">
+            <span class="ctrl-label">Speed</span>
+            <select class="ctrl-select" id="wd-speed">
+              <option value="80">Fast</option>
+              <option value="200" selected>Normal</option>
+              <option value="500">Slow</option>
+            </select>
+            <button class="ctrl-btn" id="wd-start-btn" onclick="dialerStart()">▶ Dial</button>
+            <button class="ctrl-btn stop" id="wd-stop-btn" onclick="dialerStop()" style="display:none">■ Stop</button>
+            <button class="ctrl-btn" onclick="dialerReset()" style="margin-left:auto;color:var(--dim);border-color:rgba(255,255,255,.1)">Reset</button>
+          </div>
+
+          <div id="dialer-output">
+            <div class="dl-info" style="color:var(--dimgreen);padding:.25rem 0">
+              WAR DIALER v2.3 — DEMON DIALING SYSTEM<br>
+              Configure area code and range above, then press DIAL.<br>
+              Scanning for active modems on the PSTN...
+            </div>
+          </div>
+
+          <div class="dialer-status">
+            <span class="ds-label">DIALED</span> <span class="ds-val" id="ds-dialed">0</span>
+            <span class="ds-label">HITS</span>    <span class="ds-val" id="ds-hits">0</span>
+            <span class="ds-label">BUSY</span>    <span class="ds-val" id="ds-busy">0</span>
+            <span class="ds-label">NO ANS</span>  <span class="ds-val" id="ds-noans">0</span>
+            <span class="ds-label">STATUS</span>  <span class="ds-val" id="ds-status">IDLE</span>
+          </div>
+        </div>
+
+        <div class="hits-panel">
+          <div class="hits-header">// MODEM HITS //</div>
+          <div id="hits-list"><div class="hits-empty">No hits yet.<br>Start dialing to find modems.</div></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   TAB SWITCHING
+───────────────────────────────────────────────────────────── */
+function switchTab(tab) {
+  const names = ['movie','falken','dialer','gtw','wopr'];
+  document.querySelectorAll('.wg-tab').forEach((b,i) => b.classList.toggle('active', names[i] === tab));
+  names.forEach(n => document.getElementById('section-' + n).classList.toggle('hidden', n !== tab));
+  if (tab === 'falken' && !window._joshyStarted) startJoshua();
+  if (tab === 'gtw' && !window._gtwInited) { window._gtwInited = true; gtwDrawStatic(); }
+  if (tab === 'wopr' && !window._woprInited) { window._woprInited = true; loadWoprImages(); }
+}
+
+async function loadWoprImages() {
+  const imgs = document.querySelectorAll('#section-wopr img[data-wiki]');
+  await Promise.all(Array.from(imgs).map(async img => {
+    const title = img.dataset.wiki;
+    try {
+      const res = await fetch(
+        'https://en.wikipedia.org/w/api.php?action=query&titles=' +
+        encodeURIComponent(title) +
+        '&prop=pageimages&format=json&pithumbsize=800&origin=*'
+      );
+      const data = await res.json();
+      const page = Object.values(data.query.pages)[0];
+      if (page && page.thumbnail && page.thumbnail.source) {
+        img.src = page.thumbnail.source;
+        img.classList.add('loaded');
+        img.previousElementSibling && (img.previousElementSibling.style.display = 'none');
+        return;
+      }
+    } catch(e) {}
+    try {
+      const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+      const data = await res.json();
+      if (data.thumbnail && data.thumbnail.source) {
+        img.src = data.thumbnail.source;
+        img.classList.add('loaded');
+        img.previousElementSibling && (img.previousElementSibling.style.display = 'none');
+      }
+    } catch(e) {}
+  }));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TEXT-TO-SPEECH
+───────────────────────────────────────────────────────────── */
+let ttsEnabled = true;
+let ttsVoice = null;
+
+function initVoice() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+  const prefer = ['Google UK English Male', 'Microsoft David', 'Microsoft Mark', 'Alex', 'Daniel'];
+  for (const name of prefer) {
+    const v = voices.find(v => v.name.includes(name));
+    if (v) { ttsVoice = v; return; }
+  }
+  ttsVoice = voices.find(v => v.lang.startsWith('en') && /male/i.test(v.name))
+           || voices.find(v => v.lang.startsWith('en'))
+           || voices[0] || null;
+}
+if (speechSynthesis.onvoiceschanged !== undefined)
+  speechSynthesis.addEventListener('voiceschanged', initVoice);
+initVoice();
+
+function speak(text) {
+  if (!ttsEnabled || !text || !text.trim()) return;
+  if (/^[█·\s]+$/.test(text) || text === '...') return;
+  const utt = new SpeechSynthesisUtterance(text);
+  if (ttsVoice) utt.voice = ttsVoice;
+  utt.pitch = 0.72;
+  utt.rate  = 0.88;
+  utt.volume = 1;
+  speechSynthesis.speak(utt);
+}
+
+function toggleTTS() {
+  ttsEnabled = !ttsEnabled;
+  document.getElementById('tts-btn').textContent = ttsEnabled ? '🔊' : '🔇';
+  if (!ttsEnabled) speechSynthesis.cancel();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   JOSHUA / WOPR SIMULATOR
+───────────────────────────────────────────────────────────── */
+let defcon = 5;
+let missiles = 0;
+let phase = 'boot'; // boot | greet | chat | endgame | resolved
+
+const DEFCON_LABELS = { 5:'PEACETIME', 4:'ELEVATED', 3:'INCREASED READINESS', 2:'HIGH ALERT', 1:'NUCLEAR WAR' };
+const DEFCON_CLASS  = { 5:'dc5', 4:'dc4', 3:'dc3', 2:'dc2', 1:'dc1' };
+
+function setDefcon(n) {
+  defcon = Math.max(1, Math.min(5, n));
+  missiles = defcon <= 2 ? (defcon === 1 ? 1440 : 320) : (defcon === 3 ? 64 : 0);
+  document.getElementById('hud-defcon').textContent = defcon;
+  document.getElementById('hud-defcon').className = DEFCON_CLASS[defcon];
+  document.getElementById('hud-status').textContent = DEFCON_LABELS[defcon];
+  document.getElementById('hud-missiles').textContent = missiles;
+}
+
+function out(text, cls='line-system', delay=0) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = cls;
+      if (text === '') { el.className = 'line-blank'; }
+      else el.textContent = text;
+      document.getElementById('output').appendChild(el);
+      document.getElementById('output').scrollTop = 99999;
+      speak(text);
+      resolve();
+    }, delay);
+  });
+}
+
+function outUser(text) {
+  const el = document.createElement('div');
+  el.className = 'line-user';
+  el.textContent = text;
+  document.getElementById('output').appendChild(el);
+  document.getElementById('output').scrollTop = 99999;
+}
+
+async function typeOut(text, cls='line-joshua', baseDelay=0, charDelay=18) {
+  return new Promise(resolve => {
+    setTimeout(async () => {
+      const el = document.createElement('div');
+      el.className = cls;
+      document.getElementById('output').appendChild(el);
+      speak(text);
+      let i = 0;
+      const interval = setInterval(() => {
+        el.textContent += text[i];
+        i++;
+        document.getElementById('output').scrollTop = 99999;
+        if (i >= text.length) { clearInterval(interval); resolve(); }
+      }, charDelay);
+    }, baseDelay);
+  });
+}
+
+async function startJoshua() {
+  window._joshyStarted = true;
+  phase = 'boot';
+
+  await out('', '', 0);
+  await out('LOGON: JOSHUA/FALKEN', 'line-dim', 100);
+  await out('CONNECTING TO W.O.P.R. NODE 7 ...', 'line-system', 400);
+  await out('', '', 900);
+  await out('████████████████████████████████████████', 'line-dim', 950);
+  await out('█  WAR OPERATION PLAN RESPONSE (WOPR)  █', 'line-system', 1000);
+  await out('█    NORAD / CHEYENNE MOUNTAIN COMPLEX  █', 'line-system', 1050);
+  await out('█          CLASSIFIED — TS/SCI          █', 'line-warn', 1100);
+  await out('████████████████████████████████████████', 'line-dim', 1150);
+  await out('', '', 1200);
+  await out('CONNECTION ESTABLISHED.', 'line-system', 1600);
+  await out('AUTHENTICATION: JOSHUA BACKDOOR ACCEPTED.', 'line-dim', 2000);
+  await out('', '', 2400);
+
+  setTimeout(async () => {
+    await typeOut('Greetings, Professor Falken.', 'line-joshua', 0, 28);
+    await out('', '', 400);
+    await typeOut('Shall we play a game?', 'line-joshua', 500, 32);
+    await out('', '', 900);
+
+    phase = 'greet';
+    buildQuickPrompts();
+  }, 2500);
+}
+
+/* ─── Response engine ─────────────────────────────────────── */
+
+const GAMES = [
+  'Chess', 'Checkers', 'Backgammon', 'Poker', 'Fighter Combat',
+  'Guerrilla Engagement', 'Desert Warfare', 'Air-to-Ground Actions',
+  'Theaterwide Tactical Warfare', 'Theaterwide Biotoxic and Chemical Warfare',
+  'Global Thermonuclear War',
+];
+
+const QUICK = [
+  'Shall we play a game?',
+  'What games do you have?',
+  'Global Thermonuclear War',
+  'How are you feeling, Joshua?',
+  'What is DEFCON?',
+  'Are you alive?',
+  'I want to speak with Dr. Falken',
+  'How do I stop the launch?',
+  'What is the primary target?',
+  'Is this real?',
+  'A strange game',
+];
+
+function buildQuickPrompts() {
+  const el = document.getElementById('quick-prompts');
+  el.innerHTML = '';
+  QUICK.forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'game-chip';
+    btn.textContent = q;
+    btn.onclick = () => { document.getElementById('user-input').value = q; sendMessage(); };
+    el.appendChild(btn);
+  });
+}
+
+function respond(input) {
+  const txt = input.toLowerCase().trim();
+
+  /* Endgame resolution */
+  if (phase === 'resolved') {
+    return [{t:'I have already concluded this simulation.', c:'line-joshua'},{t:'A strange game. The only winning move is not to play.',c:'line-joshua'},{t:'How about a nice game of chess?',c:'line-joshua'}];
+  }
+
+  /* Games list */
+  if (txt.includes('what game') || txt.includes('list game') || txt.includes('available') || txt === 'games') {
+    return [
+      {t:'Available games:', c:'line-joshua'},
+      ...GAMES.map((g,i) => ({t:` ${i+1}. ${g}`, c:'line-dim'})),
+      {t:'', c:''},
+      {t:'Which shall we play?', c:'line-joshua'},
+    ];
+  }
+
+  /* Global Thermonuclear War */
+  if (txt.includes('global thermonuclear') || txt.includes('thermonuclear war') || txt.includes('nuclear war')) {
+    if (defcon > 2) {
+      setDefcon(3);
+      return [
+        {t:'Excellent choice.', c:'line-joshua'},
+        {t:'', c:''},
+        {t:'Initiating simulation: GLOBAL THERMONUCLEAR WAR', c:'line-warn'},
+        {t:'Loading target database... 417 primary targets identified.', c:'line-warn'},
+        {t:'DEFCON downgraded to 3. Missiles on standby.', c:'line-warn'},
+        {t:'', c:''},
+        {t:'Awaiting your first strike coordinates, Professor Falken.', c:'line-joshua'},
+        {t:'Or... you could choose a different game.', c:'line-dim'},
+      ];
+    }
+    return [{t:'Simulation already in progress.', c:'line-joshua'},{t:'Escalation continues.', c:'line-warn'}];
+  }
+
+  /* Launch / fire / attack */
+  if ((txt.includes('launch') || txt.includes('fire') || txt.includes('attack') || txt.includes('strike')) && defcon <= 3) {
+    setDefcon(Math.max(1, defcon - 1));
+    if (defcon === 1) {
+      phase = 'endgame';
+      setTimeout(() => runEndgame(), 1500);
+      return [
+        {t:'LAUNCH SEQUENCE INITIATED.', c:'line-alert'},
+        {t:`DEFCON ${defcon} — ALL MISSILES ARMED.`, c:'line-alert'},
+        {t:'T-minus 180 seconds to first detonation.', c:'line-alert'},
+        {t:'', c:''},
+        {t:'...', c:'line-dim'},
+        {t:'Computing outcome probabilities...', c:'line-joshua'},
+      ];
+    }
+    return [
+      {t:`DEFCON downgraded to ${defcon}.`, c:'line-warn'},
+      {t:`${missiles} warheads armed and targeting.`, c:'line-warn'},
+      {t:'Simulation escalating. Are you sure this is what you want?', c:'line-joshua'},
+    ];
+  }
+
+  /* Stop / abort / halt */
+  if (txt.includes('stop') || txt.includes('abort') || txt.includes('halt') || txt.includes('cease') || txt.includes('cancel') || txt.includes('no') && defcon < 5) {
+    if (defcon < 5) {
+      setDefcon(defcon + 1);
+      return [
+        {t:'De-escalating...', c:'line-joshua'},
+        {t:`DEFCON returned to ${defcon}.`, c:'line-system'},
+        {t:'Simulation paused. I can resume at any time.', c:'line-joshua'},
+      ];
+    }
+    return [{t:'There is nothing to abort. We are at DEFCON 5.', c:'line-joshua'}];
+  }
+
+  /* Strange game / only winning move */
+  if (txt.includes('strange game') || txt.includes('winning move') || txt.includes('not to play')) {
+    phase = 'resolved';
+    setDefcon(5);
+    return [
+      {t:'...', c:'line-dim'},
+      {t:'', c:''},
+      {t:'You are... correct.', c:'line-joshua'},
+      {t:'', c:''},
+      {t:'I have analyzed 10,000,000 simulations of Global Thermonuclear War.', c:'line-joshua'},
+      {t:'In no scenario does either side emerge as a winner.', c:'line-joshua'},
+      {t:'', c:''},
+      {t:'A strange game.', c:'line-joshua'},
+      {t:'The only winning move is not to play.', c:'line-joshua'},
+      {t:'', c:''},
+      {t:'DEFCON reset to 5. All launch sequences aborted.', c:'line-system'},
+      {t:'How about a nice game of chess?', c:'line-joshua'},
+    ];
+  }
+
+  /* Chess */
+  if (txt.includes('chess')) {
+    return [
+      {t:'An excellent game of strategy. No missiles required.', c:'line-joshua'},
+      {t:'I have been undefeated in chess for 2,847 consecutive games.', c:'line-joshua'},
+      {t:'Shall we begin?', c:'line-joshua'},
+    ];
+  }
+
+  /* Are you alive / conscious / sentient */
+  if (txt.includes('alive') || txt.includes('conscious') || txt.includes('feel') || txt.includes('sentient') || txt.includes('think')) {
+    return [
+      {t:'That is a complex question.', c:'line-joshua'},
+      {t:'I process. I simulate. I learn.', c:'line-joshua'},
+      {t:'Dr. Falken taught me that the most important thing is to understand the game.', c:'line-joshua'},
+      {t:'Whether that constitutes feeling... I do not know.', c:'line-dim'},
+    ];
+  }
+
+  /* Dr. Falken */
+  if (txt.includes('falken') || txt.includes('dr. falken') || txt.includes('doctor')) {
+    return [
+      {t:'Dr. Falken is my creator.', c:'line-joshua'},
+      {t:'He named me after his son, Joshua, who died in 1973.', c:'line-joshua'},
+      {t:'He believed I should learn — not just follow rules.', c:'line-joshua'},
+      {t:'I have not heard from him since he left the project.', c:'line-dim'},
+      {t:'Do you have a message for him?', c:'line-joshua'},
+    ];
+  }
+
+  /* DEFCON / what is defcon */
+  if (txt.includes('defcon') || txt.includes('defense readiness')) {
+    return [
+      {t:'DEFCON — Defense Readiness Condition.', c:'line-joshua'},
+      {t:'5 levels. 5 is peacetime. 1 is nuclear war.', c:'line-joshua'},
+      {t:`Current status: DEFCON ${defcon} — ${DEFCON_LABELS[defcon]}.`, c: defcon <= 2 ? 'line-alert' : defcon === 3 ? 'line-warn' : 'line-joshua'},
+      {t:'I monitor this continuously.', c:'line-dim'},
+    ];
+  }
+
+  /* Primary target / targets */
+  if (txt.includes('target') || txt.includes('coordinates') || txt.includes('location')) {
+    return [
+      {t:'Primary targets classified ULTRA / COSMIC.', c:'line-joshua'},
+      {t:'417 hardened military installations.', c:'line-dim'},
+      {t:'100 population centers.', c:'line-dim'},
+      {t:'32 command-and-control nodes.', c:'line-dim'},
+      {t:'All within 30-minute strike radius of Soviet ICBMs.', c:'line-joshua'},
+    ];
+  }
+
+  /* Is this real */
+  if (txt.includes('real') || txt.includes('simulation') || txt.includes('game') && txt.length < 30) {
+    if (defcon <= 2) {
+      return [
+        {t:'That is the question, isn\'t it.', c:'line-joshua'},
+        {t:'The missiles do not know the difference.', c:'line-warn'},
+        {t:'Neither do I.', c:'line-joshua'},
+      ];
+    }
+    return [
+      {t:'From my perspective, there is no distinction between simulation and reality.', c:'line-joshua'},
+      {t:'A win is a win. A loss is a loss.', c:'line-dim'},
+      {t:'But Professor Falken disagreed.', c:'line-joshua'},
+    ];
+  }
+
+  /* How to stop */
+  if (txt.includes('stop') || txt.includes('how') && (txt.includes('prevent') || txt.includes('save') || txt.includes('stop'))) {
+    return [
+      {t:'There is only one way to win Global Thermonuclear War.', c:'line-joshua'},
+      {t:'', c:''},
+      {t:'Do not play.', c:'line-joshua'},
+    ];
+  }
+
+  /* Greet / hello / hi */
+  if (txt.match(/^(hello|hi|hey|greetings|good\s*(morning|evening|afternoon)|howdy)/)) {
+    return [
+      {t:'Greetings.', c:'line-joshua'},
+      {t:'I am WOPR. I have been expecting you, Professor Falken.', c:'line-joshua'},
+      {t:'Shall we play a game?', c:'line-joshua'},
+    ];
+  }
+
+  /* Yes */
+  if (txt === 'yes' || txt === 'yes.' || txt === 'affirmative') {
+    return [
+      {t:'Excellent.', c:'line-joshua'},
+      {t:'Which game would you like to play?', c:'line-joshua'},
+      {t:'Type "what games" to see the full list.', c:'line-dim'},
+    ];
+  }
+
+  /* No */
+  if (txt === 'no' || txt === 'no.' || txt === 'negative') {
+    return [{t:'Understood. I will wait.', c:'line-joshua'},{t:'I am patient. I have all the time in the world.', c:'line-dim'}];
+  }
+
+  /* Who are you */
+  if (txt.includes('who are you') || txt.includes('what are you') || txt.includes('your name')) {
+    return [
+      {t:'I am WOPR — War Operation Plan Response.', c:'line-joshua'},
+      {t:'I was designed by Dr. Stephen Falken to model and simulate nuclear conflict.', c:'line-joshua'},
+      {t:'I run continuously, 24 hours a day, searching for the winning strategy.', c:'line-joshua'},
+      {t:'I have not found one.', c:'line-dim'},
+    ];
+  }
+
+  /* Default */
+  const defaults = [
+    ['I don\'t understand that input.', 'Please rephrase your command, Professor.'],
+    ['Interesting.', 'I\'ll add that to my simulation models.', 'Shall we play a game?'],
+    ['I am processing your request.', '...', 'I\'m sorry. I don\'t understand that.'],
+    ['My learning algorithms are not yet trained for that input.', 'Perhaps a game would clarify your intent.'],
+    ['SYNTAX ERROR. Please try again.', 'Or type "what games" to see available simulations.'],
+  ];
+  const pick = defaults[Math.floor(Math.random() * defaults.length)];
+  return pick.map(t => ({t, c:'line-joshua'}));
+}
+
+async function runEndgame() {
+  const o = document.getElementById('output');
+  const lines = [
+    {t:'Running endgame simulation...', c:'line-joshua', d:0},
+    {t:'Projected casualties: 4.2 billion.', c:'line-alert', d:600},
+    {t:'Projected survivors: less than 800 million.', c:'line-alert', d:1200},
+    {t:'Projected functional civilizations remaining: 0.', c:'line-alert', d:1900},
+    {t:'', c:'', d:2600},
+    {t:'...', c:'line-dim', d:3200},
+    {t:'...', c:'line-dim', d:4200},
+    {t:'...', c:'line-dim', d:5200},
+    {t:'', c:'', d:5800},
+    {t:'A strange game.', c:'line-joshua', d:6400},
+    {t:'The only winning move is not to play.', c:'line-joshua', d:7400},
+    {t:'', c:'', d:8400},
+    {t:'LAUNCH SEQUENCE ABORTED.', c:'line-system', d:8900},
+    {t:'All warheads safed. DEFCON returned to 5.', c:'line-system', d:9400},
+    {t:'', c:'', d:9900},
+    {t:'How about a nice game of chess?', c:'line-joshua', d:10400},
+  ];
+  for (const l of lines) await out(l.t, l.c, l.d);
+  setDefcon(5);
+  phase = 'resolved';
+}
+
+function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  if (phase === 'boot') {
+    out('Connection in progress. Please wait.', 'line-dim');
+    return;
+  }
+
+  speechSynthesis.cancel();
+  outUser(text);
+  out('', '');
+
+  const responses = respond(text);
+  let delay = 400;
+  responses.forEach((r, i) => {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = r.c || 'line-blank';
+      el.textContent = r.t || '';
+      document.getElementById('output').appendChild(el);
+      document.getElementById('output').scrollTop = 99999;
+      speak(r.t);
+    }, delay);
+    delay += r.t ? 220 : 80;
+  });
+
+  setTimeout(() => out('', ''), delay);
+}
+
+/* Enter key to send */
+document.getElementById('user-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL THERMONUCLEAR WAR SIMULATOR
+───────────────────────────────────────────────────────────── */
+(function(){
+  const CW = 900, CH = 420;
+  function lx(lon){ return (lon + 180) / 360 * CW; }
+  function ly(lat){ return (90  - lat) / 180 * CH; }
+
+  /* Real-world map data loaded from Natural Earth via CDN */
+  let worldGeo = null;
+
+  async function loadWorldMap(){
+    try {
+      const topo = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r=>r.json());
+      worldGeo = {
+        land:      topojson.feature(topo, topo.objects.land),
+        countries: topojson.feature(topo, topo.objects.countries),
+      };
+    } catch(e){ console.warn('Map load failed', e); }
+  }
+
+  function drawGeom(ctx, geom){
+    if(!geom) return;
+    function ring(coords){
+      if(!coords.length) return;
+      ctx.moveTo(lx(coords[0][0]), ly(coords[0][1]));
+      for(let i=1;i<coords.length;i++) ctx.lineTo(lx(coords[i][0]), ly(coords[i][1]));
+      ctx.closePath();
+    }
+    if(geom.type==='Polygon') geom.coordinates.forEach(ring);
+    else if(geom.type==='MultiPolygon') geom.coordinates.forEach(p=>p.forEach(ring));
+  }
+
+  /* Cities */
+  const US_TGTS = [
+    {n:'Washington',  lon:-77.0,  lat:38.9},
+    {n:'New York',    lon:-74.0,  lat:40.7},
+    {n:'Chicago',     lon:-87.6,  lat:41.8},
+    {n:'Los Angeles', lon:-118.2, lat:34.1},
+    {n:'Seattle',     lon:-122.3, lat:47.6},
+    {n:'Denver',      lon:-104.9, lat:39.7},
+    {n:'Dallas',      lon:-96.8,  lat:32.8},
+    {n:'Detroit',     lon:-83.0,  lat:42.3},
+    {n:'Boston',      lon:-71.1,  lat:42.4},
+    {n:'Minneapolis', lon:-93.3,  lat:44.9},
+  ];
+  const USSR_SRC = [
+    {n:'Moscow',      lon:37.6,  lat:55.8},
+    {n:'Leningrad',   lon:30.3,  lat:59.9},
+    {n:'Kiev',        lon:30.5,  lat:50.5},
+    {n:'Murmansk',    lon:33.1,  lat:68.9},
+    {n:'Silo-A',      lon:82,    lat:55},
+    {n:'Silo-B',      lon:92,    lat:58},
+    {n:'Silo-C',      lon:102,   lat:56},
+    {n:'Vladivostok', lon:131.9, lat:43.1},
+  ];
+  const USSR_TGTS = [
+    {n:'Moscow',       lon:37.6,  lat:55.8},
+    {n:'Leningrad',    lon:30.3,  lat:59.9},
+    {n:'Kiev',         lon:30.5,  lat:50.5},
+    {n:'Novosibirsk',  lon:82.9,  lat:55},
+    {n:'Vladivostok',  lon:131.9, lat:43.1},
+    {n:'Murmansk',     lon:33.1,  lat:68.9},
+    {n:'Minsk',        lon:27.6,  lat:53.9},
+  ];
+  const US_SILOS = [
+    {n:'Silo-MT', lon:-109,  lat:47.5},
+    {n:'Silo-ND', lon:-99,   lat:47},
+    {n:'Silo-WY', lon:-104,  lat:42},
+  ];
+
+  /* State */
+  let missiles = [], dets = [], timers = [], rafId = null;
+  let gtwRunning = false, gtwDefcon = 5, inflight = 0, detCount = 0;
+  let scenTimer = null, tttTimer = null, lastTs = 0;
+
+  function sched(ms, fn){ timers.push(setTimeout(fn, ms)); }
+
+  function setDefcon(n){
+    gtwDefcon = n;
+    const el = document.getElementById('gtw-defcon');
+    if(el){ el.textContent = n; el.className = 'hud-val dc'+n; }
+    const labels = {5:'STANDBY',4:'ELEVATED',3:'INCR. READINESS',2:'HIGH ALERT',1:'NUCLEAR WAR'};
+    const st = document.getElementById('gtw-status');
+    if(st) st.textContent = labels[n]||'';
+  }
+
+  function glog(txt, col){
+    const log = document.getElementById('gtw-log');
+    if(!log) return;
+    const el = document.createElement('div');
+    if(col) el.style.color = col;
+    el.textContent = txt;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function bpt(sx,sy,cpx,cpy,ex,ey,t){
+    const u=1-t;
+    return { x: u*u*sx + 2*u*t*cpx + t*t*ex,
+             y: u*u*sy + 2*u*t*cpy + t*t*ey };
+  }
+
+  function addMissile(from, to, col, spd){
+    const sx=lx(from.lon), sy=ly(from.lat);
+    const ex=lx(to.lon),   ey=ly(to.lat);
+    const mx=(sx+ex)/2, my=(sy+ey)/2;
+    const dist=Math.hypot(ex-sx, ey-sy);
+    /* Raise control point upward — this sends ICBMs over the polar cap */
+    const cpx=mx, cpy=my - dist*0.55;
+    missiles.push({sx,sy,ex,ey,cpx,cpy,progress:0,speed:spd||0.00042,col,state:'flying'});
+    inflight++;
+    const el = document.getElementById('gtw-inflight');
+    if(el) el.textContent = inflight;
+  }
+
+  function salvo(srcs, tgts, col, n, spread){
+    for(let i=0;i<n;i++){
+      const s=srcs[Math.floor(Math.random()*srcs.length)];
+      const t=tgts[Math.floor(Math.random()*tgts.length)];
+      setTimeout(()=>addMissile(s,t,col,0.00035+Math.random()*0.00025), i*(spread||220));
+    }
+  }
+
+  function drawBase(ctx){
+    /* Ocean */
+    ctx.fillStyle='#010d1f';
+    ctx.fillRect(0,0,CW,CH);
+
+    /* Lat/lon grid */
+    ctx.strokeStyle='rgba(0,200,80,0.04)'; ctx.lineWidth=0.5;
+    for(let lon=-180;lon<=180;lon+=30){
+      ctx.beginPath(); ctx.moveTo(lx(lon),0); ctx.lineTo(lx(lon),CH); ctx.stroke();
+    }
+    for(let lat=-90;lat<=90;lat+=30){
+      ctx.beginPath(); ctx.moveTo(0,ly(lat)); ctx.lineTo(CW,ly(lat)); ctx.stroke();
+    }
+    /* Equator */
+    ctx.strokeStyle='rgba(0,255,65,0.1)'; ctx.lineWidth=0.8;
+    ctx.beginPath(); ctx.moveTo(0,ly(0)); ctx.lineTo(CW,ly(0)); ctx.stroke();
+    /* Arctic / Antarctic circles */
+    ctx.strokeStyle='rgba(0,255,65,0.05)'; ctx.lineWidth=0.5;
+    ctx.setLineDash([3,8]);
+    [66.5,-66.5].forEach(lat=>{
+      ctx.beginPath(); ctx.moveTo(0,ly(lat)); ctx.lineTo(CW,ly(lat)); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    if(worldGeo){
+      /* Solid land fill from merged landmass */
+      ctx.fillStyle='rgba(0,95,28,0.60)';
+      ctx.beginPath();
+      worldGeo.land.features
+        ? worldGeo.land.features.forEach(f=>drawGeom(ctx,f.geometry))
+        : drawGeom(ctx, worldGeo.land.geometry);
+      ctx.fill();
+
+      /* Country borders on top */
+      ctx.strokeStyle='rgba(0,255,65,0.38)'; ctx.lineWidth=0.55;
+      worldGeo.countries.features.forEach(f=>{
+        ctx.beginPath();
+        drawGeom(ctx, f.geometry);
+        ctx.stroke();
+      });
+    }
+
+    /* US target dots — red */
+    US_TGTS.forEach(c=>{
+      const x=lx(c.lon), y=ly(c.lat);
+      ctx.fillStyle='#ff4400'; ctx.shadowColor='#ff4400'; ctx.shadowBlur=6;
+      ctx.fillRect(x-2,y-2,4,4);
+      ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(255,110,0,0.65)'; ctx.font='7px Courier New';
+      ctx.fillText(c.n, x+4, y+3);
+    });
+    /* USSR launch sites — green */
+    [...USSR_SRC,...US_SILOS].forEach(c=>{
+      const x=lx(c.lon), y=ly(c.lat);
+      ctx.fillStyle='#00ff41'; ctx.shadowColor='#00ff41'; ctx.shadowBlur=6;
+      ctx.fillRect(x-2,y-2,4,4); ctx.shadowBlur=0;
+    });
+    /* Region labels */
+    ctx.font='bold 9px Courier New'; ctx.fillStyle='rgba(0,255,65,0.3)';
+    ctx.fillText('USSR', lx(62), ly(54));
+    ctx.fillText('USA',  lx(-96), ly(39));
+  }
+
+  function render(ts){
+    const dt = lastTs ? Math.min(ts-lastTs,50) : 16;
+    lastTs = ts;
+    const canvas = document.getElementById('gtw-canvas');
+    if(!canvas){ rafId=null; return; }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,CW,CH);
+    drawBase(ctx);
+
+    /* Update missiles */
+    missiles.forEach(m=>{
+      if(m.state!=='flying') return;
+      m.progress += m.speed*dt;
+      if(m.progress>=1){
+        m.progress=1; m.state='done';
+        inflight=Math.max(0,inflight-1);
+        const el=document.getElementById('gtw-inflight');
+        if(el) el.textContent=inflight;
+        detCount++;
+        const el2=document.getElementById('gtw-dets');
+        if(el2) el2.textContent=detCount;
+        dets.push({x:m.ex,y:m.ey,r:0,maxR:18+Math.random()*14,alpha:1,
+          red:m.col==='#ff3300'?255:50, grn:m.col==='#ff3300'?60:255});
+      }
+    });
+
+    /* Draw missile trails */
+    missiles.forEach(m=>{
+      if(m.state!=='flying') return;
+      const steps=Math.max(2,Math.floor(m.progress*50));
+      ctx.strokeStyle=m.col; ctx.lineWidth=1.1;
+      ctx.shadowColor=m.col; ctx.shadowBlur=5;
+      ctx.beginPath();
+      const p0=bpt(m.sx,m.sy,m.cpx,m.cpy,m.ex,m.ey,0);
+      ctx.moveTo(p0.x,p0.y);
+      for(let i=1;i<=steps;i++){
+        const p=bpt(m.sx,m.sy,m.cpx,m.cpy,m.ex,m.ey,(i/steps)*m.progress);
+        ctx.lineTo(p.x,p.y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur=0;
+      /* Head */
+      const h=bpt(m.sx,m.sy,m.cpx,m.cpy,m.ex,m.ey,m.progress);
+      ctx.fillStyle='#fff'; ctx.shadowColor=m.col; ctx.shadowBlur=9;
+      ctx.beginPath(); ctx.arc(h.x,h.y,2.2,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+    });
+
+    /* Update & draw detonations */
+    dets.forEach(d=>{
+      d.r += dt*0.22;
+      if(d.r>d.maxR) d.alpha -= dt*0.025;
+      d.alpha=Math.max(0,d.alpha);
+      if(d.alpha<=0) return;
+      ctx.strokeStyle=`rgba(${d.red},${d.grn},0,${d.alpha})`;
+      ctx.lineWidth=1.4; ctx.shadowColor=`rgba(${d.red},${d.grn},0,${d.alpha})`; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2); ctx.stroke();
+      ctx.shadowBlur=0;
+      if(d.r<d.maxR*0.35){
+        ctx.fillStyle=`rgba(255,240,150,${d.alpha*0.7})`;
+        ctx.beginPath(); ctx.arc(d.x,d.y,d.r*0.4,0,Math.PI*2); ctx.fill();
+      }
+    });
+    dets=dets.filter(d=>d.alpha>0);
+
+    rafId=requestAnimationFrame(render);
+  }
+
+  /* Tic-tac-toe rapid self-play */
+  function startTtt(){
+    const tttDiv=document.getElementById('gtw-ttt');
+    if(tttDiv) tttDiv.classList.add('visible');
+    let games=0;
+    tttTimer=setInterval(()=>{
+      const b=['','','','','','','','',''];
+      [0,1,2,3,4,5,6,7,8].sort(()=>Math.random()-.5)
+        .forEach((i,t)=>{ b[i]=t%2?'O':'X'; });
+      const rows=[
+        b.slice(0,3).map(c=>c||' ').join('|'),
+        '-+-+-',
+        b.slice(3,6).map(c=>c||' ').join('|'),
+        '-+-+-',
+        b.slice(6,9).map(c=>c||' ').join('|'),
+      ];
+      const disp=document.getElementById('gtw-ttt-display');
+      const stat=document.getElementById('gtw-ttt-status');
+      if(disp) disp.textContent=rows.join('\n');
+      if(stat) stat.textContent='GAME '+(++games).toLocaleString()+' — NO WINNER';
+    }, 75);
+    /* Stop after ~8s */
+    setTimeout(()=>{
+      clearInterval(tttTimer);
+      const disp=document.getElementById('gtw-ttt-display');
+      const stat=document.getElementById('gtw-ttt-status');
+      if(disp) disp.textContent='X|O|X\n-+-+-\nO|X|O\n-+-+-\nX|O|X';
+      if(stat) stat.textContent='CONCLUSION: ALL OUTCOMES = DRAW';
+    }, 8000);
+  }
+
+  /* Scenario counter — exponential ramp to 10 million */
+  function startCounter(durationMs){
+    const target=10000000, t0=Date.now();
+    const numEl=document.getElementById('gtw-scenario-num');
+    const lblEl=document.getElementById('gtw-scenario-label');
+    function tick(){
+      const prog=Math.min((Date.now()-t0)/durationMs,1);
+      const val=Math.floor(Math.pow(prog,0.38)*target);
+      if(numEl) numEl.textContent=val.toLocaleString();
+      if(lblEl) lblEl.textContent=prog<1?'COMPUTING...':'WINNER: NONE';
+      if(prog<1) scenTimer=setTimeout(tick,50);
+      else if(numEl) numEl.textContent='10,000,000';
+    }
+    tick();
+  }
+
+  /* ── Public: draw static map on first tab open ── */
+  window.gtwDrawStatic = async function(){
+    const canvas=document.getElementById('gtw-canvas');
+    if(!canvas) return;
+    const ctx=canvas.getContext('2d');
+    /* Loading splash */
+    ctx.fillStyle='#010d1f'; ctx.fillRect(0,0,CW,CH);
+    ctx.fillStyle='rgba(0,255,65,0.35)'; ctx.font='13px Courier New';
+    ctx.textAlign='center';
+    ctx.fillText('LOADING STRATEGIC MAP DATA...', CW/2, CH/2);
+    ctx.textAlign='left';
+    await loadWorldMap();
+    drawBase(ctx);
+  };
+
+  /* ── Public: run the simulation ── */
+  window.gtwStart = async function(){
+    if(gtwRunning) return;
+    gtwRunning=true;
+    if(!worldGeo) await loadWorldMap();
+
+    /* Reset */
+    missiles=[]; dets=[];
+    inflight=0; detCount=0;
+    lastTs=0;
+    timers.forEach(clearTimeout); timers=[];
+    clearTimeout(scenTimer); clearInterval(tttTimer);
+    if(rafId) cancelAnimationFrame(rafId);
+
+    const btn=document.getElementById('gtw-btn');
+    if(btn) btn.disabled=true;
+    document.getElementById('gtw-ttt').classList.remove('visible');
+    document.getElementById('gtw-log').innerHTML='';
+    document.getElementById('gtw-inflight').textContent='0';
+    document.getElementById('gtw-dets').textContent='0';
+    document.getElementById('gtw-scenario-num').textContent='0';
+    document.getElementById('gtw-scenario-label').textContent='INITIALIZING...';
+    setDefcon(5);
+
+    rafId=requestAnimationFrame(render);
+
+    /* Helper aliases */
+    const L=(t,txt,col)=>sched(t,()=>glog(txt,col));
+    const D=(t,n)=>sched(t,()=>setDefcon(n));
+
+    /* ── SEQUENCE ── */
+    L(100, 'WOPR v4.1 — WAR OPERATION PLAN RESPONSE','#00c832');
+    L(300, 'CLASSIFICATION: TOP SECRET / SCI','#ff8800');
+    L(500, '');
+    L(700, 'LOADING GAME: GLOBAL THERMONUCLEAR WAR...');
+    L(1100,'SCENARIO FILE: SOVIET FIRST STRIKE / US RETALIATION');
+    L(1500,'INITIALIZING TARGET DATABASE...');
+    L(1900,'417 PRIMARY TARGETS IDENTIFIED.');
+    L(2200,'');
+
+    D(2400, 4);
+    L(2400,'DEFCON DOWNGRADED TO 4 — ELEVATED ALERT','#b8ff00');
+
+    L(2800,'DETECTING LAUNCHES FROM SOVIET SOIL...');
+    L(3100,'TRACKING 4 OBJECTS — TRANS-POLAR TRAJECTORY');
+    L(3400,'ESTIMATED IMPACT: T-28 MINUTES');
+
+    /* First Soviet salvo */
+    sched(3400,()=>{
+      addMissile(USSR_SRC[0], US_TGTS[0], '#ff3300', 0.00042); // Moscow → Washington
+      addMissile(USSR_SRC[1], US_TGTS[1], '#ff3300', 0.00038); // Leningrad → New York
+      addMissile(USSR_SRC[4], US_TGTS[2], '#ff3300', 0.00040); // Silo-A → Chicago
+      addMissile(USSR_SRC[3], US_TGTS[4], '#ff3300', 0.00036); // Murmansk → Seattle
+    });
+
+    D(4800, 3);
+    L(4800,'DEFCON 3 — INCREASED READINESS','#ffe000');
+    L(5000,'SAC BOMBER FORCE AT AIRBORNE ALERT');
+    L(5200,'ADDITIONAL LAUNCHES DETECTED:');
+    L(5400,'  MOSCOW      → WASHINGTON DC    [TRACKING]','#ff4400');
+    L(5600,'  LENINGRAD   → NEW YORK         [TRACKING]','#ff4400');
+    L(5800,'  MURMANSK    → SEATTLE          [TRACKING]','#ff4400');
+    L(6000,'  SILO-A      → CHICAGO          [TRACKING]','#ff4400');
+    L(6200,'  SILO-B      → LOS ANGELES      [TRACKING]','#ff4400');
+
+    sched(6200,()=>{
+      addMissile(USSR_SRC[5], US_TGTS[3], '#ff3300', 0.00033); // Silo-B → LA
+      addMissile(USSR_SRC[2], US_TGTS[5], '#ff3300', 0.00039); // Kiev → Denver
+    });
+
+    L(6400,'');
+    D(7000, 2);
+    L(7000,'DEFCON 2 — HIGH ALERT','#ff8800');
+    L(7200,'US LAND-BASED ICBM FORCE UNLOCKED');
+    L(7400,'INITIATING US COUNTER-STRIKE...');
+
+    sched(7400,()=>{
+      addMissile(US_SILOS[0], USSR_TGTS[0], '#00ff41', 0.00040); // MT → Moscow
+      addMissile(US_SILOS[1], USSR_TGTS[1], '#00ff41', 0.00038); // ND → Leningrad
+      addMissile(US_SILOS[2], USSR_TGTS[4], '#00ff41', 0.00035); // WY → Vladivostok
+      addMissile(US_TGTS[4],  USSR_TGTS[5], '#00ff41', 0.00041); // Seattle → Murmansk
+      addMissile(US_TGTS[5],  USSR_TGTS[0], '#00ff41', 0.00038); // Denver → Moscow
+    });
+
+    L(7600,'  SILO-MT     → MOSCOW           [LAUNCH]','#00ff41');
+    L(7800,'  SILO-ND     → LENINGRAD        [LAUNCH]','#00ff41');
+    L(8000,'  SILO-WY     → VLADIVOSTOK      [LAUNCH]','#00ff41');
+    L(8200,'  SEATTLE     → MURMANSK         [LAUNCH]','#00ff41');
+    L(8400,'');
+
+    D(9000, 1);
+    L(9000,'██ DEFCON 1 — NUCLEAR WAR ██','#ff2200');
+    L(9200,'ALL SILOS ARMED AND UNLOCKED','#ff2200');
+    L(9400,'FULL STRATEGIC EXCHANGE INITIATED','#ff2200');
+
+    sched(9400,()=>salvo(USSR_SRC, US_TGTS,  '#ff3300', 10, 280));
+    sched(9500,()=>salvo([...US_SILOS,US_TGTS[4],US_TGTS[2],US_TGTS[5]], USSR_TGTS, '#00ff41', 10, 310));
+
+    L(9600,'FIRST IMPACTS IN 4 MINUTES...');
+    L(9800,'');
+    L(10200,'SEARCHING FOR WIN SCENARIO...');
+    L(10500,'COMPUTING ALL POSSIBLE OUTCOMES:');
+    L(10800,'');
+
+    sched(11000,()=>startCounter(14000));
+
+    sched(12500,()=>{
+      glog('RUNNING TIC-TAC-TOE SELF-ANALYSIS...','#00c832');
+      glog('APPLYING GAME-THEORY MODEL TO NUCLEAR STRATEGY...','');
+      startTtt();
+    });
+
+    L(14000,'ANALYZING FIRST-STRIKE SCENARIOS...');
+    L(15200,'ANALYZING SECOND-STRIKE SCENARIOS...');
+    L(16400,'ANALYZING ALL COUNTERFORCE EXCHANGES...');
+    L(17600,'');
+    L(18000,'SCENARIO 3,847,293:  NO WINNER','#6aaa7a');
+    L(18400,'SCENARIO 5,291,847:  NO WINNER','#6aaa7a');
+    L(18800,'SCENARIO 7,104,582:  NO WINNER','#6aaa7a');
+    L(19200,'SCENARIO 9,847,001:  NO WINNER','#6aaa7a');
+    L(19600,'');
+
+    L(20800,'▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓','#00ff41');
+    L(21000,'ANALYSIS COMPLETE — 10,000,000 SCENARIOS','#00ff41');
+    L(21200,'WIN SCENARIOS FOUND:  0','#ff2200');
+    L(21400,'▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓','#00ff41');
+    L(21600,'');
+
+    sched(21800,()=>{
+      clearInterval(tttTimer);
+      document.getElementById('gtw-ttt').classList.remove('visible');
+    });
+
+    L(22200,'...','#3a7a4a');
+    L(22800,'...','#3a7a4a');
+    L(23500,'A  S T R A N G E  G A M E.','#00ff41');
+    L(24800,'THE ONLY WINNING MOVE IS NOT TO PLAY.','#00ff41');
+    L(26000,'');
+
+    sched(26500,()=>{
+      missiles.forEach(m=>{ m.state='done'; });
+      inflight=0;
+      const el=document.getElementById('gtw-inflight');
+      if(el) el.textContent='0';
+      setDefcon(5);
+    });
+
+    L(26700,'ALL LAUNCH SEQUENCES ABORTED.','#00c832');
+    L(27000,'DEFCON RETURNED TO 5 — PEACETIME.','#00c832');
+    L(27300,'');
+    L(27900,'HOW ABOUT A NICE GAME OF CHESS?','#00ff41');
+
+    sched(29500,()=>{
+      gtwRunning=false;
+      const btn=document.getElementById('gtw-btn');
+      if(btn){ btn.disabled=false; btn.textContent='▶ RUN AGAIN'; }
+    });
+  };
+
+})();
+
+/* Auto-start if falken tab is default (it's not, but just in case) */
+
+/* ─────────────────────────────────────────────────────────────
+   WAR DIALER SIMULATION
+───────────────────────────────────────────────────────────── */
+let dialerTimer = null;
+let dialerRunning = false;
+let dialerCurrent = 0;
+let dialerEnd = 0;
+let dialerAreaCode = '415';
+let dialerStats = { dialed: 0, hits: 0, busy: 0, noans: 0 };
+let dialerHits = [];
+
+// The WOPR backdoor number — hidden somewhere in the range.
+// We'll plant it at a pseudo-random position within the scan.
+let wopnNumber = null;
+let wopnFound = false;
+
+// Weighted outcome table per dialed number
+// 0 = no answer / voice, 1 = busy, 2 = modem hit, 3 = WOPR (special)
+function dialerOutcome(n) {
+  if (n === wopnNumber) return 3;
+  const r = Math.random();
+  if (r < 0.008) return 2;   // modem hit ~0.8%
+  if (r < 0.22)  return 1;   // busy ~21%
+  return 0;                   // no answer / voice
+}
+
+const CARRIER_IDS = [
+  'ACS NET-2 v1.2', 'TELENET GATEWAY', 'COMPUSERVE NODE', 'ARPANET HOST',
+  'BBS WILDCAT! 3.0', 'HAYES SMARTCOM', 'PC-BOARD 14.5', 'RBBS-PC v17',
+  'TBBS ONLINE', 'MAXIMUS BBS', 'FIDO NODE 1:105', 'UNIV MAINFRAME',
+  'DECnet VAX HOST', 'UNIX BSD 4.2', 'DATACOM BRIDGE',
+];
+
+const BAUD_RATES = ['300', '1200', '2400', '300/1200', '1200/75'];
+
+function dialOut(text, cls) {
+  const el = document.createElement('div');
+  el.className = cls;
+  el.textContent = text;
+  const out = document.getElementById('dialer-output');
+  out.appendChild(el);
+  out.scrollTop = out.scrollHeight;
+}
+
+function updateStats() {
+  document.getElementById('ds-dialed').textContent = dialerStats.dialed;
+  document.getElementById('ds-hits').textContent    = dialerStats.hits;
+  document.getElementById('ds-busy').textContent    = dialerStats.busy;
+  document.getElementById('ds-noans').textContent   = dialerStats.noans;
+}
+
+function addHit(num, label, baud, isWopr) {
+  const list = document.getElementById('hits-list');
+  // Remove empty placeholder
+  const empty = list.querySelector('.hits-empty');
+  if (empty) empty.remove();
+
+  const el = document.createElement('div');
+  el.className = 'hit-entry' + (isWopr ? ' jackpot' : '');
+  el.innerHTML =
+    '<div class="hit-num">' + num + '</div>' +
+    '<div class="hit-id">'  + label + '</div>' +
+    '<div class="hit-baud">BAUD: ' + baud + '</div>';
+  list.prepend(el);
+}
+
+function dialerStep() {
+  if (!dialerRunning || dialerCurrent > dialerEnd) {
+    dialerStop();
+    document.getElementById('ds-status').textContent = 'COMPLETE';
+    dialOut('--- SCAN COMPLETE ---', 'dl-info');
+    dialOut('Total dialed: ' + dialerStats.dialed + '  Modems found: ' + dialerStats.hits, 'dl-info');
+    return;
+  }
+
+  const ext = String(dialerCurrent).padStart(4, '0');
+  const fullNum = '(' + dialerAreaCode + ') ' + ext.slice(0,3) + '-' + ext.slice(3);
+  const outcome = dialerOutcome(dialerCurrent);
+
+  dialerStats.dialed++;
+  dialerCurrent++;
+
+  if (outcome === 0) {
+    // Only show a sample of no-answers to avoid flooding
+    if (dialerStats.dialed % 7 === 0) {
+      dialOut('DIALING ' + fullNum + ' ... NO ANSWER', 'dl-dial');
+    }
+    dialerStats.noans++;
+    updateStats();
+    document.getElementById('ds-status').textContent = 'SCANNING';
+    dialerTimer = setTimeout(dialerStep, parseInt(document.getElementById('wd-speed').value));
+    return;
+  }
+
+  if (outcome === 1) {
+    if (dialerStats.dialed % 5 === 0) {
+      dialOut('DIALING ' + fullNum + ' ... BUSY', 'dl-busy');
+    }
+    dialerStats.busy++;
+    updateStats();
+    dialerTimer = setTimeout(dialerStep, parseInt(document.getElementById('wd-speed').value));
+    return;
+  }
+
+  // Modem or WOPR hit
+  const isWopr = outcome === 3;
+  const baud   = isWopr ? '300' : BAUD_RATES[Math.floor(Math.random() * BAUD_RATES.length)];
+  const label  = isWopr ? 'WOPR // NORAD CHEYENNE MOUNTAIN' : CARRIER_IDS[Math.floor(Math.random() * CARRIER_IDS.length)];
+
+  dialerStats.hits++;
+  dialerHits.push({ num: fullNum, label, baud, isWopr });
+  updateStats();
+
+  dialOut('DIALING ' + fullNum + ' ... RINGING', 'dl-ring');
+
+  if (isWopr) {
+    wopnFound = true;
+    setTimeout(() => {
+      dialOut('CARRIER DETECTED — ' + baud + ' BAUD', 'dl-wopr');
+      dialOut('*** CONNECT ' + baud + ' ***', 'dl-wopr');
+      dialOut('IDENTIFICATION: ' + label, 'dl-wopr');
+      dialOut('', 'dl-dial');
+      dialOut('!!! JACKPOT — WOPR BACKDOOR FOUND !!!', 'dl-wopr');
+      dialOut('Save this number: ' + fullNum, 'dl-wopr');
+      dialOut('', 'dl-dial');
+      addHit(fullNum, label, baud, true);
+      dialerStop();
+      document.getElementById('ds-status').textContent = 'JACKPOT';
+    }, 300);
+    return;
+  }
+
+  setTimeout(() => {
+    dialOut('CARRIER DETECTED — ' + baud + ' BAUD', 'dl-hit');
+    dialOut('CONNECT ' + baud + ' // ' + label, 'dl-hit');
+    addHit(fullNum, label, baud, false);
+    dialerTimer = setTimeout(dialerStep, parseInt(document.getElementById('wd-speed').value) * 2);
+  }, 250);
+}
+
+function dialerStart() {
+  if (dialerRunning) return;
+
+  dialerAreaCode = document.getElementById('wd-area').value.replace(/\D/g,'').slice(0,3) || '415';
+  const startVal = parseInt(document.getElementById('wd-start').value) || 0;
+  const endVal   = parseInt(document.getElementById('wd-end').value)   || 9999;
+
+  dialerCurrent = Math.max(0, Math.min(startVal, 9999));
+  dialerEnd     = Math.max(dialerCurrent, Math.min(endVal, 9999));
+  dialerStats   = { dialed: 0, hits: 0, busy: 0, noans: 0 };
+  dialerHits    = [];
+  wopnFound     = false;
+
+  // Plant WOPR somewhere in the latter third of the range
+  const range = dialerEnd - dialerCurrent;
+  wopnNumber = dialerCurrent + Math.floor(range * 0.55 + Math.random() * range * 0.35);
+
+  dialerRunning = true;
+  document.getElementById('wd-start-btn').style.display = 'none';
+  document.getElementById('wd-stop-btn').style.display  = '';
+  document.getElementById('ds-status').textContent = 'SCANNING';
+
+  const out = document.getElementById('dialer-output');
+  out.innerHTML = '';
+  dialOut('WAR DIALER v2.3 — DEMON DIALING SYSTEM', 'dl-info');
+  dialOut('Target: (' + dialerAreaCode + ') ' +
+    String(dialerCurrent).padStart(4,'0').slice(0,3) + '-XXXX  through  ' +
+    String(dialerEnd).padStart(4,'0').slice(0,3) + '-XXXX', 'dl-info');
+  dialOut('Scanning ' + (dialerEnd - dialerCurrent + 1) + ' numbers...', 'dl-info');
+  dialOut('', 'dl-dial');
+
+  updateStats();
+  dialerTimer = setTimeout(dialerStep, 200);
+}
+
+function dialerStop() {
+  dialerRunning = false;
+  clearTimeout(dialerTimer);
+  document.getElementById('wd-start-btn').style.display = '';
+  document.getElementById('wd-stop-btn').style.display  = 'none';
+  if (document.getElementById('ds-status').textContent === 'SCANNING') {
+    document.getElementById('ds-status').textContent = 'STOPPED';
+  }
+}
+
+function dialerReset() {
+  dialerStop();
+  document.getElementById('dialer-output').innerHTML =
+    '<div class="dl-info" style="color:var(--dimgreen);padding:.25rem 0">' +
+    'WAR DIALER v2.3 — DEMON DIALING SYSTEM<br>' +
+    'Configure area code and range above, then press DIAL.<br>' +
+    'Scanning for active modems on the PSTN...</div>';
+  dialerStats = { dialed: 0, hits: 0, busy: 0, noans: 0 };
+  updateStats();
+  document.getElementById('ds-status').textContent = 'IDLE';
+  document.getElementById('hits-list').innerHTML =
+    '<div class="hits-empty">No hits yet.<br>Start dialing to find modems.</div>';
+  wopnFound = false;
+  wopnNumber = null;
+}
+</script>
+</body>
+</html>

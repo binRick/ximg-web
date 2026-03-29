@@ -7,467 +7,1063 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;overflow:hidden;background:#000}
-    body{display:flex;flex-direction:column;font-family:'Press Start 2P',monospace}
-    #gw{flex:1;position:relative;overflow:hidden}
-    canvas{display:block;width:100%;height:100%}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    #overlay{
-      position:absolute;inset:0;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;background:rgba(0,0,0,.65);
-      color:#fff;gap:1.2rem;text-align:center;padding:2rem;cursor:pointer;
+    html, body {
+      height: 100%;
+      background: #000;
+      font-family: 'Press Start 2P', monospace;
     }
-    #overlay.off{display:none}
-    #overlay h2{font-size:clamp(.9rem,4vw,2rem);color:#FFD700;text-shadow:3px 3px #000}
-    #overlay p{font-size:clamp(.45rem,1.5vw,.72rem);color:#ccc;line-height:2}
-    #overlay .hint{font-size:clamp(.35rem,1vw,.55rem);color:#888;margin-top:.3rem}
+    body {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-    #ctrl{
-      position:absolute;bottom:14px;left:0;right:0;
-      display:none;justify-content:space-between;padding:0 20px;
-      pointer-events:none;z-index:10;align-items:flex-end;
+    /* ── Sub-nav ── */
+    .sub-nav {
+      display: flex;
+      gap: .4rem;
+      padding: .35rem .75rem;
+      background: rgba(0,0,0,.97);
+      border-bottom: 1px solid rgba(255,215,0,.12);
+      flex-shrink: 0;
+      z-index: 100;
     }
-    .dpad{display:flex;gap:8px}
-    .cbtn{
-      pointer-events:all;width:58px;height:58px;border-radius:50%;
-      background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.35);
-      display:flex;align-items:center;justify-content:center;
-      font-size:1.4rem;user-select:none;-webkit-user-select:none;touch-action:manipulation;
+    .sub-tab {
+      font-size: .55rem;
+      padding: .3rem .85rem;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.1);
+      background: transparent;
+      color: #666;
+      font-family: 'Press Start 2P', monospace;
+      transition: all .2s;
     }
+    .sub-tab.active { color: #FFD700; border-color: rgba(255,215,0,.45); background: rgba(255,215,0,.08); }
+    .sub-tab:hover:not(.active) { color: #ccc; border-color: rgba(255,255,255,.2); }
+
+    /* ── Game section ── */
+    #section-game {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    #section-game.hidden { display: none; }
+
+    #gw { flex: 1; position: relative; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; background: rgba(0,0,0,.65);
+      color: #fff; gap: 1.2rem; text-align: center; padding: 2rem; cursor: pointer;
+    }
+    #overlay.off { display: none; }
+    #overlay h2 { font-size: clamp(.9rem,4vw,2rem); color: #FFD700; text-shadow: 3px 3px #000; }
+    #overlay p { font-size: clamp(.45rem,1.5vw,.72rem); color: #ccc; line-height: 2; }
+    #overlay .hint { font-size: clamp(.35rem,1vw,.55rem); color: #888; margin-top: .3rem; }
+
+    #win-overlay {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; background: rgba(0,0,0,.85);
+      z-index: 20; gap: .55rem; padding: 1.5rem; text-align: center;
+    }
+    #win-overlay.off { display: none; }
+    #win-board-screen.off, #win-entry-screen.off { display: none; }
+    .win-title { font-size: clamp(.8rem,3.5vw,1.6rem); color: #FFD700; text-shadow: 3px 3px #000; }
+    .win-score-line { font-size: clamp(.45rem,1.8vw,.8rem); color: #fff; margin: .2rem 0 .5rem; }
+    .win-sub { font-size: clamp(.3rem,1.1vw,.5rem); color: #aaa; letter-spacing: .08em; margin-bottom: .5rem; }
+    .initials-row { display: flex; gap: clamp(.5rem,2.5vw,1.4rem); }
+    .init-col { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+    .init-arrow {
+      background: transparent; border: 1px solid #444; color: #777;
+      font-size: clamp(.4rem,1.2vw,.65rem); padding: .22rem .55rem; cursor: pointer;
+      font-family: 'Press Start 2P', monospace; transition: all .15s; line-height: 1;
+    }
+    .init-arrow:hover { border-color: #FFD700; color: #FFD700; }
+    .init-box {
+      width: clamp(42px,7vw,62px); height: clamp(48px,8vw,70px);
+      background: #111; border: 3px solid #555;
+      font-family: 'Press Start 2P', monospace; font-size: clamp(1.1rem,3.5vw,1.9rem);
+      color: #FFD700; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: border-color .15s, box-shadow .15s; user-select: none;
+    }
+    .init-box.active { border-color: #FFD700; box-shadow: 0 0 16px rgba(255,215,0,.4); }
+    .win-hint { font-size: clamp(.22rem,.75vw,.42rem); color: #555; margin-top: .1rem; }
+    .win-btns { display: flex; gap: .75rem; margin-top: .4rem; }
+    .win-btn {
+      font-family: 'Press Start 2P', monospace; font-size: clamp(.32rem,1.1vw,.52rem);
+      padding: .45rem 1rem; border: 2px solid #FFD700; background: transparent;
+      color: #FFD700; cursor: pointer; transition: all .15s;
+    }
+    .win-btn:hover { background: #FFD700; color: #000; }
+    .win-btn.secondary { border-color: #444; color: #555; }
+    .win-btn.secondary:hover { background: #444; color: #fff; }
+    #lb-list { width: 100%; max-width: 360px; margin: .4rem 0; }
+    .lb-row {
+      display: grid; grid-template-columns: 1.8rem 3rem 1fr; gap: .5rem;
+      padding: .32rem .55rem; border-bottom: 1px solid rgba(255,255,255,.05);
+      font-size: clamp(.3rem,1.1vw,.52rem); align-items: center;
+    }
+    .lb-rank { color: #555; text-align: right; }
+    .lb-init { color: #FFD700; text-align: left; }
+    .lb-score { color: #ccc; text-align: right; }
+    .lb-row.me { background: rgba(255,215,0,.12); }
+    .lb-row.me .lb-score, .lb-row.me .lb-init { color: #FFD700; }
+    .lb-row:nth-child(1) .lb-rank { color: #FFD700; }
+    .lb-row:nth-child(2) .lb-rank { color: #bbb; }
+    .lb-row:nth-child(3) .lb-rank { color: #cd7f32; }
+    .lb-empty { color: #555; font-size: clamp(.3rem,1vw,.48rem); padding: 1rem; }
+
+    #ctrl {
+      position: absolute; bottom: 14px; left: 0; right: 0;
+      display: none; justify-content: space-between; padding: 0 20px;
+      pointer-events: none; z-index: 10; align-items: flex-end;
+    }
+    .dpad { display: flex; gap: 8px; }
+    .cbtn {
+      pointer-events: all; width: 58px; height: 58px; border-radius: 50%;
+      background: rgba(255,255,255,.18); border: 2px solid rgba(255,255,255,.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+    }
+
+    /* ── Games listing section ── */
+    #section-games {
+      flex: 1;
+      overflow-y: auto;
+      display: none;
+      background: #060303;
+    }
+    #section-games.visible { display: block; }
+
+    #section-games::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% 0%, #2a0505 0%, transparent 65%),
+        radial-gradient(ellipse 80% 40% at 80% 100%, #1a0303 0%, transparent 60%),
+        linear-gradient(180deg, #060303 0%, #040202 100%);
+    }
+
+    .games-wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 1.5rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+      font-family: 'Georgia', 'Times New Roman', serif;
+    }
+
+    .games-hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .6rem; }
+    .games-hero-icon { font-size: 2.5rem; line-height: 1; filter: drop-shadow(0 0 16px rgba(229,37,33,.7)); }
+    .games-hero h2 {
+      font-size: clamp(1.6rem,5vw,2.8rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #E52521 0%, #FFD700 50%, #E52521 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em; font-family: 'Press Start 2P', monospace;
+    }
+    .games-hero-sub {
+      font-size: .88rem; color: #806060; font-style: italic; letter-spacing: .04em;
+      max-width: 480px; line-height: 1.6;
+    }
+    .games-hero-divider {
+      width: 120px; height: 2px; margin-top: .2rem;
+      background: linear-gradient(90deg, transparent, #E52521, transparent);
+    }
+
+    .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .games-grid { grid-template-columns: 1fr; } }
+
+    .game-card {
+      background: rgba(22,5,5,.85);
+      border: 1px solid rgba(229,37,33,.2);
+      border-radius: 16px; overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .game-card:hover {
+      border-color: rgba(229,37,33,.5);
+      box-shadow: 0 8px 40px rgba(229,37,33,.15);
+      transform: translateY(-3px);
+    }
+
+    .game-img-wrap {
+      position: relative; aspect-ratio: 16/9;
+      background: #120808; overflow: hidden;
+    }
+    .game-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center top;
+      display: block; position: relative; z-index: 1;
+      opacity: 0; transition: opacity .4s;
+    }
+    .game-img-wrap img.loaded { opacity: 1; }
+    .game-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .5rem;
+    }
+    .ph-num  { font-size: 3.5rem; font-weight: 900; color: rgba(229,37,33,.15); line-height: 1; }
+    .ph-icon { font-size: 2rem; opacity: .15; font-family: sans-serif; }
+
+    .badge-num {
+      position: absolute; top: .75rem; left: .75rem; z-index: 2;
+      background: rgba(0,0,0,.75); border: 1px solid rgba(229,37,33,.5);
+      color: #E52521; font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .08em;
+      font-family: 'Press Start 2P', monospace; backdrop-filter: blur(4px);
+    }
+    .badge-year {
+      position: absolute; top: .75rem; right: .75rem; z-index: 2;
+      background: rgba(122,0,0,.85); border: 1px solid rgba(255,215,0,.3);
+      color: #FFD700; font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+    }
+
+    .game-body { padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+    .game-title { font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: #fef0e0; font-family: 'Press Start 2P', monospace; }
+    .game-dev   { font-size: .72rem; color: #806060; margin-top: .3rem; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .game-stats { display: flex; flex-wrap: wrap; gap: .5rem; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .stat-chip {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(229,37,33,.06); border: 1px solid rgba(229,37,33,.15);
+      border-radius: 8px; padding: .35rem .7rem; min-width: 72px;
+    }
+    .stat-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .1em; color: #806060; }
+    .stat-val   { font-size: .85rem; font-weight: 700; color: #FFD700; margin-top: .1rem; }
+
+    .platforms { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .plat-tag {
+      font-size: .62rem; padding: .18rem .55rem; border-radius: 99px;
+      border: 1px solid rgba(229,37,33,.3); background: rgba(229,37,33,.07);
+      color: #e08080; font-family: 'Segoe UI', system-ui, sans-serif; white-space: nowrap;
+    }
+
+    .facts-label {
+      font-size: .62rem; text-transform: uppercase; letter-spacing: .1em;
+      color: #806060; font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .35rem;
+    }
+    .facts-list { display: flex; flex-direction: column; gap: .5rem; }
+    .fact {
+      display: flex; gap: .6rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.55; color: #c8a8a0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .fact-icon { flex-shrink: 0; font-size: .8rem; margin-top: .05rem; opacity: .8; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .games-hero { animation: fadeUp .6s ease both; }
+    .games-grid { animation: fadeUp .6s ease both; animation-delay: .12s; }
   </style>
 </head>
 <body>
-  <script src="/shared/nav.js?v=2"></script>
-  <div id="gw">
-    <canvas id="c"></canvas>
-    <div id="overlay">
-      <h2>&#9824; SUPER MARIO</h2>
-      <p>Collect coins &amp; reach the flag!<br>Jump on Goombas to defeat them.</p>
-      <p>&#8592; &#8594; Move &nbsp;&nbsp; &#8593; / Space Jump</p>
-      <p class="hint">Press any key or tap to start</p>
-    </div>
-    <div id="ctrl">
-      <div class="dpad">
-        <div class="cbtn" id="bl">&#9664;</div>
-        <div class="cbtn" id="br">&#9654;</div>
+  <script src="/shared/nav.js?v=4"></script>
+
+  <!-- Sub-nav -->
+  <div class="sub-nav">
+    <button class="sub-tab active" id="tab-game"  onclick="switchTab('game')">&#9654; game</button>
+    <button class="sub-tab"        id="tab-games" onclick="switchTab('games')">&#127918; games</button>
+  </div>
+
+  <!-- ── GAME SECTION ── -->
+  <div id="section-game">
+    <div id="gw">
+      <canvas id="c"></canvas>
+
+      <div id="overlay">
+        <h2>&#9824; SUPER MARIO</h2>
+        <p>Collect coins &amp; reach the flag!<br>Jump on Goombas to defeat them.</p>
+        <p>&#8592; &#8594; Move &nbsp;&nbsp; &#8593; / Space Jump</p>
+        <p class="hint">Press any key or tap to start</p>
       </div>
-      <div class="cbtn" id="bj">&#9650;</div>
+
+      <div id="win-overlay" class="off">
+        <div id="win-entry-screen">
+          <div class="win-title">&#127942; YOU WIN!</div>
+          <div class="win-score-line" id="win-score-disp"></div>
+          <div class="win-sub">ENTER YOUR INITIALS</div>
+          <div class="initials-row" id="initials-row">
+            <div class="init-col">
+              <button class="init-arrow" data-dir="up" data-slot="0">&#9650;</button>
+              <div class="init-box active" data-slot="0">A</div>
+              <button class="init-arrow" data-dir="dn" data-slot="0">&#9660;</button>
+            </div>
+            <div class="init-col">
+              <button class="init-arrow" data-dir="up" data-slot="1">&#9650;</button>
+              <div class="init-box" data-slot="1">A</div>
+              <button class="init-arrow" data-dir="dn" data-slot="1">&#9660;</button>
+            </div>
+            <div class="init-col">
+              <button class="init-arrow" data-dir="up" data-slot="2">&#9650;</button>
+              <div class="init-box" data-slot="2">A</div>
+              <button class="init-arrow" data-dir="dn" data-slot="2">&#9660;</button>
+            </div>
+          </div>
+          <div class="win-hint">&#8592;&#8594; slot &nbsp;&#8593;&#8595; letter &nbsp;ENTER submit</div>
+          <div class="win-btns">
+            <button class="win-btn" id="submit-btn">SUBMIT</button>
+            <button class="win-btn secondary" id="skip-btn">SKIP</button>
+          </div>
+        </div>
+        <div id="win-board-screen" class="off">
+          <div class="win-title">&#127942; HIGH SCORES</div>
+          <div id="lb-list"></div>
+          <button class="win-btn" id="play-again-btn">PLAY AGAIN</button>
+        </div>
+      </div>
+
+      <div id="ctrl">
+        <div class="dpad">
+          <div class="cbtn" id="bl">&#9664;</div>
+          <div class="cbtn" id="br">&#9654;</div>
+        </div>
+        <div class="cbtn" id="bj">&#9650;</div>
+      </div>
     </div>
   </div>
-  <script>
-  'use strict';
 
-  const canvas = document.getElementById('c');
-  const ctx    = canvas.getContext('2d');
-  const overlay = document.getElementById('overlay');
-  const ctrl   = document.getElementById('ctrl');
-  const gw     = document.getElementById('gw');
+  <!-- ── GAMES LISTING SECTION ── -->
+  <div id="section-games">
+    <div class="games-wrap">
+      <div class="games-hero">
+        <div class="games-hero-icon">&#127810;</div>
+        <h2>Super Mario</h2>
+        <p class="games-hero-sub">Forty years of platforming excellence — from Donkey Kong's scaffolding to the rolling kingdoms of Odyssey.</p>
+        <div class="games-hero-divider"></div>
+      </div>
+      <div class="games-grid" id="games-grid"></div>
+    </div>
+  </div>
 
-  /* ── sizing ── */
-  function resize() {
-    canvas.width  = gw.clientWidth;
-    canvas.height = gw.clientHeight;
+<script>
+/* ═══════════════════════════════════════════
+   TAB SWITCHING
+═══════════════════════════════════════════ */
+function switchTab(id) {
+  document.getElementById('tab-game').classList.toggle('active',  id === 'game');
+  document.getElementById('tab-games').classList.toggle('active', id === 'games');
+  const gameSection  = document.getElementById('section-game');
+  const gamesSection = document.getElementById('section-games');
+  if (id === 'game') {
+    gameSection.classList.remove('hidden');
+    gamesSection.classList.remove('visible');
+    document.body.style.overflow = 'hidden';
+    resize();
+  } else {
+    gameSection.classList.add('hidden');
+    gamesSection.classList.add('visible');
+    document.body.style.overflow = 'hidden'; // body stays hidden; section-games scrolls itself
   }
-  window.addEventListener('resize', () => { resize(); if (state !== 'splash') buildLevel(); });
-  resize();
+}
 
-  /* ── input ── */
-  const K = {}, T = {};
-  document.addEventListener('keydown', e => {
-    K[e.code] = true;
-    if (state !== 'playing') begin();
+/* ═══════════════════════════════════════════
+   GAMES LISTING DATA
+═══════════════════════════════════════════ */
+const GAMES = [
+  {
+    num: 1, title: 'Donkey Kong', year: 1981, month: 'Jul 1981',
+    dev: 'Nintendo R&D1 · Shigeru Miyamoto',
+    wiki: 'Donkey_Kong_(video_game)',
+    stats: [
+      { label: 'Release', val: '1981' },
+      { label: 'Levels', val: '4 stages' },
+      { label: 'Engine', val: 'Arcade' },
+      { label: 'Mario', val: 'Jumpman' },
+    ],
+    platforms: ['Arcade', 'Atari 2600', 'ColecoVision', 'NES', 'Game Boy'],
+    facts: [
+      { icon: '🦍', text: 'Mario\'s first appearance — here called "Jumpman" — was conceived by Shigeru Miyamoto as his debut game design. The character\'s round shape was a practical solution to the limitations of arcade hardware: circles are easier to animate than humanoid limbs at low resolution.' },
+      { icon: '🎯', text: 'The game\'s name was chosen by Nintendo of America president Minoru Arakawa, who translated "stubborn gorilla" from Japanese. Universal City Studios sued Nintendo claiming the character infringed King Kong. Nintendo won — a landmark case that established independent IP rights for video game characters.' },
+      { icon: '🍒', text: 'The arcade version\'s four-stage structure — 25m, 50m, 75m, and 100m — was the first game to tell a narrative entirely through gameplay levels. Nintendo called this a "story arcade game," coining the concept of sequential narrative in games three years before Super Mario Bros.' },
+    ],
+  },
+  {
+    num: 2, title: 'Super Mario Bros.', year: 1985, month: 'Sep 1985',
+    dev: 'Nintendo R&D4 · Shigeru Miyamoto & Takashi Tezuka',
+    wiki: 'Super_Mario_Bros.',
+    stats: [
+      { label: 'Release', val: '1985' },
+      { label: 'Worlds', val: '8 × 4 levels' },
+      { label: 'Sales', val: '40M+ copies' },
+      { label: 'Speedrun', val: '~4 min 54 sec' },
+    ],
+    platforms: ['NES', 'Game Boy Color', 'GBA', 'Wii', 'Switch'],
+    facts: [
+      { icon: '🍄', text: 'Super Mario Bros. is the best-selling individual video game of all time until Wii Sports surpassed it — 40.24 million copies on the NES alone. Its side-scrolling design was built to demonstrate the NES hardware in a way no game had done before, and succeeded beyond any expectation.' },
+      { icon: '🎵', text: 'Koji Kondo\'s overworld theme is arguably the most recognized piece of music in video game history. Composed on a synthesizer in a single day, the waltz-time melody with its syncopated "ba-ba-ba-bum" opening has been performed by orchestras worldwide for 40 years.' },
+      { icon: '🌟', text: 'The game was originally developed as a tech demo for the NES\'s hardware scrolling capabilities. The entire game was built in nine months by a team so small they used stacked-bunk sleeping arrangements in the office. The famous 1-1 level was designed last, after all other levels were complete, to introduce the game\'s mechanics gradually.' },
+    ],
+  },
+  {
+    num: 3, title: 'Super Mario Bros. 3', year: 1988, month: 'Oct 1988',
+    dev: 'Nintendo EAD · Shigeru Miyamoto & Takashi Tezuka',
+    wiki: 'Super_Mario_Bros._3',
+    stats: [
+      { label: 'Release', val: '1988 (JP) / 1990 (US)' },
+      { label: 'Worlds', val: '8 worlds' },
+      { label: 'Power-ups', val: '9 new suits' },
+      { label: 'Sales', val: '17.3M copies' },
+    ],
+    platforms: ['NES', 'SNES', 'GBA', 'Wii', 'Switch'],
+    facts: [
+      { icon: '🍁', text: 'Super Mario Bros. 3 introduced the Tanooki Suit, Frog Suit, Hammer Suit, and Racoon Tail — quadrupling the power-up vocabulary of the series in a single game. The Tanooki Suit\'s stone transformation and the Frog Suit\'s underwater agility remain among the most creative power-up designs in gaming history.' },
+      { icon: '🎬', text: 'The game was "revealed" to Western audiences in the 1989 movie The Wizard, months before its US release — arguably the most successful product placement in gaming history. The movie\'s climax, a Super Mario Bros. 3 tournament, generated enormous hype for a game that wasn\'t yet released.' },
+      { icon: '🗺️', text: 'The world map — an overworld showing Mario traversing a large illustrated map between levels — was a revolutionary design concept that gave the game a sense of geography and scale. Every subsequent Mario game adopted some version of the concept; it became a genre standard.' },
+    ],
+  },
+  {
+    num: 4, title: 'Super Mario World', year: 1990, month: 'Nov 1990',
+    dev: 'Nintendo EAD · Shigeru Miyamoto & Takashi Tezuka',
+    wiki: 'Super_Mario_World',
+    stats: [
+      { label: 'Release', val: '1990' },
+      { label: 'Levels', val: '96 exits' },
+      { label: 'SNES', val: 'Launch title' },
+      { label: 'Yoshi', val: 'First appearance' },
+    ],
+    platforms: ['SNES', 'GBA', 'Wii', 'Switch'],
+    facts: [
+      { icon: '🦕', text: 'Super Mario World introduced Yoshi, who has since appeared in over 50 games. The dinosaur companion was originally conceived during Super Mario Bros. 3 development but was cut due to technical limitations of the NES. The SNES\'s increased processing power finally made him possible.' },
+      { icon: '🗺️', text: 'With 96 exits spread across 72 levels — many levels having two exits leading to different map nodes — Super Mario World had more content than any previous platformer. Finding all star roads and secret levels became a shared community challenge before the internet existed.' },
+      { icon: '🎮', text: 'As the SNES launch title in 1990, Super Mario World was bundled with every SNES sold in Japan and North America. It was the gateway game for an entire generation of console gamers. Its clean, vibrant art style and responsive controls made it the definitive showcase of 16-bit capability.' },
+    ],
+  },
+  {
+    num: 5, title: 'Super Mario 64', year: 1996, month: 'Jun 1996',
+    dev: 'Nintendo EAD · Shigeru Miyamoto',
+    wiki: 'Super_Mario_64',
+    stats: [
+      { label: 'Release', val: '1996' },
+      { label: 'Stars', val: '120' },
+      { label: 'Engine', val: 'First 3D Mario' },
+      { label: 'N64', val: 'Launch title' },
+    ],
+    platforms: ['Nintendo 64', 'DS', 'Switch'],
+    facts: [
+      { icon: '🎮', text: 'Super Mario 64 established the grammar of 3D platformers. Analog stick movement, camera control, Z-targeting, and collecting objectives in non-linear sandbox levels — concepts now universal — were all introduced or popularized here. Virtually every 3D action game made in the decade after drew from its design.' },
+      { icon: '🐧', text: 'The game was developed in strict secrecy; Nintendo refused to show even screenshots until weeks before launch. When journalists first played it at Shoshinkai 1995, they reportedly stood speechless. The transition from flat sprites to full 3D — in 1996 — was genuinely unprecedented.' },
+      { icon: '🏃', text: 'Super Mario 64\'s speedrunning community is one of the oldest and most technically sophisticated in gaming. Runners discovered in 2016 that a precise sequence of button presses could arbitrarily manipulate the game\'s memory — known as "arbitrary code execution" — allowing any of the 120 stars to be collected without visiting their levels.' },
+    ],
+  },
+  {
+    num: 6, title: 'Super Mario Sunshine', year: 2002, month: 'Jul 2002',
+    dev: 'Nintendo EAD · Yoshiaki Koizumi & Kenta Usui',
+    wiki: 'Super_Mario_Sunshine',
+    stats: [
+      { label: 'Release', val: '2002' },
+      { label: 'Shines', val: '120' },
+      { label: 'Platform', val: 'GameCube' },
+      { label: 'FLUDD', val: 'Water pack' },
+    ],
+    platforms: ['GameCube', 'Switch'],
+    facts: [
+      { icon: '💦', text: 'The FLUDD water backpack — a multi-mode water cannon that could hover, rocket, and spray — gave Sunshine a fundamentally different feel from any other Mario game. The hover nozzle in particular allowed a mid-air correction mechanic that made Sunshine\'s platforming more forgiving than Mario 64.' },
+      { icon: '🏖️', text: 'Isle Delfino\'s Mediterranean island setting was a deliberate departure from the Mushroom Kingdom. Art director Kenta Usui cited vacation resorts and Italian coastal towns as references. The result was the warmest-looking Mario game ever made — sunlit cobblestones, clear water, and terracotta rooftops.' },
+      { icon: '🎭', text: 'Sunshine is the only mainline Mario game where Mario is framed as a criminal. The story begins with his arrest for environmental vandalism he did not commit. Critics noted this morally complex premise was oddly sophisticated for a game aimed at children — and immediately dropped in later titles.' },
+    ],
+  },
+  {
+    num: 7, title: 'Super Mario Galaxy', year: 2007, month: 'Nov 2007',
+    dev: 'Nintendo EAD Tokyo · Yoshiaki Koizumi',
+    wiki: 'Super_Mario_Galaxy',
+    stats: [
+      { label: 'Release', val: '2007' },
+      { label: 'Stars', val: '120 + 120' },
+      { label: 'Platform', val: 'Wii' },
+      { label: 'Score', val: '97 Metacritic' },
+    ],
+    platforms: ['Wii', 'Switch'],
+    facts: [
+      { icon: '🌌', text: 'Super Mario Galaxy holds a 97 Metacritic score, making it one of the highest-rated games ever made. The gravity mechanic — running on the surface of small spherical planets, jumping between them — created a sense of spatial wonder that no Mario game before or since has fully replicated.' },
+      { icon: '🎻', text: 'Mahito Yokota\'s orchestral score — the first fully orchestrated Mario soundtrack — elevated the game\'s cosmic scale. The Gusty Garden Galaxy theme is now performed at the "A Night of Music from Nintendo" concert series and was voted the greatest video game music of all time in a 2012 Classic FM poll.' },
+      { icon: '🔭', text: 'The game\'s physics engine had to simulate gravity from multiple directions simultaneously — a player could stand on a small asteroid while another planet pulled them in a different direction. Nintendo\'s engineers solved this with a bespoke "gravity gradient" system that had never been attempted in real-time 3D.' },
+    ],
+  },
+  {
+    num: 8, title: 'Super Mario Galaxy 2', year: 2010, month: 'May 2010',
+    dev: 'Nintendo EAD Tokyo · Yoshiaki Koizumi',
+    wiki: 'Super_Mario_Galaxy_2',
+    stats: [
+      { label: 'Release', val: '2010' },
+      { label: 'Stars', val: '242' },
+      { label: 'Platform', val: 'Wii' },
+      { label: 'Score', val: '97 Metacritic' },
+    ],
+    platforms: ['Wii', 'Switch'],
+    facts: [
+      { icon: '🦕', text: 'Galaxy 2 brought Yoshi back to a 3D Mario game for the first time since the Nintendo 64 era. Yoshi\'s abilities — eating enemies to produce star bits, using his tongue as a grapple hook — were implemented using the same gravity engine as the base game, creating interactions impossible in any previous Yoshi appearance.' },
+      { icon: '📊', text: 'Galaxy 2 was originally conceived as a "more levels" expansion to Galaxy 1, but grew into a full sequel with new gravity gimmicks, new power-ups, and twice the content. Its decision to include even more difficult challenge stars — culminating in the notorious "The Perfect Run" — cemented it as the hardest 3D Mario.' },
+      { icon: '🏆', text: 'Both Galaxy games share the joint-highest Metacritic score ever recorded for a game on any Nintendo platform. Their combined star count of 362 represents the most collectible content in any 3D Mario game. Many critics consider Galaxy 2 the finest platformer ever made.' },
+    ],
+  },
+  {
+    num: 9, title: 'Super Mario 3D World', year: 2013, month: 'Nov 2013',
+    dev: 'Nintendo EAD Tokyo · Koichi Hayashida',
+    wiki: 'Super_Mario_3D_World',
+    stats: [
+      { label: 'Release', val: '2013' },
+      { label: 'Players', val: '4 co-op' },
+      { label: 'Platform', val: 'Wii U / Switch' },
+      { label: 'Cat Suit', val: 'New power-up' },
+    ],
+    platforms: ['Wii U', 'Switch'],
+    facts: [
+      { icon: '🐱', text: 'The Cat Suit — giving Mario the ability to climb walls and dive-claw at enemies — became one of the most beloved power-ups in the series. Its wall-climbing mechanic opened vertical level design possibilities that no previous Mario game had explored; several of 3D World\'s stages are designed entirely around the suit.' },
+      { icon: '👥', text: '3D World\'s simultaneous four-player co-op was a technical and design achievement: all four characters on screen at once, each with distinct abilities, moving through levels with shared camera logic. The resulting chaos — players picking each other up, competing for items — made it the definitive "party Mario" game.' },
+      { icon: '🎭', text: 'The Switch re-release added Bowser\'s Fury — a standalone open-world game set on Lake Lapcat where a giant Fury Bowser attacks periodically, forcing Mario to complete objectives between rage cycles. Its 3-hour runtime made it essentially a fully playable tech demo for Mario Odyssey\'s successor.' },
+    ],
+  },
+  {
+    num: 10, title: 'Super Mario Odyssey', year: 2017, month: 'Oct 2017',
+    dev: 'Nintendo EPD · Kenta Motokura',
+    wiki: 'Super_Mario_Odyssey',
+    stats: [
+      { label: 'Release', val: '2017' },
+      { label: 'Moons', val: '880+' },
+      { label: 'Platform', val: 'Switch' },
+      { label: 'Sales', val: '27M+ copies' },
+    ],
+    platforms: ['Nintendo Switch'],
+    facts: [
+      { icon: '🎩', text: 'Cappy — the sentient hat that allows Mario to possess enemies, objects, and even bosses — is the single most game-changing mechanic introduced to the series since Mario 64. Possessing a T-Rex in the opening minutes of the game signaled that Odyssey would play by entirely new rules.' },
+      { icon: '🌆', text: 'New Donk City — a densely built urban environment populated by realistic-proportioned humans — deliberately broke the visual coherence of Mario\'s world by placing the cartoonish Mario among people who look like they belong in a realistic game. Nintendo considered it a commentary on the series\'s own visual history.' },
+      { icon: '🎵', text: '"Jump Up, Super Star!" — the J-pop theme played during the New Donk City Festival level — became the first Mario game song with fully performed lyrics. The in-game performance sequence, with Mario conducting a giant city-block concert, is widely considered one of the greatest single moments in video game history.' },
+    ],
+  },
+  {
+    num: 11, title: 'Super Mario Bros. Wonder', year: 2023, month: 'Oct 2023',
+    dev: 'Nintendo EPD · Shiro Mouri',
+    wiki: 'Super_Mario_Bros._Wonder',
+    stats: [
+      { label: 'Release', val: '2023' },
+      { label: 'Levels', val: '100+' },
+      { label: 'Platform', val: 'Switch' },
+      { label: 'Sales', val: '13M+ copies' },
+    ],
+    platforms: ['Nintendo Switch'],
+    facts: [
+      { icon: '✨', text: 'The Wonder Flower mechanic — transforming each level into something completely unexpected, from a pipe-singing musical number to a perspective-flipped shadow world — gave every level a unique identity impossible to spoil with screenshots alone. Nintendo explicitly designed Wonder to defy streaming spoilers.' },
+      { icon: '🦔', text: 'Wonder introduced the Elephant form, where Mario or any character balloons into a giant elephant who can spray water, break blocks by swinging a trunk, and move at a lumbering but powerful pace. Nintendo\'s internal design challenge was to create a power-up as visually absurd as possible — and it succeeded.' },
+      { icon: '🎮', text: 'Wonder is the first 2D Mario to step outside the New Super Mario Bros. visual template used since 2006. Art director Masanobu Sato gave every level a distinctly hand-painted quality with dynamic lighting, expressive character animations, and a color palette drawn from gouache painting — a dramatic departure from the plastic-sheen of NSMB.' },
+    ],
+  },
+];
+
+/* ─── Build game cards ─── */
+function buildGames() {
+  const grid = document.getElementById('games-grid');
+  GAMES.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'game-card';
+
+    const statsHtml = g.stats.map(s =>
+      `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`
+    ).join('');
+    const platsHtml = g.platforms.map(p => `<span class="plat-tag">${p}</span>`).join('');
+    const factsHtml = g.facts.map(f =>
+      `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="game-img-wrap">
+        <div class="game-img-placeholder">
+          <div class="ph-num">${g.num}</div>
+          <div class="ph-icon">&#127810;</div>
+        </div>
+        <img src="" alt="${g.title}">
+        <div class="badge-num">#${g.num}</div>
+        <div class="badge-year">${g.month}</div>
+      </div>
+      <div class="game-body">
+        <div>
+          <div class="game-title">${g.title}</div>
+          <div class="game-dev">${g.dev}</div>
+        </div>
+        <div class="game-stats">${statsHtml}</div>
+        <div class="platforms">${platsHtml}</div>
+        <div>
+          <div class="facts-label">&#9733; Notable Facts</div>
+          <div class="facts-list">${factsHtml}</div>
+        </div>
+      </div>`;
+
+    grid.appendChild(card);
+
+    const imgEl = card.querySelector('img');
+    (async () => {
+      try {
+        const res  = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(g.wiki));
+        const data = await res.json();
+        if (data.thumbnail && data.thumbnail.source) {
+          const src = data.thumbnail.source.replace(/\/\d+px-/, '/640px-');
+          imgEl.src = src;
+          imgEl.onload = () => imgEl.classList.add('loaded');
+        }
+      } catch(_) {}
+    })();
   });
-  document.addEventListener('keyup', e => K[e.code] = false);
-  overlay.addEventListener('click', () => { if (state !== 'playing') begin(); });
+}
+buildGames();
 
-  function bindBtn(id, name) {
-    const el = document.getElementById(id);
-    const on  = e => { e.preventDefault(); T[name] = true;  if (state !== 'playing') begin(); };
-    const off = e => { e.preventDefault(); T[name] = false; };
-    el.addEventListener('touchstart', on,  {passive:false});
-    el.addEventListener('touchend',   off, {passive:false});
-    el.addEventListener('mousedown',  on);
-    el.addEventListener('mouseup',    off);
+/* ═══════════════════════════════════════════
+   CANVAS GAME
+═══════════════════════════════════════════ */
+'use strict';
+
+const canvas     = document.getElementById('c');
+const ctx        = canvas.getContext('2d');
+const overlay    = document.getElementById('overlay');
+const winOverlay = document.getElementById('win-overlay');
+const winEntry   = document.getElementById('win-entry-screen');
+const winBoard   = document.getElementById('win-board-screen');
+const ctrl       = document.getElementById('ctrl');
+const gw         = document.getElementById('gw');
+
+const SCORES_URL = 'https://logs.ximg.app/mario-scores';
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function resize() {
+  canvas.width  = gw.clientWidth;
+  canvas.height = gw.clientHeight;
+}
+window.addEventListener('resize', () => { resize(); if (state !== 'splash') buildLevel(); });
+resize();
+
+const K = {}, T = {};
+document.addEventListener('keydown', e => {
+  K[e.code] = true;
+  if (state === 'win-entry') {
+    handleEntryKey(e.code);
+    e.preventDefault();
+  } else if (state === 'splash' || state === 'over' || state === 'win-board') {
+    begin();
   }
-  bindBtn('bl','left'); bindBtn('br','right'); bindBtn('bj','jump');
+});
+document.addEventListener('keyup', e => K[e.code] = false);
+overlay.addEventListener('click', () => { if (state === 'splash' || state === 'over') begin(); });
 
-  if ('ontouchstart' in window) ctrl.style.display = 'flex';
+function bindBtn(id, name) {
+  const el = document.getElementById(id);
+  const on  = e => { e.preventDefault(); T[name] = true;  if (state === 'splash'||state === 'over') begin(); };
+  const off = e => { e.preventDefault(); T[name] = false; };
+  el.addEventListener('touchstart', on,  {passive:false});
+  el.addEventListener('touchend',   off, {passive:false});
+  el.addEventListener('mousedown',  on);
+  el.addEventListener('mouseup',    off);
+}
+bindBtn('bl','left'); bindBtn('br','right'); bindBtn('bj','jump');
 
-  const L = () => K.ArrowLeft  || K.KeyA || T.left;
-  const R = () => K.ArrowRight || K.KeyD || T.right;
-  const J = () => K.ArrowUp    || K.KeyW || K.Space || T.jump;
+if ('ontouchstart' in window) ctrl.style.display = 'flex';
 
-  /* ── constants ── */
-  const TILE  = 32;
-  const LW    = 5200;   // level width px
-  const GRAV  = 0.55;
-  const JVY   = -12.5;
-  const SPD   = 4.8;
+const L = () => K.ArrowLeft  || K.KeyA || T.left;
+const R = () => K.ArrowRight || K.KeyD || T.right;
+const J = () => K.ArrowUp    || K.KeyW || K.Space || T.jump;
 
-  /* ── state ── */
-  let state = 'splash';
-  let score = 0, lives = 3, camX = 0;
-  let player = null, platforms = [], coins = [], enemies = [], particles = [], flag = null;
-  let jumpHeld = false;
+const TILE  = 32;
+const LW    = 5200;
+const GRAV  = 0.55;
+const JVY   = -12.5;
+const SPD   = 4.8;
 
-  /* ── level ── */
-  function buildLevel() {
-    const ch = canvas.height;
-    const gy = ch - TILE;           // ground top
+let state = 'splash';
+let score = 0, lives = 3, camX = 0;
+let player = null, platforms = [], coins = [], enemies = [], particles = [], flag = null;
+let jumpHeld = false;
 
-    platforms = [{ x:0, y:gy, w:LW, h:TILE*4, ground:true }];
-    coins = []; enemies = []; particles = [];
+function buildLevel() {
+  const ch = canvas.height;
+  const gy = ch - TILE;
 
-    // Floating platforms: [tile_x, tiles_above_ground, tile_width]
-    const pd = [
-      [5,3,3],[10,5,4],[15,3,2],[20,4,3],[26,6,5],[32,3,3],[37,5,4],
-      [43,3,2],[48,4,3],[53,6,4],[59,3,3],[64,5,2],[69,4,4],[74,3,3],
-      [79,5,3],[84,4,4],[89,3,2],[94,6,5],[100,3,3],[105,5,4],
-      [111,4,2],[116,3,3],[121,5,4],[126,4,3],[131,6,5],[137,3,2],
-      [142,4,3],[147,3,4],[152,5,3],[157,4,2],
-    ];
+  platforms = [{ x:0, y:gy, w:LW, h:TILE*4, ground:true }];
+  coins = []; enemies = []; particles = [];
 
-    pd.forEach(([tx,ab,tw]) => {
-      const px = tx*TILE, py = gy - ab*TILE, pw = tw*TILE;
-      platforms.push({x:px, y:py, w:pw, h:TILE});
-      // Coins above platform
-      for (let i=0;i<tw;i++) {
-        if (Math.random()<0.55)
-          coins.push({x:px+i*TILE+8, y:py-TILE-2, w:16, h:16, got:false, t:Math.random()*6.28});
-      }
-      // Enemy on wider platforms
-      if (tw>=3 && Math.random()<0.45)
-        enemies.push(makeGoomba(px+TILE, py-TILE, px, px+pw-28));
+  const pd = [
+    [5,3,3],[10,5,4],[15,3,2],[20,4,3],[26,6,5],[32,3,3],[37,5,4],
+    [43,3,2],[48,4,3],[53,6,4],[59,3,3],[64,5,2],[69,4,4],[74,3,3],
+    [79,5,3],[84,4,4],[89,3,2],[94,6,5],[100,3,3],[105,5,4],
+    [111,4,2],[116,3,3],[121,5,4],[126,4,3],[131,6,5],[137,3,2],
+    [142,4,3],[147,3,4],[152,5,3],[157,4,2],
+  ];
+
+  pd.forEach(([tx,ab,tw]) => {
+    const px = tx*TILE, py = gy - ab*TILE, pw = tw*TILE;
+    platforms.push({x:px, y:py, w:pw, h:TILE});
+    for (let i=0;i<tw;i++) {
+      if (Math.random()<0.55)
+        coins.push({x:px+i*TILE+8, y:py-TILE-2, w:16, h:16, got:false, t:Math.random()*6.28});
+    }
+    if (tw>=3 && Math.random()<0.45)
+      enemies.push(makeGoomba(px+TILE, py-TILE, px, px+pw-28));
+  });
+
+  for (let tx=4; tx<LW/TILE-10; tx+=4+Math.floor(Math.random()*4))
+    coins.push({x:tx*TILE+8, y:gy-TILE-2, w:16, h:16, got:false, t:Math.random()*6.28});
+
+  for (let tx=20; tx<LW/TILE-20; tx+=18+Math.floor(Math.random()*10))
+    enemies.push(makeGoomba(tx*TILE, gy-TILE, 0, LW));
+
+  flag = {x:LW-5*TILE, y:gy-12*TILE, h:12*TILE, triggered:false};
+  player = {x:80, y:gy-50, w:22, h:30, vx:0, vy:0, onGround:false, face:1, iframes:0};
+  jumpHeld = false;
+  camX = 0;
+}
+
+function makeGoomba(x, y, minX, maxX) {
+  return {x, y, w:28, h:TILE, vx:(Math.random()<0.5?-1.8:1.8), minX, maxX, alive:true, squash:0};
+}
+
+function overlapX(a,b){ return a.x+a.w>b.x && a.x<b.x+b.w; }
+function overlap(a,b){ return overlapX(a,b) && a.y+a.h>b.y && a.y<b.y+b.h; }
+
+function moveAndCollide(obj) {
+  obj.x += obj.vx;
+  for (const p of platforms) {
+    if (!overlap(obj,p)) continue;
+    if (obj.vx>0) obj.x = p.x-obj.w;
+    else if (obj.vx<0) obj.x = p.x+p.w;
+    obj.vx = 0;
+  }
+  obj.y += obj.vy;
+  obj.onGround = false;
+  for (const p of platforms) {
+    if (!overlapX(obj,p)) continue;
+    if (obj.vy>=0 && obj.y+obj.h>p.y && obj.y+obj.h-obj.vy<=p.y+2) {
+      obj.y = p.y-obj.h; obj.vy=0; obj.onGround=true;
+    } else if (obj.vy<0 && obj.y<p.y+p.h && obj.y-obj.vy>=p.y+p.h-2) {
+      obj.y = p.y+p.h; obj.vy=0;
+    }
+  }
+}
+
+function begin() {
+  if (state==='splash'||state==='over'||state==='win-board') {
+    state='playing'; score=0; lives=3;
+    buildLevel();
+    winOverlay.classList.add('off');
+  }
+  overlay.classList.add('off');
+}
+
+function showMsg(title, body) {
+  overlay.querySelector('h2').textContent = title;
+  overlay.querySelector('p').innerHTML = body;
+  overlay.querySelector('.hint').textContent = 'Press any key or tap to restart';
+  overlay.classList.remove('off');
+}
+
+function loseLife() {
+  lives--;
+  if (lives<=0) { state='over'; showMsg('GAME OVER', `Score: ${score}`); return; }
+  player.x = Math.max(80, camX+80);
+  player.y = canvas.height-TILE-player.h-80;
+  player.vx=0; player.vy=0; player.iframes=150;
+}
+
+function burst(x, y, color, n=8) {
+  for (let i=0;i<n;i++) {
+    const a=Math.random()*6.28, s=2+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:22,col:color});
+  }
+}
+
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';
+let entrySlot = 0, entryChars = ['A','A','A'];
+let lastWinScore = 0;
+
+function getInitBoxes() { return document.querySelectorAll('.init-box'); }
+
+function renderInitials() {
+  getInitBoxes().forEach((box, i) => {
+    box.textContent = entryChars[i];
+    box.classList.toggle('active', i === entrySlot);
+  });
+}
+
+function shiftChar(slot, dir) {
+  const idx = CHARS.indexOf(entryChars[slot]);
+  entryChars[slot] = CHARS[(idx + dir + CHARS.length) % CHARS.length];
+  renderInitials();
+}
+
+function handleEntryKey(code) {
+  if (code === 'ArrowRight' || code === 'KeyD') {
+    entrySlot = Math.min(2, entrySlot + 1);
+  } else if (code === 'ArrowLeft' || code === 'KeyA') {
+    entrySlot = Math.max(0, entrySlot - 1);
+  } else if (code === 'ArrowUp' || code === 'KeyW') {
+    shiftChar(entrySlot, 1);
+  } else if (code === 'ArrowDown' || code === 'KeyS') {
+    shiftChar(entrySlot, -1);
+  } else if (code === 'Enter' || code === 'Space') {
+    if (entrySlot < 2) { entrySlot++; }
+    else { doSubmit(); return; }
+  }
+  renderInitials();
+}
+
+function showWinEntry(sc) {
+  lastWinScore = sc;
+  entrySlot = 0;
+  entryChars = ['A','A','A'];
+  document.getElementById('win-score-disp').textContent = 'SCORE: ' + sc;
+  winEntry.classList.remove('off');
+  winBoard.classList.add('off');
+  winOverlay.classList.remove('off');
+  renderInitials();
+}
+
+async function doSubmit() {
+  const initials = entryChars.join('').trim() || 'AAA';
+  try {
+    await fetch(SCORES_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initials, score: lastWinScore }),
     });
+  } catch (_) {}
+  await showLeaderboard(initials, lastWinScore);
+}
 
-    // Ground coins
-    for (let tx=4; tx<LW/TILE-10; tx+=4+Math.floor(Math.random()*4))
-      coins.push({x:tx*TILE+8, y:gy-TILE-2, w:16, h:16, got:false, t:Math.random()*6.28});
-
-    // Ground goombas
-    for (let tx=20; tx<LW/TILE-20; tx+=18+Math.floor(Math.random()*10))
-      enemies.push(makeGoomba(tx*TILE, gy-TILE, 0, LW));
-
-    flag = {x:LW-5*TILE, y:gy-12*TILE, h:12*TILE, triggered:false};
-
-    player = {x:80, y:gy-50, w:22, h:30, vx:0, vy:0, onGround:false, face:1, iframes:0};
-    jumpHeld = false;
-    camX = 0;
+async function showLeaderboard(myInitials, myScore) {
+  winEntry.classList.add('off');
+  winBoard.classList.remove('off');
+  const lb = document.getElementById('lb-list');
+  lb.innerHTML = '<div class="lb-empty">Loading…</div>';
+  try {
+    const res = await fetch(SCORES_URL);
+    const scores = await res.json();
+    if (!scores.length) { lb.innerHTML = '<div class="lb-empty">No scores yet.</div>'; return; }
+    lb.innerHTML = scores.map((s, i) => {
+      const me = s.initials === myInitials && s.score === myScore;
+      return `<div class="lb-row${me ? ' me' : ''}">` +
+        `<span class="lb-rank">${i+1}</span>` +
+        `<span class="lb-init">${esc(s.initials)}</span>` +
+        `<span class="lb-score">${Number(s.score).toLocaleString()}</span>` +
+        `</div>`;
+    }).join('');
+  } catch (_) {
+    lb.innerHTML = '<div class="lb-empty">Could not load scores.</div>';
   }
+}
 
-  function makeGoomba(x, y, minX, maxX) {
-    return {x, y, w:28, h:TILE, vx:(Math.random()<0.5?-1.8:1.8), minX, maxX,
-            alive:true, squash:0};
-  }
+document.querySelectorAll('.init-arrow').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const slot = +btn.dataset.slot;
+    entrySlot = slot;
+    shiftChar(slot, btn.dataset.dir === 'up' ? 1 : -1);
+  });
+});
+document.querySelectorAll('.init-box').forEach(box => {
+  box.addEventListener('click', () => { entrySlot = +box.dataset.slot; renderInitials(); });
+});
+document.getElementById('submit-btn').addEventListener('click', doSubmit);
+document.getElementById('skip-btn').addEventListener('click', () => showLeaderboard(null, null));
+document.getElementById('play-again-btn').addEventListener('click', () => { state = 'win-board'; begin(); });
 
-  /* ── physics ── */
-  function overlapX(a,b){ return a.x+a.w>b.x && a.x<b.x+b.w; }
-  function overlap(a,b){ return overlapX(a,b) && a.y+a.h>b.y && a.y<b.y+b.h; }
+function update() {
+  if (state!=='playing') return;
 
-  function moveAndCollide(obj) {
-    // X pass
-    obj.x += obj.vx;
-    for (const p of platforms) {
-      if (!overlap(obj,p)) continue;
-      if (obj.vx>0) obj.x = p.x-obj.w;
-      else if (obj.vx<0) obj.x = p.x+p.w;
-      obj.vx = 0;
-    }
-    // Y pass
-    obj.y += obj.vy;
-    obj.onGround = false;
-    for (const p of platforms) {
-      if (!overlapX(obj,p)) continue;
-      // landing
-      if (obj.vy>=0 && obj.y+obj.h>p.y && obj.y+obj.h-obj.vy<=p.y+2) {
-        obj.y = p.y-obj.h; obj.vy=0; obj.onGround=true;
-      }
-      // ceiling
-      else if (obj.vy<0 && obj.y<p.y+p.h && obj.y-obj.vy>=p.y+p.h-2) {
-        obj.y = p.y+p.h; obj.vy=0;
-      }
-    }
-  }
+  if (R()) { player.vx=SPD;  player.face=1; }
+  else if (L()) { player.vx=-SPD; player.face=-1; }
+  else player.vx*=0.72;
 
-  /* ── update ── */
-  function begin() {
-    if (state==='splash'||state==='over'||state==='win') {
-      state='playing'; score=0; lives=3;
-      buildLevel();
-    }
-    overlay.classList.add('off');
-  }
+  if (J()&&!jumpHeld&&player.onGround) { player.vy=JVY; jumpHeld=true; }
+  if (!J()) { jumpHeld=false; if (player.vy<-4) player.vy+=2; }
 
-  function showMsg(title, body) {
-    overlay.querySelector('h2').textContent = title;
-    overlay.querySelector('p').innerHTML = body;
-    overlay.querySelector('.hint').textContent = 'Press any key or tap to restart';
-    overlay.classList.remove('off');
-  }
+  player.vy = Math.min(player.vy+GRAV, 20);
+  player.x  = Math.max(0, player.x);
+  moveAndCollide(player);
 
-  function loseLife() {
-    lives--;
-    if (lives<=0) { state='over'; showMsg('GAME OVER', `Score: ${score}`); return; }
-    // respawn at camera position
-    player.x = Math.max(80, camX+80);
-    player.y = canvas.height-TILE-player.h-80;
-    player.vx=0; player.vy=0; player.iframes=150;
-  }
+  if (player.y > canvas.height+200) { loseLife(); return; }
 
-  function burst(x, y, color, n=8) {
-    for (let i=0;i<n;i++) {
-      const a=Math.random()*6.28, s=2+Math.random()*3;
-      particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:22,col:color});
-    }
-  }
+  camX = Math.max(0, Math.min(player.x-canvas.width*0.33, LW-canvas.width));
 
-  function update() {
-    if (state!=='playing') return;
+  coins.forEach(c => {
+    if (c.got||!overlap(player,c)) return;
+    c.got=true; score+=100;
+    burst(c.x+8, c.y+8, '#FFD700');
+  });
 
-    // Player
-    if (R()) { player.vx=SPD;  player.face=1; }
-    else if (L()) { player.vx=-SPD; player.face=-1; }
-    else player.vx*=0.72;
-
-    if (J()&&!jumpHeld&&player.onGround) { player.vy=JVY; jumpHeld=true; }
-    if (!J()) { jumpHeld=false; if (player.vy<-4) player.vy+=2; } // variable jump height
-
-    player.vy = Math.min(player.vy+GRAV, 20);
-    player.x  = Math.max(0, player.x);
-    moveAndCollide(player);
-
-    if (player.y > canvas.height+200) { loseLife(); return; }
-
-    camX = Math.max(0, Math.min(player.x-canvas.width*0.33, LW-canvas.width));
-
-    // Coins
-    coins.forEach(c => {
-      if (c.got||!overlap(player,c)) return;
-      c.got=true; score+=100;
-      burst(c.x+8, c.y+8, '#FFD700');
-    });
-
-    // Enemies
-    for (let i=enemies.length-1;i>=0;i--) {
-      const e=enemies[i];
-      if (!e.alive) { if(--e.squash<=0) enemies.splice(i,1); continue; }
-      e.x+=e.vx;
-      if (e.x<=e.minX||e.x+e.w>=e.maxX) { e.vx*=-1; e.x=Math.max(e.minX,Math.min(e.x,e.maxX-e.w)); }
-
-      if (!overlap(player,e)) continue;
-      if (player.iframes>0) continue;
-
-      if (player.vy>0 && player.y+player.h < e.y+e.h*0.55) {
-        // Stomp!
-        e.alive=false; e.squash=18; score+=200;
-        player.vy=-8;
-        burst(e.x+14, e.y, '#8D6E63');
-      } else {
-        loseLife();
-      }
-    }
-
-    // Flagpole
-    if (!flag.triggered && player.x+player.w>flag.x && player.x<flag.x+14) {
-      flag.triggered=true;
-      score += 1000+coins.filter(c=>c.got).length*20;
-      state='win';
-      showMsg('&#127941; YOU WIN!', `Score: ${score}`);
-    }
-
-    if (player.iframes>0) player.iframes--;
-
-    // Particles
-    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.25;p.life--;});
-    particles=particles.filter(p=>p.life>0);
-  }
-
-  /* ── drawing ── */
-  function drawBg() {
-    const cw=canvas.width, ch=canvas.height;
-    // Sky
-    const sg=ctx.createLinearGradient(0,0,0,ch);
-    sg.addColorStop(0,'#1565C0'); sg.addColorStop(1,'#42A5F5');
-    ctx.fillStyle=sg; ctx.fillRect(0,0,cw,ch);
-
-    // Clouds (40% parallax)
-    ctx.fillStyle='rgba(255,255,255,.92)';
-    [[350,55],[850,38],[1500,75],[2200,48],[2900,68],[3600,42],[4300,62]].forEach(([cx,cy])=>{
-      const bx=cx-camX*0.4;
-      if(bx<-120||bx>cw+120) return;
-      ctx.beginPath();
-      ctx.arc(bx+20,cy+12,18,0,6.28); ctx.arc(bx+48,cy,26,0,6.28); ctx.arc(bx+80,cy+14,18,0,6.28);
-      ctx.fill();
-    });
-
-    // Hills (65% parallax)
-    [[600,80],[1400,60],[2300,90],[3200,70],[4100,80]].forEach(([hx,hs])=>{
-      const bx=hx-camX*0.65;
-      if(bx<-200||bx>cw+200) return;
-      ctx.fillStyle='#388E3C';
-      ctx.beginPath(); ctx.arc(bx,ch-TILE*2-4,hs,Math.PI,0); ctx.fill();
-      ctx.fillStyle='#43A047';
-      ctx.beginPath(); ctx.arc(bx+hs*0.7,ch-TILE*2-4,hs*0.6,Math.PI,0); ctx.fill();
-    });
-  }
-
-  function drawPlatform(p) {
-    const bx=p.x-camX;
-    if(bx+p.w<-60||bx>canvas.width+60) return;
-    if (p.ground) {
-      ctx.fillStyle='#4CAF50'; ctx.fillRect(bx,p.y,p.w,10);
-      ctx.fillStyle='#795548'; ctx.fillRect(bx,p.y+10,p.w,p.h-10);
-      ctx.fillStyle='#6D4C41';
-      for(let tx=0;tx<p.w;tx+=TILE) ctx.fillRect(bx+tx,p.y+10,1,p.h-10);
-      for(let ty=p.y+12;ty<p.y+p.h;ty+=14) ctx.fillRect(bx,ty,p.w,1);
+  for (let i=enemies.length-1;i>=0;i--) {
+    const e=enemies[i];
+    if (!e.alive) { if(--e.squash<=0) enemies.splice(i,1); continue; }
+    e.x+=e.vx;
+    if (e.x<=e.minX||e.x+e.w>=e.maxX) { e.vx*=-1; e.x=Math.max(e.minX,Math.min(e.x,e.maxX-e.w)); }
+    if (!overlap(player,e)) continue;
+    if (player.iframes>0) continue;
+    if (player.vy>0 && player.y+player.h < e.y+e.h*0.55) {
+      e.alive=false; e.squash=18; score+=200;
+      player.vy=-8;
+      burst(e.x+14, e.y, '#8D6E63');
     } else {
-      for(let tx=0;tx<p.w;tx+=TILE){
-        ctx.fillStyle=(Math.floor((p.x+tx)/TILE)%2===0)?'#C0392B':'#E74C3C';
-        ctx.fillRect(bx+tx,p.y,Math.min(TILE,p.w-tx),p.h);
-      }
-      ctx.fillStyle='#922B21';
-      for(let tx=0;tx<=p.w;tx+=TILE) ctx.fillRect(bx+tx,p.y,1,p.h);
-      ctx.fillRect(bx,p.y,p.w,1); ctx.fillRect(bx,p.y+p.h-1,p.w,1);
-      ctx.fillStyle='rgba(255,160,160,.25)'; ctx.fillRect(bx,p.y,p.w,5);
+      loseLife();
     }
   }
 
-  function drawCoin(c) {
-    if (c.got) return;
-    c.t+=0.09;
-    const cx=c.x-camX+8, cy=c.y+8;
-    const rx=8*Math.abs(Math.cos(c.t));
-    if(cx<-20||cx>canvas.width+20) return;
-    const g=ctx.createRadialGradient(cx-1,cy-2,1,cx,cy,Math.max(rx,1));
-    g.addColorStop(0,'#FFFDE7'); g.addColorStop(0.5,'#FFD600'); g.addColorStop(1,'#F57F17');
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.ellipse(cx,cy,Math.max(rx,0.5),8,0,0,6.28); ctx.fill();
-    // Star gleam
-    if(rx>4){
-      ctx.fillStyle='rgba(255,255,255,.7)';
-      ctx.fillRect(cx-1,cy-5,2,4); ctx.fillRect(cx-2,cy-2,4,2);
-    }
+  if (!flag.triggered && player.x+player.w>flag.x && player.x<flag.x+14) {
+    flag.triggered=true;
+    score += 1000+coins.filter(c=>c.got).length*20;
+    state='win-entry';
+    showWinEntry(score);
   }
 
-  function drawGoomba(e) {
-    const ex=e.x-camX;
-    if(ex+e.w<-10||ex>canvas.width+10) return;
-    if (!e.alive) {
-      // Squashed pancake
-      ctx.fillStyle='#8D6E63';
-      ctx.fillRect(ex,e.y+e.h-8,e.w,8);
-      ctx.fillStyle='#6D4C41';
-      ctx.fillRect(ex+3,e.y+e.h-13,e.w-6,5);
-      return;
-    }
-    const ey=e.y;
-    // Body
-    ctx.fillStyle='#8D6E63';
-    ctx.beginPath(); ctx.ellipse(ex+14,ey+12,13,11,0,0,6.28); ctx.fill();
-    ctx.fillStyle='#A1887F';
-    ctx.fillRect(ex+2,ey+10,24,14);
-    // Feet
+  if (player.iframes>0) player.iframes--;
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.25;p.life--;});
+  particles=particles.filter(p=>p.life>0);
+}
+
+function drawBg() {
+  const cw=canvas.width, ch=canvas.height;
+  const sg=ctx.createLinearGradient(0,0,0,ch);
+  sg.addColorStop(0,'#1565C0'); sg.addColorStop(1,'#42A5F5');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,cw,ch);
+  ctx.fillStyle='rgba(255,255,255,.92)';
+  [[350,55],[850,38],[1500,75],[2200,48],[2900,68],[3600,42],[4300,62]].forEach(([cx,cy])=>{
+    const bx=cx-camX*0.4;
+    if(bx<-120||bx>cw+120) return;
+    ctx.beginPath();
+    ctx.arc(bx+20,cy+12,18,0,6.28); ctx.arc(bx+48,cy,26,0,6.28); ctx.arc(bx+80,cy+14,18,0,6.28);
+    ctx.fill();
+  });
+  [[600,80],[1400,60],[2300,90],[3200,70],[4100,80]].forEach(([hx,hs])=>{
+    const bx=hx-camX*0.65;
+    if(bx<-200||bx>cw+200) return;
+    ctx.fillStyle='#388E3C';
+    ctx.beginPath(); ctx.arc(bx,ch-TILE*2-4,hs,Math.PI,0); ctx.fill();
+    ctx.fillStyle='#43A047';
+    ctx.beginPath(); ctx.arc(bx+hs*0.7,ch-TILE*2-4,hs*0.6,Math.PI,0); ctx.fill();
+  });
+}
+
+function drawPlatform(p) {
+  const bx=p.x-camX;
+  if(bx+p.w<-60||bx>canvas.width+60) return;
+  if (p.ground) {
+    ctx.fillStyle='#4CAF50'; ctx.fillRect(bx,p.y,p.w,10);
+    ctx.fillStyle='#795548'; ctx.fillRect(bx,p.y+10,p.w,p.h-10);
     ctx.fillStyle='#6D4C41';
-    const wob=Math.sin(Date.now()/200)*2; // wobble walk
-    ctx.fillRect(ex+wob,ey+20,10,8);
-    ctx.fillRect(ex+18-wob,ey+20,10,8);
-    // Eyes
-    ctx.fillStyle='#FFF';
-    ctx.fillRect(ex+4,ey+4,7,7); ctx.fillRect(ex+17,ey+4,7,7);
-    ctx.fillStyle='#000';
-    ctx.fillRect(ex+8,ey+7,3,3); ctx.fillRect(ex+17,ey+7,3,3);
-    // Angry brows
-    ctx.fillStyle='#3E2723';
-    ctx.save(); ctx.translate(ex+7,ey+4); ctx.rotate(0.35); ctx.fillRect(0,0,7,2); ctx.restore();
-    ctx.save(); ctx.translate(ex+24,ey+4); ctx.rotate(-0.35); ctx.fillRect(-7,0,7,2); ctx.restore();
-  }
-
-  function drawFlag() {
-    if (!flag) return;
-    const fx=flag.x-camX;
-    if(fx<-60||fx>canvas.width+60) return;
-    ctx.fillStyle='#9E9E9E'; ctx.fillRect(fx+6,flag.y,5,flag.h);
-    ctx.fillStyle=flag.triggered?'#BDBDBD':'#4CAF50';
-    ctx.beginPath(); ctx.moveTo(fx+11,flag.y+4); ctx.lineTo(fx+46,flag.y+22); ctx.lineTo(fx+11,flag.y+38); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#5D4037'; ctx.fillRect(fx-1,flag.y+flag.h,17,10);
-  }
-
-  function drawPlayer() {
-    if (!player) return;
-    if (player.iframes>0&&Math.floor(player.iframes/5)%2===0) return;
-    const mx=player.x-camX, my=player.y;
-    const f=player.face>0;
-    const p=2;
-
-    // Cap
-    ctx.fillStyle='#E52521';
-    ctx.fillRect(mx+4*p,my,7*p,2*p);
-    ctx.fillRect(mx+2*p,my+2*p,9*p,2*p);
-    // Face
-    ctx.fillStyle='#FAB87F';
-    ctx.fillRect(mx+2*p,my+4*p,8*p,4*p);
-    // Eye
-    ctx.fillStyle='#000';
-    ctx.fillRect(mx+(f?8:2)*p,my+5*p,2*p,2*p);
-    // Mustache
-    ctx.fillStyle='#5D4037';
-    ctx.fillRect(mx+(f?3:2)*p,my+7*p,4*p,2*p);
-    ctx.fillRect(mx+(f?8:5)*p,my+7*p,3*p,2*p);
-    // Body
-    ctx.fillStyle='#E52521';
-    ctx.fillRect(mx+2*p,my+8*p,8*p,5*p);
-    // Overalls
-    ctx.fillStyle='#0049AD';
-    ctx.fillRect(mx,my+10*p,12*p,5*p);
-    ctx.fillRect(mx+2*p,my+9*p,3*p,2*p);
-    ctx.fillRect(mx+7*p,my+9*p,3*p,2*p);
-    // Buttons
-    ctx.fillStyle='rgba(255,255,255,.7)';
-    ctx.fillRect(mx+3*p,my+12*p,1*p,1*p); ctx.fillRect(mx+8*p,my+12*p,1*p,1*p);
-    // Shoes
-    ctx.fillStyle='#5D4037';
-    ctx.fillRect(mx+(f?0:3)*p,my+15*p,6*p,2*p);
-    ctx.fillRect(mx+(f?6:3)*p,my+15*p,6*p,2*p);
-  }
-
-  function drawParticles() {
-    particles.forEach(p=>{
-      ctx.globalAlpha=p.life/22;
-      ctx.fillStyle=p.col;
-      ctx.fillRect(p.x-camX-3,p.y-3,6,6);
-    });
-    ctx.globalAlpha=1;
-  }
-
-  function drawHUD() {
-    ctx.font='11px "Press Start 2P",monospace';
-    const got=coins.filter(c=>c.got).length, tot=coins.length;
-    function shadow(txt,x,y,col){
-      ctx.fillStyle='#000'; ctx.fillText(txt,x+1,y+1);
-      ctx.fillStyle=col||'#fff'; ctx.fillText(txt,x,y);
+    for(let tx=0;tx<p.w;tx+=TILE) ctx.fillRect(bx+tx,p.y+10,1,p.h-10);
+    for(let ty=p.y+12;ty<p.y+p.h;ty+=14) ctx.fillRect(bx,ty,p.w,1);
+  } else {
+    for(let tx=0;tx<p.w;tx+=TILE){
+      ctx.fillStyle=(Math.floor((p.x+tx)/TILE)%2===0)?'#C0392B':'#E74C3C';
+      ctx.fillRect(bx+tx,p.y,Math.min(TILE,p.w-tx),p.h);
     }
-    shadow(`SCORE ${score}`,16,28);
-    shadow(`\u2665 ${lives}`,canvas.width/2-35,28,'#FF5252');
-    ctx.fillStyle='#000'; ctx.fillText(`\u25CF ${got}/${tot}`,canvas.width-140,29);
-    ctx.fillStyle='#FFD700'; ctx.fillText(`\u25CF ${got}/${tot}`,canvas.width-141,28);
+    ctx.fillStyle='#922B21';
+    for(let tx=0;tx<=p.w;tx+=TILE) ctx.fillRect(bx+tx,p.y,1,p.h);
+    ctx.fillRect(bx,p.y,p.w,1); ctx.fillRect(bx,p.y+p.h-1,p.w,1);
+    ctx.fillStyle='rgba(255,160,160,.25)'; ctx.fillRect(bx,p.y,p.w,5);
   }
+}
 
-  function render() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawBg();
-    platforms.forEach(drawPlatform);
-    coins.forEach(drawCoin);
-    drawFlag();
-    enemies.forEach(drawGoomba);
-    drawPlayer();
-    drawParticles();
-    drawHUD();
+function drawCoin(c) {
+  if (c.got) return;
+  c.t+=0.09;
+  const cx=c.x-camX+8, cy=c.y+8;
+  const rx=8*Math.abs(Math.cos(c.t));
+  if(cx<-20||cx>canvas.width+20) return;
+  const g=ctx.createRadialGradient(cx-1,cy-2,1,cx,cy,Math.max(rx,1));
+  g.addColorStop(0,'#FFFDE7'); g.addColorStop(0.5,'#FFD600'); g.addColorStop(1,'#F57F17');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(cx,cy,Math.max(rx,0.5),8,0,0,6.28); ctx.fill();
+  if(rx>4){
+    ctx.fillStyle='rgba(255,255,255,.7)';
+    ctx.fillRect(cx-1,cy-5,2,4); ctx.fillRect(cx-2,cy-2,4,2);
   }
+}
 
-  /* ── loop ── */
-  function loop() { update(); render(); requestAnimationFrame(loop); }
-  loop();
-  </script>
+function drawGoomba(e) {
+  const ex=e.x-camX;
+  if(ex+e.w<-10||ex>canvas.width+10) return;
+  if (!e.alive) {
+    ctx.fillStyle='#8D6E63'; ctx.fillRect(ex,e.y+e.h-8,e.w,8);
+    ctx.fillStyle='#6D4C41'; ctx.fillRect(ex+3,e.y+e.h-13,e.w-6,5);
+    return;
+  }
+  const ey=e.y;
+  ctx.fillStyle='#8D6E63';
+  ctx.beginPath(); ctx.ellipse(ex+14,ey+12,13,11,0,0,6.28); ctx.fill();
+  ctx.fillStyle='#A1887F'; ctx.fillRect(ex+2,ey+10,24,14);
+  ctx.fillStyle='#6D4C41';
+  const wob=Math.sin(Date.now()/200)*2;
+  ctx.fillRect(ex+wob,ey+20,10,8); ctx.fillRect(ex+18-wob,ey+20,10,8);
+  ctx.fillStyle='#FFF';
+  ctx.fillRect(ex+4,ey+4,7,7); ctx.fillRect(ex+17,ey+4,7,7);
+  ctx.fillStyle='#000';
+  ctx.fillRect(ex+8,ey+7,3,3); ctx.fillRect(ex+17,ey+7,3,3);
+  ctx.fillStyle='#3E2723';
+  ctx.save(); ctx.translate(ex+7,ey+4); ctx.rotate(0.35); ctx.fillRect(0,0,7,2); ctx.restore();
+  ctx.save(); ctx.translate(ex+24,ey+4); ctx.rotate(-0.35); ctx.fillRect(-7,0,7,2); ctx.restore();
+}
+
+function drawFlag() {
+  if (!flag) return;
+  const fx=flag.x-camX;
+  if(fx<-60||fx>canvas.width+60) return;
+  ctx.fillStyle='#9E9E9E'; ctx.fillRect(fx+6,flag.y,5,flag.h);
+  ctx.fillStyle=flag.triggered?'#BDBDBD':'#4CAF50';
+  ctx.beginPath(); ctx.moveTo(fx+11,flag.y+4); ctx.lineTo(fx+46,flag.y+22); ctx.lineTo(fx+11,flag.y+38); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#5D4037'; ctx.fillRect(fx-1,flag.y+flag.h,17,10);
+}
+
+function drawPlayer() {
+  if (!player) return;
+  if (player.iframes>0&&Math.floor(player.iframes/5)%2===0) return;
+  const mx=player.x-camX, my=player.y;
+  const f=player.face>0;
+  const p=2;
+  ctx.fillStyle='#E52521'; ctx.fillRect(mx+4*p,my,7*p,2*p); ctx.fillRect(mx+2*p,my+2*p,9*p,2*p);
+  ctx.fillStyle='#FAB87F'; ctx.fillRect(mx+2*p,my+4*p,8*p,4*p);
+  ctx.fillStyle='#000'; ctx.fillRect(mx+(f?8:2)*p,my+5*p,2*p,2*p);
+  ctx.fillStyle='#5D4037';
+  ctx.fillRect(mx+(f?3:2)*p,my+7*p,4*p,2*p); ctx.fillRect(mx+(f?8:5)*p,my+7*p,3*p,2*p);
+  ctx.fillStyle='#E52521'; ctx.fillRect(mx+2*p,my+8*p,8*p,5*p);
+  ctx.fillStyle='#0049AD';
+  ctx.fillRect(mx,my+10*p,12*p,5*p);
+  ctx.fillRect(mx+2*p,my+9*p,3*p,2*p); ctx.fillRect(mx+7*p,my+9*p,3*p,2*p);
+  ctx.fillStyle='rgba(255,255,255,.7)';
+  ctx.fillRect(mx+3*p,my+12*p,1*p,1*p); ctx.fillRect(mx+8*p,my+12*p,1*p,1*p);
+  ctx.fillStyle='#5D4037';
+  ctx.fillRect(mx+(f?0:3)*p,my+15*p,6*p,2*p); ctx.fillRect(mx+(f?6:3)*p,my+15*p,6*p,2*p);
+}
+
+function drawParticles() {
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.life/22;
+    ctx.fillStyle=p.col;
+    ctx.fillRect(p.x-camX-3,p.y-3,6,6);
+  });
+  ctx.globalAlpha=1;
+}
+
+function drawHUD() {
+  ctx.font='11px "Press Start 2P",monospace';
+  const got=coins.filter(c=>c.got).length, tot=coins.length;
+  function shadow(txt,x,y,col){
+    ctx.fillStyle='#000'; ctx.fillText(txt,x+1,y+1);
+    ctx.fillStyle=col||'#fff'; ctx.fillText(txt,x,y);
+  }
+  shadow(`SCORE ${score}`,16,28);
+  shadow(`\u2665 ${lives}`,canvas.width/2-35,28,'#FF5252');
+  ctx.fillStyle='#000'; ctx.fillText(`\u25CF ${got}/${tot}`,canvas.width-140,29);
+  ctx.fillStyle='#FFD700'; ctx.fillText(`\u25CF ${got}/${tot}`,canvas.width-141,28);
+}
+
+function render() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawBg(); platforms.forEach(drawPlatform); coins.forEach(drawCoin);
+  drawFlag(); enemies.forEach(drawGoomba); drawPlayer(); drawParticles(); drawHUD();
+}
+
+function loop() { update(); render(); requestAnimationFrame(loop); }
+loop();
+</script>
 </body>
 </html>

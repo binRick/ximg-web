@@ -15,27 +15,27 @@ function stripAnsi(s) {
 }
 
 // ── GeoIP lookup via ip-api.com (free, no key) ───────────────────────────────
-const ipGeoCache = new Map(); // ip -> { countryCode, lat, lon }
+const ipGeoCache = new Map(); // ip -> { countryCode, country, city, lat, lon }
 
 function lookupGeo(ip) {
   if (ipGeoCache.has(ip)) return Promise.resolve(ipGeoCache.get(ip));
   return new Promise(resolve => {
     const done = g => { ipGeoCache.set(ip, g); resolve(g); };
     const req = http.get(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=countryCode,lat,lon`,
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=countryCode,country,city,lat,lon`,
       res => {
         let data = '';
         res.on('data', d => data += d);
         res.on('end', () => {
           try {
-            const { countryCode = '', lat = 0, lon = 0 } = JSON.parse(data);
-            done({ countryCode, lat, lon });
-          } catch { done({ countryCode: '', lat: 0, lon: 0 }); }
+            const { countryCode = '', country = '', city = '', lat = 0, lon = 0 } = JSON.parse(data);
+            done({ countryCode, country, city, lat, lon });
+          } catch { done({ countryCode: '', country: '', city: '', lat: 0, lon: 0 }); }
         });
       }
     );
-    req.setTimeout(4000, () => { req.destroy(); done({ countryCode: '', lat: 0, lon: 0 }); });
-    req.on('error', () => done({ countryCode: '', lat: 0, lon: 0 }));
+    req.setTimeout(4000, () => { req.destroy(); done({ countryCode: '', country: '', city: '', lat: 0, lon: 0 }); });
+    req.on('error', () => done({ countryCode: '', country: '', city: '', lat: 0, lon: 0 }));
   });
 }
 
@@ -45,6 +45,16 @@ function ipFromFilename(filename) {
   return parts.slice(2, -1).join('-').replace(/_/g, ':');
 }
 
+const MARIO_SCORES_FILE = '/data/mario-scores.json';
+
+function readScores() {
+  try { return JSON.parse(fs.readFileSync(MARIO_SCORES_FILE, 'utf8')); }
+  catch (_) { return []; }
+}
+function writeScores(scores) {
+  try { fs.writeFileSync(MARIO_SCORES_FILE, JSON.stringify(scores)); } catch (_) {}
+}
+
 const LOG_FILES = {
   ximg:      'ximg.access.log',
   linux:     'linux.access.log',
@@ -52,8 +62,16 @@ const LOG_FILES = {
   ascii:     'ascii.access.log',
   json:      'json.access.log',
   poker:     'poker.access.log',
-  mario:     'mario.access.log',\n  monkey:    'monkey.access.log',
+  mario:     'mario.access.log',
+  monkey:    'monkey.access.log',
+  doom:      'doom.access.log',
+  pizza:     'pizza.access.log',
+  docker:    'docker.access.log',
   yaml:      'yaml.access.log',
+  kombat:    'kombat.access.log',
+  wargames:  'wargames.access.log',
+  moto:      'moto.access.log',
+  tampa:     'tampa.access.log',
   logs:      'logs.access.log',
 };
 
@@ -123,11 +141,11 @@ const HTML = `<!DOCTYPE html>
     body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
       background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
 
-    .toolbar{display:flex;align-items:center;gap:.5rem;padding:.6rem 1.5rem;
+    .toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;padding:.5rem 1rem;
       background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0}
-    .tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+    .tab{font-size:.75rem;padding:.25rem .65rem;border-radius:6px;cursor:pointer;
       border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
-      font-family:'Courier New',monospace;transition:all .2s}
+      font-family:'Courier New',monospace;transition:all .2s;white-space:nowrap}
     .tab.active{color:var(--green);border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07)}
     .tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
     .stats{margin-left:auto;display:flex;gap:1.25rem;font-size:.75rem;color:var(--dim)}
@@ -169,7 +187,7 @@ const HTML = `<!DOCTYPE html>
     #ssh-map-canvas{display:block;width:320px;height:200px}
     .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
     .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
-    .log-line{display:grid;grid-template-columns:180px 130px 48px 1fr;gap:.75rem;
+    .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 1fr;gap:.75rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
     .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .log-line:hover{background:rgba(255,255,255,.03)}
@@ -177,6 +195,7 @@ const HTML = `<!DOCTYPE html>
     @keyframes flashIn{from{background:rgba(0,255,65,.08)}to{background:transparent}}
     .col-ts{color:var(--dim)}
     .col-ip{color:#79c0ff}
+    .col-geo{color:#a5b4fc;font-size:.75rem}
     .col-path{color:var(--text)}
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
     .raw-line{color:var(--dim);font-size:.75rem;padding:.1rem .25rem}
@@ -188,16 +207,22 @@ const HTML = `<!DOCTYPE html>
   <script src="/shared/nav.js?v=2"></script>
 
   <div class="toolbar">
-    <button class="tab active" data-site="ximg">ximg.app</button>
-    <button class="tab"        data-site="linux">linux.ximg.app</button>
-    <button class="tab"        data-site="butterfly">butterfly.ximg.app</button>
-    <button class="tab"        data-site="ascii">ascii.ximg.app</button>
-    <button class="tab"        data-site="json">json.ximg.app</button>
-    <button class="tab"        data-site="poker">poker.ximg.app</button>
-    <button class="tab"        data-site="mario">mario.ximg.app</button>
-    <button class="tab"        data-site="monkey">monkey.ximg.app</button>
-    <button class="tab"        data-site="yaml">yaml.ximg.app</button>
-    <button class="tab"        data-site="logs">logs.ximg.app</button>
+    <button class="tab active" data-site="ximg">ximg</button>
+    <button class="tab"        data-site="linux">linux</button>
+    <button class="tab"        data-site="butterfly">butterfly</button>
+    <button class="tab"        data-site="ascii">ascii</button>
+    <button class="tab"        data-site="json">json</button>
+    <button class="tab"        data-site="poker">poker</button>
+    <button class="tab"        data-site="mario">mario</button>
+    <button class="tab"        data-site="monkey">monkey</button>
+    <button class="tab"        data-site="doom">doom</button>
+    <button class="tab"        data-site="pizza">pizza</button>
+    <button class="tab"        data-site="docker">docker</button>
+    <button class="tab"        data-site="yaml">yaml</button>
+    <button class="tab"        data-site="kombat">kombat</button>
+    <button class="tab"        data-site="wargames">wargames</button>
+    <button class="tab"        data-site="tampa">tampa</button>
+    <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
@@ -240,6 +265,18 @@ const HTML = `<!DOCTYPE html>
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
+    function countryFlag(code) {
+      if (!code || code.length !== 2) return '';
+      return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+    }
+
+    function geoLabel(data) {
+      if (!data.countryCode) return '';
+      const flag = countryFlag(data.countryCode);
+      const place = data.city ? data.city + ', ' + data.country : (data.country || data.countryCode);
+      return flag + ' ' + place;
+    }
+
     function statusClass(s) {
       if (!s) return 's0';
       if (s < 300) return 's2xx';
@@ -258,6 +295,7 @@ const HTML = `<!DOCTYPE html>
         el.innerHTML =
           '<span class="col-ts">'  + esc(data.ts)                             + '</span>' +
           '<span class="col-ip">'  + esc(data.ip)                             + '</span>' +
+          '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
           '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
           '<span class="col-path">' + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
         stats.total++;
@@ -596,7 +634,7 @@ const server = http.createServer(async (req, res) => {
       await Promise.all(uniqueIps.map(lookupGeo));
       const result = files.map(f => {
         const g = ipGeoCache.get(f.ip) || {};
-        return { name: f.name, size: f.size, countryCode: g.countryCode || '', lat: g.lat || 0, lon: g.lon || 0 };
+        return { name: f.name, size: f.size, countryCode: g.countryCode || '', country: g.country || '', city: g.city || '', lat: g.lat || 0, lon: g.lon || 0 };
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -615,6 +653,43 @@ const server = http.createServer(async (req, res) => {
     } catch (_) { res.writeHead(404); res.end(); }
     return;
   }
+  if (req.url === '/mario-scores') {
+    const cors = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
+
+    if (req.method === 'GET') {
+      const top = readScores().sort((a, b) => b.score - a.score).slice(0, 10);
+      res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(top)); return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', d => { body += d; if (body.length > 512) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const { initials, score } = JSON.parse(body);
+          if (!/^[A-Z0-9]{1,3}$/.test(String(initials)) ||
+              !Number.isFinite(score) || score < 0 || score > 999999) {
+            res.writeHead(400, cors); res.end(); return;
+          }
+          const scores = readScores();
+          scores.push({ initials: String(initials), score: Math.floor(score), ts: new Date().toISOString() });
+          scores.sort((a, b) => b.score - a.score);
+          writeScores(scores.slice(0, 200));
+          res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (_) { res.writeHead(400, cors); res.end(); }
+      });
+      return;
+    }
+    res.writeHead(405, cors); res.end(); return;
+  }
+
   if (req.url.startsWith('/shared/nav.js')) {
     try {
       const js = fs.readFileSync('/app/shared/nav.js', 'utf8');
@@ -633,9 +708,18 @@ wss.on('connection', (ws, req) => {
   const site    = new URL(req.url, 'http://x').searchParams.get('site') || 'ximg';
   const logFile = path.join(LOGS_DIR, LOG_FILES[site] || LOG_FILES.ximg);
 
-  const send = line => {
+  const send = async line => {
     if (ws.readyState !== ws.OPEN) return;
-    try { ws.send(JSON.stringify(parseLine(line))); } catch (_) {}
+    try {
+      const parsed = parseLine(line);
+      if (parsed.ip) {
+        const geo = await lookupGeo(parsed.ip);
+        parsed.countryCode = geo.countryCode;
+        parsed.country = geo.country;
+        parsed.city = geo.city;
+      }
+      ws.send(JSON.stringify(parsed));
+    } catch (_) {}
   };
 
   // Replay last 100 lines on connect

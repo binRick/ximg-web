@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mortal Kombat — kombat.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #080505;
+      --panel:   #120808;
+      --crimson: #b01010;
+      --blood:   #7a0000;
+      --gold:    #c8960c;
+      --steel:   #8090a0;
+      --text:    #e8d8d0;
+      --muted:   #806870;
+      --card:    rgba(22,5,5,.8);
+      --border:  rgba(176,16,16,.2);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% 0%, #2a0505 0%, transparent 65%),
+        radial-gradient(ellipse 80% 40% at 80% 100%, #1a0303 0%, transparent 60%),
+        linear-gradient(180deg, #080505 0%, #040202 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,   rgba(176,16,16,.02) 0, rgba(176,16,16,.02) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg,  rgba(176,16,16,.015) 0, rgba(176,16,16,.015) 1px, transparent 1px, transparent 80px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2.5rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 18px rgba(176,16,16,.8)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #e02020 0%, #ff6040 35%, #c80000 70%, #ff2020 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em; text-transform: uppercase;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 480px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+    }
+
+    /* ── Sub-nav ── */
+    .subnav {
+      display: flex; gap: .5rem;
+      border-bottom: 1px solid var(--border); padding-bottom: .6rem;
+    }
+    .snav-btn {
+      font-size: .8rem; padding: .35rem 1.1rem; border-radius: 4px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; transition: all .2s;
+    }
+    .snav-btn.active { color: var(--crimson); border-color: rgba(176,16,16,.5); background: rgba(176,16,16,.08); }
+    .snav-btn:hover:not(.active) { color: var(--text); border-color: rgba(176,16,16,.25); }
+
+    /* ── Section toggle ── */
+    .mk-section { display: flex; flex-direction: column; gap: 1.75rem; }
+    .mk-section.hidden { display: none; }
+
+    /* ── Game grid ── */
+    .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .games { grid-template-columns: 1fr; } }
+
+    /* ── Game card ── */
+    .game-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .game-card:hover {
+      border-color: rgba(176,16,16,.5);
+      box-shadow: 0 8px 40px rgba(176,16,16,.15);
+      transform: translateY(-3px);
+    }
+
+    .game-img-wrap {
+      position: relative; aspect-ratio: 16/9;
+      background: var(--panel); overflow: hidden;
+    }
+    .game-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center top;
+      display: block; transition: opacity .4s;
+    }
+    .game-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .5rem;
+    }
+    .game-img-placeholder .ph-num { font-size: 3.5rem; font-weight: 900; color: rgba(176,16,16,.2); line-height: 1; }
+    .game-img-placeholder .ph-icon { font-size: 2rem; opacity: .2; }
+
+    .game-num-badge {
+      position: absolute; top: .75rem; left: .75rem;
+      background: rgba(0,0,0,.75); border: 1px solid rgba(176,16,16,.5);
+      color: var(--crimson); font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .08em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+      text-transform: uppercase;
+    }
+    .game-year-badge {
+      position: absolute; top: .75rem; right: .75rem;
+      background: rgba(122,0,0,.85); border: 1px solid rgba(200,150,12,.3);
+      color: #f0c080; font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+    }
+
+    .game-body { padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+    .game-title { font-size: 1.15rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+    .game-dev   { font-size: .72rem; color: var(--muted); margin-top: .2rem;
+                  font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .game-stats { display: flex; flex-wrap: wrap; gap: .5rem; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .stat-chip {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px; padding: .35rem .7rem; min-width: 72px;
+    }
+    .stat-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .stat-val   { font-size: .85rem; font-weight: 700; color: var(--gold); margin-top: .1rem; }
+
+    .platforms { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .plat-tag {
+      font-size: .62rem; padding: .18rem .55rem; border-radius: 99px;
+      border: 1px solid rgba(176,16,16,.3); background: rgba(176,16,16,.08);
+      color: #e08080; font-family: 'Segoe UI', system-ui, sans-serif; white-space: nowrap;
+    }
+
+    .facts-label {
+      font-size: .62rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .35rem;
+    }
+    .facts-list { display: flex; flex-direction: column; gap: .5rem; }
+    .fact {
+      display: flex; gap: .6rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.55; color: #c0a8a0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .fact-icon { flex-shrink: 0; font-size: .8rem; margin-top: .05rem; opacity: .75; }
+
+    /* ── Fatalities section ── */
+    .fat-controls {
+      display: flex; gap: .75rem; flex-wrap: wrap; align-items: center;
+    }
+    .fat-select, .fat-search {
+      background: rgba(22,5,5,.9); border: 1px solid var(--border); color: var(--text);
+      padding: .45rem .85rem; border-radius: 6px; font-size: .8rem;
+      font-family: 'Segoe UI', system-ui, sans-serif; outline: none;
+      transition: border-color .2s;
+    }
+    .fat-select:focus, .fat-search:focus { border-color: rgba(176,16,16,.5); }
+    .fat-search { flex: 1; min-width: 180px; max-width: 300px; }
+    .fat-select option { background: #120808; }
+    .fat-count {
+      margin-left: auto; font-size: .72rem; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    .fat-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table {
+      width: 100%; border-collapse: collapse;
+      font-family: 'Segoe UI', system-ui, sans-serif; font-size: .82rem;
+    }
+    thead th {
+      background: rgba(122,0,0,.35); color: var(--gold);
+      padding: .6rem 1rem; text-align: left;
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;
+      border-bottom: 1px solid rgba(176,16,16,.3); white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid rgba(176,16,16,.06); transition: background .15s; }
+    tbody tr:hover { background: rgba(176,16,16,.06); }
+    tbody tr.char-start { border-top: 1px solid rgba(176,16,16,.18); }
+    td { padding: .45rem 1rem; vertical-align: middle; }
+    td.td-char {
+      white-space: nowrap; font-weight: 700; color: var(--text);
+      min-width: 150px;
+    }
+    td.td-game {
+      white-space: nowrap; color: var(--gold); font-size: .75rem; font-weight: 600;
+      min-width: 140px;
+    }
+    td.td-name { color: #e06060; font-weight: 700; white-space: nowrap; min-width: 160px; }
+    td.td-desc { color: #c0a8a0; line-height: 1.45; }
+    .char-icon { margin-right: .4rem; }
+
+    .no-results {
+      text-align: center; padding: 3rem 1rem; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-style: italic;
+    }
+
+    /* ── Character cards ── */
+    .char-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+    @media(max-width:520px){ .char-grid { grid-template-columns: 1fr; } }
+
+    .char-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+      backdrop-filter: blur(12px);
+      transition: border-color .25s, box-shadow .25s, transform .2s;
+    }
+    .char-card:hover {
+      border-color: rgba(176,16,16,.5);
+      box-shadow: 0 6px 32px rgba(176,16,16,.14);
+      transform: translateY(-2px);
+    }
+    .char-img-wrap {
+      position: relative; aspect-ratio: 3/4; background: var(--panel); overflow: hidden;
+    }
+    .char-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: top center;
+      display: block; opacity: 0; transition: opacity .4s; position: relative; z-index: 1;
+    }
+    .char-img-wrap img.loaded { opacity: 1; }
+    .char-placeholder {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; flex-direction: column; gap: .4rem;
+    }
+    .char-ph-icon { font-size: 3rem; opacity: .12; }
+    .char-ph-name { font-size: .7rem; font-weight: 700; color: rgba(176,16,16,.25);
+      letter-spacing: .1em; text-transform: uppercase; font-family: 'Segoe UI', sans-serif; }
+    .char-debut-badge {
+      position: absolute; top: .65rem; left: .65rem; z-index: 2;
+      background: rgba(0,0,0,.78); border: 1px solid rgba(176,16,16,.5);
+      color: var(--crimson); font-size: .6rem; font-weight: 700;
+      padding: .18rem .55rem; border-radius: 99px; letter-spacing: .07em;
+      font-family: 'Segoe UI', sans-serif; text-transform: uppercase;
+    }
+    .char-games-badge {
+      position: absolute; top: .65rem; right: .65rem; z-index: 2;
+      background: rgba(122,0,0,.85); border: 1px solid rgba(200,150,12,.3);
+      color: #f0c080; font-size: .6rem; font-weight: 700;
+      padding: .18rem .55rem; border-radius: 99px; letter-spacing: .05em;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .char-body { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .7rem; flex: 1; }
+    .char-name { font-size: 1.05rem; font-weight: 800; color: var(--text); line-height: 1.2; }
+    .char-origin { font-size: .72rem; color: var(--muted); font-family: 'Segoe UI', sans-serif; margin-top: .1rem; }
+    .char-styles { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .char-style-tag {
+      font-size: .6rem; padding: .15rem .5rem; border-radius: 99px;
+      border: 1px solid rgba(176,16,16,.3); background: rgba(176,16,16,.07);
+      color: #e08080; font-family: 'Segoe UI', sans-serif; font-weight: 600;
+    }
+    .char-weapon { font-size: .72rem; color: var(--gold); font-family: 'Segoe UI', sans-serif; }
+    .char-weapon strong { color: rgba(200,150,12,.6); font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; margin-right: .3rem; }
+    .char-section-label {
+      font-size: .58rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); font-family: 'Segoe UI', sans-serif; margin-bottom: .25rem; font-weight: 700;
+    }
+    .char-moves { display: flex; flex-direction: column; gap: .2rem; }
+    .char-move { font-size: .72rem; color: #c0a8a0; font-family: 'Segoe UI', sans-serif;
+      padding-left: .6rem; position: relative; line-height: 1.4; }
+    .char-move::before { content:'›'; position: absolute; left: 0; color: var(--crimson); }
+    .char-combos { display: flex; flex-direction: column; gap: .25rem; }
+    .char-combo {
+      font-size: .68rem; color: #a89090; font-family: 'Courier New', monospace;
+      background: rgba(176,16,16,.05); border: 1px solid rgba(176,16,16,.1);
+      border-radius: 4px; padding: .2rem .5rem; line-height: 1.45;
+    }
+    .char-bio {
+      font-size: .72rem; color: #a09090; font-family: 'Segoe UI', sans-serif;
+      line-height: 1.5; font-style: italic; border-top: 1px solid rgba(176,16,16,.08);
+      padding-top: .6rem;
+    }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    .hero { animation: fadeUp .7s ease both; }
+    .games { animation: fadeUp .7s ease both .15s; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=3"></script>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🐉</div>
+      <h1>Mortal Kombat</h1>
+      <p class="hero-sub">Three decades of brutal combat — from the arcades of 1992 to the realms of 2023. Finish him.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="subnav">
+      <button class="snav-btn active" data-tab="games">Games</button>
+      <button class="snav-btn"        data-tab="fatalities">Fatalities</button>
+      <button class="snav-btn"        data-tab="characters">Characters</button>
+    </div>
+
+    <!-- ── GAMES SECTION ── -->
+    <div id="section-games" class="mk-section">
+      <div class="games" id="games"></div>
+    </div>
+
+    <!-- ── FATALITIES SECTION ── -->
+    <div id="section-fatalities" class="mk-section hidden">
+      <div class="fat-controls">
+        <select class="fat-select" id="fat-game-filter">
+          <option value="">All Games</option>
+          <option value="mk1_1992">MK1 (1992)</option>
+          <option value="mk2">MK2 (1993)</option>
+          <option value="mk3">MK3 / UMK3 (1995)</option>
+          <option value="mk4">MK4 (1997)</option>
+          <option value="mkda">Deadly Alliance (2002)</option>
+          <option value="mkd">Deception (2004)</option>
+          <option value="mka">Armageddon (2006)</option>
+          <option value="mk9">MK9 (2011)</option>
+          <option value="mkx">MKX (2015)</option>
+          <option value="mk11">MK11 (2019)</option>
+          <option value="mk1_2023">MK1 (2023)</option>
+        </select>
+        <input class="fat-search" id="fat-char-search" type="text" placeholder="Search character…" autocomplete="off">
+        <span class="fat-count" id="fat-count"></span>
+      </div>
+      <div class="fat-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Character</th>
+              <th>Game</th>
+              <th>Fatality</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody id="fat-tbody"></tbody>
+        </table>
+        <div class="no-results hidden" id="fat-no-results">No fatalities match your filter.</div>
+      </div>
+    </div>
+
+    <!-- ── CHARACTERS SECTION ── -->
+    <div id="section-characters" class="mk-section hidden">
+      <div class="fat-controls">
+        <select class="fat-select" id="char-game-filter">
+          <option value="">All Games</option>
+          <option value="mk1_1992">MK1 (1992)</option>
+          <option value="mk2">MK2 (1993)</option>
+          <option value="mk3">MK3 / UMK3 (1995)</option>
+          <option value="mk4">MK4 (1997)</option>
+          <option value="mkda">Deadly Alliance (2002)</option>
+          <option value="mkd">Deception (2004)</option>
+          <option value="mka">Armageddon (2006)</option>
+          <option value="mk9">MK9 (2011)</option>
+          <option value="mkx">MKX (2015)</option>
+          <option value="mk11">MK11 (2019)</option>
+          <option value="mk1_2023">MK1 (2023)</option>
+        </select>
+        <input class="fat-search" id="char-search" type="text" placeholder="Search character…" autocomplete="off">
+        <span class="fat-count" id="char-count"></span>
+      </div>
+      <div class="char-grid" id="char-grid"></div>
+      <div class="no-results hidden" id="char-no-results">No characters match your filter.</div>
+    </div>
+
+  </div>
+
+<script>
+/* ─── Sub-nav ─────────────────────────────────────────────── */
+function switchTab(name) {
+  document.querySelectorAll('.snav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.getElementById('section-games').classList.toggle('hidden', name !== 'games');
+  document.getElementById('section-fatalities').classList.toggle('hidden', name !== 'fatalities');
+  document.getElementById('section-characters').classList.toggle('hidden', name !== 'characters');
+  localStorage.setItem('kombat_tab', name);
+}
+document.querySelectorAll('.snav-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+/* ─── Games data & render ──────────────────────────────────── */
+const GAMES = [
+  {
+    num: 1, title: 'Mortal Kombat', year: 1992, month: 'Oct 1992',
+    dev: 'Midway Games  ·  Ed Boon & John Tobias', wiki: 'Mortal_Kombat_(1992_video_game)',
+    stats: [{ label: 'Release', val: '1992' },{ label: 'Fighters', val: '7' },{ label: 'Engine', val: 'Digitized' },{ label: 'Fatalities', val: '7' }],
+    platforms: ['Arcade', 'SNES', 'Genesis', 'Game Boy', 'DOS', 'Amiga', 'Game Gear'],
+    facts: [
+      { icon: '🎭', text: 'Characters were created by digitizing live actors — Daniel Pesina played Johnny Cage, Scorpion, Sub-Zero, and Reptile simultaneously. The entire cast was filmed on a single day in a Chicago studio.' },
+      { icon: '🩸', text: 'The original arcade version\'s blood and Fatalities triggered a 1993 Senate hearing on video game violence, directly leading to the creation of the ESRB rating system still used today.' },
+      { icon: '⚡', text: 'Developed in just 10 months by a team of only four people: Ed Boon, John Tobias, John Vogel, and Dan Forden. "Toasty!" — Forden\'s cameo — became one of gaming\'s most iconic easter eggs.' },
+      { icon: '🐉', text: '"Mortal Kombat" was deliberately misspelled to make it unique and trademarkable. The dragon logo was designed to echo Asian martial arts symbolism and became one of gaming\'s most recognizable icons.' },
+    ],
+  },
+  {
+    num: 2, title: 'Mortal Kombat II', year: 1993, month: 'Aug 1993',
+    dev: 'Midway Games  ·  Ed Boon & John Tobias', wiki: 'Mortal_Kombat_II',
+    stats: [{ label: 'Release', val: '1993' },{ label: 'Fighters', val: '12' },{ label: 'Fatalities', val: '24+' },{ label: 'Gap', val: '10 months' }],
+    platforms: ['Arcade', 'SNES', 'Genesis', 'Game Boy', 'DOS', '32X', 'PlayStation', 'Saturn'],
+    facts: [
+      { icon: '🏆', text: 'Widely considered the pinnacle of the classic era. MKII expanded to 12 fighters, introduced Kitana, Kung Lao, Baraka, and Shao Kahn as the final boss — cementing the series\' mythology.' },
+      { icon: '😂', text: 'Added "Friendship" and "Babality" finishers as satirical responses to congressional pressure about violence. Performing them ironically became a badge of honor among competitive players.' },
+      { icon: '💥', text: 'The home console port for Genesis in 1994 moved 1.7 million copies in a single day — a record at the time — demonstrating the franchise\'s cultural dominance in the 16-bit era.' },
+      { icon: '🎵', text: 'Dan Forden\'s MKII soundtrack became legendary. The Outworld and Kahn\'s Arena themes in particular are still performed at video game music concerts 30 years later.' },
+    ],
+  },
+  {
+    num: 3, title: 'Mortal Kombat 3 / Ultimate MK3', year: 1995, month: 'Apr 1995',
+    dev: 'Midway Games  ·  Ed Boon & John Tobias', wiki: 'Mortal_Kombat_3',
+    stats: [{ label: 'Release', val: '1995' },{ label: 'Fighters', val: '15 / 23' },{ label: 'New', val: 'Combos' },{ label: 'UMK3', val: 'Nov 1995' }],
+    platforms: ['Arcade', 'SNES', 'Genesis', 'PlayStation', 'Saturn', 'Game Boy', 'PC'],
+    facts: [
+      { icon: '🏃', text: 'Introduced the Run button and combo chains, fundamentally changing MK\'s fighting style. Some fans disliked the shift away from the methodical poke-and-punish gameplay of MKII.' },
+      { icon: '😤', text: 'The original MK3 omitted fan favorites Scorpion, Johnny Cage, and Reptile due to time constraints. The backlash was severe enough that Ultimate Mortal Kombat 3 added 8 missing characters five months later.' },
+      { icon: '💀', text: '"Brutalities" debuted here — 11-hit button sequences that splattered opponents — as an alternative to Fatalities. They were divisive but eventually became a beloved series staple in MK X and MK11.' },
+      { icon: '🌆', text: 'The Earthrealm invasion storyline introduced Shao Kahn\'s merging of realms, a narrative concept that became central to MK\'s lore through MK11 and beyond. Smoke as a hidden ninja was a highlight.' },
+    ],
+  },
+  {
+    num: 4, title: 'Mortal Kombat 4', year: 1997, month: 'Oct 1997',
+    dev: 'Midway Games  ·  Ed Boon & John Tobias', wiki: 'Mortal_Kombat_4',
+    stats: [{ label: 'Release', val: '1997' },{ label: 'Engine', val: 'Full 3D' },{ label: 'Fighters', val: '15' },{ label: 'First', val: '3D entry' }],
+    platforms: ['Arcade', 'PlayStation', 'N64', 'PC', 'Game Boy Color'],
+    facts: [
+      { icon: '🧊', text: 'The first fully polygonal MK, using Midway\'s proprietary 3D engine. The transition was jarring for fans of the digitized 2D sprites — character models looked crude by modern standards but were impressive in 1997.' },
+      { icon: '⚔️', text: 'Introduced weapon combat for the first time: each character had a weapon they could draw and use mid-fight. The mechanic was expanded greatly in the Deadly Alliance era.' },
+      { icon: '👹', text: 'Quan Chi made his debut as a playable fighter after appearing in the animated series. He quickly became one of the series\' most prominent villains, rivaling Shang Tsung in scheming and treachery.' },
+      { icon: '🎮', text: 'The N64 port was notable for containing exclusive content — Raiden was replaced by the "Meat" character — while the PC port became infamous for its poor performance on period hardware.' },
+    ],
+  },
+  {
+    num: 5, title: 'Mortal Kombat: Deadly Alliance', year: 2002, month: 'Nov 2002',
+    dev: 'Midway Games  ·  Ed Boon', wiki: 'Mortal_Kombat:_Deadly_Alliance',
+    stats: [{ label: 'Release', val: '2002' },{ label: 'Fighters', val: '22' },{ label: 'Styles', val: '3 per char' },{ label: 'Gap', val: '5 years' }],
+    platforms: ['PlayStation 2', 'Xbox', 'GameCube', 'Game Boy Advance'],
+    facts: [
+      { icon: '💀', text: 'Opens with the deaths of Liu Kang and Shao Kahn in the same cutscene — two of the series\' most iconic figures eliminated to signal a bold creative reset. Players were shocked at the franchise\'s willingness to kill its hero.' },
+      { icon: '🥋', text: 'Each character now has three distinct fighting stances (two martial arts, one weapon) that can be cycled mid-match. The system was the most technically ambitious combat design in MK history to that point.' },
+      { icon: '🌍', text: 'First MK game on 6th generation consoles and the first to use fully voice-acted cinematic cutscenes. The production values were a massive leap from anything that came before.' },
+      { icon: '🤝', text: 'The "Deadly Alliance" itself — Shang Tsung and Quan Chi teaming up — subverted expectations by having two long-established villains cooperate. Their rivalry and mutual distrust drove the narrative forward.' },
+    ],
+  },
+  {
+    num: 6, title: 'Mortal Kombat: Deception', year: 2004, month: 'Oct 2004',
+    dev: 'Midway Games  ·  Ed Boon', wiki: 'Mortal_Kombat:_Deception',
+    stats: [{ label: 'Release', val: '2004' },{ label: 'Fighters', val: '26' },{ label: 'Modes', val: 'Konquest' },{ label: 'Mini', val: 'Chess / Puzzle' }],
+    platforms: ['PlayStation 2', 'Xbox', 'GameCube', 'PlayStation Portable'],
+    facts: [
+      { icon: '🗺️', text: 'Konquest Mode was an open-world adventure RPG set across MK\'s realms — an extraordinary experiment for a fighting game. Players traveled between zones collecting items and unlocking characters over several hours.' },
+      { icon: '♟️', text: 'Chess Kombat and Puzzle Kombat were full alternative game modes — turn-based strategy and Puyo Puyo–style puzzles respectively, each with their own art. Wildly ambitious for a fighting game spin-in.' },
+      { icon: '👑', text: 'Onaga the Dragon King was resurrected as the main villain, possessing Liu Kang\'s zombie corpse. The imagery of MK\'s franchise hero serving as a villain\'s vessel was deeply unsettling for longtime fans.' },
+      { icon: '🌐', text: 'First MK to feature online multiplayer on PS2 via the online adapter — a historic milestone for console fighters that predated most mainstream online gaming infrastructure.' },
+    ],
+  },
+  {
+    num: 7, title: 'Mortal Kombat: Armageddon', year: 2006, month: 'Oct 2006',
+    dev: 'Midway Games  ·  Ed Boon', wiki: 'Mortal_Kombat:_Armageddon',
+    stats: [{ label: 'Release', val: '2006' },{ label: 'Fighters', val: '62' },{ label: 'Roster', val: 'Largest ever' },{ label: 'Motor', val: 'Kombat' }],
+    platforms: ['PlayStation 2', 'Xbox', 'Wii', 'PlayStation Portable'],
+    facts: [
+      { icon: '🏟️', text: 'With 62 playable characters, Armageddon has the largest roster in fighting game history for a single release. Every character from the series\' run appeared — a feat driven by fan demand and nostalgia.' },
+      { icon: '✏️', text: 'Kreate-A-Fighter and Kreate-A-Fatality were ambitious but divisive systems. Custom fatalities — built from a menu of moves — felt impersonal compared to the handcrafted finishers of earlier games.' },
+      { icon: '🏍️', text: 'Motor Kombat was a kart-racing mini-game featuring MK characters in go-karts that could attack each other with special moves. It was completely absurd — and reportedly a fan favorite party mode.' },
+      { icon: '📖', text: 'Served as the narrative end of the original MK timeline — a literal "Armageddon" where all fighters battle to the death. The outcome, shown in a timeline destroyed by Raiden\'s message, set up MK9\'s reboot.' },
+    ],
+  },
+  {
+    num: 8, title: 'Mortal Kombat vs. DC Universe', year: 2008, month: 'Nov 2008',
+    dev: 'Midway Games  ·  Ed Boon', wiki: 'Mortal_Kombat_vs._DC_Universe',
+    stats: [{ label: 'Release', val: '2008' },{ label: 'Fighters', val: '22' },{ label: 'Rating', val: 'T for Teen' },{ label: 'DC', val: 'Crossover' }],
+    platforms: ['PlayStation 3', 'Xbox 360'],
+    facts: [
+      { icon: '🦸', text: 'The first crossover in MK history, pitting Scorpion against Superman and Sub-Zero against Batman. The concept was outlandish but executed with genuine respect for both franchises\' lore.' },
+      { icon: '🚫', text: 'DC\'s licensing requirements forced a Teen rating — the first non-Mature MK game. "Heroic Brutalities" replaced Fatalities for DC heroes, raising fan questions about what exactly Batman does to Shang Tsung.' },
+      { icon: '👊', text: 'Dark Kahn, created by the merging of Darkseid and Shao Kahn, served as the final boss — an elegant solution to the crossover\'s narrative logic. Both sides were being corrupted by a merging of their universes.' },
+      { icon: '🏢', text: 'Midway went bankrupt shortly after release. The game was the studio\'s swan song before Warner Bros. acquired the MK license and rebranded the team as NetherRealm Studios.' },
+    ],
+  },
+  {
+    num: 9, title: 'Mortal Kombat (2011)', year: 2011, month: 'Apr 2011',
+    dev: 'NetherRealm Studios  ·  Ed Boon', wiki: 'Mortal_Kombat_(2011_video_game)',
+    stats: [{ label: 'Release', val: '2011' },{ label: 'Fighters', val: '28' },{ label: 'X-Ray', val: 'Moves' },{ label: 'Reboot', val: 'Timeline' }],
+    platforms: ['PlayStation 3', 'Xbox 360', 'PlayStation Vita', 'PC'],
+    facts: [
+      { icon: '⏪', text: 'A full timeline reboot: Raiden sends a cryptic message to his past self, retelling the events of MK1–3 in an alternate history where heroes die and villains win. The narrative structure was groundbreaking for a fighter.' },
+      { icon: '🎬', text: 'The cinematic Story Mode — 300 chapters across about 4 hours — set a new standard for fighting game narratives. Other studios scrambled to add story modes after MK9\'s critical and commercial success.' },
+      { icon: '💀', text: 'Beloved characters including Jax, Jade, Kabal, Kung Lao, Kitana, and Stryker are killed by Sindel in a single cutscene — one of the most shocking moments in fighting game history.' },
+      { icon: '🩻', text: 'X-Ray moves — cinematic attacks showing bones shattering in graphic slow-motion detail — were a new finisher type that combined MK\'s love of gore with actual gameplay impact, costing meter to use.' },
+    ],
+  },
+  {
+    num: 10, title: 'Mortal Kombat X', year: 2015, month: 'Apr 2015',
+    dev: 'NetherRealm Studios  ·  Ed Boon', wiki: 'Mortal_Kombat_X',
+    stats: [{ label: 'Release', val: '2015' },{ label: 'Fighters', val: '29' },{ label: 'Variations', val: '3 per char' },{ label: 'Next Gen', val: 'PS4/XB1' }],
+    platforms: ['PlayStation 4', 'Xbox One', 'PC', 'iOS', 'Android', 'PlayStation 3', 'Xbox 360'],
+    facts: [
+      { icon: '👶', text: 'Introduced a new generation of fighters — Cassie Cage (daughter of Johnny and Sonya), Takeda, Jacqui Briggs, and Kung Jin — alongside returning veterans. The generational handoff was carefully written.' },
+      { icon: '🎭', text: 'Each fighter has three "Variations" that fundamentally alter their moveset and playstyle. Triborg had four variations — each a different cyborg — making him effectively four characters in one.' },
+      { icon: '🌐', text: 'Living Towers delivered rotating daily, hourly, and challenge tower content connected to online servers. Premier Towers tied to real-world MK X content drops kept the community engaged for months post-launch.' },
+      { icon: '🎬', text: 'Guest characters Alien (Xenomorph), Predator, Jason Voorhees, and Leatherface were added as DLC — establishing NetherRealm\'s tradition of horror/film crossovers that became a franchise selling point.' },
+    ],
+  },
+  {
+    num: 11, title: 'Mortal Kombat 11', year: 2019, month: 'Apr 2019',
+    dev: 'NetherRealm Studios  ·  Ed Boon', wiki: 'Mortal_Kombat_11',
+    stats: [{ label: 'Release', val: '2019' },{ label: 'Fighters', val: '37+' },{ label: 'Villain', val: 'Kronika' },{ label: 'Switch', val: 'Yes' }],
+    platforms: ['PlayStation 4', 'Xbox One', 'Nintendo Switch', 'PC', 'PlayStation 5', 'Xbox Series X/S', 'Stadia'],
+    facts: [
+      { icon: '⏳', text: 'Time manipulation drives the entire story — Kronika, the Keeper of Time, resets history to erase Raiden\'s meddling. Past and present versions of characters meet and interact, creating powerful emotional moments.' },
+      { icon: '👗', text: 'The Customization system lets players mix-and-match gear pieces, augments, and intros/outros for cosmetic and stat modifications. The depth was overwhelming but gave dedicated players near-infinite expression.' },
+      { icon: '🤖', text: 'Aftermath DLC added RoboCop, Fujin, and Sheeva alongside a full new story chapter — one of the most substantial fighting game expansions ever released, nearly a sequel in scope.' },
+      { icon: '🎭', text: 'The "Dark Raiden kills heroes" arc from MK9 paid off spectacularly: Raiden merges with Shinnok\'s disembodied head and becomes Dark Raiden — a villain arc that ran through three games.' },
+    ],
+  },
+  {
+    num: 12, title: 'Mortal Kombat 1', year: 2023, month: 'Sep 2023',
+    dev: 'NetherRealm Studios  ·  Ed Boon', wiki: 'Mortal_Kombat_1',
+    stats: [{ label: 'Release', val: '2023' },{ label: 'Fighters', val: '23+' },{ label: 'Kameos', val: 'Assist sys.' },{ label: 'Reboot', val: 'Again' }],
+    platforms: ['PlayStation 5', 'Xbox Series X/S', 'Nintendo Switch', 'PC'],
+    facts: [
+      { icon: '🔥', text: 'Liu Kang, now a Fire God after defeating Kronika, resets history and creates a new, "better" timeline — making him effectively the god of the MK universe. The former series hero became its divine architect.' },
+      { icon: '🤝', text: 'The Kameo Fighter system pairs each fighter with an assist character from MK history. Former arch-rivals like Scorpion and Sub-Zero are reborn as brothers in Liu Kang\'s new timeline — a profound character reinvention.' },
+      { icon: '📺', text: 'Guest characters in Invasions Season content included Omni-Man, Peacemaker, Homelander, Ermac (fan-demanded), and Takeda. The roster reflected NetherRealm\'s growing relationship with Warner Bros. IP.' },
+      { icon: '🌍', text: 'The Invasions mode — a board-game–style seasonal PvE mode — replaced the traditional Towers and Krypt systems. It updates seasonally with new enemy encounters, rewards, and story vignettes.' },
+    ],
+  },
+];
+
+async function fetchWikiThumb(wiki, imgEl, placeholderEl) {
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wiki}`);
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      const src = data.thumbnail.source.replace(/\/\d+px-/, '/640px-');
+      imgEl.src = src;
+      imgEl.style.opacity = '0';
+      imgEl.onload = () => { imgEl.style.transition = 'opacity .4s'; imgEl.style.opacity = '1'; placeholderEl.style.display = 'none'; };
+      imgEl.onerror = () => {};
+    }
+  } catch(e) {}
+}
+
+function buildGames() {
+  const container = document.getElementById('games');
+  GAMES.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    const statsHtml  = g.stats.map(s => `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`).join('');
+    const platsHtml  = g.platforms.map(p => `<span class="plat-tag">${p}</span>`).join('');
+    const factsHtml  = g.facts.map(f => `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`).join('');
+    card.innerHTML = `
+      <div class="game-img-wrap">
+        <div class="game-img-placeholder"><div class="ph-num">${g.num}</div><div class="ph-icon">🐉</div></div>
+        <img src="" alt="${g.title}" style="opacity:0;position:relative;z-index:1">
+        <div class="game-num-badge">MK ${g.num}</div>
+        <div class="game-year-badge">${g.month}</div>
+      </div>
+      <div class="game-body">
+        <div><div class="game-title">${g.title}</div><div class="game-dev">${g.dev}</div></div>
+        <div class="game-stats">${statsHtml}</div>
+        <div class="platforms">${platsHtml}</div>
+        <div><div class="facts-label">&#9760; Notable Facts</div><div class="facts-list">${factsHtml}</div></div>
+      </div>`;
+    container.appendChild(card);
+    fetchWikiThumb(g.wiki, card.querySelector('img'), card.querySelector('.game-img-placeholder'));
+  });
+}
+
+/* ─── Fatalities data ──────────────────────────────────────── */
+// Each entry: { char, icon, gameKey, game, name, desc }
+const FATALITIES = [
+  // ── SCORPION ──
+  { char:'Scorpion', icon:'🦂', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Toasty!', desc:'Removes his mask to reveal a flaming skull and breathes hellfire to incinerate the opponent.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk2',      game:'MK2 (1993)', name:'Hell\'s Wrath', desc:'Throws two fireballs that blast the opponent apart in a shower of bones.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk2',      game:'MK2 (1993)', name:'Spear Impalement', desc:'Impales opponent on his spear rope, then violently swings them into the ground.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Toasty! (Reloaded)', desc:'Returns with the classic flaming skull breath — burns opponent to charred remains.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk4',      game:'MK4 (1997)', name:'Lava Pool', desc:'Sends opponent through a portal into a pool of lava while laughing.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk9',      game:'MK9 (2011)', name:'Scorpion\'s Sting', desc:'Impales opponent through the chest with his spear, then slams them headfirst into the ground.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk9',      game:'MK9 (2011)', name:'Split Decision', desc:'Teleports behind opponent and slices them vertically in half with his sword.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mkx',      game:'MKX (2015)', name:'Stop Ahead', desc:'Drives two swords through the opponent\'s neck from behind, then kicks the head off.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mkx',      game:'MKX (2015)', name:'Who\'s Next?', desc:'Slices both arms off at the elbows, then removes the top of the skull with a sword.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk11',     game:'MK11 (2019)', name:'Sting of the Scorpion', desc:'Spear rips through the opponent\'s mouth and tears out their tongue from the front.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk11',     game:'MK11 (2019)', name:'You\'re Next', desc:'Drives twin swords through the body in a spinning frenzy, dismembering limb by limb.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Toasty! (New Era)', desc:'A reimagined version of the classic: mask removal, flaming skull, full-body incineration.' },
+  { char:'Scorpion', icon:'🦂', gameKey:'mk1_2023', game:'MK1 (2023)', name:'From the Depths', desc:'Drags the opponent into a hellfire portal from below, burning them from the inside out.' },
+
+  // ── SUB-ZERO ──
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Spine Rip', desc:'Grabs the opponent by the head and rips the entire skull and spinal column free of the body.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk2',      game:'MK2 (1993)', name:'Kold Fusion', desc:'Freezes opponent solid, then shatters the ice statue with a single punch, scattering fragments.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk2',      game:'MK2 (1993)', name:'Overhead Smash', desc:'Lifts the opponent overhead and slams them headfirst into the ground at terminal velocity.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Deep Freeze', desc:'Freezes opponent, then uppercuts the frozen torso free of the legs, shattering it mid-air.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk4',      game:'MK4 (1997)', name:'Freeze & Shatter', desc:'Encases opponent in ice, then stomps them to pieces using his own body weight.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mkda',     game:'Deadly Alliance (2002)', name:'Ice Shards', desc:'Conjures spikes of ice that erupt from the opponent\'s body simultaneously.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mkd',      game:'Deception (2004)', name:'Frozen Alive', desc:'Slowly freezes the opponent from the inside out, leaving a shuddering ice sculpture.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk9',      game:'MK9 (2011)', name:'Spinal Smash', desc:'Freezes opponent\'s spine and breaks it over his knee, then freezes and shatters the body.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk9',      game:'MK9 (2011)', name:'Have an Ice Day', desc:'Freezes opponent solid and knocks the head off like a hockey puck.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mkx',      game:'MKX (2015)', name:'Chest Kold', desc:'Punches an ice shard through the opponent\'s chest, growing it until the torso explodes.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mkx',      game:'MKX (2015)', name:'Bed of Ice', desc:'Creates an ice spike floor and slams the opponent down onto it repeatedly.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk11',     game:'MK11 (2019)', name:'Ice-Cutioner', desc:'Encases opponent\'s legs in ice, then delivers a brutal kick that shears the torso clean off.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk11',     game:'MK11 (2019)', name:'Frozen in Time', desc:'Shatters both arms off, kicks the head free, then arranges the pieces in a gruesome display.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Skull-icious', desc:'Freezes and shatters the body piece by piece, collecting the frozen skull as a trophy.' },
+  { char:'Sub-Zero', icon:'🧊', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Kold Blooded', desc:'Injects ice into the bloodstream, causing the opponent to crystallize and implode.' },
+
+  // ── LIU KANG ──
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Dragon', desc:'Transforms into a dragon and bites the opponent in half at the waist.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk2',      game:'MK2 (1993)', name:'Bicycle Kick Fatality', desc:'Delivers endless bicycle kicks until the opponent is reduced to a pile of remains.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk2',      game:'MK2 (1993)', name:'Dragon', desc:'Classic dragon transformation returns, devouring the opponent from the waist.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Bicycle Kick Loop', desc:'Infinite bicycle kick loop launches and destroys the opponent entirely.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk9',      game:'MK9 (2011)', name:'Fireball Cage', desc:'Traps opponent in a ring of fireballs that close in and incinerate simultaneously.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk9',      game:'MK9 (2011)', name:'The Beast Within', desc:'Transforms into a full fire dragon and obliterates the opponent in a sustained firestorm.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mkx',      game:'MKX (2015)', name:'Burn Out', desc:'A fire snake bursts from the opponent\'s mouth and exits through the back of the skull.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mkx',      game:'MKX (2015)', name:'Pi Kang Wheel', desc:'Spinning bicycle kick separates the torso from the lower body in mid-air.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk11',     game:'MK11 (2019)', name:'Burn Out', desc:'Liu Kang channels fire into the opponent\'s chest until they erupt from the inside.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk11',     game:'MK11 (2019)', name:'Belly of the Beast', desc:'A dragon erupts from the opponent\'s stomach and devours everything above the waist.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Flawless Victory', desc:'As Fire God Liu Kang, condenses all opponent\'s energy into a void that collapses their body.' },
+  { char:'Liu Kang', icon:'🔥', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Fire God\'s Wrath', desc:'Dragon transformation — now imbued with divine fire — consumes the opponent completely.' },
+
+  // ── KUNG LAO ──
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk2',      game:'MK2 (1993)', name:'Hat Slice', desc:'Throws his razor hat to saw the opponent cleanly in half vertically from groin to skull.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Vertical Hat Slice', desc:'Hat splits the opponent from crown to pelvis with one clean throw.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Decapitation', desc:'Grabs opponent\'s head and uses the hat\'s brim to slice it free in a quick motion.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk9',      game:'MK9 (2011)', name:'Hat Trick', desc:'Spins the hat on the opponent\'s body, slicing through their torso multiple times.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk9',      game:'MK9 (2011)', name:'Razor\'s Edge', desc:'Pins opponent to the ground and drags the razor hat edge along their entire body.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mkx',      game:'MKX (2015)', name:'Flower Pot', desc:'Throws opponent into the air and hat-slices them into multiple falling pieces.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mkx',      game:'MKX (2015)', name:'Kung\'d Up', desc:'Spins foe at high speed with the hat, launching separated body parts in all directions.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk11',     game:'MK11 (2019)', name:'Käreful', desc:'Hat slices from the groin upward through the torso, splitting the opponent in half lengthwise.' },
+  { char:'Kung Lao', icon:'🎩', gameKey:'mk11',     game:'MK11 (2019)', name:'Head Case', desc:'Hat decapitates the opponent and catches the rolling head, examining it with satisfaction.' },
+
+  // ── KITANA ──
+  { char:'Kitana', icon:'🪭', gameKey:'mk2',      game:'MK2 (1993)', name:'Fan Lift Into Ground', desc:'Lifts opponent with fan, then blows them high into the air to crash fatally.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk2',      game:'MK2 (1993)', name:'Kiss of Death', desc:'Blows a kiss that causes the opponent to balloon grotesquely until they explode.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Fan Decapitation', desc:'Fans open around the opponent\'s neck and slice the head free cleanly.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk9',      game:'MK9 (2011)', name:'Fan Opener', desc:'Drives both fans into the opponent\'s shoulders and pulls outward, splitting the body.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk9',      game:'MK9 (2011)', name:'Gore-Nado', desc:'Fan tornado picks up opponent and shreds them into fragments mid-air.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mkx',      game:'MKX (2015)', name:'Dark Fan-Fare', desc:'Fans slice through the skull, leaving an open cross-section visible to the audience.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mkx',      game:'MKX (2015)', name:'Gore-Nado', desc:'Sends a fan tornado that strips opponent down to the skeleton from the outside in.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk11',     game:'MK11 (2019)', name:'Splitting Hairs', desc:'Fan slices through the skull, cleanly halving the upper head while the body remains upright.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk11',     game:'MK11 (2019)', name:'Fan-Tastic', desc:'Fans decapitate then continue slicing the torso into sections while she watches imperiously.' },
+  { char:'Kitana', icon:'🪭', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Royal Execution', desc:'Fans encase the opponent in a cyclone of blades that strips them to the bone.' },
+
+  // ── MILEENA ──
+  { char:'Mileena', icon:'👄', gameKey:'mk2',      game:'MK2 (1993)', name:'Man-Eater', desc:'Removes her veil and devours the opponent whole in one horrifying swallow, then spits out bones.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk2',      game:'MK2 (1993)', name:'Sai Stab', desc:'Throws sai blades relentlessly into the opponent until they collapse from the injuries.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Sai Slice', desc:'Drives both sai through the opponent\'s body in a swift cross-pattern strike.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk9',      game:'MK9 (2011)', name:'Man-Eater', desc:'Eats the opponent whole starting from the feet, then regurgitates the skeleton.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk9',      game:'MK9 (2011)', name:'Be Mine', desc:'Drives a sai through the opponent\'s eye socket and into the skull from point-blank range.' },
+  { char:'Mileena', icon:'👄', gameKey:'mkx',      game:'MKX (2015)', name:'Tasty Treat', desc:'Bites into the opponent\'s face and tears it off, leaving exposed skull.' },
+  { char:'Mileena', icon:'👄', gameKey:'mkx',      game:'MKX (2015)', name:'Face Feast', desc:'Teleports above the opponent and lands mouth-first, consuming the head entirely.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk11',     game:'MK11 (2019)', name:'Ripped Apart', desc:'Grabs opponent by the jaw and skull and tears the head open horizontally.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk11',     game:'MK11 (2019)', name:'Spinning Out', desc:'Teleport roll combined with sai strikes dismember the opponent in a spinning frenzy.' },
+  { char:'Mileena', icon:'👄', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Ferocious', desc:'Full mouth-first attack on the opponent\'s torso — she tears and devours in graphic detail.' },
+
+  // ── BARAKA ──
+  { char:'Baraka', icon:'🗡️', gameKey:'mk2',      game:'MK2 (1993)', name:'Blade Lift', desc:'Impales the opponent on both forearm blades and lifts them overhead as they expire.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk2',      game:'MK2 (1993)', name:'Blade Spark', desc:'Clashes blades together to ignite a spark that incinerates the opponent from close range.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Blade Decapitation', desc:'Extends blades to decapitate the opponent cleanly, tossing the head aside.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk9',      game:'MK9 (2011)', name:'Stretch Rack', desc:'Grabs both arms and pulls them from the shoulder sockets in opposite directions.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk9',      game:'MK9 (2011)', name:'Take a Spin', desc:'Spins blades into opponent\'s torso in a grinding circular motion until they split.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mkx',      game:'MKX (2015)', name:'Tick Tock', desc:'Pins opponent\'s arms with blades through the forearms, then kicks the head free.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mkx',      game:'MKX (2015)', name:'Rock, D\'Vorah, Scissors', desc:'Blades split the ribcage open while insects spill out — a collaboration reference.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk11',     game:'MK11 (2019)', name:'Road Rash', desc:'Slices both arms off at the shoulders, then drives a blade through the back out the chest.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk11',     game:'MK11 (2019)', name:'Food for Thought', desc:'Opens the skull and eats from it directly, a grotesque callback to his predatory nature.' },
+  { char:'Baraka', icon:'🗡️', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Bladed Fury', desc:'A relentless combination of blade strikes dissects the opponent at every major joint.' },
+
+  // ── RAIDEN ──
+  { char:'Raiden', icon:'⚡', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Electrocution', desc:'Delivers a continuous lightning strike that electrocutes the opponent until they explode.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk2',      game:'MK2 (1993)', name:'Lightning Grab', desc:'Grabs opponent and channels full voltage through their body until they burst into pieces.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Electrocution Aura', desc:'Surrounds himself with electricity that vaporizes the approaching opponent.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk4',      game:'MK4 (1997)', name:'Electric Decapitation', desc:'Channels lightning through the opponent\'s skull until it detonates from the inside.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mkda',     game:'Deadly Alliance (2002)', name:'Electrocution Chain', desc:'Lightning arcs between the opponent\'s limbs in sequence, reducing each to ash.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk9',      game:'MK9 (2011)', name:'Just a Scratch', desc:'Overloads the opponent with electricity until both arms are torn off at the shoulder.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk9',      game:'MK9 (2011)', name:'Transplant', desc:'Reaches into the chest cavity and extracts the heart via electric shock delivery.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mkx',      game:'MKX (2015)', name:'Close Encounters', desc:'Calls down a full-power lightning bolt that vaporizes the opponent from above.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mkx',      game:'MKX (2015)', name:'Bug Eyes', desc:'Electric surge causes the eyes to bulge and explode before the head detonates.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk11',     game:'MK11 (2019)', name:'Alternating Current', desc:'Runs lightning from foot to skull in alternating passes until the body tears in two.' },
+  { char:'Raiden', icon:'⚡', gameKey:'mk11',     game:'MK11 (2019)', name:'Peacemaker', desc:'Drives a staff charged with lightning through the torso at point blank range.' },
+
+  // ── JOHNNY CAGE ──
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Torso Rip', desc:'Grabs the opponent and tears the upper torso free of the lower body with a dramatic flourish.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Decapitation', desc:'Performs a leaping shadow kick that removes the opponent\'s head, autographing it on the ground.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk2',      game:'MK2 (1993)', name:'Triple Head Punch', desc:'Delivers three rapid punches that stagger and ultimately remove the opponent\'s head.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk9',      game:'MK9 (2011)', name:'And the Winner Is…', desc:'Poses for a camera, then the signed autograph appears as the opponent\'s detached head.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk9',      game:'MK9 (2011)', name:'Mr. Cage\'s Neighborhood', desc:'A flurry of punches leaves the opponent\'s torso destroyed as a crowd flash goes off.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mkx',      game:'MKX (2015)', name:'Here\'s Johnny', desc:'Slices through a door mid-combo and finishes the opponent in a homage to The Shining.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mkx',      game:'MKX (2015)', name:'Little Improv', desc:'Beats opponent into paste with a movie prop, ending with a forced selfie.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk11',     game:'MK11 (2019)', name:'Who Hired This Guy?', desc:'Repeatedly hammers opponent with an energy fist while complaining about their technique.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk11',     game:'MK11 (2019)', name:'Mr. Cage\'s Neighborhood (II)', desc:'Delivers a cinematic finishing combo ending in a camera-perfect decapitation pose.' },
+  { char:'Johnny Cage', icon:'🎬', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Hollywood', desc:'Constructs an elaborate movie-set scenario before dispatching opponent in a dramatic finish.' },
+
+  // ── SONYA BLADE ──
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Kiss of Death', desc:'Blows an energy kiss that catches fire and disintegrates the opponent from the head down.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk2',      game:'MK2 (1993)', name:'Scissor Slam', desc:'Grabs opponent with her legs and squeezes until the head snaps off the neck.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Scissor Split', desc:'Leg scissor throw splits the opponent\'s body at the waist on impact.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk9',      game:'MK9 (2011)', name:'Scissor Split', desc:'Leaps and drives both legs around the neck, snapping the spine and twisting off the head.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk9',      game:'MK9 (2011)', name:'Kut-Throat', desc:'Throws a razor ring that embeds in the throat, then detonates remotely.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mkx',      game:'MKX (2015)', name:'Selfie', desc:'Beats opponent repeatedly, then takes a selfie with the remains as the final image.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mkx',      game:'MKX (2015)', name:'Demolition Derby', desc:'Somersaults through opponent mid-air, taking their legs, while they watch from the ground.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk11',     game:'MK11 (2019)', name:'To the Point', desc:'Military precision — drives a blade through every major vital point in rapid sequence.' },
+  { char:'Sonya Blade', icon:'👮', gameKey:'mk11',     game:'MK11 (2019)', name:'Head Rush', desc:'Kicks the head at supersonic speed, shattering it against a distant surface.' },
+
+  // ── KANO ──
+  { char:'Kano', icon:'💀', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Heart Rip', desc:'Reaches into the opponent\'s chest with his bare hand and rips out the still-beating heart.' },
+  { char:'Kano', icon:'💀', gameKey:'mk2',      game:'MK2 (1993)', name:'Skeleton Rip', desc:'Tears the skeleton entirely from the body, leaving a deflated husk of flesh.' },
+  { char:'Kano', icon:'💀', gameKey:'mk2',      game:'MK2 (1993)', name:'Eye Laser', desc:'Fires his cybernetic eye laser through the opponent\'s skull, leaving a cauterized hole.' },
+  { char:'Kano', icon:'💀', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Spine Rip', desc:'Grabs the spine from the front and extracts it while the opponent stands in shock.' },
+  { char:'Kano', icon:'💀', gameKey:'mk9',      game:'MK9 (2011)', name:'Eat Your Heart Out', desc:'Heart rip variant — he actually eats the extracted organ as a final taunt.' },
+  { char:'Kano', icon:'💀', gameKey:'mk9',      game:'MK9 (2011)', name:'Headcase', desc:'Laser eye cuts through the neck cleanly, and he catches the rolling head.' },
+  { char:'Kano', icon:'💀', gameKey:'mkx',      game:'MKX (2015)', name:'Knife to Meet You', desc:'Drives a knife through the eye socket and out the back of the skull.' },
+  { char:'Kano', icon:'💀', gameKey:'mkx',      game:'MKX (2015)', name:'Face Like a Dropped Pie', desc:'Eye laser carves the face off in a single slow pass.' },
+  { char:'Kano', icon:'💀', gameKey:'mk11',     game:'MK11 (2019)', name:'Last Dance', desc:'Heart rip, but Kano uses it as a prop for one final taunting jig.' },
+  { char:'Kano', icon:'💀', gameKey:'mk11',     game:'MK11 (2019)', name:'Kebab-ality', desc:'Skewers opponent on his own knife through multiple body segments.' },
+
+  // ── JAX BRIGGS ──
+  { char:'Jax Briggs', icon:'💪', gameKey:'mk2',      game:'MK2 (1993)', name:'Head Clap', desc:'Grabs the opponent\'s head between both metal-armored palms and claps until it pops.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Head Stomp', desc:'Picks opponent up and uses their skull as a piledriver into the arena floor.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mk9',      game:'MK9 (2011)', name:'Three Points', desc:'Basketball-style slam — uses opponent\'s head as the ball and the torso as the backboard.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mk9',      game:'MK9 (2011)', name:'Smash & Grab', desc:'Rips both arms off and beats the opponent to death with their own severed limbs.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mkx',      game:'MKX (2015)', name:'Jax the Ribber', desc:'Smashes the ribcage inward with metal fists until organs are expelled.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mkx',      game:'MKX (2015)', name:'Still Got It', desc:'Old-school head clap, updated with enhanced prosthetic force — skull fully compressed.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mk11',     game:'MK11 (2019)', name:'T-Wrecks', desc:'Metal fists pound the opponent into the ground until they are completely submerged.' },
+  { char:'Jax Briggs', icon:'💪', gameKey:'mk11',     game:'MK11 (2019)', name:'Coming In Hot', desc:'Pulls opponent into a full-power overhead slam that craters the arena floor.' },
+
+  // ── SHANG TSUNG ──
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk1_1992', game:'MK1 (1992)', name:'Soul Steal & Morph', desc:'Steals opponent\'s soul and morphs into them to use their own fatality against a copy.' },
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk2',      game:'MK2 (1993)', name:'Kintaro Stomp', desc:'Morphs into Kintaro and stomps the opponent to paste with four massive arms.' },
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk9',      game:'MK9 (2011)', name:'Bang Bang', desc:'Morphs into an Old West gunslinger and shoots the opponent repeatedly from point blank.' },
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk9',      game:'MK9 (2011)', name:'Identity Theft', desc:'Morphs into opponent and uses their own finishing move against them.' },
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk11',     game:'MK11 (2019)', name:'Lend Me Your Skull', desc:'Soul extraction tears the skull free of the body through pure sorcerous force.' },
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk11',     game:'MK11 (2019)', name:'Condemned', desc:'Opens a portal beneath opponent and lets the souls of his victims drag them under.' },
+  { char:'Shang Tsung', icon:'☠️', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Soul Drain', desc:'Extracts every soul stored within opponent, collapsing the body like a deflating balloon.' },
+
+  // ── REPTILE ──
+  { char:'Reptile', icon:'🦎', gameKey:'mk2',      game:'MK2 (1993)', name:'Acid Spit', desc:'Spits a stream of acid onto the opponent\'s face, melting it down to exposed skull.' },
+  { char:'Reptile', icon:'🦎', gameKey:'mk2',      game:'MK2 (1993)', name:'Tongue Bite', desc:'Extends a six-foot tongue to wrap around the opponent\'s head and rip it free.' },
+  { char:'Reptile', icon:'🦎', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Acid Bath', desc:'Vomits a full torrent of acid that dissolves the opponent from the feet upward.' },
+  { char:'Reptile', icon:'🦎', gameKey:'mk4',      game:'MK4 (1997)', name:'Devour', desc:'Unhinges jaw and swallows the opponent whole, Komodo dragon–style.' },
+  { char:'Reptile', icon:'🦎', gameKey:'mkx',      game:'MKX (2015)', name:'Acid Bath', desc:'Full-body acid dissolution — opponent slumps to a pile of bones.' },
+  { char:'Reptile', icon:'🦎', gameKey:'mkx',      game:'MKX (2015)', name:'Bad Breath', desc:'Acidic breath at close range melts the opponent\'s face in a sustained stream.' },
+  { char:'Reptile', icon:'🦎', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Feast', desc:'Full predatory feast — the opponent is devoured methodically, limb by limb.' },
+
+  // ── KABAL ──
+  { char:'Kabal', icon:'⚔️', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Tornado Spin', desc:'Spins so fast that the opponent\'s face is literally ripped off by the velocity.' },
+  { char:'Kabal', icon:'⚔️', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Inner Workings', desc:'Hooks into opponent\'s torso and pulls all internal organs out through the chest.' },
+  { char:'Kabal', icon:'⚔️', gameKey:'mk9',      game:'MK9 (2011)', name:'Hook Up', desc:'Drives hookswords through opponent\'s face from behind, then rips them outward.' },
+  { char:'Kabal', icon:'⚔️', gameKey:'mk9',      game:'MK9 (2011)', name:'It Takes Guts', desc:'Slices open the abdomen and yanks everything outward in a single violent pull.' },
+  { char:'Kabal', icon:'⚔️', gameKey:'mkx',      game:'MKX (2015)', name:'Hooked', desc:'Hooksword entered through ear and exits through opposite cheek, then pulls skull apart.' },
+  { char:'Kabal', icon:'⚔️', gameKey:'mk11',     game:'MK11 (2019)', name:'Road Rash', desc:'Speed-dash drags opponent across the ground until they are reduced to a smear.' },
+  { char:'Kabal', icon:'⚔️', gameKey:'mk11',     game:'MK11 (2019)', name:'Hooked', desc:'Updated version — hookswords skewer through multiple body parts in sequence.' },
+
+  // ── NOOB SAIBOT ──
+  { char:'Noob Saibot', icon:'🌑', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Shadow Throw', desc:'Shadow clone grabs opponent from behind while Noob pulls their legs — body tears in two.' },
+  { char:'Noob Saibot', icon:'🌑', gameKey:'mk9',      game:'MK9 (2011)', name:'As One', desc:'Shadow clone grabs each leg while Noob grabs the arms — all four limbs torn simultaneously.' },
+  { char:'Noob Saibot', icon:'🌑', gameKey:'mk9',      game:'MK9 (2011)', name:'Make a Wish', desc:'Shadow clone and Noob each grab one leg and pull in opposite directions, splitting the body.' },
+  { char:'Noob Saibot', icon:'🌑', gameKey:'mk11',     game:'MK11 (2019)', name:'Split Decision', desc:'Shadow clone bisects opponent vertically while Noob severs the horizontal plane.' },
+  { char:'Noob Saibot', icon:'🌑', gameKey:'mk11',     game:'MK11 (2019)', name:'Double Trouble', desc:'Shadow duplicate hammers from above while Noob strikes from below — body destroyed.' },
+
+  // ── ERMAC ──
+  { char:'Ermac', icon:'🧠', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Telekinetic Dismemberment', desc:'Telekinetically tears opponent apart in all directions simultaneously.' },
+  { char:'Ermac', icon:'🧠', gameKey:'mkx',      game:'MKX (2015)', name:'Pest Control', desc:'Bugs conjured from soul energy consume the opponent from inside out.' },
+  { char:'Ermac', icon:'🧠', gameKey:'mkx',      game:'MKX (2015)', name:'Inner Workings', desc:'Telekinetically pulls internal organs through the chest in a slow, deliberate extraction.' },
+  { char:'Ermac', icon:'🧠', gameKey:'mk11',     game:'MK11 (2019)', name:'Head Rent', desc:'Psychokinetic force tears the head free and floats it across the arena.' },
+  { char:'Ermac', icon:'🧠', gameKey:'mk11',     game:'MK11 (2019)', name:'Fistful of Heads', desc:'Soul tendrils rip three copies of the opponent\'s head free, stacking them.' },
+
+  // ── CYRAX ──
+  { char:'Cyrax', icon:'🤖', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Net & Explosives', desc:'Throws a net to immobilize the opponent, then launches multiple bombs for a total detonation.' },
+  { char:'Cyrax', icon:'🤖', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Self-Destruct', desc:'Activates his own self-destruct sequence in a massive explosion that destroys both fighters.' },
+  { char:'Cyrax', icon:'🤖', gameKey:'mk9',      game:'MK9 (2011)', name:'No Escape', desc:'Bomb combo detonates under the opponent, leaving only charred scraps.' },
+  { char:'Cyrax', icon:'🤖', gameKey:'mk9',      game:'MK9 (2011)', name:'Lumberjack', desc:'Buzz saw blade deployed from chest compartment methodically dismembers the opponent.' },
+
+  // ── SEKTOR ──
+  { char:'Sektor', icon:'🚀', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Rocket Launcher', desc:'Launches a homing missile directly into the opponent, producing a catastrophic explosion.' },
+  { char:'Sektor', icon:'🚀', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Flamethrower', desc:'Opens chest panel and engulfs opponent in sustained napalm stream.' },
+  { char:'Sektor', icon:'🚀', gameKey:'mk9',      game:'MK9 (2011)', name:'Scarecrow', desc:'Missile barrage pins opponent to a wall and impales them in a cruciform display.' },
+  { char:'Sektor', icon:'🚀', gameKey:'mk9',      game:'MK9 (2011)', name:'Just a Scratch', desc:'Teleportation uppercut launches opponent, and tracking missiles destroy them mid-air.' },
+
+  // ── SINDEL ──
+  { char:'Sindel', icon:'👑', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Scream', desc:'Unleashes a sustained sonic scream that causes the opponent\'s head to explode.' },
+  { char:'Sindel', icon:'👑', gameKey:'mk9',      game:'MK9 (2011)', name:'Migraine', desc:'Scream builds in intensity until the skull splits and the brain is expelled.' },
+  { char:'Sindel', icon:'👑', gameKey:'mk9',      game:'MK9 (2011)', name:'Mane Squeeze', desc:'Hair wraps around opponent\'s neck and constricts until decapitation.' },
+  { char:'Sindel', icon:'👑', gameKey:'mk11',     game:'MK11 (2019)', name:'Banshee Scream', desc:'Amplified scream strips flesh from bone in a sustained high-frequency blast.' },
+  { char:'Sindel', icon:'👑', gameKey:'mk11',     game:'MK11 (2019)', name:'Hair Today Gone Tomorrow', desc:'Hair wraps completely around the opponent and crushes every bone simultaneously.' },
+
+  // ── SMOKE ──
+  { char:'Smoke', icon:'💨', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Smoke Grenade Storm', desc:'Multiple smoke grenades detonate across the arena, reducing the opponent to smoke themselves.' },
+  { char:'Smoke', icon:'💨', gameKey:'mk9',      game:'MK9 (2011)', name:'Smoked Out', desc:'Teleports through opponent\'s body leaving explosive smoke that tears them apart.' },
+  { char:'Smoke', icon:'💨', gameKey:'mk9',      game:'MK9 (2011)', name:'Tremor', desc:'Detonates smoke pellets sequentially through the opponent\'s body from feet to skull.' },
+
+  // ── SHEEVA ──
+  { char:'Sheeva', icon:'👐', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Skin Rip', desc:'All four arms grab different limbs and tear the opponent apart simultaneously.' },
+  { char:'Sheeva', icon:'👐', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Stomp', desc:'Grabs opponent overhead and slams them into the floor, then stomps repeatedly.' },
+  { char:'Sheeva', icon:'👐', gameKey:'mk11',     game:'MK11 (2019)', name:'Stomp the Yard', desc:'Repeated four-armed stomping that drives the opponent through the arena floor.' },
+  { char:'Sheeva', icon:'👐', gameKey:'mk11',     game:'MK11 (2019)', name:'Spin Cycle', desc:'Spins opponent using all four arms, building velocity until the body tears apart.' },
+
+  // ── QUAN CHI ──
+  { char:'Quan Chi', icon:'🔮', gameKey:'mk4',      game:'MK4 (1997)', name:'Leg Rip & Beat', desc:'Rips off the opponent\'s leg and beats them to death with it while they watch on one knee.' },
+  { char:'Quan Chi', icon:'🔮', gameKey:'mk4',      game:'MK4 (1997)', name:'Neck Stretch', desc:'Telekinetically pulls the opponent\'s leg up through their own body to exit at the neck.' },
+  { char:'Quan Chi', icon:'🔮', gameKey:'mk9',      game:'MK9 (2011)', name:'Beat Down', desc:'Summons a giant green skull that pounds the opponent into the ground repeatedly.' },
+  { char:'Quan Chi', icon:'🔮', gameKey:'mk9',      game:'MK9 (2011)', name:'On Your Knees', desc:'Sorcery forces opponent to kneel, then a portal opens above and crushes them.' },
+  { char:'Quan Chi', icon:'🔮', gameKey:'mkx',      game:'MKX (2015)', name:'Throw Down', desc:'Portal throws opponent from great height repeatedly until they stop moving.' },
+  { char:'Quan Chi', icon:'🔮', gameKey:'mkx',      game:'MKX (2015)', name:'Mind Game', desc:'Mind control forces opponent to beat themselves before Quan Chi delivers the finishing blow.' },
+
+  // ── JADE ──
+  { char:'Jade', icon:'💚', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Shadow Kabob', desc:'Impales opponent on staff multiple times in rapid succession until they collapse.' },
+  { char:'Jade', icon:'💚', gameKey:'mk9',      game:'MK9 (2011)', name:'Half Mast', desc:'Staff impales through both ankles, locking opponent in place for a final decapitating throw.' },
+  { char:'Jade', icon:'💚', gameKey:'mk9',      game:'MK9 (2011)', name:'Splitting Image', desc:'Razor fans split opponent in half vertically while she watches with contempt.' },
+  { char:'Jade', icon:'💚', gameKey:'mk11',     game:'MK11 (2019)', name:'Bow Before Me', desc:'Forces opponent to kneel via a staff strike to both knees, then delivers a ceremonial decapitation.' },
+  { char:'Jade', icon:'💚', gameKey:'mk11',     game:'MK11 (2019)', name:'Deadly Flower', desc:'Staff unleashes a razor-sharp fan storm that strips the opponent to the skeleton.' },
+
+  // ── KENSHI ──
+  { char:'Kenshi', icon:'⚔️', gameKey:'mkd',      game:'Deception (2004)', name:'Telekinetic Slice', desc:'Guides his sword telekinetically through multiple passes that slice the opponent apart.' },
+  { char:'Kenshi', icon:'⚔️', gameKey:'mkx',      game:'MKX (2015)', name:'Split Ends', desc:'Sword telekinetically enters at the crown and divides the skull cleanly in two.' },
+  { char:'Kenshi', icon:'⚔️', gameKey:'mkx',      game:'MKX (2015)', name:'Tele-Copter', desc:'Spins opponent via telekinesis at increasing velocity until centrifugal force tears the body.' },
+  { char:'Kenshi', icon:'⚔️', gameKey:'mk11',     game:'MK11 (2019)', name:'Peeling Back', desc:'Telekinetic field peels the skin from the body in layers until only bone remains.' },
+  { char:'Kenshi', icon:'⚔️', gameKey:'mk11',     game:'MK11 (2019)', name:'Tele-Copter', desc:'Enhanced spin — opponent gains speed until the centrifugal force atomizes the body.' },
+
+  // ── CASSIE CAGE ──
+  { char:'Cassie Cage', icon:'💅', gameKey:'mkx',      game:'MKX (2015)', name:'Bubble Head', desc:'Traps head in a force bubble then detonates it — head explodes in slow motion.' },
+  { char:'Cassie Cage', icon:'💅', gameKey:'mkx',      game:'MKX (2015)', name:'Selfie', desc:'Beats opponent senseless, poses for a selfie with the unconscious body, then finishes them.' },
+  { char:'Cassie Cage', icon:'💅', gameKey:'mk11',     game:'MK11 (2019)', name:'I <3 U', desc:'Energy shots arrange the opponent\'s internal organs into a heart shape.' },
+  { char:'Cassie Cage', icon:'💅', gameKey:'mk11',     game:'MK11 (2019)', name:'Nothin\' But Legs', desc:'Bicycle kick that launches opponent, who returns missing everything above the waist.' },
+
+  // ── D'VORAH ──
+  { char:'D\'Vorah', icon:'🐝', gameKey:'mkx',      game:'MKX (2015)', name:'Bug Me', desc:'Insects burrow in through every orifice and consume the opponent from inside.' },
+  { char:'D\'Vorah', icon:'🐝', gameKey:'mkx',      game:'MKX (2015)', name:'Heart Broken', desc:'Ovipositor tentacle removes the heart and deposits eggs directly into the chest cavity.' },
+  { char:'D\'Vorah', icon:'🐝', gameKey:'mk11',     game:'MK11 (2019)', name:'Lay Eggs', desc:'Full insect brood laid inside the opponent, who explodes outward as they hatch.' },
+  { char:'D\'Vorah', icon:'🐝', gameKey:'mk11',     game:'MK11 (2019)', name:'New Species', desc:'Ovipositor rewrites opponent\'s biology, transforming them into a bug-hybrid mid-death.' },
+
+  // ── CETRION ──
+  { char:'Cetrion', icon:'🌿', gameKey:'mk11',     game:'MK11 (2019)', name:'Maintaining Balance', desc:'Elemental vines drag the opponent into the earth, growing through the body from below.' },
+  { char:'Cetrion', icon:'🌿', gameKey:'mk11',     game:'MK11 (2019)', name:'Good & Evil', desc:'Light and dark energy collide inside the opponent, tearing them apart at a molecular level.' },
+
+  // ── GERAS ──
+  { char:'Geras', icon:'⌛', gameKey:'mk11',     game:'MK11 (2019)', name:'Phasing Through Time', desc:'Reaches inside the opponent\'s chest across time and crushes the heart before it can beat.' },
+  { char:'Geras', icon:'⌛', gameKey:'mk11',     game:'MK11 (2019)', name:'Peeling Back', desc:'Sand constructs shred every layer of the opponent simultaneously from the outside in.' },
+
+  // ── FUJIN ──
+  { char:'Fujin', icon:'🌪️', gameKey:'mka',      game:'Armageddon (2006)', name:'Wind Funnel', desc:'Tornado winds collapse the opponent inward in a brutal vortex.' },
+  { char:'Fujin', icon:'🌪️', gameKey:'mk11',     game:'MK11 (2019)', name:'Wind Blade', desc:'Razor-edged wind currents slice through the opponent in crisscross patterns.' },
+  { char:'Fujin', icon:'🌪️', gameKey:'mk11',     game:'MK11 (2019)', name:'Twisted Twister', desc:'Full tornado surrounds opponent and tears them apart as it dissipates.' },
+
+  // ── RAIN ──
+  { char:'Rain', icon:'🌧️', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Water Bubble', desc:'Encases opponent in a water sphere that compresses until the body implodes.' },
+  { char:'Rain', icon:'🌧️', gameKey:'mk11',     game:'MK11 (2019)', name:'Deadly Droplets', desc:'Turns opponent\'s blood to acidic rain that dissolves them from the inside out.' },
+  { char:'Rain', icon:'🌧️', gameKey:'mk11',     game:'MK11 (2019)', name:'Overly Saucy', desc:'Water molecule manipulation boils the opponent from the inside at the cellular level.' },
+  { char:'Rain', icon:'🌧️', gameKey:'mk1_2023', game:'MK1 (2023)', name:'Hydro-Torture', desc:'Water channels through every joint and cavity simultaneously, splitting the body apart.' },
+
+  // ── NIGHTWOLF ──
+  { char:'Nightwolf', icon:'🪓', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Axe Decapitation', desc:'Buries the war axe between skull and spine, cleanly separating the two.' },
+  { char:'Nightwolf', icon:'🪓', gameKey:'mk3',      game:'MK3 / UMK3 (1995)', name:'Shoulder Charge', desc:'Ghost-powered charge eviscerates the opponent with a spectral impact.' },
+  { char:'Nightwolf', icon:'🪓', gameKey:'mk11',     game:'MK11 (2019)', name:'Scalped!', desc:'Tomahawk peels the scalp then cracks the skull, exposing the brain.' },
+  { char:'Nightwolf', icon:'🪓', gameKey:'mk11',     game:'MK11 (2019)', name:'War Ritual', desc:'Ancestral spirits tear the opponent apart in an elaborate ceremonial execution.' },
+];
+
+/* ─── Fatalities table render & filter ────────────────────── */
+let fatBuilt = false;
+
+function buildFatalities() {
+  if (fatBuilt) return;
+  fatBuilt = true;
+  renderFatTable();
+
+  document.getElementById('fat-game-filter').addEventListener('change', renderFatTable);
+  document.getElementById('fat-char-search').addEventListener('input', renderFatTable);
+}
+
+function renderFatTable() {
+  const gameFilter = document.getElementById('fat-game-filter').value;
+  const charSearch = document.getElementById('fat-char-search').value.trim().toLowerCase();
+  const tbody = document.getElementById('fat-tbody');
+  tbody.innerHTML = '';
+
+  const filtered = FATALITIES.filter(f => {
+    if (gameFilter && f.gameKey !== gameFilter) return false;
+    if (charSearch && !f.char.toLowerCase().includes(charSearch)) return false;
+    return true;
+  });
+
+  document.getElementById('fat-count').textContent = `${filtered.length} fatalities`;
+  document.getElementById('fat-no-results').classList.toggle('hidden', filtered.length > 0);
+
+  let lastChar = null;
+  filtered.forEach(f => {
+    const tr = document.createElement('tr');
+    if (f.char !== lastChar) tr.classList.add('char-start');
+    lastChar = f.char;
+    tr.innerHTML = `
+      <td class="td-char"><span class="char-icon">${f.icon}</span>${f.char}</td>
+      <td class="td-game">${f.game}</td>
+      <td class="td-name">${f.name}</td>
+      <td class="td-desc">${f.desc}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ─── Init ────────────────────────────────────────────────── */
+buildGames();
+const savedTab = localStorage.getItem('kombat_tab') || 'games';
+if (savedTab === 'fatalities') {
+  switchTab('fatalities');
+  buildFatalities();
+} else {
+  switchTab('games');
+}
+
+// Build fatalities lazily on first switch
+document.querySelector('[data-tab="fatalities"]').addEventListener('click', buildFatalities, { once: true });
+</script>
+</body>
+</html>

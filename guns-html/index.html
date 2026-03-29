@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>guns.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #080a06;
+      --card:   rgba(14,18,10,.88);
+      --green:  #4a7c35;
+      --dkgreen:#2e5020;
+      --brass:  #c8a84b;
+      --copper: #e07b39;
+      --cream:  #e8ede0;
+      --text:   #dde3d5;
+      --muted:  #7a8b6a;
+      --border: rgba(74,124,53,.22);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 110% 55% at 50% 0%, #1a2e10 0%, transparent 65%),
+        radial-gradient(ellipse 70% 40% at 85% 100%, #0f1a08 0%, transparent 60%),
+        linear-gradient(180deg, #080a06 0%, #050704 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(74,124,53,.018) 0, rgba(74,124,53,.018) 1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(200,168,75,.012) 0, rgba(200,168,75,.012) 1px, transparent 1px, transparent 72px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(74,124,53,.7)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #4a7c35 0%, #c8a84b 45%, #2e5020 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 520px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+    }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: .5rem; border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: .6rem; flex-wrap: wrap; }
+    .tab {
+      font-size: .8rem; padding: .35rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; transition: all .2s;
+    }
+    .tab.active { color: var(--brass); border-color: rgba(200,168,75,.45); background: rgba(200,168,75,.08); }
+    .tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.18); }
+    .section { display: flex; flex-direction: column; gap: 1.5rem; }
+    .section.hidden { display: none; }
+
+    /* ── Grid ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .card:hover {
+      border-color: rgba(74,124,53,.5);
+      box-shadow: 0 8px 40px rgba(74,124,53,.12);
+      transform: translateY(-3px);
+    }
+
+    /* ── Image area ── */
+    .card-img-wrap {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: #0c1208;
+      overflow: hidden;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block; position: relative; z-index: 1;
+      opacity: 0; transition: opacity .4s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .4rem;
+    }
+    .ph-num  { font-size: 3.5rem; font-weight: 900; color: rgba(74,124,53,.12); line-height: 1; }
+    .ph-icon { font-size: 2.2rem; opacity: .15; }
+
+    .badge-rank {
+      position: absolute; top: .75rem; left: .75rem; z-index: 2;
+      background: rgba(0,0,0,.72); border: 1px solid rgba(74,124,53,.45);
+      color: var(--brass); font-size: .65rem; font-weight: 700;
+      padding: .2rem .55rem; border-radius: 5px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .badge-meta {
+      position: absolute; bottom: .75rem; right: .75rem; z-index: 2;
+      background: rgba(0,0,0,.65); color: rgba(255,255,255,.7);
+      font-size: .65rem; padding: .18rem .5rem; border-radius: 4px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Card body ── */
+    .card-body { padding: 1.1rem 1.2rem 1.25rem; display: flex; flex-direction: column; gap: .85rem; flex: 1; }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: var(--cream); letter-spacing: -.01em; }
+    .card-sub { font-size: .78rem; color: var(--muted); margin-top: .2rem; line-height: 1.45; }
+
+    .card-stats { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .stat-chip {
+      background: rgba(74,124,53,.08); border: 1px solid rgba(74,124,53,.18);
+      border-radius: 7px; padding: .3rem .65rem; display: flex; flex-direction: column; gap: .1rem;
+    }
+    .stat-label { font-size: .6rem; color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-val   { font-size: .82rem; color: var(--brass); font-weight: 700; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .card-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .tag {
+      font-size: .68rem; padding: .2rem .55rem; border-radius: 12px;
+      background: rgba(200,168,75,.07); border: 1px solid rgba(200,168,75,.18);
+      color: rgba(200,168,75,.9); font-family: 'Segoe UI', system-ui, sans-serif; font-weight: 600;
+    }
+
+    .facts-label { font-size: .7rem; font-weight: 700; color: var(--green); font-family: 'Segoe UI', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; }
+    .facts-list { display: flex; flex-direction: column; gap: .55rem; }
+    .fact { display: flex; gap: .55rem; align-items: flex-start; font-size: .8rem; line-height: 1.55; color: rgba(221,227,213,.8); }
+    .fact-icon { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+
+    /* ── Article (Home Defense) ── */
+    .article { display: flex; flex-direction: column; gap: 2rem; max-width: 820px; }
+    .article-intro {
+      background: rgba(74,124,53,.07); border: 1px solid rgba(74,124,53,.25);
+      border-left: 4px solid var(--green); border-radius: 0 12px 12px 0;
+      padding: 1.2rem 1.4rem; font-size: .95rem; line-height: 1.75; color: var(--text);
+    }
+    .article-intro strong { color: var(--brass); }
+
+    .a-section { display: flex; flex-direction: column; gap: 1rem; }
+    .a-section-header {
+      display: flex; align-items: center; gap: .75rem;
+      border-bottom: 1px solid rgba(74,124,53,.2); padding-bottom: .6rem;
+    }
+    .a-section-icon { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
+    .a-section-title { font-size: 1.15rem; font-weight: 800; color: var(--cream); letter-spacing: -.01em; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .a-section-num { font-size: .7rem; font-weight: 700; color: var(--brass); font-family: 'Segoe UI', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .1em; }
+
+    .a-body { font-size: .88rem; line-height: 1.8; color: rgba(221,227,213,.88); }
+    .a-body p { margin-bottom: .9rem; }
+    .a-body p:last-child { margin-bottom: 0; }
+    .a-body strong { color: var(--cream); font-weight: 700; }
+    .a-body em { color: var(--brass); font-style: normal; font-weight: 600; }
+
+    .a-tips { display: flex; flex-direction: column; gap: .6rem; margin-top: .5rem; }
+    .a-tip {
+      display: flex; gap: .8rem; align-items: flex-start;
+      background: rgba(14,18,10,.6); border: 1px solid rgba(74,124,53,.15);
+      border-radius: 10px; padding: .75rem 1rem;
+    }
+    .a-tip-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: .05rem; line-height: 1.4; }
+    .a-tip-text { font-size: .85rem; line-height: 1.65; color: rgba(221,227,213,.85); }
+    .a-tip-text strong { color: var(--cream); }
+
+    .a-callout {
+      background: rgba(224,123,57,.07); border: 1px solid rgba(224,123,57,.25);
+      border-left: 4px solid var(--copper); border-radius: 0 10px 10px 0;
+      padding: .9rem 1.1rem; font-size: .85rem; line-height: 1.7; color: rgba(221,227,213,.85);
+    }
+    .a-callout-label { font-size: .65rem; font-weight: 700; color: var(--copper); text-transform: uppercase; letter-spacing: .08em; font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .3rem; }
+    .a-callout strong { color: var(--cream); }
+
+    .a-warning {
+      background: rgba(180,30,30,.07); border: 1px solid rgba(180,30,30,.25);
+      border-left: 4px solid #b41e1e; border-radius: 0 10px 10px 0;
+      padding: .9rem 1.1rem; font-size: .85rem; line-height: 1.7; color: rgba(221,227,213,.85);
+    }
+    .a-warning-label { font-size: .65rem; font-weight: 700; color: #d94040; text-transform: uppercase; letter-spacing: .08em; font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .3rem; }
+    .a-warning strong { color: var(--cream); }
+
+    .a-ammo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; margin-top: .25rem; }
+    .a-ammo-card {
+      background: rgba(14,18,10,.7); border: 1px solid rgba(74,124,53,.18);
+      border-radius: 10px; padding: .75rem 1rem;
+    }
+    .a-ammo-name { font-size: .9rem; font-weight: 700; color: var(--brass); font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .25rem; }
+    .a-ammo-desc { font-size: .78rem; line-height: 1.55; color: rgba(221,227,213,.75); }
+
+    .a-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(74,124,53,.3), transparent); }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-icon">🎯</div>
+      <h1>American Firearms</h1>
+      <p class="hero-sub">Gun types that define modern shooting sports and self-defense, plus the ten most popular firearms owned in the United States.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('types')">Firearm Types</button>
+      <button class="tab" onclick="switchTab('top10')">Top 10 in America</button>
+      <button class="tab" onclick="switchTab('ammo')">Ammunition Types</button>
+    </div>
+
+    <div id="section-types" class="section">
+      <div class="cards" id="types-grid"></div>
+    </div>
+
+    <div id="section-top10" class="section hidden">
+      <div class="cards" id="top10-grid"></div>
+    </div>
+
+    <div id="section-ammo" class="section hidden">
+      <div class="cards" id="ammo-grid"></div>
+    </div>
+
+    <div id="section-homedefense" class="section hidden">
+      <div class="article">
+
+        <div class="article-intro">
+          <strong>This guide is for law-abiding gun owners</strong> who want to be genuinely prepared — not just armed. Owning a firearm for home defense is a serious responsibility. The difference between a prepared defender and an unprepared one is <strong>training, planning, and mindset</strong> — not the gun itself. Read this before you need it.
+        </div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🔫</div>
+            <div>
+              <div class="a-section-num">Section 01</div>
+              <div class="a-section-title">Choosing the Right Home Defense Firearm</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p>The best home defense gun is the one you <strong>shoot accurately under stress</strong>. That said, the three most proven platforms each have real advantages.</p>
+            <p>A <strong>12-gauge pump shotgun</strong> (Remington 870, Mossberg 500) is the most devastating close-range option. A load of 00 buckshot puts nine .33-caliber projectiles on target simultaneously. Penetration through interior walls is a concern, but at home-defense ranges its stopping power is unmatched. The racking sound alone has ended many situations without a shot fired.</p>
+            <p>A <strong>semi-automatic pistol</strong> (Glock 19, SIG P320, S&amp;W M&amp;P) offers maneuverability in tight hallways, the ability to operate one-handed while holding a phone or securing a child, and 15+ rounds on tap. Most people who train regularly find a pistol the most practical option because it is the gun they carry daily — the same manual of arms, the same trigger, under stress.</p>
+            <p>A <strong>semi-automatic rifle or pistol-caliber carbine</strong> (AR-15, Ruger PC Carbine) delivers superior accuracy, minimal recoil, and — with the right ammunition — less wall penetration than you might expect. An AR-15 loaded with 55-grain fragmenting ammo actually penetrates fewer walls than 9mm or buckshot in many tests.</p>
+          </div>
+          <div class="a-callout">
+            <div class="a-callout-label">Bottom Line</div>
+            A pistol or shotgun is the practical choice for most homeowners. Whichever you choose, <strong>train with it until the manual of arms is completely automatic</strong>. In a 2 a.m. adrenaline surge you will not rise to the occasion — you will default to your level of training.
+          </div>
+        </div>
+
+        <div class="a-divider"></div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🔴</div>
+            <div>
+              <div class="a-section-num">Section 02</div>
+              <div class="a-section-title">The Right Ammunition for Home Defense</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p><strong>Never use full metal jacket (FMJ / ball) ammunition for home defense.</strong> FMJ is designed for range training — it passes straight through soft tissue without expanding, carrying lethal energy into walls, neighboring rooms, and neighbors' homes. Use quality hollow-point ammunition designed specifically for defensive use.</p>
+            <p>Hollow-point bullets <strong>expand on impact</strong>, transferring their energy into the target rather than passing through it. This increases stopping effectiveness and reduces over-penetration risk. Every major law enforcement agency in the United States issues hollow-point ammunition for exactly this reason.</p>
+          </div>
+          <div class="a-ammo-grid">
+            <div class="a-ammo-card">
+              <div class="a-ammo-name">9mm — Best Loads</div>
+              <div class="a-ammo-desc">Federal HST 124gr +P, Speer Gold Dot 124gr, Hornady Critical Duty 135gr. Any of these meet or exceed FBI penetration standards (12–18 inches in ballistic gel).</div>
+            </div>
+            <div class="a-ammo-card">
+              <div class="a-ammo-name">.45 ACP — Best Loads</div>
+              <div class="a-ammo-desc">Federal HST 230gr, Speer Gold Dot 230gr, Hornady Critical Defense 185gr. The .45's wide diameter delivers massive expansion — choose standard pressure for reliable cycling.</div>
+            </div>
+            <div class="a-ammo-card">
+              <div class="a-ammo-name">12 Gauge — Best Loads</div>
+              <div class="a-ammo-desc">Federal FliteControl 00 Buckshot is the gold standard — its wad keeps pellets tighter at indoor distances. Avoid birdshot for defense; it lacks adequate penetration depth.</div>
+            </div>
+            <div class="a-ammo-card">
+              <div class="a-ammo-name">.380 ACP — Best Loads</div>
+              <div class="a-ammo-desc">Hornady Critical Defense 90gr FTX, Federal HST 99gr Micro. The .380's limited power makes quality hollow-points even more critical — don't compromise on ammo in this caliber.</div>
+            </div>
+            <div class="a-ammo-card">
+              <div class="a-ammo-name">AR-15 / 5.56 — Best Loads</div>
+              <div class="a-ammo-desc">Federal 55gr Varmint (fragmenting) or Hornady TAP 75gr for reduced wall penetration. Avoid M193 and M855 military ball — they overpenetrate significantly in home environments.</div>
+            </div>
+            <div class="a-ammo-card">
+              <div class="a-ammo-name">Test Your Ammo</div>
+              <div class="a-ammo-desc">Run at least 50–100 rounds of your defensive load through your firearm before trusting it. Confirm your gun cycles it 100% reliably — some guns have feeding preferences with certain hollow-points.</div>
+            </div>
+          </div>
+          <div class="a-warning">
+            <div class="a-warning-label">Critical Rule</div>
+            <strong>Inspect your defensive ammo every 6–12 months.</strong> Rounds repeatedly chambered during dry-fire practice can suffer bullet setback, raising pressure to dangerous levels. Rotate your carry ammo regularly and never re-chamber a round more than a handful of times.
+          </div>
+        </div>
+
+        <div class="a-divider"></div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🔒</div>
+            <div>
+              <div class="a-section-num">Section 03</div>
+              <div class="a-section-title">Storage — Accessible to You, Inaccessible to Everyone Else</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p>This is the central tension of home defense: <strong>a gun locked away is useless in an emergency</strong>, but an unsecured gun is a liability — especially in homes with children, visitors, or theft risk. The solution is a purpose-built <strong>rapid-access pistol safe</strong>.</p>
+            <p>Modern quick-access safes open in 1–2 seconds via biometric fingerprint, RFID wristband, or a 4-button push-code. They mount under a nightstand, inside a drawer, or to a bedframe with steel cable. Practice opening yours in the dark — the middle of the night is not the time to discover the battery is dead or your fingerprint won't register with shaking hands.</p>
+          </div>
+          <div class="a-tips">
+            <div class="a-tip">
+              <div class="a-tip-icon">🛏️</div>
+              <div class="a-tip-text"><strong>Bedside quick-access safe:</strong> Mount a biometric or push-button safe to the side or underside of your nightstand. Keep it at arm's reach while lying down. Practice the motion until it is automatic. This is where your primary defensive firearm lives.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🔋</div>
+              <div class="a-tip-text"><strong>Battery maintenance:</strong> Most quick-access safes run on AA batteries. Set a reminder every 6 months to replace them — don't wait for a low-battery warning. Keep a spare set in the nightstand drawer.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">👶</div>
+              <div class="a-tip-text"><strong>Children in the home:</strong> If children are present, the quick-access safe is non-negotiable. Children are curious and will find any unsecured firearm. The safe keeps the gun out of reach while remaining accessible to you in seconds.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🏠</div>
+              <div class="a-tip-text"><strong>Secondary locations:</strong> Consider a second quick-access safe in your home office or living area if your bedroom is far from where you spend most of your day. Intruders can arrive at any hour — not just at night.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🔐</div>
+              <div class="a-tip-text"><strong>Long gun storage:</strong> A shotgun or rifle kept for home defense should be stored in a full-size locked safe when not actively staged. Trigger locks are a last resort — they add seconds you may not have and can be fumbled under stress.</div>
+            </div>
+          </div>
+          <div class="a-callout">
+            <div class="a-callout-label">Staged vs. Stored</div>
+            "Staged" means loaded, chamber-ready, secured in a quick-access safe. "Stored" means in a full safe, possibly unloaded. <strong>Your home defense gun should be staged, not stored.</strong> An unloaded gun in an emergency is a throwing weapon.
+          </div>
+        </div>
+
+        <div class="a-divider"></div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🎯</div>
+            <div>
+              <div class="a-section-num">Section 04</div>
+              <div class="a-section-title">Training — The Only Thing That Matters Under Stress</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p>Most gun owners shoot their defensive firearm once when they buy it and never again. <strong>This is the single most dangerous mistake in home defense preparation.</strong> Under extreme stress, fine motor skills deteriorate sharply. You will grip harder than you expect, forget safeties, and may miss malfunctions entirely. Training builds <strong>gross motor patterns</strong> deep enough to survive an adrenaline dump at 3 a.m.</p>
+          </div>
+          <div class="a-tips">
+            <div class="a-tip">
+              <div class="a-tip-icon">📅</div>
+              <div class="a-tip-text"><strong>Shoot regularly:</strong> Minimum once a month with your defensive firearm. Focus on fundamentals — grip, sight alignment, trigger press. 50 deliberate rounds beats 200 casual ones every time.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🌑</div>
+              <div class="a-tip-text"><strong>Low-light training:</strong> Home invasions happen at night. Practice accessing your safe and drawing in a dark room. A weapon-mounted light (WML) — SureFire or Streamlight — illuminates and identifies a threat without occupying your support hand.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">📐</div>
+              <div class="a-tip-text"><strong>Take a formal course:</strong> A one-day defensive pistol or shotgun course from a qualified instructor (NRA, USCCA, or Gunsite certified) will teach you more in 8 hours than a year of solo range trips — drawing, clearing malfunctions, moving while shooting, and decision-making under stress.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🏠</div>
+              <div class="a-tip-text"><strong>Dry-fire at home:</strong> With an <em>unloaded, verified-clear</em> firearm, practice your presentation from the safe, trigger press, and reloads. 10 minutes of dry-fire three times a week builds muscle memory that live fire cements. Always remove all ammunition from the room first.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🧠</div>
+              <div class="a-tip-text"><strong>Practice your plan, not just your shooting:</strong> Walk your home. Identify your safe room. Know where family members sleep. Practice the path in the dark. Tactics and positioning matter more than marksmanship at 10 feet.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🔄</div>
+              <div class="a-tip-text"><strong>Malfunction drills:</strong> Know the immediate action drill for your firearm cold — Tap (magazine), Rack (slide), Assess. A malfunction in the dark under stress is survivable only if clearing it is automatic.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="a-divider"></div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🏠</div>
+            <div>
+              <div class="a-section-num">Section 05</div>
+              <div class="a-section-title">The Home Defense Plan — Know It Before You Need It</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p>A firearm without a plan is improvisation under the worst possible circumstances. <strong>Write a home defense plan. Discuss it with every adult in your household. Practice it.</strong> The plan answers the questions your brain will struggle to answer at 3 a.m. with your heart rate at 180 bpm.</p>
+          </div>
+          <div class="a-tips">
+            <div class="a-tip">
+              <div class="a-tip-icon">📍</div>
+              <div class="a-tip-text"><strong>Designate a safe room:</strong> The master bedroom is the natural choice — it's where you sleep, your gun is staged, and you have a door to barricade. Tell every family member: <em>if you hear something, get to the safe room.</em> This consolidates your family in a known location and eliminates the nightmare of shooting a family member in a dark hallway.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">📞</div>
+              <div class="a-tip-text"><strong>Call 911 first:</strong> If you have any time before a threat reaches you, <strong>call 911 immediately</strong>. Give your address, report the intruder, and stay on the line. This is both the legally correct action and the tactically smart one — you want backup, and you want the dispatcher to hear what unfolds.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🛡️</div>
+              <div class="a-tip-text"><strong>Defend in place — don't go hunting:</strong> Leaving your safe room to search the house surrenders every tactical advantage. <strong>Hold your position, secure your family, call 911, and let the threat come to you.</strong> The intruder who opens your bedroom door to find a prepared defender is in the worst possible position.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">💡</div>
+              <div class="a-tip-text"><strong>Control the light:</strong> From your safe room, turn on every light you can reach. Illuminate hallways. Use your weapon light. Darkness favors the intruder who has been moving through your home — you want to see clearly before making any decision.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">🗣️</div>
+              <div class="a-tip-text"><strong>Challenge verbally:</strong> From behind your locked door: <em>"I'm armed and I've called the police — leave now!"</em> This warns a legitimate occupant, may cause a burglar to flee (most want property, not confrontation), and demonstrates on the 911 recording that you attempted de-escalation before using force.</div>
+            </div>
+          </div>
+          <div class="a-warning">
+            <div class="a-warning-label">Legal Reality</div>
+            <strong>Know your state's laws on use of deadly force before you need them.</strong> Castle Doctrine and Stand Your Ground laws vary significantly by state. In some states you have a broad right to defend your home; in others, a duty-to-retreat may apply. Ignorance of the law is not a defense — consult your state statutes or take a USCCA legal self-defense course.
+          </div>
+        </div>
+
+        <div class="a-divider"></div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🌙</div>
+            <div>
+              <div class="a-section-num">Section 06</div>
+              <div class="a-section-title">You Hear Something at 3 A.M. — Step by Step</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p>This is the scenario you have been preparing for. <strong>Your first reaction matters.</strong> Most bumps in the night are not home invasions — but your response to both situations needs to be identical until you know which you are dealing with.</p>
+          </div>
+          <div class="a-tips">
+            <div class="a-tip">
+              <div class="a-tip-icon">1️⃣</div>
+              <div class="a-tip-text"><strong>Wake up fully before you act.</strong> Stay still for 5–10 seconds. Listen. Orient yourself. Adrenaline fires before your brain is fully engaged — let your mind catch up before your body moves.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">2️⃣</div>
+              <div class="a-tip-text"><strong>Access your firearm.</strong> Open your quick-access safe. Take your firearm with finger off the trigger. You are not yet in a confirmed threat situation — keep the gun indexed, pointed in a safe direction.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">3️⃣</div>
+              <div class="a-tip-text"><strong>Alert your household and call 911.</strong> Wake your partner quietly — one person covers the door while the other calls 911. If you live alone, call 911 yourself. Give your address and stay on the line. It costs nothing to call and cancel; it costs everything to need help and not have called.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">4️⃣</div>
+              <div class="a-tip-text"><strong>Consolidate your family in the safe room.</strong> If it is safe to retrieve children from nearby rooms, do so. If not, have them lock their doors and communicate by phone. Get everyone behind a locked, barricadable door.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">5️⃣</div>
+              <div class="a-tip-text"><strong>Cover the door from an angle.</strong> Position yourself to the side of the door — not directly in front of it. A door is not cover. An angle gives you a view of the entry while keeping you out of the fatal funnel. Turn on your weapon light. Verbal challenge ready.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">6️⃣</div>
+              <div class="a-tip-text"><strong>Identify before you fire.</strong> You must positively identify your target as a threat before pulling the trigger. You cannot shoot at a sound, a shape, or a shadow — legally or morally. Your weapon light exists for this moment. A family member, guest, or sleepwalking child may be on the other side of that door.</div>
+            </div>
+            <div class="a-tip">
+              <div class="a-tip-icon">7️⃣</div>
+              <div class="a-tip-text"><strong>After the threat resolves — stay on the line and show empty hands.</strong> Whether you fired or the intruder fled, remain on with 911 until police arrive. When officers enter, <strong>set the firearm down and immediately show empty hands</strong>. State clearly: "I am the homeowner." The responding officer does not know who is who — make it obvious.</div>
+            </div>
+          </div>
+          <div class="a-warning">
+            <div class="a-warning-label">The Single Most Common Fatal Mistake</div>
+            <strong>Going to investigate the noise is how most defensive situations become tragedies.</strong> Most intruders flee the moment they realize the home is occupied. By leaving your safe room to search, you surrender your defensive position, encounter the intruder on their terms in the dark, and must make a lethal-force decision in a fraction of a second. <strong>Hold your ground. Let the threat come to you or leave.</strong>
+          </div>
+        </div>
+
+        <div class="a-divider"></div>
+
+        <div class="a-section">
+          <div class="a-section-header">
+            <div class="a-section-icon">🧠</div>
+            <div>
+              <div class="a-section-num">Section 07</div>
+              <div class="a-section-title">Mindset — The Weapon Behind the Weapon</div>
+            </div>
+          </div>
+          <div class="a-body">
+            <p>Every serious instructor will tell you the same thing: <strong>the firearm is the last resort, not the first response.</strong> The layers of home defense — good locks, exterior lighting, a security system, a dog, situational awareness, and a practiced plan — are what prevent the situation from ever reaching the point where a gun is needed.</p>
+            <p>Carrying the <strong>decision to use lethal force</strong> is a psychological weight that must be settled before the emergency, not during it. Decide now, calmly, with knowledge of your state's law: under what circumstances will you fire? A clear answer made in advance means your judgment is not impaired in the moment by hesitation or panic. Hesitation kills defenders. So does shooting too quickly.</p>
+            <p>The goal of home defense is not to shoot an intruder. <strong>The goal is for you and your family to survive unharmed.</strong> If the intruder flees without a shot fired, that is the best possible outcome. A firearm you never had to use is a complete success.</p>
+          </div>
+          <div class="a-callout">
+            <div class="a-callout-label">Recommended Resources</div>
+            <strong>Books:</strong> <em>In the Gravest Extreme</em> by Massad Ayoob (legal and moral framework) · <em>The Cornered Cat</em> by Kathy Jackson · <em>Defensive Living</em> by Ed Lovette &amp; Dave Spaulding. <br><strong>Training:</strong> USCCA Fundamentals course · Gunsite Academy · Thunder Ranch · any NRA Basic Pistol certified instructor near you.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ── Data ──────────────────────────────────────────────────────────────── */
+
+const TYPES = [
+  {
+    rank: 1, name: 'Semi-Automatic Pistol', meta: 'Handgun',
+    sub: 'The dominant handgun type worldwide — magazine-fed, fast to reload, compact',
+    wiki: 'Semi-automatic pistol',
+    stats: [
+      { label: 'Action', val: 'Semi-auto' },
+      { label: 'Feed', val: 'Box magazine' },
+      { label: 'Caliber', val: '9mm common' },
+      { label: 'Capacity', val: '10–20+ rds' },
+    ],
+    tags: ['Striker-Fired', 'Hammer-Fired', 'Double-Stack', 'Concealed Carry', 'Law Enforcement', 'Military'],
+    facts: [
+      { icon: '🔧', text: "The semi-automatic pistol works by using the energy from each fired cartridge to eject the spent case and chamber a fresh round from the magazine. The trigger must be pulled once for each shot fired." },
+      { icon: '📦', text: "Double-stack magazines revolutionized the pistol: by staggering rounds in two columns, a compact grip can hold 17+ rounds of 9mm. Glock's 1982 polymer design proved you could carry a lot of firepower at low weight." },
+      { icon: '🎯', text: "9mm Luger became the world's dominant pistol cartridge because modern bullet technology closed the gap with larger calibers. It offers less recoil, higher capacity, and lower cost than .40 S&W or .45 ACP." },
+      { icon: '🏛️', text: "The 1911 pistol designed by John Browning is the blueprint most modern semi-autos still follow: tilting barrel, slide riding over the frame, and a single-stack grip. Over 110 years later, the concept still works." },
+    ],
+  },
+  {
+    rank: 2, name: 'Revolver', meta: 'Handgun',
+    sub: 'The cylinder-fed handgun — mechanically simple, utterly reliable, and iconic',
+    wiki: 'Revolver',
+    stats: [
+      { label: 'Action', val: 'SA / DA' },
+      { label: 'Feed', val: 'Cylinder' },
+      { label: 'Caliber', val: '.357 / .38' },
+      { label: 'Capacity', val: '5–8 rds' },
+    ],
+    tags: ['Double-Action', 'Single-Action', 'Wheel Gun', 'Cowboy', 'Home Defense', 'Hunting'],
+    facts: [
+      { icon: '⚙️', text: "A revolver has no magazine — rounds sit in a rotating cylinder. Each pull of the trigger (or cocking of the hammer) rotates the cylinder to align a fresh round with the barrel. No jams, no feeding failures." },
+      { icon: '🤠', text: "The Single Action Army revolver — Colt's iconic six-shooter — was so widely used on the American frontier that it is called the 'Gun That Won the West.' Its basic design from 1872 is still in production today." },
+      { icon: '💪', text: "Revolvers can chamber cartridges too powerful for most semi-auto designs. The .44 Magnum, .454 Casull, and .500 S&W Magnum exist almost exclusively in revolvers — they are the heavy-artillery end of handgun power." },
+      { icon: '🔒', text: "Many experts recommend revolvers for home defense by inexperienced shooters: no manual safety, no slide to rack, no magazine to seat. Pick it up, point, and pull the trigger — mechanical simplicity matters under stress." },
+    ],
+  },
+  {
+    rank: 3, name: 'Bolt-Action Rifle', meta: 'Rifle',
+    sub: 'The precision rifle — manually cycled, supremely accurate, the hunter\'s and sniper\'s choice',
+    wiki: 'Bolt-action',
+    stats: [
+      { label: 'Action', val: 'Bolt-action' },
+      { label: 'Feed', val: 'Box or internal' },
+      { label: 'Caliber', val: '.308 / 6.5CM' },
+      { label: 'Range', val: '500–1000+ yd' },
+    ],
+    tags: ['Hunting', 'Long Range', 'Precision', 'Controlled Feed', 'Military', 'Competitive Shooting'],
+    facts: [
+      { icon: '🔩', text: "Bolt-action rifles lock the bolt into the receiver with two or three locking lugs — this rigid lockup is what allows accuracy at extreme range. The lack of moving parts during firing eliminates variables that disturb aim." },
+      { icon: '🏔️', text: "The Mauser 98 action, designed in 1898, is the foundation of most modern bolt-action hunting rifles. Remington, Winchester, Ruger, and dozens of others still use its controlled-round-feed concept 125 years later." },
+      { icon: '🎯', text: "Modern precision bolt rifles like the Remington 700 and Tikka T3 routinely shoot sub-MOA groups — that is, three shots within a 1-inch circle at 100 yards. Custom builds can exceed 0.25 MOA consistently." },
+      { icon: '🪖', text: "Every major military used bolt-action rifles in WWI and WWII. The Lee-Enfield, Springfield 1903, Kar98k, and Mosin-Nagant defined infantry combat for 50 years before semi-autos took over — bolt guns still equip snipers today." },
+    ],
+  },
+  {
+    rank: 4, name: 'Semi-Automatic Rifle', meta: 'Rifle',
+    sub: 'One trigger pull, one round — the modern sporting rifle platform',
+    wiki: 'Semi-automatic rifle',
+    stats: [
+      { label: 'Action', val: 'Gas/Recoil-op' },
+      { label: 'Feed', val: 'Detachable mag' },
+      { label: 'Caliber', val: '5.56 / .308' },
+      { label: 'Capacity', val: '10–30 rds' },
+    ],
+    tags: ['AR Platform', 'Gas-Operated', 'Direct Impingement', 'Sport Shooting', 'Home Defense', 'Modular'],
+    facts: [
+      { icon: '🔄', text: "Semi-automatic rifles use the energy of each fired round — either gas tapped from the barrel or the recoil force — to cycle the action. The trigger resets automatically, but must be pulled for each shot." },
+      { icon: '🔧', text: "The AR-15 platform is modular by design. Uppers, lowers, stocks, handguards, and triggers are interchangeable across thousands of manufacturers. Shooters can configure one platform for varminting, competition, or home defense." },
+      { icon: '🇺🇸', text: "The AR-15 is America's most popular rifle — an estimated 20+ million are in civilian hands. Its mild recoil, ergonomics, and modularity made it the go-to platform for sport shooters, hunters, and competitive shooters alike." },
+      { icon: '🏆', text: "3-Gun and Practical Rifle competition are built almost entirely around semi-auto rifles. Competitors run carbine courses requiring fast mag changes, moving shots, and precision at mixed distances — all demanding the semi-auto's fast follow-up shots." },
+    ],
+  },
+  {
+    rank: 5, name: 'Pump-Action Shotgun', meta: 'Shotgun',
+    sub: 'The most versatile American long gun — reliable, powerful, and in tens of millions of homes',
+    wiki: 'Shotgun',
+    stats: [
+      { label: 'Action', val: 'Pump-action' },
+      { label: 'Gauge', val: '12 or 20 ga' },
+      { label: 'Feed', val: 'Tube magazine' },
+      { label: 'Range', val: '25–50 yd shot' },
+    ],
+    tags: ['Home Defense', 'Hunting', 'Waterfowl', 'Turkey', 'Slugs', 'Buckshot'],
+    facts: [
+      { icon: '🦆', text: "The pump-action shotgun cycles by manually sliding the forend back and forward. This ejects the spent hull and chambers a new one. It handles virtually any load — from light birdshot to rifled slugs — without malfunctioning." },
+      { icon: '🏠', text: "The pump shotgun has been called America's ultimate home-defense gun. The racking sound is universally recognized. A load of 00 buckshot puts nine .33-caliber balls on target with each pull — devastating at home-defense ranges." },
+      { icon: '🎯', text: "Remington 870 and Mossberg 500/590 are the two best-selling pump shotguns in history, with over 11 million and 10 million units sold respectively. Both have been in continuous production for over 60 years." },
+      { icon: '🎖️', text: "Shotguns loaded with slugs — single large projectiles — become deer rifles accurate to 100+ yards. With rifled barrels and sabot slugs, some shotgun setups rival bolt-action rifles for deer hunting effectiveness." },
+    ],
+  },
+  {
+    rank: 6, name: 'Lever-Action Rifle', meta: 'Rifle',
+    sub: 'The cowboy rifle — American icon, smooth action, and still a serious hunting tool',
+    wiki: 'Lever-action',
+    stats: [
+      { label: 'Action', val: 'Lever-action' },
+      { label: 'Feed', val: 'Tube magazine' },
+      { label: 'Caliber', val: '.30-30 / .357' },
+      { label: 'Capacity', val: '5–12 rds' },
+    ],
+    tags: ['Cowboy', 'Winchester', 'Marlin', 'Hunting', 'CAS Competition', 'Classic American'],
+    facts: [
+      { icon: '🤠', text: "The Winchester Model 1873 — 'The Gun That Won the West' — could share ammunition with Colt revolvers of the same caliber. Cowboys could carry one cartridge type for both weapons, a logistical advantage on the frontier." },
+      { icon: '🦌', text: "The .30-30 Winchester cartridge introduced in 1895 has killed more North American deer than any other round in history. Lever-action .30-30 carbines remain a staple of deer camps across the rural United States." },
+      { icon: '🎬', text: "Lever-action rifles are the defining image of the American West in film. John Wayne, Clint Eastwood, and every cinematic cowboy reached for a lever gun. The genre created an enduring cultural identity that sells rifles to this day." },
+      { icon: '🏆', text: "Cowboy Action Shooting (CAS) — sanctioned by SASS — requires competitors to use lever-action rifles, single-action revolvers, and period-correct shotguns while dressed in Western costume. It is one of the fastest-growing shooting sports." },
+    ],
+  },
+  {
+    rank: 7, name: 'Semi-Automatic Shotgun', meta: 'Shotgun',
+    sub: 'Gas-operated or inertia-driven — fast follow-up shots for hunting and competition',
+    wiki: 'Clay pigeon shooting',
+    stats: [
+      { label: 'Action', val: 'Gas / Inertia' },
+      { label: 'Gauge', val: '12 or 20 ga' },
+      { label: 'Feed', val: 'Tube magazine' },
+      { label: 'Capacity', val: '3–8 rds' },
+    ],
+    tags: ['Trap', 'Skeet', 'Sporting Clays', 'Waterfowl', 'Turkey', 'Benelli', 'Beretta'],
+    facts: [
+      { icon: '🎯', text: "Semi-automatic shotguns dominate competitive clay target sports — trap, skeet, and sporting clays. The lack of recoil management between shots lets shooters focus entirely on target acquisition rather than cycling the action." },
+      { icon: '⚡', text: "The Benelli inertia system uses the shotgun's own recoil to cycle the action rather than gas tapping. This makes the gun cleaner, simpler, and lighter — Benelli's M2 is considered the gold standard for waterfowl hunters." },
+      { icon: '🦅', text: "For fast-flying birds — pheasants, doves, ducks — the semi-auto's fast follow-up shots are a major advantage. Miss the first shot, the second and third come without breaking your sight picture to pump or break the gun." },
+      { icon: '🏆', text: "Olympic shooting disciplines use both semi-auto and over-under shotguns. At the highest level, purpose-built competition shotguns from Perazzi, Krieghoff, and Beretta can cost $10,000–$50,000+ for a matched set." },
+    ],
+  },
+  {
+    rank: 8, name: 'Single-Action Revolver', meta: 'Handgun',
+    sub: 'The original six-shooter — must be cocked before firing, pure mechanical elegance',
+    wiki: 'Single-action revolver',
+    stats: [
+      { label: 'Action', val: 'Single-action' },
+      { label: 'Feed', val: 'Cylinder' },
+      { label: 'Caliber', val: '.45 Colt / .357' },
+      { label: 'Capacity', val: '6 rds' },
+    ],
+    tags: ['Colt SAA', 'Ruger Blackhawk', 'Cowboy', 'CAS', 'Classic', 'Western'],
+    facts: [
+      { icon: '🔫', text: "A single-action revolver requires the hammer to be manually cocked before each shot. This light, crisp trigger pull — once the hammer is back — makes single-actions the most accurate revolvers for precision shooting." },
+      { icon: '⭐', text: "The Colt Single Action Army (SAA), introduced in 1873, is arguably the most iconic American firearm. Called the 'Peacemaker,' it was adopted by the U.S. Army and became the defining weapon of the frontier era." },
+      { icon: '🎯', text: "Ruger's Blackhawk and Super Blackhawk brought the single-action into the modern era with stronger steel and coil springs. The Super Blackhawk in .44 Magnum became a popular hunting handgun for deer and hog." },
+      { icon: '🤠', text: "Loading a traditional single-action is a deliberate ritual: open the gate, rotate the cylinder, insert rounds one by one. This slow process is part of the appeal — a connection to the mechanics and pace of the 19th century." },
+    ],
+  },
+];
+
+const TOP10 = [
+  {
+    rank: 1, name: 'AR-15', meta: 'Armalite / Colt',
+    sub: 'The most popular rifle in America — an estimated 20+ million in civilian hands',
+    wiki: 'AR-15',
+    stats: [
+      { label: 'Type', val: 'Semi-auto rifle' },
+      { label: 'Caliber', val: '5.56×45mm' },
+      { label: 'Action', val: 'Gas-operated' },
+      { label: 'Capacity', val: '30 rds (std)' },
+    ],
+    tags: ['Direct Impingement', 'Modular', 'Sport Shooting', 'Home Defense', 'America\'s Rifle', 'NATO'],
+    facts: [
+      { icon: '🇺🇸', text: "The AR-15 is America's most-owned rifle by a wide margin. The American public bought an estimated 20+ million AR-platform rifles over the past three decades, more than any other single rifle design in U.S. history." },
+      { icon: '🔧', text: "The platform's modularity is its defining feature. Barrels, stocks, handguards, triggers, and caliber conversion kits are interchangeable across thousands of manufacturers. Shooters build custom configurations for any purpose." },
+      { icon: '🏆', text: "AR-15s dominate practical shooting sports: 3-Gun Nation, USPSA Rifle division, and PRS competitions are built around the platform. Its ergonomics, mild recoil, and aftermarket depth make it the competition shooter's default choice." },
+      { icon: '🔬', text: "Eugene Stoner designed the original ArmaLite AR-15 in the late 1950s. Colt bought the design, and the military adopted it as the M16 in 1963. The civilian semi-auto version has been sold continuously for over 60 years." },
+    ],
+  },
+  {
+    rank: 2, name: 'Glock 19', meta: 'Glock GmbH',
+    sub: 'The world\'s most copied handgun design — compact, light, and trusted by millions',
+    wiki: 'Glock 19',
+    stats: [
+      { label: 'Type', val: 'Semi-auto pistol' },
+      { label: 'Caliber', val: '9mm Luger' },
+      { label: 'Action', val: 'Striker-fired' },
+      { label: 'Capacity', val: '15+1 rds' },
+    ],
+    tags: ['Polymer Frame', 'Striker-Fired', 'Law Enforcement', 'Concealed Carry', 'Military', 'Most Popular'],
+    facts: [
+      { icon: '🏅', text: "The Glock 19 is consistently ranked the single most popular handgun in America, favored by civilians, law enforcement, and military alike. It balances compact size with 15-round capacity — neither too big nor too small." },
+      { icon: '🧱', text: "When Gaston Glock introduced a polymer-framed pistol in 1982, the firearms industry was skeptical. Today, every major handgun manufacturer makes a polymer-framed striker-fired pistol — Glock didn't just make a gun, it defined a category." },
+      { icon: '🔫', text: "Over 65% of U.S. law enforcement agencies issue Glock pistols. The FBI, DEA, Secret Service, and hundreds of police departments standardized on Glocks for their reliability, simple manual of arms, and minimal maintenance requirements." },
+      { icon: '⚡', text: "The Glock's 'Safe Action' system has three automatic safeties — none of them manual levers. The gun is safe when holstered and fires with a deliberate trigger pull. This simplicity under stress contributed enormously to its adoption." },
+    ],
+  },
+  {
+    rank: 3, name: 'Ruger 10/22', meta: 'Sturm, Ruger & Co.',
+    sub: 'America\'s best-selling .22 rimfire rifle — the classic first gun for generations',
+    wiki: 'Ruger 10/22',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/7/7f/Jp498cc1022ruger.jpg',
+    stats: [
+      { label: 'Type', val: 'Semi-auto rifle' },
+      { label: 'Caliber', val: '.22 LR' },
+      { label: 'Action', val: 'Blowback' },
+      { label: 'Capacity', val: '10 rds (std)' },
+    ],
+    tags: ['.22 LR', 'Beginner Rifle', 'Plinking', 'Small Game', 'Aftermarket', 'Training'],
+    facts: [
+      { icon: '🌟', text: "The Ruger 10/22, introduced in 1964, is the best-selling semi-automatic .22 rifle in American history — over 7 million produced. It is the gun that introduces more new shooters to the sport than any other single model." },
+      { icon: '💰', text: ".22 LR ammunition is the cheapest centerfire cartridge to buy, making the 10/22 the first rifle for budget-conscious new shooters. A brick of 500 rounds costs what a box of 20 rifle rounds costs — practice is affordable." },
+      { icon: '🔧', text: "The 10/22 has one of the deepest aftermarket ecosystems of any firearm. Thousands of stocks, triggers, barrels, and magazines are available. Competitive 10/22 builds for Rimfire Challenge events can cost more than a factory rifle." },
+      { icon: '🎯', text: "Rimfire competition — Appleseed events, Steel Challenge, and the NRL22 precision series — are built around .22 LR rifles. The 10/22 appears in more of these competitions than any other single model." },
+    ],
+  },
+  {
+    rank: 4, name: 'Smith & Wesson M&P Shield', meta: 'Smith & Wesson',
+    sub: 'America\'s top-selling concealed carry pistol — slim, reliable, and in millions of holsters',
+    wiki: 'Smith & Wesson M&P',
+    stats: [
+      { label: 'Type', val: 'Semi-auto pistol' },
+      { label: 'Caliber', val: '9mm / .40 / .45' },
+      { label: 'Action', val: 'Striker-fired' },
+      { label: 'Capacity', val: '7–8+1 rds' },
+    ],
+    tags: ['Concealed Carry', 'Single Stack', 'Slim Profile', 'Law Enforcement', 'Smith & Wesson', 'CCW'],
+    facts: [
+      { icon: '🔒', text: "The M&P Shield became the best-selling concealed carry pistol in America within two years of its 2012 introduction. Its slim single-stack profile fits in an IWB holster without printing through clothing." },
+      { icon: '🏛️', text: "Smith & Wesson is America's oldest continuously operating gun manufacturer, founded in 1852. The M&P (Military & Police) line revived the company's relevance in the polymer striker-fired era after decades of revolver dominance." },
+      { icon: '📊', text: "The concealed carry market exploded after shall-issue permit laws spread across most U.S. states. By 2023, over 22 million Americans held concealed carry permits — each represents a potential Shield buyer." },
+      { icon: '⭐', text: "The second-generation Shield EZ features an easy-to-rack slide specifically designed for shooters with limited hand strength — particularly popular with older shooters and women entering the market for the first time." },
+    ],
+  },
+  {
+    rank: 5, name: 'Remington Model 870', meta: 'Remington Arms',
+    sub: 'The best-selling shotgun in American history — over 11 million produced since 1950',
+    wiki: 'Remington Model 870',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/9/9c/Remington_870.png',
+    stats: [
+      { label: 'Type', val: 'Pump shotgun' },
+      { label: 'Gauge', val: '12 / 20 / .410' },
+      { label: 'Action', val: 'Pump-action' },
+      { label: 'Capacity', val: '3–8 rds' },
+    ],
+    tags: ['Pump-Action', 'Police', 'Military', 'Hunting', 'Home Defense', 'Most Sold'],
+    facts: [
+      { icon: '🏆', text: "The Remington 870 is the best-selling shotgun ever made — over 11 million units sold since its introduction in 1950. It is found in more American police cars, hunting camps, and gun safes than any other shotgun." },
+      { icon: '🚔', text: "The 870 is the standard-issue patrol shotgun for thousands of U.S. law enforcement agencies and was standard military issue for decades. Its dual action bars and robust construction mean it very rarely malfunctions." },
+      { icon: '🦆', text: "Three generations of American hunters learned to shoot with an 870. From pheasant to deer to waterfowl, it handles every hunting application in every American climate and terrain — a true all-purpose field gun." },
+      { icon: '🔧', text: "The 870 accepts a vast range of aftermarket accessories: magazine tube extensions, tactical stocks, pistol grips, sling mounts, and side-saddle shell holders. It is as modifiable as any tactical rifle." },
+    ],
+  },
+  {
+    rank: 6, name: 'Colt / Springfield M1911', meta: 'John Browning design',
+    sub: 'The legendary .45 ACP — U.S. military service pistol for 74 years, still beloved today',
+    wiki: 'M1911 pistol',
+    stats: [
+      { label: 'Type', val: 'Semi-auto pistol' },
+      { label: 'Caliber', val: '.45 ACP' },
+      { label: 'Action', val: 'Single-action' },
+      { label: 'Capacity', val: '7+1 rds' },
+    ],
+    tags: ['.45 ACP', 'John Browning', 'Military', 'Competition', 'Single-Action', 'Classic'],
+    facts: [
+      { icon: '🏅', text: "The M1911 was the U.S. military's standard sidearm from 1911 to 1985 — 74 years of service through two World Wars, Korea, and Vietnam. John Browning's design was so effective it outlasted multiple attempts to replace it." },
+      { icon: '🎯', text: "The 1911 is the dominant pistol in IPSC/USPSA Single Stack and Limited divisions. Its single-action trigger — with a short, light, crisp break — is the standard against which all other competition pistol triggers are judged." },
+      { icon: '💥', text: "The .45 ACP cartridge was designed to provide a decisive one-shot stop. The Philippine-American War experience showed that .38 caliber revolvers were inadequate against determined opponents — the Army demanded something larger." },
+      { icon: '🔧', text: "A fully custom 1911 from a master gunsmith — hand-fitted barrel, action job, custom grips — can cost $3,000–$5,000 and shoot tighter groups than pistols costing ten times as much. The platform rewards craftsmanship." },
+    ],
+  },
+  {
+    rank: 7, name: 'SIG Sauer P320', meta: 'SIG Sauer',
+    sub: 'The U.S. Army\'s M17 — modular, striker-fired, and winning converts rapidly',
+    wiki: 'SIG Sauer P320',
+    stats: [
+      { label: 'Type', val: 'Semi-auto pistol' },
+      { label: 'Caliber', val: '9mm / .40 / .357' },
+      { label: 'Action', val: 'Striker-fired' },
+      { label: 'Capacity', val: '17+1 rds' },
+    ],
+    tags: ['U.S. Army M17', 'Modular', 'FCU', 'Law Enforcement', 'Military', 'SIG'],
+    facts: [
+      { icon: '🪖', text: "The SIG P320 won the U.S. Army's Modular Handgun System competition in 2017, replacing the Beretta M9 as the M17/M18. The contract was worth $580 million — the largest handgun procurement in U.S. military history." },
+      { icon: '🔩', text: "The P320's defining feature is its serialized Fire Control Unit (FCU) — a small chassis that is legally the 'gun.' The same FCU can be moved between full-size, compact, and subcompact frames and calibers without a new registration." },
+      { icon: '🚔', text: "Following the Army contract, dozens of law enforcement agencies switched to the P320. The FBI, DHS, and hundreds of police departments now issue SIG pistols, making SIG the fastest-growing LE handgun brand in America." },
+      { icon: '🏆', text: "The P320 X5 Legion is one of the top competition pistols in USPSA Production and Carry Optics. Factory pistols straight from the box meet or exceed the accuracy of hand-tuned competition guns from a decade ago." },
+    ],
+  },
+  {
+    rank: 8, name: 'Mossberg 500 / 590', meta: 'O.F. Mossberg & Sons',
+    sub: 'The military-tested pump shotgun — tougher than nails and affordable to everyone',
+    wiki: 'Mossberg 500',
+    stats: [
+      { label: 'Type', val: 'Pump shotgun' },
+      { label: 'Gauge', val: '12 / 20 / .410' },
+      { label: 'Action', val: 'Pump-action' },
+      { label: 'Capacity', val: '5–9 rds' },
+    ],
+    tags: ['Pump-Action', 'Military Certified', 'Home Defense', 'Hunting', 'Mossberg', 'Affordable'],
+    facts: [
+      { icon: '🎖️', text: "The Mossberg 590A1 is the only pump shotgun to pass the U.S. military's MIL-SPEC 3443E torture tests — 3,000 rounds without cleaning, underwater submersion, and extreme temperature cycling. It passed. Every other maker's gun failed." },
+      { icon: '💲', text: "The Mossberg 500 is the most affordable pump shotgun from a major manufacturer, regularly available for under $400 new. This made it the first gun for millions of American households — reliability without the premium price tag." },
+      { icon: '🔧', text: "Mossberg pioneered the top-mounted tang safety — the safety sits on the top of the receiver where it is equally accessible to right- and left-handed shooters. This ambidextrous design is now standard across the industry." },
+      { icon: '🌊', text: "The Mossberg 500 Mariner, with corrosion-resistant Marinecote finish, is the go-to maritime shotgun — Coast Guard, sailors, and offshore workers choose it knowing salt and water will not cause it to rust." },
+    ],
+  },
+  {
+    rank: 9, name: 'AK-47 / AKM', meta: 'Mikhail Kalashnikov',
+    sub: 'The world\'s most produced rifle — over 100 million made, a cultural icon in America too',
+    wiki: 'AK-47',
+    stats: [
+      { label: 'Type', val: 'Semi-auto rifle' },
+      { label: 'Caliber', val: '7.62×39mm' },
+      { label: 'Action', val: 'Gas-operated' },
+      { label: 'Capacity', val: '30 rds (std)' },
+    ],
+    tags: ['7.62×39', 'Kalashnikov', 'Long-Stroke Piston', 'Iconic', 'American Sportsman', 'Surplus'],
+    facts: [
+      { icon: '🌍', text: "The AK-47 is the most-produced rifle in human history — estimates range from 75 to 100+ million worldwide. In the United States, AK-pattern semi-auto rifles are legal civilian guns with millions in private ownership." },
+      { icon: '🔩', text: "The AK's long-stroke gas piston system — reliable in mud, sand, ice, and without cleaning — made it the infantry weapon of choice for armies on a budget. Its operating tolerances are deliberately loose, prioritizing function over accuracy." },
+      { icon: '🇺🇸', text: "American-made AK variants from companies like CMMG, PSA, and Century Arms plus imported Zastava, Arsenal, and WBP models have built a thriving domestic AK culture. The 7.62×39 cartridge offers hard-hitting performance at low ammunition cost." },
+      { icon: '🏆', text: "AK-pattern rifles have a dedicated competition following. AK Iron Sight matches, Kalashnikov USA club events, and AK divisions in practical shooting have grown steadily as American shooters embrace the platform's distinct character." },
+    ],
+  },
+  {
+    rank: 10, name: 'Smith & Wesson Model 686', meta: 'Smith & Wesson',
+    sub: 'The king of .357 Magnum revolvers — stainless, smooth, and virtually indestructible',
+    wiki: 'Smith & Wesson Model 686',
+    stats: [
+      { label: 'Type', val: 'DA revolver' },
+      { label: 'Caliber', val: '.357 Mag / .38' },
+      { label: 'Action', val: 'Double-action' },
+      { label: 'Capacity', val: '6 or 7 rds' },
+    ],
+    tags: ['.357 Magnum', 'Stainless', 'L-Frame', 'Competition', 'Hunting', 'Classic'],
+    facts: [
+      { icon: '⭐', text: "The S&W 686 is the most popular .357 Magnum revolver in America, trusted by hunters, competition shooters, and aficionados who appreciate double-action revolver shooting as a craft. It is built on S&W's mid-size L-frame for durability." },
+      { icon: '🏆', text: "The 686 dominates IDPA and USPSA Revolver divisions. Its consistent double-action trigger pull, seven-round 686 Plus cylinder, and excellent factory sights make it competitive against purpose-built race guns in the right hands." },
+      { icon: '🦌', text: "Loaded with 158-grain .357 Magnum JHP, the 686 is adequate for deer and hog hunting inside 75 yards. Its stainless construction shrugs off the field conditions — rain, sweat, blood — that would corrode blued steel." },
+      { icon: '🎨', text: "S&W's double-action trigger on the 686 is regarded as one of the finest factory DA triggers ever made — smooth through its arc without stacking. Competitive shooters tune it further, but the factory pull is already benchmark quality." },
+    ],
+  },
+];
+
+/* ── Render ─────────────────────────────────────────────────────────────── */
+
+const AMMO = [
+  {
+    rank: 1, name: '9mm Luger (9×19mm)', meta: 'Pistol / SMG',
+    sub: 'The world\'s most popular handgun cartridge — fast, accurate, and in every gun store on earth',
+    wiki: '9x19mm Parabellum',
+    stats: [
+      { label: 'Bullet', val: '115–147 gr' },
+      { label: 'Velocity', val: '~1,150 fps' },
+      { label: 'Action', val: 'Pistol / SMG' },
+      { label: 'Parent', val: '7.65mm Para' },
+    ],
+    tags: ['NATO Standard', 'Law Enforcement', 'Military', 'Concealed Carry', 'Most Popular', 'Semi-Auto'],
+    facts: [
+      { icon: '🌍', text: "9mm Luger is the most widely used pistol cartridge on the planet — adopted by NATO, carried by police forces in 50+ countries, and fired in more competitive shooting events than any other handgun round." },
+      { icon: '📈', text: "Modern hollow-point bullet technology erased the performance gap that once existed between 9mm and larger calibers. The FBI's 2014 study concluded 9mm equals .40 S&W and .45 ACP in terminal performance while offering more capacity and less recoil." },
+      { icon: '💰', text: "9mm is the cheapest centerfire pistol cartridge to buy — a case of 1,000 rounds costs roughly half what the same quantity of .45 ACP costs. This affordability drives more practice, which produces better shooters." },
+      { icon: '🔬', text: "Georg Luger designed the 9×19mm in 1901 for the German military's Luger P08 pistol. Over 120 years later, it remains essentially unchanged — a testament to how well the original design balanced power, size, and reliability." },
+    ],
+  },
+  {
+    rank: 2, name: '.45 ACP', meta: 'Pistol',
+    sub: 'John Browning\'s classic — the big, slow, hard-hitting round that served the U.S. military for 74 years',
+    wiki: '.45 ACP',
+    stats: [
+      { label: 'Bullet', val: '185–230 gr' },
+      { label: 'Velocity', val: '~830 fps' },
+      { label: 'Dia.', val: '.452 in' },
+      { label: 'Designed', val: '1904' },
+    ],
+    tags: ['1911', 'Subsonic', 'Suppressor-Friendly', 'Heavy', 'Classic', 'John Browning'],
+    facts: [
+      { icon: '🏅', text: ".45 ACP (Automatic Colt Pistol) was designed in 1904 after U.S. Army experience in the Philippines showed that .38 Long Colt revolvers lacked stopping power. John Browning's answer was a wide, heavy bullet moving at moderate speed." },
+      { icon: '🔇', text: "The .45 ACP is naturally subsonic — its 230-grain bullet travels below the speed of sound without modification. This makes it ideal for suppressed pistols: attach a suppressor and the gun is quiet without needing specialty subsonic ammunition." },
+      { icon: '🇺🇸', text: "The M1911 chambered in .45 ACP served as the U.S. military's standard sidearm from 1911 to 1985. Veterans of WWI, WWII, Korea, and Vietnam all carried .45 ACP — 74 years of continuous military service across four major conflicts." },
+      { icon: '💪', text: "The .45 ACP's large diameter creates a wide wound channel without relying entirely on expansion. Even with ball (full metal jacket) ammunition, the .45's frontal area is 30% larger than a 9mm bullet." },
+    ],
+  },
+  {
+    rank: 3, name: '.22 Long Rifle', meta: 'Rifle / Pistol',
+    sub: 'The most manufactured cartridge in history — 2–3 billion rounds sold annually in the U.S. alone',
+    wiki: '.22 Long Rifle',
+    stats: [
+      { label: 'Bullet', val: '36–40 gr' },
+      { label: 'Velocity', val: '~1,080 fps' },
+      { label: 'Type', val: 'Rimfire' },
+      { label: 'Designed', val: '1887' },
+    ],
+    tags: ['Rimfire', 'Training', 'Plinking', 'Small Game', 'Subsonic', 'Most Produced'],
+    facts: [
+      { icon: '🏭', text: "More .22 LR ammunition is manufactured than any other cartridge — estimates run 2 to 3 billion rounds per year in the U.S. alone. It is the cartridge that introduces more new shooters to the sport than any other." },
+      { icon: '🐇', text: "The .22 LR is a legitimate small game and pest control cartridge. Squirrels, rabbits, and prairie dogs are routinely taken cleanly at ranges up to 100 yards. Subsonic loads are nearly silent through a suppressor." },
+      { icon: '🎯', text: "Olympic 10m Air Rifle and 50m Rifle events use .22 LR. Bullseye Pistol — one of the oldest American shooting sports — is shot almost entirely with .22 LR. The cartridge's low recoil rewards pure marksmanship technique." },
+      { icon: '💲', text: "A brick of 500 rounds of .22 LR costs roughly $25–$35 — less than $0.07 per shot. This makes sustained practice economically accessible in a way that no centerfire cartridge can match." },
+    ],
+  },
+  {
+    rank: 4, name: '5.56×45mm NATO / .223 Rem', meta: 'Rifle',
+    sub: 'The AR-15\'s round — fast, flat-shooting, and the NATO standard since 1980',
+    wiki: '.223 Remington',
+    stats: [
+      { label: 'Bullet', val: '55–77 gr' },
+      { label: 'Velocity', val: '~3,100 fps' },
+      { label: 'Action', val: 'Semi / Full' },
+      { label: 'Adopted', val: '1980 (NATO)' },
+    ],
+    tags: ['AR-15', 'NATO', 'Varmint', 'High Velocity', 'Flat Shooting', 'M16 / M4'],
+    facts: [
+      { icon: '🎯', text: ".223 Remington and 5.56×45mm NATO are closely related but not identical — 5.56 runs at higher pressure. AR-15 chambers marked 5.56 can fire both safely; chambers marked .223 Rem should only use .223 to avoid excess pressure." },
+      { icon: '🐺', text: "The .223's high velocity (3,000+ fps) makes it devastating on varmints — prairie dogs, coyotes, and foxes. The bullet is designed to fragment or yaw on impact, transferring energy rapidly. At hunting ranges it is exceptionally humane on small game." },
+      { icon: '🪖', text: "The 5.56×45mm replaced the 7.62×51mm NATO as the standard U.S. military rifle cartridge in the 1960s. Soldiers could carry roughly three times as much ammunition for the same weight — a decisive logistical advantage in infantry combat." },
+      { icon: '🔬', text: "The 77-grain OTM (Open Tip Match) variant used in SOCOM applications pushed the .223's effective range past 600 yards. Modern long-range .223 loads have largely erased the cartridge's reputation as short-range only." },
+    ],
+  },
+  {
+    rank: 5, name: '.308 Winchester / 7.62×51mm NATO', meta: 'Rifle',
+    sub: 'The benchmark precision rifle cartridge — capable from 100 to 1,000 yards, in millions of deer rifles',
+    wiki: '.308 Winchester',
+    stats: [
+      { label: 'Bullet', val: '150–175 gr' },
+      { label: 'Velocity', val: '~2,820 fps' },
+      { label: 'Range', val: '800–1,000 yd' },
+      { label: 'Designed', val: '1952' },
+    ],
+    tags: ['NATO', 'Sniper', 'Hunting', 'Long Range', 'Precision', 'Battle Rifle'],
+    facts: [
+      { icon: '🎖️', text: "The .308 Winchester / 7.62×51mm NATO is the standard sniper cartridge for most Western military and law enforcement agencies. The FBI HRT, U.S. Army Sniper School, and countless police SWAT teams standardize on .308 precision rifles." },
+      { icon: '🦌', text: "More North American deer are shot with .308 Winchester than perhaps any other centerfire rifle cartridge. Its combination of power, manageable recoil, and wide availability in every sporting goods store made it the default American deer rifle round." },
+      { icon: '🏆', text: "The .308 is the dominant cartridge in Precision Rifle Series (PRS) competitions — bolt-action matches at 300–1,000 yards. Its predictable ballistics and the massive library of load data accumulated over 70 years give competitors an advantage." },
+      { icon: '🔩', text: "The .308 Win and 7.62×51mm NATO are dimensionally similar but not identical — military 7.62 brass has thicker walls and runs at lower pressure. Nearly all commercial .308 rifles safely fire military surplus 7.62 ammunition." },
+    ],
+  },
+  {
+    rank: 6, name: '.357 Magnum', meta: 'Revolver / Rifle',
+    sub: 'The cartridge that defined Magnum — still the benchmark for revolver power and lever-action performance',
+    wiki: '.357 Magnum',
+    stats: [
+      { label: 'Bullet', val: '110–180 gr' },
+      { label: 'Velocity', val: '~1,450 fps' },
+      { label: 'Parent', val: '.38 Special' },
+      { label: 'Designed', val: '1934' },
+    ],
+    tags: ['Revolver', 'Lever-Action', 'Hunting', 'Versatile', 'Classic', 'FBI Load'],
+    facts: [
+      { icon: '⭐', text: "The .357 Magnum was developed in 1934 by Elmer Keith, Philip Sharpe, and S&W in response to FBI demands for a more powerful police cartridge. It was the world's most powerful handgun cartridge for over two decades." },
+      { icon: '🔄', text: "The .357 Magnum chambers can also fire .38 Special — the shorter parent cartridge. This versatility is unique: .357 revolvers become mild-recoiling practice guns with .38 Special ammo and full-power hunting guns with magnums." },
+      { icon: '🦌', text: "A .357 Magnum carbine or lever-action rifle extracts dramatically more performance from the cartridge than a revolver. From a 16-inch barrel, .357 Magnum approaches .30-30 energy levels — making it a legitimate deer cartridge at 100 yards." },
+      { icon: '🎬', text: "The .357 Magnum became culturally iconic through Dirty Harry's .44 Magnum speech and the FBI's adoption in the 1930s. The word 'Magnum' entered the public consciousness as synonymous with maximum power because of this cartridge." },
+    ],
+  },
+  {
+    rank: 7, name: '12 Gauge', meta: 'Shotgun',
+    sub: 'The most versatile cartridge ever made — birdshot, buckshot, and slugs from one gun',
+    wiki: '12 gauge shotgun',
+    stats: [
+      { label: 'Bore', val: '.729 in' },
+      { label: 'Shell', val: '2¾ / 3 / 3½ in' },
+      { label: 'Loads', val: 'Bird / Buck / Slug' },
+      { label: 'Gauge', val: '12 (most common)' },
+    ],
+    tags: ['Birdshot', 'Buckshot', 'Slug', 'Hunting', 'Home Defense', 'Military Police'],
+    facts: [
+      { icon: '🦆', text: "12 gauge is the most popular shotgun shell in the world, accounting for roughly half of all shotgun ammunition sold. Its .729-inch bore balances pattern density, recoil, and payload in a way no other gauge matches for general use." },
+      { icon: '🏠', text: "00 (double-aught) buckshot — nine .33-caliber pellets — is the premier home defense load. Each trigger pull delivers nine simultaneous hits at close range. The FBI, military, and most police departments issue 00 buckshot as standard." },
+      { icon: '🎯', text: "Rifled slugs and sabot slugs turn the shotgun into a rifle for deer hunting — a 1-ounce Foster slug hits harder than a .30-06 at 50 yards. In slug-only hunting zones where rifles are prohibited, the 12-gauge slug gun is the answer." },
+      { icon: '🐦', text: "A 12-gauge load of #8 birdshot contains roughly 410 tiny pellets, creating a spreading pattern ideal for clay target sports. The same gun, with a simple choke change and load swap, becomes a deer slug gun or a defensive buckshot weapon." },
+    ],
+  },
+  {
+    rank: 8, name: '7.62×39mm', meta: 'Rifle',
+    sub: 'The AK-47\'s cartridge — reliable, hard-hitting at close range, and one of the most-fired rounds on earth',
+    wiki: '7.62x39mm',
+    stats: [
+      { label: 'Bullet', val: '122–125 gr' },
+      { label: 'Velocity', val: '~2,350 fps' },
+      { label: 'Action', val: 'Semi / Full' },
+      { label: 'Designed', val: '1944' },
+    ],
+    tags: ['AK-47', 'SKS', 'Intermediate', 'Soviet', 'Hard-Hitting', 'Affordable'],
+    facts: [
+      { icon: '🌍', text: "The 7.62×39mm is the world's second most common rifle cartridge after 5.56 NATO. It has been fired in more conflicts, by more armies, in more countries than almost any other cartridge in history — a direct consequence of the AK-47's global reach." },
+      { icon: '💥', text: "At typical combat distances inside 300 yards, 7.62×39mm hits substantially harder than 5.56×45mm — its 122-grain bullet carries more energy at moderate velocity. This is the trade-off: more punch at close range, more drop at distance." },
+      { icon: '💰', text: "Surplus and imported 7.62×39mm steel-case ammunition is among the cheapest centerfire rifle ammo available. American AK shooters can often practice for half the cost per round of brass-case .223, driving the cartridge's popularity." },
+      { icon: '🔬', text: "The 7.62×39mm was designed in 1944 as a true intermediate cartridge — more powerful than a pistol round but shorter and lighter than the full-power 7.62×54R. It was the Soviet answer to the Wehrmacht's 7.92×33mm Kurz used in the StG 44." },
+    ],
+  },
+  {
+    rank: 9, name: '.380 ACP', meta: 'Pistol',
+    sub: 'The pocket pistol standard — small, light, and in millions of concealed carry holsters',
+    wiki: '.380 ACP',
+    stats: [
+      { label: 'Bullet', val: '90–100 gr' },
+      { label: 'Velocity', val: '~950 fps' },
+      { label: 'Dia.', val: '.355 in' },
+      { label: 'Designed', val: '1908' },
+    ],
+    tags: ['Pocket Pistol', 'Concealed Carry', 'Blowback', 'Subcompact', 'John Browning', 'Micro Pistol'],
+    facts: [
+      { icon: '👜', text: "The .380 ACP exists at the sweet spot between power and size — small enough for micro pistols that fit in a front pocket, yet powerful enough to be taken seriously as a defensive cartridge with modern hollow-point ammunition." },
+      { icon: '🔬', text: "John Browning designed the .380 ACP in 1908 for the Colt Model 1908 Pocket Hammerless. The cartridge's blowback operation — no locking mechanism needed — allows much smaller pistol designs than locked-breech 9mm guns." },
+      { icon: '📊', text: "The explosion of micro 9mm pistols (Sig P365, Glock 43, Springfield Hellcat) has pressured .380 from above — these 9mm pistols are nearly as small. But dedicated .380 micro guns remain smaller and lighter than any micro 9mm available." },
+      { icon: '🌍', text: ".380 ACP is called '9mm Short' (9mm Kurz) in Europe and was the standard police cartridge for many European agencies for decades. The Walther PPK — James Bond's pistol — is chambered in .380 ACP." },
+    ],
+  },
+  {
+    rank: 10, name: '.300 Winchester Magnum', meta: 'Rifle',
+    sub: 'America\'s premier long-range hunting and precision cartridge — elk, moose, and 1,000-yard steel',
+    wiki: '.300 Winchester Magnum',
+    stats: [
+      { label: 'Bullet', val: '150–220 gr' },
+      { label: 'Velocity', val: '~3,000 fps' },
+      { label: 'Range', val: '1,000+ yd' },
+      { label: 'Designed', val: '1963' },
+    ],
+    tags: ['Magnum', 'Long Range', 'Elk', 'Moose', 'Sniper', 'Big Game'],
+    facts: [
+      { icon: '🦌', text: ".300 Win Mag is the top choice for Western big-game hunters pursuing elk, moose, and bear. It delivers 4,000+ ft-lbs of energy at the muzzle — enough to cleanly take any North American animal at ranges where shot placement remains consistent." },
+      { icon: '🎖️', text: "The U.S. military's M24 and M2010 Enhanced Sniper Rifle use .300 Win Mag for shots beyond .308 range. Special operations snipers rely on it for engagements out to 1,200 yards where the .308's supersonic flight ends." },
+      { icon: '💥', text: "The .300 Win Mag generates about 50% more recoil energy than a .308 Winchester. Experienced shooters manage it with proper technique and muzzle brakes, but it demands more shooter skill to use accurately than standard cartridges." },
+      { icon: '🏆', text: "Precision Rifle Series (PRS) and F-Class long-range competitors increasingly choose .300 Win Mag for 1,000-yard matches. Its high ballistic coefficient bullets — 200+ grain Sierra MatchKings — drift less in wind than lighter .308 projectiles." },
+    ],
+  },
+];
+
+function buildCards(data, containerId, rankLabel, phIcon) {
+  var container = document.getElementById(containerId);
+  container.innerHTML = data.map(function(d) {
+    return '<div class="card">' +
+      '<div class="card-img-wrap">' +
+        '<div class="card-img-placeholder">' +
+          '<div class="ph-num">' + d.rank + '</div>' +
+          '<div class="ph-icon">' + phIcon + '</div>' +
+        '</div>' +
+        '<img ' + (d.img ? 'data-img="' + d.img + '"' : 'data-wiki="' + d.wiki + '"') + ' alt="' + d.name + '" onload="this.classList.add(\'loaded\');this.previousElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'">' +
+        '<div class="badge-rank">' + rankLabel + ' #' + d.rank + '</div>' +
+        '<div class="badge-meta">' + d.meta + '</div>' +
+      '</div>' +
+      '<div class="card-body">' +
+        '<div>' +
+          '<div class="card-title">' + d.name + '</div>' +
+          '<div class="card-sub">' + d.sub + '</div>' +
+        '</div>' +
+        '<div class="card-stats">' +
+          d.stats.map(function(s) {
+            return '<div class="stat-chip"><div class="stat-label">' + s.label + '</div><div class="stat-val">' + s.val + '</div></div>';
+          }).join('') +
+        '</div>' +
+        '<div class="card-tags">' +
+          d.tags.map(function(t) { return '<span class="tag">' + t + '</span>'; }).join('') +
+        '</div>' +
+        '<div>' +
+          '<div class="facts-label">Field Notes</div>' +
+          '<div class="facts-list">' +
+            d.facts.map(function(f) {
+              return '<div class="fact"><span class="fact-icon">' + f.icon + '</span><span>' + f.text + '</span></div>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  container.querySelectorAll('img[data-img]').forEach(function(img) { img.src = img.dataset.img; });
+  container.querySelectorAll('img[data-wiki]').forEach(loadWikiImage);
+}
+
+async function loadWikiImage(img) {
+  const title = img.dataset.wiki;
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      img.src = data.thumbnail.source;
+    }
+  } catch(e) {}
+}
+
+function switchTab(name) {
+  if (!['types', 'top10', 'ammo'].includes(name)) name = 'types';
+  var tabs = ['types', 'top10', 'ammo'];
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.getElementById('section-types').classList.toggle('hidden', name !== 'types');
+  document.getElementById('section-top10').classList.toggle('hidden', name !== 'top10');
+  document.getElementById('section-ammo').classList.toggle('hidden', name !== 'ammo');
+  localStorage.setItem('guns_tab', name);
+}
+
+buildCards(TYPES,  'types-grid',  'Type',   '🔫');
+buildCards(TOP10,  'top10-grid',  'Rank',   '🎯');
+buildCards(AMMO,   'ammo-grid',   'Ammo',   '🔴');
+switchTab(localStorage.getItem('guns_tab') || 'types');
+</script>
+</body>
+</html>
