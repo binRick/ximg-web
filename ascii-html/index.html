@@ -7,9 +7,26 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{background:#020402;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    body{background:#020402;display:flex;flex-direction:column;min-height:100vh}
+    body.demo-mode{height:100vh;overflow:hidden}
     body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
       background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
+
+    /* ── sub-nav ── */
+    .subnav{display:flex;align-items:center;gap:.4rem;padding:.45rem 1.25rem;
+      background:#020402;border-bottom:1px solid rgba(0,255,65,.1);
+      flex-shrink:0;z-index:50;font-family:'Courier New',monospace}
+    .snav-btn{font-family:'Courier New',monospace;font-size:.78rem;font-weight:600;
+      padding:.28rem .85rem;border-radius:4px;cursor:pointer;
+      border:1px solid rgba(0,255,65,.15);background:transparent;
+      color:#3a4e3a;transition:all .2s}
+    .snav-btn.active{color:#00ff41;border-color:rgba(0,255,65,.55);
+      background:rgba(0,255,65,.07);text-shadow:0 0 8px rgba(0,255,65,.6)}
+    .snav-btn:hover:not(.active){color:#7a9e7a;border-color:rgba(0,255,65,.3)}
+
+    /* ── demo section ── */
+    #demo-section{flex:1;display:flex;flex-direction:column;min-height:0}
+    #demo-section.hidden{display:none}
     .stage{flex:1;position:relative;overflow:hidden}
     canvas{display:block;width:100%;height:100%}
     .controls{display:flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;
@@ -23,28 +40,332 @@
       background:rgba(0,255,65,.07);text-shadow:0 0 8px rgba(0,255,65,.7)}
     .demo-btn:hover:not(.active){color:#888;border-color:rgba(0,255,65,.35)}
     .hint{margin-left:auto;font-size:.7rem;color:#253025;font-family:'Courier New',monospace}
+
+    /* ── history section ── */
+    #history-section{flex:1;overflow-y:auto;padding:2rem 1.5rem 4rem;display:flex;flex-direction:column;gap:2.5rem;font-family:'Courier New',monospace}
+    #history-section.hidden{display:none}
+
+    .h-group{display:flex;flex-direction:column;gap:1rem}
+    .h-group-title{font-size:.7rem;font-weight:700;color:#00ff41;text-transform:uppercase;
+      letter-spacing:.12em;border-bottom:1px solid rgba(0,255,65,.15);padding-bottom:.4rem}
+
+    .h-lead{font-size:.88rem;color:#7aaa7a;line-height:1.75;max-width:820px}
+    .h-lead strong{color:#b0e8b0}
+    .h-lead em{color:#00ff41;font-style:normal}
+
+    /* stat row */
+    .h-stats{display:flex;gap:.75rem;flex-wrap:wrap}
+    .h-stat{background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.15);
+      border-radius:6px;padding:.55rem .9rem;display:flex;flex-direction:column;gap:.2rem;min-width:110px}
+    .h-stat-label{font-size:.58rem;color:#3a6e3a;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+    .h-stat-val{font-size:.95rem;color:#00ff41;font-weight:700}
+
+    /* timeline */
+    .timeline{display:flex;flex-direction:column;gap:0}
+    .tl-row{display:grid;grid-template-columns:90px 1fr;gap:1rem;position:relative;padding-bottom:1.25rem}
+    .tl-row::before{content:'';position:absolute;left:43px;top:22px;bottom:0;
+      width:1px;background:rgba(0,255,65,.12)}
+    .tl-row:last-child::before{display:none}
+    .tl-year{font-size:.75rem;font-weight:700;color:#00ff41;text-align:right;
+      padding-top:.2rem;white-space:nowrap;text-shadow:0 0 8px rgba(0,255,65,.4)}
+    .tl-dot{position:absolute;left:38px;top:6px;width:10px;height:10px;border-radius:50%;
+      background:#020402;border:2px solid #00ff41;box-shadow:0 0 6px rgba(0,255,65,.5)}
+    .tl-body{font-size:.82rem;color:#7aaa7a;line-height:1.65}
+    .tl-body strong{color:#b0e8b0;display:block;margin-bottom:.25rem;font-size:.84rem}
+
+    /* impact cards */
+    .h-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
+    .h-card{background:rgba(0,255,65,.03);border:1px solid rgba(0,255,65,.12);
+      border-radius:8px;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.5rem}
+    .h-card:hover{border-color:rgba(0,255,65,.3);background:rgba(0,255,65,.06)}
+    .h-card-head{display:flex;align-items:center;gap:.6rem}
+    .h-card-icon{font-size:1.25rem;line-height:1}
+    .h-card-title{font-size:.8rem;font-weight:700;color:#b0e8b0;letter-spacing:.03em}
+    .h-card-body{font-size:.78rem;color:#5a8a5a;line-height:1.65}
+    .h-card-body strong{color:#7aaa7a}
+
+    /* printable char grid */
+    .char-grid{display:flex;flex-wrap:wrap;gap:2px;max-width:860px}
+    .char-cell{width:46px;height:46px;background:rgba(0,255,65,.03);
+      border:1px solid rgba(0,255,65,.1);border-radius:4px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      cursor:default;transition:background .15s}
+    .char-cell:hover{background:rgba(0,255,65,.1);border-color:rgba(0,255,65,.4)}
+    .char-glyph{font-size:.95rem;color:#00ff41;font-weight:700;line-height:1}
+    .char-dec{font-size:.55rem;color:#3a6e3a;margin-top:2px}
+
+    /* ── ansi section ── */
+    #ansi-section{flex:1;overflow-y:auto;padding:2rem 1.5rem 4rem;display:flex;flex-direction:column;gap:2.5rem}
+    #ansi-section.hidden{display:none}
+
+    .ansi-group{display:flex;flex-direction:column;gap:.75rem}
+    .ansi-group-title{font-family:'Courier New',monospace;font-size:.7rem;font-weight:700;
+      color:#00ff41;text-transform:uppercase;letter-spacing:.12em;
+      border-bottom:1px solid rgba(0,255,65,.15);padding-bottom:.4rem}
+
+    table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:.8rem}
+    th{text-align:left;padding:.4rem .75rem;color:#3a5e3a;font-size:.68rem;
+      text-transform:uppercase;letter-spacing:.08em;font-weight:700;
+      border-bottom:1px solid rgba(0,255,65,.12)}
+    td{padding:.38rem .75rem;border-bottom:1px solid rgba(0,255,65,.05);color:#7aaa7a;vertical-align:middle}
+    tr:hover td{background:rgba(0,255,65,.04)}
+    td.code{color:#00ff41;font-weight:700;white-space:nowrap}
+    td.esc{color:#5aaa5a;white-space:nowrap}
+    td.desc{color:#aacaaa}
+    td.preview{padding:.3rem .75rem}
+
+    /* color swatch previews */
+    .swatch{display:inline-block;width:1.1rem;height:1.1rem;border-radius:3px;
+      vertical-align:middle;border:1px solid rgba(255,255,255,.08)}
+    .sample-text{font-family:'Courier New',monospace;font-size:.82rem}
+
+    /* 256 palette grid */
+    .palette{display:flex;flex-wrap:wrap;gap:3px;max-width:900px}
+    .pal-cell{width:32px;height:32px;border-radius:3px;display:flex;align-items:center;
+      justify-content:center;font-family:'Courier New',monospace;font-size:.52rem;
+      cursor:default;border:1px solid rgba(255,255,255,.06);position:relative}
+    .pal-cell:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 4px);
+      left:50%;transform:translateX(-50%);background:#000;color:#00ff41;
+      font-size:.65rem;padding:.2rem .4rem;border-radius:3px;white-space:nowrap;
+      border:1px solid rgba(0,255,65,.3);z-index:10;pointer-events:none}
   </style>
 </head>
-<body>
+<body class="demo-mode">
   <script src="/shared/nav.js?v=2"></script>
 
-  <div class="stage"><canvas id="c"></canvas></div>
+  <div class="subnav">
+    <button class="snav-btn"        data-tab="history">[ history ]</button>
+    <button class="snav-btn active" data-tab="demo">[ demo ]</button>
+    <button class="snav-btn"        data-tab="ansi">[ ansi codes ]</button>
+  </div>
 
-  <div class="controls">
-    <button class="demo-btn"        data-demo="donut">[ donut ]</button>
-    <button class="demo-btn active" data-demo="matrix">[ matrix ]</button>
-    <button class="demo-btn"        data-demo="plasma">[ plasma ]</button>
-    <button class="demo-btn"        data-demo="warp">[ warp ]</button>
-    <button class="demo-btn"        data-demo="fire">[ fire ]</button>
-    <button class="demo-btn"        data-demo="tunnel">[ tunnel ]</button>
-    <span class="hint">keys 1 – 6 to switch</span>
+  <!-- history section -->
+  <div id="history-section" class="hidden">
+
+    <div class="h-group">
+      <div class="h-group-title">What is ASCII?</div>
+      <p class="h-lead">
+        <em>ASCII</em> — <strong>American Standard Code for Information Interchange</strong> — is a character encoding standard that assigns a unique number to 128 symbols: the 26 uppercase and lowercase Latin letters, digits 0–9, punctuation marks, and 33 non-printable control codes. Every number fits in 7 bits (0–127), making ASCII the most compact practical text encoding ever devised.
+      </p>
+      <p class="h-lead">
+        Before ASCII, every manufacturer invented its own character codes. IBM's <strong>EBCDIC</strong>, DEC's <strong>SIXBIT</strong>, Burroughs' own schemes — machines from different vendors literally could not exchange text. ASCII solved that by giving every character in the English alphabet a single agreed number, globally.
+      </p>
+      <div class="h-stats">
+        <div class="h-stat"><div class="h-stat-label">Standard</div><div class="h-stat-val">ANSI X3.4</div></div>
+        <div class="h-stat"><div class="h-stat-label">Published</div><div class="h-stat-val">1963</div></div>
+        <div class="h-stat"><div class="h-stat-label">Characters</div><div class="h-stat-val">128</div></div>
+        <div class="h-stat"><div class="h-stat-label">Printable</div><div class="h-stat-val">95</div></div>
+        <div class="h-stat"><div class="h-stat-label">Control codes</div><div class="h-stat-val">33</div></div>
+        <div class="h-stat"><div class="h-stat-label">Bit width</div><div class="h-stat-val">7-bit</div></div>
+      </div>
+    </div>
+
+    <div class="h-group">
+      <div class="h-group-title">Origins &amp; Predecessors</div>
+      <p class="h-lead">
+        ASCII did not appear from nowhere. It is the culmination of 125 years of efforts to encode human language for machines, starting with the telegraph.
+      </p>
+      <div class="timeline">
+        <div class="tl-row">
+          <div class="tl-year">1838</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Morse Code</strong>The first practical scheme for encoding the alphabet as signals over wire. Variable-length dots and dashes assigned to each letter by frequency of use — E is a single dot, Z is two dashes and two dots. Morse proved that arbitrary symbols could represent language over a channel.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1870</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Baudot Code</strong>French telegraph engineer Émile Baudot invented the first fixed-length binary encoding: 5 bits per character, 32 possible codes. Operators typed on a 5-key piano-style keyboard. The unit of signalling speed — the <em>baud</em> — is named after him and still used today.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1901</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Murray Code (ITA-1)</strong>Donald Murray adapted Baudot's system for typewriter-style keyboards and punched paper tape, adding control codes like CR (carriage return) and LF (line feed) — two characters that survive verbatim in ASCII and still end lines in Windows files today.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1930</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>ITA-2 / CCITT-2</strong>The International Telegraph Alphabet No. 2 — a standardised 5-bit code adopted globally for telex and teletype (TTY) machines. It was the dominant encoding for the next 30 years and the direct predecessor ASCII was designed to replace and extend.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1960</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Bob Bemer proposes a universal code</strong>IBM engineer Robert W. Bemer — later called the "father of ASCII" — proposed that the industry standardise on a single character encoding. He had noticed IBM alone was using nine incompatible codes across its product line. He submitted a proposal to the American Standards Association (ASA).</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1963</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>ASCII 1.0 published (ASA X3.4-1963)</strong>The first version of ASCII was published in June 1963. It had 128 characters in a 7-bit scheme but notably lacked lowercase letters — only uppercase A–Z, digits, punctuation, and 33 control codes. Early computing used uppercase-only terminals, so this was not yet a problem.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1967</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Lowercase added (USAS X3.4-1967)</strong>The 1967 revision added lowercase a–z and settled the final character assignments that remain unchanged today. This is effectively the ASCII that every computer still uses. The backtick, tilde, and pipe characters were added in this revision.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1968</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>US President mandates ASCII</strong>President Lyndon B. Johnson signed a memorandum requiring all computers purchased by the federal government to support ASCII. This single executive order accelerated adoption across the entire US tech industry, effectively making ASCII the standard practically overnight.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1986</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Final revision (ANSI X3.4-1986)</strong>The last update to ASCII as an independent standard. It was republished as ISO 646 for international use. By this point ASCII was so deeply embedded in computing infrastructure that no further changes were practical — every change would break billions of files and programs.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">1991</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Unicode 1.0 released</strong>Unicode was designed to be a strict superset of ASCII — code points 0–127 in Unicode are identical to ASCII. This ensured that all ASCII text was automatically valid Unicode, allowing a seamless migration path. ASCII became the foundation layer of the global text encoding system.</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-year">Today</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body"><strong>Still the backbone of computing</strong>ASCII values are hard-coded into the C language, every network protocol header, every source file, every config file. UTF-8 — the encoding of over 98% of the web — is specifically designed so that any pure ASCII file is valid UTF-8 with zero modification.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-group">
+      <div class="h-group-title">How ASCII Shaped Technology</div>
+      <div class="h-cards">
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">🌐</div><div class="h-card-title">The Internet &amp; Network Protocols</div></div>
+          <div class="h-card-body">HTTP, SMTP, FTP, DNS, and IRC are all ASCII-based protocols. HTTP request headers are plain ASCII text: <strong>GET / HTTP/1.1</strong>. SMTP email headers are ASCII. This made early network programming trivially debuggable with nothing more than a terminal — a design principle that shaped the open, inspectable nature of the web.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">💻</div><div class="h-card-title">The C Programming Language</div></div>
+          <div class="h-card-body">C's <strong>char</strong> type is simply a number that maps to ASCII. The expression <strong>'A' + 32</strong> equals <strong>'a'</strong> because ASCII places uppercase and lowercase exactly 32 apart. Case conversion, string parsing, and lexical analysis in C all rely directly on ASCII arithmetic — patterns that survive in every C-derived language.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">🐧</div><div class="h-card-title">Unix &amp; the Terminal</div></div>
+          <div class="h-card-body">Unix was built entirely on ASCII text pipes. Ken Thompson and Dennis Ritchie designed the "everything is a text stream" philosophy around ASCII, enabling the composable tool ecosystem (grep, sed, awk) where any program's ASCII output could feed any other's input. The Unix terminal is still an ASCII (or UTF-8) stream to this day.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">📧</div><div class="h-card-title">Email &amp; MIME</div></div>
+          <div class="h-card-body">RFC 822 (1982) mandated that email messages be 7-bit ASCII text. When attachments and international characters became necessary, MIME (Multipurpose Internet Mail Extensions) was invented specifically to encode binary data as ASCII using <strong>Base64</strong> — a system that turns every 3 bytes of binary into 4 printable ASCII characters.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">🔤</div><div class="h-card-title">Unicode &amp; UTF-8</div></div>
+          <div class="h-card-body">UTF-8, the encoding of 98%+ of the web, was designed by Ken Thompson and Rob Pike in 1992 to be fully ASCII-compatible. Any file containing only ASCII characters is identical in UTF-8. Code points 0–127 use a single byte identical to ASCII. This backward-compatibility decision made the global adoption of Unicode possible without breaking existing systems.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">🎨</div><div class="h-card-title">ASCII Art</div></div>
+          <div class="h-card-body">The constrained 95-character printable set gave rise to an entire art form. ASCII art emerged in the 1960s on line printers, flourished in the BBS era of the 1980s–90s (where ANSI art added color), and persists today in terminal banners, README files, code comments, and the demoscene. The spinning donut on this very page is ASCII art.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">🔐</div><div class="h-card-title">Cryptography &amp; Encoding</div></div>
+          <div class="h-card-body">ROT13 — the simplest cipher — works because ASCII places A–Z and a–z as two contiguous blocks of 26. Base64 exists because SMTP could only transmit 7-bit ASCII. URL percent-encoding (<strong>%20</strong> for a space) converts non-ASCII bytes to their hex values prefixed with %. All of these systems are direct consequences of the ASCII design.</div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><div class="h-card-icon">⌨️</div><div class="h-card-title">Keyboard Layout</div></div>
+          <div class="h-card-body">The modern QWERTY keyboard was designed around ASCII. The layout of keys, the shift key producing uppercase variants, the placement of punctuation — all reflect ASCII's character assignments. The <strong>Ctrl</strong> key works by clearing bit 6 of an ASCII character: <strong>Ctrl+A</strong> sends code 1, <strong>Ctrl+C</strong> sends code 3 (ETX — end of text, which became the interrupt signal).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="h-group">
+      <div class="h-group-title">Printable ASCII — codes 32–126</div>
+      <p class="h-lead" style="margin-bottom:.75rem">All 95 printable characters. Hover for decimal code.</p>
+      <div class="char-grid" id="ascii-char-grid"></div>
+    </div>
+
+    <div class="h-group">
+      <div class="h-group-title">Control Codes — codes 0–31 &amp; 127</div>
+      <p class="h-lead" style="margin-bottom:.75rem">The 33 non-printable characters. Many are obsolete; a handful still drive every terminal and program running today.</p>
+      <div class="h-cards" id="control-cards"></div>
+    </div>
+
+  </div>
+
+  <!-- demo section -->
+  <div id="demo-section">
+    <div class="stage"><canvas id="c"></canvas></div>
+    <div class="controls">
+      <button class="demo-btn"        data-demo="donut">[ donut ]</button>
+      <button class="demo-btn active" data-demo="matrix">[ matrix ]</button>
+      <button class="demo-btn"        data-demo="plasma">[ plasma ]</button>
+      <button class="demo-btn"        data-demo="warp">[ warp ]</button>
+      <button class="demo-btn"        data-demo="fire">[ fire ]</button>
+      <button class="demo-btn"        data-demo="tunnel">[ tunnel ]</button>
+      <span class="hint">keys 1 – 6 to switch</span>
+    </div>
+  </div>
+
+  <!-- ansi codes section -->
+  <div id="ansi-section" class="hidden">
+
+    <div class="ansi-group">
+      <div class="ansi-group-title">SGR — Select Graphic Rendition (text attributes)</div>
+      <table>
+        <thead><tr><th>Code</th><th>Sequence</th><th>Description</th><th>Preview</th></tr></thead>
+        <tbody id="sgr-body"></tbody>
+      </table>
+    </div>
+
+    <div class="ansi-group">
+      <div class="ansi-group-title">Standard foreground colors — codes 30–37, 90–97</div>
+      <table>
+        <thead><tr><th>Code</th><th>Sequence</th><th>Color</th><th>Preview</th></tr></thead>
+        <tbody id="fg-body"></tbody>
+      </table>
+    </div>
+
+    <div class="ansi-group">
+      <div class="ansi-group-title">Standard background colors — codes 40–47, 100–107</div>
+      <table>
+        <thead><tr><th>Code</th><th>Sequence</th><th>Color</th><th>Preview</th></tr></thead>
+        <tbody id="bg-body"></tbody>
+      </table>
+    </div>
+
+    <div class="ansi-group">
+      <div class="ansi-group-title">Cursor &amp; terminal control sequences</div>
+      <table>
+        <thead><tr><th>Sequence</th><th>Description</th></tr></thead>
+        <tbody id="cursor-body"></tbody>
+      </table>
+    </div>
+
+    <div class="ansi-group">
+      <div class="ansi-group-title">256-color palette — \033[38;5;Nm (fg) &nbsp;/&nbsp; \033[48;5;Nm (bg)</div>
+      <div class="palette" id="palette-grid"></div>
+    </div>
+
   </div>
 
   <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sub-nav switching
+    // ─────────────────────────────────────────────────────────────────────────
+    const tabs = {
+      history: document.getElementById('history-section'),
+      demo:    document.getElementById('demo-section'),
+      ansi:    document.getElementById('ansi-section'),
+    };
+
+    function switchTab(name) {
+      document.querySelectorAll('.snav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      Object.entries(tabs).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+      if (name === 'demo') {
+        document.body.classList.add('demo-mode');
+        if (!animRunning) startAnim();
+      } else {
+        document.body.classList.remove('demo-mode');
+        if (name === 'ansi')    buildAnsiTables();
+        if (name === 'history') buildHistoryContent();
+      }
+      localStorage.setItem('ascii_tab', name);
+    }
+
+    document.querySelectorAll('.snav-btn').forEach(b =>
+      b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Demo animations
+    // ─────────────────────────────────────────────────────────────────────────
     const canvas = document.getElementById('c');
     const ctx    = canvas.getContext('2d');
     const FS = 14, CW = 8, CH = 16;
-    let W, H, COLS, ROWS;
+    let W, H, COLS, ROWS, animRunning = false;
 
     function resize() {
       const s = canvas.parentElement;
@@ -56,7 +377,7 @@
     }
     window.addEventListener('resize', resize);
 
-    // ── Donut ─────────────────────────────────────────────────────────────────
+    // ── Donut ──────────────────────────────────────────────────────────────
     const DONUT_CHARS = '.,-~:;=!*#$@';
     let dA = 0, dB = 0;
     function donutFrame() {
@@ -65,7 +386,6 @@
       const sinA = Math.sin(dA), cosA = Math.cos(dA);
       const sinB = Math.sin(dB), cosB = Math.cos(dB);
       const pxS  = Math.min(W, H) * 0.38;
-
       for (let j = 0; j < 6.2832; j += 0.05) {
         const sinJ = Math.sin(j), cosJ = Math.cos(j);
         const h = cosJ + 2;
@@ -85,7 +405,6 @@
           }
         }
       }
-
       ctx.clearRect(0, 0, W, H);
       ctx.font        = FS + 'px "Courier New",monospace';
       ctx.fillStyle   = '#00ff41';
@@ -100,7 +419,7 @@
       dA += 0.04; dB += 0.02;
     }
 
-    // ── Matrix rain ───────────────────────────────────────────────────────────
+    // ── Matrix rain ────────────────────────────────────────────────────────
     const MAT_CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%!?+=-_';
     const TRAIL  = 22;
     let mDrops, mSpeeds, mGrid;
@@ -137,7 +456,7 @@
       }
     }
 
-    // ── Plasma ────────────────────────────────────────────────────────────────
+    // ── Plasma ─────────────────────────────────────────────────────────────
     const PL_CH = " `.-':\"~^=+*!|1IltoO0XH#@MW";
     let plasmaT = 0;
     function plasmaFrame() {
@@ -163,14 +482,12 @@
       plasmaT++;
     }
 
-    // ── Warp (hyperspace starfield) ───────────────────────────────────────────
+    // ── Warp ───────────────────────────────────────────────────────────────
     const WARP_CH = '·.+*#@';
     let warpStars;
     function initWarp() {
       warpStars = Array.from({length: 300}, () => ({
-        x: (Math.random() - 0.5) * 2,
-        y: (Math.random() - 0.5) * 2,
-        z: Math.random()
+        x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2, z: Math.random()
       }));
     }
     function warpFrame() {
@@ -190,20 +507,14 @@
       }
     }
 
-    // ── Fire ──────────────────────────────────────────────────────────────────
+    // ── Fire ───────────────────────────────────────────────────────────────
     const FIRE_CH = " .`'^,:;!i1tjfxnuvcXYUJCL0OZmwqpdbkh*#MW&8%B@$";
     let fireGrid, fireTick = 0;
-    function initFire() {
-      fireGrid = new Uint8Array((ROWS + 1) * COLS);
-      fireTick = 0;
-    }
+    function initFire() { fireGrid = new Uint8Array((ROWS + 1) * COLS); fireTick = 0; }
     function fireFrame() {
-      // Only simulate every 3rd frame (~20fps)
       if (++fireTick % 7 !== 0) return;
-      // Seed bottom row with random heat
       for (let c = 0; c < COLS; c++)
         fireGrid[ROWS * COLS + c] = Math.random() < 0.55 ? 255 : (160 + Math.random() * 95) | 0;
-      // Propagate upward with slight spread and cooling
       for (let r = ROWS - 1; r >= 0; r--)
         for (let c = 0; c < COLS; c++) {
           const l = fireGrid[(r+1)*COLS + ((c-1+COLS)%COLS)];
@@ -220,18 +531,17 @@
           const t = heat / 255;
           const ch = FIRE_CH[Math.min(FIRE_CH.length-1, Math.floor(t*FIRE_CH.length))];
           if (ch === ' ') continue;
-          // black → dark-red → orange → yellow → white
           let fr, fg, fb;
-          if      (t < 0.25) { const s=t*4;        fr=s*180|0;       fg=0;              fb=0; }
-          else if (t < 0.5)  { const s=(t-.25)*4;  fr=180+s*75|0;    fg=s*100|0;        fb=0; }
-          else if (t < 0.75) { const s=(t-.5)*4;   fr=255;           fg=100+s*155|0;    fb=0; }
-          else               { const s=(t-.75)*4;  fr=255;           fg=255;            fb=s*220|0; }
+          if      (t < 0.25) { const s=t*4;       fr=s*180|0;    fg=0;           fb=0; }
+          else if (t < 0.5)  { const s=(t-.25)*4;  fr=180+s*75|0; fg=s*100|0;     fb=0; }
+          else if (t < 0.75) { const s=(t-.5)*4;   fr=255;        fg=100+s*155|0; fb=0; }
+          else               { const s=(t-.75)*4;  fr=255;        fg=255;         fb=s*220|0; }
           ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
           ctx.fillText(ch, c*CW, r*CH+FS);
         }
     }
 
-    // ── Tunnel ────────────────────────────────────────────────────────────────
+    // ── Tunnel ─────────────────────────────────────────────────────────────
     const TUNNEL_CH = ' .:-=+*#%@';
     let tunnelDepth, tunnelAngle, tunnelT = 0;
     function initTunnel() {
@@ -254,7 +564,7 @@
         for (let c = 0; c < COLS; c++) {
           const depth = tunnelDepth[r*COLS+c];
           if (depth === 0) continue;
-          const u = tunnelAngle[r*COLS+c] / Math.PI;          // -1..1
+          const u = tunnelAngle[r*COLS+c] / Math.PI;
           const v = (depth + t) % 2;
           const check = ((Math.floor(u*4+16) + Math.floor(v*4)) & 1);
           const bright = Math.min(1, depth / 7) * (check ? 0.9 : 0.12);
@@ -267,7 +577,7 @@
       tunnelT++;
     }
 
-    // ── Demo runner ───────────────────────────────────────────────────────────
+    // ── Demo runner ────────────────────────────────────────────────────────
     let currentDemo = localStorage.getItem('ascii_demo') || 'matrix';
     const DEMOS = { donut: donutFrame, matrix: matrixFrame, plasma: plasmaFrame,
                     warp: warpFrame, fire: fireFrame, tunnel: tunnelFrame };
@@ -289,25 +599,251 @@
         b.classList.toggle('active', b.dataset.demo === name));
       initDemo(name);
     }
-
     document.querySelectorAll('.demo-btn').forEach(btn =>
       btn.addEventListener('click', () => setDemo(btn.dataset.demo)));
-
     window.addEventListener('keydown', e => {
-      if (e.key === '1') setDemo('donut');
-      if (e.key === '2') setDemo('matrix');
-      if (e.key === '3') setDemo('plasma');
-      if (e.key === '4') setDemo('warp');
-      if (e.key === '5') setDemo('fire');
-      if (e.key === '6') setDemo('tunnel');
+      const map = {'1':'donut','2':'matrix','3':'plasma','4':'warp','5':'fire','6':'tunnel'};
+      if (map[e.key]) setDemo(map[e.key]);
     });
-
-    // Sync button highlight to restored demo
     document.querySelectorAll('.demo-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.demo === currentDemo));
 
-    function loop() { DEMOS[currentDemo](); requestAnimationFrame(loop); }
-    requestAnimationFrame(() => { resize(); loop(); });
+    function startAnim() {
+      animRunning = true;
+      function loop() { DEMOS[currentDemo](); requestAnimationFrame(loop); }
+      requestAnimationFrame(() => { resize(); loop(); });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ANSI tables — built once on first visit
+    // ─────────────────────────────────────────────────────────────────────────
+    let ansiBuilt = false;
+    function buildAnsiTables() {
+      if (ansiBuilt) return;
+      ansiBuilt = true;
+
+      // SGR attributes
+      const SGR = [
+        [0,  'Reset',            'Turns off all attributes'],
+        [1,  'Bold',             'Increased intensity / bold weight'],
+        [2,  'Dim',              'Decreased intensity (faint)'],
+        [3,  'Italic',           'Italic text (not widely supported)'],
+        [4,  'Underline',        'Single underline'],
+        [5,  'Blink (slow)',     'Less than 150 blinks per minute'],
+        [6,  'Blink (rapid)',    '150+ blinks per minute — rarely supported'],
+        [7,  'Reverse video',    'Swap foreground and background colors'],
+        [8,  'Conceal',          'Hide text (still occupies space)'],
+        [9,  'Strikethrough',    'Characters crossed through'],
+        [21, 'Double underline', 'Or bold off on some terminals'],
+        [22, 'Normal intensity', 'Turns off bold / dim'],
+        [23, 'Italic off',       ''],
+        [24, 'Underline off',    ''],
+        [25, 'Blink off',        ''],
+        [27, 'Reverse off',      ''],
+        [28, 'Conceal off',      ''],
+        [29, 'Strikethrough off',''],
+        [51, 'Framed',           'Rarely supported'],
+        [52, 'Encircled',        'Rarely supported'],
+        [53, 'Overlined',        'Line above text'],
+        [55, 'Overline off',     ''],
+      ];
+      const sgrBody = document.getElementById('sgr-body');
+      const PREVIEW_STYLES = {
+        1: 'font-weight:bold', 2: 'opacity:.5', 3: 'font-style:italic',
+        4: 'text-decoration:underline', 5: 'animation:blink 1s step-end infinite',
+        7: 'background:#00ff41;color:#020402', 8: 'color:transparent', 9: 'text-decoration:line-through',
+        53: 'text-decoration:overline', 21: 'text-decoration:underline double',
+      };
+      SGR.forEach(([code, name, desc]) => {
+        const style = PREVIEW_STYLES[code] || '';
+        sgrBody.insertAdjacentHTML('beforeend', `<tr>
+          <td class="code">\\033[${code}m</td>
+          <td class="esc">ESC[${code}m</td>
+          <td class="desc"><strong style="color:#c8e8c8">${name}</strong>${desc ? ' — ' + desc : ''}</td>
+          <td class="preview"><span class="sample-text" style="${style};color:#00ff41">Hello World</span></td>
+        </tr>`);
+      });
+
+      // Standard colors
+      const COLORS = [
+        // [fg, bg, name, hex]
+        [30, 40, 'Black',          '#1a1a1a'],
+        [31, 41, 'Red',            '#cc0000'],
+        [32, 42, 'Green',          '#00aa00'],
+        [33, 43, 'Yellow',         '#aaaa00'],
+        [34, 44, 'Blue',           '#0000cc'],
+        [35, 45, 'Magenta',        '#aa00aa'],
+        [36, 46, 'Cyan',           '#00aaaa'],
+        [37, 47, 'White',          '#aaaaaa'],
+        [90, 100,'Bright Black',   '#555555'],
+        [91, 101,'Bright Red',     '#ff5555'],
+        [92, 102,'Bright Green',   '#55ff55'],
+        [93, 103,'Bright Yellow',  '#ffff55'],
+        [94, 104,'Bright Blue',    '#5555ff'],
+        [95, 105,'Bright Magenta', '#ff55ff'],
+        [96, 106,'Bright Cyan',    '#55ffff'],
+        [97, 107,'Bright White',   '#ffffff'],
+      ];
+
+      const fgBody = document.getElementById('fg-body');
+      COLORS.forEach(([fg,,name,hex]) => {
+        fgBody.insertAdjacentHTML('beforeend', `<tr>
+          <td class="code">${fg}</td>
+          <td class="esc">\\033[${fg}m</td>
+          <td class="desc">${name}</td>
+          <td class="preview">
+            <span class="swatch" style="background:${hex}"></span>
+            <span class="sample-text" style="color:${hex};margin-left:.5rem">Sample text</span>
+          </td>
+        </tr>`);
+      });
+
+      const bgBody = document.getElementById('bg-body');
+      COLORS.forEach(([,bg,name,hex]) => {
+        const textCol = (bg === 47 || bg === 107 || bg === 103 || bg === 102) ? '#111' : '#eee';
+        bgBody.insertAdjacentHTML('beforeend', `<tr>
+          <td class="code">${bg}</td>
+          <td class="esc">\\033[${bg}m</td>
+          <td class="desc">${name}</td>
+          <td class="preview">
+            <span class="swatch" style="background:${hex}"></span>
+            <span class="sample-text" style="background:${hex};color:${textCol};padding:.1rem .4rem;border-radius:2px;margin-left:.5rem">Sample text</span>
+          </td>
+        </tr>`);
+      });
+
+      // Cursor / terminal control
+      const CURSOR = [
+        ['ESC[{n}A',       'Cursor up N lines'],
+        ['ESC[{n}B',       'Cursor down N lines'],
+        ['ESC[{n}C',       'Cursor forward (right) N columns'],
+        ['ESC[{n}D',       'Cursor back (left) N columns'],
+        ['ESC[{n}E',       'Cursor next line, N lines down'],
+        ['ESC[{n}F',       'Cursor previous line, N lines up'],
+        ['ESC[{n}G',       'Cursor to column N'],
+        ['ESC[{row};{col}H','Cursor to row, column (1-indexed)'],
+        ['ESC[{row};{col}f','Same as H — Horizontal Vertical Position'],
+        ['ESC[2J',         'Erase entire screen'],
+        ['ESC[0J',         'Erase from cursor to end of screen'],
+        ['ESC[1J',         'Erase from cursor to beginning of screen'],
+        ['ESC[2K',         'Erase entire line'],
+        ['ESC[0K',         'Erase from cursor to end of line'],
+        ['ESC[1K',         'Erase from cursor to beginning of line'],
+        ['ESC[s',          'Save cursor position (ANSI.SYS)'],
+        ['ESC[u',          'Restore saved cursor position'],
+        ['ESC[?25l',       'Hide cursor'],
+        ['ESC[?25h',       'Show cursor'],
+        ['ESC[?1049h',     'Switch to alternate screen buffer'],
+        ['ESC[?1049l',     'Switch back to normal screen buffer'],
+        ['ESC[{n}S',       'Scroll up N lines'],
+        ['ESC[{n}T',       'Scroll down N lines'],
+        ['ESC[6n',         'Report cursor position (replies ESC[row;colR)'],
+        ['ESC M',          'Scroll up one line (reverse index)'],
+        ['ESC c',          'Full terminal reset (RIS)'],
+        ['ESC[38;5;{n}m',  'Set foreground to 256-color palette index n'],
+        ['ESC[48;5;{n}m',  'Set background to 256-color palette index n'],
+        ['ESC[38;2;r;g;bm','Set foreground to 24-bit RGB color'],
+        ['ESC[48;2;r;g;bm','Set background to 24-bit RGB color'],
+      ];
+      const cursorBody = document.getElementById('cursor-body');
+      CURSOR.forEach(([seq, desc]) => {
+        cursorBody.insertAdjacentHTML('beforeend', `<tr>
+          <td class="code" style="min-width:220px">${seq}</td>
+          <td class="desc">${desc}</td>
+        </tr>`);
+      });
+
+      // 256-color palette
+      const palette256 = [
+        // 0–15: standard + high-intensity (use named colors)
+        '#000000','#800000','#008000','#808000','#000080','#800080','#008080','#c0c0c0',
+        '#808080','#ff0000','#00ff00','#ffff00','#0000ff','#ff00ff','#00ffff','#ffffff',
+      ];
+      // 16–231: 6x6x6 color cube
+      for (let r = 0; r < 6; r++)
+        for (let g = 0; g < 6; g++)
+          for (let b = 0; b < 6; b++) {
+            const rv = r ? r * 40 + 55 : 0;
+            const gv = g ? g * 40 + 55 : 0;
+            const bv = b ? b * 40 + 55 : 0;
+            palette256.push(`rgb(${rv},${gv},${bv})`);
+          }
+      // 232–255: grayscale ramp
+      for (let i = 0; i < 24; i++) {
+        const v = 8 + i * 10;
+        palette256.push(`rgb(${v},${v},${v})`);
+      }
+
+      const grid = document.getElementById('palette-grid');
+      palette256.forEach((color, i) => {
+        // pick text color for contrast
+        const cell = document.createElement('div');
+        cell.className = 'pal-cell';
+        cell.style.background = color;
+        cell.title = `${i} — ${color}`;
+        cell.textContent = i;
+        // dark text on light backgrounds
+        const lum = i >= 7 && i <= 15 ? (i >= 8 ? 0.5 : 0) : 0;
+        cell.style.color = (i === 15 || i === 7 || (i >= 231 && i > 243)) ? '#000' : 'rgba(255,255,255,0.7)';
+        grid.appendChild(cell);
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // History content builder
+    // ─────────────────────────────────────────────────────────────────────────
+    let historyBuilt = false;
+    function buildHistoryContent() {
+      if (historyBuilt) return;
+      historyBuilt = true;
+
+      // Printable chars 32–126
+      const charGrid = document.getElementById('ascii-char-grid');
+      for (let code = 32; code <= 126; code++) {
+        const ch = String.fromCharCode(code);
+        const cell = document.createElement('div');
+        cell.className = 'char-cell';
+        cell.title = 'dec ' + code;
+        cell.innerHTML = `<span class="char-glyph">${code === 32 ? '␣' : ch}</span><span class="char-dec">${code}</span>`;
+        charGrid.appendChild(cell);
+      }
+
+      // Key control codes
+      const CTRL = [
+        [0,  'NUL', 'Null — used as string terminator in C and as padding in protocols'],
+        [7,  'BEL', 'Bell — triggers an audible alert; still causes a beep in many terminals'],
+        [8,  'BS',  'Backspace — moves cursor one position left; Ctrl+H in terminals'],
+        [9,  'HT',  'Horizontal Tab — advances to next tab stop; the \\t escape in every language'],
+        [10, 'LF',  'Line Feed — moves cursor down one line; \\n on Unix/Linux/macOS line endings'],
+        [13, 'CR',  'Carriage Return — moves cursor to column 0; \\r, pairs with LF on Windows (CRLF)'],
+        [26, 'SUB', 'Substitute / Ctrl+Z — end-of-file marker in DOS/Windows; suspends process on Unix'],
+        [27, 'ESC', 'Escape — introduces ANSI/VT100 terminal escape sequences; the most-used control code in modern terminals'],
+        [28, 'FS',  'File Separator — hierarchical data delimiter; ancestor of modern CSV and TSV formats'],
+        [127,'DEL', 'Delete — originally punched all 7 bits on paper tape to "delete" a character; now the forward-delete key'],
+      ];
+      const ctrlContainer = document.getElementById('control-cards');
+      CTRL.forEach(([code, abbr, desc]) => {
+        const card = document.createElement('div');
+        card.className = 'h-card';
+        card.innerHTML = `
+          <div class="h-card-head">
+            <div class="char-glyph" style="font-size:1.1rem;color:#00ff41;min-width:1.5rem">${code}</div>
+            <div class="h-card-title">${abbr}</div>
+          </div>
+          <div class="h-card-body">${desc}</div>`;
+        ctrlContainer.appendChild(card);
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Init
+    // ─────────────────────────────────────────────────────────────────────────
+    const savedTab = localStorage.getItem('ascii_tab') || 'demo';
+    if (savedTab === 'ansi' || savedTab === 'history') {
+      switchTab(savedTab);
+    } else {
+      startAnim();
+    }
   </script>
 </body>
 </html>

@@ -7,30 +7,62 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100%; background: #000; overflow: hidden;
-      touch-action: none; user-select: none; font-family: 'Courier New', monospace; }
+    html { background: #000; }
+    body {
+      background: #080000;
+      font-family: 'Courier New', monospace;
+      color: #e8d0c0;
+      min-height: 100vh;
+    }
+    body.game-active { overflow: hidden; height: 100%; }
 
-    /* Main canvas — fixed internal resolution, CSS stretched */
-    #c { display: block; width: 100vw; height: calc(100vh - 44px);
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      display: flex; align-items: center; gap: .4rem;
+      padding: .4rem .75rem;
+      background: rgba(12,2,2,.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(200,0,0,.2);
+      overflow-x: auto;
+    }
+    .doom-tab {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .28rem .8rem;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.1);
+      color: #886060; cursor: pointer; border-radius: 4px;
+      letter-spacing: .06em; transition: all .2s; white-space: nowrap;
+    }
+    .doom-tab:hover { background: rgba(200,0,0,.15); border-color: rgba(200,0,0,.4); color: #ff6644; }
+    .doom-tab.active { background: rgba(200,0,0,.2); border-color: rgba(200,0,0,.6); color: #ff4422; }
+
+    .hidden { display: none !important; }
+
+    /* ══════════════════════════════════════════════
+       GAME SECTION
+    ══════════════════════════════════════════════ */
+    #c { display: block; width: 100vw; height: calc(100vh - 88px);
       image-rendering: pixelated; image-rendering: crisp-edges; }
 
-    /* Splash / death / win overlay */
-    #overlay { position: fixed; inset: 44px 0 0 0; display: flex; flex-direction: column;
+    #overlay { position: fixed; inset: 88px 0 0 0;
+      display: flex; flex-direction: column;
       align-items: center; justify-content: center; z-index: 20;
-      background: rgba(0,0,0,.88); color: #dd0000; text-align: center; padding: 1rem; }
+      background: rgba(0,0,0,.88); color: #dd0000;
+      text-align: center; padding: 1rem; }
     #overlay.hidden { display: none; }
     #ov-title { font-size: clamp(2.5rem,10vw,6rem); font-weight: 900;
       letter-spacing: .06em; text-shadow: 0 0 40px #f00, 0 0 80px #800;
       line-height: 1; margin-bottom: .6rem; }
-    #ov-sub   { color: #888; font-size: clamp(.8rem,2vw,1.05rem);
+    #ov-sub { color: #888; font-size: clamp(.8rem,2vw,1.05rem);
       margin-bottom: 2rem; line-height: 1.6; max-width: 420px; }
-    #ov-btn   { font-family: inherit; font-size: 1.05rem; font-weight: 700;
+    #ov-btn { font-family: inherit; font-size: 1.05rem; font-weight: 700;
       padding: .7rem 2.2rem; border: 2px solid #cc0000;
       background: rgba(150,0,0,.25); color: #dd0000; cursor: pointer;
       border-radius: 4px; letter-spacing: .12em; transition: all .2s; }
     #ov-btn:hover { background: rgba(180,0,0,.45); box-shadow: 0 0 24px #f00; }
 
-    /* Crosshair */
     #xhair { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
       pointer-events: none; z-index: 5; }
     #xhair::before, #xhair::after { content: ''; position: absolute; background: rgba(255,255,255,.75); }
@@ -38,7 +70,6 @@
     #xhair::after  { width: 16px; height: 2px; left: -8px; top: -1px; }
     #xhair.hidden { display: none; }
 
-    /* Touch joystick */
     #joy-base { position: fixed; bottom: 28px; left: 28px; z-index: 10;
       width: 110px; height: 110px; border-radius: 50%;
       border: 2px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06);
@@ -46,49 +77,553 @@
     #joy-knob { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px;
       margin: -23px 0 0 -23px; border-radius: 50%;
       background: rgba(255,255,255,.28); border: 2px solid rgba(255,255,255,.5); }
-
-    /* Touch shoot */
     #btn-shoot { position: fixed; right: 24px; bottom: 24px; z-index: 10;
       width: 80px; height: 80px; border-radius: 50%;
       border: 3px solid #cc0000; background: rgba(160,0,0,.35); color: #dd0000;
       font-size: 1.6rem; display: none; align-items: center; justify-content: center;
       touch-action: none; cursor: pointer; }
+    #touch-look { position: fixed; left: 0; top: 88px; right: 0; bottom: 46%;
+      z-index: 8; display: none; touch-action: none; }
 
-    /* Touch look zone (upper screen) */
-    #touch-look { position: fixed; left: 0; top: 0; right: 0; bottom: 46%; z-index: 8;
-      display: none; touch-action: none; }
+    /* ══════════════════════════════════════════════
+       SHARED CONTENT THEME
+    ══════════════════════════════════════════════ */
+    :root {
+      --red:    #cc0000;
+      --orange: #ff4400;
+      --text:   #e8d0c0;
+      --muted:  #886060;
+      --card:   rgba(28,4,4,.75);
+      --border: rgba(200,0,0,.18);
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 120% 60% at 50% 0%, rgba(80,0,0,.35) 0%, transparent 65%),
+        linear-gradient(180deg, #080000 0%, #050000 100%);
+    }
+    .doom-wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2.5rem;
+    }
+    .doom-hero {
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: .75rem;
+    }
+    .doom-hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 18px rgba(220,0,0,.7)); }
+    .doom-hero h1 {
+      font-size: clamp(2rem,6vw,3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #cc0000 0%, #ff6633 45%, #880000 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .doom-hero-sub { font-size: .92rem; color: var(--muted); font-style: italic;
+      letter-spacing: .04em; max-width: 540px; line-height: 1.6; }
+    .doom-divider { width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, #cc0000, transparent); }
+
+    /* ══════════════════════════════════════════════
+       GAMES SECTION
+    ══════════════════════════════════════════════ */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+      gap: 1.5rem;
+    }
+    @media(max-width: 560px) { .games-grid { grid-template-columns: 1fr; } }
+
+    .game-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .game-card:hover { border-color: rgba(200,0,0,.45);
+      box-shadow: 0 8px 40px rgba(200,0,0,.12); transform: translateY(-3px); }
+
+    .game-img-wrap { position: relative; aspect-ratio: 16/9; background: #120000; overflow: hidden; }
+    .game-img-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: center top;
+      display: block; opacity: 0; transition: opacity .4s; }
+    .game-img-wrap img.loaded { opacity: 1; }
+    .game-img-ph { position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center; }
+    .game-img-ph .ph-num { font-size: 3.5rem; font-weight: 900; color: rgba(200,0,0,.15); line-height: 1; }
+    .game-num-badge { position: absolute; top: .75rem; left: .75rem;
+      background: rgba(0,0,0,.7); border: 1px solid rgba(200,0,0,.4);
+      color: #ff6644; font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .08em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px); }
+    .game-year-badge { position: absolute; top: .75rem; right: .75rem;
+      background: rgba(140,0,0,.85); border: 1px solid rgba(200,0,0,.3);
+      color: #fcd7a0; font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px); }
+
+    .game-body { padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+    .game-title { font-size: 1.15rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+    .game-dev   { font-size: .72rem; color: var(--muted); margin-top: .2rem;
+                  font-family: 'Segoe UI', system-ui, sans-serif; }
+    .game-desc  { font-size: .8rem; line-height: 1.6; color: #c0a0a0;
+                  font-family: 'Segoe UI', system-ui, sans-serif; }
+    .game-stats { display: flex; flex-wrap: wrap; gap: .5rem; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .stat-chip { display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px; padding: .35rem .7rem; min-width: 72px; }
+    .stat-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .stat-val   { font-size: .85rem; font-weight: 700; color: #ff6644; margin-top: .1rem; }
+    .platforms { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .plat-tag { font-size: .62rem; padding: .18rem .55rem; border-radius: 99px;
+      border: 1px solid rgba(200,0,0,.25); background: rgba(200,0,0,.06);
+      color: #cc7766; font-family: 'Segoe UI', system-ui, sans-serif; white-space: nowrap; }
+    .facts-label { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; margin-bottom: .35rem; }
+    .facts-list { display: flex; flex-direction: column; gap: .5rem; }
+    .fact { display: flex; gap: .6rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.55; color: #b09090;
+      font-family: 'Segoe UI', system-ui, sans-serif; }
+    .fact-icon { flex-shrink: 0; font-size: .8rem; margin-top: .05rem; opacity: .75; }
+
+    /* ══════════════════════════════════════════════
+       WEAPONS SECTION
+    ══════════════════════════════════════════════ */
+    .weapons-section { display: flex; flex-direction: column; gap: 2.5rem; }
+    .era-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .18em;
+      color: var(--muted); border-bottom: 1px solid rgba(200,0,0,.2);
+      padding-bottom: .5rem; margin-bottom: .5rem; }
+    .weapons-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+    @media(max-width: 400px) { .weapons-grid { grid-template-columns: 1fr; } }
+
+    .weapon-card { background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: border-color .2s, transform .2s; }
+    .weapon-card:hover { border-color: rgba(200,0,0,.45); transform: translateY(-2px); }
+
+    .weapon-img-wrap { position: relative; aspect-ratio: 16/7; background: #0e0000; overflow: hidden; }
+    .weapon-img-wrap img { width: 100%; height: 100%; object-fit: cover;
+      display: block; opacity: 0; transition: opacity .4s; }
+    .weapon-img-wrap img.loaded { opacity: 1; }
+    .weapon-cat-badge { position: absolute; top: .6rem; right: .6rem;
+      font-size: .58rem; font-weight: 700; padding: .18rem .55rem; border-radius: 99px;
+      letter-spacing: .1em; font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px); }
+    .cat-melee    { background: rgba(150,0,0,.85);   color: #ffaaaa; border: 1px solid rgba(255,0,0,.3); }
+    .cat-ballistic{ background: rgba(80,50,0,.85);   color: #ffd488; border: 1px solid rgba(255,180,0,.3); }
+    .cat-explosive{ background: rgba(120,40,0,.85);  color: #ffcc88; border: 1px solid rgba(255,120,0,.3); }
+    .cat-energy   { background: rgba(0,30,100,.85);  color: #88ccff; border: 1px solid rgba(0,100,255,.3); }
+    .cat-artifact { background: rgba(60,0,80,.85);   color: #ddaaff; border: 1px solid rgba(150,0,255,.3); }
+
+    .weapon-body { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .65rem; flex: 1; }
+    .weapon-name { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .weapon-ammo { font-size: .7rem; color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; margin-top: -.2rem; }
+    .weapon-desc { font-size: .78rem; line-height: 1.6; color: #b09090; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .weapon-games { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .wgame-tag { font-size: .6rem; padding: .14rem .5rem; border-radius: 99px;
+      border: 1px solid rgba(200,0,0,.2); background: rgba(200,0,0,.06);
+      color: #aa6655; font-family: 'Segoe UI', system-ui, sans-serif; white-space: nowrap; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    .doom-hero { animation: fadeUp .7s ease both; }
+    .games-grid, .weapons-section { animation: fadeUp .7s ease both; animation-delay: .15s; }
   </style>
 </head>
 <body>
   <script src="/shared/nav.js"></script>
-  <canvas id="c"></canvas>
 
-  <div id="overlay">
-    <div id="ov-title">DOOM</div>
-    <div id="ov-sub">
-      WASD / Arrow keys · Mouse to aim · Click / Space to shoot<br>
-      Mobile: joystick · swipe upper screen · red button to shoot
+  <nav class="sub-nav">
+    <button class="doom-tab active" onclick="switchTab('game')">[ Game ]</button>
+    <button class="doom-tab" onclick="switchTab('games')">[ Games ]</button>
+    <button class="doom-tab" onclick="switchTab('weapons')">[ Weapons ]</button>
+  </nav>
+
+  <!-- ── GAME SECTION ── -->
+  <div id="section-game">
+    <canvas id="c"></canvas>
+    <div id="overlay">
+      <div id="ov-title">DOOM</div>
+      <div id="ov-sub">
+        WASD / Arrow keys · Mouse to aim · Click / Space to shoot<br>
+        Mobile: joystick · swipe upper screen · red button to shoot
+      </div>
+      <button id="ov-btn">RIP AND TEAR</button>
     </div>
-    <button id="ov-btn">RIP AND TEAR</button>
+    <div id="xhair" class="hidden"></div>
+    <div id="joy-base"><div id="joy-knob"></div></div>
+    <div id="btn-shoot">🔫</div>
+    <div id="touch-look"></div>
   </div>
 
-  <div id="xhair" class="hidden"></div>
-  <div id="joy-base"><div id="joy-knob"></div></div>
-  <div id="btn-shoot">🔫</div>
-  <div id="touch-look"></div>
+  <!-- ── GAMES SECTION ── -->
+  <div id="section-games" class="hidden">
+    <div class="doom-wrap">
+      <div class="doom-hero">
+        <div class="doom-hero-icon">☠</div>
+        <h1>The DOOM Saga</h1>
+        <p class="doom-hero-sub">Thirty years of ripping and tearing — from the halls of Phobos to the medieval hellscapes of The Dark Ages. Every entry in id Software's legendary franchise.</p>
+        <div class="doom-divider"></div>
+      </div>
+      <div class="games-grid" id="games-grid"></div>
+    </div>
+  </div>
+
+  <!-- ── WEAPONS SECTION ── -->
+  <div id="section-weapons" class="hidden">
+    <div class="doom-wrap">
+      <div class="doom-hero">
+        <div class="doom-hero-icon">🔫</div>
+        <h1>Arsenal of Hell</h1>
+        <p class="doom-hero-sub">Every weapon across the entire DOOM franchise — from the trusty Fist to the BFG 9000. Thirty years of increasingly devastating ways to send demons back to Hell.</p>
+        <div class="doom-divider"></div>
+      </div>
+      <div id="weapons-container" class="weapons-section"></div>
+    </div>
+  </div>
 
 <script>
+/* ─────────────────────────────────────────────────────────────
+   TAB SWITCHING
+───────────────────────────────────────────────────────────── */
+const TAB_NAMES = ['game','games','weapons'];
+function switchTab(tab) {
+  if (tab !== 'game' && document.pointerLockElement) document.exitPointerLock();
+  document.querySelectorAll('.doom-tab').forEach((b,i) => b.classList.toggle('active', TAB_NAMES[i] === tab));
+  TAB_NAMES.forEach(n => document.getElementById('section-' + n).classList.toggle('hidden', n !== tab));
+  document.body.classList.toggle('game-active', tab === 'game');
+  if (tab === 'games'   && !window._gamesInited)   { window._gamesInited   = true; buildGames();   }
+  if (tab === 'weapons' && !window._weaponsInited) { window._weaponsInited = true; buildWeapons(); }
+}
+document.body.classList.add('game-active');
+
+/* ─────────────────────────────────────────────────────────────
+   WIKIPEDIA IMAGE LOADER
+───────────────────────────────────────────────────────────── */
+async function loadWikiImg(img) {
+  const title = img.dataset.wiki;
+  if (!title) return;
+  try {
+    const r = await fetch('https://en.wikipedia.org/w/api.php?action=query&titles=' +
+      encodeURIComponent(title) + '&prop=pageimages&format=json&pithumbsize=800&origin=*');
+    const d = await r.json();
+    const p = Object.values(d.query.pages)[0];
+    if (p && p.thumbnail) { img.src = p.thumbnail.source; return; }
+  } catch(e) {}
+  try {
+    const r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    const d = await r.json();
+    if (d.thumbnail) img.src = d.thumbnail.source;
+  } catch(e) {}
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GAMES DATA
+───────────────────────────────────────────────────────────── */
+const DOOM_GAMES = [
+  {
+    num:1, title:'Doom', year:1993,
+    dev:'id Software · Dir. John Romero & Tom Hall',
+    wiki:'Doom_(1993_video_game)', engine:'id Tech 1',
+    platforms:['MS-DOS','Windows','Linux','SNES','GBA','PS1','Xbox','iOS','Android'],
+    stats:[{l:'Year',v:'1993'},{l:'Episodes',v:'3'},{l:'Levels',v:'27'}],
+    desc:'The original demon-slaying FPS that defined a genre. Fight through the moons of Mars and Hell itself with a growing arsenal, from a humble pistol to the legendary BFG 9000.',
+    facts:[
+      'Estimated to be on more machines than Windows 95 at launch — id gave away Episode 1 for free as shareware',
+      'Popularized "deathmatch" multiplayer and the concept of user-made levels (WAD modding)',
+      'Source code released under GPL in 1997, spawning hundreds of source ports still active today'
+    ]
+  },
+  {
+    num:2, title:'Doom II: Hell on Earth', year:1994,
+    dev:'id Software · Dir. Sandy Petersen & John Romero',
+    wiki:'Doom_II', engine:'id Tech 1',
+    platforms:['MS-DOS','Windows','Mac','GBA','Xbox','iOS','Android'],
+    stats:[{l:'Year',v:'1994'},{l:'Episodes',v:'1'},{l:'Levels',v:'32'}],
+    desc:'The demons have invaded Earth. The sequel doubles down on relentless action with 32 new levels, the iconic Super Shotgun, and a terrifying roster of new monsters.',
+    facts:[
+      'Introduced the double-barreled Super Shotgun — widely considered one of the best FPS weapons ever designed',
+      'New enemies: Arch-vile, Revenant, Mancubus, Pain Elemental, and the Icon of Sin final boss',
+      'Best-selling PC game of 1994; sold over 2 million copies at full retail price'
+    ]
+  },
+  {
+    num:3, title:'The Ultimate Doom', year:1995,
+    dev:'id Software',
+    wiki:'The_Ultimate_Doom', engine:'id Tech 1',
+    platforms:['MS-DOS','Windows','Mac'],
+    stats:[{l:'Year',v:'1995'},{l:'Episodes',v:'4'},{l:'Levels',v:'36'}],
+    desc:'An expanded retail release of the original Doom featuring a fourth episode, "Thy Flesh Consumed" — notoriously brutal levels designed by Sandy Petersen and American McGee.',
+    facts:[
+      'First retail release to bundle all three original episodes alongside the new Episode 4',
+      'E4M1 "Hell Beneath" is widely regarded as one of the hardest vanilla Doom levels ever made',
+      'Replaced the original shareware as the canonical retail product until Steam re-releases'
+    ]
+  },
+  {
+    num:4, title:'Final Doom', year:1996,
+    dev:'TeamTNT / The Casali Brothers / id Software',
+    wiki:'Final_Doom', engine:'id Tech 1',
+    platforms:['MS-DOS','Windows','PS1'],
+    stats:[{l:'Year',v:'1996'},{l:'Megawads',v:'2'},{l:'Levels',v:'64'}],
+    desc:'Two full megawads: TNT: Evilution by TeamTNT and The Plutonia Experiment by Dario and Milo Casali — 64 levels of the most punishing classic Doom ever officially released.',
+    facts:[
+      'TNT: Evilution was originally a free fan release; id Software bought and bundled it with Plutonia',
+      'The Plutonia Experiment is infamous for extreme difficulty and wall-to-wall Arch-viles',
+      'Both megawads remain competitive speedrunning benchmarks nearly 30 years later'
+    ]
+  },
+  {
+    num:5, title:'Doom 64', year:1997,
+    dev:'Midway Games / id Software',
+    wiki:'Doom_64', engine:'Modified id Tech 1',
+    platforms:['Nintendo 64','PC','PS4','PS5','Switch','Xbox One','Xbox Series'],
+    stats:[{l:'Year',v:'1997'},{l:'Levels',v:'32'},{l:'Secret Lvls',v:'5'}],
+    desc:'A darker, more atmospheric Doom built exclusively for the Nintendo 64 with all-new art, remixed monsters, and the devastating Unmaker weapon. Long overlooked; now a beloved hidden gem.',
+    facts:[
+      'Entirely new sprites, textures, and sound — not a port of any prior game',
+      'The Unmaker fires three plasma bolts simultaneously and can be upgraded with Demon Keys',
+      'Story considered canonical to Doom Eternal\'s lore; rereleased on modern platforms in 2020'
+    ]
+  },
+  {
+    num:6, title:'Doom 3', year:2004,
+    dev:'id Software · Dir. Tim Willits',
+    wiki:'Doom_3', engine:'id Tech 4',
+    platforms:['PC','Xbox','Mac','Linux','PS3','Xbox 360'],
+    stats:[{l:'Year',v:'2004'},{l:'Levels',v:'27'},{l:'Engine',v:'id Tech 4'}],
+    desc:'A horror-focused reimagining on a UAC research base on Mars. Trades blistering speed for darkness, atmosphere, and narrative — a polarizing but technically groundbreaking entry.',
+    facts:[
+      'Infamous flashlight controversy: players could not hold a flashlight and any weapon simultaneously',
+      'id Tech 4 introduced fully dynamic real-time lighting, per-pixel bump mapping, and unified lighting',
+      'BFG Edition (2012) added a shoulder flashlight and the Resurrection of Evil DLC with the Artifact weapon'
+    ]
+  },
+  {
+    num:7, title:'Doom (2016)', year:2016,
+    dev:'id Software · Dir. Marty Stratton & Hugo Martin',
+    wiki:'Doom_(2016_video_game)', engine:'id Tech 6',
+    platforms:['PC','PS4','Xbox One','Switch','Stadia'],
+    stats:[{l:'Year',v:'2016'},{l:'Levels',v:'13'},{l:'Mods/Weapon',v:'2'}],
+    desc:'A triumphant return to form. Fast, brutal, and unrelenting. Introduced "push-forward combat" — kill demons to recover health — and a visceral glory-kill execution system that rewards aggression.',
+    facts:[
+      'Development restarted three times; the final game was greenlit and shipped in roughly two years',
+      '"If in doubt, rip and tear" — the design philosophy guiding every encounter in the game',
+      'Won multiple Game of the Year awards and is credited with single-handedly reviving the arena-FPS genre'
+    ]
+  },
+  {
+    num:8, title:'Doom Eternal', year:2020,
+    dev:'id Software · Dir. Hugo Martin',
+    wiki:'Doom_Eternal', engine:'id Tech 7',
+    platforms:['PC','PS4','Xbox One','Switch','PS5','Xbox Series','Stadia'],
+    stats:[{l:'Year',v:'2020'},{l:'Levels',v:'13'},{l:'DLC Eps.',v:'2'}],
+    desc:'The Doom Slayer faces an Earth-wide invasion and the Maykr civilization. Combat becomes a high-speed chess match: every demon has a counter, every resource has a source.',
+    facts:[
+      'Core loop: chainsaw for ammo, glory kill for health, flame belch for armor — rotate constantly to survive',
+      'Super Shotgun gains the Meat Hook — grapple to airborne demons as both movement and setup tool',
+      'The Ancient Gods DLC reveals the full origin of the Doom Slayer and the fall of the Sentinel civilization'
+    ]
+  },
+  {
+    num:9, title:'Doom: The Dark Ages', year:2025,
+    dev:'id Software · Dir. Hugo Martin',
+    wiki:'Doom:_The_Dark_Ages', engine:'id Tech 8',
+    platforms:['PC','PS5','Xbox Series X/S'],
+    stats:[{l:'Year',v:'2025'},{l:'Engine',v:'id Tech 8'},{l:'Era',v:'Prequel'}],
+    desc:'A prequel set in a hell-sci-fi medieval world. The Doom Slayer fights his earliest known battles — wielding a skull-saw shield, piloting mechs, and riding dragons across demonic battlefields.',
+    facts:[
+      'Signature weapon: the Shield Saw — a chainsaw-rimmed parry shield that deflects projectiles back at demons',
+      'Set-piece encounters include driveable mechs and rideable dragons woven into campaign levels',
+      'Combat philosophy shifts from Eternal\'s constant movement to "stand your ground" — slower, more punishing'
+    ]
+  }
+];
+
+function buildGames() {
+  const grid = document.getElementById('games-grid');
+  grid.innerHTML = DOOM_GAMES.map(g => `
+    <div class="game-card">
+      <div class="game-img-wrap">
+        <div class="game-img-ph"><div class="ph-num">${g.num}</div></div>
+        <span class="game-num-badge">#${String(g.num).padStart(2,'0')}</span>
+        <span class="game-year-badge">${g.year}</span>
+        <img data-wiki="${g.wiki}" alt="${g.title}"
+             onload="this.classList.add('loaded');this.closest('.game-img-wrap').querySelector('.game-img-ph').style.display='none'"
+             onerror="this.style.display='none'">
+      </div>
+      <div class="game-body">
+        <div><div class="game-title">${g.title}</div><div class="game-dev">${g.dev}</div></div>
+        <div class="game-desc">${g.desc}</div>
+        <div class="game-stats">
+          ${g.stats.map(s=>`<div class="stat-chip"><span class="stat-label">${s.l}</span><span class="stat-val">${s.v}</span></div>`).join('')}
+          <div class="stat-chip"><span class="stat-label">Engine</span><span class="stat-val">${g.engine}</span></div>
+        </div>
+        <div class="platforms">${g.platforms.map(p=>`<span class="plat-tag">${p}</span>`).join('')}</div>
+        <div>
+          <div class="facts-label">☠ Key Facts</div>
+          <div class="facts-list">${g.facts.map(f=>`<div class="fact"><span class="fact-icon">▸</span>${f}</div>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  grid.querySelectorAll('img[data-wiki]').forEach(loadWikiImg);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   WEAPONS DATA
+───────────────────────────────────────────────────────────── */
+const WEAPONS = [
+  // Melee
+  { name:'Fist', cat:'Melee', ammo:'None',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'Your bare fists. Weak by default but catastrophic with a Berserk pack — a one-hit kill on most demons with screen-shaking impact. The original doom weapon, always in your hand.'
+  },
+  { name:'Chainsaw', cat:'Melee', ammo:'None / Fuel (2016+)',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal','The Dark Ages'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'An instant melee kill machine that never runs out. In Doom 2016 and Eternal it runs on limited fuel, but killing with it drops a guaranteed ammo explosion from the demon\'s corpse — the primary way to refill ammo mid-fight.'
+  },
+  { name:'Crucible Blade', cat:'Melee', ammo:'Limited charges',
+    games:['Doom Eternal'],
+    wiki:'Doom_Eternal',
+    desc:'A sword forged of Hell energy. Kills any demon instantly with a single strike, regardless of health or armor. Charges are extremely scarce, reserved for the most powerful threats. Can decapitate a Doom Hunter in one swing.'
+  },
+  { name:'Shield Saw (Skull Crusher)', cat:'Melee', ammo:'None',
+    games:['Doom: The Dark Ages'],
+    wiki:'Doom:_The_Dark_Ages',
+    desc:'A chainsaw-rimmed parry shield that is both offense and defense. Timed parries deflect demon projectiles back at full damage. Hurled like a buzzsaw as a ranged attack. The signature weapon and design centerpiece of The Dark Ages.'
+  },
+
+  // Ballistic
+  { name:'Pistol', cat:'Ballistic', ammo:'Bullets / Energy cells',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'The default starting weapon. Reliable, underpowered, and always available. In Doom 2016 it can be modded with Charged Energy Shots for staggering demons or a Semi-Auto upgrade for rapid precision fire.'
+  },
+  { name:'Shotgun', cat:'Ballistic', ammo:'Shells',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal','The Dark Ages'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'The backbone of the Doom arsenal across all eras. Fires 7 pellets in a spread (classic) or a burst in modern entries. Reliable, satisfying, and powerful. In Eternal, the Combat Shotgun can fire Full Auto or 3-round burst with mods.'
+  },
+  { name:'Super Shotgun', cat:'Ballistic', ammo:'Shells ×2',
+    games:['Doom II','Final Doom','Doom 64','Doom 3 BFG','Doom 2016','Doom Eternal','The Dark Ages'],
+    wiki:'Doom_II',
+    desc:'Double-barrel. 20 pellets. One reload. At close range it deletes mid-tier demons instantly. In Doom Eternal the Meat Hook mod adds a grapple that pulls you toward airborne demons — turning it into a mobility weapon as much as a gun.'
+  },
+  { name:'Chaingun / Minigun', cat:'Ballistic', ammo:'Bullets',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'Sustained rapid-fire that keeps demons staggered and shredded. In Doom Eternal the Chaingun transforms: the Gatling Rotator fires at extreme speed while the Mobile Turret locks into place for devastating suppressive bursts.'
+  },
+  { name:'Machine Gun', cat:'Ballistic', ammo:'Bullets',
+    games:['Doom 3'],
+    wiki:'Doom_3',
+    desc:'Doom 3\'s standard automatic rifle. More controlled than the chaingun with better accuracy at range. The go-to weapon for the game\'s slower, darker combat encounters in the UAC facility corridors.'
+  },
+  { name:'Heavy Assault Rifle', cat:'Ballistic', ammo:'Bullets',
+    games:['Doom 2016'],
+    wiki:'Doom_(2016_video_game)',
+    desc:'Precise automatic rifle with a magnified scope. Tactical Scope mod fires a charged shot that destroys Pinky demon eyes and staggers Barons. Micro Missiles mod provides explosive burst fire ideal for demon groups at mid-range.'
+  },
+  { name:'Heavy Cannon', cat:'Ballistic', ammo:'Bullets',
+    games:['Doom Eternal'],
+    wiki:'Doom_Eternal',
+    desc:'Versatile successor to the HAR. Precision Bolt charges a single round capable of one-tapping Carcass demons through their shields. Micro Missiles mod saturates an area for crowd control. Essential for ammo-efficient weakpoint targeting.'
+  },
+
+  // Explosive
+  { name:'Rocket Launcher', cat:'Explosive', ammo:'Rockets',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal','The Dark Ages'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'Fires explosive rockets with lethal splash damage. A cornerstone weapon in every game. In speedrunning, rocket jumping is a foundational technique for skipping entire sections. In modern Doom, Lock-On Burst fires three simultaneous homing rockets.'
+  },
+  { name:'Ballista', cat:'Explosive', ammo:'Energy',
+    games:['Doom Eternal'],
+    wiki:'Doom_Eternal',
+    desc:'An electromagnetic crossbow firing explosive energy bolts at near-instantaneous velocity. Arbalest mod enables rapid-fire semi-auto shots. Destroyer Blade fires a horizontal energy wave that cuts through multiple demons. Pairs with Microwave Beam for freeze-explosion combos.'
+  },
+
+  // Energy
+  { name:'Plasma Rifle / Gun', cat:'Energy', ammo:'Energy cells',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal'],
+    wiki:'Doom_(1993_video_game)',
+    desc:'Rapid-fire stream of blue plasma globes. Exceptional sustained damage, excellent at keeping large demons staggered. In Doom 3 it overheats. In 2016/Eternal, Heat Blast and Microwave Beam mods add crowd-control and freeze utility.'
+  },
+  { name:'Gauss Cannon', cat:'Energy', ammo:'Energy cells',
+    games:['Doom 2016'],
+    wiki:'Doom_(2016_video_game)',
+    desc:'Electromagnetic railgun delivering extreme single-target damage. Siege Mode charges for a shot that can kill a Baron of Hell in three hits. The premier boss-killing weapon of Doom 2016, capable of destroying Cyberdemon weakpoints in seconds.'
+  },
+  { name:'BFG 9000', cat:'Energy', ammo:'Energy cells (40)',
+    games:['Doom (1993)','Doom II','Doom 64','Doom 3','Doom 2016','Doom Eternal','The Dark Ages'],
+    wiki:'BFG_9000',
+    desc:'The Big Freaking Gun. The franchise\'s ultimate superweapon across every game. Fires a massive plasma orb that emits lethal hitscan rays on contact, capable of clearing entire rooms of demons instantly. Nothing in Hell survives a direct BFG hit.'
+  },
+
+  // Artifact
+  { name:'Soul Cube', cat:'Artifact', ammo:'5 soul charges',
+    games:['Doom 3'],
+    wiki:'Doom_3',
+    desc:'An ancient Martian artifact that kills any demon instantly and restores health to the player. Powered by absorbing five enemy souls. Required to defeat the Cyberdemon. Doom 3\'s most powerful weapon and its central narrative MacGuffin.'
+  },
+  { name:'Unmaykr', cat:'Artifact', ammo:'Runes / Empyrean Keys',
+    games:['Doom 64','Doom Eternal'],
+    wiki:'Doom_64',
+    desc:'A demonic weapon firing three simultaneous plasma bolts in a spread. In Doom 64 it\'s the ultimate secret weapon unlocked via Demon Keys. In Doom Eternal, six Empyrean Keys unlock it — its fire rate rivals the BFG for sustained room-clearing power.'
+  }
+];
+
+function buildWeapons() {
+  const cats = ['Melee','Ballistic','Explosive','Energy','Artifact'];
+  const catLabels = {
+    Melee:    'Melee — Get Close and Personal',
+    Ballistic:'Ballistic — Lead, Shell, and Steel',
+    Explosive:'Explosive — Rockets and Bolts',
+    Energy:   'Energy — Plasma and Electromagnetic Power',
+    Artifact: 'Artifact — Hell-Forged Superweapons'
+  };
+  const container = document.getElementById('weapons-container');
+  container.innerHTML = cats.map(cat => {
+    const ws = WEAPONS.filter(w => w.cat === cat);
+    return `
+      <div>
+        <div class="era-label">${catLabels[cat]}</div>
+        <div class="weapons-grid">
+          ${ws.map(w => `
+            <div class="weapon-card">
+              <div class="weapon-img-wrap">
+                <img data-wiki="${w.wiki}" alt="${w.name}"
+                     onload="this.classList.add('loaded')"
+                     onerror="this.style.display='none'">
+                <span class="weapon-cat-badge cat-${cat.toLowerCase()}">${cat.toUpperCase()}</span>
+              </div>
+              <div class="weapon-body">
+                <div>
+                  <div class="weapon-name">${w.name}</div>
+                  <div class="weapon-ammo">Ammo: ${w.ammo}</div>
+                </div>
+                <div class="weapon-desc">${w.desc}</div>
+                <div class="weapon-games">${w.games.map(g=>`<span class="wgame-tag">${g}</span>`).join('')}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+  container.querySelectorAll('img[data-wiki]').forEach(loadWikiImg);
+}
+
 // ══════════════════════════════════════════════════════════════
 //  DOOM raycaster  — doom.ximg.app
 // ══════════════════════════════════════════════════════════════
 
-// ── Internal render resolution ────────────────────────────────
 const RW = 640, RH = 360;
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 canvas.width = RW; canvas.height = RH;
 
-// ── Map  (0=open, 1=stone, 2=brick, 3=metal) ─────────────────
 const MAP = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -114,22 +649,18 @@ const MAP = [
 ];
 const MW = MAP[0].length, MH = MAP.length;
 
-// Wall colours: [lit NS face, dark EW face]
 const WALL_C = [
   null,
-  [[107,58,42],[61,32,25]],   // 1: hell stone
-  [[139,26,26],[85,13,13]],   // 2: blood brick
-  [[42,61,90],[25,37,58]],    // 3: tech metal
+  [[107,58,42],[61,32,25]],
+  [[139,26,26],[85,13,13]],
+  [[42,61,90],[25,37,58]],
 ];
 
-// ── Player ────────────────────────────────────────────────────
 let pl;
 function resetPlayer() {
-  pl = { x:1.5, y:1.5, dx:1, dy:0, cx:0, cy:0.66,
-         hp:100, ammo:50, score:0 };
+  pl = { x:1.5, y:1.5, dx:1, dy:0, cx:0, cy:0.66, hp:100, ammo:50, score:0 };
 }
 
-// ── Enemies ───────────────────────────────────────────────────
 let enemies;
 function resetEnemies() {
   enemies = [
@@ -146,14 +677,12 @@ function resetEnemies() {
   ];
 }
 
-// ── Game state ────────────────────────────────────────────────
 let gstate = 'splash';
 let zbuf = new Float32Array(RW);
 let keys = {};
 let muzzle = 0, shootCd = 0, dmgFlash = 0;
 let mouseLocked = false;
 
-// ── Input ─────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Space' && gstate === 'play') { e.preventDefault(); shoot(); }
@@ -172,7 +701,6 @@ document.addEventListener('mousemove', e => {
   if (gstate === 'play' && mouseLocked) rotate(e.movementX * 0.0035);
 });
 
-// ── Rotation helper ───────────────────────────────────────────
 function rotate(a) {
   let c = Math.cos(a), s = Math.sin(a);
   let odx = pl.dx, ocx = pl.cx;
@@ -180,7 +708,6 @@ function rotate(a) {
   pl.cx = ocx*c - pl.cy*s;  pl.cy = ocx*s + pl.cy*c;
 }
 
-// ── Collision helpers ─────────────────────────────────────────
 function walkable(x, y) {
   let mx = x|0, my = y|0;
   return mx>=0 && mx<MW && my>=0 && my<MH && MAP[my][mx]===0;
@@ -191,12 +718,9 @@ function tryMove(dx, dy) {
   if (walkable(pl.x, pl.y+dy)) pl.y += dy;
 }
 
-// ── Shoot ─────────────────────────────────────────────────────
 function shoot() {
   if (shootCd>0 || pl.ammo<=0 || gstate!=='play') return;
   pl.ammo--; muzzle=10; shootCd=18;
-
-  // Find nearest enemy in centre of screen
   let bestDist = Infinity, bestEnemy = null;
   let invDet = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
   for (let e of enemies) {
@@ -218,7 +742,6 @@ function shoot() {
   }
 }
 
-// ── Line-of-sight check ───────────────────────────────────────
 function los(x1,y1,x2,y2) {
   let dx=x2-x1, dy=y2-y1, n=Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))*4);
   for (let i=1;i<n;i++) {
@@ -228,9 +751,7 @@ function los(x1,y1,x2,y2) {
   return true;
 }
 
-// ── Enemy AI update ───────────────────────────────────────────
 function updateEnemies(dt) {
-  let invDet = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
   for (let e of enemies) {
     if (e.hp<=0) continue;
     if (e.hit>0) e.hit--;
@@ -252,25 +773,19 @@ function updateEnemies(dt) {
   }
 }
 
-// ── Apply fog ─────────────────────────────────────────────────
 function fogRgb(r,g,b,dist) {
   let f=Math.min(1,dist/15);
   return `rgb(${r*(1-f)|0},${g*(1-f)|0},${b*(1-f)|0})`;
 }
 
-// ── Render ────────────────────────────────────────────────────
 function render() {
-  // Ceiling
   let cg = ctx.createLinearGradient(0,0,0,RH/2);
   cg.addColorStop(0,'#060101'); cg.addColorStop(1,'#120404');
   ctx.fillStyle=cg; ctx.fillRect(0,0,RW,RH/2);
-
-  // Floor
   let fg = ctx.createLinearGradient(0,RH/2,0,RH);
   fg.addColorStop(0,'#100303'); fg.addColorStop(1,'#1e0707');
   ctx.fillStyle=fg; ctx.fillRect(0,RH/2,RW,RH/2);
 
-  // ── Wall casting ──
   for (let x=0; x<RW; x++) {
     let camX = 2*x/RW-1;
     let rdx=pl.dx+pl.cx*camX, rdy=pl.dy+pl.cy*camX;
@@ -279,7 +794,6 @@ function render() {
     let stepX,stepY,sdx,sdy;
     if (rdx<0){stepX=-1;sdx=(pl.x-mx)*ddx;}else{stepX=1;sdx=(mx+1-pl.x)*ddx;}
     if (rdy<0){stepY=-1;sdy=(pl.y-my)*ddy;}else{stepY=1;sdy=(my+1-pl.y)*ddy;}
-
     let hit=0,side=0,wt=0;
     while(!hit){
       if(sdx<sdy){sdx+=ddx;mx+=stepX;side=0;}else{sdy+=ddy;my+=stepY;side=1;}
@@ -288,65 +802,46 @@ function render() {
     }
     let dist = side===0 ? sdx-ddx : sdy-ddy;
     zbuf[x]=dist;
-
     let wallH = Math.min(RH*3, (RH/dist)|0);
     let top = ((RH-wallH)/2)|0;
-
     let [r,g,b] = WALL_C[wt][side];
     ctx.fillStyle = fogRgb(r,g,b,dist);
     ctx.fillRect(x, top, 1, wallH);
-
-    // Subtle floor-contact shadow
     if (wallH>4) {
       ctx.fillStyle='rgba(0,0,0,0.25)';
       ctx.fillRect(x, top+wallH-Math.max(2,(wallH*0.08)|0), 1, (wallH*0.08)|0);
     }
   }
 
-  // ── Sprites ──
   renderSprites();
-
-  // ── Weapon ──
   renderWeapon();
-
-  // ── HUD ──
   renderHUD();
 
-  // ── Damage flash ──
   if (dmgFlash>0) {
     ctx.fillStyle=`rgba(200,0,0,${0.45*dmgFlash/16})`;
     ctx.fillRect(0,0,RW,RH);
   }
 }
 
-// ── Sprite rendering ─────────────────────────────────────────
 function renderSprites() {
   let list = enemies.map(e=>{
     let ex=e.x-pl.x, ey=e.y-pl.y;
     return {e, d2:ex*ex+ey*ey, ex, ey};
   }).sort((a,b)=>b.d2-a.d2);
-
   let invDet = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
-
   for (let {e,ex,ey} of list) {
     let tx = invDet*(pl.dy*ex - pl.dx*ey);
     let ty = invDet*(-pl.cy*ex + pl.cx*ey);
     if (ty<=0.1) continue;
-
-    let dist = Math.sqrt(ex*ex+ey*ey);
-
     if (e.state==='dead') {
-      // Blood pool on floor
       let scx = ((RW/2)*(1+tx/ty))|0;
-      let frac = Math.min(1, ty/10);
       let pw = Math.max(4,(RH/ty*0.8)|0);
-      ctx.fillStyle=`rgba(${100*(1-frac)|0},0,0,${0.65*(1-Math.min(1,ty/12))})`;
+      ctx.fillStyle=`rgba(${100*(1-Math.min(1,ty/10))|0},0,0,${0.65*(1-Math.min(1,ty/12))})`;
       ctx.beginPath();
       ctx.ellipse(scx, (RH/2+RH/ty*0.42)|0, pw*0.8, pw*0.25, 0, 0, Math.PI*2);
       ctx.fill();
       continue;
     }
-
     let scx = ((RW/2)*(1+tx/ty))|0;
     let h   = Math.abs((RH/ty)|0);
     let w   = (h*0.55)|0;
@@ -354,157 +849,87 @@ function renderSprites() {
     let y0  = ((RH-h)/2)|0;
     let fog = Math.min(0.92, ty/14);
     let lit = 1-fog;
-
     for (let sx=Math.max(0,x0); sx<Math.min(RW,x0+w); sx++) {
       if (ty >= zbuf[sx]) continue;
-      let rx = (sx-x0)/w; // 0→1 across sprite width
-      let cx2 = Math.abs(rx-0.5)*2; // 0 centre, 1 edge
-
-      // Shape mask: head (top 28%), torso (28→75%), legs (75→100%)
-      let headTop  = y0,               headH  = (h*0.28)|0;
-      let torsoTop = y0+headH,         torsoH = (h*0.47)|0;
-      let legTop   = torsoTop+torsoH,  legH   = (h*0.25)|0;
-
-      let hr = e.hit>0 ? 255 : (60*lit)|0;
-      let hg = e.hit>0 ? 220 : (32*lit)|0;
-      let hb = e.hit>0 ? 220 : (20*lit)|0;
-
-      // Head — draw if within rounded circle silhouette
+      let rx = (sx-x0)/w;
+      let cx2 = Math.abs(rx-0.5)*2;
+      let headTop=y0, headH=(h*0.28)|0;
+      let torsoTop=y0+headH, torsoH=(h*0.47)|0;
+      let legTop=torsoTop+torsoH, legH=(h*0.25)|0;
+      let hr=e.hit>0?255:(60*lit)|0, hg=e.hit>0?220:(32*lit)|0, hb=e.hit>0?220:(20*lit)|0;
       if (cx2 < 0.85) {
         ctx.fillStyle=`rgb(${hr},${hg},${hb})`;
         ctx.fillRect(sx, headTop, 1, headH);
-
-        // Eyes — glowing red when chasing
         if (e.state==='chase' && e.hit===0 && cx2>0.25 && cx2<0.55) {
           let eyeY = headTop + (headH*0.45)|0;
-          let er2 = (200*lit)|0;
-          ctx.fillStyle=`rgb(${er2},0,0)`;
+          ctx.fillStyle=`rgb(${(200*lit)|0},0,0)`;
           ctx.fillRect(sx, eyeY, 1, Math.max(1,(headH*0.18)|0));
         }
       }
-      // Torso — full width
-      let tr = e.hit>0 ? 255 : (50*lit)|0;
-      let tg = e.hit>0 ? 200 : (80*lit)|0;
-      let tb = e.hit>0 ? 200 : (40*lit)|0;
+      let tr=e.hit>0?255:(50*lit)|0, tg=e.hit>0?200:(80*lit)|0, tb=e.hit>0?200:(40*lit)|0;
       ctx.fillStyle=`rgb(${tr},${tg},${tb})`;
       ctx.fillRect(sx, torsoTop, 1, torsoH);
-
-      // Legs — only outer 40%
       if (rx<0.38 || rx>0.62) {
-        let lr2=(45*lit)|0, lg2=(45*lit)|0, lb2=(60*lit)|0;
-        ctx.fillStyle=`rgb(${lr2},${lg2},${lb2})`;
+        ctx.fillStyle=`rgb(${(45*lit)|0},${(45*lit)|0},${(60*lit)|0})`;
         ctx.fillRect(sx, legTop, 1, legH);
       }
     }
   }
 }
 
-// ── Weapon (pixelated shotgun) ───────────────────────────────
 function renderWeapon() {
-  // Bob
-  let bobAmt = (keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD']||
-                joy.active) ? Math.sin(Date.now()/120)*5 : 0;
-  // Kick
+  let bobAmt = (keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD']||joy.active)
+    ? Math.sin(Date.now()/120)*5 : 0;
   let kick = muzzle>0 ? (muzzle/10)*22 : 0;
-
   let gw=130, gh=80;
   let gx=(RW-gw)/2, gy=RH-gh+bobAmt+kick;
-
-  // Barrel
-  ctx.fillStyle='#2a2a2a';
-  ctx.fillRect(gx+12, gy+8,  80, 10);
-  ctx.fillStyle='#1a1a1a';
-  ctx.fillRect(gx+12, gy+9,  80, 4);
-
-  // Stock/body
-  ctx.fillStyle='#333';
-  ctx.fillRect(gx+55, gy+18, 55, 22);
-  ctx.fillStyle='#222';
-  ctx.fillRect(gx+55, gy+19, 55, 8);
-
-  // Grip
-  ctx.fillStyle='#2e1a0a';
-  ctx.fillRect(gx+75, gy+38, 20, 28);
-  ctx.fillStyle='#3e2a12';
-  ctx.fillRect(gx+76, gy+39, 8, 12);
-
-  // Trigger guard
+  ctx.fillStyle='#2a2a2a'; ctx.fillRect(gx+12, gy+8,  80, 10);
+  ctx.fillStyle='#1a1a1a'; ctx.fillRect(gx+12, gy+9,  80, 4);
+  ctx.fillStyle='#333';    ctx.fillRect(gx+55, gy+18, 55, 22);
+  ctx.fillStyle='#222';    ctx.fillRect(gx+55, gy+19, 55, 8);
+  ctx.fillStyle='#2e1a0a'; ctx.fillRect(gx+75, gy+38, 20, 28);
+  ctx.fillStyle='#3e2a12'; ctx.fillRect(gx+76, gy+39, 8,  12);
   ctx.fillStyle='#222';
   ctx.fillRect(gx+68, gy+38, 2, 14);
   ctx.fillRect(gx+68, gy+52, 14, 2);
   ctx.fillRect(gx+80, gy+38, 2, 14);
-
-  // Pump
-  ctx.fillStyle='#444';
-  ctx.fillRect(gx+18, gy+18, 30, 8);
-
-  // Muzzle flash
+  ctx.fillStyle='#444'; ctx.fillRect(gx+18, gy+18, 30, 8);
   if (muzzle>0) {
     let a=muzzle/10, x2=gx+10, y2=gy+12;
-    // Outer burst
     ctx.fillStyle=`rgba(255,180,30,${a*0.6})`;
     for (let i=0;i<6;i++){
       let ang=i*Math.PI/3, len=18*a;
       ctx.fillRect(x2+Math.cos(ang)*len-2, y2+Math.sin(ang)*len-2, 4, 4);
     }
-    // Core glow
     ctx.fillStyle=`rgba(255,240,150,${a})`;
-    ctx.beginPath();
-    ctx.ellipse(x2, y2, 11*a, 8*a, 0, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x2, y2, 11*a, 8*a, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle=`rgba(255,255,255,${a*0.9})`;
-    ctx.beginPath();
-    ctx.ellipse(x2, y2, 5*a, 4*a, 0, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x2, y2, 5*a, 4*a, 0, 0, Math.PI*2); ctx.fill();
   }
 }
 
-// ── HUD ───────────────────────────────────────────────────────
 function renderHUD() {
   let hudH=28, y=RH-hudH;
-
-  // Background bar
-  ctx.fillStyle='#100000';
-  ctx.fillRect(0,y,RW,hudH);
-  ctx.fillStyle='#550000';
-  ctx.fillRect(0,y,RW,2);
-
-  ctx.font=`bold 14px 'Courier New'`;
-  ctx.textBaseline='middle';
+  ctx.fillStyle='#100000'; ctx.fillRect(0,y,RW,hudH);
+  ctx.fillStyle='#550000'; ctx.fillRect(0,y,RW,2);
+  ctx.font=`bold 14px 'Courier New'`; ctx.textBaseline='middle';
   let mid=y+hudH/2;
-
-  // Health bar + number
   let hpPct=Math.max(0,pl.hp)/100;
-  ctx.fillStyle='#330000';
-  ctx.fillRect(8,y+6,100,14);
+  ctx.fillStyle='#330000'; ctx.fillRect(8,y+6,100,14);
   ctx.fillStyle = pl.hp>50?'#cc0000':pl.hp>25?'#dd4400':'#ff0000';
   ctx.fillRect(8,y+6,hpPct*100,14);
-  ctx.fillStyle='#fff';
-  ctx.fillText('♥'+Math.max(0,pl.hp)+'%',114,mid);
-
-  // Ammo
-  ctx.fillStyle='#ffaa00';
-  ctx.fillText('⚡'+pl.ammo,RW*0.4,mid);
-
-  // Score
-  ctx.fillStyle='#00aaff';
-  ctx.fillText('★'+pl.score,RW*0.58,mid);
-
-  // Enemies remaining
+  ctx.fillStyle='#fff'; ctx.fillText('♥'+Math.max(0,pl.hp)+'%',114,mid);
+  ctx.fillStyle='#ffaa00'; ctx.fillText('⚡'+pl.ammo,RW*0.4,mid);
+  ctx.fillStyle='#00aaff'; ctx.fillText('★'+pl.score,RW*0.58,mid);
   let alive=enemies.filter(e=>e.hp>0).length;
   ctx.fillStyle=alive>0?'#ff4444':'#44ff44';
   ctx.fillText('☠'+alive,RW*0.78,mid);
-
-  // Ammo warning
-  if (pl.ammo<=5) {
-    if (Math.floor(Date.now()/400)%2===0) {
-      ctx.fillStyle='rgba(255,100,0,0.7)';
-      ctx.fillText('LOW AMMO',RW*0.4,mid);
-    }
+  if (pl.ammo<=5 && Math.floor(Date.now()/400)%2===0) {
+    ctx.fillStyle='rgba(255,100,0,0.7)';
+    ctx.fillText('LOW AMMO',RW*0.4,mid);
   }
 }
 
-// ── Touch controls ────────────────────────────────────────────
 const joy = {active:false,dx:0,dy:0};
 const look = {dx:0,lastX:0};
 const jBase=document.getElementById('joy-base');
@@ -516,35 +941,29 @@ if ('ontouchstart' in window) {
   jBase.style.display='block';
   btnShoot.style.display='flex';
   touchLookEl.style.display='block';
-
   function joyUpdate(t){
     joy.dx=Math.max(-50,Math.min(50,t.clientX-joy.sx));
     joy.dy=Math.max(-50,Math.min(50,t.clientY-joy.sy));
     jKnob.style.transform=`translate(${joy.dx}px,${joy.dy}px)`;
   }
   jBase.addEventListener('touchstart',e=>{
-    e.preventDefault();
-    let t=e.touches[0]; joy.active=true; joy.sx=t.clientX; joy.sy=t.clientY;
+    e.preventDefault(); let t=e.touches[0]; joy.active=true; joy.sx=t.clientX; joy.sy=t.clientY;
   },{passive:false});
   jBase.addEventListener('touchmove',e=>{e.preventDefault();joyUpdate(e.touches[0]);},{passive:false});
   jBase.addEventListener('touchend',e=>{
     e.preventDefault();joy.active=false;joy.dx=joy.dy=0;jKnob.style.transform='';
   },{passive:false});
-
   btnShoot.addEventListener('touchstart',e=>{e.preventDefault();shoot();},{passive:false});
-
   touchLookEl.addEventListener('touchstart',e=>{
     e.preventDefault();look.lastX=e.changedTouches[0].clientX;
   },{passive:false});
   touchLookEl.addEventListener('touchmove',e=>{
-    e.preventDefault();
-    let nx=e.changedTouches[0].clientX;
+    e.preventDefault(); let nx=e.changedTouches[0].clientX;
     look.dx=nx-look.lastX; look.lastX=nx;
   },{passive:false});
   touchLookEl.addEventListener('touchend',e=>{e.preventDefault();look.dx=0;},{passive:false});
 }
 
-// ── Overlay helpers ──────────────────────────────────────────
 const ovEl=document.getElementById('overlay');
 const ovTitle=document.getElementById('ov-title');
 const ovSub=document.getElementById('ov-sub');
@@ -556,7 +975,6 @@ function showOverlay(title,sub,btnText,cb){
 }
 function hideOverlay(){ ovEl.classList.add('hidden'); }
 
-// ── Game flow ────────────────────────────────────────────────
 function startGame(){
   resetPlayer(); resetEnemies();
   gstate='play'; hideOverlay();
@@ -564,13 +982,10 @@ function startGame(){
 }
 document.getElementById('ov-btn').onclick=startGame;
 
-// ── Main loop ────────────────────────────────────────────────
 let lastT=0;
 function loop(ts){
   let dt=Math.min(0.05,(ts-lastT)/1000); lastT=ts;
-
   if (gstate==='play') {
-    // Movement
     const SPDS=3.5*dt, ROTS=2.2*dt;
     if (keys['KeyW']||keys['ArrowUp'])   tryMove( pl.dx*SPDS, pl.dy*SPDS);
     if (keys['KeyS']||keys['ArrowDown']) tryMove(-pl.dx*SPDS,-pl.dy*SPDS);
@@ -578,23 +993,15 @@ function loop(ts){
     if (keys['KeyD'])                    tryMove(-pl.dy*SPDS, pl.dx*SPDS);
     if (keys['ArrowLeft'])  rotate(-ROTS);
     if (keys['ArrowRight']) rotate( ROTS);
-
-    // Joystick
     if (joy.active) {
       let jx=joy.dx/50, jy=-joy.dy/50, s=SPDS*2;
       tryMove((pl.dx*jy + pl.dy*jx)*s, (pl.dy*jy - pl.dx*jx)*s);
     }
-    // Touch look
     if (look.dx) { rotate(look.dx*0.006); look.dx=0; }
-
-    // Timers
     if (muzzle>0) muzzle--;
     if (shootCd>0) shootCd--;
     if (dmgFlash>0) dmgFlash--;
-
     updateEnemies(dt);
-
-    // Win / lose
     if (enemies.every(e=>e.hp<=0)) {
       gstate='win';
       showOverlay('YOU WIN','All demons slain! Score: '+pl.score,'PLAY AGAIN',startGame);
@@ -602,10 +1009,8 @@ function loop(ts){
       gstate='dead';
       showOverlay('YOU DIED','Score: '+pl.score,'TRY AGAIN',startGame);
     }
-
     render();
   }
-
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

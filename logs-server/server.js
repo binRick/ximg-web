@@ -71,6 +71,12 @@ const LOG_FILES = {
   kombat:    'kombat.access.log',
   wargames:  'wargames.access.log',
   moto:      'moto.access.log',
+  india:     'india.access.log',
+  chinese:   'chinese.access.log',
+  wood:      'wood.access.log',
+  guns:      'guns.access.log',
+  america:   'america.access.log',
+  florida:   'florida.access.log',
   tampa:     'tampa.access.log',
   logs:      'logs.access.log',
 };
@@ -221,6 +227,13 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="yaml">yaml</button>
     <button class="tab"        data-site="kombat">kombat</button>
     <button class="tab"        data-site="wargames">wargames</button>
+    <button class="tab"        data-site="moto">moto</button>
+    <button class="tab"        data-site="india">india</button>
+    <button class="tab"        data-site="chinese">chinese</button>
+    <button class="tab"        data-site="wood">wood</button>
+    <button class="tab"        data-site="guns">guns</button>
+    <button class="tab"        data-site="america">america</button>
+    <button class="tab"        data-site="florida">florida</button>
     <button class="tab"        data-site="tampa">tampa</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>

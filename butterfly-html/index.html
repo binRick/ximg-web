@@ -7,278 +7,654 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--bg:#0a0010;--text:#f0e6ff;--muted:#7c6a99}
+    :root{
+      --bg:#0a0010;--text:#f0e6ff;--muted:#7c6a99;
+      --accent:#c084fc;--accent2:#e879f9;
+      --card:rgba(15,0,26,.82);--border:rgba(192,132,252,.15);
+    }
 
-    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
-      min-height:100vh;display:flex;flex-direction:column;align-items:center;
-      justify-content:center;overflow:hidden;position:relative}
+    body{
+      background:var(--bg);color:var(--text);
+      font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;
+      overflow-x:hidden;
+    }
+    body.no-scroll{overflow-y:hidden}
 
-    /* starfield */
-    body::before{content:'';position:fixed;inset:0;
-      background:radial-gradient(ellipse at 60% 40%,rgba(140,60,255,.12) 0%,transparent 60%),
-                 radial-gradient(ellipse at 20% 80%,rgba(255,100,200,.08) 0%,transparent 50%);
-      z-index:0;pointer-events:none}
+    body::before{
+      content:'';position:fixed;inset:0;
+      background:
+        radial-gradient(ellipse at 60% 40%,rgba(140,60,255,.12) 0%,transparent 60%),
+        radial-gradient(ellipse at 20% 80%,rgba(255,100,200,.08) 0%,transparent 50%);
+      z-index:0;pointer-events:none;
+    }
 
     canvas{position:fixed;inset:0;z-index:1;pointer-events:none}
 
-    .card{position:relative;z-index:10;text-align:center;padding:3rem 4rem;border-radius:24px;
-      border:1px solid rgba(192,132,252,.15);background:rgba(255,255,255,.02);
-      backdrop-filter:blur(20px);max-width:560px;width:90%;
-      box-shadow:0 0 80px rgba(140,60,255,.1);
-      opacity:0;animation:fadeUp .7s ease forwards .3s}
+    /* ── Subnav ── */
+    .subnav{
+      position:relative;z-index:10;
+      display:flex;gap:.4rem;padding:.55rem 1.25rem;
+      background:rgba(10,0,16,.75);backdrop-filter:blur(16px);
+      border-bottom:1px solid rgba(192,132,252,.12);
+    }
+    .subnav-btn{
+      font-size:.8rem;padding:.35rem 1.1rem;border-radius:7px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;
+      color:var(--muted);font-family:inherit;font-weight:600;transition:all .2s;
+    }
+    .subnav-btn.active{
+      color:var(--accent);border-color:rgba(192,132,252,.45);
+      background:rgba(192,132,252,.09);
+    }
+    .subnav-btn:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.18)}
 
-    @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    /* ── Facts section (existing centered layout) ── */
+    #section-facts{
+      position:relative;z-index:5;
+      flex:1;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      min-height:calc(100vh - 80px);
+    }
+    #section-facts.hidden{display:none}
 
-    /* Rotator card */
-    .card{position:relative;z-index:10;text-align:center;padding:2rem 2.5rem;border-radius:24px;
+    .rotator-card{
+      text-align:center;padding:2rem 2.5rem;border-radius:24px;
       border:1px solid rgba(192,132,252,.15);background:rgba(10,0,16,.72);
       backdrop-filter:blur(24px);max-width:500px;width:92%;
       box-shadow:0 0 80px rgba(140,60,255,.12);
-      opacity:0;animation:fadeUp .7s ease forwards .3s}
+      animation:fadeUp .7s ease forwards .3s;opacity:0;
+    }
     .slide{transition:opacity .5s ease}
     .slide.hidden{opacity:0;pointer-events:none;position:absolute;inset:0}
     .butterfly-img{margin:0 auto .75rem;display:block}
-    .species{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
-      color:#c084fc;margin-bottom:.5rem;font-weight:600}
-    .fact{font-size:.95rem;color:var(--muted);line-height:1.6;min-height:3.5em}
-    .fact em{color:var(--text);font-style:normal;font-weight:500}
+    .species-label{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+      color:var(--accent);margin-bottom:.5rem;font-weight:600}
+    .fact-text{font-size:.95rem;color:var(--muted);line-height:1.6;min-height:3.5em}
+    .fact-text em{color:var(--text);font-style:normal;font-weight:500}
 
-    /* Progress dots */
     .dots{display:flex;justify-content:center;gap:.45rem;margin-top:1.25rem}
     .dot-item{width:7px;height:7px;border-radius:50%;background:rgba(192,132,252,.25);
       cursor:pointer;transition:background .3s,transform .3s}
-    .dot-item.active{background:#c084fc;box-shadow:0 0 8px #c084fc;transform:scale(1.3)}
+    .dot-item.active{background:var(--accent);box-shadow:0 0 8px var(--accent);transform:scale(1.3)}
 
-    .status{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);z-index:10;
+    .status-bar{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);z-index:10;
       display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--muted);
-      white-space:nowrap;opacity:0;animation:fadeUp .5s ease forwards 1s}
-    .dot{width:7px;height:7px;border-radius:50%;background:#c084fc;
-      box-shadow:0 0 8px #c084fc;animation:navpulse 2s ease-in-out infinite;flex-shrink:0}
+      white-space:nowrap;animation:fadeUp .5s ease forwards 1s;opacity:0}
+    .pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+      box-shadow:0 0 8px var(--accent);animation:navpulse 2s ease-in-out infinite;flex-shrink:0}
+    @keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    /* ── Species section ── */
+    #section-species{position:relative;z-index:5;display:flex;flex-direction:column}
+    #section-species.hidden{display:none}
+
+    .wrap{
+      max-width:1060px;margin:0 auto;width:100%;
+      padding:2rem 1.25rem 4rem;
+      display:flex;flex-direction:column;gap:2rem;
+    }
+
+    /* Hero */
+    .hero{text-align:center;display:flex;flex-direction:column;align-items:center;gap:.75rem}
+    .hero-icon{font-size:2.8rem;line-height:1;filter:drop-shadow(0 0 20px rgba(192,132,252,.8))}
+    .hero h2{
+      font-size:clamp(1.8rem,5vw,3rem);font-weight:900;line-height:1.05;letter-spacing:-.02em;
+      background:linear-gradient(135deg,#f0e6ff 0%,var(--accent2) 45%,var(--accent) 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .hero-sub{font-size:.92rem;color:var(--muted);font-style:italic;max-width:500px;line-height:1.6}
+    .hero-divider{width:120px;height:2px;margin-top:.25rem;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+
+    /* Card grid */
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:1.5rem}
+    @media(max-width:520px){.cards{grid-template-columns:1fr}}
+
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:16px;
+      overflow:hidden;backdrop-filter:blur(12px);
+      display:flex;flex-direction:column;
+      transition:border-color .25s,box-shadow .25s,transform .25s;
+    }
+    .card:hover{
+      border-color:rgba(192,132,252,.45);
+      box-shadow:0 8px 40px rgba(140,60,255,.18);
+      transform:translateY(-3px);
+    }
+
+    /* Card image */
+    .card-img-wrap{position:relative;aspect-ratio:16/9;background:#0f001a;overflow:hidden}
+    .card-img-wrap img{
+      width:100%;height:100%;object-fit:cover;object-position:center;
+      display:block;position:relative;z-index:1;opacity:0;transition:opacity .4s;
+    }
+    .card-img-wrap img.loaded{opacity:1}
+    .card-img-placeholder{
+      position:absolute;inset:0;display:flex;align-items:center;
+      justify-content:center;flex-direction:column;gap:.4rem;
+    }
+    .ph-num{font-size:3.5rem;font-weight:900;color:rgba(192,132,252,.12);line-height:1}
+    .ph-icon{font-size:2.2rem;opacity:.15}
+
+    .badge-left{
+      position:absolute;top:.75rem;left:.75rem;z-index:2;
+      background:rgba(0,0,0,.72);border:1px solid rgba(192,132,252,.4);
+      color:var(--accent);font-size:.65rem;font-weight:700;
+      padding:.2rem .55rem;border-radius:5px;letter-spacing:.06em;
+    }
+    .badge-right{
+      position:absolute;bottom:.75rem;right:.75rem;z-index:2;
+      background:rgba(0,0,0,.65);color:rgba(255,255,255,.7);
+      font-size:.65rem;padding:.18rem .5rem;border-radius:4px;
+    }
+
+    /* Card body */
+    .card-body{padding:1.1rem 1.2rem 1.25rem;display:flex;flex-direction:column;gap:.85rem;flex:1}
+    .card-title{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+    .card-sub{font-size:.78rem;color:var(--muted);margin-top:.2rem;line-height:1.45}
+
+    .card-stats{display:flex;gap:.5rem;flex-wrap:wrap}
+    .stat-chip{
+      background:rgba(192,132,252,.07);border:1px solid rgba(192,132,252,.18);
+      border-radius:7px;padding:.3rem .65rem;display:flex;flex-direction:column;gap:.1rem;
+    }
+    .stat-label{font-size:.6rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .stat-val{font-size:.82rem;color:var(--accent);font-weight:700}
+
+    .card-tags{display:flex;gap:.4rem;flex-wrap:wrap}
+    .tag{
+      font-size:.68rem;padding:.2rem .55rem;border-radius:12px;
+      background:rgba(192,132,252,.07);border:1px solid rgba(192,132,252,.2);
+      color:rgba(240,186,252,.85);font-weight:600;
+    }
+
+    .facts-label{font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+    .facts-list{display:flex;flex-direction:column;gap:.55rem}
+    .fact{display:flex;gap:.55rem;align-items:flex-start;font-size:.8rem;line-height:1.55;color:rgba(240,230,255,.82)}
+    .fact-icon{font-size:.95rem;flex-shrink:0;margin-top:.05rem}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    .hero,.cards{animation:fadeUp .7s ease both}
+    .cards{animation-delay:.12s}
   </style>
 </head>
-<body>
+<body class="no-scroll">
   <script src="/shared/nav.js?v=2"></script>
 
   <canvas id="c"></canvas>
 
-  <div class="card" id="rotator">
-    <!-- slides injected by JS -->
-    <div class="dots" id="dots"></div>
+  <!-- Subnav -->
+  <div class="subnav">
+    <button class="subnav-btn active" onclick="switchTab('facts')">🦋 Facts</button>
+    <button class="subnav-btn" onclick="switchTab('species')">📖 Species</button>
   </div>
 
-  <div class="status"><div class="dot"></div>butterfly.ximg.app · live</div>
+  <!-- Facts tab -->
+  <div id="section-facts">
+    <div class="rotator-card" id="rotator">
+      <div class="dots" id="dots"></div>
+    </div>
+  </div>
+
+  <!-- Species tab -->
+  <div id="section-species" class="hidden">
+    <div class="wrap">
+      <div class="hero">
+        <div class="hero-icon">🦋</div>
+        <h2>Butterfly Species</h2>
+        <p class="hero-sub">Ten of the world's most spectacular species — from migrating monarchs to transparent glasswings.</p>
+        <div class="hero-divider"></div>
+      </div>
+      <div class="cards" id="species-grid"></div>
+    </div>
+  </div>
+
+  <div class="status-bar"><div class="pulse-dot"></div>butterfly.ximg.app · live</div>
 
   <script>
-    // Butterfly particle system — interactive
-    const canvas = document.getElementById('c');
-    const ctx    = canvas.getContext('2d');
-    let W, H, particles = [];
-    const mouse = { x: null, y: null, active: false };
+  /* ── Canvas particle system ── */
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+  let W, H, particles = [];
+  const mouse = { x: null, y: null, active: false };
 
-    function resize() {
-      W = canvas.width  = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function setMouse(x, y) { mouse.x = x; mouse.y = y; mouse.active = true; }
+  window.addEventListener('mousemove',  e => setMouse(e.clientX, e.clientY));
+  window.addEventListener('touchmove',  e => { e.preventDefault(); setMouse(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  window.addEventListener('mouseleave', () => { mouse.active = false; });
+  window.addEventListener('touchend',   () => { mouse.active = false; });
+
+  function spawnBurst(x, y) {
+    for (let i = 0; i < 6; i++) {
+      const p = new Particle();
+      p.cx = x; p.cy = y; p.alpha = 0;
+      p.targetAlpha = Math.random() * .6 + .25;
+      p.scale = Math.random() * 40 + 15;
+      p.spd   = (Math.random() * 0.018 + 0.006) * (Math.random() < .5 ? 1 : -1);
+      particles.push(p);
     }
-    window.addEventListener('resize', resize);
-    resize();
+  }
+  canvas.style.pointerEvents = 'auto';
+  window.addEventListener('click',      e => spawnBurst(e.clientX, e.clientY));
+  window.addEventListener('touchstart', e => spawnBurst(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
 
-    // Track mouse / touch
-    function setMouse(x, y) { mouse.x = x; mouse.y = y; mouse.active = true; }
-    window.addEventListener('mousemove',  e => setMouse(e.clientX, e.clientY));
-    window.addEventListener('touchmove',  e => { e.preventDefault(); setMouse(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-    window.addEventListener('mouseleave', () => { mouse.active = false; });
-    window.addEventListener('touchend',   () => { mouse.active = false; });
+  function butterflyX(t) { return Math.sin(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t)); }
+  function butterflyY(t) { return Math.cos(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t)); }
 
-    // Click / tap → spawn burst of particles at cursor
-    function spawnBurst(x, y) {
-      const count = 6;
-      for (let i = 0; i < count; i++) {
-        const p = new Particle();
-        p.cx = x; p.cy = y;
-        p.alpha = 0; p.targetAlpha = Math.random() * .6 + .25;
-        p.scale = Math.random() * 40 + 15;
-        p.spd   = (Math.random() * 0.018 + 0.006) * (Math.random() < .5 ? 1 : -1);
-        particles.push(p);
+  class Particle {
+    constructor() { this.reset(true); }
+    reset(init) {
+      this.t     = Math.random() * Math.PI * 2;
+      this.spd   = (Math.random() * 0.012 + 0.004) * (Math.random() < .5 ? 1 : -1);
+      this.scale = Math.random() * 55 + 25;
+      this.cx    = Math.random() * W;
+      this.cy    = Math.random() * H;
+      this.vx    = (Math.random() - .5) * .4;
+      this.vy    = (Math.random() - .5) * .4;
+      this.alpha = init ? Math.random() : 0;
+      this.targetAlpha = Math.random() * .5 + .15;
+      const hue = Math.random() * 60 + 260;
+      this.color = `hsl(${hue},80%,70%)`;
+      this.size  = Math.random() * 2 + 1;
+      this.trail = [];
+    }
+    update() {
+      this.t += this.spd;
+      const x = butterflyX(this.t) * this.scale + this.cx;
+      const y = butterflyY(this.t) * this.scale + this.cy;
+      this.trail.push({x, y});
+      if (this.trail.length > 18) this.trail.shift();
+      if (mouse.active) {
+        const dx = mouse.x - this.cx, dy = mouse.y - this.cy;
+        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        const strength = Math.min(200 / (dist * dist), 0.06);
+        this.vx += dx / dist * strength; this.vy += dy / dist * strength;
       }
+      this.vx *= 0.98; this.vy *= 0.98;
+      this.cx += this.vx; this.cy += this.vy;
+      if (this.cx < -200 || this.cx > W+200 || this.cy < -200 || this.cy > H+200) this.reset(false);
+      this.alpha += (this.targetAlpha - this.alpha) * .03;
     }
-    canvas.style.pointerEvents = 'auto'; // allow click on canvas
-    window.addEventListener('click',      e => spawnBurst(e.clientX, e.clientY));
-    window.addEventListener('touchstart', e => spawnBurst(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-
-    // Butterfly wing curve (parametric)
-    function butterflyX(t) { return Math.sin(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t)); }
-    function butterflyY(t) { return Math.cos(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t)); }
-
-    class Particle {
-      constructor() { this.reset(true); }
-      reset(init) {
-        this.t     = Math.random() * Math.PI * 2;
-        this.spd   = (Math.random() * 0.012 + 0.004) * (Math.random() < .5 ? 1 : -1);
-        this.scale = Math.random() * 55 + 25;
-        this.cx    = Math.random() * W;
-        this.cy    = Math.random() * H;
-        this.vx    = (Math.random() - .5) * .4;
-        this.vy    = (Math.random() - .5) * .4;
-        this.alpha = init ? Math.random() : 0;
-        this.targetAlpha = Math.random() * .5 + .15;
-        const hue = Math.random() * 60 + 260; // purple–pink
-        this.color = `hsl(${hue},80%,70%)`;
-        this.size  = Math.random() * 2 + 1;
-        this.trail = [];
-      }
-      update() {
-        this.t += this.spd;
-        const x = butterflyX(this.t) * this.scale + this.cx;
-        const y = butterflyY(this.t) * this.scale + this.cy;
-        this.trail.push({x, y});
-        if (this.trail.length > 18) this.trail.shift();
-
-        // Gentle drift toward mouse when active
-        if (mouse.active) {
-          const dx = mouse.x - this.cx;
-          const dy = mouse.y - this.cy;
-          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-          const strength = Math.min(200 / (dist * dist), 0.06);
-          this.vx += dx / dist * strength;
-          this.vy += dy / dist * strength;
-        }
-
-        // Dampen velocity
-        this.vx *= 0.98; this.vy *= 0.98;
-        this.cx += this.vx; this.cy += this.vy;
-
-        if (this.cx < -200 || this.cx > W+200 || this.cy < -200 || this.cy > H+200) this.reset(false);
-        this.alpha += (this.targetAlpha - this.alpha) * .03;
-      }
-      draw() {
-        if (this.trail.length < 2) return;
-        ctx.beginPath();
-        ctx.moveTo(this.trail[0].x, this.trail[0].y);
-        for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
-        ctx.strokeStyle = this.color;
-        ctx.globalAlpha = this.alpha;
-        ctx.lineWidth   = this.size;
-        ctx.lineCap     = 'round';
-        ctx.stroke();
-        const h = this.trail[this.trail.length - 1];
-        ctx.beginPath();
-        ctx.arc(h.x, h.y, this.size * 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
+    draw() {
+      if (this.trail.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(this.trail[0].x, this.trail[0].y);
+      for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+      ctx.strokeStyle = this.color; ctx.globalAlpha = this.alpha;
+      ctx.lineWidth = this.size; ctx.lineCap = 'round'; ctx.stroke();
+      const h = this.trail[this.trail.length - 1];
+      ctx.beginPath(); ctx.arc(h.x, h.y, this.size * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = this.color; ctx.fill(); ctx.globalAlpha = 1;
     }
+  }
+  for (let i = 0; i < 18; i++) particles.push(new Particle());
+  const MAX_PARTICLES = 80;
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(frame);
+  }
+  frame();
 
-    for (let i = 0; i < 18; i++) particles.push(new Particle());
-
-    // Cap total particle count to avoid runaway growth from clicks
-    const MAX_PARTICLES = 80;
-
-    function frame() {
-      ctx.clearRect(0, 0, W, H);
-      if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
-      particles.forEach(p => { p.update(); p.draw(); });
-      requestAnimationFrame(frame);
+  /* ── Rotator (facts tab) ── */
+  const SLIDES = [
+    {
+      species: 'Monarch  ·  Danaus plexippus',
+      fact: '<em>Monarchs migrate up to 3,000 miles</em> from Canada to their wintering forests in Mexico — navigating by the sun and Earth\'s magnetic field.',
+      colors: { upper:'#f97316',lower:'#ea580c',border:'#1c0a00',spot:'#fff',vein:'#1c0a00' }
+    },
+    {
+      species: 'Blue Morpho  ·  Morpho peleides',
+      fact: 'The Blue Morpho\'s vivid wings contain <em>no blue pigment at all</em> — the iridescent colour arises from microscopic scales that reflect specific wavelengths of light.',
+      colors: { upper:'#3b82f6',lower:'#1d4ed8',border:'#0f172a',spot:'#93c5fd',vein:'#0f172a' }
+    },
+    {
+      species: 'Swallowtail  ·  Papilio machaon',
+      fact: 'Swallowtails <em>taste with their feet</em>. Chemoreceptors in their tarsi detect plant chemicals, helping females pick the perfect leaf for their eggs.',
+      colors: { upper:'#fde047',lower:'#facc15',border:'#1c1400',spot:'#60a5fa',vein:'#1c1400' }
+    },
+    {
+      species: 'Painted Lady  ·  Vanessa cardui',
+      fact: 'The Painted Lady completes the <em>longest known insect migration on Earth</em> — a 9,000-mile round trip between Europe and sub-Saharan Africa.',
+      colors: { upper:'#fb923c',lower:'#f97316',border:'#2d1000',spot:'#f0fdf4',vein:'#2d1000' }
+    },
+    {
+      species: 'Glasswing  ·  Greta oto',
+      fact: 'The Glasswing\'s wings are <em>nearly transparent</em> — an absence of coloured scales makes it almost invisible to predators while in flight.',
+      colors: { upper:'rgba(186,230,253,0.35)',lower:'rgba(147,197,253,0.3)',border:'#713f12',spot:'rgba(255,255,255,0.5)',vein:'#92400e' }
     }
-    frame();
-  </script>
+  ];
 
-  <script>
-    // ── Butterfly rotator ─────────────────────────────────────────────────────
-    // SVG butterfly illustrations (5 species) + facts, rotate every 5 s
-    const SLIDES = [
-      {
-        species: 'Monarch  ·  Danaus plexippus',
-        fact: '<em>Monarchs migrate up to 3,000 miles</em> from Canada to their wintering forests in Mexico — navigating by the sun and Earth\'s magnetic field.',
-        colors: { upper: '#f97316', lower: '#ea580c', border: '#1c0a00', spot: '#fff', vein: '#1c0a00' }
-      },
-      {
-        species: 'Blue Morpho  ·  Morpho peleides',
-        fact: 'The Blue Morpho\'s vivid wings contain <em>no blue pigment at all</em> — the iridescent colour arises from microscopic scales that reflect specific wavelengths of light.',
-        colors: { upper: '#3b82f6', lower: '#1d4ed8', border: '#0f172a', spot: '#93c5fd', vein: '#0f172a' }
-      },
-      {
-        species: 'Swallowtail  ·  Papilio machaon',
-        fact: 'Swallowtails <em>taste with their feet</em>. Chemoreceptors in their tarsi detect plant chemicals, helping females pick the perfect leaf for their eggs.',
-        colors: { upper: '#fde047', lower: '#facc15', border: '#1c1400', spot: '#60a5fa', vein: '#1c1400' }
-      },
-      {
-        species: 'Painted Lady  ·  Vanessa cardui',
-        fact: 'The Painted Lady completes the <em>longest known insect migration on Earth</em> — a 9,000-mile round trip between Europe and sub-Saharan Africa.',
-        colors: { upper: '#fb923c', lower: '#f97316', border: '#2d1000', spot: '#f0fdf4', vein: '#2d1000' }
-      },
-      {
-        species: 'Glasswing  ·  Greta oto',
-        fact: 'The Glasswing\'s wings are <em>nearly transparent</em> — an absence of coloured scales makes it almost invisible to predators while in flight.',
-        colors: { upper: 'rgba(186,230,253,0.35)', lower: 'rgba(147,197,253,0.3)', border: '#713f12', spot: 'rgba(255,255,255,0.5)', vein: '#92400e' }
-      }
-    ];
+  function butterflysvg(c) {
+    return `<svg class="butterfly-img" width="200" height="150" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 100,75 C 88,50 60,20 25,32 C 6,42 14,68 38,76 C 62,84 88,80 100,75 Z" fill="${c.upper}" stroke="${c.border}" stroke-width="1.5"/>
+      <path d="M 100,75 C 112,50 140,20 175,32 C 194,42 186,68 162,76 C 138,84 112,80 100,75 Z" fill="${c.upper}" stroke="${c.border}" stroke-width="1.5"/>
+      <path d="M 100,78 C 80,82 45,95 32,118 C 24,134 38,148 60,138 C 80,130 96,108 100,88 Z" fill="${c.lower}" stroke="${c.border}" stroke-width="1.5"/>
+      <path d="M 100,78 C 120,82 155,95 168,118 C 176,134 162,148 140,138 C 120,130 104,108 100,88 Z" fill="${c.lower}" stroke="${c.border}" stroke-width="1.5"/>
+      <line x1="100" y1="75" x2="38"  y2="76"  stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+      <line x1="100" y1="75" x2="162" y2="76"  stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+      <line x1="100" y1="78" x2="60"  y2="138" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+      <line x1="100" y1="78" x2="140" y2="138" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
+      <circle cx="55"  cy="58" r="5" fill="${c.spot}" opacity=".7"/>
+      <circle cx="145" cy="58" r="5" fill="${c.spot}" opacity=".7"/>
+      <circle cx="55"  cy="45" r="3" fill="${c.spot}" opacity=".5"/>
+      <circle cx="145" cy="45" r="3" fill="${c.spot}" opacity=".5"/>
+      <ellipse cx="100" cy="84" rx="4" ry="22" fill="${c.border}"/>
+      <circle  cx="100" cy="62" r="5"           fill="${c.border}"/>
+      <line x1="100" y1="58" x2="76"  y2="28" stroke="${c.border}" stroke-width="1.2"/>
+      <line x1="100" y1="58" x2="124" y2="28" stroke="${c.border}" stroke-width="1.2"/>
+      <circle cx="74"  cy="26" r="3" fill="${c.border}"/>
+      <circle cx="126" cy="26" r="3" fill="${c.border}"/>
+    </svg>`;
+  }
 
-    function butterflysvg(c) {
-      return `<svg class="butterfly-img" width="200" height="150" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
-        <!-- upper left wing -->
-        <path d="M 100,75 C 88,50 60,20 25,32 C 6,42 14,68 38,76 C 62,84 88,80 100,75 Z"
-              fill="${c.upper}" stroke="${c.border}" stroke-width="1.5"/>
-        <!-- upper right wing -->
-        <path d="M 100,75 C 112,50 140,20 175,32 C 194,42 186,68 162,76 C 138,84 112,80 100,75 Z"
-              fill="${c.upper}" stroke="${c.border}" stroke-width="1.5"/>
-        <!-- lower left wing -->
-        <path d="M 100,78 C 80,82 45,95 32,118 C 24,134 38,148 60,138 C 80,130 96,108 100,88 Z"
-              fill="${c.lower}" stroke="${c.border}" stroke-width="1.5"/>
-        <!-- lower right wing -->
-        <path d="M 100,78 C 120,82 155,95 168,118 C 176,134 162,148 140,138 C 120,130 104,108 100,88 Z"
-              fill="${c.lower}" stroke="${c.border}" stroke-width="1.5"/>
-        <!-- wing veins -->
-        <line x1="100" y1="75" x2="38" y2="76"  stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
-        <line x1="100" y1="75" x2="162" y2="76" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
-        <line x1="100" y1="78" x2="60"  y2="138" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
-        <line x1="100" y1="78" x2="140" y2="138" stroke="${c.vein}" stroke-width=".8" opacity=".5"/>
-        <!-- spots -->
-        <circle cx="55"  cy="58" r="5" fill="${c.spot}" opacity=".7"/>
-        <circle cx="145" cy="58" r="5" fill="${c.spot}" opacity=".7"/>
-        <circle cx="55"  cy="45" r="3" fill="${c.spot}" opacity=".5"/>
-        <circle cx="145" cy="45" r="3" fill="${c.spot}" opacity=".5"/>
-        <!-- body -->
-        <ellipse cx="100" cy="84" rx="4" ry="22" fill="${c.border}"/>
-        <circle  cx="100" cy="62" r="5"           fill="${c.border}"/>
-        <!-- antennae -->
-        <line x1="100" y1="58" x2="76"  y2="28" stroke="${c.border}" stroke-width="1.2"/>
-        <line x1="100" y1="58" x2="124" y2="28" stroke="${c.border}" stroke-width="1.2"/>
-        <circle cx="74"  cy="26" r="3" fill="${c.border}"/>
-        <circle cx="126" cy="26" r="3" fill="${c.border}"/>
-      </svg>`;
-    }
-
-    // Build slides
-    const rotator = document.getElementById('rotator');
-    const dotsEl  = document.getElementById('dots');
-    const slideEls = SLIDES.map((s, i) => {
-      const div = document.createElement('div');
-      div.className = 'slide' + (i > 0 ? ' hidden' : '');
-      div.innerHTML = butterflysvg(s.colors) +
-        `<div class="species">${s.species}</div>` +
-        `<p class="fact">${s.fact}</p>`;
-      rotator.insertBefore(div, dotsEl);
-      const dot = document.createElement('div');
-      dot.className = 'dot-item' + (i === 0 ? ' active' : '');
-      dot.addEventListener('click', () => goTo(i));
-      dotsEl.appendChild(dot);
-      return div;
-    });
-
-    let current = 0, timer = null;
-    function goTo(n) {
-      slideEls[current].classList.add('hidden');
-      document.querySelectorAll('.dot-item')[current].classList.remove('active');
-      current = n;
-      slideEls[current].classList.remove('hidden');
-      document.querySelectorAll('.dot-item')[current].classList.add('active');
-      resetTimer();
-    }
-    function next() { goTo((current + 1) % SLIDES.length); }
-    function resetTimer() { clearInterval(timer); timer = setInterval(next, 5000); }
+  const rotator = document.getElementById('rotator');
+  const dotsEl  = document.getElementById('dots');
+  const slideEls = SLIDES.map((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'slide' + (i > 0 ? ' hidden' : '');
+    div.innerHTML = butterflysvg(s.colors) +
+      `<div class="species-label">${s.species}</div>` +
+      `<p class="fact-text">${s.fact}</p>`;
+    rotator.insertBefore(div, dotsEl);
+    const dot = document.createElement('div');
+    dot.className = 'dot-item' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(dot);
+    return div;
+  });
+  let current = 0, timer = null;
+  function goTo(n) {
+    slideEls[current].classList.add('hidden');
+    document.querySelectorAll('.dot-item')[current].classList.remove('active');
+    current = n;
+    slideEls[current].classList.remove('hidden');
+    document.querySelectorAll('.dot-item')[current].classList.add('active');
     resetTimer();
+  }
+  function next() { goTo((current + 1) % SLIDES.length); }
+  function resetTimer() { clearInterval(timer); timer = setInterval(next, 5000); }
+  resetTimer();
+
+  /* ── Species data ── */
+  const SPECIES = [
+    {
+      name: 'Monarch', badge: 'Migratory',
+      sci: 'Danaus plexippus',
+      sub: 'The most iconic butterfly in North America, famous for its extraordinary annual migration spanning thousands of miles',
+      wiki: 'Danaus_plexippus',
+      stats: [
+        { label: 'Wingspan', val: '3.5–4 in' },
+        { label: 'Range', val: 'Americas' },
+        { label: 'Lifespan', val: 'Up to 8 mo' },
+        { label: 'Family', val: 'Nymphalidae' },
+      ],
+      tags: ['Migratory', 'Milkweed', 'Aposematic', 'Threatened', 'North America'],
+      facts: [
+        { icon: '🗺️', text: 'Monarchs migrate up to 3,000 miles from Canada and the US to overwintering forests in central Mexico — the same mountain groves their ancestors used, despite never having been there before.' },
+        { icon: '☀️', text: 'They navigate using a time-compensated sun compass in their antennae and a magnetic compass that senses Earth\'s field — a dual navigation system that functions even on cloudy days.' },
+        { icon: '🌿', text: 'Monarch caterpillars eat only milkweed, sequestering toxic cardenolides that make both larvae and adults unpalatable to most predators. Their vivid orange warns birds who have learned to avoid them.' },
+        { icon: '📉', text: 'The eastern monarch population declined over 80% between the 1990s and 2010s due to milkweed loss from herbicide use, logging at overwintering sites, and climate change. Conservation planting efforts have seen partial recovery.' },
+      ],
+    },
+    {
+      name: 'Blue Morpho', badge: 'Iridescent',
+      sci: 'Morpho peleides',
+      sub: 'One of the largest and most visually stunning butterflies on Earth, with wings that shimmer like living sapphires in the rainforest',
+      wiki: 'Morpho_peleides',
+      stats: [
+        { label: 'Wingspan', val: '5–8 in' },
+        { label: 'Range', val: 'Central & S. America' },
+        { label: 'Lifespan', val: '115 days' },
+        { label: 'Family', val: 'Nymphalidae' },
+      ],
+      tags: ['Rainforest', 'Iridescent', 'Structural color', 'Neotropical', 'Camouflage'],
+      facts: [
+        { icon: '🔬', text: 'The dazzling blue contains no blue pigment — it results entirely from nanostructures on the wing scales called photonic crystals that interfere with light waves, reflecting only blue wavelengths. The effect changes with viewing angle.' },
+        { icon: '🦎', text: 'The underside of its wings is a dull brown with large eyespots, providing perfect camouflage when resting with wings closed — a stunning contrast to its brilliant dorsal surface.' },
+        { icon: '💧', text: 'Adults feed primarily on rotting fruit, tree sap, fungi, and wet mud — rarely visiting flowers. Their proboscis is adapted for liquids with high sugar or mineral content rather than nectar.' },
+        { icon: '🏭', text: 'Morpho wing scales are studied by materials scientists for their structural color properties. Applications include anti-counterfeiting technology, optical sensors, and self-cleaning surfaces that mimic the nanostructure.' },
+      ],
+    },
+    {
+      name: 'Old World Swallowtail', badge: 'Widespread',
+      sci: 'Papilio machaon',
+      sub: 'One of Europe\'s most recognisable butterflies, with dramatic yellow and black wings and elegant hindwing tails',
+      wiki: 'Papilio_machaon',
+      stats: [
+        { label: 'Wingspan', val: '2.6–3.5 in' },
+        { label: 'Range', val: 'Europe to Japan' },
+        { label: 'Broods', val: '2–3 / year' },
+        { label: 'Family', val: 'Papilionidae' },
+      ],
+      tags: ['Swallowtail', 'Europe', 'Asia', 'Carrot family', 'Mimic', 'Protected'],
+      facts: [
+        { icon: '👅', text: 'Like all swallowtails, Papilio machaon tastes with chemoreceptors on its feet. A female can identify the correct host plant — fennel, carrot, or wild parsley — simply by landing on a leaf.' },
+        { icon: '🐛', text: 'When threatened, the caterpillar exerts a forked gland called an osmeterium from behind its head, releasing a foul-smelling chemical compound that repels predators. Despite looking alarming, it is harmless to humans.' },
+        { icon: '🇬🇧', text: 'In the UK, the swallowtail is critically rare — found only in the Norfolk Broads — making it one of Britain\'s most sought-after wildlife sightings. It is legally protected under the Wildlife and Countryside Act.' },
+        { icon: '🌍', text: 'Papilio machaon has one of the widest ranges of any butterfly, spanning from the UK and North Africa across all of Europe and Asia to Japan. Despite this range, populations are genetically distinct by region.' },
+      ],
+    },
+    {
+      name: 'Painted Lady', badge: 'Longest Migration',
+      sci: 'Vanessa cardui',
+      sub: 'The world\'s most widely distributed butterfly and holder of the longest known insect migration record',
+      wiki: 'Vanessa_cardui',
+      stats: [
+        { label: 'Wingspan', val: '2–2.5 in' },
+        { label: 'Range', val: 'Worldwide' },
+        { label: 'Migration', val: '~9,000 mi' },
+        { label: 'Family', val: 'Nymphalidae' },
+      ],
+      tags: ['Global', 'Migratory', 'Multi-generational', 'Cosmopolitan', 'Thistles'],
+      facts: [
+        { icon: '🌍', text: 'Vanessa cardui is found on every continent except Antarctica and South America, making it the most cosmopolitan butterfly on Earth. It breeds on over 300 different host plant species.' },
+        { icon: '✈️', text: 'The annual Europe-to-Africa migration covers around 9,000 miles round trip and takes six generations to complete. No individual butterfly completes the full journey — each generation flies part of the route using inherited directional instincts.' },
+        { icon: '🧬', text: 'Scientists confirmed the trans-Saharan migration only in 2021 using hydrogen isotope analysis of wing scales, which record the chemical signature of water from where the caterpillar fed — making wings a biological passport.' },
+        { icon: '🌀', text: 'In boom years, painted lady migrations can involve billions of individuals. In California, a 2019 "superbloom" event produced an estimated 1 billion butterflies that moved through the state in a massive wave.' },
+      ],
+    },
+    {
+      name: 'Glasswing', badge: 'Transparent',
+      sci: 'Greta oto',
+      sub: 'A Central American marvel with wings so transparent they are nearly invisible — evolution\'s most extreme take on camouflage',
+      wiki: 'Greta_oto',
+      stats: [
+        { label: 'Wingspan', val: '2.2–2.4 in' },
+        { label: 'Range', val: 'C. America to Mexico' },
+        { label: 'Transparency', val: 'Up to 95%' },
+        { label: 'Family', val: 'Nymphalidae' },
+      ],
+      tags: ['Transparent', 'Rainforest', 'Nanostructure', 'Toxic', 'Central America'],
+      facts: [
+        { icon: '🔭', text: 'The transparent wing membrane lacks the coloured scales found on most butterflies. The remaining scales are ultra-thin nanopillar arrays that reduce light reflection to near zero — the same principle used in anti-reflective lens coatings.' },
+        { icon: '🧪', text: 'Adults feed on toxic plants containing pyrrolizidine alkaloids, which they store and use in male courtship displays. Males convert the alkaloids into chemical signals that females assess when choosing mates — toxin accumulation is a proxy for fitness.' },
+        { icon: '👁️', text: 'Despite their transparency, glasswings are not invisible to all predators — birds can see into the UV spectrum and the wings still reflect some UV light. The transparency primarily defeats the camouflage-breaking motion detection of some predators.' },
+        { icon: '🚁', text: 'Engineers have studied glasswing nanostructures to develop anti-reflective coatings for solar panels and camera lenses. Mimicking the irregular nanopillar arrangement reduces glare more effectively than regular structures.' },
+      ],
+    },
+    {
+      name: 'Peacock Butterfly', badge: 'Eyespot Defense',
+      sci: 'Aglais io',
+      sub: 'A common European butterfly with four spectacular eyespots that serve as one of the animal kingdom\'s most effective anti-predator displays',
+      wiki: 'Aglais_io',
+      stats: [
+        { label: 'Wingspan', val: '2.2–2.8 in' },
+        { label: 'Range', val: 'Europe & Asia' },
+        { label: 'Hibernates', val: 'Yes (adult)' },
+        { label: 'Family', val: 'Nymphalidae' },
+      ],
+      tags: ['Eyespots', 'Europe', 'Hibernation', 'Nettles', 'Hissing', 'Mimicry'],
+      facts: [
+        { icon: '👀', text: 'The four large eyespots mimic owl eyes. When threatened the butterfly snaps its wings open and produces an audible hiss by rubbing its wings together — the combined visual and acoustic display startles predators effectively enough to allow escape.' },
+        { icon: '❄️', text: 'Unlike most butterflies, the peacock overwinters as an adult in hollow trees, caves, and buildings. On warm winter days it can emerge briefly to feed, then return to hibernation — a strategy that allows it to be among the first butterflies seen each spring.' },
+        { icon: '🌿', text: 'Caterpillars feed exclusively on common nettle (Urtica dioica), living gregariously in silk tents that provide warmth and some protection. A single large nettle patch can support hundreds of caterpillars at once.' },
+        { icon: '📊', text: 'Research found that removing the eyespots or silencing the hissing independently reduced predator deterrence, but combining both effects was disproportionately effective — a multimodal signal greater than the sum of its parts.' },
+      ],
+    },
+    {
+      name: 'Red Admiral', badge: 'Territorial',
+      sci: 'Vanessa atalanta',
+      sub: 'A bold and striking butterfly found across the Northern Hemisphere, known for its fiercely territorial behaviour and late-season flying',
+      wiki: 'Vanessa_atalanta',
+      stats: [
+        { label: 'Wingspan', val: '1.75–2.5 in' },
+        { label: 'Range', val: 'N. Hemisphere' },
+        { label: 'Season', val: 'Mar–Nov' },
+        { label: 'Family', val: 'Nymphalidae' },
+      ],
+      tags: ['Territorial', 'Late season', 'Migratory', 'Nettles', 'Gardens', 'Europe'],
+      facts: [
+        { icon: '⚔️', text: 'Males are intensely territorial, perching on prominent spots like hilltops or sunny fence posts and chasing away any intruder — including much larger insects and even small birds. Territory holders intercept and spiral with rivals in dramatic aerial battles.' },
+        { icon: '🍎', text: 'Red admirals are especially attracted to rotting fruit in autumn, where they feed on fermenting sugars and can become visibly intoxicated — making them slow and approachable at orchards and windfalls in September and October.' },
+        { icon: '🌡️', text: 'One of the latest-flying butterflies in temperate zones, regularly seen in the UK in November and occasionally December on warm days. Partial migrant populations from continental Europe supplement resident UK populations each summer.' },
+        { icon: '🗺️', text: 'The species occurs in two geographically distinct populations: the nominate form in Europe, North Africa and Central Asia, and a separate subspecies Vanessa atalanta rubria in North America and Hawaii, which some taxonomists treat as a distinct species.' },
+      ],
+    },
+    {
+      name: 'Queen Alexandra\'s Birdwing', badge: 'World\'s Largest',
+      sci: 'Ornithoptera alexandrae',
+      sub: 'The largest butterfly on Earth — a Papua New Guinean giant whose wingspread can exceed 30 cm and whose females are larger than the males',
+      wiki: "Queen_Alexandra's_birdwing",
+      stats: [
+        { label: 'Wingspan', val: 'Up to 12 in' },
+        { label: 'Range', val: 'Papua New Guinea' },
+        { label: 'Status', val: 'Endangered' },
+        { label: 'Family', val: 'Papilionidae' },
+      ],
+      tags: ['World\'s Largest', 'Endangered', 'Papua New Guinea', 'CITES I', 'Rainforest'],
+      facts: [
+        { icon: '📏', text: 'Females of this species can reach a wingspan of 30 cm (12 inches) — wider than a standard ruler. They are significantly larger and less colourful than males, which display iridescent blue-green wings with yellow underparts.' },
+        { icon: '🌋', text: 'The species was discovered in 1906 when a specimen was shot from a tree by Walter Rothschild\'s collector using a shotgun — the only practical way to catch something so large and fast-flying at the time.' },
+        { icon: '⚖️', text: 'Trade is banned under CITES Appendix I, but illegal specimens command thousands of dollars from collectors. The species is further threatened by palm oil plantations replacing its rainforest habitat in Oro Province.' },
+        { icon: '🌿', text: 'Caterpillars feed exclusively on a single toxic vine, Aristolochia schlechteri, which is itself rare and found only in a small area of Papua New Guinea. Any disruption to this plant directly threatens the butterfly\'s survival.' },
+      ],
+    },
+    {
+      name: 'Common Brimstone', badge: 'Longest-lived',
+      sci: 'Gonepteryx rhamni',
+      sub: 'Europe\'s longest-lived butterfly and thought to be the origin of the word "butterfly" — the male\'s sulphur-yellow wings inspired the name "butter-coloured fly"',
+      wiki: 'Gonepteryx_rhamni',
+      stats: [
+        { label: 'Wingspan', val: '2.2–2.8 in' },
+        { label: 'Range', val: 'Europe & Asia' },
+        { label: 'Lifespan', val: 'Up to 13 mo' },
+        { label: 'Family', val: 'Pieridae' },
+      ],
+      tags: ['Longest-lived', 'Hibernation', 'Buckthorn', 'Yellow', 'Spring', 'Etymology'],
+      facts: [
+        { icon: '📖', text: 'The brimstone is widely credited as the origin of the word "butterfly." The Old English "buterfleoge" (butter-fly) is believed to refer to this species — the males\' vivid butter-yellow wings were among the first butterflies observed each spring in medieval England.' },
+        { icon: '❄️', text: 'The brimstone is Europe\'s longest-lived butterfly, surviving up to 13 months as an adult. It hibernates through winter in ivy or holly, where its leaf-shaped wings provide perfect camouflage. Natural anti-freeze compounds in its cells prevent ice crystal formation.' },
+        { icon: '🌿', text: 'Females are pale greenish-white and often mistaken for Large Whites. They lay eggs exclusively on buckthorn and alder buckthorn shrubs. The leaf-shaped wing form, with its prominent veins and green tint, is convergent with the wing shape in some Asian species.' },
+        { icon: '🌸', text: 'One of the first butterflies seen in spring — often emerging on warm February days while snow is still on the ground — the brimstone has historically been called a harbinger of spring across much of northern Europe.' },
+      ],
+    },
+    {
+      name: 'Ulysses Butterfly', badge: 'Electric Blue',
+      sci: 'Papilio ulysses',
+      sub: 'A Pacific swallowtail with an electric iridescent blue that makes it one of the most dramatic butterflies in the rainforests of Australia and Papua New Guinea',
+      wiki: 'Papilio_ulysses',
+      stats: [
+        { label: 'Wingspan', val: '4.5–5.5 in' },
+        { label: 'Range', val: 'Australia & PNG' },
+        { label: 'Habitat', val: 'Tropical rainforest' },
+        { label: 'Family', val: 'Papilionidae' },
+      ],
+      tags: ['Australia', 'Papua New Guinea', 'Iridescent', 'Tropical', 'Swallowtail', 'Tourism'],
+      facts: [
+        { icon: '✈️', text: 'The Ulysses butterfly is the tourism emblem of Queensland, Australia. It is so closely associated with the Wet Tropics that spotting one in the rainforest is considered a signature experience for visitors to Cairns and the Daintree.' },
+        { icon: '💙', text: 'The brilliant electric-blue iridescence is produced by structural coloration — microscopic scale architecture that reflects blue wavelengths. From the underside, the wings are a cryptic brown-black that provides camouflage when at rest.' },
+        { icon: '🔵', text: 'Ulysses butterflies are powerfully attracted to blue objects — a trait exploited to lure them for photography. Researchers and tour guides sometimes wear blue clothing to attract them into view, and females are drawn to the males\' blue wings during courtship.' },
+        { icon: '🌿', text: 'Caterpillars feed almost exclusively on the leaves of Euodia (melicope) trees, a native rainforest tree. Planting these in gardens in the Cairns region is one of the most effective ways to attract and support local Ulysses populations.' },
+      ],
+    },
+  ];
+
+  /* ── Wikipedia image fetch ── */
+  async function loadWikiImage(img) {
+    const title = img.dataset.wiki;
+    try {
+      const res = await fetch(
+        'https://en.wikipedia.org/w/api.php?action=query&titles=' +
+        encodeURIComponent(title) +
+        '&prop=pageimages&format=json&pithumbsize=800&origin=*'
+      );
+      const data = await res.json();
+      const page = Object.values(data.query.pages)[0];
+      if (page && page.thumbnail && page.thumbnail.source) {
+        img.src = page.thumbnail.source;
+        return;
+      }
+    } catch(e) {}
+    try {
+      const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+      const data = await res.json();
+      if (data.thumbnail && data.thumbnail.source) { img.src = data.thumbnail.source; }
+    } catch(e) {}
+  }
+
+  /* ── Build species cards ── */
+  function buildSpecies() {
+    const grid = document.getElementById('species-grid');
+    SPECIES.forEach((item, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const statsHtml = item.stats.map(s =>
+        `<div class="stat-chip"><div class="stat-label">${s.label}</div><div class="stat-val">${s.val}</div></div>`
+      ).join('');
+      const tagsHtml = item.tags.map(t => `<span class="tag">${t}</span>`).join('');
+      const factsHtml = item.facts.map(f =>
+        `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+      ).join('');
+      card.innerHTML = `
+        <div class="card-img-wrap">
+          <div class="card-img-placeholder">
+            <div class="ph-num">${String(i+1).padStart(2,'0')}</div>
+            <div class="ph-icon">🦋</div>
+          </div>
+          <img data-wiki="${item.wiki}" alt="${item.name}"
+               onload="this.classList.add('loaded');this.previousElementSibling.style.display='none'"
+               onerror="this.style.display='none'">
+          <div class="badge-left">${item.badge}</div>
+          <div class="badge-right">${item.sci}</div>
+        </div>
+        <div class="card-body">
+          <div>
+            <div class="card-title">${item.name}</div>
+            <div class="card-sub">${item.sub}</div>
+          </div>
+          <div class="card-stats">${statsHtml}</div>
+          <div class="card-tags">${tagsHtml}</div>
+          <div>
+            <div class="facts-label">&#9830; Notable Facts</div>
+            <div class="facts-list">${factsHtml}</div>
+          </div>
+        </div>`;
+      grid.appendChild(card);
+    });
+  }
+  buildSpecies();
+
+  /* ── Tab switching ── */
+  function switchTab(name) {
+    document.querySelectorAll('.subnav-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', (i === 0 ? 'facts' : 'species') === name);
+    });
+    document.getElementById('section-facts').classList.toggle('hidden', name !== 'facts');
+    document.getElementById('section-species').classList.toggle('hidden', name !== 'species');
+    document.body.classList.toggle('no-scroll', name === 'facts');
+    if (name === 'species') {
+      document.querySelectorAll('img[data-wiki]:not([src])').forEach(loadWikiImage);
+    }
+    localStorage.setItem('butterfly_tab', name);
+  }
+  switchTab(localStorage.getItem('butterfly_tab') || 'facts');
   </script>
 </body>
 </html>

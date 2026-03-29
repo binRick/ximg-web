@@ -9,15 +9,35 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --green: #00ff41;
+      --cyan:  #06b6d4;
+      --gold:  #facc15;
+      --bg:    #0d1117;
+      --card:  #161b22;
+      --border:rgba(0,255,65,0.18);
+    }
+
     body {
-      background: #0d1117;
+      background: var(--bg);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      min-height: 100vh;
       font-family: monospace;
+      min-height: 100vh;
+      padding-top: 88px; /* 44px nav + 44px subnav */
+    }
+
+    body.terminal-mode {
       overflow: hidden;
+      justify-content: center;
+      padding-bottom: 0;
+    }
+
+    body.distros-mode {
+      overflow-y: auto;
+      justify-content: flex-start;
+      padding-bottom: 3rem;
     }
 
     body::before {
@@ -30,6 +50,55 @@
       );
       pointer-events: none;
       z-index: 6;
+    }
+
+    /* ── Sub-nav ── */
+    #subnav {
+      position: fixed;
+      top: 44px;
+      left: 0; right: 0;
+      height: 44px;
+      background: #0d1117;
+      border-bottom: 1px solid rgba(0,255,65,0.2);
+      display: flex;
+      align-items: center;
+      gap: .25rem;
+      padding: 0 1rem;
+      z-index: 200;
+    }
+
+    .linux-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #6e7681;
+      font-family: monospace;
+      font-size: .78rem;
+      padding: .3rem .9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: color .15s, border-color .15s, background .15s;
+      white-space: nowrap;
+    }
+
+    .linux-tab:hover { color: #c9d1d9; border-color: var(--border); }
+
+    .linux-tab.active {
+      color: var(--green);
+      border-color: rgba(0,255,65,0.4);
+      background: rgba(0,255,65,0.07);
+    }
+
+    /* ── Sections ── */
+    .section { width: 100%; }
+    .section.hidden { display: none !important; }
+
+    /* ── Terminal section ── */
+    #section-terminal {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: calc(100vh - 88px);
     }
 
     #tux {
@@ -80,38 +149,201 @@
     }
 
     .xterm-viewport { background: transparent !important; }
+
+    /* ── Distros section ── */
+    #section-distros {
+      width: 100%;
+      max-width: 1100px;
+      padding: 2rem 1.5rem;
+    }
+
+    .distros-hero {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .distros-hero .hero-icon { font-size: 3rem; line-height: 1; margin-bottom: .5rem; }
+
+    .distros-hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: .4rem;
+    }
+
+    .distros-hero p {
+      color: #6e7681;
+      font-size: .9rem;
+    }
+
+    .distros-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .distro-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+    }
+
+    .distro-card:hover {
+      border-color: rgba(0,255,65,0.45);
+      transform: translateY(-3px);
+    }
+
+    .distro-img-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #0d1117;
+      overflow: hidden;
+    }
+
+    .distro-logo {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 52%;
+      height: 52%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 18px var(--distro-glow, rgba(255,255,255,.15)));
+      opacity: 0;
+      transition: opacity .4s;
+    }
+
+    .distro-logo.loaded { opacity: 1; }
+
+    .distro-year-badge {
+      position: absolute;
+      top: .55rem;
+      right: .55rem;
+      background: rgba(13,17,23,.85);
+      border: 1px solid rgba(0,255,65,.3);
+      color: var(--green);
+      font-size: .68rem;
+      font-weight: 700;
+      padding: .15rem .5rem;
+      border-radius: 4px;
+    }
+
+    .distro-body { padding: 1.1rem 1.2rem 1.3rem; }
+
+    .distro-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f0f6fc;
+      margin-bottom: .2rem;
+    }
+
+    .distro-tagline {
+      font-size: .78rem;
+      color: #6e7681;
+      margin-bottom: .85rem;
+    }
+
+    .distro-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem;
+      margin-bottom: .9rem;
+    }
+
+    .chip {
+      font-size: .68rem;
+      padding: .2rem .55rem;
+      border-radius: 99px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .chip-green  { background: rgba(0,255,65,.1);  border-color: rgba(0,255,65,.3);  color: var(--green); }
+    .chip-cyan   { background: rgba(6,182,212,.1); border-color: rgba(6,182,212,.3); color: var(--cyan); }
+    .chip-gold   { background: rgba(250,204,21,.1);border-color: rgba(250,204,21,.3);color: var(--gold); }
+    .chip-purple { background: rgba(167,139,250,.1);border-color:rgba(167,139,250,.3);color:#a78bfa; }
+    .chip-pink   { background: rgba(244,114,182,.1);border-color:rgba(244,114,182,.3);color:#f472b6; }
+    .chip-orange { background: rgba(251,146,60,.1); border-color:rgba(251,146,60,.3); color:#fb923c; }
+
+    .distro-facts {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: .38rem;
+    }
+
+    .distro-facts li {
+      font-size: .78rem;
+      color: #8b949e;
+      padding-left: 1.1rem;
+      position: relative;
+      line-height: 1.5;
+    }
+
+    .distro-facts li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: var(--green);
+      opacity: .7;
+    }
   </style>
 </head>
-<body>
-  <svg id="tux" viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="155" rx="62" ry="72" fill="#111"/>
-    <ellipse cx="100" cy="168" rx="38" ry="50" fill="#f5e6c8"/>
-    <ellipse cx="100" cy="68"  rx="46" ry="48" fill="#111"/>
-    <ellipse cx="100" cy="82"  rx="28" ry="22" fill="#f5c842"/>
-    <ellipse cx="85"  cy="62"  rx="11" ry="12" fill="#fff"/>
-    <ellipse cx="115" cy="62"  rx="11" ry="12" fill="#fff"/>
-    <ellipse cx="87"  cy="64"  rx="6"  ry="7"  fill="#111"/>
-    <ellipse cx="117" cy="64"  rx="6"  ry="7"  fill="#111"/>
-    <circle  cx="89"  cy="61"  r="2"            fill="#fff"/>
-    <circle  cx="119" cy="61"  r="2"            fill="#fff"/>
-    <ellipse cx="100" cy="89"  rx="13" ry="8"   fill="#f0a500"/>
-    <ellipse cx="78"  cy="222" rx="20" ry="8"   fill="#f0a500" transform="rotate(-15 78 222)"/>
-    <ellipse cx="122" cy="222" rx="20" ry="8"   fill="#f0a500" transform="rotate(15 122 222)"/>
-    <ellipse cx="44"  cy="155" rx="18" ry="46"  fill="#111"    transform="rotate(-12 44 155)"/>
-    <ellipse cx="156" cy="155" rx="18" ry="46"  fill="#111"    transform="rotate(12 156 155)"/>
-  </svg>
+<body class="terminal-mode">
+
+  <!-- ── Sub-nav ── -->
+  <div id="subnav">
+    <button class="linux-tab active" data-tab="terminal">Terminal</button>
+    <button class="linux-tab"        data-tab="distros">Distros</button>
+  </div>
+
+  <!-- ── Terminal section ── -->
+  <div id="section-terminal" class="section">
+    <svg id="tux" viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="100" cy="155" rx="62" ry="72" fill="#111"/>
+      <ellipse cx="100" cy="168" rx="38" ry="50" fill="#f5e6c8"/>
+      <ellipse cx="100" cy="68"  rx="46" ry="48" fill="#111"/>
+      <ellipse cx="100" cy="82"  rx="28" ry="22" fill="#f5c842"/>
+      <ellipse cx="85"  cy="62"  rx="11" ry="12" fill="#fff"/>
+      <ellipse cx="115" cy="62"  rx="11" ry="12" fill="#fff"/>
+      <ellipse cx="87"  cy="64"  rx="6"  ry="7"  fill="#111"/>
+      <ellipse cx="117" cy="64"  rx="6"  ry="7"  fill="#111"/>
+      <circle  cx="89"  cy="61"  r="2"            fill="#fff"/>
+      <circle  cx="119" cy="61"  r="2"            fill="#fff"/>
+      <ellipse cx="100" cy="89"  rx="13" ry="8"   fill="#f0a500"/>
+      <ellipse cx="78"  cy="222" rx="20" ry="8"   fill="#f0a500" transform="rotate(-15 78 222)"/>
+      <ellipse cx="122" cy="222" rx="20" ry="8"   fill="#f0a500" transform="rotate(15 122 222)"/>
+      <ellipse cx="44"  cy="155" rx="18" ry="46"  fill="#111"    transform="rotate(-12 44 155)"/>
+      <ellipse cx="156" cy="155" rx="18" ry="46"  fill="#111"    transform="rotate(12 156 155)"/>
+    </svg>
+
+    <div class="window">
+      <div class="titlebar">
+        <div class="dot r"></div>
+        <div class="dot y"></div>
+        <div class="dot g"></div>
+        <span class="title">root@linux.ximg.app — bash</span>
+      </div>
+      <div id="terminal"></div>
+    </div>
+  </div>
+
+  <!-- ── Distros section ── -->
+  <div id="section-distros" class="section hidden">
+    <div class="distros-hero">
+      <div class="hero-icon">🐧</div>
+      <h1>Linux Distributions</h1>
+      <p>The major distros — history, philosophy, and what makes each unique.</p>
+    </div>
+    <div class="distros-grid" id="distros-grid"></div>
+  </div>
 
   <script src="/shared/nav.js?v=2"></script>
-
-  <div class="window">
-    <div class="titlebar">
-      <div class="dot r"></div>
-      <div class="dot y"></div>
-      <div class="dot g"></div>
-      <span class="title">root@linux.ximg.app — bash</span>
-    </div>
-    <div id="terminal"></div>
-  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
@@ -421,8 +653,8 @@
       const rows = Math.max(tux.length, info.length);
       for (let i = 0; i < rows; i++) {
         const l = (tux[i] || '').padEnd(28);
-        const r = info[i] || '';
-        println(l + r);
+        const ri = info[i] || '';
+        println(l + ri);
       }
     },
 
@@ -439,11 +671,6 @@
   };
 
   function hexToRgb(hex) {
-    const h = hex.replace('#','');
-    const r = parseInt(h.slice(0,2).padStart(2,'0'),16);
-    const g = parseInt(h.slice(2,4).padStart(2,'0').replace(/^(.{0})(.{0})/,'$100'),16);
-    const b2 = parseInt(h.slice(4,6).padStart(2,'0'),16);
-    // simplified
     const map = {'#000':'0;0;0','#f00':'255;0;0','#0f0':'0;255;0','#ff0':'255;255;0','#00f':'0;0;255','#f0f':'255;0;255','#0ff':'0;255;255','#fff':'255;255;255'};
     return map[hex] || '128;128;128';
   }
@@ -486,7 +713,6 @@
   term.onKey(({ key, domEvent }) => {
     const code = domEvent.keyCode;
 
-    // Enter
     if (code === 13) {
       const line = inputBuffer;
       inputBuffer = '';
@@ -497,7 +723,6 @@
       return;
     }
 
-    // Backspace
     if (code === 8) {
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1);
@@ -506,7 +731,6 @@
       return;
     }
 
-    // Up arrow — history prev
     if (code === 38) {
       if (!historyList.length) return;
       if (historyIdx === -1) { savedInput = inputBuffer; historyIdx = historyList.length - 1; }
@@ -517,7 +741,6 @@
       return;
     }
 
-    // Down arrow — history next
     if (code === 40) {
       if (historyIdx === -1) return;
       historyIdx++;
@@ -529,7 +752,6 @@
       return;
     }
 
-    // Ctrl+C
     if (domEvent.ctrlKey && domEvent.key === 'c') {
       inputBuffer = '';
       term.write('^C');
@@ -537,14 +759,12 @@
       return;
     }
 
-    // Ctrl+L
     if (domEvent.ctrlKey && domEvent.key === 'l') {
       term.clear();
       term.write(prompt());
       return;
     }
 
-    // Tab — basic completion
     if (code === 9) {
       const parts = inputBuffer.split(/\s+/);
       const completing = parts[parts.length - 1];
@@ -571,37 +791,35 @@
       return;
     }
 
-    // Printable chars
     if (key.length === 1 && !domEvent.ctrlKey && !domEvent.metaKey) {
       inputBuffer += key;
       term.write(key);
     }
   });
 
-  // ── Boot ─────────────────────────────────────────────────────────────────────
   printBanner();
   writePrompt();
   term.focus();
   </script>
 
   <script>
-    // DVD bounce
+    // ── DVD bounce ──────────────────────────────────────────────────────────────
     const tuxEl = document.getElementById('tux');
-    const tuxW = tuxEl.offsetWidth  || 110;
-    const tuxH = tuxEl.offsetHeight || 127;
-    let tuxX = Math.random() * (window.innerWidth  - tuxW);
-    let tuxY = Math.random() * (window.innerHeight - tuxH);
+    let tuxX = Math.random() * (window.innerWidth  - 110);
+    let tuxY = Math.random() * (window.innerHeight - 127);
     let tuxVx = 1.8, tuxVy = 1.4;
+    let tuxRunning = true;
     const tuxColors = ['#00ff41','#06b6d4','#f472b6','#facc15','#a78bfa'];
     let tuxCi = 0;
 
     function bounceTux() {
+      if (!tuxRunning) { requestAnimationFrame(bounceTux); return; }
       tuxX += tuxVx; tuxY += tuxVy;
       let hit = false;
       if (tuxX <= 0)                               { tuxX = 0;                               tuxVx =  Math.abs(tuxVx); hit = true; }
-      if (tuxX >= window.innerWidth  - tuxW)       { tuxX = window.innerWidth  - tuxW;       tuxVx = -Math.abs(tuxVx); hit = true; }
-      if (tuxY <= 0)                               { tuxY = 0;                               tuxVy =  Math.abs(tuxVy); hit = true; }
-      if (tuxY >= window.innerHeight - tuxH)       { tuxY = window.innerHeight - tuxH;       tuxVy = -Math.abs(tuxVy); hit = true; }
+      if (tuxX >= window.innerWidth  - 110)        { tuxX = window.innerWidth  - 110;        tuxVx = -Math.abs(tuxVx); hit = true; }
+      if (tuxY <= 44)                              { tuxY = 44;                              tuxVy =  Math.abs(tuxVy); hit = true; }
+      if (tuxY >= window.innerHeight - 127)        { tuxY = window.innerHeight - 127;        tuxVy = -Math.abs(tuxVy); hit = true; }
       if (hit) {
         tuxCi = (tuxCi + 1) % tuxColors.length;
         tuxEl.style.filter = `drop-shadow(0 0 16px ${tuxColors[tuxCi]}) drop-shadow(0 0 4px ${tuxColors[tuxCi]})`;
@@ -612,11 +830,315 @@
     }
 
     window.addEventListener('resize', () => {
-      if (tuxX > window.innerWidth  - tuxW) tuxX = window.innerWidth  - tuxW;
-      if (tuxY > window.innerHeight - tuxH) tuxY = window.innerHeight - tuxH;
+      if (tuxX > window.innerWidth  - 110) tuxX = window.innerWidth  - 110;
+      if (tuxY > window.innerHeight - 127) tuxY = window.innerHeight - 127;
     });
 
     bounceTux();
+
+    // ── Tab switching ───────────────────────────────────────────────────────────
+    const TABS = ['terminal', 'distros'];
+
+    function switchTab(name) {
+      document.querySelectorAll('.linux-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      TABS.forEach(t => {
+        const el = document.getElementById('section-' + t);
+        el.classList.toggle('hidden', t !== name);
+      });
+      if (name === 'terminal') {
+        document.body.className = 'terminal-mode';
+        tuxEl.style.display = '';
+        tuxRunning = true;
+      } else {
+        document.body.className = 'distros-mode';
+        tuxEl.style.display = 'none';
+        tuxRunning = false;
+      }
+    }
+
+    document.querySelectorAll('.linux-tab').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // ── Distros data ────────────────────────────────────────────────────────────
+    const DISTROS = [
+      {
+        name: 'Ubuntu',
+        tagline: 'The most popular desktop Linux for newcomers',
+        year: 2004,
+        icon: 'ubuntu', color: '#E95420',
+        based_on: 'Debian',
+        pkg: 'apt / dpkg',
+        de: 'GNOME',
+        model: 'Fixed release',
+        chips: [
+          {label:'apt',cls:'chip-green'}, {label:'Debian-based',cls:'chip-cyan'},
+          {label:'GNOME',cls:'chip-purple'}, {label:'6mo releases',cls:'chip-gold'},
+        ],
+        facts: [
+          'Founded by Mark Shuttleworth; name means "humanity to others" in Zulu/Xhosa.',
+          'Powers the majority of public cloud VMs on AWS, Azure, and GCP.',
+          'Ubuntu 4.10 "Warty Warthog" was the first release (October 2004).',
+          'LTS versions ship every two years and receive 5 years of official support.',
+          'Unity shell was replaced by GNOME in Ubuntu 17.10 after mixed user reception.',
+        ],
+      },
+      {
+        name: 'Debian',
+        tagline: 'The universal operating system — rock-solid and community-driven',
+        year: 1993,
+        icon: 'debian', color: '#A81D33',
+        based_on: 'Independent',
+        pkg: 'apt / dpkg',
+        de: 'GNOME (optional)',
+        model: 'Stable / Testing / Sid',
+        chips: [
+          {label:'apt',cls:'chip-green'}, {label:'Independent',cls:'chip-orange'},
+          {label:'50k+ packages',cls:'chip-cyan'}, {label:'Non-profit',cls:'chip-gold'},
+        ],
+        facts: [
+          'One of the oldest surviving distros, founded by Ian Murdock in August 1993.',
+          'Versions are named after Toy Story characters (Bullseye, Bookworm, Trixie…).',
+          'The Debian Free Software Guidelines became the basis for the Open Source Definition.',
+          'Stable branch is famously conservative — packages may be 1–2 years old.',
+          'Derivatives include Ubuntu, Linux Mint, Kali, Raspberry Pi OS, and hundreds more.',
+        ],
+      },
+      {
+        name: 'Fedora',
+        tagline: 'Cutting-edge features backed by Red Hat',
+        year: 2003,
+        icon: 'fedora', color: '#51A2DA',
+        based_on: 'Independent (RPM)',
+        pkg: 'dnf / rpm',
+        de: 'GNOME',
+        model: 'Semi-rolling (~6mo)',
+        chips: [
+          {label:'dnf',cls:'chip-green'}, {label:'RPM',cls:'chip-orange'},
+          {label:'GNOME',cls:'chip-purple'}, {label:'SELinux',cls:'chip-pink'},
+        ],
+        facts: [
+          'Acts as an upstream proving ground for Red Hat Enterprise Linux (RHEL).',
+          'Ships the GNOME desktop in its purest, upstream form — no heavy customisation.',
+          'Fedora Silverblue offers an immutable, container-first desktop variant.',
+          'First distro to default to Wayland display server (Fedora 25, 2016).',
+          'Release cycle is roughly every 6 months with 13 months of support per version.',
+        ],
+      },
+      {
+        name: 'Arch Linux',
+        tagline: 'Do it yourself — a rolling release for power users',
+        year: 2002,
+        icon: 'archlinux', color: '#1793D1',
+        based_on: 'Independent',
+        pkg: 'pacman',
+        de: 'None (user choice)',
+        model: 'Rolling release',
+        chips: [
+          {label:'pacman',cls:'chip-cyan'}, {label:'Rolling',cls:'chip-green'},
+          {label:'AUR',cls:'chip-gold'}, {label:'Minimalist',cls:'chip-purple'},
+        ],
+        facts: [
+          '"I use Arch, btw" — became an internet meme representing elitism and pride.',
+          'The Arch User Repository (AUR) has over 85,000 community-maintained packages.',
+          'The Arch Wiki is considered the best Linux documentation on the internet — used by all distro users.',
+          'Minimal base install: no GUI, no bloat — you build exactly what you want.',
+          'Rolling release means you never reinstall; just keep updating.',
+        ],
+      },
+      {
+        name: 'Linux Mint',
+        tagline: 'The comfortable, familiar desktop Linux',
+        year: 2006,
+        icon: 'linuxmint', color: '#87CF3E',
+        based_on: 'Ubuntu / Debian',
+        pkg: 'apt / dpkg',
+        de: 'Cinnamon / MATE / XFCE',
+        model: 'Fixed release',
+        chips: [
+          {label:'apt',cls:'chip-green'}, {label:'Ubuntu-based',cls:'chip-orange'},
+          {label:'Cinnamon',cls:'chip-cyan'}, {label:'Beginner-friendly',cls:'chip-gold'},
+        ],
+        facts: [
+          'Consistently ranks as one of the top distros on DistroWatch popularity charts.',
+          'Cinnamon desktop was created by the Mint team as a fork of GNOME Shell.',
+          'Includes multimedia codecs and proprietary drivers out of the box — unlike Ubuntu.',
+          'Mint ships its own update manager that lets users choose update risk levels.',
+          'LMDE (Linux Mint Debian Edition) is a Debian-based variant without Ubuntu dependency.',
+        ],
+      },
+      {
+        name: 'Kali Linux',
+        tagline: 'Built for penetration testing and security research',
+        year: 2013,
+        icon: 'kalilinux', color: '#557C94',
+        based_on: 'Debian Testing',
+        pkg: 'apt / dpkg',
+        de: 'XFCE (default)',
+        model: 'Rolling release',
+        chips: [
+          {label:'apt',cls:'chip-green'}, {label:'Debian-based',cls:'chip-cyan'},
+          {label:'600+ tools',cls:'chip-pink'}, {label:'Offensive Security',cls:'chip-orange'},
+        ],
+        facts: [
+          'Successor to BackTrack Linux, developed and maintained by Offensive Security.',
+          'Ships with 600+ pre-installed penetration testing tools (Metasploit, Wireshark, Nmap…).',
+          'Not recommended as a daily driver — designed for security professionals.',
+          'Kali Undercover mode can make the desktop look like Windows 10 at a glance.',
+          'Available for ARM devices including Raspberry Pi, and as a WSL2 distribution.',
+        ],
+      },
+      {
+        name: 'openSUSE',
+        tagline: 'Enterprise-grade stability meets bleeding-edge choice',
+        year: 2005,
+        icon: 'opensuse', color: '#73BA25',
+        based_on: 'Independent (RPM)',
+        pkg: 'zypper / rpm',
+        de: 'KDE / GNOME',
+        model: 'Leap (stable) + Tumbleweed (rolling)',
+        chips: [
+          {label:'zypper',cls:'chip-green'}, {label:'RPM',cls:'chip-orange'},
+          {label:'YaST',cls:'chip-cyan'}, {label:'KDE/GNOME',cls:'chip-purple'},
+        ],
+        facts: [
+          'YaST (Yet another Setup Tool) is one of the most powerful distro-level control panels.',
+          'Tumbleweed is a fully rolling release; Leap is stable, tied to SUSE Linux Enterprise.',
+          'openSUSE Build Service (OBS) lets anyone build packages for dozens of distros.',
+          'Strong in enterprise environments across Germany and Europe.',
+          'The distinctive green lizard mascot is named "Geeko".',
+        ],
+      },
+      {
+        name: 'Pop!_OS',
+        tagline: 'Developer-focused, GPU-ready Ubuntu derivative',
+        year: 2017,
+        icon: 'popos', color: '#48B9C7',
+        based_on: 'Ubuntu',
+        pkg: 'apt + system76-scheduler',
+        de: 'COSMIC (custom GNOME)',
+        model: 'Fixed release',
+        chips: [
+          {label:'apt',cls:'chip-green'}, {label:'Ubuntu-based',cls:'chip-cyan'},
+          {label:'GPU support',cls:'chip-gold'}, {label:'Tiling WM',cls:'chip-purple'},
+        ],
+        facts: [
+          'Created by System76, a Linux hardware manufacturer — ships pre-installed on their laptops.',
+          'Separate ISO images for NVIDIA and AMD GPUs with drivers pre-configured.',
+          'Built-in tiling window manager via the Pop Shell GNOME extension.',
+          'COSMIC, a new Rust-based desktop environment, is under development as a full replacement.',
+          'Favoured by developers for its out-of-the-box dev tools and clean defaults.',
+        ],
+      },
+      {
+        name: 'Manjaro',
+        tagline: 'Arch Linux, made accessible',
+        year: 2011,
+        icon: 'manjaro', color: '#35BF5C',
+        based_on: 'Arch Linux',
+        pkg: 'pacman + pamac',
+        de: 'XFCE / KDE / GNOME',
+        model: 'Semi-rolling (curated)',
+        chips: [
+          {label:'pacman',cls:'chip-cyan'}, {label:'Arch-based',cls:'chip-green'},
+          {label:'AUR',cls:'chip-gold'}, {label:'GUI tools',cls:'chip-purple'},
+        ],
+        facts: [
+          'Adds a graphical installer (Calamares) and package manager (Pamac) on top of Arch.',
+          'Packages are held back ~2 weeks from Arch repos for additional stability testing.',
+          'Full AUR access — one of the largest software repositories in Linux.',
+          'Offers hardware detection (MHWD) that automatically installs appropriate GPU drivers.',
+          'Available in multiple desktop editions; KDE Plasma is the flagship flavour.',
+        ],
+      },
+      {
+        name: 'AlmaLinux',
+        tagline: 'RHEL-compatible, community-owned enterprise Linux',
+        year: 2021,
+        icon: 'almalinux', color: '#ACE000',
+        based_on: 'RHEL',
+        pkg: 'dnf / rpm',
+        de: 'GNOME (server optional)',
+        model: 'Fixed release (10-year cycle)',
+        chips: [
+          {label:'dnf',cls:'chip-green'}, {label:'RHEL-compatible',cls:'chip-orange'},
+          {label:'10yr support',cls:'chip-gold'}, {label:'Enterprise',cls:'chip-cyan'},
+        ],
+        facts: [
+          'Created by the community after CentOS shifted to CentOS Stream in December 2020.',
+          'Binary compatible with Red Hat Enterprise Linux — ideal drop-in replacement.',
+          'Governed by the AlmaLinux OS Foundation, a 501(c)(6) non-profit.',
+          'The server powering this very site runs AlmaLinux 10.',
+          'Free forever — sustained by corporate sponsors including CloudLinux, cPanel, and ARM.',
+        ],
+      },
+    ];
+
+    function hexToRgba(hex, alpha) {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function buildDistroCard(d) {
+      const card = document.createElement('div');
+      card.className = 'distro-card';
+
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'distro-img-wrap';
+      imgWrap.style.background = `radial-gradient(ellipse at center, ${hexToRgba(d.color, 0.18)} 0%, #0d1117 72%)`;
+      imgWrap.style.setProperty('--distro-glow', hexToRgba(d.color, 0.5));
+
+      const logo = document.createElement('img');
+      logo.className = 'distro-logo';
+      logo.alt = d.name + ' logo';
+      const iconColor = d.color.replace('#', '');
+      logo.src = `https://cdn.simpleicons.org/${d.icon}/${iconColor}`;
+      logo.onload = () => logo.classList.add('loaded');
+
+      const yearBadge = document.createElement('div');
+      yearBadge.className = 'distro-year-badge';
+      yearBadge.textContent = d.year;
+
+      imgWrap.append(logo, yearBadge);
+
+      const body = document.createElement('div');
+      body.className = 'distro-body';
+
+      const name = document.createElement('div');
+      name.className = 'distro-name';
+      name.textContent = d.name;
+
+      const tagline = document.createElement('div');
+      tagline.className = 'distro-tagline';
+      tagline.textContent = d.tagline;
+
+      const chips = document.createElement('div');
+      chips.className = 'distro-chips';
+      d.chips.forEach(c => {
+        const chip = document.createElement('span');
+        chip.className = `chip ${c.cls}`;
+        chip.textContent = c.label;
+        chips.appendChild(chip);
+      });
+
+      const facts = document.createElement('ul');
+      facts.className = 'distro-facts';
+      d.facts.forEach(f => {
+        const li = document.createElement('li');
+        li.textContent = f;
+        facts.appendChild(li);
+      });
+
+      body.append(name, tagline, chips, facts);
+      card.append(imgWrap, body);
+      return card;
+    }
+
+    const grid = document.getElementById('distros-grid');
+    DISTROS.forEach(d => grid.appendChild(buildDistroCard(d)));
   </script>
 </body>
 </html>
