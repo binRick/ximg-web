@@ -1239,7 +1239,7 @@ const CHARACTERS = [
     combos:['Ground Freeze → Ice Burst → Slide','Jump Kick → Cold Shoulder → Freeze Ender'],
     bio:'Sub-Zero\'s arrogant and rebellious apprentice, Frost\'s ambition led her to steal the Dragon Medallion and freeze herself from the inside — reborn in MK11 as a cyborg fanatic.' },
 
-  { name:'Bo\'Rai Cho', wiki:'Bo%27_Rai_Cho',
+  { name:'Bo\' Rai Cho', wiki:'Bo%27_Rai_Cho',
     debut:'Deadly Alliance (2002)', debutKey:'mkda',
     games:['mkda','mkd','mka','mkx'],
     realm:'Outworld', species:'Outworlder (Liu Kang\'s trainer)',
@@ -1526,24 +1526,26 @@ function renderCharGrid() {
 
     grid.appendChild(card);
 
-    // Load portrait via Wikipedia API with Fandom fallback
+    // Load portrait: Wikipedia first, Fandom wiki as fallback
     const img = card.querySelector('img');
     (async () => {
-      try {
-        let src = null;
-        const firstName = c.name.toLowerCase().split(/[\s\/]+/)[0];
+      let src = null;
+      const firstName = c.name.toLowerCase().split(/[\s\/]+/)[0];
 
-        // Try Wikipedia REST API — fix pre-encoded %27 (apostrophes) to avoid double-encoding
+      // 1. Try Wikipedia REST API — decode pre-encoded %27 to avoid double-encoding
+      try {
         const wikiKey = c.wiki.replace(/%27/g, "'");
         const res  = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiKey)}`);
         const data = await res.json();
-        // Only accept the image if the article is actually about this character (not a redirect to a list page)
+        // Reject if the returned article is a list page (redirect away from character's own article)
         if (data.thumbnail?.source && data.title?.toLowerCase().includes(firstName)) {
           src = data.thumbnail.source;
         }
+      } catch(e) {}
 
-        // Fallback: Mortal Kombat Fandom wiki (works for chars without Wikipedia thumbnails)
-        if (!src) {
+      // 2. Fallback: Mortal Kombat Fandom wiki
+      if (!src) {
+        try {
           const fandomTitle = c.fandom || c.name.replace(/\s+/g, '_');
           const fres = await fetch(
             `https://mortalkombat.fandom.com/api.php?action=query&titles=${encodeURIComponent(fandomTitle)}&prop=pageimages&format=json&pithumbsize=400&origin=*`
@@ -1551,16 +1553,16 @@ function renderCharGrid() {
           const fdata = await fres.json();
           const pages = Object.values(fdata?.query?.pages || {});
           if (pages[0]?.thumbnail?.source) src = pages[0].thumbnail.source;
-        }
+        } catch(e) {}
+      }
 
-        if (src) {
-          img.src = src;
-          img.onload = () => {
-            img.classList.add('loaded');
-            card.querySelector('.char-placeholder').style.display = 'none';
-          };
-        }
-      } catch(e) {}
+      if (src) {
+        img.src = src;
+        img.onload = () => {
+          img.classList.add('loaded');
+          card.querySelector('.char-placeholder').style.display = 'none';
+        };
+      }
     })();
   });
 }
