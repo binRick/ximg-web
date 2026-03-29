@@ -26,6 +26,7 @@
     '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii.ximg.app</a>' +
     '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json.ximg.app</a>' +
     '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker.ximg.app</a>' +
+    '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario.ximg.app</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs.ximg.app</a>';
 
   // Highlight the current site
