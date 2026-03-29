@@ -3,16 +3,18 @@
   var s = document.createElement('style');
   s.textContent =
     'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
-    'gap:.25rem;padding:.75rem 1.5rem;background:rgba(10,10,15,.85);backdrop-filter:blur(16px);' +
-    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace}' +
-    '.nav-brand{font-weight:700;font-size:.95rem;color:#f1f5f9;margin-right:auto;letter-spacing:-.02em;text-decoration:none}' +
-    '.nav-item{display:inline-flex;align-items:center;gap:.45rem;font-size:.85rem;font-weight:600;' +
-    'text-decoration:none;padding:.4rem 1rem;border-radius:6px;transition:all .2s;' +
+    'gap:.2rem;padding:.5rem 1rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
+    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;' +
+    'overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}' +
+    'nav::-webkit-scrollbar{display:none}' +
+    '.nav-brand{font-weight:700;font-size:.88rem;color:#f1f5f9;margin-right:.4rem;letter-spacing:-.02em;text-decoration:none;flex-shrink:0}' +
+    '.nav-item{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;' +
+    'text-decoration:none;padding:.3rem .65rem;border-radius:6px;transition:all .2s;white-space:nowrap;flex-shrink:0;' +
     'color:#c9d1d9;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}' +
     '.nav-item:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);transform:translateY(-1px)}' +
     '.nav-item.active{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07);' +
     'pointer-events:none;cursor:default}' +
-    '.nav-dot{width:7px;height:7px;border-radius:50%;background:#00ff41;box-shadow:0 0 6px #00ff41;' +
+    '.nav-dot{width:6px;height:6px;border-radius:50%;background:#00ff41;box-shadow:0 0 5px #00ff41;' +
     'animation:navpulse 2s ease-in-out infinite;flex-shrink:0}' +
     '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}';
   document.head.appendChild(s);
@@ -21,13 +23,17 @@
   var nav = document.createElement('nav');
   nav.innerHTML =
     '<a class="nav-brand" href="https://ximg.app">ximg.app</a>' +
-    '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux.ximg.app</a>' +
-    '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly.ximg.app</a>' +
-    '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii.ximg.app</a>' +
-    '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json.ximg.app</a>' +
-    '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker.ximg.app</a>' +
-    '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario.ximg.app</a>' +
-    '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs.ximg.app</a>';
+    '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux</a>' +
+    '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly</a>' +
+    '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii</a>' +
+    '<a class="nav-item" href="https://yaml.ximg.app"><div class="nav-dot"></div>yaml</a>' +
+    '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json</a>' +
+    '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker</a>' +
+    '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario</a>' +
+    '<a class="nav-item" href="https://doom.ximg.app"><div class="nav-dot"></div>doom</a>' +
+    '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
+    '<a class="nav-item" href="https://docker.ximg.app"><div class="nav-dot"></div>docker</a>' +
+    '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
 
   // Highlight the current site
   nav.querySelectorAll('.nav-item').forEach(function (a) {
@@ -40,7 +46,7 @@
   // Spacer — keeps content below the fixed nav in flex-column layouts
   var spacer = document.createElement('div');
   spacer.setAttribute('aria-hidden', 'true');
-  spacer.style.cssText = 'height:52px;width:100%;flex-shrink:0;pointer-events:none';
+  spacer.style.cssText = 'height:44px;width:100%;flex-shrink:0;pointer-events:none';
 
   document.body.prepend(spacer);
   document.body.prepend(nav);

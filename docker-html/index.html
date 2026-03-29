@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>docker.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #0a0f1a;
+      --blue: #38bdf8;
+      --cyan: #22d3ee;
+      --grn:  #4ade80;
+      --yel:  #fbbf24;
+      --red:  #f87171;
+      --dim:  #64748b;
+      --text: #e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(56,189,248,.04) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(56,189,248,.04) 1px,transparent 1px);
+      background-size:44px 44px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(110px);opacity:.15;pointer-events:none;z-index:0}
+    .glow-1{width:600px;height:600px;background:#0ea5e9;top:-200px;left:-150px}
+    .glow-2{width:400px;height:400px;background:#0891b2;bottom:-100px;right:-100px}
+
+    .wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.4rem}
+
+    h1{font-size:1.55rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#38bdf8 0%,#22d3ee 50%,#818cf8 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:#64748b;margin-top:.2rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .docker-tabs{display:flex;gap:.4rem;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .docker-tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:#64748b;
+      font-family:inherit;transition:all .2s}
+    .docker-tab.active{color:var(--blue);border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.07)}
+    .docker-tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .docker-section{display:flex;flex-direction:column;gap:1.25rem}
+    .docker-section.hidden{display:none}
+
+    /* ── Section heading ── */
+    .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--blue);margin-bottom:-.2rem}
+
+    /* ── Command table card ── */
+    .cmd-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;overflow:hidden}
+    .cmd-row{display:grid;grid-template-columns:minmax(220px,auto) 1fr;
+      border-bottom:1px solid rgba(255,255,255,.05);align-items:start}
+    .cmd-row:last-child{border-bottom:none}
+    .cmd-code{font-family:'Courier New',monospace;font-size:.78rem;padding:.65rem 1rem;
+      color:var(--cyan);background:rgba(0,0,0,.25);border-right:1px solid rgba(255,255,255,.05);
+      word-break:break-all;line-height:1.5}
+    .cmd-code .arg{color:var(--yel)}
+    .cmd-code .flag{color:var(--grn)}
+    .cmd-desc{font-size:.78rem;padding:.65rem 1rem;color:#94a3b8;line-height:1.5}
+
+    /* ── Compose reference ── */
+    .compose-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.5rem 1.75rem;
+      font-family:'Courier New',monospace;font-size:clamp(.76rem,1.5vw,.88rem);
+      line-height:1.9;position:relative;overflow:hidden}
+    .compose-card::before{content:'compose.yaml';position:absolute;top:.6rem;right:1rem;
+      font-size:.65rem;color:#334155;letter-spacing:.1em;font-family:'Segoe UI',sans-serif}
+
+    .ck {color:var(--blue)}         /* key */
+    .cv {color:var(--grn)}          /* string value */
+    .cn {color:var(--yel)}          /* number / bool */
+    .cc {color:#475569;font-style:italic} /* comment */
+    .ca {color:#f472b6}             /* anchor */
+
+    .legend{display:flex;flex-wrap:wrap;gap:.5rem .9rem;justify-content:center}
+    .chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;
+      padding:.28rem .7rem;border-radius:99px;
+      border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);
+      font-family:'Courier New',monospace;white-space:nowrap}
+    .chip .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+    .tip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem}
+    .tip-card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;padding:.9rem 1rem}
+    .tip-head{font-size:.72rem;font-weight:700;font-family:'Courier New',monospace;
+      color:var(--cyan);margin-bottom:.4rem}
+    .tip-body{font-size:.72rem;color:#64748b;line-height:1.5}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .wrap > *{opacity:0;animation:fadeUp .6s ease forwards}
+    .wrap > *:nth-child(1){animation-delay:.1s}
+    .wrap > *:nth-child(2){animation-delay:.2s}
+    .wrap > *:nth-child(3){animation-delay:.3s}
+    .wrap > *:nth-child(4){animation-delay:.4s}
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="wrap">
+    <div>
+      <h1>🐳 Docker</h1>
+      <p class="subtitle">Command Reference &amp; Compose Guide</p>
+    </div>
+
+    <div class="docker-tabs">
+      <button class="docker-tab active" onclick="switchTab('reference')">Reference</button>
+      <button class="docker-tab" onclick="switchTab('compose')">Compose</button>
+    </div>
+
+    <!-- ── Reference section ── -->
+    <div id="section-reference" class="docker-section">
+
+      <div class="sec-title">Containers</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">docker run <span class="flag">-d -p</span> <span class="arg">8080:80</span> <span class="arg">image</span></div>
+          <div class="cmd-desc">Run container detached, map host:container port</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker run <span class="flag">-it --rm</span> <span class="arg">image</span> bash</div>
+          <div class="cmd-desc">Interactive shell, auto-remove on exit</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker run <span class="flag">--name</span> <span class="arg">myapp</span> <span class="flag">-e</span> <span class="arg">KEY=val</span> <span class="arg">image</span></div>
+          <div class="cmd-desc">Named container with environment variable</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker run <span class="flag">-v</span> <span class="arg">./data:/data</span> <span class="arg">image</span></div>
+          <div class="cmd-desc">Bind-mount host directory into container</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker ps</div>
+          <div class="cmd-desc">List running containers</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker ps <span class="flag">-a</span></div>
+          <div class="cmd-desc">List all containers including stopped</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker stop <span class="arg">id|name</span></div>
+          <div class="cmd-desc">Gracefully stop a container (SIGTERM → SIGKILL)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker rm <span class="arg">id|name</span></div>
+          <div class="cmd-desc">Remove a stopped container</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker exec <span class="flag">-it</span> <span class="arg">name</span> bash</div>
+          <div class="cmd-desc">Shell into a running container</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker logs <span class="flag">-f</span> <span class="arg">name</span></div>
+          <div class="cmd-desc">Stream live container logs</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker inspect <span class="arg">name</span></div>
+          <div class="cmd-desc">Full JSON metadata for a container or image</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker stats</div>
+          <div class="cmd-desc">Live CPU/mem/net usage for all containers</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Images</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">docker pull <span class="arg">image:tag</span></div>
+          <div class="cmd-desc">Download image from registry</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker build <span class="flag">-t</span> <span class="arg">name:tag</span> <span class="arg">.</span></div>
+          <div class="cmd-desc">Build image from Dockerfile in current dir</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker build <span class="flag">--no-cache -t</span> <span class="arg">name:tag</span> <span class="arg">.</span></div>
+          <div class="cmd-desc">Force full rebuild, ignore layer cache</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker images</div>
+          <div class="cmd-desc">List local images</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker rmi <span class="arg">image:tag</span></div>
+          <div class="cmd-desc">Remove a local image</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker tag <span class="arg">src:tag</span> <span class="arg">dst:tag</span></div>
+          <div class="cmd-desc">Alias an image with a new name/tag</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker push <span class="arg">name:tag</span></div>
+          <div class="cmd-desc">Push image to registry</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker history <span class="arg">image</span></div>
+          <div class="cmd-desc">Show layers and sizes of an image</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Volumes &amp; Networks</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">docker volume create <span class="arg">vol</span></div>
+          <div class="cmd-desc">Create a named volume</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker volume ls</div>
+          <div class="cmd-desc">List all volumes</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker volume rm <span class="arg">vol</span></div>
+          <div class="cmd-desc">Delete a volume</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker network create <span class="arg">net</span></div>
+          <div class="cmd-desc">Create a bridge network</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker network ls</div>
+          <div class="cmd-desc">List networks</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker network inspect <span class="arg">net</span></div>
+          <div class="cmd-desc">Show containers attached and subnet info</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Cleanup</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">docker system prune</div>
+          <div class="cmd-desc">Remove stopped containers, dangling images, unused networks</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker system prune <span class="flag">-a</span></div>
+          <div class="cmd-desc">Also remove all unused images (not just dangling)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker image prune <span class="flag">-a</span></div>
+          <div class="cmd-desc">Remove all images not used by a running container</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker volume prune</div>
+          <div class="cmd-desc">Remove all unused volumes</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Compose section ── -->
+    <div id="section-compose" class="docker-section hidden">
+
+      <div class="compose-card"><pre><span class="cc"># compose.yaml — annotated example</span>
+<span class="ck">services</span>:
+
+  <span class="ck">web</span>:
+    <span class="ck">image</span>: <span class="cv">nginx:alpine</span>          <span class="cc"># use a pre-built image</span>
+    <span class="ck">build</span>: <span class="cv">./app</span>                 <span class="cc"># — or build from Dockerfile</span>
+    <span class="ck">restart</span>: <span class="cv">unless-stopped</span>
+    <span class="ck">ports</span>:
+      - <span class="cv">"80:80"</span>                   <span class="cc"># host:container</span>
+      - <span class="cv">"443:443"</span>
+    <span class="ck">environment</span>:
+      - <span class="cv">NODE_ENV=production</span>
+      - <span class="cv">DB_HOST=db</span>               <span class="cc"># service name = hostname</span>
+    <span class="ck">volumes</span>:
+      - <span class="cv">./html:/usr/share/nginx/html:ro</span>
+      - <span class="cv">data-vol:/data</span>           <span class="cc"># named volume</span>
+    <span class="ck">depends_on</span>:
+      - <span class="cv">db</span>
+    <span class="ck">networks</span>:
+      - <span class="cv">frontend</span>
+      - <span class="cv">backend</span>
+    <span class="ck">healthcheck</span>:
+      <span class="ck">test</span>: <span class="cv">["CMD","curl","-f","http://localhost"]</span>
+      <span class="ck">interval</span>: <span class="cn">30s</span>
+      <span class="ck">timeout</span>: <span class="cn">10s</span>
+      <span class="ck">retries</span>: <span class="cn">3</span>
+
+  <span class="ck">db</span>:
+    <span class="ck">image</span>: <span class="cv">postgres:16-alpine</span>
+    <span class="ck">restart</span>: <span class="cv">unless-stopped</span>
+    <span class="ck">environment</span>:
+      <span class="ck">POSTGRES_PASSWORD</span>: <span class="cv">secret</span>
+      <span class="ck">POSTGRES_DB</span>: <span class="cv">mydb</span>
+    <span class="ck">volumes</span>:
+      - <span class="cv">pg-data:/var/lib/postgresql/data</span>
+    <span class="ck">networks</span>:
+      - <span class="cv">backend</span>
+
+<span class="ck">volumes</span>:
+  <span class="ck">data-vol</span>:            <span class="cc"># managed by Docker</span>
+  <span class="ck">pg-data</span>:
+
+<span class="ck">networks</span>:
+  <span class="ck">frontend</span>:
+  <span class="ck">backend</span>:
+    <span class="ck">driver</span>: <span class="cv">bridge</span></pre></div>
+
+      <div class="legend">
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span><span style="color:var(--blue)">key:</span> — directive</span>
+        <span class="chip"><span class="dot" style="background:var(--grn)"></span><span style="color:var(--grn)">value</span> — string</span>
+        <span class="chip"><span class="dot" style="background:var(--yel)"></span><span style="color:var(--yel)">30s</span> — duration/number</span>
+        <span class="chip"><span class="dot" style="background:#475569"></span><span style="color:#475569"># comment</span> — ignored</span>
+      </div>
+
+      <div class="sec-title">Common Compose Commands</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose up <span class="flag">-d</span></div>
+          <div class="cmd-desc">Start all services in background</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose up <span class="flag">--build -d</span></div>
+          <div class="cmd-desc">Rebuild images then start</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose down</div>
+          <div class="cmd-desc">Stop and remove containers and networks</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose down <span class="flag">-v</span></div>
+          <div class="cmd-desc">Also remove named volumes</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose ps</div>
+          <div class="cmd-desc">Show service status</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose logs <span class="flag">-f</span> <span class="arg">service</span></div>
+          <div class="cmd-desc">Tail logs for a specific service</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose exec <span class="arg">service</span> bash</div>
+          <div class="cmd-desc">Shell into a running service container</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose restart <span class="arg">service</span></div>
+          <div class="cmd-desc">Restart a single service</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose pull</div>
+          <div class="cmd-desc">Pull latest images for all services</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">docker compose config</div>
+          <div class="cmd-desc">Validate and print the resolved compose config</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Patterns</div>
+      <div class="tip-grid">
+        <div class="tip-card">
+          <div class="tip-head">restart policies</div>
+          <div class="tip-body"><code style="color:var(--cyan)">no</code> — never restart<br><code style="color:var(--cyan)">always</code> — always restart<br><code style="color:var(--cyan)">unless-stopped</code> — restart unless manually stopped<br><code style="color:var(--cyan)">on-failure</code> — only on non-zero exit</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">service discovery</div>
+          <div class="tip-body">Services on the same network reach each other by <strong style="color:var(--text)">service name</strong> as hostname. No extra DNS config needed.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">env files</div>
+          <div class="tip-body">Use <code style="color:var(--cyan)">env_file: .env</code> to load variables from a file instead of listing them inline. Keep secrets out of compose.yaml.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">build context</div>
+          <div class="tip-body"><code style="color:var(--cyan)">build: ./dir</code> uses <code style="color:var(--cyan)">./dir/Dockerfile</code>. Use <code style="color:var(--cyan)">build.context</code> + <code style="color:var(--cyan)">build.dockerfile</code> for custom paths.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">profiles</div>
+          <div class="tip-body">Tag services with <code style="color:var(--cyan)">profiles: [dev]</code> and start them selectively with <code style="color:var(--cyan)">--profile dev</code>.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">depends_on</div>
+          <div class="tip-body">Only waits for container <em>start</em>, not readiness. Use <code style="color:var(--cyan)">healthcheck</code> + <code style="color:var(--cyan)">depends_on.condition: service_healthy</code> for true readiness.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function switchTab(name) {
+      document.querySelectorAll('.docker-tab').forEach(function(t, i) {
+        t.classList.toggle('active', (i === 0 ? 'reference' : 'compose') === name);
+      });
+      document.getElementById('section-reference').classList.toggle('hidden', name !== 'reference');
+      document.getElementById('section-compose').classList.toggle('hidden', name !== 'compose');
+      localStorage.setItem('docker_tab', name);
+    }
+    switchTab(localStorage.getItem('docker_tab') || 'reference');
+  </script>
+</body>
+</html>

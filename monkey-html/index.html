@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monkey Island — monkey.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:    #0b1a2b;
+      --sea:   #0f2540;
+      --gold:  #f0a820;
+      --teal:  #2dd4bf;
+      --rum:   #9b2c1a;
+      --text:  #e8dcc8;
+      --muted: #7a96b0;
+      --card:  rgba(10,28,50,.75);
+      --border:rgba(240,168,32,.15);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* ── Ocean background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% 0%, #0f3460 0%, transparent 65%),
+        radial-gradient(ellipse 80% 40% at 80% 100%, #0a2040 0%, transparent 60%),
+        linear-gradient(180deg, #0b1a2b 0%, #071220 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,   rgba(45,212,191,.025) 0, rgba(45,212,191,.025) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg,  rgba(45,212,191,.015) 0, rgba(45,212,191,.015) 1px, transparent 1px, transparent 80px);
+    }
+
+    /* ── Layout ── */
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1060px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 2.5rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+    .hero-skull { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 18px rgba(240,168,32,.6)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #f0a820 0%, #ffe87a 45%, #c87820 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em; text-shadow: none;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic; letter-spacing: .04em;
+      max-width: 480px; line-height: 1.6;
+    }
+    .hero-divider {
+      width: 120px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    /* ── Game grid ── */
+    .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 1.5rem; }
+    @media(max-width: 520px) { .games { grid-template-columns: 1fr; } }
+
+    /* ── Game card ── */
+    .game-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .game-card:hover {
+      border-color: rgba(240,168,32,.4);
+      box-shadow: 0 8px 40px rgba(240,168,32,.1);
+      transform: translateY(-3px);
+    }
+
+    /* ── Screenshot / cover ── */
+    .game-img {
+      width: 100%; aspect-ratio: 16/9; object-fit: cover;
+      display: block; background: var(--sea);
+      position: relative; overflow: hidden;
+    }
+    .game-img-wrap {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: var(--sea);
+      overflow: hidden;
+    }
+    .game-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center top;
+      display: block; transition: opacity .4s;
+    }
+    .game-img-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .5rem;
+    }
+    .game-img-placeholder .ph-num {
+      font-size: 3.5rem; font-weight: 900; color: rgba(240,168,32,.15); line-height: 1;
+    }
+    .game-img-placeholder .ph-skull { font-size: 2rem; opacity: .2; }
+
+    .game-num-badge {
+      position: absolute; top: .75rem; left: .75rem;
+      background: rgba(0,0,0,.7); border: 1px solid rgba(240,168,32,.4);
+      color: var(--gold); font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .08em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+    }
+    .game-year-badge {
+      position: absolute; top: .75rem; right: .75rem;
+      background: rgba(155,44,26,.85); border: 1px solid rgba(240,168,32,.3);
+      color: #fcd7a0; font-size: .65rem; font-weight: 700;
+      padding: .2rem .6rem; border-radius: 99px; letter-spacing: .06em;
+      font-family: 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(4px);
+    }
+
+    /* ── Card body ── */
+    .game-body { padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+
+    .game-title { font-size: 1.15rem; font-weight: 800; line-height: 1.2; color: var(--text); }
+    .game-dev   { font-size: .72rem; color: var(--muted); margin-top: .2rem;
+                  font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ── Stats row ── */
+    .game-stats {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .stat-chip {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 8px; padding: .35rem .7rem; min-width: 72px;
+    }
+    .stat-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .stat-val   { font-size: .85rem; font-weight: 700; color: var(--gold); margin-top: .1rem; }
+
+    /* ── Platforms ── */
+    .platforms { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .plat-tag {
+      font-size: .62rem; padding: .18rem .55rem; border-radius: 99px;
+      border: 1px solid rgba(45,212,191,.25); background: rgba(45,212,191,.06);
+      color: var(--teal); font-family: 'Segoe UI', system-ui, sans-serif;
+      white-space: nowrap;
+    }
+
+    /* ── Facts ── */
+    .facts-label {
+      font-size: .62rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif;
+      margin-bottom: .35rem;
+    }
+    .facts-list { display: flex; flex-direction: column; gap: .5rem; }
+    .fact {
+      display: flex; gap: .6rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.55; color: #b0c4d8;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .fact-icon { flex-shrink: 0; font-size: .8rem; margin-top: .05rem; opacity: .75; }
+
+    /* ── Score badge ── */
+    .score-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-family: 'Segoe UI', system-ui, sans-serif; font-size: .72rem;
+      color: #86efac; font-weight: 700;
+    }
+    .score-badge::before { content: '★'; color: #4ade80; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    .hero, .games { animation: fadeUp .7s ease both; }
+    .games { animation-delay: .15s; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js"></script>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-skull">☠</div>
+      <h1>Monkey Island</h1>
+      <p class="hero-sub">The complete LucasArts saga — from Mêlée Island to the secret itself. How appropriate. You fight like a cow.</p>
+      <div class="hero-divider"></div>
+    </div>
+
+    <div class="games" id="games"></div>
+  </div>
+
+<script>
+const GAMES = [
+  {
+    num: 1,
+    title: 'The Secret of Monkey Island',
+    year: 1990,
+    month: 'Oct 1990',
+    dev: 'LucasArts  ·  Dir. Ron Gilbert',
+    wiki: 'The_Secret_of_Monkey_Island',
+    score: '96 / 100',
+    engine: 'SCUMM v4',
+    stats: [
+      { label: 'Release', val: '1990' },
+      { label: 'Score', val: '96/100' },
+      { label: 'Engine', val: 'SCUMM' },
+      { label: 'Endings', val: '1' },
+    ],
+    platforms: ['DOS', 'Amiga', 'Atari ST', 'Mac', 'FM Towns', 'PC (SE 2009)', 'iOS', 'Xbox 360'],
+    facts: [
+      { icon: '🎮', text: 'Guybrush Threepwood\'s name came from the ".brush" file extension used in Deluxe Paint when designing his sprite — the developers simply saved him as "Guy.brush" and it stuck.' },
+      { icon: '⚔️', text: 'The legendary Insult Swordfighting system pairs insults with matching comebacks — each a rhyming wit-duel. Ron Gilbert was inspired by swashbuckling films where fighters traded barbs mid-duel.' },
+      { icon: '🏴‍☠️', text: 'Ron Gilbert conceived the game after riding Disney\'s Pirates of the Caribbean ride as a child and imagining the story behind it. He spent years pitching it before LucasArts approved it.' },
+      { icon: '💀', text: 'LeChuck was reportedly named after a LucasArts executive the team disliked. The villain became one of gaming\'s most beloved antagonists despite — or because of — his origins.' },
+    ],
+  },
+  {
+    num: 2,
+    title: 'Monkey Island 2: LeChuck\'s Revenge',
+    year: 1991,
+    month: 'Dec 1991',
+    dev: 'LucasArts  ·  Dir. Ron Gilbert',
+    wiki: 'Monkey_Island_2:_LeChuck%27s_Revenge',
+    score: '95 / 100',
+    engine: 'SCUMM v5',
+    stats: [
+      { label: 'Release', val: '1991' },
+      { label: 'Score', val: '95/100' },
+      { label: 'Engine', val: 'SCUMM v5' },
+      { label: 'Episodes', val: '4 parts' },
+    ],
+    platforms: ['DOS', 'Amiga', 'Mac', 'FM Towns', 'PC (SE 2010)', 'iOS', 'Xbox 360'],
+    facts: [
+      { icon: '🎵', text: 'MI2 debuted the iMUSE adaptive music system, co-created by Michael Land and Peter McConnell. iMUSE dynamically cross-fades and transitions music in real-time based on player actions — revolutionary in 1991.' },
+      { icon: '🖼️', text: 'The game made a dramatic visual leap to 256-colour VGA graphics, making it one of the most beautiful-looking games of its era. The enhanced Special Edition was released in 2010.' },
+      { icon: '🎭', text: 'The ending remains one of the most debated in gaming history. Ron Gilbert has confirmed he knows the "true" meaning and that Return to Monkey Island (2022) finally addresses it.' },
+      { icon: '📦', text: 'Unusually, the box art depicts Guybrush apparently dead — a striking, darkly comic choice that matched the game\'s more melancholy tone compared to its predecessor.' },
+    ],
+  },
+  {
+    num: 3,
+    title: 'The Curse of Monkey Island',
+    year: 1997,
+    month: 'Oct 1997',
+    dev: 'LucasArts  ·  Dir. Jonathan Ackley & Larry Ahern',
+    wiki: 'The_Curse_of_Monkey_Island',
+    score: '92 / 100',
+    engine: 'SCUMM v8',
+    stats: [
+      { label: 'Release', val: '1997' },
+      { label: 'Score', val: '92/100' },
+      { label: 'Gap', val: '6 years' },
+      { label: 'Voice', val: 'Full cast' },
+    ],
+    platforms: ['Windows', 'Mac'],
+    facts: [
+      { icon: '🎙️', text: 'The first Monkey Island with full voice acting. Dominic Armato debuted as Guybrush Threepwood — a role he has reprised in every subsequent game — and the cast became beloved by the fanbase.' },
+      { icon: '🎨', text: 'The hand-drawn cartoon art style, inspired by classic Disney and Warner Bros. animation, was controversial at launch but is now regarded as one of the most charming aesthetics in point-and-click history.' },
+      { icon: '🎺', text: 'Featured a fully orchestrated CD-quality soundtrack composed by Michael Land — a massive upgrade over the MIDI scores of earlier games and considered one of the best adventure game soundtracks ever.' },
+      { icon: '⏳', text: 'Released six years after LeChuck\'s Revenge without Ron Gilbert\'s involvement. Gilbert had left LucasArts in 1992. The gap nearly killed the franchise — CMI revived it triumphantly.' },
+    ],
+  },
+  {
+    num: 4,
+    title: 'Escape from Monkey Island',
+    year: 2000,
+    month: 'Nov 2000',
+    dev: 'LucasArts  ·  Dir. Sean Clark & Michael Stemmle',
+    wiki: 'Escape_from_Monkey_Island',
+    score: '81 / 100',
+    engine: 'GrimE (3D)',
+    stats: [
+      { label: 'Release', val: '2000' },
+      { label: 'Score', val: '81/100' },
+      { label: 'Engine', val: 'GrimE' },
+      { label: 'First', val: '3D entry' },
+    ],
+    platforms: ['Windows', 'Mac', 'PlayStation 2'],
+    facts: [
+      { icon: '🧊', text: 'The first — and for 20 years, only — Monkey Island game built in full 3D, using the GrimE engine also seen in Grim Fandango. The transition divided fans who loved the hand-drawn look of CMI.' },
+      { icon: '🐒', text: 'Monkey Kombat — a rock-paper-scissors combat system using monkey poses — became one of the most criticised mechanics in the series, widely regarded as a frustrating low point.' },
+      { icon: '🎮', text: 'Marked the LucasArts adventure game swan song; the studio shifted focus to Star Wars titles shortly after release. The franchise went dormant for nine years following this entry.' },
+      { icon: '🖥️', text: 'The PlayStation 2 port arrived in 2001 and was the first Monkey Island game on a console, introducing the series to a new generation of players unfamiliar with the PC originals.' },
+    ],
+  },
+  {
+    num: 5,
+    title: 'Tales of Monkey Island',
+    year: 2009,
+    month: 'Jul 2009',
+    dev: 'Telltale Games  ·  Lead Design: Dave Grossman',
+    wiki: 'Tales_of_Monkey_Island',
+    score: '85 / 100',
+    engine: 'Telltale Tool',
+    stats: [
+      { label: 'Release', val: '2009' },
+      { label: 'Score', val: '85/100' },
+      { label: 'Episodes', val: '5' },
+      { label: 'Gap', val: '9 years' },
+    ],
+    platforms: ['Windows', 'Mac', 'Wii', 'PlayStation 3', 'iOS'],
+    facts: [
+      { icon: '📺', text: 'The first episodic Monkey Island, released in five monthly chapters between July and December 2009. The episodic format was Telltale\'s signature model during its golden era.' },
+      { icon: '🤝', text: 'Dave Grossman — co-writer of the original two games alongside Ron Gilbert and Tim Schafer — led the design, giving the series a genuine connection to its roots despite being at a different studio.' },
+      { icon: '🎙️', text: 'Dominic Armato returned as Guybrush alongside the full cast of CMI and EMI. The continuity of the voice cast helped bridge the nine-year gap and reassure longtime fans.' },
+      { icon: '⚓', text: 'Released the same summer as the Special Editions of games 1 and 2, creating a Monkey Island revival moment in 2009 that introduced the series to an entirely new generation.' },
+    ],
+  },
+  {
+    num: 6,
+    title: 'Return to Monkey Island',
+    year: 2022,
+    month: 'Sep 2022',
+    dev: 'Terrible Toybox  ·  Dir. Ron Gilbert & Dave Grossman',
+    wiki: 'Return_to_Monkey_Island',
+    score: '87 / 100',
+    engine: 'Custom (Unity)',
+    stats: [
+      { label: 'Release', val: '2022' },
+      { label: 'Score', val: '87/100' },
+      { label: 'Gap', val: '31 years' },
+      { label: 'Secrets', val: 'Revealed?' },
+    ],
+    platforms: ['Windows', 'Mac', 'Nintendo Switch', 'iOS', 'Android', 'Xbox', 'PlayStation'],
+    facts: [
+      { icon: '👑', text: 'Ron Gilbert\'s first Monkey Island game since LeChuck\'s Revenge in 1991 — a 31-year wait. Gilbert and Dave Grossman reunited, finally completing the story they began together in the early 90s.' },
+      { icon: '🎨', text: 'The bold, modern art style by Rex Crowle sparked fierce debate before release. Once players experienced it in motion, most embraced its painterly expressiveness as a worthy evolution.' },
+      { icon: '🔐', text: 'The game explicitly addresses the ending of MI2 and — in Gilbert\'s own words — finally reveals what the Secret of Monkey Island actually is. Whether fans accept the answer is another matter.' },
+      { icon: '📖', text: 'Gilbert has stated this is his final Monkey Island game, making it both a culmination and a farewell. The series spans 32 years, six games, and several studios — a remarkable adventure game legacy.' },
+    ],
+  },
+];
+
+async function fetchWikiThumb(wiki, imgEl, placeholderEl) {
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wiki}`);
+    const data = await res.json();
+    if (data.thumbnail && data.thumbnail.source) {
+      const src = data.thumbnail.source.replace(/\/\d+px-/, '/640px-');
+      imgEl.src = src;
+      imgEl.style.opacity = '0';
+      imgEl.onload = () => {
+        imgEl.style.transition = 'opacity .4s';
+        imgEl.style.opacity = '1';
+        placeholderEl.style.display = 'none';
+      };
+      imgEl.onerror = () => {};
+    }
+  } catch(e) {}
+}
+
+function buildGames() {
+  const container = document.getElementById('games');
+
+  GAMES.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'game-card';
+
+    const statsHtml = g.stats.map(s =>
+      `<div class="stat-chip">
+        <div class="stat-label">${s.label}</div>
+        <div class="stat-val">${s.val}</div>
+      </div>`
+    ).join('');
+
+    const platsHtml = g.platforms.map(p =>
+      `<span class="plat-tag">${p}</span>`
+    ).join('');
+
+    const factsHtml = g.facts.map(f =>
+      `<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="game-img-wrap">
+        <div class="game-img-placeholder">
+          <div class="ph-num">${g.num}</div>
+          <div class="ph-skull">☠</div>
+        </div>
+        <img src="" alt="${g.title}" style="opacity:0;position:relative;z-index:1">
+        <div class="game-num-badge">GAME ${g.num}</div>
+        <div class="game-year-badge">${g.month}</div>
+      </div>
+      <div class="game-body">
+        <div>
+          <div class="game-title">${g.title}</div>
+          <div class="game-dev">${g.dev}</div>
+        </div>
+        <div class="game-stats">${statsHtml}</div>
+        <div class="platforms">${platsHtml}</div>
+        <div>
+          <div class="facts-label">&#9760; Notable Facts</div>
+          <div class="facts-list">${factsHtml}</div>
+        </div>
+      </div>`;
+
+    container.appendChild(card);
+
+    const imgEl = card.querySelector('img');
+    const placeholderEl = card.querySelector('.game-img-placeholder');
+    fetchWikiThumb(g.wiki, imgEl, placeholderEl);
+  });
+}
+
+buildGames();
+</script>
+</body>
+</html>

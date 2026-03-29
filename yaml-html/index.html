@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yaml.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #0a1020;
+      --key:  #7dd3fc;
+      --str:  #86efac;
+      --num:  #fb923c;
+      --bool: #f87171;
+      --null: #94a3b8;
+      --cmnt: #475569;
+      --anch: #f472b6;
+      --accent:#38bdf8;
+    }
+    body{background:var(--bg);color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(56,189,248,.05) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(56,189,248,.05) 1px,transparent 1px);
+      background-size:40px 40px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(100px);opacity:.18;pointer-events:none;z-index:0}
+    .glow-1{width:500px;height:500px;background:#0369a1;top:-150px;left:-100px}
+    .glow-2{width:400px;height:400px;background:#0d9488;bottom:-100px;right:-100px}
+
+    .wrap{position:relative;z-index:1;max-width:800px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.4rem}
+
+    h1{font-size:1.55rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#38bdf8 0%,#34d399 50%,#818cf8 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:#64748b;margin-top:.2rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .yaml-tabs{display:flex;gap:.4rem;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .yaml-tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:#64748b;
+      font-family:inherit;transition:all .2s}
+    .yaml-tab.active{color:#38bdf8;border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.07)}
+    .yaml-tab:hover:not(.active){color:#e2e8f0;border-color:rgba(255,255,255,.15)}
+    .yaml-section{display:flex;flex-direction:column;gap:1.4rem}
+    .yaml-section.hidden{display:none}
+
+    /* ── code block (reference) ── */
+    .yaml-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;padding:2rem 2.5rem;width:100%;
+      box-shadow:0 0 60px rgba(56,189,248,.08);
+      font-family:'Courier New',monospace;font-size:clamp(.78rem,1.6vw,.92rem);
+      line-height:1.85;position:relative;overflow:hidden}
+    .yaml-card::before{content:'YAML';position:absolute;top:.6rem;right:1rem;
+      font-size:.68rem;color:#334155;letter-spacing:.1em;font-family:'Segoe UI',sans-serif}
+
+    .yk  {color:var(--key)}       /* key */
+    .ys  {color:var(--str)}       /* string value */
+    .yn  {color:var(--num)}       /* number */
+    .yb  {color:var(--bool)}      /* bool */
+    .ynl {color:var(--null)}      /* null */
+    .yc  {color:var(--cmnt);font-style:italic} /* comment */
+    .ya  {color:var(--anch)}      /* anchor / alias */
+    .yi  {color:#64748b}          /* indent indicator */
+
+    .legend{display:flex;flex-wrap:wrap;gap:.6rem .9rem;justify-content:center}
+    .chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;
+      padding:.3rem .75rem;border-radius:99px;
+      border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
+      font-family:'Courier New',monospace;white-space:nowrap}
+    .chip .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+    .types{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:.75rem;width:100%}
+    .type-card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;padding:.9rem 1rem;text-align:center;
+      transition:transform .2s,box-shadow .2s}
+    .type-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+    .type-name{font-family:'Courier New',monospace;font-size:1rem;font-weight:700;margin-bottom:.3rem}
+    .type-ex{font-family:'Courier New',monospace;font-size:.75rem;opacity:.55;margin-bottom:.4rem}
+    .type-desc{font-size:.75rem;color:#64748b;line-height:1.4}
+
+    /* ── Beautifier ── */
+    .beau-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+    @media(max-width:640px){.beau-layout{grid-template-columns:1fr}}
+
+    .beau-pane{display:flex;flex-direction:column;gap:.5rem}
+    .beau-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#64748b}
+
+    textarea#beau-input{
+      width:100%;min-height:320px;resize:vertical;
+      background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);
+      border-radius:12px;padding:1rem 1.25rem;
+      color:#e2e8f0;font-family:'Courier New',monospace;font-size:.82rem;
+      line-height:1.7;outline:none;transition:border-color .2s;
+    }
+    textarea#beau-input:focus{border-color:rgba(56,189,248,.5);
+      box-shadow:0 0 0 3px rgba(56,189,248,.1)}
+    textarea#beau-input::placeholder{color:#334155}
+
+    .beau-controls{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+    .beau-btn{
+      font-size:.8rem;padding:.38rem 1rem;border-radius:8px;cursor:pointer;
+      border:1px solid rgba(56,189,248,.5);background:rgba(56,189,248,.1);
+      color:#7dd3fc;font-family:inherit;font-weight:600;transition:all .2s;
+    }
+    .beau-btn:hover{background:rgba(56,189,248,.2);border-color:rgba(56,189,248,.7);color:#bae6fd}
+    .beau-btn.sec{border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#64748b}
+    .beau-btn.sec:hover{border-color:rgba(255,255,255,.2);color:#e2e8f0;background:rgba(255,255,255,.08)}
+
+    .indent-select{
+      font-size:.78rem;padding:.32rem .6rem;border-radius:6px;
+      border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
+      color:#94a3b8;font-family:inherit;outline:none;cursor:pointer;
+    }
+    .indent-select:focus{border-color:rgba(56,189,248,.4)}
+
+    #beau-output{
+      min-height:320px;width:100%;
+      background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;padding:1rem 1.25rem;
+      font-family:'Courier New',monospace;font-size:.82rem;line-height:1.7;
+      overflow:auto;white-space:pre-wrap;word-break:break-all;
+      position:relative;
+    }
+    #beau-output.error{border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.04)}
+    #beau-output .err-msg{color:#f87171;font-size:.8rem}
+    #beau-output .placeholder{color:#334155}
+
+    .copy-btn{
+      position:absolute;top:.6rem;right:.7rem;
+      font-size:.65rem;padding:.22rem .6rem;border-radius:5px;
+      border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);
+      color:#64748b;cursor:pointer;font-family:inherit;transition:all .15s;
+    }
+    .copy-btn:hover{color:#e2e8f0;border-color:rgba(255,255,255,.2)}
+    .copy-btn.copied{color:#86efac;border-color:rgba(134,239,172,.3)}
+
+    .beau-stats{font-size:.68rem;color:#475569;letter-spacing:.03em;min-height:1em}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .wrap > *{opacity:0;animation:fadeUp .6s ease forwards}
+    .wrap > *:nth-child(1){animation-delay:.1s}
+    .wrap > *:nth-child(2){animation-delay:.2s}
+    .wrap > *:nth-child(3){animation-delay:.3s}
+    .wrap > *:nth-child(4){animation-delay:.4s}
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=2"></script>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="wrap">
+    <div>
+      <h1>YAML — YAML Ain't Markup Language</h1>
+      <p class="subtitle">Reference &amp; Beautifier</p>
+    </div>
+
+    <!-- Sub-nav tabs -->
+    <div class="yaml-tabs">
+      <button class="yaml-tab active" onclick="switchTab('reference')">Reference</button>
+      <button class="yaml-tab" onclick="switchTab('beautifier')">Beautifier</button>
+    </div>
+
+    <!-- ── Reference section ── -->
+    <div id="section-reference" class="yaml-section">
+      <div class="yaml-card"><pre><span class="yc"># Strings — bare or quoted</span>
+<span class="yk">name</span>:        <span class="ys">Ada Lovelace</span>
+<span class="yk">title</span>:       <span class="ys">"Countess of Computing"</span>
+<span class="yk">bio</span>: <span class="ys">|
+  First programmer.
+  Wrote the algorithm.</span>
+
+<span class="yc"># Numbers, booleans, null</span>
+<span class="yk">age</span>:         <span class="yn">36</span>
+<span class="yk">pi</span>:          <span class="yn">3.14159</span>
+<span class="yk">active</span>:      <span class="yb">true</span>
+<span class="yk">nickname</span>:    <span class="ynl">null</span>
+
+<span class="yc"># Sequence (list)</span>
+<span class="yk">scores</span>:
+  - <span class="yn">98</span>
+  - <span class="yn">100</span>
+  - <span class="yn">87</span>
+
+<span class="yc"># Nested mapping (object)</span>
+<span class="yk">address</span>:
+  <span class="yk">city</span>:      <span class="ys">London</span>
+  <span class="yk">postcode</span>:  <span class="ys">W1A 1AA</span>
+
+<span class="yc"># Anchors &amp; aliases</span>
+<span class="yk">defaults</span>: <span class="ya">&amp;defaults</span>
+  <span class="yk">timeout</span>: <span class="yn">30</span>
+<span class="yk">production</span>:
+  <span class="ya">&lt;&lt;: *defaults</span>
+  <span class="yk">timeout</span>: <span class="yn">60</span></pre></div>
+
+      <div class="legend">
+        <span class="chip"><span class="dot" style="background:var(--key)"></span><span style="color:var(--key)">key:</span> — mapping key</span>
+        <span class="chip"><span class="dot" style="background:var(--str)"></span><span style="color:var(--str)">string</span> — text value</span>
+        <span class="chip"><span class="dot" style="background:var(--num)"></span><span style="color:var(--num)">42</span> — number</span>
+        <span class="chip"><span class="dot" style="background:var(--bool)"></span><span style="color:var(--bool)">true/false</span> — boolean</span>
+        <span class="chip"><span class="dot" style="background:var(--null)"></span><span style="color:var(--null)">null</span> — nothing</span>
+        <span class="chip"><span class="dot" style="background:var(--anch)"></span><span style="color:var(--anch)">&amp;anchor *alias</span> — reuse</span>
+        <span class="chip"><span class="dot" style="background:var(--cmnt)"></span><span style="color:var(--cmnt)"># comment</span> — ignored</span>
+      </div>
+
+      <div class="types">
+        <div class="type-card">
+          <div class="type-name" style="color:var(--str)">string</div>
+          <div class="type-ex">bare · "quoted" · 'single'</div>
+          <div class="type-desc">Bare words are strings. Quote when special chars needed.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--num)">number</div>
+          <div class="type-ex">42 · -7 · 3.14 · 1e6</div>
+          <div class="type-desc">Integer or float. Written without quotes.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--bool)">boolean</div>
+          <div class="type-ex">true · false · yes · no</div>
+          <div class="type-desc">true/false (also yes/no, on/off in YAML 1.1).</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--null)">null</div>
+          <div class="type-ex">null · ~ · (empty)</div>
+          <div class="type-desc">Explicit absence of value. Tilde ~ is shorthand.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--key)">mapping</div>
+          <div class="type-ex">key: value</div>
+          <div class="type-desc">Key–value pairs. Keys end with a colon and space.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--key)">sequence</div>
+          <div class="type-ex">- item1&#10;- item2</div>
+          <div class="type-desc">Ordered list. Each item prefixed with "- ".</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--str)">block scalar</div>
+          <div class="type-ex">key: |&#10;  line one&#10;  line two</div>
+          <div class="type-desc">| preserves newlines. &gt; folds them into spaces.</div>
+        </div>
+        <div class="type-card">
+          <div class="type-name" style="color:var(--anch)">anchor/alias</div>
+          <div class="type-ex">&amp;name · *name · &lt;&lt;:</div>
+          <div class="type-desc">Define once with &amp;, reuse with *. Merge maps with &lt;&lt;:.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Beautifier section ── -->
+    <div id="section-beautifier" class="yaml-section hidden">
+      <div class="beau-controls">
+        <button class="beau-btn" onclick="beautify()">Beautify</button>
+        <select class="indent-select" id="indent-size" onchange="beautify()">
+          <option value="2" selected>2 spaces</option>
+          <option value="4">4 spaces</option>
+        </select>
+        <button class="beau-btn sec" onclick="clearAll()">Clear</button>
+        <span class="beau-stats" id="beau-stats"></span>
+      </div>
+      <div class="beau-layout">
+        <div class="beau-pane">
+          <div class="beau-label">Input</div>
+          <textarea id="beau-input" placeholder="Paste YAML here…" spellcheck="false" oninput="onInput()"></textarea>
+        </div>
+        <div class="beau-pane">
+          <div class="beau-label">Output</div>
+          <div id="beau-output"><span class="placeholder">Output will appear here</span><button class="copy-btn" id="copy-btn" onclick="copyOutput()" style="display:none">Copy</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- js-yaml (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"
+    integrity="sha512-CSBhVREyzHAjAyaV2PTNmC7EuWrx6lZ9KHNEFlD4y7x+FGphj+ WBLoseyHsS+8A0oT0ESSrHJ7P5JT2BSTMA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    // ── Tab switching ──
+    function switchTab(name) {
+      document.querySelectorAll('.yaml-tab').forEach(function(t, i) {
+        t.classList.toggle('active', (i === 0 ? 'reference' : 'beautifier') === name);
+      });
+      document.getElementById('section-reference').classList.toggle('hidden', name !== 'reference');
+      document.getElementById('section-beautifier').classList.toggle('hidden', name !== 'beautifier');
+      localStorage.setItem('yaml_tab', name);
+    }
+    switchTab(localStorage.getItem('yaml_tab') || 'reference');
+
+    // ── Syntax highlighter ──
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Colour a single YAML value token
+    function colourValue(v) {
+      if (v === 'null' || v === '~' || v === '') return '<span style="color:var(--null)">' + escHtml(v || 'null') + '</span>';
+      if (v === 'true' || v === 'false' || v === 'yes' || v === 'no' || v === 'on' || v === 'off')
+        return '<span style="color:var(--bool)">' + escHtml(v) + '</span>';
+      if (/^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v))
+        return '<span style="color:var(--num)">' + escHtml(v) + '</span>';
+      return '<span style="color:var(--str)">' + escHtml(v) + '</span>';
+    }
+
+    function highlightYaml(text) {
+      var lines = text.split('\n');
+      var result = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        // Comment line
+        if (/^\s*#/.test(line)) {
+          result.push('<span style="color:var(--cmnt);font-style:italic">' + escHtml(line) + '</span>');
+          continue;
+        }
+        // Document separator
+        if (/^---/.test(line) || /^\.\.\./.test(line)) {
+          result.push('<span style="color:var(--anch)">' + escHtml(line) + '</span>');
+          continue;
+        }
+        // Anchor / alias lines (lines containing &word or *word)
+        var anchorLine = line.replace(/(&amp;[\w.-]+|\*[\w.-]+|&lt;&lt;:)/g,
+          '<span style="color:var(--anch)">$1</span>');
+        // Key: value  — mapping
+        var kvMatch = line.match(/^(\s*)([\w"'.-][^:]*?)(\s*:\s*)(.*)$/);
+        if (kvMatch) {
+          var indent = escHtml(kvMatch[1]);
+          var key    = '<span style="color:var(--key)">' + escHtml(kvMatch[2]) + '</span>';
+          var colon  = '<span style="color:rgba(226,232,240,.4)">' + escHtml(kvMatch[3]) + '</span>';
+          var rest   = kvMatch[4];
+          var valHtml;
+          // Block scalar indicator
+          if (/^\s*[|>]/.test(rest)) {
+            valHtml = '<span style="color:var(--str)">' + escHtml(rest) + '</span>';
+          } else if (/^\s*#/.test(rest) || rest === '') {
+            valHtml = '<span style="color:var(--cmnt);font-style:italic">' + escHtml(rest) + '</span>';
+          } else {
+            // Strip inline comment
+            var cmntIdx = rest.search(/\s+#/);
+            var val = cmntIdx >= 0 ? rest.slice(0, cmntIdx) : rest;
+            var cmnt = cmntIdx >= 0 ? rest.slice(cmntIdx) : '';
+            valHtml = colourValue(val.trim())
+              + (cmnt ? ' <span style="color:var(--cmnt);font-style:italic">' + escHtml(cmnt) + '</span>' : '');
+          }
+          result.push(indent + key + colon + valHtml);
+          continue;
+        }
+        // Sequence item
+        var seqMatch = line.match(/^(\s*-\s+)(.*)$/);
+        if (seqMatch) {
+          var bullet  = '<span style="color:rgba(226,232,240,.3)">' + escHtml(seqMatch[1]) + '</span>';
+          var seqVal  = seqMatch[2];
+          // might be a nested key
+          var nestedKv = seqVal.match(/^([\w"'.-][^:]*?)(\s*:\s*)(.*)$/);
+          if (nestedKv) {
+            result.push(bullet +
+              '<span style="color:var(--key)">' + escHtml(nestedKv[1]) + '</span>' +
+              '<span style="color:rgba(226,232,240,.4)">' + escHtml(nestedKv[2]) + '</span>' +
+              colourValue(nestedKv[3].trim()));
+          } else {
+            result.push(bullet + colourValue(seqVal));
+          }
+          continue;
+        }
+        // Block scalar content (indented continuation)
+        if (/^\s+\S/.test(line)) {
+          result.push('<span style="color:var(--str)">' + escHtml(line) + '</span>');
+          continue;
+        }
+        result.push(escHtml(line));
+      }
+      return result.join('\n');
+    }
+
+    function getIndent() {
+      return parseInt(document.getElementById('indent-size').value, 10);
+    }
+
+    function showOutput(html, isError) {
+      var out = document.getElementById('beau-output');
+      out.classList.toggle('error', !!isError);
+      out.innerHTML = html +
+        '<button class="copy-btn" onclick="copyOutput()"' +
+        (isError ? ' style="display:none"' : '') + '>Copy</button>';
+    }
+
+    function beautify() {
+      var raw = document.getElementById('beau-input').value.trim();
+      if (!raw) {
+        showOutput('<span class="placeholder">Output will appear here</span>', false);
+        document.getElementById('beau-stats').textContent = '';
+        return;
+      }
+      if (typeof jsyaml === 'undefined') {
+        showOutput('<span class="err-msg">⚠ YAML library not loaded. Check your internet connection.</span>', true);
+        return;
+      }
+      try {
+        var parsed = jsyaml.load(raw);
+        var pretty = jsyaml.dump(parsed, {
+          indent: getIndent(),
+          lineWidth: -1,
+          noRefs: true,
+          quotingType: '"',
+          forceQuotes: false
+        });
+        showOutput(highlightYaml(pretty), false);
+        var keys = (pretty.match(/^[^\s#][^:]*:/mg) || []).length;
+        document.getElementById('beau-stats').textContent =
+          pretty.length.toLocaleString() + ' chars · ' +
+          pretty.split('\n').filter(Boolean).length + ' lines · ' +
+          keys + ' keys';
+      } catch(e) {
+        showOutput('<span class="err-msg">⚠ ' + escHtml(e.message) + '</span>', true);
+        document.getElementById('beau-stats').textContent = '';
+      }
+    }
+
+    function onInput() {
+      var raw = document.getElementById('beau-input').value.trim();
+      if (!raw) {
+        showOutput('<span class="placeholder">Output will appear here</span>', false);
+        document.getElementById('beau-stats').textContent = '';
+        return;
+      }
+      if (typeof jsyaml === 'undefined') return;
+      try {
+        jsyaml.load(raw);
+        beautify();
+      } catch(e) {
+        // Don't show error while user is still typing
+      }
+    }
+
+    function clearAll() {
+      document.getElementById('beau-input').value = '';
+      showOutput('<span class="placeholder">Output will appear here</span>', false);
+      document.getElementById('beau-stats').textContent = '';
+    }
+
+    function copyOutput() {
+      var out = document.getElementById('beau-output');
+      var text = out.innerText.replace(/\nCopy$/, '').trim();
+      navigator.clipboard.writeText(text).then(function() {
+        var btn = out.querySelector('.copy-btn');
+        if (btn) {
+          btn.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(function(){ btn.textContent='Copy'; btn.classList.remove('copied'); }, 1800);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

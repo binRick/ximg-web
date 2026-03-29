@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>DOOM — doom.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden;
+      touch-action: none; user-select: none; font-family: 'Courier New', monospace; }
+
+    /* Main canvas — fixed internal resolution, CSS stretched */
+    #c { display: block; width: 100vw; height: calc(100vh - 44px);
+      image-rendering: pixelated; image-rendering: crisp-edges; }
+
+    /* Splash / death / win overlay */
+    #overlay { position: fixed; inset: 44px 0 0 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 20;
+      background: rgba(0,0,0,.88); color: #dd0000; text-align: center; padding: 1rem; }
+    #overlay.hidden { display: none; }
+    #ov-title { font-size: clamp(2.5rem,10vw,6rem); font-weight: 900;
+      letter-spacing: .06em; text-shadow: 0 0 40px #f00, 0 0 80px #800;
+      line-height: 1; margin-bottom: .6rem; }
+    #ov-sub   { color: #888; font-size: clamp(.8rem,2vw,1.05rem);
+      margin-bottom: 2rem; line-height: 1.6; max-width: 420px; }
+    #ov-btn   { font-family: inherit; font-size: 1.05rem; font-weight: 700;
+      padding: .7rem 2.2rem; border: 2px solid #cc0000;
+      background: rgba(150,0,0,.25); color: #dd0000; cursor: pointer;
+      border-radius: 4px; letter-spacing: .12em; transition: all .2s; }
+    #ov-btn:hover { background: rgba(180,0,0,.45); box-shadow: 0 0 24px #f00; }
+
+    /* Crosshair */
+    #xhair { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      pointer-events: none; z-index: 5; }
+    #xhair::before, #xhair::after { content: ''; position: absolute; background: rgba(255,255,255,.75); }
+    #xhair::before { width: 2px; height: 16px; left: -1px; top: -8px; }
+    #xhair::after  { width: 16px; height: 2px; left: -8px; top: -1px; }
+    #xhair.hidden { display: none; }
+
+    /* Touch joystick */
+    #joy-base { position: fixed; bottom: 28px; left: 28px; z-index: 10;
+      width: 110px; height: 110px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06);
+      display: none; touch-action: none; }
+    #joy-knob { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px;
+      margin: -23px 0 0 -23px; border-radius: 50%;
+      background: rgba(255,255,255,.28); border: 2px solid rgba(255,255,255,.5); }
+
+    /* Touch shoot */
+    #btn-shoot { position: fixed; right: 24px; bottom: 24px; z-index: 10;
+      width: 80px; height: 80px; border-radius: 50%;
+      border: 3px solid #cc0000; background: rgba(160,0,0,.35); color: #dd0000;
+      font-size: 1.6rem; display: none; align-items: center; justify-content: center;
+      touch-action: none; cursor: pointer; }
+
+    /* Touch look zone (upper screen) */
+    #touch-look { position: fixed; left: 0; top: 0; right: 0; bottom: 46%; z-index: 8;
+      display: none; touch-action: none; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js"></script>
+  <canvas id="c"></canvas>
+
+  <div id="overlay">
+    <div id="ov-title">DOOM</div>
+    <div id="ov-sub">
+      WASD / Arrow keys · Mouse to aim · Click / Space to shoot<br>
+      Mobile: joystick · swipe upper screen · red button to shoot
+    </div>
+    <button id="ov-btn">RIP AND TEAR</button>
+  </div>
+
+  <div id="xhair" class="hidden"></div>
+  <div id="joy-base"><div id="joy-knob"></div></div>
+  <div id="btn-shoot">🔫</div>
+  <div id="touch-look"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DOOM raycaster  — doom.ximg.app
+// ══════════════════════════════════════════════════════════════
+
+// ── Internal render resolution ────────────────────────────────
+const RW = 640, RH = 360;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = RW; canvas.height = RH;
+
+// ── Map  (0=open, 1=stone, 2=brick, 3=metal) ─────────────────
+const MAP = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,2,2,2,0,0,0,0,0,1,0,0,0,3,3,3,0,0,0,0,0,0,1],
+  [1,0,2,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,1],
+  [1,0,2,0,1,1,0,0,0,0,0,0,0,0,3,0,1,1,0,0,0,0,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+  [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
+  [1,0,3,3,0,0,0,1,0,0,0,0,1,0,0,0,2,2,0,2,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,2,2,0,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+const MW = MAP[0].length, MH = MAP.length;
+
+// Wall colours: [lit NS face, dark EW face]
+const WALL_C = [
+  null,
+  [[107,58,42],[61,32,25]],   // 1: hell stone
+  [[139,26,26],[85,13,13]],   // 2: blood brick
+  [[42,61,90],[25,37,58]],    // 3: tech metal
+];
+
+// ── Player ────────────────────────────────────────────────────
+let pl;
+function resetPlayer() {
+  pl = { x:1.5, y:1.5, dx:1, dy:0, cx:0, cy:0.66,
+         hp:100, ammo:50, score:0 };
+}
+
+// ── Enemies ───────────────────────────────────────────────────
+let enemies;
+function resetEnemies() {
+  enemies = [
+    {x:10.5,y:10.5,hp:3,state:'idle',t:0,hit:0},
+    {x:18.5,y: 3.5,hp:3,state:'idle',t:0,hit:0},
+    {x: 3.5,y:17.5,hp:3,state:'idle',t:0,hit:0},
+    {x:18.5,y:14.5,hp:3,state:'idle',t:0,hit:0},
+    {x: 6.5,y:11.5,hp:3,state:'idle',t:0,hit:0},
+    {x:11.5,y: 5.5,hp:3,state:'idle',t:0,hit:0},
+    {x:20.5,y: 9.5,hp:3,state:'idle',t:0,hit:0},
+    {x: 8.5,y:18.5,hp:3,state:'idle',t:0,hit:0},
+    {x:16.5,y:17.5,hp:3,state:'idle',t:0,hit:0},
+    {x:16.5,y: 8.5,hp:3,state:'idle',t:0,hit:0},
+  ];
+}
+
+// ── Game state ────────────────────────────────────────────────
+let gstate = 'splash';
+let zbuf = new Float32Array(RW);
+let keys = {};
+let muzzle = 0, shootCd = 0, dmgFlash = 0;
+let mouseLocked = false;
+
+// ── Input ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space' && gstate === 'play') { e.preventDefault(); shoot(); }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+canvas.addEventListener('click', () => {
+  if (gstate !== 'play') return;
+  if (!mouseLocked) canvas.requestPointerLock();
+  else shoot();
+});
+document.addEventListener('pointerlockchange', () => {
+  mouseLocked = !!document.pointerLockElement;
+});
+document.addEventListener('mousemove', e => {
+  if (gstate === 'play' && mouseLocked) rotate(e.movementX * 0.0035);
+});
+
+// ── Rotation helper ───────────────────────────────────────────
+function rotate(a) {
+  let c = Math.cos(a), s = Math.sin(a);
+  let odx = pl.dx, ocx = pl.cx;
+  pl.dx = odx*c - pl.dy*s;  pl.dy = odx*s + pl.dy*c;
+  pl.cx = ocx*c - pl.cy*s;  pl.cy = ocx*s + pl.cy*c;
+}
+
+// ── Collision helpers ─────────────────────────────────────────
+function walkable(x, y) {
+  let mx = x|0, my = y|0;
+  return mx>=0 && mx<MW && my>=0 && my<MH && MAP[my][mx]===0;
+}
+function tryMove(dx, dy) {
+  const PAD = 0.22;
+  if (walkable(pl.x+dx, pl.y)) pl.x += dx;
+  if (walkable(pl.x, pl.y+dy)) pl.y += dy;
+}
+
+// ── Shoot ─────────────────────────────────────────────────────
+function shoot() {
+  if (shootCd>0 || pl.ammo<=0 || gstate!=='play') return;
+  pl.ammo--; muzzle=10; shootCd=18;
+
+  // Find nearest enemy in centre of screen
+  let bestDist = Infinity, bestEnemy = null;
+  let invDet = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
+  for (let e of enemies) {
+    if (e.hp<=0) continue;
+    let ex=e.x-pl.x, ey=e.y-pl.y;
+    let tx = invDet*(pl.dy*ex - pl.dx*ey);
+    let ty = invDet*(-pl.cy*ex + pl.cx*ey);
+    if (ty>0.1 && Math.abs(tx/ty)<0.18) {
+      let cx2 = ((RW/2)*(1+tx/ty))|0;
+      if (ty < zbuf[Math.max(0,Math.min(RW-1,cx2))]) {
+        if (ty<bestDist) { bestDist=ty; bestEnemy=e; }
+      }
+    }
+  }
+  if (bestEnemy) {
+    bestEnemy.hp--;
+    bestEnemy.hit=12;
+    if (bestEnemy.hp<=0) { bestEnemy.state='dead'; pl.score+=100; }
+  }
+}
+
+// ── Line-of-sight check ───────────────────────────────────────
+function los(x1,y1,x2,y2) {
+  let dx=x2-x1, dy=y2-y1, n=Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))*4);
+  for (let i=1;i<n;i++) {
+    let mx=(x1+dx*i/n)|0, my=(y1+dy*i/n)|0;
+    if (mx<0||mx>=MW||my<0||my>=MH||MAP[my][mx]>0) return false;
+  }
+  return true;
+}
+
+// ── Enemy AI update ───────────────────────────────────────────
+function updateEnemies(dt) {
+  let invDet = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
+  for (let e of enemies) {
+    if (e.hp<=0) continue;
+    if (e.hit>0) e.hit--;
+    e.t += dt;
+    let ex=pl.x-e.x, ey=pl.y-e.y;
+    let dist=Math.sqrt(ex*ex+ey*ey);
+    if (e.state==='idle' && dist<14 && los(e.x,e.y,pl.x,pl.y)) e.state='chase';
+    if (e.state==='chase') {
+      if (dist>1.1) {
+        let spd=1.6*dt, nx=e.x+(ex/dist)*spd, ny=e.y+(ey/dist)*spd;
+        if (walkable(nx,e.y)) e.x=nx;
+        if (walkable(e.x,ny)) e.y=ny;
+      }
+      if (dist<1.3) {
+        let hz = e.t*2;
+        if ((hz|0) !== ((hz-dt*2)|0)) { pl.hp-=8; dmgFlash=16; }
+      }
+    }
+  }
+}
+
+// ── Apply fog ─────────────────────────────────────────────────
+function fogRgb(r,g,b,dist) {
+  let f=Math.min(1,dist/15);
+  return `rgb(${r*(1-f)|0},${g*(1-f)|0},${b*(1-f)|0})`;
+}
+
+// ── Render ────────────────────────────────────────────────────
+function render() {
+  // Ceiling
+  let cg = ctx.createLinearGradient(0,0,0,RH/2);
+  cg.addColorStop(0,'#060101'); cg.addColorStop(1,'#120404');
+  ctx.fillStyle=cg; ctx.fillRect(0,0,RW,RH/2);
+
+  // Floor
+  let fg = ctx.createLinearGradient(0,RH/2,0,RH);
+  fg.addColorStop(0,'#100303'); fg.addColorStop(1,'#1e0707');
+  ctx.fillStyle=fg; ctx.fillRect(0,RH/2,RW,RH/2);
+
+  // ── Wall casting ──
+  for (let x=0; x<RW; x++) {
+    let camX = 2*x/RW-1;
+    let rdx=pl.dx+pl.cx*camX, rdy=pl.dy+pl.cy*camX;
+    let mx=pl.x|0, my=pl.y|0;
+    let ddx=Math.abs(1/rdx), ddy=Math.abs(1/rdy);
+    let stepX,stepY,sdx,sdy;
+    if (rdx<0){stepX=-1;sdx=(pl.x-mx)*ddx;}else{stepX=1;sdx=(mx+1-pl.x)*ddx;}
+    if (rdy<0){stepY=-1;sdy=(pl.y-my)*ddy;}else{stepY=1;sdy=(my+1-pl.y)*ddy;}
+
+    let hit=0,side=0,wt=0;
+    while(!hit){
+      if(sdx<sdy){sdx+=ddx;mx+=stepX;side=0;}else{sdy+=ddy;my+=stepY;side=1;}
+      if(mx<0||mx>=MW||my<0||my>=MH){wt=1;hit=1;}
+      else if(MAP[my][mx]>0){wt=MAP[my][mx];hit=1;}
+    }
+    let dist = side===0 ? sdx-ddx : sdy-ddy;
+    zbuf[x]=dist;
+
+    let wallH = Math.min(RH*3, (RH/dist)|0);
+    let top = ((RH-wallH)/2)|0;
+
+    let [r,g,b] = WALL_C[wt][side];
+    ctx.fillStyle = fogRgb(r,g,b,dist);
+    ctx.fillRect(x, top, 1, wallH);
+
+    // Subtle floor-contact shadow
+    if (wallH>4) {
+      ctx.fillStyle='rgba(0,0,0,0.25)';
+      ctx.fillRect(x, top+wallH-Math.max(2,(wallH*0.08)|0), 1, (wallH*0.08)|0);
+    }
+  }
+
+  // ── Sprites ──
+  renderSprites();
+
+  // ── Weapon ──
+  renderWeapon();
+
+  // ── HUD ──
+  renderHUD();
+
+  // ── Damage flash ──
+  if (dmgFlash>0) {
+    ctx.fillStyle=`rgba(200,0,0,${0.45*dmgFlash/16})`;
+    ctx.fillRect(0,0,RW,RH);
+  }
+}
+
+// ── Sprite rendering ─────────────────────────────────────────
+function renderSprites() {
+  let list = enemies.map(e=>{
+    let ex=e.x-pl.x, ey=e.y-pl.y;
+    return {e, d2:ex*ex+ey*ey, ex, ey};
+  }).sort((a,b)=>b.d2-a.d2);
+
+  let invDet = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
+
+  for (let {e,ex,ey} of list) {
+    let tx = invDet*(pl.dy*ex - pl.dx*ey);
+    let ty = invDet*(-pl.cy*ex + pl.cx*ey);
+    if (ty<=0.1) continue;
+
+    let dist = Math.sqrt(ex*ex+ey*ey);
+
+    if (e.state==='dead') {
+      // Blood pool on floor
+      let scx = ((RW/2)*(1+tx/ty))|0;
+      let frac = Math.min(1, ty/10);
+      let pw = Math.max(4,(RH/ty*0.8)|0);
+      ctx.fillStyle=`rgba(${100*(1-frac)|0},0,0,${0.65*(1-Math.min(1,ty/12))})`;
+      ctx.beginPath();
+      ctx.ellipse(scx, (RH/2+RH/ty*0.42)|0, pw*0.8, pw*0.25, 0, 0, Math.PI*2);
+      ctx.fill();
+      continue;
+    }
+
+    let scx = ((RW/2)*(1+tx/ty))|0;
+    let h   = Math.abs((RH/ty)|0);
+    let w   = (h*0.55)|0;
+    let x0  = scx - (w/2)|0;
+    let y0  = ((RH-h)/2)|0;
+    let fog = Math.min(0.92, ty/14);
+    let lit = 1-fog;
+
+    for (let sx=Math.max(0,x0); sx<Math.min(RW,x0+w); sx++) {
+      if (ty >= zbuf[sx]) continue;
+      let rx = (sx-x0)/w; // 0→1 across sprite width
+      let cx2 = Math.abs(rx-0.5)*2; // 0 centre, 1 edge
+
+      // Shape mask: head (top 28%), torso (28→75%), legs (75→100%)
+      let headTop  = y0,               headH  = (h*0.28)|0;
+      let torsoTop = y0+headH,         torsoH = (h*0.47)|0;
+      let legTop   = torsoTop+torsoH,  legH   = (h*0.25)|0;
+
+      let hr = e.hit>0 ? 255 : (60*lit)|0;
+      let hg = e.hit>0 ? 220 : (32*lit)|0;
+      let hb = e.hit>0 ? 220 : (20*lit)|0;
+
+      // Head — draw if within rounded circle silhouette
+      if (cx2 < 0.85) {
+        ctx.fillStyle=`rgb(${hr},${hg},${hb})`;
+        ctx.fillRect(sx, headTop, 1, headH);
+
+        // Eyes — glowing red when chasing
+        if (e.state==='chase' && e.hit===0 && cx2>0.25 && cx2<0.55) {
+          let eyeY = headTop + (headH*0.45)|0;
+          let er2 = (200*lit)|0;
+          ctx.fillStyle=`rgb(${er2},0,0)`;
+          ctx.fillRect(sx, eyeY, 1, Math.max(1,(headH*0.18)|0));
+        }
+      }
+      // Torso — full width
+      let tr = e.hit>0 ? 255 : (50*lit)|0;
+      let tg = e.hit>0 ? 200 : (80*lit)|0;
+      let tb = e.hit>0 ? 200 : (40*lit)|0;
+      ctx.fillStyle=`rgb(${tr},${tg},${tb})`;
+      ctx.fillRect(sx, torsoTop, 1, torsoH);
+
+      // Legs — only outer 40%
+      if (rx<0.38 || rx>0.62) {
+        let lr2=(45*lit)|0, lg2=(45*lit)|0, lb2=(60*lit)|0;
+        ctx.fillStyle=`rgb(${lr2},${lg2},${lb2})`;
+        ctx.fillRect(sx, legTop, 1, legH);
+      }
+    }
+  }
+}
+
+// ── Weapon (pixelated shotgun) ───────────────────────────────
+function renderWeapon() {
+  // Bob
+  let bobAmt = (keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD']||
+                joy.active) ? Math.sin(Date.now()/120)*5 : 0;
+  // Kick
+  let kick = muzzle>0 ? (muzzle/10)*22 : 0;
+
+  let gw=130, gh=80;
+  let gx=(RW-gw)/2, gy=RH-gh+bobAmt+kick;
+
+  // Barrel
+  ctx.fillStyle='#2a2a2a';
+  ctx.fillRect(gx+12, gy+8,  80, 10);
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(gx+12, gy+9,  80, 4);
+
+  // Stock/body
+  ctx.fillStyle='#333';
+  ctx.fillRect(gx+55, gy+18, 55, 22);
+  ctx.fillStyle='#222';
+  ctx.fillRect(gx+55, gy+19, 55, 8);
+
+  // Grip
+  ctx.fillStyle='#2e1a0a';
+  ctx.fillRect(gx+75, gy+38, 20, 28);
+  ctx.fillStyle='#3e2a12';
+  ctx.fillRect(gx+76, gy+39, 8, 12);
+
+  // Trigger guard
+  ctx.fillStyle='#222';
+  ctx.fillRect(gx+68, gy+38, 2, 14);
+  ctx.fillRect(gx+68, gy+52, 14, 2);
+  ctx.fillRect(gx+80, gy+38, 2, 14);
+
+  // Pump
+  ctx.fillStyle='#444';
+  ctx.fillRect(gx+18, gy+18, 30, 8);
+
+  // Muzzle flash
+  if (muzzle>0) {
+    let a=muzzle/10, x2=gx+10, y2=gy+12;
+    // Outer burst
+    ctx.fillStyle=`rgba(255,180,30,${a*0.6})`;
+    for (let i=0;i<6;i++){
+      let ang=i*Math.PI/3, len=18*a;
+      ctx.fillRect(x2+Math.cos(ang)*len-2, y2+Math.sin(ang)*len-2, 4, 4);
+    }
+    // Core glow
+    ctx.fillStyle=`rgba(255,240,150,${a})`;
+    ctx.beginPath();
+    ctx.ellipse(x2, y2, 11*a, 8*a, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle=`rgba(255,255,255,${a*0.9})`;
+    ctx.beginPath();
+    ctx.ellipse(x2, y2, 5*a, 4*a, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+// ── HUD ───────────────────────────────────────────────────────
+function renderHUD() {
+  let hudH=28, y=RH-hudH;
+
+  // Background bar
+  ctx.fillStyle='#100000';
+  ctx.fillRect(0,y,RW,hudH);
+  ctx.fillStyle='#550000';
+  ctx.fillRect(0,y,RW,2);
+
+  ctx.font=`bold 14px 'Courier New'`;
+  ctx.textBaseline='middle';
+  let mid=y+hudH/2;
+
+  // Health bar + number
+  let hpPct=Math.max(0,pl.hp)/100;
+  ctx.fillStyle='#330000';
+  ctx.fillRect(8,y+6,100,14);
+  ctx.fillStyle = pl.hp>50?'#cc0000':pl.hp>25?'#dd4400':'#ff0000';
+  ctx.fillRect(8,y+6,hpPct*100,14);
+  ctx.fillStyle='#fff';
+  ctx.fillText('♥'+Math.max(0,pl.hp)+'%',114,mid);
+
+  // Ammo
+  ctx.fillStyle='#ffaa00';
+  ctx.fillText('⚡'+pl.ammo,RW*0.4,mid);
+
+  // Score
+  ctx.fillStyle='#00aaff';
+  ctx.fillText('★'+pl.score,RW*0.58,mid);
+
+  // Enemies remaining
+  let alive=enemies.filter(e=>e.hp>0).length;
+  ctx.fillStyle=alive>0?'#ff4444':'#44ff44';
+  ctx.fillText('☠'+alive,RW*0.78,mid);
+
+  // Ammo warning
+  if (pl.ammo<=5) {
+    if (Math.floor(Date.now()/400)%2===0) {
+      ctx.fillStyle='rgba(255,100,0,0.7)';
+      ctx.fillText('LOW AMMO',RW*0.4,mid);
+    }
+  }
+}
+
+// ── Touch controls ────────────────────────────────────────────
+const joy = {active:false,dx:0,dy:0};
+const look = {dx:0,lastX:0};
+const jBase=document.getElementById('joy-base');
+const jKnob=document.getElementById('joy-knob');
+const btnShoot=document.getElementById('btn-shoot');
+const touchLookEl=document.getElementById('touch-look');
+
+if ('ontouchstart' in window) {
+  jBase.style.display='block';
+  btnShoot.style.display='flex';
+  touchLookEl.style.display='block';
+
+  function joyUpdate(t){
+    joy.dx=Math.max(-50,Math.min(50,t.clientX-joy.sx));
+    joy.dy=Math.max(-50,Math.min(50,t.clientY-joy.sy));
+    jKnob.style.transform=`translate(${joy.dx}px,${joy.dy}px)`;
+  }
+  jBase.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    let t=e.touches[0]; joy.active=true; joy.sx=t.clientX; joy.sy=t.clientY;
+  },{passive:false});
+  jBase.addEventListener('touchmove',e=>{e.preventDefault();joyUpdate(e.touches[0]);},{passive:false});
+  jBase.addEventListener('touchend',e=>{
+    e.preventDefault();joy.active=false;joy.dx=joy.dy=0;jKnob.style.transform='';
+  },{passive:false});
+
+  btnShoot.addEventListener('touchstart',e=>{e.preventDefault();shoot();},{passive:false});
+
+  touchLookEl.addEventListener('touchstart',e=>{
+    e.preventDefault();look.lastX=e.changedTouches[0].clientX;
+  },{passive:false});
+  touchLookEl.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    let nx=e.changedTouches[0].clientX;
+    look.dx=nx-look.lastX; look.lastX=nx;
+  },{passive:false});
+  touchLookEl.addEventListener('touchend',e=>{e.preventDefault();look.dx=0;},{passive:false});
+}
+
+// ── Overlay helpers ──────────────────────────────────────────
+const ovEl=document.getElementById('overlay');
+const ovTitle=document.getElementById('ov-title');
+const ovSub=document.getElementById('ov-sub');
+const ovBtn=document.getElementById('ov-btn');
+function showOverlay(title,sub,btnText,cb){
+  ovTitle.textContent=title; ovSub.textContent=sub;
+  ovBtn.textContent=btnText; ovBtn.onclick=cb;
+  ovEl.classList.remove('hidden');
+}
+function hideOverlay(){ ovEl.classList.add('hidden'); }
+
+// ── Game flow ────────────────────────────────────────────────
+function startGame(){
+  resetPlayer(); resetEnemies();
+  gstate='play'; hideOverlay();
+  document.getElementById('xhair').classList.remove('hidden');
+}
+document.getElementById('ov-btn').onclick=startGame;
+
+// ── Main loop ────────────────────────────────────────────────
+let lastT=0;
+function loop(ts){
+  let dt=Math.min(0.05,(ts-lastT)/1000); lastT=ts;
+
+  if (gstate==='play') {
+    // Movement
+    const SPDS=3.5*dt, ROTS=2.2*dt;
+    if (keys['KeyW']||keys['ArrowUp'])   tryMove( pl.dx*SPDS, pl.dy*SPDS);
+    if (keys['KeyS']||keys['ArrowDown']) tryMove(-pl.dx*SPDS,-pl.dy*SPDS);
+    if (keys['KeyA'])                    tryMove( pl.dy*SPDS,-pl.dx*SPDS);
+    if (keys['KeyD'])                    tryMove(-pl.dy*SPDS, pl.dx*SPDS);
+    if (keys['ArrowLeft'])  rotate(-ROTS);
+    if (keys['ArrowRight']) rotate( ROTS);
+
+    // Joystick
+    if (joy.active) {
+      let jx=joy.dx/50, jy=-joy.dy/50, s=SPDS*2;
+      tryMove((pl.dx*jy + pl.dy*jx)*s, (pl.dy*jy - pl.dx*jx)*s);
+    }
+    // Touch look
+    if (look.dx) { rotate(look.dx*0.006); look.dx=0; }
+
+    // Timers
+    if (muzzle>0) muzzle--;
+    if (shootCd>0) shootCd--;
+    if (dmgFlash>0) dmgFlash--;
+
+    updateEnemies(dt);
+
+    // Win / lose
+    if (enemies.every(e=>e.hp<=0)) {
+      gstate='win';
+      showOverlay('YOU WIN','All demons slain! Score: '+pl.score,'PLAY AGAIN',startGame);
+    } else if (pl.hp<=0) {
+      gstate='dead';
+      showOverlay('YOU DIED','Score: '+pl.score,'TRY AGAIN',startGame);
+    }
+
+    render();
+  }
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
