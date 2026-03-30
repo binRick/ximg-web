@@ -2,6 +2,16 @@
 
 Multi-site web portfolio/demo stack hosted at ximg.app.
 
+## Git Workflow
+
+**All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
+```
+git add <files>
+git commit -m "description"
+git push
+```
+Never leave finished work uncommitted.
+
 ## Architecture
 
 - **nginx:alpine** — SSL termination (Let's Encrypt, single cert covering all subdomains), HTTP→HTTPS redirect, reverse proxy
@@ -54,6 +64,20 @@ Each subdomain has its own Apache container and `*-html/` directory for static f
 
 **IMPORTANT:** The nav script MUST be loaded at the end of `<body>`, NOT in `<head>`. It calls `document.body.prepend()` and will silently fail if the body doesn't exist yet. Always place it as the last `<script>` before `</body>`.
 
+## Images
+
+**All images must be hosted on the website — never reference images from external URLs (no CDNs, no Wikipedia, no third-party hosts).** Download images locally and serve them from the app's own directory (e.g., `cnc-html/images/`, `mario-html/images/`).
+
+## Adding a New App (Checklist)
+
+Every new app must be wired into **three places** in addition to its own files:
+
+1. **Nav bar** — add an entry to `shared-html/nav.js`
+2. **Landing page** — add a card/link on `public-html/index.html` (ximg.app)
+3. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` so its nginx logs are streamed
+
+Missing any of these three means the app is invisible or incomplete.
+
 ## SSL / Adding a New Subdomain
 
 Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdomain:
@@ -63,7 +87,9 @@ Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdoma
 4. New Apache service in `compose.yaml`
 5. New `*-html/` directory with static files
 6. **Add entry to `shared-html/nav.js`** (don't forget this — every app needs a nav entry)
-7. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
+7. **Add a card to `public-html/index.html`** (landing page)
+8. **Add subdomain to `logs-server/server.js`** tab list
+9. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
 
 ## SSH Honeypot
 
