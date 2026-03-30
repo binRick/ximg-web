@@ -79,6 +79,9 @@ const LOG_FILES = {
   florida:   'florida.access.log',
   tampa:     'tampa.access.log',
   computers: 'computers.access.log',
+  trump:     'trump.access.log',
+  cnc:       'cnc.access.log',
+  rx:        'rx.access.log',
   logs:      'logs.access.log',
 };
 
@@ -237,6 +240,9 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="florida">florida</button>
     <button class="tab"        data-site="tampa">tampa</button>
     <button class="tab"        data-site="computers">computers</button>
+    <button class="tab"        data-site="trump">trump</button>
+    <button class="tab"        data-site="cnc">cnc</button>
+    <button class="tab"        data-site="rx">RxFitt</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">

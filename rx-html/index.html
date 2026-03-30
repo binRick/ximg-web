@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RxFitt — rx.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:    #0d9488;
+      --teal2:   #14b8a6;
+      --teal3:   #5eead4;
+      --green:   #10b981;
+      --green2:  #34d399;
+      --bg:      #061212;
+      --bg2:     #0a1a1a;
+      --card:    rgba(13,148,136,.08);
+      --card2:   rgba(13,148,136,.14);
+      --border:  rgba(13,148,136,.22);
+      --text:    #f0fdfa;
+      --muted:   #6b9e98;
+      --warn:    #f59e0b;
+      --danger:  #ef4444;
+      --good:    #22c55e;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #061212 0%, #0a2020 50%, #061a1a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 3.5rem 1.5rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(13,148,136,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: rgba(13,148,136,.15); border: 1px solid var(--border);
+      border-radius: 999px; padding: .25rem .9rem;
+      font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+      color: var(--teal3); text-transform: uppercase; margin-bottom: 1.2rem;
+    }
+    .hero-logo {
+      font-size: 3.2rem; font-weight: 900; letter-spacing: -.04em;
+      background: linear-gradient(135deg, var(--teal3), var(--green2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1; margin-bottom: .5rem;
+    }
+    .hero-logo span { color: var(--teal2); -webkit-text-fill-color: var(--teal2); }
+    .hero-tagline { font-size: 1.1rem; color: var(--muted); margin-bottom: 2rem; }
+    .hero-pills { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin-bottom: 2.5rem; }
+    .hero-pill {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 999px; padding: .3rem .85rem;
+      font-size: .75rem; color: var(--teal3); font-weight: 600;
+    }
+    .hero-stats { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+    .hstat {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; padding: .9rem 1.4rem; text-align: center; min-width: 110px;
+    }
+    .hstat-val { font-size: 1.6rem; font-weight: 800; color: var(--teal3); line-height: 1; }
+    .hstat-label { font-size: .7rem; color: var(--muted); margin-top: .2rem; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── Tab bar ── */
+    .tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--border); background: var(--bg2); padding: 0 1rem; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex-shrink: 0; padding: .85rem 1.1rem; cursor: pointer;
+      font-size: .8rem; font-weight: 600; color: var(--muted);
+      border-bottom: 2px solid transparent; white-space: nowrap;
+      transition: color .2s, border-color .2s;
+    }
+    .tab:hover { color: var(--teal3); }
+    .tab.active { color: var(--teal2); border-bottom-color: var(--teal2); }
+
+    /* ── Content panels ── */
+    .panel { display: none; padding: 1.5rem; max-width: 900px; margin: 0 auto; }
+    .panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.2rem 1.4rem; margin-bottom: 1rem;
+    }
+    .card-title { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .8rem; }
+    .card-heading { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; }
+
+    /* ── Metric grid ── */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .metric {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.1rem;
+    }
+    .metric-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    .metric-val { font-size: 1.6rem; font-weight: 800; color: var(--teal3); line-height: 1.1; margin: .25rem 0 .1rem; }
+    .metric-sub { font-size: .7rem; color: var(--muted); }
+    .metric-delta { font-size: .72rem; font-weight: 700; margin-top: .25rem; }
+    .delta-good { color: var(--good); }
+    .delta-warn { color: var(--warn); }
+    .delta-bad  { color: var(--danger); }
+
+    /* ── Progress bar ── */
+    .progress-wrap { margin: .5rem 0; }
+    .progress-label { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-bottom: .3rem; }
+    .progress-track { height: 7px; background: rgba(13,148,136,.15); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width .6s ease; }
+    .fill-teal  { background: linear-gradient(90deg, var(--teal), var(--teal3)); }
+    .fill-green { background: linear-gradient(90deg, var(--green), var(--green2)); }
+    .fill-warn  { background: linear-gradient(90deg, #d97706, var(--warn)); }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; padding-left: 1.4rem; }
+    .timeline::before { content: ''; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+    .tl-item { position: relative; margin-bottom: 1.1rem; }
+    .tl-dot { position: absolute; left: -1.1rem; top: .25rem; width: 9px; height: 9px; border-radius: 50%; background: var(--teal2); box-shadow: 0 0 6px var(--teal); }
+    .tl-date { font-size: .67rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .tl-text { font-size: .82rem; color: var(--text); margin-top: .1rem; }
+    .tl-sub { font-size: .73rem; color: var(--muted); }
+
+    /* ── Medication card ── */
+    .med-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .75rem;
+      display: flex; align-items: flex-start; gap: 1rem;
+    }
+    .med-icon { font-size: 1.6rem; flex-shrink: 0; line-height: 1; margin-top: .1rem; }
+    .med-name { font-size: .92rem; font-weight: 700; color: var(--text); }
+    .med-dose { font-size: .75rem; color: var(--teal3); font-weight: 600; margin-top: .1rem; }
+    .med-note { font-size: .73rem; color: var(--muted); margin-top: .3rem; line-height: 1.4; }
+    .med-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem; }
+    .med-tag { font-size: .65rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; border: 1px solid; }
+    .tag-glp1 { color: var(--teal3); border-color: rgba(94,234,212,.3); background: rgba(94,234,212,.07); }
+    .tag-rx   { color: var(--green2); border-color: rgba(52,211,153,.3); background: rgba(52,211,153,.07); }
+    .tag-warn { color: var(--warn); border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.07); }
+
+    /* ── Lab table ── */
+    .lab-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .lab-table th { text-align: left; font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); padding: .5rem .7rem; border-bottom: 1px solid var(--border); }
+    .lab-table td { padding: .6rem .7rem; border-bottom: 1px solid rgba(13,148,136,.08); }
+    .lab-table tr:last-child td { border-bottom: none; }
+    .lab-status { display: inline-block; font-size: .65rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; }
+    .status-ok   { background: rgba(34,197,94,.12); color: #4ade80; }
+    .status-hi   { background: rgba(245,158,11,.12); color: #fbbf24; }
+    .status-lo   { background: rgba(96,165,250,.12); color: #93c5fd; }
+    .status-flag { background: rgba(239,68,68,.12); color: #f87171; }
+    .lab-val-now { font-weight: 700; color: var(--text); }
+    .lab-val-prev { color: var(--muted); font-size: .75rem; }
+
+    /* ── Workout ── */
+    .workout-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: .4rem; margin-bottom: 1rem; }
+    .wday {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: .6rem .3rem; text-align: center; cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+    .wday.done { background: rgba(13,148,136,.2); border-color: var(--teal); }
+    .wday.today { border-color: var(--teal3); box-shadow: 0 0 10px rgba(13,148,136,.3); }
+    .wday.rest { opacity: .45; }
+    .wday-name { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    .wday-icon { font-size: 1.1rem; margin: .2rem 0; }
+    .wday-type { font-size: .6rem; color: var(--teal3); font-weight: 600; }
+
+    .exercise-list { list-style: none; }
+    .exercise-list li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .6rem .7rem; border-bottom: 1px solid rgba(13,148,136,.08);
+      font-size: .8rem;
+    }
+    .exercise-list li:last-child { border-bottom: none; }
+    .ex-name { color: var(--text); font-weight: 600; }
+    .ex-sets { color: var(--teal3); font-weight: 700; font-size: .75rem; }
+
+    /* ── Body comp ── */
+    .body-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .bcomp {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem; text-align: center;
+    }
+    .bcomp-icon { font-size: 1.4rem; margin-bottom: .3rem; }
+    .bcomp-val { font-size: 1.4rem; font-weight: 800; color: var(--teal3); line-height: 1; }
+    .bcomp-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: .2rem; }
+    .bcomp-delta { font-size: .7rem; font-weight: 700; margin-top: .2rem; }
+
+    /* ── Check-in form ── */
+    .checkin-form { display: flex; flex-direction: column; gap: 1rem; }
+    .form-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 140px; }
+    .form-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .4rem; display: block; }
+    .form-input {
+      width: 100%; background: rgba(13,148,136,.08); border: 1px solid var(--border);
+      border-radius: 8px; padding: .6rem .8rem; color: var(--text); font-size: .85rem;
+      outline: none; transition: border-color .2s;
+    }
+    .form-input:focus { border-color: var(--teal2); }
+    .form-input::placeholder { color: var(--muted); }
+    .form-select { appearance: none; cursor: pointer; }
+    .form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+    .slider-wrap { display: flex; align-items: center; gap: .8rem; }
+    .form-slider { flex: 1; accent-color: var(--teal2); }
+    .slider-val { font-size: .85rem; font-weight: 700; color: var(--teal3); min-width: 1.5rem; text-align: right; }
+    .submit-btn {
+      background: linear-gradient(135deg, var(--teal), var(--teal2));
+      color: #fff; font-weight: 700; font-size: .85rem; letter-spacing: .03em;
+      border: none; border-radius: 10px; padding: .85rem 2rem;
+      cursor: pointer; transition: opacity .2s, transform .15s;
+      align-self: flex-start;
+    }
+    .submit-btn:hover { opacity: .9; transform: translateY(-1px); }
+    .submit-confirm { display: none; color: var(--good); font-weight: 700; font-size: .85rem; align-self: center; }
+
+    /* ── Insight box ── */
+    .insight {
+      background: linear-gradient(135deg, rgba(13,148,136,.12), rgba(16,185,129,.08));
+      border: 1px solid rgba(13,148,136,.3); border-radius: 12px;
+      padding: 1rem 1.2rem; margin-top: .8rem;
+      font-size: .8rem; line-height: 1.55; color: #ccfbf1;
+    }
+    .insight strong { color: var(--teal3); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: .68rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--teal); margin: 1.4rem 0 .6rem;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* ── Dose tracker ── */
+    .dose-row { display: flex; gap: .5rem; margin-bottom: .8rem; flex-wrap: wrap; }
+    .dose-chip {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: .4rem .8rem; font-size: .72rem; font-weight: 600; cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+    .dose-chip.taken { background: rgba(13,148,136,.25); border-color: var(--teal2); color: var(--teal3); }
+    .dose-chip-date { font-size: .62rem; color: var(--muted); display: block; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.2rem 0; }
+
+    /* ── Pill badge ── */
+    .badge {
+      display: inline-block; font-size: .62rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .07em;
+      padding: .15rem .55rem; border-radius: 999px;
+    }
+    .badge-teal  { background: rgba(13,148,136,.2); color: var(--teal3); }
+    .badge-green { background: rgba(16,185,129,.15); color: var(--green2); }
+    .badge-warn  { background: rgba(245,158,11,.15); color: var(--warn); }
+
+    /* ── Responsive ── */
+    @media (max-width: 500px) {
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .body-grid   { grid-template-columns: 1fr 1fr; }
+      .workout-week { grid-template-columns: repeat(7, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">💊 Pharmacy + 🏋️ Fitness</div>
+  <div class="hero-logo">Rx<span>Fitt</span></div>
+  <div class="hero-tagline">Clinical pharmacy expertise meets certified personal training</div>
+  <div class="hero-pills">
+    <span class="hero-pill">GLP-1 Optimization</span>
+    <span class="hero-pill">Metabolic Health</span>
+    <span class="hero-pill">Resistance Training</span>
+    <span class="hero-pill">Lab-Driven Outcomes</span>
+    <span class="hero-pill">Virtual &amp; In-Person</span>
+  </div>
+  <div class="hero-stats">
+    <div class="hstat"><div class="hstat-val">17</div><div class="hstat-label">lbs lost</div></div>
+    <div class="hstat"><div class="hstat-val">0.6%</div><div class="hstat-label">HbA1c drop</div></div>
+    <div class="hstat"><div class="hstat-val">14/14</div><div class="hstat-label">check-ins</div></div>
+    <div class="hstat"><div class="hstat-val">−5 yr</div><div class="hstat-label">metabolic age</div></div>
+  </div>
+</div>
+
+<!-- Tab bar -->
+<div class="tabs">
+  <div class="tab active" data-panel="dashboard">📊 Dashboard</div>
+  <div class="tab" data-panel="meds">💊 Medications</div>
+  <div class="tab" data-panel="labs">🧪 Labs</div>
+  <div class="tab" data-panel="workouts">🏋️ Workouts</div>
+  <div class="tab" data-panel="body">⚖️ Body Comp</div>
+  <div class="tab" data-panel="checkin">✅ Check-In</div>
+</div>
+
+<!-- ════════════════════════════════ DASHBOARD ═══════════════════════════════ -->
+<div class="panel active" id="panel-dashboard">
+
+  <div class="section-label">Client Overview</div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <div class="card-heading">Alex Johnson</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">38F &nbsp;·&nbsp; Program start: Oct 12, 2024 &nbsp;·&nbsp; Week 16</div>
+        <div style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap">
+          <span class="badge badge-teal">GLP-1 Client</span>
+          <span class="badge badge-green">Active</span>
+          <span class="badge badge-warn">T2D Risk</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.7rem;color:var(--muted)">Next appointment</div>
+        <div style="font-weight:700;color:var(--teal3)">Feb 10 · 10:00 AM</div>
+        <div style="font-size:.72rem;color:var(--muted)">Virtual via Telehealth</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Key Metrics</div>
+  <div class="metric-grid">
+    <div class="metric">
+      <div class="metric-label">Weight</div>
+      <div class="metric-val">198</div>
+      <div class="metric-sub">lbs &nbsp;·&nbsp; Goal: 175</div>
+      <div class="metric-delta delta-good">↓ 17 lbs since start</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">HbA1c</div>
+      <div class="metric-val">6.2%</div>
+      <div class="metric-sub">Goal: &lt;5.7%</div>
+      <div class="metric-delta delta-good">↓ 0.6% since start</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">BMI</div>
+      <div class="metric-val">31.5</div>
+      <div class="metric-sub">Goal: &lt;25</div>
+      <div class="metric-delta delta-good">↓ 2.7 since start</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Blood Pressure</div>
+      <div class="metric-val">128/78</div>
+      <div class="metric-sub">Goal: &lt;120/80</div>
+      <div class="metric-delta delta-good">↓ 14/10 mmHg</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">GLP-1 Dose</div>
+      <div class="metric-val">1.0</div>
+      <div class="metric-sub">mg/week · Semaglutide</div>
+      <div class="metric-delta delta-warn">↑ Titrating to 1.7</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Workouts</div>
+      <div class="metric-val">47</div>
+      <div class="metric-sub">sessions completed</div>
+      <div class="metric-delta delta-good">82% adherence</div>
+    </div>
+  </div>
+
+  <div class="section-label">Progress to Goal</div>
+  <div class="card">
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Weight loss (17 of 40 lbs)</span><span>43%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-teal" style="width:43%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>HbA1c reduction (0.6 of 1.1%)</span><span>55%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-green" style="width:55%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Workout adherence this month</span><span>82%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-teal" style="width:82%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Body fat reduction (4.1 of 10%)</span><span>41%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-warn" style="width:41%"></div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Recent Coach Notes</div>
+  <div class="card">
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Feb 3, 2025</div>
+        <div class="tl-text">Excellent week — 4/5 workouts completed, reported improved energy levels.</div>
+        <div class="tl-sub">GLP-1 side effects resolved. Increasing dose to 1.7mg next injection cycle.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Jan 27, 2025</div>
+        <div class="tl-text">Lab results reviewed — HbA1c down to 6.2%. Continue current protocol.</div>
+        <div class="tl-sub">Adjusted workout plan to add progressive overload on compound lifts.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Jan 20, 2025</div>
+        <div class="tl-text">Reported nausea with dose increase — counseled on eating smaller meals pre-injection.</div>
+        <div class="tl-sub">Added protein target reminder: 120g/day to protect lean muscle during GLP-1 use.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Jan 13, 2025</div>
+        <div class="tl-text">Dose titrated from 0.5mg → 1.0mg. Blood pressure improving significantly.</div>
+        <div class="tl-sub">Introduced resistance bands for home workout days. Sleep quality reported as 8/10.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ MEDICATIONS ════════════════════════════ -->
+<div class="panel" id="panel-meds">
+
+  <div class="section-label">GLP-1 Spotlight</div>
+  <div class="card" style="border-color:rgba(94,234,212,.35);background:rgba(13,148,136,.13)">
+    <div class="med-card" style="background:transparent;border:none;padding:0;margin:0">
+      <div class="med-icon">💉</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.3rem">
+          <div>
+            <div class="med-name">Semaglutide (Wegovy®)</div>
+            <div class="med-dose">1.0 mg subcutaneous injection · Every 7 days</div>
+          </div>
+          <span class="badge badge-teal">GLP-1 Agonist</span>
+        </div>
+        <div class="med-note">GLP-1 receptor agonist that reduces appetite, slows gastric emptying, and improves glycemic control. Current dose: 1.0 mg — titrating to 1.7 mg on Feb 17.</div>
+        <hr class="divider">
+        <div class="card-title">Dose Log — Last 8 Weeks</div>
+        <div class="dose-row" id="dose-row"></div>
+        <div class="insight">
+          <strong>Pharmacist Note:</strong> On semaglutide, prioritizing <strong>120g+ protein/day</strong> and resistance training is critical to preserve lean muscle mass. GLP-1s cause fat AND muscle loss if exercise is inadequate. Current compliance: excellent.
+        </div>
+        <hr class="divider">
+        <div class="card-title">Common Side Effects &amp; Management</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.4rem">
+          <div style="font-size:.76rem;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem">
+            <div style="font-weight:700;color:var(--teal3)">Nausea</div>
+            <div style="color:var(--muted);margin-top:.2rem">Take after small meal. Avoid high-fat foods day of injection. Usually resolves after 4–8 weeks.</div>
+          </div>
+          <div style="font-size:.76rem;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem">
+            <div style="font-weight:700;color:var(--teal3)">Constipation</div>
+            <div style="color:var(--muted);margin-top:.2rem">Increase water to 80+ oz/day. Add fiber. Walking 20 min daily helps GI motility.</div>
+          </div>
+          <div style="font-size:.76rem;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem">
+            <div style="font-weight:700;color:var(--teal3)">Fatigue</div>
+            <div style="color:var(--muted);margin-top:.2rem">Common during first 2–4 weeks. Ensure adequate sleep and electrolyte intake.</div>
+          </div>
+          <div style="font-size:.76rem;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem">
+            <div style="font-weight:700;color:var(--teal3)">Muscle Loss Risk</div>
+            <div style="color:var(--teal3);font-weight:700;margin-top:.2rem">⚠ Resistance train 3×/week minimum. Protein every meal.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Full Medication List</div>
+
+  <div class="med-card">
+    <div class="med-icon">💊</div>
+    <div>
+      <div class="med-name">Metformin ER 1000mg</div>
+      <div class="med-dose">1 tablet twice daily with meals</div>
+      <div class="med-note">First-line T2D management. Reduces hepatic glucose production. Well-tolerated. Monitor B12 annually — long-term metformin depletes B12.</div>
+      <div class="med-tags"><span class="med-tag tag-rx">Antidiabetic</span><span class="med-tag tag-warn">Monitor B12</span></div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-icon">💊</div>
+    <div>
+      <div class="med-name">Lisinopril 10mg</div>
+      <div class="med-dose">1 tablet once daily (morning)</div>
+      <div class="med-note">ACE inhibitor for hypertension and renal protection in metabolic syndrome. BP has improved significantly — may consider dose reduction at next visit if trend continues.</div>
+      <div class="med-tags"><span class="med-tag tag-rx">ACE Inhibitor</span><span class="med-tag tag-rx">BP / Cardio</span></div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-icon">💊</div>
+    <div>
+      <div class="med-name">Atorvastatin 20mg</div>
+      <div class="med-dose">1 tablet once daily (evening)</div>
+      <div class="med-note">Statin for LDL reduction. LDL down from 148 → 112 mg/dL. Watch for myalgia — report any unexplained muscle soreness given resistance training program.</div>
+      <div class="med-tags"><span class="med-tag tag-rx">Statin</span><span class="med-tag tag-warn">Watch myalgia</span></div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-icon">🧴</div>
+    <div>
+      <div class="med-name">Vitamin D3 5000 IU</div>
+      <div class="med-dose">1 softgel once daily with fat-containing meal</div>
+      <div class="med-note">Vitamin D was 18 ng/mL at intake (deficient). Recheck in 90 days. Adequate D3 critical for muscle function, immune health, and insulin sensitivity.</div>
+      <div class="med-tags"><span class="med-tag tag-glp1">Supplement</span></div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-icon">🧴</div>
+    <div>
+      <div class="med-name">Magnesium Glycinate 400mg</div>
+      <div class="med-dose">1 capsule at bedtime</div>
+      <div class="med-note">Supports sleep quality, muscle recovery, and insulin sensitivity. Glycinate form preferred for GI tolerance. Serum Mg was borderline low at intake (1.8 mEq/L).</div>
+      <div class="med-tags"><span class="med-tag tag-glp1">Supplement</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ LABS ═══════════════════════════════════ -->
+<div class="panel" id="panel-labs">
+
+  <div class="section-label">Metabolic Panel</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="lab-table">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Current</th>
+          <th>Previous</th>
+          <th>Reference</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600">HbA1c</td>
+          <td><span class="lab-val-now">6.2%</span></td>
+          <td><span class="lab-val-prev">6.8%</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&lt;5.7%</td>
+          <td><span class="lab-status status-hi">Monitor</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Fasting Glucose</td>
+          <td><span class="lab-val-now">102 mg/dL</span></td>
+          <td><span class="lab-val-prev">118 mg/dL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">70–99</td>
+          <td><span class="lab-status status-hi">Monitor</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Insulin (fasting)</td>
+          <td><span class="lab-val-now">9.1 µIU/mL</span></td>
+          <td><span class="lab-val-prev">16.4 µIU/mL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">2–19.6</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">HOMA-IR</td>
+          <td><span class="lab-val-now">2.3</span></td>
+          <td><span class="lab-val-prev">4.8</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&lt;2.5</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">Lipid Panel</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="lab-table">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Current</th>
+          <th>Previous</th>
+          <th>Reference</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600">Total Cholesterol</td>
+          <td><span class="lab-val-now">188 mg/dL</span></td>
+          <td><span class="lab-val-prev">224 mg/dL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&lt;200</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">LDL</td>
+          <td><span class="lab-val-now">112 mg/dL</span></td>
+          <td><span class="lab-val-prev">148 mg/dL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&lt;100</td>
+          <td><span class="lab-status status-hi">Monitor</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">HDL</td>
+          <td><span class="lab-val-now">52 mg/dL</span></td>
+          <td><span class="lab-val-prev">44 mg/dL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&gt;50 (F)</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Triglycerides</td>
+          <td><span class="lab-val-now">138 mg/dL</span></td>
+          <td><span class="lab-val-prev">212 mg/dL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&lt;150</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">Comprehensive Metabolic + Other</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="lab-table">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Current</th>
+          <th>Previous</th>
+          <th>Reference</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600">eGFR</td>
+          <td><span class="lab-val-now">74 mL/min</span></td>
+          <td><span class="lab-val-prev">72 mL/min</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&gt;60</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">ALT</td>
+          <td><span class="lab-val-now">28 U/L</span></td>
+          <td><span class="lab-val-prev">42 U/L</span></td>
+          <td style="color:var(--muted);font-size:.75rem">7–40</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Vitamin D</td>
+          <td><span class="lab-val-now">38 ng/mL</span></td>
+          <td><span class="lab-val-prev">18 ng/mL</span></td>
+          <td style="color:var(--muted);font-size:.75rem">30–100</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Vitamin B12</td>
+          <td><span class="lab-val-now">310 pg/mL</span></td>
+          <td><span class="lab-val-prev">—</span></td>
+          <td style="color:var(--muted);font-size:.75rem">200–900</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">hsCRP</td>
+          <td><span class="lab-val-now">1.8 mg/L</span></td>
+          <td><span class="lab-val-prev">4.2 mg/L</span></td>
+          <td style="color:var(--muted);font-size:.75rem">&lt;3.0</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">TSH</td>
+          <td><span class="lab-val-now">2.1 mIU/L</span></td>
+          <td><span class="lab-val-prev">2.4 mIU/L</span></td>
+          <td style="color:var(--muted);font-size:.75rem">0.4–4.0</td>
+          <td><span class="lab-status status-ok">Normal</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight">
+    <strong>Pharmacist Interpretation:</strong> Excellent metabolic trajectory. HbA1c and HOMA-IR improvements suggest meaningful insulin sensitivity gains — a direct result of the combined GLP-1 + resistance training protocol. LDL remains above goal; continue statin and re-evaluate in 90 days. hsCRP reduction (4.2 → 1.8) indicates reduced systemic inflammation — a key predictor of long-term cardiovascular risk reduction.
+  </div>
+</div>
+
+<!-- ════════════════════════════════ WORKOUTS ════════════════════════════════ -->
+<div class="panel" id="panel-workouts">
+
+  <div class="section-label">This Week</div>
+  <div class="workout-week">
+    <div class="wday done"><div class="wday-name">Mon</div><div class="wday-icon">🏋️</div><div class="wday-type">Upper</div></div>
+    <div class="wday done"><div class="wday-name">Tue</div><div class="wday-icon">🚶</div><div class="wday-type">Cardio</div></div>
+    <div class="wday done"><div class="wday-name">Wed</div><div class="wday-icon">🏋️</div><div class="wday-type">Lower</div></div>
+    <div class="wday today"><div class="wday-name">Thu</div><div class="wday-icon">🚶</div><div class="wday-type">Cardio</div></div>
+    <div class="wday"><div class="wday-name">Fri</div><div class="wday-icon">🏋️</div><div class="wday-type">Full</div></div>
+    <div class="wday rest"><div class="wday-name">Sat</div><div class="wday-icon">😴</div><div class="wday-type">Rest</div></div>
+    <div class="wday rest"><div class="wday-name">Sun</div><div class="wday-icon">🧘</div><div class="wday-type">Stretch</div></div>
+  </div>
+
+  <div class="section-label">Monday — Upper Body Strength</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <ul class="exercise-list">
+      <li><span class="ex-name">Dumbbell Bench Press</span><span class="ex-sets">3 × 10 · 25 lbs</span></li>
+      <li><span class="ex-name">Seated Cable Row</span><span class="ex-sets">3 × 12 · 50 lbs</span></li>
+      <li><span class="ex-name">Overhead Press</span><span class="ex-sets">3 × 10 · 20 lbs</span></li>
+      <li><span class="ex-name">Lat Pulldown</span><span class="ex-sets">3 × 12 · 55 lbs</span></li>
+      <li><span class="ex-name">Bicep Curl</span><span class="ex-sets">3 × 12 · 15 lbs</span></li>
+      <li><span class="ex-name">Tricep Pushdown</span><span class="ex-sets">3 × 12 · 30 lbs</span></li>
+      <li><span class="ex-name">Face Pulls</span><span class="ex-sets">3 × 15 · 25 lbs</span></li>
+    </ul>
+  </div>
+
+  <div class="section-label">Wednesday — Lower Body Strength</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <ul class="exercise-list">
+      <li><span class="ex-name">Goblet Squat</span><span class="ex-sets">4 × 10 · 35 lbs</span></li>
+      <li><span class="ex-name">Romanian Deadlift</span><span class="ex-sets">3 × 10 · 60 lbs</span></li>
+      <li><span class="ex-name">Leg Press</span><span class="ex-sets">3 × 12 · 120 lbs</span></li>
+      <li><span class="ex-name">Hip Thrust</span><span class="ex-sets">3 × 12 · 50 lbs</span></li>
+      <li><span class="ex-name">Leg Curl</span><span class="ex-sets">3 × 12 · 40 lbs</span></li>
+      <li><span class="ex-name">Calf Raise</span><span class="ex-sets">4 × 15 · Bodyweight</span></li>
+    </ul>
+  </div>
+
+  <div class="section-label">Tuesday &amp; Thursday — Cardio</div>
+  <div class="card">
+    <div style="font-size:.8rem;color:var(--text);line-height:1.6">
+      <div style="margin-bottom:.5rem"><strong style="color:var(--teal3)">Zone 2 Walk/Bike</strong> — 35 minutes at conversational pace (HR 115–135 bpm)</div>
+      <div style="color:var(--muted);font-size:.76rem">On GLP-1 + statin protocol, Zone 2 cardio is preferred over HIIT. Supports fat oxidation without excessive cortisol spike or muscle catabolism. Post-workout protein shake required within 30 min.</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <strong>Trainer Note:</strong> Progressive overload applied weekly — targeting 5% weight increase on compound movements each 2-week block. <strong>Protein target: 120g/day</strong> to counteract muscle loss risk from semaglutide. Current program designed to maximize lean mass retention during rapid fat loss phase.
+  </div>
+</div>
+
+<!-- ════════════════════════════════ BODY COMP ══════════════════════════════ -->
+<div class="panel" id="panel-body">
+
+  <div class="section-label">Hume Scale — Latest Reading (Feb 3)</div>
+  <div class="body-grid">
+    <div class="bcomp">
+      <div class="bcomp-icon">⚖️</div>
+      <div class="bcomp-val">198.2</div>
+      <div class="bcomp-label">Weight (lbs)</div>
+      <div class="bcomp-delta delta-good">↓ 17.0 lbs</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">📊</div>
+      <div class="bcomp-val">31.5</div>
+      <div class="bcomp-label">BMI</div>
+      <div class="bcomp-delta delta-good">↓ 2.7</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">🔥</div>
+      <div class="bcomp-val">34.1%</div>
+      <div class="bcomp-label">Body Fat %</div>
+      <div class="bcomp-delta delta-good">↓ 4.1%</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">💪</div>
+      <div class="bcomp-val">28.3%</div>
+      <div class="bcomp-label">Muscle Mass %</div>
+      <div class="bcomp-delta delta-good">↑ 2.2%</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">🦴</div>
+      <div class="bcomp-val">5.8</div>
+      <div class="bcomp-label">Bone Mass (lbs)</div>
+      <div class="bcomp-delta" style="color:var(--muted)">→ Stable</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">💧</div>
+      <div class="bcomp-val">48.2%</div>
+      <div class="bcomp-label">Body Water %</div>
+      <div class="bcomp-delta delta-good">↑ 1.8%</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">🫀</div>
+      <div class="bcomp-val">8</div>
+      <div class="bcomp-label">Visceral Fat</div>
+      <div class="bcomp-delta delta-good">↓ 3 levels</div>
+    </div>
+    <div class="bcomp">
+      <div class="bcomp-icon">🧬</div>
+      <div class="bcomp-val">47</div>
+      <div class="bcomp-label">Metabolic Age</div>
+      <div class="bcomp-delta delta-good">↓ 5 years</div>
+    </div>
+  </div>
+
+  <div class="section-label">Body Recomposition Progress</div>
+  <div class="card">
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Body Fat % (38.2 → 34.1, goal 28%)</span><span>40%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-teal" style="width:40%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Muscle Mass % (26.1 → 28.3, goal 33%)</span><span>32%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-green" style="width:32%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Visceral Fat (11 → 8, goal ≤5)</span><span>50%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-warn" style="width:50%"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Metabolic Age (52 → 47, goal 38)</span><span>36%</span></div>
+      <div class="progress-track"><div class="progress-fill fill-teal" style="width:36%"></div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Reading History</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="lab-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+          <th>BF%</th>
+          <th>Muscle%</th>
+          <th>Visc. Fat</th>
+          <th>Met. Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--muted);font-size:.75rem">Feb 3</td>
+          <td><span class="lab-val-now">198.2</span></td>
+          <td><span class="lab-val-now">34.1%</span></td>
+          <td><span class="lab-val-now">28.3%</span></td>
+          <td><span class="lab-val-now">8</span></td>
+          <td><span class="lab-val-now">47</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:.75rem">Jan 6</td>
+          <td><span class="lab-val-now">204.8</span></td>
+          <td><span class="lab-val-now">35.9%</span></td>
+          <td><span class="lab-val-now">27.4%</span></td>
+          <td><span class="lab-val-now">9</span></td>
+          <td><span class="lab-val-now">49</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:.75rem">Dec 2</td>
+          <td><span class="lab-val-now">209.3</span></td>
+          <td><span class="lab-val-now">36.8%</span></td>
+          <td><span class="lab-val-now">27.1%</span></td>
+          <td><span class="lab-val-now">10</span></td>
+          <td><span class="lab-val-now">50</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted);font-size:.75rem">Oct 12 <span style="color:var(--teal);font-size:.62rem">start</span></td>
+          <td><span class="lab-val-now">215.2</span></td>
+          <td><span class="lab-val-now">38.2%</span></td>
+          <td><span class="lab-val-now">26.1%</span></td>
+          <td><span class="lab-val-now">11</span></td>
+          <td><span class="lab-val-now">52</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight">
+    <strong>Body Recomposition Insight:</strong> Outstanding result — simultaneous fat loss AND muscle gain during GLP-1 therapy. Most patients lose both; resistance training 3×/week + adequate protein has successfully preserved and grown lean mass. Metabolic age improving faster than weight loss alone would predict — this is the combined effect of the <strong>pharmacy + fitness protocol</strong> working together.
+  </div>
+</div>
+
+<!-- ════════════════════════════════ CHECK-IN ════════════════════════════════ -->
+<div class="panel" id="panel-checkin">
+
+  <div class="section-label">Weekly Check-In</div>
+  <div class="card">
+    <div class="checkin-form" id="checkin-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Today's Weight (lbs)</label>
+          <input class="form-input" type="number" placeholder="e.g. 197.4" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="checkin-date">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Energy Level &nbsp;<span id="energy-val" class="slider-val">7</span></label>
+        <div class="slider-wrap">
+          <span style="font-size:.7rem;color:var(--muted)">1</span>
+          <input class="form-slider" type="range" min="1" max="10" value="7" oninput="document.getElementById('energy-val').textContent=this.value">
+          <span style="font-size:.7rem;color:var(--muted)">10</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Sleep Quality &nbsp;<span id="sleep-val" class="slider-val">7</span></label>
+        <div class="slider-wrap">
+          <span style="font-size:.7rem;color:var(--muted)">1</span>
+          <input class="form-slider" type="range" min="1" max="10" value="7" oninput="document.getElementById('sleep-val').textContent=this.value">
+          <span style="font-size:.7rem;color:var(--muted)">10</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Medication Adherence &nbsp;<span id="adh-val" class="slider-val">10</span></label>
+        <div class="slider-wrap">
+          <span style="font-size:.7rem;color:var(--muted)">1</span>
+          <input class="form-slider" type="range" min="1" max="10" value="10" oninput="document.getElementById('adh-val').textContent=this.value">
+          <span style="font-size:.7rem;color:var(--muted)">10</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Workouts Completed</label>
+          <select class="form-input form-select">
+            <option>0</option><option>1</option><option>2</option>
+            <option selected>3</option><option>4</option><option>5+</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GLP-1 Injection Taken?</label>
+          <select class="form-input form-select">
+            <option selected>Yes — on schedule</option>
+            <option>Yes — late (&lt;2 days)</option>
+            <option>Skipped this week</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Side Effects / Symptoms</label>
+        <select class="form-input form-select">
+          <option selected>None this week</option>
+          <option>Mild nausea</option>
+          <option>Constipation</option>
+          <option>Fatigue</option>
+          <option>Muscle soreness</option>
+          <option>Other (see notes)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes to Coach / Pharmacist</label>
+        <textarea class="form-input form-textarea" placeholder="How are you feeling? Any questions about your medications, workouts, or labs?"></textarea>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <button class="submit-btn" onclick="submitCheckin()">Submit Check-In</button>
+        <span class="submit-confirm" id="submit-confirm">✓ Check-in submitted!</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Previous Check-Ins</div>
+  <div class="card">
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Feb 3, 2025 &nbsp;·&nbsp; <span style="color:var(--teal3)">Wk 16</span></div>
+        <div class="tl-text">Weight: 198.2 · Energy: 8/10 · Sleep: 8/10 · Adherence: 10/10 · Workouts: 4</div>
+        <div class="tl-sub">"Feeling really good this week. Nausea is finally gone. Lifted heavier on squats."</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Jan 27, 2025 &nbsp;·&nbsp; <span style="color:var(--teal3)">Wk 15</span></div>
+        <div class="tl-text">Weight: 199.0 · Energy: 7/10 · Sleep: 7/10 · Adherence: 10/10 · Workouts: 3</div>
+        <div class="tl-sub">"Still some mild nausea day of injection. Work was stressful — missed Friday workout."</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-date">Jan 20, 2025 &nbsp;·&nbsp; <span style="color:var(--teal3)">Wk 14</span></div>
+        <div class="tl-text">Weight: 200.4 · Energy: 6/10 · Sleep: 6/10 · Adherence: 10/10 · Workouts: 3</div>
+        <div class="tl-sub">"Dose went up to 1.0mg this week — nausea hit harder. Eating smaller meals now."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Tab switching ──
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var panel = this.dataset.panel;
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+      document.getElementById('panel-' + panel).classList.add('active');
+    });
+  });
+
+  // ── Dose log chips ──
+  (function() {
+    var row = document.getElementById('dose-row');
+    var dates = ['Oct 14','Oct 21','Oct 28','Nov 4','Nov 11','Nov 18','Nov 25','Dec 2',
+                 'Dec 9','Dec 16','Dec 23','Dec 30','Jan 6','Jan 13','Jan 20','Jan 27'];
+    dates.forEach(function(d) {
+      var chip = document.createElement('div');
+      chip.className = 'dose-chip taken';
+      chip.innerHTML = '💉 Taken<span class="dose-chip-date">' + d + '</span>';
+      row.appendChild(chip);
+    });
+  })();
+
+  // ── Set today's date in check-in form ──
+  document.getElementById('checkin-date').valueAsDate = new Date();
+
+  // ── Check-in submit ──
+  function submitCheckin() {
+    var confirm = document.getElementById('submit-confirm');
+    confirm.style.display = 'inline';
+    setTimeout(function() { confirm.style.display = 'none'; }, 3000);
+  }
+</script>
+
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
