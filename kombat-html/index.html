@@ -1470,6 +1470,12 @@ function buildCharacters() {
   document.getElementById('char-search').addEventListener('input', renderCharGrid);
 }
 
+function setCharImg(img, card, src) {
+  img.src = src;
+  img.onload  = () => { img.classList.add('loaded'); card.querySelector('.char-placeholder').style.display = 'none'; };
+  img.onerror = () => { img.style.display = 'none'; };
+}
+
 function renderCharGrid() {
   const gameFilter = document.getElementById('char-game-filter').value;
   const search     = document.getElementById('char-search').value.trim().toLowerCase();
@@ -1484,6 +1490,8 @@ function renderCharGrid() {
 
   document.getElementById('char-count').textContent = `${filtered.length} characters`;
   document.getElementById('char-no-results').classList.toggle('hidden', filtered.length > 0);
+
+  const entries = [];
 
   filtered.forEach(c => {
     const card = document.createElement('div');
@@ -1525,46 +1533,60 @@ function renderCharGrid() {
       </div>`;
 
     grid.appendChild(card);
+    entries.push({ c, img: card.querySelector('img'), card });
+  });
 
-    // Load portrait: Wikipedia first, Fandom wiki as fallback
-    const img = card.querySelector('img');
-    (async () => {
-      let src = null;
+  // Phase 1: Wikipedia — parallel fetches for all characters
+  // Phase 2: Single batched Fandom request for those that need it
+  (async () => {
+    const needFandom = (await Promise.all(entries.map(async ({c, img, card}) => {
       const firstName = c.name.toLowerCase().split(/[\s\/]+/)[0];
-
-      // 1. Try Wikipedia REST API — decode pre-encoded %27 to avoid double-encoding
       try {
         const wikiKey = c.wiki.replace(/%27/g, "'");
         const res  = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiKey)}`);
         const data = await res.json();
-        // Reject if the returned article is a list page (redirect away from character's own article)
         if (data.thumbnail?.source && data.title?.toLowerCase().includes(firstName)) {
-          src = data.thumbnail.source;
+          setCharImg(img, card, data.thumbnail.source);
+          return null;
         }
       } catch(e) {}
+      return { c, img, card };
+    }))).filter(Boolean);
 
-      // 2. Fallback: Mortal Kombat Fandom wiki
-      if (!src) {
-        try {
-          const fandomTitle = c.fandom || c.name.replace(/\s+/g, '_');
-          const fres = await fetch(
-            `https://mortalkombat.fandom.com/api.php?action=query&titles=${encodeURIComponent(fandomTitle)}&prop=pageimages&format=json&pithumbsize=400&origin=*`
-          );
-          const fdata = await fres.json();
-          const pages = Object.values(fdata?.query?.pages || {});
-          if (pages[0]?.thumbnail?.source) src = pages[0].thumbnail.source;
-        } catch(e) {}
-      }
+    if (!needFandom.length) return;
 
-      if (src) {
-        img.src = src;
-        img.onload = () => {
-          img.classList.add('loaded');
-          card.querySelector('.char-placeholder').style.display = 'none';
-        };
-      }
-    })();
-  });
+    // Batch up to 50 titles per Fandom API request
+    for (let i = 0; i < needFandom.length; i += 50) {
+      const batch = needFandom.slice(i, i + 50);
+      try {
+        // Build titles param: encode each title individually, join with literal |
+        const titlesParam = batch
+          .map(({c}) => encodeURIComponent(decodeURIComponent(c.fandom || c.name.replace(/\s+/g, '_'))))
+          .join('|');
+        const fres  = await fetch(
+          `https://mortalkombat.fandom.com/api.php?action=query&titles=${titlesParam}&prop=pageimages&format=json&pithumbsize=400&origin=*`
+        );
+        const fdata = await fres.json();
+
+        // Build lookup: lowercase title → thumbnail src
+        const thumbMap = {};
+        for (const page of Object.values(fdata?.query?.pages || {})) {
+          if (page.thumbnail?.source) thumbMap[page.title.toLowerCase()] = page.thumbnail.source;
+        }
+        // Apply MediaWiki normalizations (underscores ↔ spaces)
+        for (const {from, to} of (fdata?.query?.normalized || [])) {
+          const src = thumbMap[to.toLowerCase()];
+          if (src) { thumbMap[from.toLowerCase()] = src; thumbMap[from.toLowerCase().replace(/_/g, ' ')] = src; }
+        }
+
+        for (const {c, img, card} of batch) {
+          const rawTitle = decodeURIComponent(c.fandom || c.name.replace(/\s+/g, '_'));
+          const src = thumbMap[rawTitle.toLowerCase()] || thumbMap[rawTitle.toLowerCase().replace(/_/g, ' ')];
+          if (src) setCharImg(img, card, src);
+        }
+      } catch(e) {}
+    }
+  })();
 }
 
 /* ─── Init ────────────────────────────────────────────────── */
