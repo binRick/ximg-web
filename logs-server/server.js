@@ -376,8 +376,7 @@ const HTML = `<!DOCTYPE html>
     async function loadWorldMap() {
       if (worldRings) return worldRings;
       try {
-        const r = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json');
-        const topo = await r.json();
+        const topo = JSON.parse(fs.readFileSync(path.join(__dirname, 'vendor/land-110m.json'), 'utf8'));
         const { scale: [sx, sy], translate: [tx, ty] } = topo.transform;
 
         // Delta-decode arcs → geographic [lon, lat]

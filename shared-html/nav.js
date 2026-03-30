@@ -43,6 +43,8 @@
     '<a class="nav-item" href="https://tampa.ximg.app"><div class="nav-dot"></div>tampa</a>' +
     '<a class="nav-item" href="https://america.ximg.app"><div class="nav-dot"></div>america</a>' +
     '<a class="nav-item" href="https://computers.ximg.app"><div class="nav-dot"></div>computers</a>' +
+    '<a class="nav-item" href="https://trump.ximg.app"><div class="nav-dot"></div>trump</a>' +
+    '<a class="nav-item" href="https://cnc.ximg.app"><div class="nav-dot"></div>cnc</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
 
   // Highlight the current site

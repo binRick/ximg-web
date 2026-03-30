@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C&amp;C — cnc.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #050a02;
+      --bg2:    #0a1205;
+      --gdi:    #4aff2a;
+      --nod:    #ff9900;
+      --soviet: #dd2200;
+      --ally:   #1188ff;
+      --scrin:  #bb44ff;
+      --emp:    #ff44aa;
+      --usa:    #4488ff;
+      --china:  #ff3300;
+      --gla:    #aa8833;
+      --text:   #b8cc88;
+      --dim:    #556633;
+      --border: rgba(74,255,42,.12);
+    }
+
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+      pointer-events: none; z-index: 1;
+    }
+
+    /* ── Header ── */
+    .cnc-header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(10,30,5,.8) 0%, transparent 100%);
+    }
+    .cnc-title {
+      font-size: clamp(1.8rem,6vw,3.5rem);
+      font-weight: 900;
+      letter-spacing: .12em;
+      color: var(--gdi);
+      text-shadow: 0 0 30px rgba(74,255,42,.5), 0 0 60px rgba(74,255,42,.2);
+      line-height: 1;
+    }
+    .cnc-subtitle {
+      font-size: .72rem;
+      color: var(--dim);
+      letter-spacing: .2em;
+      margin-top: .5rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky;
+      top: 44px; z-index: 100;
+      display: flex; align-items: center; gap: .4rem;
+      padding: .4rem .75rem;
+      background: rgba(5,10,2,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .cnc-tab {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .28rem .8rem;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--dim); cursor: pointer; border-radius: 3px;
+      letter-spacing: .1em; transition: all .2s; white-space: nowrap;
+    }
+    .cnc-tab:hover { background: rgba(74,255,42,.08); border-color: rgba(74,255,42,.3); color: var(--gdi); }
+    .cnc-tab.active { background: rgba(74,255,42,.12); border-color: rgba(74,255,42,.5); color: var(--gdi); text-shadow: 0 0 8px rgba(74,255,42,.4); }
+
+    /* ── Sections ── */
+    .section { padding: 2rem 1rem 3rem; max-width: 1400px; margin: 0 auto; }
+    .hidden { display: none !important; }
+
+    .section-title {
+      font-size: .85rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--gdi); text-transform: uppercase;
+      margin-bottom: 1.5rem; padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    #games .card-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.2rem;
+      transition: border-color .2s, box-shadow .2s;
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent, var(--gdi)), transparent);
+      opacity: .4;
+    }
+    .card:hover { border-color: rgba(74,255,42,.28); box-shadow: 0 0 20px rgba(74,255,42,.04); }
+
+    .card-name { font-size: .98rem; font-weight: 700; color: #d8f0b0; letter-spacing: .04em; margin-bottom: .5rem; }
+
+    .card-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+    .badge {
+      font-size: .65rem; font-weight: 700; letter-spacing: .08em;
+      padding: .15rem .5rem; border-radius: 2px; border: 1px solid; white-space: nowrap;
+    }
+    .bg  { color: var(--gdi);    border-color: rgba(74,255,42,.4);   background: rgba(74,255,42,.08); }
+    .bn  { color: var(--nod);    border-color: rgba(255,153,0,.4);   background: rgba(255,153,0,.08); }
+    .bs  { color: var(--soviet); border-color: rgba(221,34,0,.4);    background: rgba(221,34,0,.08); }
+    .ba  { color: var(--ally);   border-color: rgba(17,136,255,.4);  background: rgba(17,136,255,.08); }
+    .bsc { color: var(--scrin);  border-color: rgba(187,68,255,.4);  background: rgba(187,68,255,.08); }
+    .be  { color: var(--emp);    border-color: rgba(255,68,170,.4);  background: rgba(255,68,170,.08); }
+    .bu  { color: var(--usa);    border-color: rgba(68,136,255,.4);  background: rgba(68,136,255,.08); }
+    .bc  { color: var(--china);  border-color: rgba(255,51,0,.4);    background: rgba(255,51,0,.08); }
+    .bgl { color: var(--gla);    border-color: rgba(170,136,51,.4);  background: rgba(170,136,51,.08); }
+    .bm  { color: #aaa;          border-color: rgba(180,180,180,.3); background: rgba(180,180,180,.05); }
+    .by  { color: #88aa66;       border-color: rgba(136,170,102,.3); background: transparent; }
+    .br  { color: #7799aa;       border-color: rgba(119,153,170,.3); background: transparent; font-weight: 400; font-style: italic; }
+    .bv  { color: #7788aa;       border-color: rgba(119,136,170,.3); background: transparent; font-weight: 400; }
+
+    .card-desc { font-size: .78rem; line-height: 1.65; color: #7a9955; }
+    .card-desc p { margin-bottom: .5rem; }
+    .card-desc p:last-child { margin-bottom: 0; }
+
+    .card-feats { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(255,255,255,.05); }
+    .card-feats ul { list-style: none; }
+    .card-feats li { font-size: .72rem; color: #5a7844; padding: .15rem 0 .15rem .85rem; position: relative; }
+    .card-feats li::before { content: '▸'; position: absolute; left: 0; color: var(--gdi); opacity: .4; }
+
+    /* category dividers */
+    .cat { grid-column: 1/-1; font-size: .68rem; font-weight: 700; letter-spacing: .2em; color: var(--dim); text-transform: uppercase; padding: .25rem 0; margin-top: .5rem; border-bottom: 1px solid var(--border); }
+    .cat:first-child { margin-top: 0; }
+
+    /* ── Lore ── */
+    .lore-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.5rem; }
+
+    .u-head {
+      grid-column: 1/-1;
+      display: flex; align-items: center; gap: 1rem;
+      margin-top: 1rem;
+    }
+    .u-head:first-child { margin-top: 0; }
+    .u-label {
+      font-size: .68rem; font-weight: 700; letter-spacing: .18em;
+      white-space: nowrap; padding: .2rem .7rem; border-radius: 2px;
+    }
+    .u-line { flex: 1; height: 1px; background: var(--border); }
+
+    .lore-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.4rem;
+    }
+    .lore-card h2 { font-size: .95rem; font-weight: 700; color: var(--gdi); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .25rem; }
+    .lore-card .lsub { font-size: .66rem; color: var(--dim); letter-spacing: .15em; margin-bottom: .9rem; text-transform: uppercase; }
+    .lore-card p { font-size: .78rem; line-height: 1.7; color: #7a9955; margin-bottom: .7rem; }
+    .lore-card p:last-child { margin-bottom: 0; }
+    .lore-card h3 { font-size: .74rem; font-weight: 700; color: #aac888; letter-spacing: .08em; margin: .9rem 0 .3rem; text-transform: uppercase; }
+    .hi { color: #c8e898; font-style: italic; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js"></script>
+
+  <div class="cnc-header">
+    <div class="cnc-title">COMMAND &amp; CONQUER</div>
+    <div class="cnc-subtitle">Strategic Warfare Across Three Universes</div>
+  </div>
+
+  <div class="sub-nav">
+    <button class="cnc-tab active" data-tab="games">GAMES</button>
+    <button class="cnc-tab" data-tab="vehicles">VEHICLES</button>
+    <button class="cnc-tab" data-tab="buildings">BUILDINGS</button>
+    <button class="cnc-tab" data-tab="lore">LORE</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       GAMES
+  ══════════════════════════════════════════════ -->
+  <section id="games" class="section">
+    <div class="section-title">Games</div>
+    <div class="card-grid">
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Command &amp; Conquer (Tiberian Dawn)</div>
+        <div class="card-meta">
+          <span class="badge by">1995</span>
+          <span class="badge bv">Tiberian Universe</span>
+          <span class="badge bg">GDI</span>
+          <span class="badge bn">NOD</span>
+        </div>
+        <div class="card-desc">
+          <p>The game that started it all. An alien crystal called Tiberium has begun spreading across Earth, seeping through soil and converting organic matter into crystalline deposits. The Global Defense Initiative — a UN-backed peacekeeping force — faces the Brotherhood of Nod, a charismatic extremist network led by the enigmatic prophet Kane. The First Tiberium War is fought across Africa, Europe, and the Middle East.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Introduced the Tiberium resource-harvesting formula</li>
+          <li>Kane's debut as one of gaming's great villains</li>
+          <li>Live-actor FMV briefings — revolutionary at the time</li>
+          <li>Remastered in 4K in 2020 with source code released</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Command &amp; Conquer: Red Alert</div>
+        <div class="card-meta">
+          <span class="badge by">1996</span>
+          <span class="badge bv">Red Alert Universe</span>
+          <span class="badge ba">ALLIES</span>
+          <span class="badge bs">SOVIETS</span>
+        </div>
+        <div class="card-desc">
+          <p>Albert Einstein travels to 1924 and erases Hitler from history — but without a fascist Germany to oppose, Stalin fills the vacuum. Soviet forces sweep across Europe in an alternate Cold War gone hot. The Allies fight back with superior naval power and experimental weaponry. A prequel to the Tiberian timeline in a parallel universe.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Alternate WWII timeline: no Hitler, Soviet invasion of Europe</li>
+          <li>Naval combat and amphibious warfare introduced</li>
+          <li>Chronosphere and Tesla superweapons</li>
+          <li>Remastered in 4K in 2020</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Command &amp; Conquer: Tiberian Sun</div>
+        <div class="card-meta">
+          <span class="badge by">1999</span>
+          <span class="badge bv">Tiberian Universe</span>
+          <span class="badge bg">GDI</span>
+          <span class="badge bn">NOD</span>
+        </div>
+        <div class="card-desc">
+          <p>Thirty years after Tiberian Dawn, Earth is dying. Tiberium has consumed half the planet's surface. Cities are ruins. The skies are toxic. Kane — presumed dead — returns to command a rebuilt Nod, intent on accelerating Tiberium's spread to terraform Earth into his vision of the future. The Second Tiberium War is the bleakest chapter in the series.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Post-apocalyptic world with viscerally dying landscape</li>
+          <li>Cyborg infantry and subterranean units</li>
+          <li>Mammoth Mk. II bipedal walker superunit</li>
+          <li>Firestorm expansion: CABAL AI goes rogue</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Command &amp; Conquer: Red Alert 2</div>
+        <div class="card-meta">
+          <span class="badge by">2000</span>
+          <span class="badge bv">Red Alert Universe</span>
+          <span class="badge ba">ALLIES</span>
+          <span class="badge bs">SOVIETS</span>
+        </div>
+        <div class="card-desc">
+          <p>Soviet Premier Romanov invades the United States using psychic amplifiers built by the sinister Yuri. Soviet forces teleport into Washington DC, New York, Chicago. The Allies scramble to retake their homeland — then discover that Yuri has been manipulating both sides toward his own goal of total psychic domination. Widely regarded as one of the best RTS games ever made.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Soviet invasion of American cities — highly memorable missions</li>
+          <li>Yuri's Revenge expansion adds a full third faction</li>
+          <li>Psychic Dominator and Weather Control superweapons</li>
+          <li>Prism Tanks, Apocalypse Tanks, Kirov Airships</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Command &amp; Conquer: Renegade</div>
+        <div class="card-meta">
+          <span class="badge by">2002</span>
+          <span class="badge bv">Tiberian Universe</span>
+          <span class="badge bg">GDI</span>
+          <span class="badge bn">NOD</span>
+          <span class="badge br">First-Person Shooter</span>
+        </div>
+        <div class="card-desc">
+          <p>The only mainline C&C first-person shooter. GDI commando Nick "Havoc" Parker infiltrates Brotherhood of Nod installations during the First Tiberium War. Players experience Tiberian Dawn's battlefields at ground level — riding in Mammoth Tanks, fighting through Nod bases, and encountering Kane's inner circle up close. Multiplayer let players control C&C's iconic units on foot in base-assault matches.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>First-person ground-level view of Tiberian Dawn conflicts</li>
+          <li>Multiplayer had players demolish enemy base structures directly</li>
+          <li>Drive Mammoth Tanks and pilot Orcas in first-person</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--usa)">
+        <div class="card-name">Command &amp; Conquer: Generals</div>
+        <div class="card-meta">
+          <span class="badge by">2003</span>
+          <span class="badge bv">Generals Universe</span>
+          <span class="badge bu">USA</span>
+          <span class="badge bc">CHINA</span>
+          <span class="badge bgl">GLA</span>
+        </div>
+        <div class="card-desc">
+          <p>A complete departure from Tiberium and Kane. Set in the near-future, three factions clash: the United States with precision strike weapons and unmanned drones, China with industrial might and nuclear warheads, and the Global Liberation Army — a stateless terrorist network using tunnels, booby traps, and biological weapons. No Tiberium, no time travel, no sci-fi. Just modern warfare pushed to extremes.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>General Powers system: earn abilities through combat</li>
+          <li>Zero Hour expansion: 9 sub-generals each with unique loadouts</li>
+          <li>USA drones, Chinese Overlord tanks, GLA tunnel networks</li>
+          <li>Supply depots and oil derricks replace Tiberium</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--scrin)">
+        <div class="card-name">Command &amp; Conquer 3: Tiberium Wars</div>
+        <div class="card-meta">
+          <span class="badge by">2007</span>
+          <span class="badge bv">Tiberian Universe</span>
+          <span class="badge bg">GDI</span>
+          <span class="badge bn">NOD</span>
+          <span class="badge bsc">SCRIN</span>
+        </div>
+        <div class="card-desc">
+          <p>The Third Tiberium War, 2047. Earth is divided: GDI-controlled Blue Zones, contaminated Yellow Zones, and impassable Red Zones. When Nod detonates a liquid Tiberium bomb beneath GDI's Ion Cannon strike, the explosion sends a signal into deep space. The Scrin — the alien race that seeded Tiberium on Earth millennia ago — arrive to harvest a dying world. Kane's decades-long plan begins to crystallize.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Third faction revealed: the Scrin alien harvesters</li>
+          <li>Kane's Wrath expansion tells Kane's full perspective across all three wars</li>
+          <li>Blue/Yellow/Red Zone world map with different terrain hazards</li>
+          <li>Scrin technology phases in from another dimension</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--emp)">
+        <div class="card-name">Command &amp; Conquer: Red Alert 3</div>
+        <div class="card-meta">
+          <span class="badge by">2008</span>
+          <span class="badge bv">Red Alert Universe</span>
+          <span class="badge ba">ALLIES</span>
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge be">EMPIRE</span>
+        </div>
+        <div class="card-desc">
+          <p>The Soviets, facing crushing defeat by the Allies, send a time team back to eliminate Einstein — inadvertently creating a third superpower: the Empire of the Rising Sun, a neo-feudal Japanese empire with transforming mechs, battleship-class ships, and psychic shrine maidens. The most campy and over-the-top entry in the series, embracing full science-fiction spectacle with a star-studded live-action cast.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Every unit has an alternate mode or unique special ability</li>
+          <li>Three full campaigns with co-op support</li>
+          <li>Live FMV commanders including Tim Curry as Premier Cherdenko</li>
+          <li>Naval combat greatly expanded — sea is a full combat domain</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Command &amp; Conquer 4: Tiberian Twilight</div>
+        <div class="card-meta">
+          <span class="badge by">2010</span>
+          <span class="badge bv">Tiberian Universe</span>
+          <span class="badge bg">GDI</span>
+          <span class="badge bn">NOD</span>
+        </div>
+        <div class="card-desc">
+          <p>The conclusion. The year is 2077. Earth is 80% Red Zone. Kane approaches GDI with a deal: he will share Scrin technology to halt Tiberium in exchange for cooperation. But Nod fractures into civil war between Kane's loyalists and those who reject the deal. The series' most controversial entry — base-building and Tiberium harvesting were removed in favor of mobile Crawler units — but narratively it delivers the long-awaited end of Kane's story.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Conclusion of Kane's 90-year arc across the entire Tiberium saga</li>
+          <li>Ascension: Kane's true goal finally revealed</li>
+          <li>No base-building — Crawler units replace Construction Yards</li>
+          <li>Three crawler classes: Offense, Defense, Support</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">C&amp;C Remastered Collection</div>
+        <div class="card-meta">
+          <span class="badge by">2020</span>
+          <span class="badge bm">Tiberian Dawn + Red Alert</span>
+        </div>
+        <div class="card-desc">
+          <p>A faithful 4K remaster of both Tiberian Dawn and Red Alert including all expansions, developed in close collaboration with the original Westwood developers by Petroglyph Games — a studio founded by former Westwood alumni. Players can toggle between original and remastered graphics in real time. The full source code for both games was released publicly upon launch.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>4K remaster with real-time toggle to original 1995/1996 graphics</li>
+          <li>Remastered soundtrack by original composer Frank Klepacki</li>
+          <li>Source code open-sourced — community mods flourished</li>
+          <li>All expansion content included: Covert Ops, Counterstrike, Aftermath</li>
+        </ul></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       VEHICLES
+  ══════════════════════════════════════════════ -->
+  <section id="vehicles" class="section hidden">
+    <div class="section-title">Vehicles</div>
+    <div class="card-grid">
+
+      <div class="cat">Tiberian Universe — GDI</div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Mammoth Tank</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Heavy Assault</span>
+          <span class="badge bv">Tiberian Dawn · C&C3</span>
+        </div>
+        <div class="card-desc">
+          <p>The most iconic unit in C&C history. A colossal dual-cannon heavy tank with self-repair capability and anti-air missile pods. Nearly unstoppable in direct assault, the Mammoth is slow and expensive but dominates any conventional engagement. A pair of Mammoths advancing on a base is a crisis requiring an immediate response.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Dual 120mm cannons for devastating ground firepower</li>
+          <li>Anti-air missile pods — dangerous to aircraft</li>
+          <li>Self-repair when idle</li>
+          <li>Evolved into the walking Mammoth Mk. II in Tiberian Sun</li>
+        </ul></div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Mammoth Mk. II</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Heavy Walker Superunit</span>
+          <span class="badge bv">Tiberian Sun</span>
+        </div>
+        <div class="card-desc">
+          <p>The Mammoth Tank reimagined as a towering bipedal war machine. Thirty years of Tiberium contamination and military evolution produced this near-indestructible superunit armed with dual railguns and anti-air missile batteries. A single Mk. II can hold a chokepoint against an entire opposing army. One of the most powerful units ever to appear in the series.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Orca</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Air Support</span>
+          <span class="badge bv">Tiberian Dawn · Sun · C&C3</span>
+        </div>
+        <div class="card-desc">
+          <p>GDI's signature VTOL strike aircraft. Fast and agile with rocket pods for hit-and-run strikes against armor and structures. The Orca must return to an Orca Pad to rearm, making positioning and base distance critical. Its design evolved dramatically across the series — from twin-rocket gunship in Tiberian Dawn to heavy bomber variants in C&C3.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Tiberium Harvester</div>
+        <div class="card-meta">
+          <span class="badge bm">GDI / NOD</span>
+          <span class="badge br">Resource Collection</span>
+          <span class="badge bv">Tiberian Series</span>
+        </div>
+        <div class="card-desc">
+          <p>The economic engine of any Tiberium-era commander. Slow, unarmed, and absolutely vital, Harvesters crawl across contaminated fields scooping up Tiberium crystals and returning them to the Refinery. Destroying enemy Harvesters is one of the highest-value strategic moves in the game — a commander without income cannot build an army.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Juggernaut</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Artillery Walker</span>
+          <span class="badge bv">Tiberium Wars</span>
+        </div>
+        <div class="card-desc">
+          <p>GDI's heavy artillery platform in C&C3, built as a three-legged walking siege unit. The Juggernaut fires over obstacles and rains massive shells onto targets from extreme range. It must deploy to fire and cannot move while shooting, making it vulnerable to fast flanking units. Used in pairs or clusters to provide sustained fire support for advancing GDI columns.</p>
+        </div>
+      </div>
+
+      <div class="cat">Tiberian Universe — Brotherhood of Nod</div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Stealth Tank</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Covert Assault</span>
+          <span class="badge bv">Tiberian Dawn · Sun</span>
+        </div>
+        <div class="card-desc">
+          <p>Nod's defining weapon in the early Tiberium Wars. The Stealth Tank is invisible to radar and visual detection until it fires, allowing it to ghost through enemy lines to destroy Harvesters, power plants, and undefended structures before fading back into the fog of war. Fragile in direct combat but devastating in ambush. The embodiment of Nod's hit-and-run doctrine.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Artillery</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Long-Range Bombardment</span>
+          <span class="badge bv">Tiberian Dawn</span>
+        </div>
+        <div class="card-desc">
+          <p>Nod's long-range siege weapon. Fires from extreme distances, shelling GDI installations before they can counterattack. Fragile and exposed in close combat, Artillery must be kept at range and screened by faster units. Devastating against buildings and stationary vehicles — the perfect partner to Nod's harassing infantry tactics.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Flame Tank</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Anti-Infantry / Siege</span>
+          <span class="badge bv">Tiberian Dawn</span>
+        </div>
+        <div class="card-desc">
+          <p>A fast-moving tank that sprays napalm at close range, instantly incinerating infantry and setting structures ablaze. If a Flame Tank reaches your base perimeter, your infantry are gone before you can react. Requires protection from heavy armor since it is relatively fragile — but in open terrain against massed infantry, nothing is more terrifying.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Tick Tank</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Entrenching Armor</span>
+          <span class="badge bv">Tiberian Sun</span>
+        </div>
+        <div class="card-desc">
+          <p>Nod's main battle tank in Tiberian Sun. The Tick Tank can dig itself into the ground, deploying as an immovable but heavily armored turret that is extremely difficult to destroy. When dug in, it gains a substantial defensive bonus. An advancing GDI force that has to dig out entrenched Tick Tanks at every chokepoint will struggle to make progress.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Avatar Warmech</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Upgradeable Superunit</span>
+          <span class="badge bv">Tiberium Wars</span>
+        </div>
+        <div class="card-desc">
+          <p>Nod's fearsome superunit in C&C3. A towering bipedal mech armed with a laser cannon, the Avatar can be upgraded by literally cannibalizing other Nod units — stripping their weapon systems and installing them onto itself. A fully upgraded Avatar simultaneously carries a flame thrower, a stealth generator, and a laser capacitor. One of the most customizable units in RTS history.</p>
+        </div>
+        <div class="card-feats"><ul>
+          <li>Upgrade by consuming Flame Tank → gains flame thrower</li>
+          <li>Upgrade by consuming Stealth Tank → gains cloaking field</li>
+          <li>Upgrade by consuming Laser Capacitor → improves laser</li>
+        </ul></div>
+      </div>
+
+      <div class="cat">Red Alert Universe — Allied Forces</div>
+
+      <div class="card" style="--accent:var(--ally)">
+        <div class="card-name">Prism Tank</div>
+        <div class="card-meta">
+          <span class="badge ba">ALLIES</span>
+          <span class="badge br">Long-Range Laser</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>The Allied signature ground unit in Red Alert 2. Fires a concentrated prismatic light beam with extreme range and power. When multiple Prism Tanks are grouped together, they chain their beams — each additional tank multiplies total damage exponentially. Six Prism Tanks chaining against an Apocalypse Tank will eliminate it in under two seconds. The quintessential Allied "quality over quantity" unit.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--ally)">
+        <div class="card-name">Infantry Fighting Vehicle (IFV)</div>
+        <div class="card-meta">
+          <span class="badge ba">ALLIES</span>
+          <span class="badge br">Adaptive Multi-Role</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>A highly adaptable armored vehicle that changes its weapon system based on the infantry unit loaded inside. Load a GI: machine gun. Load an Engineer: mobile repair vehicle. Load a Chrono Legionnaire: time-erasing weapon. Load a Navy SEAL: explosive charges. Load a Tanya: dual machine guns. No unit in C&C history adapts to more tactical situations.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--ally)">
+        <div class="card-name">Chrono Miner</div>
+        <div class="card-meta">
+          <span class="badge ba">ALLIES</span>
+          <span class="badge br">Resource Collection</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>The Allied ore miner, equipped with a Chronosphere drive for emergency extraction. When threatened, the Chrono Miner teleports instantly back to the nearest ore refinery rather than being destroyed. This makes Allied economy remarkably resilient — attacks on ore miners that would cripple Soviet operations simply trigger an automatic retreat and redeployment.</p>
+        </div>
+      </div>
+
+      <div class="cat">Red Alert Universe — Soviet Forces</div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Apocalypse Tank</div>
+        <div class="card-meta">
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge br">Heavy Assault / Anti-Air</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>The most powerful conventional tank in Red Alert 2. Dual cannons, extreme armor, and anti-air missiles make the Apocalypse a threat to every unit class on the battlefield. Expensive and slow, but nearly unstoppable in mass. A column of Apocalypse Tanks grinding toward an Allied base is an existential crisis — they must be stopped by Prism Tanks or air power, not met head-on.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Kirov Airship</div>
+        <div class="card-meta">
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge br">Strategic Bomber</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>A massive Soviet bombing zeppelin that moves with agonizing slowness but drops bombs that level entire city blocks. Once a Kirov reaches its target, it can destroy a Construction Yard before it can be killed. It must be intercepted far from the base — let it get close and it's already won. The Kirov is Soviet patience and brute force made airborne.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Tesla Tank</div>
+        <div class="card-meta">
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge br">Electrical Assault</span>
+          <span class="badge bv">Red Alert</span>
+        </div>
+        <div class="card-desc">
+          <p>An experimental Soviet battle tank that fires bolts of high-voltage electricity derived from Tesla's alternating current research. Highly effective against infantry mobs and lightly armored vehicles, with chain-lightning that jumps between adjacent enemies. A terrifying sight when an entire column opens fire simultaneously in a grid of sparking electrical arcs.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">War Miner</div>
+        <div class="card-meta">
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge br">Armed Ore Collector</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>The Soviet ore miner, unlike the Allied Chrono Miner, believes in fighting back. The War Miner is armed with forward-facing machine guns and can defend itself against light harassment. It survives attacks that would destroy Allied miners simply by shooting back. A small thing, but it embodies Soviet philosophy: everything on the battlefield should be capable of killing something.</p>
+        </div>
+      </div>
+
+      <div class="cat">Generals Universe</div>
+
+      <div class="card" style="--accent:var(--china)">
+        <div class="card-name">Overlord Tank</div>
+        <div class="card-meta">
+          <span class="badge bc">CHINA</span>
+          <span class="badge br">Super-Heavy Tank</span>
+          <span class="badge bv">Generals</span>
+        </div>
+        <div class="card-desc">
+          <p>China's answer to every tactical problem: overwhelming mass. The Overlord is a gargantuan super-tank that can literally crush lighter vehicles under its treads. It accepts one of three turret upgrades — a Gatling cannon for anti-infantry and anti-air duty, a personnel bunker to transport infantry inside the tank itself, or a propaganda speaker that heals nearby friendly units. Slow, expensive, unstoppable.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--usa)">
+        <div class="card-name">Paladin Tank</div>
+        <div class="card-meta">
+          <span class="badge bu">USA</span>
+          <span class="badge br">Precision Strike</span>
+          <span class="badge bv">Generals</span>
+        </div>
+        <div class="card-desc">
+          <p>The US Army's main battle tank in the Generals near-future setting. Equipped with a target laser that designates points for surgical air strikes, plus a point-defense laser system that intercepts incoming missiles in flight. Quality over quantity against China's numerical superiority — each Paladin is smarter and more survivable than any individual Soviet or Chinese tank.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gla)">
+        <div class="card-name">Technical</div>
+        <div class="card-meta">
+          <span class="badge bgl">GLA</span>
+          <span class="badge br">Fast Harassment</span>
+          <span class="badge bv">Generals</span>
+        </div>
+        <div class="card-desc">
+          <p>A pickup truck with a heavy machine gun bolted to the bed. The GLA Technical is cheap, fast, and surprisingly dangerous in numbers. More than anything, it represents the GLA's philosophy: improvise, swarm, and never fight fair. A horde of Technicals rushing a US forward operating base is chaotic and lethal — even the most advanced army can be overwhelmed by enough cheap, fast vehicles.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--bm)">
+        <div class="card-name">Mobile Construction Vehicle (MCV)</div>
+        <div class="card-meta">
+          <span class="badge bm">ALL FACTIONS</span>
+          <span class="badge br">Base Deployment</span>
+        </div>
+        <div class="card-desc">
+          <p>The most important vehicle on the battlefield. The MCV deploys into a Construction Yard, enabling all base-building. If it is destroyed before deploying, or your Construction Yard is destroyed without a replacement MCV, you cannot build new structures. Every battle in classic C&C is ultimately fought to protect your MCV while destroying your opponent's. The vehicle that starts — and ends — wars.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       BUILDINGS
+  ══════════════════════════════════════════════ -->
+  <section id="buildings" class="section hidden">
+    <div class="section-title">Buildings</div>
+    <div class="card-grid">
+
+      <div class="cat">Command &amp; Economy</div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Construction Yard</div>
+        <div class="card-meta">
+          <span class="badge bm">ALL FACTIONS</span>
+          <span class="badge br">Command Structure</span>
+        </div>
+        <div class="card-desc">
+          <p>The heart of every base in every C&C game. All other structures are built from the Construction Yard — lose it and you cannot build replacements. Every battle is ultimately a battle to protect this building while destroying your opponent's. The Construction Yard is what the MCV deploys into, and what every enemy commander wants to raze first.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Tiberium Refinery</div>
+        <div class="card-meta">
+          <span class="badge bm">GDI / NOD</span>
+          <span class="badge br">Resource Processing</span>
+          <span class="badge bv">Tiberian Series</span>
+        </div>
+        <div class="card-desc">
+          <p>Processes raw Tiberium delivered by Harvesters into usable credits. Each Refinery spawns a Harvester on build and stores a limited Tiberium buffer. Multiple Refineries increase both processing throughput and buffer capacity. Destroying an enemy Refinery cuts their income and forces their Harvester to queue behind the remaining one — a crippling economic blow.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Power Plant</div>
+        <div class="card-meta">
+          <span class="badge bm">ALL FACTIONS</span>
+          <span class="badge br">Power Generation</span>
+        </div>
+        <div class="card-desc">
+          <p>Powers all base structures. Without sufficient power, advanced defenses — Obelisks, Tesla Coils, Prism Towers — go offline. Radar goes dark. Production slows. Destroying the enemy's power grid is one of the most effective early-game attacks: drop a few Power Plants and their best defenses shut down, leaving the base exposed to a follow-up assault.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Ore Refinery</div>
+        <div class="card-meta">
+          <span class="badge bm">ALLIES / SOVIETS</span>
+          <span class="badge br">Resource Processing</span>
+          <span class="badge bv">Red Alert Series</span>
+        </div>
+        <div class="card-desc">
+          <p>The Red Alert equivalent of the Tiberium Refinery, processing ore and gems collected from deposits scattered across the map. Ore is plentiful but low-value; gems are rare but highly profitable. Both factions rush to control gem fields early — a base positioned near gem deposits has a decisive economic advantage for the entire match.</p>
+        </div>
+      </div>
+
+      <div class="cat">Infantry &amp; Vehicle Production</div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Barracks</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Infantry Training</span>
+        </div>
+        <div class="card-desc">
+          <p>GDI's infantry production building. Trains rifle soldiers, engineers, rocket infantry, and grenadiers. Engineers are often the most critical unit trained here — a single engineer can capture enemy structures, repair allied ones, or defuse Nod's C4 charges. The Barracks is always among the first buildings constructed after the Construction Yard and Power Plant.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Hand of Nod</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Infantry Training</span>
+          <span class="badge bv">Tiberian Series</span>
+        </div>
+        <div class="card-desc">
+          <p>The Brotherhood's infantry training facility, recognizable by its distinctive pyramid silhouette bearing Kane's insignia. Trains light infantry, saboteurs, and the feared flame infantry. The Hand of Nod represents the Brotherhood's culture: even the building that produces soldiers is a monument to Kane's vision, a temple as much as a barracks.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">War Factory</div>
+        <div class="card-meta">
+          <span class="badge bm">GDI / ALLIES / SOVIETS</span>
+          <span class="badge br">Vehicle Production</span>
+        </div>
+        <div class="card-desc">
+          <p>The facility that produces tanks, Harvesters, and MCVs. Multiple War Factories accelerate production — two factories produce twice as fast as one. The War Factory is a high-value target: destroying one significantly delays an opponent's armor output and can prevent them from reinforcing a collapsing front line before it's too late.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Airstrip</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Vehicle Delivery</span>
+          <span class="badge bv">Tiberian Dawn</span>
+        </div>
+        <div class="card-desc">
+          <p>Rather than building vehicles on-site, Nod receives them via airdrop from an Airstrip. A cargo plane periodically lands and delivers a free vehicle — Stealth Tanks, Artillery, Flame Tanks. The delivery costs no credits and happens automatically, giving Nod a persistent economic advantage over GDI's credit-based production model. Destroying the Airstrip cuts off this free supply line.</p>
+        </div>
+      </div>
+
+      <div class="cat">Defenses</div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Obelisk of Light</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Advanced Laser Defense</span>
+          <span class="badge bv">Tiberian Series</span>
+        </div>
+        <div class="card-desc">
+          <p>The most iconic defensive structure in C&C history. The Obelisk fires a concentrated laser beam that destroys most units in a single discharge. It requires substantial power to operate — destroy Nod's Power Plants and the Obelisks go dark, creating a brief window to assault the base. When fully powered, a ring of Obelisks renders a Nod installation essentially impenetrable to ground attack.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Tesla Coil</div>
+        <div class="card-meta">
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge br">Advanced Electrical Defense</span>
+          <span class="badge bv">Red Alert Series</span>
+        </div>
+        <div class="card-desc">
+          <p>The Soviet equivalent of the Obelisk: a towering high-voltage tower that fires devastating electrical bolts. Requires heavy power like the Obelisk, and Soviet Tesla Troopers can manually charge the coil to fire at full power even when the base is at reduced capacity. Approaching a fully powered Soviet perimeter without heavy armor is suicidal.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--ally)">
+        <div class="card-name">Prism Tower</div>
+        <div class="card-meta">
+          <span class="badge ba">ALLIES</span>
+          <span class="badge br">Defense Tower</span>
+          <span class="badge bv">Red Alert 2</span>
+        </div>
+        <div class="card-desc">
+          <p>The Allied defense tower that fires prismatic light beams. Like Prism Tanks, multiple Prism Towers chain their beams in sequence — each tower in the chain amplifies total output exponentially. A network of chained Prism Towers can eliminate even an Apocalypse Tank in a single combined discharge and makes an Allied base exceptionally hard to breach with conventional armor.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">SAM Site</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Anti-Air Defense</span>
+          <span class="badge bv">Tiberian Dawn</span>
+        </div>
+        <div class="card-desc">
+          <p>Surface-to-Air Missile launchers that shred GDI Orcas and Chinook transport helicopters on approach. Without SAM coverage, GDI can simply fly over Nod's ground defenses and strike at will. A ring of SAMs forces GDI to commit ground forces and absorb casualties — fundamentally changing the dynamics of every assault. Taking down the SAM sites is always a GDI priority before any major offensive.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Advanced Guard Tower</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Defense Tower</span>
+          <span class="badge bv">Tiberian Dawn</span>
+        </div>
+        <div class="card-desc">
+          <p>GDI's advanced defensive emplacement. Armed with a gatling-style cannon that shreds infantry and provides suppressing fire against light vehicles. Upgraded from the basic Guard Tower, the AGT is a cost-effective perimeter defense when massed in clusters. Less powerful than the Obelisk or Tesla Coil but cheaper, faster to build, and effective in numbers.</p>
+        </div>
+      </div>
+
+      <div class="cat">Intelligence &amp; Superweapons</div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Communications Center / Radar Dome</div>
+        <div class="card-meta">
+          <span class="badge bm">GDI / NOD</span>
+          <span class="badge br">Intelligence</span>
+        </div>
+        <div class="card-desc">
+          <p>Activates the minimap and unlocks advanced units and structures. Without it, commanders fight blind — no visibility of enemy movements, no awareness of incoming attacks. Destroying the enemy's radar is a high-value early objective in multiplayer: it cuts their situational awareness to zero, making it nearly impossible to respond to flanking attacks or identify where your forces are striking from.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--nod)">
+        <div class="card-name">Temple of Nod</div>
+        <div class="card-meta">
+          <span class="badge bn">NOD</span>
+          <span class="badge br">Nuclear Superweapon</span>
+          <span class="badge bv">Tiberian Dawn</span>
+        </div>
+        <div class="card-desc">
+          <p>Nod's ultimate structure in Tiberian Dawn. The Temple houses Kane's nuclear missile — a single-use weapon capable of erasing any section of the map. Destroying the Temple before Kane can launch is the final objective of GDI's entire campaign. The Temple's distinctive pyramid-with-obelisk silhouette is a symbol of Kane's cult of personality: a monument to his godhood as much as a weapon of war.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--gdi)">
+        <div class="card-name">Ion Cannon Control Center</div>
+        <div class="card-meta">
+          <span class="badge bg">GDI</span>
+          <span class="badge br">Orbital Superweapon</span>
+          <span class="badge bv">Tiberian Series</span>
+        </div>
+        <div class="card-desc">
+          <p>GDI's orbital superweapon platform throughout the Tiberium series. A ground station that targets and fires a particle beam from orbit, annihilating everything in the impact zone. In C&C3, GDI's Ion Cannon becomes the catalyst for the entire Third Tiberium War: Kane manipulates GDI into firing it at his own Temple — which was packed with liquid Tiberium — triggering the explosion that summons the Scrin.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--ally)">
+        <div class="card-name">Chronosphere</div>
+        <div class="card-meta">
+          <span class="badge ba">ALLIES</span>
+          <span class="badge br">Teleportation Superweapon</span>
+          <span class="badge bv">Red Alert Series</span>
+        </div>
+        <div class="card-desc">
+          <p>Einstein's greatest weapon: a device that instantaneously teleports any Allied unit anywhere on the map. Used offensively to send tanks directly into the heart of Soviet bases, or defensively to extract units from untenable positions. The Chronosphere is also the device Einstein originally used to travel back to 1924 to erase Hitler — and the technology that enabled every Red Alert timeline branch thereafter.</p>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--soviet)">
+        <div class="card-name">Iron Curtain</div>
+        <div class="card-meta">
+          <span class="badge bs">SOVIETS</span>
+          <span class="badge br">Invulnerability Superweapon</span>
+          <span class="badge bv">Red Alert Series</span>
+        </div>
+        <div class="card-desc">
+          <p>The Soviet superweapon: a device that projects a field of complete invulnerability over a group of units for a limited duration. An entire column of Apocalypse Tanks protected by the Iron Curtain is literally unstoppable — no weapon can penetrate the field while it is active. The counter is to focus all fire before the device recharges and is used again.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       LORE
+  ══════════════════════════════════════════════ -->
+  <section id="lore" class="section hidden">
+    <div class="section-title">Lore</div>
+    <div class="lore-grid">
+
+      <div class="u-head">
+        <span class="u-label" style="color:var(--gdi);border:1px solid rgba(74,255,42,.4);background:rgba(74,255,42,.08)">TIBERIAN UNIVERSE</span>
+        <div class="u-line"></div>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(255,153,0,.2)">
+        <h2>Kane</h2>
+        <div class="lsub">The Prophet · Brotherhood Leader · Eternal</div>
+        <p>Kane is the central figure of the entire Tiberium saga — and one of the most compelling villains in video game history. Charismatic, ancient, and seemingly immortal, he leads the Brotherhood of Nod across nearly a century of conflict, from the First Tiberium War in 1995 to the conclusion in 2077. He is the architect of every major event in the Tiberium timeline.</p>
+        <p>His true identity is never explained. He appears in photographs from the early 20th century and claims to have watched humanity since its beginning. Whether he is an alien agent, a temporal anomaly, or simply a man who has found a way to cheat death is deliberately never answered. The ambiguity is the point.</p>
+        <h3>The Immortality</h3>
+        <p>In every game Kane appears to die — shot through the chest in Tiberian Dawn, caught in a GDI Ion Cannon strike in Tiberian Sun, impaled on a crystal in C&C3 — and in every game he returns. His survival is presented not as a miracle but as an inevitability. <span class="hi">Kane is not a man who can be killed. He is an idea.</span></p>
+        <h3>The Grand Plan</h3>
+        <p>Kane's true goal — revealed in Tiberian Twilight — was never world domination. He wants <span class="hi">Ascension</span>: to use the Scrin's Threshold Tower to transport himself and the Brotherhood beyond Earth entirely. Tiberium was always a means to this end. Every war, every manipulation, every apparent defeat was a calculated step toward opening that door.</p>
+      </div>
+
+      <div class="lore-card">
+        <h2>Global Defense Initiative</h2>
+        <div class="lsub">GDI · United Nations Peacekeeping Force · Defenders of Humanity</div>
+        <p>Formed from a United Nations peacekeeping mandate, GDI is humanity's institutional response to the Brotherhood of Nod. They represent established order, scientific progress, and the defense of stable Blue Zone populations. Funded by first-world nations and equipped with superior technology, GDI fields heavier armor and more advanced weapons than Nod — but is slower to react and more constrained by politics.</p>
+        <h3>Evolution Across the Series</h3>
+        <p>In Tiberian Dawn, GDI is the reactive defender, chasing Kane's forces across multiple continents. By Tiberian Sun, a devastating Nod opening strike has left them battered and the world half-dead around them. In C&C3, GDI governs a dying Earth from protected Blue Zones, administering what is left of civilization. By Tiberian Twilight, GDI and Nod have become reluctant partners under Kane's direction — the war finally over, replaced by a desperate race to save the planet.</p>
+        <h3>The Ion Cannon's Terrible Mistake</h3>
+        <p>GDI's most defining moment is also its greatest manipulation. In C&C3, Kane engineers GDI into firing their orbital Ion Cannon at his own Temple — which was packed with liquid Tiberium. The explosion sends a resonance signal into deep space, summoning the Scrin. GDI's ultimate weapon was turned into the key that unlocked an alien invasion.</p>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(255,153,0,.2)">
+        <h2>Brotherhood of Nod</h2>
+        <div class="lsub">Religious Order · Global Network · Kane's Army</div>
+        <p>The Brotherhood of Nod is simultaneously a decentralized global terrorist organization and a genuine religious movement. Nod draws its followers from the world's dispossessed — the poor, the displaced, populations abandoned by GDI's Blue Zone prosperity. To them, Kane is a genuine prophet and Tiberium is a transformative gift. They are not merely soldiers; they are believers.</p>
+        <h3>Ideology</h3>
+        <p>While GDI fights to contain and eliminate Tiberium, Nod embraces it as a catalyst for human evolution. Brotherhood soldiers willingly accept Tiberium mutation, becoming cyborgs or worse. Nod's entire civilization is built around Tiberium — its weapons, its power systems, its philosophy. Where GDI sees a poison, Nod sees a sacrament.</p>
+        <h3>The Black Hand</h3>
+        <p>Within Nod's hierarchy, the Black Hand is Kane's elite fanatical order — his personal enforcers and ideological purists. They are focused on flame weapons and total devotion. Ironically, the Black Hand views Tiberium-enhanced soldiers with suspicion, believing in purification through fire rather than mutation. In Kane's Wrath, they become a playable sub-faction representing Nod at its most extreme.</p>
+        <h3>Nod Without Kane</h3>
+        <p>Every time Kane apparently dies, Nod fractures. Sub-commanders seize control, factional wars erupt, the organization splinters. This reveals something important about the Brotherhood: it is not an institution. It is a cult of personality. Without Kane, it collapses. With him, it is capable of coordinating global campaigns simultaneously across dozens of countries.</p>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(74,255,42,.2)">
+        <h2>Tiberium</h2>
+        <div class="lsub">Alien Crystal · Terraforming Agent · The Resource That Dooms Earth</div>
+        <p>Tiberium is an alien crystalline substance that arrived on Earth in 1995 via meteor impact near the Tiber River in Italy — giving it its name. It spreads autonomously, converting organic matter and soil minerals into new crystal formations. It is energy-dense, mildly radioactive, and slowly toxic to most complex life. It is also the only resource both GDI and Nod can harvest at scale.</p>
+        <h3>The Spread</h3>
+        <p>By the 2030s (Tiberian Sun), Tiberium covers roughly half the Earth's surface. Red Zones — regions of extreme contamination — are uninhabitable without environmental protection. Yellow Zones are survivable but contaminated. Only Blue Zones, maintained by GDI's suppression technology, remain Tiberium-free. By 2077 (Tiberian Twilight), Earth is at the edge of becoming a dead world.</p>
+        <h3>Origins: The Scrin's Farm</h3>
+        <p>Revealed in C&C3: the Scrin seeded Tiberium on Earth deliberately, as they have done to dozens of other worlds. Tiberium is a terraforming agent — it converts a planet's biosphere into crystalline material suitable for Scrin harvesting. Earth was intended to be a Tiberium farm, its biological matter converted over centuries. The fact that humans developed enough to resist, and that a liquid Tiberium bomb detonated before the process was complete, was not part of the plan.</p>
+        <h3>The Perverse Economy</h3>
+        <p>Both GDI and Nod fund their war using Tiberium — the very substance destroying their world. This creates an inescapable contradiction at the heart of the Tiberium saga: the resource keeping the war going is the resource that will end all wars by ending all life. Neither faction can stop harvesting it without losing the ability to fight. <span class="hi">The war cannot end until Tiberium does, and Tiberium will not stop until the war does.</span></p>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(187,68,255,.2)">
+        <h2>The Scrin</h2>
+        <div class="lsub">Alien Harvesters · Tiberium Architects · Unexpected Invaders</div>
+        <p>The Scrin are the third faction in Tiberium Wars — ancient, alien, and utterly unlike anything Earth has produced. They seeded Tiberium on Earth as a routine harvesting operation, one of many they have conducted across the galaxy. They were not supposed to arrive until Earth was dead. The liquid Tiberium explosion brought them early, into a world that — against all their models — was still capable of fighting back.</p>
+        <h3>Tiberium-Based Biology</h3>
+        <p>Scrin technology is entirely Tiberium-dependent. Their units are powered by Tiberium, constructed from it, and designed to operate optimally in Red Zones where concentrations are highest. In Blue Zones they are weakened. Their structures do not build — they phase in from a dimensional rift, materializing fully formed from another plane of existence.</p>
+        <h3>The Threshold Tower</h3>
+        <p>The Scrin's primary objective in C&C3 is constructing a Threshold Tower — a dimensional portal through which large-scale Tiberium harvesting would begin. GDI destroys all towers except one, protected by Kane's forces. Kane is the only human who fully understands what the Tower is for, and he has been working toward this moment for decades. His Ascension depends on it.</p>
+        <h3>Scale and Perspective</h3>
+        <p>The Scrin are not conquerors in the traditional sense — they are resource extractors encountering unexpected resistance. They have no concept of why primitive organisms would resist the harvest. To them, humanity's defense of Earth is as baffling as ants fighting back against a harvester. This indifference makes them more unsettling than a conventional enemy with recognizable motivations.</p>
+      </div>
+
+      <div class="lore-card">
+        <h2>The Three Tiberium Wars</h2>
+        <div class="lsub">First War · Second War · Third War · Twilight</div>
+        <h3>First Tiberium War — 1995 (Tiberian Dawn)</h3>
+        <p>Kane reveals the Brotherhood to the world by seizing control of 51% of Earth's Tiberium supply. GDI hunts him across Africa, Europe, and the Middle East. The canonical outcome: GDI wins, the Temple of Nod is destroyed, Kane is apparently killed. But the Brotherhood survives, driven underground, and Tiberium continues to spread unchecked.</p>
+        <h3>Second Tiberium War — 2030 (Tiberian Sun)</h3>
+        <p>Kane returns after 35 years of presumed death, commanding a rebuilt Nod that strikes GDI simultaneously across the globe. The war is fought on a dying planet, with only pockets of habitable land remaining. Kane is destroyed in an Ion Cannon blast — but Tiberium's spread is not halted, and Nod's infrastructure survives. The world is worse for the war.</p>
+        <h3>Third Tiberium War — 2047 (Tiberium Wars)</h3>
+        <p>Nod attacks GDI globally, then the liquid Tiberium gambit summons the Scrin. GDI fights on two fronts simultaneously. Kane survives — again — and disappears through the remaining Threshold Tower. GDI wins but the planet is 40% Red Zone. The war technically ends but the crisis continues.</p>
+        <h3>The Twilight — 2077 (Tiberian Twilight)</h3>
+        <p>The conclusion. Earth is nearly gone. Kane approaches GDI with Scrin technology that can halt Tiberium's spread — but only if both factions cooperate under his direction. Nod fractures. A civil war erupts between those who follow Kane and those who reject the deal. In the end, Kane departs through the Threshold Tower with his followers, ascending to wherever he has been planning to go all along. <span class="hi">The war ends not with a victory, but with Kane getting exactly what he always wanted.</span></p>
+      </div>
+
+      <div class="u-head">
+        <span class="u-label" style="color:var(--soviet);border:1px solid rgba(221,34,0,.4);background:rgba(221,34,0,.08)">RED ALERT UNIVERSE</span>
+        <div class="u-line"></div>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(221,34,0,.2)">
+        <h2>The Einstein Paradox</h2>
+        <div class="lsub">Time Travel · Alternate History · The World Without Hitler</div>
+        <p>The Red Alert universe begins with a single act of good intentions gone catastrophically wrong. Albert Einstein, horrified by the destruction he witnessed in the 20th century, constructed a Chronosphere and traveled back to 1924 to prevent WWII by shaking hands with a young Adolf Hitler — erasing him from history entirely.</p>
+        <p>Without Hitler, the Nazi party never rose. But without a fascist Germany to unite the West against, the Soviet Union under Stalin faced no counterbalance to its expansion. By the 1950s, Soviet forces were rolling across Europe. The resulting war — the Allies versus the Soviets — was larger and more devastating than the one Einstein had prevented. <span class="hi">He solved one problem and created a worse one.</span></p>
+        <h3>Branching Timelines</h3>
+        <p>Red Alert 2 confirmed that Einstein's tampering created a branching timeline rather than a replacement. Red Alert 3 deepened this: Soviet time agents traveled back to eliminate Einstein himself, creating yet another branch — one where the Empire of the Rising Sun arose as a third superpower. Each game is set in a different branch of the same initial paradox.</p>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(221,34,0,.2)">
+        <h2>The Factions of the Red Alert Wars</h2>
+        <div class="lsub">Allies · Soviets · Empire of the Rising Sun</div>
+        <h3>Allied Forces</h3>
+        <p>A coalition of Western democratic nations, the Allies represent technology, precision, and adaptability. Their doctrine favors quality over quantity: individual units are smarter and more capable than their Soviet counterparts. The Chronosphere, Prism technology, and Chrono teleportation make them the most technically sophisticated faction — but individually fragile under Soviet mass assaults.</p>
+        <h3>Soviet Union</h3>
+        <p>The Soviets are the faction of brute force and overwhelming numbers. Their technology is blunter than the Allies' but their production capacity and unit durability allow them to absorb losses that would end any Allied operation. Tesla weapons, Apocalypse Tanks, Iron Curtain shields, and Kirov Airships represent a military philosophy where more is always the answer.</p>
+        <h3>Empire of the Rising Sun</h3>
+        <p>The Empire is the most unique faction in the Red Alert series. Created from the alternate timeline where Einstein was eliminated, imperial Japan developed independently into a technological superpower combining feudal tradition with advanced robotics. Every unit transforms. Every commander is a warrior-aristocrat. Their doctrine is surprise, speed, and spectacle — a different kind of power from both Allied precision and Soviet mass.</p>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(187,68,255,.2)">
+        <h2>Yuri</h2>
+        <div class="lsub">Psychic Advisor · Hidden Mastermind · Third Faction</div>
+        <p>Yuri appears in Red Alert 2 as Premier Romanov's psychic advisor — the architect of the Soviet invasion of the United States, designer of the Psychic Amplifiers that facilitated it, and the most dangerous mind in the war. He seems to be a loyal Soviet instrument. He is not.</p>
+        <p>Yuri's actual objective is global psychic domination through a network of Psychic Dominators — devices powerful enough to mind-control entire continents simultaneously. The Soviet invasion was a distraction. He needed both superpowers tied up fighting each other while his own infrastructure was constructed in secret. Neither the Allies nor the Soviets were his target — all of humanity was.</p>
+        <h3>Defeat and Punishment</h3>
+        <p>In Yuri's Revenge, a Soviet time machine allows the Allies to travel back and dismantle Yuri's network before it activates. Yuri is ultimately trapped in prehistoric times by a malfunctioning Chronosphere, unable to return to the present — stranded millions of years in the past, his plans undone, his mind unable to dominate anything more complex than prehistoric fauna. A fate arguably worse than death for a man who believed he could control the world.</p>
+      </div>
+
+      <div class="u-head">
+        <span class="u-label" style="color:var(--usa);border:1px solid rgba(68,136,255,.4);background:rgba(68,136,255,.08)">GENERALS UNIVERSE</span>
+        <div class="u-line"></div>
+      </div>
+
+      <div class="lore-card" style="border-color:rgba(68,136,255,.2)">
+        <h2>The Three-Way War</h2>
+        <div class="lsub">USA vs China vs GLA · Near-Future Conflict · No Tiberium, No Kane</div>
+        <p>The Generals universe is completely disconnected from the Tiberian and Red Alert timelines. Set in the near-future, it depicts a triangle of conflict between the United States' technology-dominant military, China's industrial and numerical superiority, and the Global Liberation Army — a stateless, decentralized terrorist network with no territory and no conventional military hierarchy.</p>
+        <h3>The GLA</h3>
+        <p>The GLA is the most unconventional faction in C&C history. They have no conventional base defenses, no heavy armor, and no air force — instead building tunnel networks, using scavenged and improvised weapons, deploying biological agents and suicide bombers, and hiding combat forces inside civilian structures. They fight a brutal guerrilla war against two superpowers and consistently punch far above their weight.</p>
+        <p>Unlike Nod, which has a clear ideological core in Kane, the GLA's motivations are deliberately ambiguous — they are anti-Western, anti-establishment, driven by grievance. Their strength is their adaptability: they can build anywhere, absorb losses that would collapse conventional armies, and scavenge weapon upgrades directly from destroyed enemy units.</p>
+        <h3>General's Powers</h3>
+        <p>Generals introduced the General's Powers system: as you score kills and complete objectives, you earn points to unlock special abilities — nuclear artillery, carpet bombing runs, Chinook reinforcement drops, propaganda broadcasts. Zero Hour expanded this into nine distinct sub-generals, each a hyper-specialist. <span class="hi">The result was one of the most varied faction rosters in RTS history: every general plays differently even within the same parent faction.</span></p>
+      </div>
+
+      <div class="u-head" style="margin-top:1.5rem">
+        <span class="u-label" style="color:var(--text);border:1px solid rgba(184,204,136,.3);background:rgba(184,204,136,.05)">THE LEGACY</span>
+        <div class="u-line"></div>
+      </div>
+
+      <div class="lore-card" style="grid-column:span 2">
+        <h2>Command &amp; Conquer's Place in History</h2>
+        <div class="lsub">Westwood Studios · EA · The RTS That Defined a Genre</div>
+        <p>Command &amp; Conquer was created by Westwood Studios in 1995, built on the foundation of Dune II (1992) — widely credited as the first modern real-time strategy game. C&C refined and popularized what Dune II had pioneered: base-building, resource harvesting, unit production, and combat on a single shared map. It added the crucial innovation of faction asymmetry — GDI and Nod played fundamentally differently — and made it accessible to a mass audience.</p>
+        <p>Westwood was acquired by EA in 1998. The studio continued producing C&C titles through the early 2000s before being absorbed and eventually closed in 2003. The franchise continued under EA Los Angeles and later EA Pacific. The series effectively concluded with Tiberian Twilight in 2010. An attempted free-to-play reboot was cancelled in 2013 after community backlash.</p>
+        <h3>Frank Klepacki and the Soundtrack</h3>
+        <p>The music of C&C is as inseparable from the franchise as Kane himself. Composer Frank Klepacki created the series' signature industrial rock-metal soundtrack across multiple games. <span class="hi">Hell March</span> from Red Alert is one of the most recognized pieces of video game music ever composed — a driving, aggressive anthem that perfectly captures the Soviet war machine aesthetic. <span class="hi">Act on Instinct</span> from Tiberian Dawn, <span class="hi">Mechanical Man</span>, <span class="hi">Tiberium Rain</span> — the catalog defined a sound that the genre has been chasing since 1995.</p>
+        <h3>The Remastered Collection and the Community</h3>
+        <p>In 2020, Petroglyph Games — a studio founded by former Westwood developers, the people who made the originals — partnered with EA to produce the C&C Remastered Collection. The full source code for both Tiberian Dawn and Red Alert was released publicly on launch day. The modding community immediately began producing new campaigns, balance improvements, and entirely new content. It was widely seen as the most respectful possible send-off to the games that built the genre.</p>
+        <p>C&C's legacy is not merely historical. The faction asymmetry it pioneered, the resource-harvesting loop it refined, the villain-with-a-point it popularized — these elements reverberate through every RTS made in the 30 years since Tiberian Dawn shipped. <span class="hi">The genre remembers where it came from.</span></p>
+      </div>
+
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.cnc-tab');
+      var secs = {
+        games:     document.getElementById('games'),
+        vehicles:  document.getElementById('vehicles'),
+        buildings: document.getElementById('buildings'),
+        lore:      document.getElementById('lore')
+      };
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          tabs.forEach(function (t) { t.classList.remove('active'); });
+          Object.values(secs).forEach(function (s) { s.classList.add('hidden'); });
+          tab.classList.add('active');
+          secs[tab.dataset.tab].classList.remove('hidden');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

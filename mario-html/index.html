@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>mario.ximg.app</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="vendor/press-start-2p.css" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -131,6 +131,50 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 1.4rem; user-select: none; -webkit-user-select: none; touch-action: manipulation;
     }
+
+    /* ── Scores section ── */
+    #section-scores {
+      flex: 1;
+      overflow-y: auto;
+      display: none;
+      background: #060303;
+      align-items: center;
+      justify-content: center;
+    }
+    #section-scores.visible { display: flex; }
+    .scores-wrap {
+      width: 100%; max-width: 480px;
+      padding: 2rem 1.25rem 4rem;
+      font-family: 'Press Start 2P', monospace;
+    }
+    .scores-title {
+      font-size: clamp(.7rem,3vw,1.2rem);
+      color: #FFD700; text-shadow: 3px 3px #000;
+      text-align: center; margin-bottom: 1.5rem;
+    }
+    #scores-table { width: 100%; }
+    #scores-table .lb-row {
+      display: grid; grid-template-columns: 2rem 4rem 1fr;
+      gap: .5rem; padding: .45rem .6rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      font-size: clamp(.32rem,1.3vw,.56rem); align-items: center;
+    }
+    #scores-table .lb-rank { color: #555; text-align: right; }
+    #scores-table .lb-init { color: #FFD700; text-align: left; }
+    #scores-table .lb-score { color: #ccc; text-align: right; }
+    #scores-table .lb-row:nth-child(1) .lb-rank { color: #FFD700; }
+    #scores-table .lb-row:nth-child(2) .lb-rank { color: #bbb; }
+    #scores-table .lb-row:nth-child(3) .lb-rank { color: #cd7f32; }
+    #scores-table .lb-empty { color: #555; font-size: clamp(.3rem,1vw,.48rem); padding: 1.5rem; text-align: center; }
+    #scores-refresh {
+      display: block; margin: 1.5rem auto 0;
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(.28rem,.9vw,.44rem);
+      padding: .4rem .9rem; border: 2px solid #444;
+      background: transparent; color: #555; cursor: pointer;
+      transition: all .15s;
+    }
+    #scores-refresh:hover { border-color: #FFD700; color: #FFD700; }
 
     /* ── Games listing section ── */
     #section-games {
@@ -267,8 +311,9 @@
 
   <!-- Sub-nav -->
   <div class="sub-nav">
-    <button class="sub-tab active" id="tab-game"  onclick="switchTab('game')">&#9654; game</button>
-    <button class="sub-tab"        id="tab-games" onclick="switchTab('games')">&#127918; games</button>
+    <button class="sub-tab active" id="tab-game"   onclick="switchTab('game')">&#9654; game</button>
+    <button class="sub-tab"        id="tab-games"  onclick="switchTab('games')">&#127918; games</button>
+    <button class="sub-tab"        id="tab-scores" onclick="switchTab('scores')">&#127942; scores</button>
   </div>
 
   <!-- ── GAME SECTION ── -->
@@ -306,6 +351,7 @@
             </div>
           </div>
           <div class="win-hint">&#8592;&#8594; slot &nbsp;&#8593;&#8595; letter &nbsp;ENTER submit</div>
+          <div id="submit-status" style="min-height:1.2em;font-size:clamp(.28rem,.9vw,.42rem);color:#ff6b6b;margin-top:.2rem;"></div>
           <div class="win-btns">
             <button class="win-btn" id="submit-btn">SUBMIT</button>
             <button class="win-btn secondary" id="skip-btn">SKIP</button>
@@ -328,6 +374,15 @@
     </div>
   </div>
 
+  <!-- ── SCORES SECTION ── -->
+  <div id="section-scores">
+    <div class="scores-wrap">
+      <div class="scores-title">&#127942; HIGH SCORES</div>
+      <div id="scores-table"><div class="lb-empty">Loading…</div></div>
+      <button id="scores-refresh" onclick="loadScoresTab()">&#8635; refresh</button>
+    </div>
+  </div>
+
   <!-- ── GAMES LISTING SECTION ── -->
   <div id="section-games">
     <div class="games-wrap">
@@ -346,19 +401,36 @@
    TAB SWITCHING
 ═══════════════════════════════════════════ */
 function switchTab(id) {
-  document.getElementById('tab-game').classList.toggle('active',  id === 'game');
-  document.getElementById('tab-games').classList.toggle('active', id === 'games');
-  const gameSection  = document.getElementById('section-game');
-  const gamesSection = document.getElementById('section-games');
-  if (id === 'game') {
-    gameSection.classList.remove('hidden');
-    gamesSection.classList.remove('visible');
-    document.body.style.overflow = 'hidden';
-    resize();
-  } else {
-    gameSection.classList.add('hidden');
-    gamesSection.classList.add('visible');
-    document.body.style.overflow = 'hidden'; // body stays hidden; section-games scrolls itself
+  document.getElementById('tab-game').classList.toggle('active',   id === 'game');
+  document.getElementById('tab-games').classList.toggle('active',  id === 'games');
+  document.getElementById('tab-scores').classList.toggle('active', id === 'scores');
+  const gameSection   = document.getElementById('section-game');
+  const gamesSection  = document.getElementById('section-games');
+  const scoresSection = document.getElementById('section-scores');
+  gameSection.classList.toggle('hidden', id !== 'game');
+  gamesSection.classList.toggle('visible', id === 'games');
+  scoresSection.classList.toggle('visible', id === 'scores');
+  document.body.style.overflow = 'hidden';
+  if (id === 'game') resize();
+  if (id === 'scores') loadScoresTab();
+}
+
+async function loadScoresTab() {
+  const el = document.getElementById('scores-table');
+  el.innerHTML = '<div class="lb-empty">Loading…</div>';
+  try {
+    const res = await fetch(SCORES_URL);
+    const scores = await res.json();
+    if (!scores.length) { el.innerHTML = '<div class="lb-empty">No scores yet.</div>'; return; }
+    el.innerHTML = scores.map((s, i) =>
+      `<div class="lb-row">` +
+      `<span class="lb-rank">${i+1}</span>` +
+      `<span class="lb-init">${esc(s.initials)}</span>` +
+      `<span class="lb-score">${Number(s.score).toLocaleString()}</span>` +
+      `</div>`
+    ).join('');
+  } catch (_) {
+    el.innerHTML = '<div class="lb-empty">Could not load scores.</div>';
   }
 }
 
@@ -640,7 +712,7 @@ const K = {}, T = {};
 document.addEventListener('keydown', e => {
   K[e.code] = true;
   if (state === 'win-entry') {
-    handleEntryKey(e.code);
+    handleEntryKey(e.code, e.key);
     e.preventDefault();
   } else if (state === 'splash' || state === 'over' || state === 'win-board') {
     begin();
@@ -792,16 +864,22 @@ function shiftChar(slot, dir) {
   renderInitials();
 }
 
-function handleEntryKey(code) {
-  if (code === 'ArrowRight' || code === 'KeyD') {
+function handleEntryKey(code, key) {
+  if (key && key.length === 1 && /^[A-Za-z0-9]$/.test(key)) {
+    entryChars[entrySlot] = key.toUpperCase();
+    if (entrySlot < 2) entrySlot++;
+  } else if (code === 'Backspace') {
+    entryChars[entrySlot] = 'A';
+    if (entrySlot > 0) entrySlot--;
+  } else if (code === 'ArrowRight') {
     entrySlot = Math.min(2, entrySlot + 1);
-  } else if (code === 'ArrowLeft' || code === 'KeyA') {
+  } else if (code === 'ArrowLeft') {
     entrySlot = Math.max(0, entrySlot - 1);
-  } else if (code === 'ArrowUp' || code === 'KeyW') {
+  } else if (code === 'ArrowUp') {
     shiftChar(entrySlot, 1);
-  } else if (code === 'ArrowDown' || code === 'KeyS') {
+  } else if (code === 'ArrowDown') {
     shiftChar(entrySlot, -1);
-  } else if (code === 'Enter' || code === 'Space') {
+  } else if (code === 'Enter') {
     if (entrySlot < 2) { entrySlot++; }
     else { doSubmit(); return; }
   }
@@ -820,14 +898,21 @@ function showWinEntry(sc) {
 }
 
 async function doSubmit() {
-  const initials = entryChars.join('').trim() || 'AAA';
+  const initials = (entryChars.join('').replace(/ /g, '') || 'AAA').slice(0, 3);
+  const statusEl = document.getElementById('submit-status');
+  statusEl.textContent = '';
+  document.getElementById('submit-btn').disabled = true;
   try {
-    await fetch(SCORES_URL, {
+    const res = await fetch(SCORES_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initials, score: lastWinScore }),
     });
-  } catch (_) {}
+    if (!res.ok) throw new Error('server error');
+  } catch (_) {
+    statusEl.textContent = 'Could not save score — showing existing board';
+  }
+  document.getElementById('submit-btn').disabled = false;
   await showLeaderboard(initials, lastWinScore);
 }
 
