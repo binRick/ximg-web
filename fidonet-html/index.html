@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FidoNet — The Internet Before the Internet</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0c0a;
+      --panel:   #0f1410;
+      --border:  #1e2e1e;
+      --text:    #c8e6c8;
+      --muted:   #5a7a5a;
+      --green:   #39ff14;
+      --green2:  #00e676;
+      --amber:   #ffb300;
+      --amber2:  #ffd54f;
+      --blue:    #40c4ff;
+      --card:    rgba(57,255,20,.05);
+      --crt:     rgba(0,255,65,.03);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', 'Consolas', monospace;
+    }
+
+    /* CRT scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.08) 2px,
+        rgba(0,0,0,.08) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #040804 0%, #0a140a 50%, #050a05 100%);
+      border-bottom: 2px solid var(--green);
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 0%, rgba(57,255,20,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .hero-logo img {
+      width: 100px;
+      height: auto;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 12px rgba(57,255,20,.6));
+    }
+    .hero-title {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      color: var(--green);
+      text-shadow: 0 0 20px rgba(57,255,20,.5), 0 0 40px rgba(57,255,20,.2);
+      letter-spacing: .04em;
+      line-height: 1.1;
+    }
+    .hero-subtitle {
+      font-size: 1rem;
+      color: var(--amber);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-top: .5rem;
+    }
+    .hero-tagline {
+      font-size: .85rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 1rem auto 0;
+      line-height: 1.6;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 1.8rem;
+    }
+    .hstat {
+      text-align: center;
+    }
+    .hstat-val {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--green2);
+      text-shadow: 0 0 8px rgba(0,230,118,.4);
+      display: block;
+    }
+    .hstat-label {
+      font-size: .65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    /* ── Sub-nav ── */
+    .subnav {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 0 1rem;
+    }
+    .subnav::-webkit-scrollbar { display: none; }
+    .subnav-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      padding: .75rem 1rem;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .15s, border-color .15s;
+    }
+    .subnav-btn:hover { color: var(--text); }
+    .subnav-btn.active {
+      color: var(--green);
+      border-bottom-color: var(--green);
+    }
+
+    /* ── Sections ── */
+    .section {
+      display: none;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--green);
+      margin-bottom: .4rem;
+      text-shadow: 0 0 10px rgba(57,255,20,.3);
+    }
+    .section-sub {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      letter-spacing: .06em;
+    }
+    .section-sub::before { content: '> '; color: var(--green2); }
+
+    p {
+      line-height: 1.75;
+      color: var(--text);
+      margin-bottom: 1.2rem;
+      font-size: .88rem;
+    }
+    h3 {
+      color: var(--amber);
+      font-size: 1rem;
+      margin: 2rem 0 .6rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      border-left: 3px solid var(--amber);
+      padding-left: .7rem;
+    }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+    }
+    .card-title {
+      color: var(--green2);
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .5rem;
+    }
+    .card p { font-size: .82rem; margin-bottom: 0; }
+
+    /* ── Image blocks ── */
+    .img-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .img-block {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .img-block img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      display: block;
+      filter: sepia(.15) saturate(.9);
+      transition: filter .3s;
+    }
+    .img-block img:hover { filter: sepia(0) saturate(1.1); }
+    .img-caption {
+      padding: .6rem .8rem;
+      font-size: .72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      line-height: 1.4;
+    }
+    .img-caption strong { color: var(--amber2); }
+
+    /* ── Timeline ── */
+    .timeline { margin: 1.5rem 0; }
+    .tl-item {
+      display: flex;
+      gap: 1.2rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: 42px;
+      top: 32px;
+      bottom: -1.5rem;
+      width: 1px;
+      background: var(--border);
+    }
+    .tl-item:last-child::before { display: none; }
+    .tl-year {
+      flex-shrink: 0;
+      width: 86px;
+      text-align: right;
+      font-size: .8rem;
+      font-weight: 900;
+      color: var(--green);
+      padding-top: .2rem;
+      text-shadow: 0 0 6px rgba(57,255,20,.3);
+    }
+    .tl-dot {
+      flex-shrink: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(57,255,20,.6);
+      margin-top: .25rem;
+    }
+    .tl-content { flex: 1; }
+    .tl-title {
+      font-size: .88rem;
+      font-weight: 700;
+      color: var(--amber2);
+      margin-bottom: .3rem;
+    }
+    .tl-body { font-size: .82rem; color: var(--text); line-height: 1.6; }
+
+    /* ── Address diagram ── */
+    .addr-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      font-family: 'Courier New', monospace;
+    }
+    .addr-example {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--green);
+      text-shadow: 0 0 12px rgba(57,255,20,.4);
+      letter-spacing: .08em;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .addr-parts {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .addr-part {
+      text-align: center;
+      padding: .5rem .8rem;
+    }
+    .addr-val {
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--amber);
+      display: block;
+    }
+    .addr-sep {
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--muted);
+      align-self: center;
+      padding: 0 .1rem;
+    }
+    .addr-label {
+      font-size: .65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      display: block;
+      margin-top: .2rem;
+    }
+    .addr-desc {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: .8rem;
+    }
+    .addr-desc-item {
+      border-left: 2px solid var(--border);
+      padding-left: .7rem;
+    }
+    .addr-desc-item strong { color: var(--amber2); font-size: .78rem; }
+    .addr-desc-item p { font-size: .76rem; margin-bottom: 0; }
+
+    /* ── Zone map SVG ── */
+    .zone-map {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+    .zone-map svg {
+      width: 100%;
+      max-width: 700px;
+      height: auto;
+    }
+
+    /* ── Poll diagram ── */
+    .poll-diagram {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    .poll-diagram svg {
+      width: 100%;
+      max-width: 700px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ── Packet format ── */
+    .packet {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+    }
+    .packet-row {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      font-size: .72rem;
+    }
+    .packet-row:last-child { border-bottom: none; }
+    .pkt-offset {
+      width: 60px;
+      flex-shrink: 0;
+      color: var(--muted);
+      padding: .4rem .5rem;
+      border-right: 1px solid var(--border);
+      font-weight: 700;
+    }
+    .pkt-field {
+      flex: 1;
+      padding: .4rem .7rem;
+      color: var(--amber2);
+      font-weight: 700;
+    }
+    .pkt-desc {
+      flex: 2;
+      padding: .4rem .7rem;
+      color: var(--text);
+    }
+    .pkt-header {
+      background: rgba(57,255,20,.05);
+      border-bottom: 1px solid var(--green);
+      color: var(--green);
+      font-weight: 900;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    /* ── Legacy comparison ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    @media (max-width: 500px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+    .compare-col {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+    }
+    .compare-col.fidonet { border-color: rgba(57,255,20,.3); }
+    .compare-col.internet { border-color: rgba(64,196,255,.3); }
+    .compare-col-title {
+      font-size: .8rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .8rem;
+    }
+    .compare-col.fidonet .compare-col-title { color: var(--green); }
+    .compare-col.internet .compare-col-title { color: var(--blue); }
+    .compare-item {
+      font-size: .78rem;
+      color: var(--text);
+      padding: .35rem 0;
+      border-bottom: 1px solid var(--border);
+      line-height: 1.4;
+    }
+    .compare-item:last-child { border-bottom: none; }
+    .compare-item span { color: var(--muted); font-size: .7rem; display: block; }
+
+    /* ── Quote ── */
+    .quote {
+      border-left: 3px solid var(--green2);
+      padding: .8rem 1.2rem;
+      margin: 1.5rem 0;
+      background: var(--card);
+      border-radius: 0 8px 8px 0;
+    }
+    .quote p { font-style: italic; color: var(--amber2); margin-bottom: .4rem; }
+    .quote cite { font-size: .72rem; color: var(--muted); }
+
+    /* ── Echomail tags ── */
+    .tag-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0; }
+    .tag {
+      background: rgba(57,255,20,.08);
+      border: 1px solid rgba(57,255,20,.2);
+      border-radius: 4px;
+      padding: .25rem .6rem;
+      font-size: .72rem;
+      color: var(--green2);
+      font-family: inherit;
+    }
+
+    /* ── Person card ── */
+    .person-card {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+    }
+    .person-card img {
+      width: 140px;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      filter: grayscale(.3);
+    }
+    .person-info { flex: 1; min-width: 200px; }
+    .person-name {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--amber);
+      margin-bottom: .3rem;
+    }
+    .person-role {
+      font-size: .72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .8rem;
+    }
+
+    /* ── BBS software list ── */
+    .software-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .7rem;
+      margin: 1rem 0;
+    }
+    .sw-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .7rem .9rem;
+    }
+    .sw-name { color: var(--green2); font-weight: 700; font-size: .82rem; }
+    .sw-desc { color: var(--muted); font-size: .72rem; margin-top: .2rem; }
+
+    .blinking { animation: blink 1.2s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-logo">
+    <img src="/images/fidonet-logo.png" alt="FidoNet Logo">
+    <div>
+      <div class="hero-title">FidoNet</div>
+      <div class="hero-subtitle">The Internet Before the Internet</div>
+    </div>
+  </div>
+  <p class="hero-tagline">
+    A worldwide network of bulletin board systems — built by hobbyists, run on phone lines, and operating years before the public web existed.
+    At its peak, FidoNet connected over 40,000 nodes across 6 continents.
+  </p>
+  <div class="hero-stats">
+    <div class="hstat"><span class="hstat-val">1984</span><span class="hstat-label">Founded</span></div>
+    <div class="hstat"><span class="hstat-val">~40k</span><span class="hstat-label">Peak Nodes</span></div>
+    <div class="hstat"><span class="hstat-val">6</span><span class="hstat-label">Zones (Continents)</span></div>
+    <div class="hstat"><span class="hstat-val">$0</span><span class="hstat-label">Cost to Users</span></div>
+    <div class="hstat"><span class="hstat-val">2400</span><span class="hstat-label">Typical Baud Rate</span></div>
+  </div>
+</div>
+
+<div class="subnav" id="subnav">
+  <button class="subnav-btn active" data-tab="overview">Overview</button>
+  <button class="subnav-btn" data-tab="history">History</button>
+  <button class="subnav-btn" data-tab="how-it-worked">How It Worked</button>
+  <button class="subnav-btn" data-tab="addressing">Addressing</button>
+  <button class="subnav-btn" data-tab="bbs-culture">BBS Culture</button>
+  <button class="subnav-btn" data-tab="legacy">Legacy &amp; Impact</button>
+</div>
+
+<!-- ══════════════════════════════════════════════ OVERVIEW ══ -->
+<div class="section active" id="tab-overview">
+  <div class="section-title">What Was FidoNet?</div>
+  <div class="section-sub">A volunteer-run global network — before the web existed</div>
+
+  <p>
+    In 1984, a software developer named <strong>Tom Jennings</strong> wrote a bulletin board system program called <em>Fido</em>.
+    Almost as an afterthought, he added code that let two Fido systems automatically call each other over ordinary telephone lines
+    to exchange messages while the phone rates were cheapest — usually in the middle of the night.
+    Within months, other sysops (system operators) had connected their BBSs to his.
+    Within years, this informal network had grown to span the globe. That network was <strong>FidoNet</strong>.
+  </p>
+
+  <p>
+    FidoNet operated entirely through <strong>store-and-forward messaging</strong>: messages were composed offline,
+    bundled into packets, and transferred node-to-node like a digital postal system — each node passing mail
+    along until it reached its destination. There was no central server, no corporate owner, no monthly fee.
+    Just thousands of ordinary people running computers in their homes and offices, connected by modems and phone lines.
+  </p>
+
+  <div class="img-row">
+    <div class="img-block">
+      <img src="/images/fidonet-logo.png" alt="FidoNet Logo" style="object-fit:contain;background:#111;padding:1rem;height:220px;">
+      <div class="img-caption"><strong>The FidoNet Logo</strong> — Tom Jennings' original mascot: a dog carrying a floppy disk. The name "Fido" came from the idea of a faithful dog that would reliably carry messages for you.</div>
+    </div>
+    <div class="img-block">
+      <img src="/images/hayes-smartmodem.jpg" alt="Hayes Smartmodem">
+      <div class="img-caption"><strong>Hayes Smartmodem (1982)</strong> — The modem that made FidoNet possible. The "AT command set" it introduced became the industry standard. A 1200-baud unit could transfer about 120 characters per second — roughly one printed page per minute.</div>
+    </div>
+    <div class="img-block">
+      <img src="/images/vt100-terminal.jpg" alt="DEC VT100 Terminal">
+      <div class="img-caption"><strong>DEC VT100 Terminal (1978)</strong> — The terminal standard that shaped BBS interfaces. Its 80×24 text display and ANSI escape codes defined how users saw BBS menus, message boards, and FidoNet mail.</div>
+    </div>
+  </div>
+
+  <div class="quote">
+    <p>"The idea was basically: here's this address system, here's this packet format, and anybody who wants to implement it can. And people did."</p>
+    <cite>— Tom Jennings, FidoNet creator</cite>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">What It Was</div>
+      <p>A hierarchical peer-to-peer network of bulletin board systems exchanging email (Netmail) and public discussion groups (Echomail) via dial-up modem connections, coordinated by volunteer administrators.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Who Ran It</div>
+      <p>Ordinary hobbyists called <em>sysops</em> (system operators), each running a BBS on a personal computer in their home or office — often on a second phone line. No salary, no company backing.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">How Mail Moved</div>
+      <p>Nodes called each other (or their regional hub) once or twice per day — often at 2–3 AM for cheap phone rates — to exchange bundled message packets. Mail could take 24–72 hours to traverse the globe.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Scale at Peak</div>
+      <p>By the early 1990s FidoNet had over 40,000 active nodes, processing millions of messages per day across 6 geographically-defined zones. It was the largest non-commercial network in the world.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ HISTORY ══ -->
+<div class="section" id="tab-history">
+  <div class="section-title">A History of FidoNet</div>
+  <div class="section-sub">From two nodes in 1984 to 40,000 at its peak</div>
+
+  <div class="person-card">
+    <img src="/images/tom-jennings.jpg" alt="Tom Jennings">
+    <div class="person-info">
+      <div class="person-name">Tom Jennings</div>
+      <div class="person-role">Creator of FidoNet &amp; Fido BBS Software</div>
+      <p>Tom Jennings wrote the original Fido BBS software in late 1983 and early 1984, running it on a PC-compatible in San Francisco. He connected with another Fido sysop in Baltimore, and from those first two nodes, everything grew. Jennings later donated the FidoNet technology to the public domain, ensuring it could never be commercialized.</p>
+      <p>He later became known for his work in hardware hacking, zines, and queer activism — FidoNet was just one chapter of a colorful career.</p>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-year">1983</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">Fido BBS Software Written</div>
+        <div class="tl-body">Tom Jennings writes <em>Fido</em>, a BBS (Bulletin Board System) for IBM PC-compatible computers, in San Francisco, California. The software is designed to be friendly and easy to use — unlike many BBS programs of the era.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1984</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">First Node-to-Node Connection</div>
+        <div class="tl-body">Jennings adds mailer code to Fido that allows two systems to automatically call each other and exchange messages. He connects with John Madill in Baltimore. <strong>FidoNet is born</strong>, consisting of exactly two nodes (1:1/1 and 1:1/2). The date is widely cited as June 1984.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1985</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">Rapid Expansion &amp; First Policy Document</div>
+        <div class="tl-body">FidoNet grows to hundreds of nodes across North America. Jennings publishes <em>FidoNet Policy 1</em>, establishing the basic rules: any sysop can join, the technology is open, and no one owns the network. Regional "Net Coordinators" are appointed to manage local node lists.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1986</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">Zone System Introduced / Goes International</div>
+        <div class="tl-body">FidoNet expands to Europe and beyond. The <strong>Zone</strong> system is introduced to manage international addressing: Zone 1 (North America), Zone 2 (Europe), Zone 3 (Oceania), Zone 4 (Latin America), Zone 5 (Africa), Zone 6 (Asia). The nodelist grows to thousands of entries.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1987</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">Echomail Born</div>
+        <div class="tl-body">Jeff Rush creates <em>Echomail</em> — public discussion conferences that propagate across the entire network, similar to Usenet newsgroups. A message posted on one BBS in Texas would reach every subscribed BBS in the world within 1–3 days. Echomail quickly becomes FidoNet's most popular feature.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1989</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">FTN Protocol Standardized</div>
+        <div class="tl-body">The <strong>FidoNet Technology Network (FTN)</strong> protocols are formalized in technical standards documents (FSP — FidoNet Standards Proposal). Third-party BBS software proliferates: TBBS, RemoteAccess, PCBoard, Maximus, and others all implement FidoNet compatibility.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1992</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">Peak — Over 30,000 Nodes</div>
+        <div class="tl-body">FidoNet reaches its largest size, with more than 30,000 active nodes and hundreds of Echomail conferences covering every topic imaginable. On any given day, millions of private messages and public conference posts are exchanged globally — all without the internet, all run by volunteers.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1994–96</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">The Internet Arrives / Slow Decline Begins</div>
+        <div class="tl-body">Dial-up internet access becomes consumer-affordable. Many users who might have joined FidoNet instead get AOL or CompuServe accounts. BBSs begin to close. However, FidoNet's node count actually peaks in this period (~40,000) as the holdout community grows more dedicated while the casual userbase drifts away.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1998–2000</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">FidoNet Adapts — Internet Gateways</div>
+        <div class="tl-body">Forward-thinking sysops begin running FidoNet over TCP/IP (internet) connections rather than dial-up, using "Binkp" and other IP-capable mailer protocols. This allows FidoNet to survive as a niche community network even as the public switched telephone network becomes too expensive for late-night modem calls.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2000s–Today</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">A Living Relic — Still Operational</div>
+        <div class="tl-body">FidoNet never died. As of 2024, roughly <strong>2,000–3,000 nodes</strong> remain active worldwide, running over internet connections. The weekly nodelist is still published. Echomail conferences still propagate. It is perhaps the oldest surviving digital social network still in continuous operation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ HOW IT WORKED ══ -->
+<div class="section" id="tab-how-it-worked">
+  <div class="section-title">How FidoNet Worked</div>
+  <div class="section-sub">Store-and-forward networking over plain phone lines</div>
+
+  <h3>The Basic Concept</h3>
+  <p>
+    FidoNet used a <strong>store-and-forward</strong> architecture: messages were written offline,
+    bundled into compressed archive files called <em>packets</em>, and physically transferred from
+    computer to computer via modem dial-up. Each node stored incoming mail and forwarded it toward
+    its destination — like a relay race, but for data, running on ordinary phone lines.
+  </p>
+
+  <div class="zone-map">
+    <svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" font-family="'Courier New',monospace">
+      <!-- Background -->
+      <rect width="700" height="380" fill="#0f1410"/>
+      <!-- Title -->
+      <text x="350" y="24" text-anchor="middle" fill="#39ff14" font-size="13" font-weight="900" letter-spacing="2">FIDONET HIERARCHY</text>
+
+      <!-- Zone Coordinator -->
+      <rect x="270" y="38" width="160" height="36" rx="6" fill="rgba(57,255,20,.12)" stroke="#39ff14" stroke-width="1.5"/>
+      <text x="350" y="53" text-anchor="middle" fill="#39ff14" font-size="10" font-weight="700">ZONE COORDINATOR</text>
+      <text x="350" y="67" text-anchor="middle" fill="#5a7a5a" font-size="9">1:0/0  (e.g. North America)</text>
+
+      <!-- Lines Zone → Region -->
+      <line x1="350" y1="74" x2="175" y2="108" stroke="#1e2e1e" stroke-width="1.5"/>
+      <line x1="350" y1="74" x2="350" y2="108" stroke="#1e2e1e" stroke-width="1.5"/>
+      <line x1="350" y1="74" x2="525" y2="108" stroke="#1e2e1e" stroke-width="1.5"/>
+
+      <!-- Region Coordinators -->
+      <rect x="95" y="108" width="160" height="34" rx="6" fill="rgba(255,179,0,.08)" stroke="#ffb300" stroke-width="1.2"/>
+      <text x="175" y="122" text-anchor="middle" fill="#ffb300" font-size="10" font-weight="700">REGION COORDINATOR</text>
+      <text x="175" y="135" text-anchor="middle" fill="#5a7a5a" font-size="9">1:10/0  (e.g. Southeast US)</text>
+
+      <rect x="270" y="108" width="160" height="34" rx="6" fill="rgba(255,179,0,.08)" stroke="#ffb300" stroke-width="1.2"/>
+      <text x="350" y="122" text-anchor="middle" fill="#ffb300" font-size="10" font-weight="700">REGION COORDINATOR</text>
+      <text x="350" y="135" text-anchor="middle" fill="#5a7a5a" font-size="9">1:20/0  (e.g. Midwest US)</text>
+
+      <rect x="445" y="108" width="160" height="34" rx="6" fill="rgba(255,179,0,.08)" stroke="#ffb300" stroke-width="1.2"/>
+      <text x="525" y="122" text-anchor="middle" fill="#ffb300" font-size="10" font-weight="700">REGION COORDINATOR</text>
+      <text x="525" y="135" text-anchor="middle" fill="#5a7a5a" font-size="9">1:30/0  (e.g. West US)</text>
+
+      <!-- Lines Region → Net -->
+      <line x1="175" y1="142" x2="100" y2="176" stroke="#1e2e1e" stroke-width="1.2"/>
+      <line x1="175" y1="142" x2="250" y2="176" stroke="#1e2e1e" stroke-width="1.2"/>
+      <line x1="350" y1="142" x2="350" y2="176" stroke="#1e2e1e" stroke-width="1.2"/>
+      <line x1="525" y1="142" x2="450" y2="176" stroke="#1e2e1e" stroke-width="1.2"/>
+      <line x1="525" y1="142" x2="600" y2="176" stroke="#1e2e1e" stroke-width="1.2"/>
+
+      <!-- Net Host nodes -->
+      <rect x="30" y="176" width="140" height="30" rx="5" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="100" y="189" text-anchor="middle" fill="#40c4ff" font-size="9" font-weight="700">NET HOST</text>
+      <text x="100" y="200" text-anchor="middle" fill="#5a7a5a" font-size="9">1:10/0 · Tampa Net</text>
+
+      <rect x="180" y="176" width="140" height="30" rx="5" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="250" y="189" text-anchor="middle" fill="#40c4ff" font-size="9" font-weight="700">NET HOST</text>
+      <text x="250" y="200" text-anchor="middle" fill="#5a7a5a" font-size="9">1:18/0 · Orlando Net</text>
+
+      <rect x="280" y="176" width="140" height="30" rx="5" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="350" y="189" text-anchor="middle" fill="#40c4ff" font-size="9" font-weight="700">NET HOST</text>
+      <text x="350" y="200" text-anchor="middle" fill="#5a7a5a" font-size="9">1:20/5 · Chicago Net</text>
+
+      <rect x="380" y="176" width="140" height="30" rx="5" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="450" y="189" text-anchor="middle" fill="#40c4ff" font-size="9" font-weight="700">NET HOST</text>
+      <text x="450" y="200" text-anchor="middle" fill="#5a7a5a" font-size="9">1:30/2 · Los Angeles Net</text>
+
+      <rect x="530" y="176" width="140" height="30" rx="5" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="600" y="189" text-anchor="middle" fill="#40c4ff" font-size="9" font-weight="700">NET HOST</text>
+      <text x="600" y="200" text-anchor="middle" fill="#5a7a5a" font-size="9">1:30/5 · San Francisco</text>
+
+      <!-- Lines Net → Nodes -->
+      <line x1="100" y1="206" x2="60" y2="240" stroke="#1e2e1e" stroke-width="1"/>
+      <line x1="100" y1="206" x2="140" y2="240" stroke="#1e2e1e" stroke-width="1"/>
+      <line x1="350" y1="206" x2="320" y2="240" stroke="#1e2e1e" stroke-width="1"/>
+      <line x1="350" y1="206" x2="380" y2="240" stroke="#1e2e1e" stroke-width="1"/>
+      <line x1="600" y1="206" x2="570" y2="240" stroke="#1e2e1e" stroke-width="1"/>
+      <line x1="600" y1="206" x2="630" y2="240" stroke="#1e2e1e" stroke-width="1"/>
+
+      <!-- Individual Nodes -->
+      <rect x="20" y="240" width="80" height="26" rx="4" fill="rgba(0,230,118,.06)" stroke="#00e676" stroke-width=".8"/>
+      <text x="60" y="252" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">NODE</text>
+      <text x="60" y="262" text-anchor="middle" fill="#5a7a5a" font-size="8">1:10/25</text>
+
+      <rect x="108" y="240" width="80" height="26" rx="4" fill="rgba(0,230,118,.06)" stroke="#00e676" stroke-width=".8"/>
+      <text x="148" y="252" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">NODE</text>
+      <text x="148" y="262" text-anchor="middle" fill="#5a7a5a" font-size="8">1:10/78</text>
+
+      <rect x="288" y="240" width="80" height="26" rx="4" fill="rgba(0,230,118,.06)" stroke="#00e676" stroke-width=".8"/>
+      <text x="328" y="252" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">NODE</text>
+      <text x="328" y="262" text-anchor="middle" fill="#5a7a5a" font-size="8">1:20/5/12</text>
+
+      <rect x="376" y="240" width="80" height="26" rx="4" fill="rgba(0,230,118,.06)" stroke="#00e676" stroke-width=".8"/>
+      <text x="416" y="252" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">NODE</text>
+      <text x="416" y="262" text-anchor="middle" fill="#5a7a5a" font-size="8">1:20/5/44</text>
+
+      <rect x="538" y="240" width="80" height="26" rx="4" fill="rgba(0,230,118,.06)" stroke="#00e676" stroke-width=".8"/>
+      <text x="578" y="252" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">NODE</text>
+      <text x="578" y="262" text-anchor="middle" fill="#5a7a5a" font-size="8">1:30/5/9</text>
+
+      <rect x="626" y="240" width="80" height="26" rx="4" fill="rgba(0,230,118,.06)" stroke="#00e676" stroke-width=".8"/>
+      <text x="666" y="252" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">NODE</text>
+      <text x="666" y="262" text-anchor="middle" fill="#5a7a5a" font-size="8">1:30/5/103</text>
+
+      <!-- Point nodes -->
+      <line x1="60" y1="266" x2="60" y2="296" stroke="#1e2e1e" stroke-width=".8" stroke-dasharray="3,2"/>
+      <rect x="20" y="296" width="80" height="24" rx="3" fill="rgba(188,140,255,.05)" stroke="#bc8cff" stroke-width=".7"/>
+      <text x="60" y="307" text-anchor="middle" fill="#bc8cff" font-size="8" font-weight="700">POINT</text>
+      <text x="60" y="316" text-anchor="middle" fill="#5a7a5a" font-size="7.5">1:10/25.3</text>
+
+      <line x1="148" y1="266" x2="148" y2="296" stroke="#1e2e1e" stroke-width=".8" stroke-dasharray="3,2"/>
+      <rect x="108" y="296" width="80" height="24" rx="3" fill="rgba(188,140,255,.05)" stroke="#bc8cff" stroke-width=".7"/>
+      <text x="148" y="307" text-anchor="middle" fill="#bc8cff" font-size="8" font-weight="700">POINT</text>
+      <text x="148" y="316" text-anchor="middle" fill="#5a7a5a" font-size="7.5">1:10/78.1</text>
+
+      <!-- Legend -->
+      <rect x="10" y="338" width="680" height="34" rx="4" fill="rgba(255,255,255,.02)" stroke="#1e2e1e" stroke-width=".5"/>
+      <rect x="20" y="349" width="10" height="10" rx="2" fill="none" stroke="#39ff14" stroke-width="1.2"/>
+      <text x="36" y="358" fill="#5a7a5a" font-size="8">Zone/Region</text>
+      <rect x="115" y="349" width="10" height="10" rx="2" fill="none" stroke="#40c4ff" stroke-width="1"/>
+      <text x="131" y="358" fill="#5a7a5a" font-size="8">Net Host</text>
+      <rect x="205" y="349" width="10" height="10" rx="2" fill="none" stroke="#00e676" stroke-width=".8"/>
+      <text x="221" y="358" fill="#5a7a5a" font-size="8">Node (BBS)</text>
+      <rect x="305" y="349" width="10" height="10" rx="2" fill="none" stroke="#bc8cff" stroke-width=".7"/>
+      <text x="321" y="358" fill="#5a7a5a" font-size="8">Point (home user, no phone calls in)</text>
+    </svg>
+    <p style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:.5rem;">FidoNet four-level hierarchy: Zone → Region → Net → Node → Point (optional)</p>
+  </div>
+
+  <h3>ZMH — Zone Mail Hour</h3>
+  <p>
+    Every day between <strong>02:00 and 03:00 local time</strong> (the "Zone Mail Hour"), all FidoNet nodes
+    were expected to stop accepting user calls and remain available for mail transfer from other nodes.
+    During ZMH, your node's mailer software would call other nodes to exchange queued packets, then
+    accept incoming calls from nodes that needed to deliver mail to you.
+    Outside ZMH, nodes could call each other any time they had mail to send (called "crash mail").
+  </p>
+
+  <div class="poll-diagram">
+    <svg viewBox="0 0 660 260" xmlns="http://www.w3.org/2000/svg" font-family="'Courier New',monospace">
+      <rect width="660" height="260" fill="#0f1410"/>
+      <text x="330" y="22" text-anchor="middle" fill="#39ff14" font-size="11" font-weight="900" letter-spacing="2">DAILY MAIL EXCHANGE — ZMH (2AM–3AM)</text>
+
+      <!-- Node A -->
+      <rect x="20" y="50" width="130" height="70" rx="6" fill="rgba(57,255,20,.08)" stroke="#39ff14" stroke-width="1.2"/>
+      <text x="85" y="73" text-anchor="middle" fill="#39ff14" font-size="10" font-weight="700">NODE A</text>
+      <text x="85" y="87" text-anchor="middle" fill="#5a7a5a" font-size="8.5">1:10/25 Tampa</text>
+      <text x="85" y="102" text-anchor="middle" fill="#00e676" font-size="8">● Queued packets</text>
+      <text x="85" y="114" text-anchor="middle" fill="#00e676" font-size="8">  for Node B, C, D</text>
+
+      <!-- Hub -->
+      <rect x="265" y="40" width="130" height="90" rx="6" fill="rgba(255,179,0,.08)" stroke="#ffb300" stroke-width="1.4"/>
+      <text x="330" y="63" text-anchor="middle" fill="#ffb300" font-size="10" font-weight="700">REGIONAL HUB</text>
+      <text x="330" y="77" text-anchor="middle" fill="#5a7a5a" font-size="8.5">1:10/0 Net Host</text>
+      <text x="330" y="94" text-anchor="middle" fill="#ffb300" font-size="8">Receives mail from</text>
+      <text x="330" y="107" text-anchor="middle" fill="#ffb300" font-size="8">all local nodes,</text>
+      <text x="330" y="119" text-anchor="middle" fill="#ffb300" font-size="8">routes upstream</text>
+
+      <!-- Node B -->
+      <rect x="510" y="40" width="130" height="35" rx="6" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="575" y="55" text-anchor="middle" fill="#40c4ff" font-size="10" font-weight="700">NODE B</text>
+      <text x="575" y="68" text-anchor="middle" fill="#5a7a5a" font-size="8.5">1:10/78  St. Pete</text>
+
+      <rect x="510" y="90" width="130" height="35" rx="6" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1"/>
+      <text x="575" y="105" text-anchor="middle" fill="#40c4ff" font-size="10" font-weight="700">NODE C</text>
+      <text x="575" y="118" text-anchor="middle" fill="#5a7a5a" font-size="8.5">1:10/110  Orlando</text>
+
+      <!-- Arrows A → Hub -->
+      <line x1="150" y1="85" x2="263" y2="85" stroke="#39ff14" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="205" y="78" text-anchor="middle" fill="#39ff14" font-size="8">CALL + SEND</text>
+      <text x="205" y="90" text-anchor="middle" fill="#5a7a5a" font-size="7.5">compressed .PKT files</text>
+
+      <!-- Arrows Hub → B, C -->
+      <line x1="395" y1="68" x2="508" y2="58" stroke="#ffb300" stroke-width="1.2" marker-end="url(#arr2)"/>
+      <line x1="395" y1="95" x2="508" y2="108" stroke="#ffb300" stroke-width="1.2" marker-end="url(#arr2)"/>
+      <text x="455" y="63" text-anchor="middle" fill="#ffb300" font-size="7.5">routes mail</text>
+
+      <!-- Time axis -->
+      <line x1="20" y1="170" x2="640" y2="170" stroke="#1e2e1e" stroke-width="1"/>
+      <text x="330" y="188" text-anchor="middle" fill="#5a7a5a" font-size="9">TIME →</text>
+
+      <!-- Time markers -->
+      <line x1="80" y1="165" x2="80" y2="175" stroke="#39ff14" stroke-width="1.5"/>
+      <text x="80" y="198" text-anchor="middle" fill="#39ff14" font-size="8.5" font-weight="700">02:00</text>
+      <text x="80" y="210" text-anchor="middle" fill="#5a7a5a" font-size="7.5">ZMH starts</text>
+      <text x="80" y="220" text-anchor="middle" fill="#5a7a5a" font-size="7.5">Node goes offline</text>
+      <text x="80" y="230" text-anchor="middle" fill="#5a7a5a" font-size="7.5">to users</text>
+
+      <line x1="280" y1="165" x2="280" y2="175" stroke="#ffb300" stroke-width="1.5"/>
+      <text x="280" y="198" text-anchor="middle" fill="#ffb300" font-size="8.5" font-weight="700">02:15</text>
+      <text x="280" y="210" text-anchor="middle" fill="#5a7a5a" font-size="7.5">Outgoing call</text>
+      <text x="280" y="220" text-anchor="middle" fill="#5a7a5a" font-size="7.5">to hub; packets</text>
+      <text x="280" y="230" text-anchor="middle" fill="#5a7a5a" font-size="7.5">exchanged</text>
+
+      <line x1="460" y1="165" x2="460" y2="175" stroke="#40c4ff" stroke-width="1.5"/>
+      <text x="460" y="198" text-anchor="middle" fill="#40c4ff" font-size="8.5" font-weight="700">02:40</text>
+      <text x="460" y="210" text-anchor="middle" fill="#5a7a5a" font-size="7.5">Incoming calls</text>
+      <text x="460" y="220" text-anchor="middle" fill="#5a7a5a" font-size="7.5">from other nodes</text>
+      <text x="460" y="230" text-anchor="middle" fill="#5a7a5a" font-size="7.5">delivering mail</text>
+
+      <line x1="590" y1="165" x2="590" y2="175" stroke="#00e676" stroke-width="1.5"/>
+      <text x="590" y="198" text-anchor="middle" fill="#00e676" font-size="8.5" font-weight="700">03:00</text>
+      <text x="590" y="210" text-anchor="middle" fill="#5a7a5a" font-size="7.5">ZMH ends</text>
+      <text x="590" y="220" text-anchor="middle" fill="#5a7a5a" font-size="7.5">BBS reopens</text>
+      <text x="590" y="230" text-anchor="middle" fill="#5a7a5a" font-size="7.5">to users</text>
+
+      <!-- Arrow markers -->
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#39ff14"/>
+        </marker>
+        <marker id="arr2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#ffb300"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>Mailer Software</h3>
+  <p>
+    Every FidoNet node ran <strong>mailer</strong> software — programs responsible for dialing out, answering incoming calls,
+    negotiating the FTN handshake protocol, and transferring packet files. Popular mailers included
+    <em>BinkleyTerm</em>, <em>FrontDoor</em>, <em>InterMail</em>, and the classic <em>SEAdog</em>.
+    The mailer sat in front of the BBS software, answering the phone first, identifying FidoNet calls
+    (via a "EMSI" or "FTSC-0001" handshake), handling the transfer, then passing the call to the BBS for regular users.
+  </p>
+
+  <h3>Packet Structure</h3>
+  <p>
+    Mail was packed into <code>.PKT</code> files following a standardized format (FTSC-0001 Type 2+).
+    Individual messages had headers containing source address, destination address, date, subject, and flags.
+    Multiple messages were bundled together, then compressed into <code>.TIC</code> or <code>.ARC</code> archives
+    for transfer. The whole bundle might be a few kilobytes for an evening's mail exchange.
+  </p>
+
+  <div class="packet">
+    <div class="packet-row pkt-header">
+      <div class="pkt-offset">OFFSET</div>
+      <div class="pkt-field">FIELD</div>
+      <div class="pkt-desc">DESCRIPTION</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0000</div>
+      <div class="pkt-field">origNode</div>
+      <div class="pkt-desc">Origin node number (16-bit integer)</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0002</div>
+      <div class="pkt-field">destNode</div>
+      <div class="pkt-desc">Destination node number</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0004</div>
+      <div class="pkt-field">year/month/day</div>
+      <div class="pkt-desc">Packet creation date (3 × 16-bit)</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0010</div>
+      <div class="pkt-field">baud</div>
+      <div class="pkt-desc">Baud rate of originating system</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0012</div>
+      <div class="pkt-field">pktType</div>
+      <div class="pkt-desc">Packet type — always 2 for Type 2</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0014</div>
+      <div class="pkt-field">origNet</div>
+      <div class="pkt-desc">Origin net number</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0016</div>
+      <div class="pkt-field">destNet</div>
+      <div class="pkt-desc">Destination net number</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0024</div>
+      <div class="pkt-field">password[8]</div>
+      <div class="pkt-desc">Session password (cleartext, optional)</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0026</div>
+      <div class="pkt-field">origZone</div>
+      <div class="pkt-desc">Origin zone number (Type 2+ extension)</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0028</div>
+      <div class="pkt-field">destZone</div>
+      <div class="pkt-desc">Destination zone number</div>
+    </div>
+    <div class="packet-row">
+      <div class="pkt-offset">0058</div>
+      <div class="pkt-field">messages[]</div>
+      <div class="pkt-desc">Stream of null-terminated message records…</div>
+    </div>
+  </div>
+
+  <h3>The Nodelist</h3>
+  <p>
+    Every Friday, a master <strong>nodelist</strong> was published and distributed throughout the network —
+    a plain-text file listing every known FidoNet node, its address, phone number, modem speed, flags,
+    and sysop name. Nodes downloaded the new nodelist from their uplink hub. Without it, your mailer
+    couldn't look up how to reach anyone. At its peak the weekly nodelist was over 1 MB — enormous
+    for 1993 — and had to be distributed across the entire network within 48 hours.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════ ADDRESSING ══ -->
+<div class="section" id="tab-addressing">
+  <div class="section-title">FidoNet Addressing</div>
+  <div class="section-sub">Zone:Net/Node.Point — a four-level postal address for the digital world</div>
+
+  <p>
+    Every FidoNet node had a unique address in the format <strong>Zone:Net/Node.Point</strong>.
+    This was the routing key for all private Netmail — the equivalent of an email address,
+    years before @-sign email existed on public networks.
+  </p>
+
+  <div class="addr-box">
+    <div class="addr-example">1 : 135 / 42 . 0</div>
+    <div class="addr-parts">
+      <div class="addr-part">
+        <span class="addr-val">1</span>
+        <span class="addr-label">Zone</span>
+      </div>
+      <div class="addr-sep">:</div>
+      <div class="addr-part">
+        <span class="addr-val">135</span>
+        <span class="addr-label">Net</span>
+      </div>
+      <div class="addr-sep">/</div>
+      <div class="addr-part">
+        <span class="addr-val">42</span>
+        <span class="addr-label">Node</span>
+      </div>
+      <div class="addr-sep">.</div>
+      <div class="addr-part">
+        <span class="addr-val">0</span>
+        <span class="addr-label">Point</span>
+      </div>
+    </div>
+    <div class="addr-desc">
+      <div class="addr-desc-item">
+        <strong>Zone (1–6)</strong>
+        <p>Continental region. Zone 1 = North America, 2 = Europe, 3 = Oceania, 4 = Latin America, 5 = Africa, 6 = Asia.</p>
+      </div>
+      <div class="addr-desc-item">
+        <strong>Net (1–32767)</strong>
+        <p>A local network of nodes, usually covering a city or region. Each Net had a host node (Net/0) that acted as a routing hub.</p>
+      </div>
+      <div class="addr-desc-item">
+        <strong>Node (1–32767)</strong>
+        <p>An individual BBS. Node 0 is the Net host. Nodes had their own phone line and answered incoming calls.</p>
+      </div>
+      <div class="addr-desc-item">
+        <strong>Point (.1–.32767)</strong>
+        <p>Optional "leaf" connection — a home user who picks up mail from their boss node but doesn't answer calls. Points could read and write mail without running a 24/7 BBS.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>The Six Zones</h3>
+
+  <div class="zone-map">
+    <svg viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg" font-family="'Courier New',monospace">
+      <rect width="680" height="200" fill="#0f1410"/>
+      <!-- Zone boxes -->
+      <!-- Zone 1 -->
+      <rect x="10" y="20" width="100" height="80" rx="6" fill="rgba(57,255,20,.07)" stroke="#39ff14" stroke-width="1.2"/>
+      <text x="60" y="42" text-anchor="middle" fill="#39ff14" font-size="18" font-weight="900">1</text>
+      <text x="60" y="57" text-anchor="middle" fill="#39ff14" font-size="10" font-weight="700">North</text>
+      <text x="60" y="70" text-anchor="middle" fill="#39ff14" font-size="10" font-weight="700">America</text>
+      <text x="60" y="88" text-anchor="middle" fill="#5a7a5a" font-size="8">~20,000 nodes</text>
+      <!-- Zone 2 -->
+      <rect x="122" y="20" width="100" height="80" rx="6" fill="rgba(255,179,0,.07)" stroke="#ffb300" stroke-width="1.2"/>
+      <text x="172" y="42" text-anchor="middle" fill="#ffb300" font-size="18" font-weight="900">2</text>
+      <text x="172" y="57" text-anchor="middle" fill="#ffb300" font-size="10" font-weight="700">Europe</text>
+      <text x="172" y="88" text-anchor="middle" fill="#5a7a5a" font-size="8">~14,000 nodes</text>
+      <!-- Zone 3 -->
+      <rect x="234" y="20" width="100" height="80" rx="6" fill="rgba(64,196,255,.07)" stroke="#40c4ff" stroke-width="1.2"/>
+      <text x="284" y="42" text-anchor="middle" fill="#40c4ff" font-size="18" font-weight="900">3</text>
+      <text x="284" y="57" text-anchor="middle" fill="#40c4ff" font-size="10" font-weight="700">Oceania</text>
+      <text x="284" y="88" text-anchor="middle" fill="#5a7a5a" font-size="8">~2,000 nodes</text>
+      <!-- Zone 4 -->
+      <rect x="346" y="20" width="100" height="80" rx="6" fill="rgba(188,140,255,.07)" stroke="#bc8cff" stroke-width="1.2"/>
+      <text x="396" y="42" text-anchor="middle" fill="#bc8cff" font-size="18" font-weight="900">4</text>
+      <text x="396" y="57" text-anchor="middle" fill="#bc8cff" font-size="10" font-weight="700">Latin</text>
+      <text x="396" y="70" text-anchor="middle" fill="#bc8cff" font-size="10" font-weight="700">America</text>
+      <text x="396" y="88" text-anchor="middle" fill="#5a7a5a" font-size="8">~1,500 nodes</text>
+      <!-- Zone 5 -->
+      <rect x="458" y="20" width="100" height="80" rx="6" fill="rgba(248,129,74,.07)" stroke="#f8814a" stroke-width="1.2"/>
+      <text x="508" y="42" text-anchor="middle" fill="#f8814a" font-size="18" font-weight="900">5</text>
+      <text x="508" y="57" text-anchor="middle" fill="#f8814a" font-size="10" font-weight="700">Africa</text>
+      <text x="508" y="88" text-anchor="middle" fill="#5a7a5a" font-size="8">~500 nodes</text>
+      <!-- Zone 6 -->
+      <rect x="570" y="20" width="100" height="80" rx="6" fill="rgba(0,230,118,.07)" stroke="#00e676" stroke-width="1.2"/>
+      <text x="620" y="42" text-anchor="middle" fill="#00e676" font-size="18" font-weight="900">6</text>
+      <text x="620" y="57" text-anchor="middle" fill="#00e676" font-size="10" font-weight="700">Asia</text>
+      <text x="620" y="88" text-anchor="middle" fill="#5a7a5a" font-size="8">~2,000 nodes</text>
+
+      <!-- Real addresses examples -->
+      <text x="340" y="130" text-anchor="middle" fill="#5a7a5a" font-size="9" font-weight="700">EXAMPLE ADDRESSES</text>
+      <text x="60" y="148" text-anchor="middle" fill="#39ff14" font-size="9">1:135/42</text>
+      <text x="60" y="160" text-anchor="middle" fill="#5a7a5a" font-size="8">Chicago BBS</text>
+      <text x="172" y="148" text-anchor="middle" fill="#ffb300" font-size="9">2:2410/330</text>
+      <text x="172" y="160" text-anchor="middle" fill="#5a7a5a" font-size="8">German BBS</text>
+      <text x="284" y="148" text-anchor="middle" fill="#40c4ff" font-size="9">3:712/619</text>
+      <text x="284" y="160" text-anchor="middle" fill="#5a7a5a" font-size="8">Sydney BBS</text>
+      <text x="396" y="148" text-anchor="middle" fill="#bc8cff" font-size="9">4:901/10</text>
+      <text x="396" y="160" text-anchor="middle" fill="#5a7a5a" font-size="8">Brazil BBS</text>
+      <text x="508" y="148" text-anchor="middle" fill="#f8814a" font-size="9">5:7105/1</text>
+      <text x="508" y="160" text-anchor="middle" fill="#5a7a5a" font-size="8">S. Africa BBS</text>
+      <text x="620" y="148" text-anchor="middle" fill="#00e676" font-size="9">6:600/108</text>
+      <text x="620" y="160" text-anchor="middle" fill="#5a7a5a" font-size="8">Japan BBS</text>
+    </svg>
+  </div>
+
+  <h3>Netmail vs. Echomail</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Netmail (Private)</div>
+      <p>Point-to-point private messages — like email. Addressed to a specific Zone:Net/Node. Routed through the hierarchy. Could carry binary file attachments. Analogous to SMTP email.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Echomail (Public)</div>
+      <p>Public conference messages propagated to every subscribed node — like Usenet newsgroups. An "echo" (conference) had a name like FIDONEWS or DOVE-NET. A message posted anywhere appeared everywhere within 1–3 days.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">FileEcho / TIC</div>
+      <p>Automatic file distribution — binary files (shareware, door games, nodelist updates) propagated through the network the same way Echomail worked, using .TIC (Tick) file description files alongside the binary.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Areafix / Patcher</div>
+      <p>Nodes could subscribe/unsubscribe to echoes by sending a Netmail to the AREAFIX address on their uplink. The remote system would automatically add or remove the echo from the node's feed.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ BBS CULTURE ══ -->
+<div class="section" id="tab-bbs-culture">
+  <div class="section-title">BBS Culture &amp; FidoNet Life</div>
+  <div class="section-sub">The communities, art, and society that flourished on bulletin boards</div>
+
+  <p>
+    FidoNet was never just a technology — it was a <strong>culture</strong>.
+    In an era before the web, BBSs were where curious, technically-inclined people found their tribe.
+    You dialed in after school or late at night, paying long-distance rates if you had to,
+    just to read the latest posts in your favorite echo conference and leave a reply that might
+    reach someone in Germany or Japan within the week.
+  </p>
+
+  <div class="img-row">
+    <div class="img-block">
+      <img src="/images/bbs-login.jpg" alt="BBS Login Screen">
+      <div class="img-caption"><strong>Koala Country BBS Login Screen</strong> — A typical BBS greeted users with an ANSI art splash screen. Sysops spent hours crafting these to make their boards look distinctive. First impressions mattered.</div>
+    </div>
+    <div class="img-block">
+      <img src="/images/bbs-screenshot.png" alt="BBS Terminal">
+      <div class="img-caption"><strong>BBS Terminal Interface (Neon #2 BBS)</strong> — A classic text-based BBS menu. Options typically included message boards, file libraries, door games, bulletins, and the user list. Everything navigated by typing single characters.</div>
+    </div>
+    <div class="img-block">
+      <img src="/images/ansi-art.png" alt="ANSI Art">
+      <div class="img-caption"><strong>ANSI Art</strong> — Artists used the 16-color ANSI escape code character set to create elaborate graphics that rendered in terminal emulators. ANSI art groups like ACiD and iCE distributed art packs across the BBS network monthly.</div>
+    </div>
+  </div>
+
+  <h3>The FidoNews</h3>
+  <p>
+    Every week, the <strong>FidoNews</strong> — a plaintext electronic newsletter — was distributed
+    across the entire FidoNet via FileEcho. It contained technical announcements, policy discussions,
+    humor, letters, node statistics, and op-ed pieces written by sysops. FidoNews was the town square
+    of the FidoNet community, and reading it was how you stayed connected to the global network's
+    happenings. Issues are archived and still readable today.
+  </p>
+
+  <h3>Popular Echo Conferences</h3>
+  <div class="tag-list">
+    <span class="tag">FIDONEWS</span>
+    <span class="tag">SYSOP</span>
+    <span class="tag">DOVE-NET</span>
+    <span class="tag">COOKING</span>
+    <span class="tag">MUSIC</span>
+    <span class="tag">POLITICS</span>
+    <span class="tag">SCIENCE</span>
+    <span class="tag">ANSI-ART</span>
+    <span class="tag">LINUX</span>
+    <span class="tag">AMIGA</span>
+    <span class="tag">OS2PROG</span>
+    <span class="tag">RPG</span>
+    <span class="tag">HUMOR</span>
+    <span class="tag">DEBATE</span>
+    <span class="tag">WRITERS</span>
+    <span class="tag">AVIATION</span>
+    <span class="tag">HAM-RADIO</span>
+    <span class="tag">GAMES</span>
+    <span class="tag">FIDO_NET</span>
+    <span class="tag">TECH</span>
+    <span class="tag">BBS-ADS</span>
+    <span class="tag">ECHO_LIST</span>
+    <span class="tag">NODELIST</span>
+  </div>
+
+  <h3>BBS Software Ecosystem</h3>
+  <p>
+    Dozens of BBS software packages existed, most of them implementing FidoNet compatibility.
+    Choosing your BBS software was a serious decision — some were commercial products, others
+    were freeware, and each had different file transfer protocols, door game interfaces,
+    and configuration complexity.
+  </p>
+  <div class="software-grid">
+    <div class="sw-item"><div class="sw-name">Fido BBS</div><div class="sw-desc">Tom Jennings' original. DOS. Simple and reliable.</div></div>
+    <div class="sw-item"><div class="sw-name">PCBoard</div><div class="sw-desc">Commercial powerhouse. High-traffic systems. $$$.</div></div>
+    <div class="sw-item"><div class="sw-name">RemoteAccess</div><div class="sw-desc">Shareware. Very popular in Europe. Highly configurable.</div></div>
+    <div class="sw-item"><div class="sw-name">Maximus</div><div class="sw-desc">Free/open source. Ran on OS/2. Technically excellent.</div></div>
+    <div class="sw-item"><div class="sw-name">TBBS</div><div class="sw-desc">Multi-line commercial system. Big boards ran this.</div></div>
+    <div class="sw-item"><div class="sw-name">Wildcat!</div><div class="sw-desc">Windows-based. Easy to set up. Beginner-friendly.</div></div>
+    <div class="sw-item"><div class="sw-name">Telegard</div><div class="sw-desc">Freeware PCBoard-clone. Popular in early 1990s.</div></div>
+    <div class="sw-item"><div class="sw-name">Renegade</div><div class="sw-desc">Telegard fork. Highly customizable menus.</div></div>
+    <div class="sw-item"><div class="sw-name">Synchronet</div><div class="sw-desc">Survived into the internet era. Still active today.</div></div>
+    <div class="sw-item"><div class="sw-name">SpitFire</div><div class="sw-desc">Single-user. Fast and simple. Very low memory use.</div></div>
+    <div class="sw-item"><div class="sw-name">RBBS-PC</div><div class="sw-desc">One of the earliest. Written in BASIC. Widely forked.</div></div>
+    <div class="sw-item"><div class="sw-name">WWIV</div><div class="sw-desc">Source code distributed freely. WWIV-Net spinoff.</div></div>
+  </div>
+
+  <h3>Door Games</h3>
+  <p>
+    One of the beloved features of BBSs was <strong>door games</strong> — external programs that users
+    could run through the BBS. The BBS would "drop to" the door program, passing the user's connection
+    through a serial "drop file," then resume when the game exited. Legendary door games included
+    <em>Trade Wars 2002</em> (space trading), <em>Legend of the Red Dragon</em> (RPG),
+    <em>Usurper</em> (dungeon crawler), and <em>Barren Realms Elite</em> (strategy).
+    High scores persisted between sessions, and many had inter-BBS competitive modes via FidoNet.
+  </p>
+
+  <h3>Modems: The Hardware of FidoNet</h3>
+  <div class="img-row">
+    <div class="img-block">
+      <img src="/images/hayes-smartmodem.jpg" alt="Hayes Smartmodem 1982">
+      <div class="img-caption"><strong>Hayes Smartmodem (1982)</strong> — The modem that defined the era. Its AT command set let software control dialing, answering, and hanging up. At 300 baud, downloading a single floppy disk's worth of data could take hours.</div>
+    </div>
+    <div class="img-block">
+      <img src="/images/usr-courier.jpg" alt="USRobotics Courier">
+      <div class="img-caption"><strong>USRobotics Courier 2400</strong> — By the late 1980s, 2400 baud was the FidoNet standard. USRobotics became the preferred brand for serious sysops. The Courier HST and Dual Standard later pushed to 9600 and 14.4k baud.</div>
+    </div>
+    <div class="img-block">
+      <img src="/images/acoustic-coupler.jpg" alt="Acoustic Coupler Modem">
+      <div class="img-caption"><strong>Acoustic Coupler</strong> — Before direct-connect modems were common, acoustic couplers clamped around telephone handsets. You literally held the phone in a cradle to transmit data. Maximum speed: 300 baud.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ LEGACY ══ -->
+<div class="section" id="tab-legacy">
+  <div class="section-title">Legacy &amp; Impact</div>
+  <div class="section-sub">How FidoNet shaped the internet we know today</div>
+
+  <p>
+    FidoNet was not just a historical curiosity — it was a <strong>proof of concept</strong> that
+    a global, decentralized communications network could be built and run entirely by volunteers,
+    without corporate ownership, without central servers, and without charging users anything.
+    It anticipated concepts that the internet would later formalize, and many of its architects
+    went on to shape the early commercial internet.
+  </p>
+
+  <div class="compare-grid">
+    <div class="compare-col fidonet">
+      <div class="compare-col-title">FidoNet (1984)</div>
+      <div class="compare-item">Store-and-forward messaging<span>Mail queued and forwarded hop-by-hop</span></div>
+      <div class="compare-item">Hierarchical addressing (Zone:Net/Node)<span>Structured like a postal code</span></div>
+      <div class="compare-item">Distributed node list<span>Published weekly, shared across network</span></div>
+      <div class="compare-item">Conference messaging (Echomail)<span>Subscribe to topics, propagates everywhere</span></div>
+      <div class="compare-item">File distribution (FileEcho)<span>Binary files propagated like messages</span></div>
+      <div class="compare-item">Volunteer-run, no central authority<span>Policy 4: "What is is what is"</span></div>
+      <div class="compare-item">Poll-based transfer<span>Nodes call each other on schedule</span></div>
+      <div class="compare-item">ZMH (Zone Mail Hour)<span>Network maintenance window</span></div>
+    </div>
+    <div class="compare-col internet">
+      <div class="compare-col-title">The Internet / Email</div>
+      <div class="compare-item">SMTP store-and-forward<span>Email relayed MTA-to-MTA</span></div>
+      <div class="compare-item">DNS + IP addressing<span>Hierarchical domain name system</span></div>
+      <div class="compare-item">DNS root servers + BGP tables<span>Distributed routing information</span></div>
+      <div class="compare-item">Usenet / mailing lists / forums<span>Subscribe, post propagates to all</span></div>
+      <div class="compare-item">FTP / HTTP file servers<span>Push and pull file distribution</span></div>
+      <div class="compare-item">ICANN / IETF / volunteer RFCs<span>Loosely governed, distributed</span></div>
+      <div class="compare-item">Persistent TCP connections<span>Real-time push when online</span></div>
+      <div class="compare-item">BGP maintenance windows<span>Scheduled downtime for routing</span></div>
+    </div>
+  </div>
+
+  <h3>What FidoNet Invented First</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Store-and-Forward Email</div>
+      <p>FidoNet's Netmail (1984) is functionally identical to SMTP email — addressed messages relayed hop-by-hop through a hierarchy of servers — but ran on phone lines instead of TCP/IP.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Online Discussion Groups</div>
+      <p>Echomail (1987) predates the public web's discussion boards and is directly comparable to Usenet, with subscribe/propagate semantics and threaded replies.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Distributed File Sharing</div>
+      <p>FileEcho propagated shareware, games, and utilities across the global BBS network automatically — a content distribution network run by volunteers years before Napster or BitTorrent.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Open Standards, Volunteer Governance</div>
+      <p>FidoNet's FSP (FidoNet Standards Proposals) process was a direct precursor to the IETF RFC process. Technical standards decided by rough consensus among implementers.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Internet Gateways</div>
+      <p>As early as 1989, gateways existed between FidoNet Echomail and Usenet newsgroups — bridging the two largest pre-web networks. Some users never knew which network they were "really" on.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Point Systems = Home Users</div>
+      <p>FidoNet Points (1988–89) let home users receive mail through a boss node without running 24/7 — the same model as dial-up ISP email accounts, a full decade earlier.</p>
+    </div>
+  </div>
+
+  <div class="quote">
+    <p>"FidoNet was essentially email, mailing lists, newsgroups, and file sharing — all running without the internet, without servers, without anyone being in charge. It worked because people wanted it to work."</p>
+    <cite>— Description of FidoNet's functional equivalence to internet services</cite>
+  </div>
+
+  <h3>FidoNet Today</h3>
+  <p>
+    FidoNet is still alive. As of 2024, the network publishes a weekly nodelist with roughly
+    <strong>2,000–3,000 active nodes</strong>, most connecting via Binkp over TCP/IP rather than
+    modem dial-up. Active Echomail conferences include retro computing discussion, programming,
+    and nostalgia groups. The Synchronet BBS software has a built-in FidoNet mailer,
+    and new BBSs come online every year.
+  </p>
+  <p>
+    For anyone who wants to experience it: you can Telnet to many active BBSs today
+    (try <code>bbs.synchro.net</code> on port 23), join Echomail conferences, and exchange
+    Netmail with sysops around the world — the same way people did in 1991, just over
+    the internet instead of a phone line.
+  </p>
+
+  <h3>Further Reading</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">FidoNet Policy Document 4</div>
+      <p>The governing document of FidoNet. Famous for its pragmatic philosophy: "Sysops can do whatever they want as long as they don't screw up the mail." Still the foundation of FidoNet governance.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">FTSC (FidoNet Technical Standards Committee)</div>
+      <p>The body that maintains FidoNet technical standards. All protocol specifications — packet formats, mailer handshakes, nodelist formats — are documented in freely available FSP documents.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">BBS Documentary (2005)</div>
+      <p>Jason Scott's multi-hour documentary on the BBS era covers FidoNet extensively. Includes interviews with Tom Jennings and dozens of sysops. Freely available online.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Sub-nav tab switching
+  document.getElementById('subnav').addEventListener('click', function(e) {
+    var btn = e.target.closest('.subnav-btn');
+    if (!btn) return;
+    var tab = btn.dataset.tab;
+    document.querySelectorAll('.subnav-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

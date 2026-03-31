@@ -85,6 +85,7 @@ const LOG_FILES = {
   rx:        'rx.access.log',
   mail:      'mail.access.log',
   internet:  'internet.access.log',
+  fidonet:   'fidonet.access.log',
   change:    'change.access.log',
   apps:      'apps.access.log',
   logs:      'logs.access.log',
@@ -250,6 +251,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="simcity">simcity</button>
     <button class="tab"        data-site="rx">rx</button>
     <button class="tab"        data-site="mail">mail</button>
+    <button class="tab"        data-site="fidonet">fidonet</button>
     <button class="tab"        data-site="change">change</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
