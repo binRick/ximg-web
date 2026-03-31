@@ -81,8 +81,9 @@ const LOG_FILES = {
   apps:      'apps.access.log',
   tmux:      'tmux.access.log',
   ansible:   'ansible.access.log',
-  chess:     'chess.access.log',
-  logs:      'logs.access.log',
+  chess:       'chess.access.log',
+  programming: 'programming.access.log',
+  logs:        'logs.access.log',
 };
 
 // ── Read last N lines from end of file ───────────────────────────────────────
@@ -251,6 +252,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="change">change</button>
     <button class="tab"        data-site="ansible">ansible</button>
     <button class="tab"        data-site="chess">chess</button>
+    <button class="tab"        data-site="programming">programming</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
