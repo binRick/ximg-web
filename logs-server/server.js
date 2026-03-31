@@ -76,6 +76,7 @@ const LOG_FILES = {
   internet:  'internet.access.log',
   fidonet:   'fidonet.access.log',
   coldwar:   'coldwar.access.log',
+  passwords: 'passwords.access.log',
   change:    'change.access.log',
   apps:      'apps.access.log',
   ansible:   'ansible.access.log',
@@ -244,6 +245,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="mail">mail</button>
     <button class="tab"        data-site="fidonet">fidonet</button>
     <button class="tab"        data-site="coldwar">coldwar</button>
+    <button class="tab"        data-site="passwords">passwords</button>
     <button class="tab"        data-site="change">change</button>
     <button class="tab"        data-site="ansible">ansible</button>
     <button class="tab"        data-site="logs">logs</button>
