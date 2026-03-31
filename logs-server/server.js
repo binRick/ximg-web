@@ -80,6 +80,7 @@ const LOG_FILES = {
   change:    'change.access.log',
   apps:      'apps.access.log',
   ansible:   'ansible.access.log',
+  chess:     'chess.access.log',
   logs:      'logs.access.log',
 };
 
@@ -248,6 +249,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="passwords">passwords</button>
     <button class="tab"        data-site="change">change</button>
     <button class="tab"        data-site="ansible">ansible</button>
+    <button class="tab"        data-site="chess">chess</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
