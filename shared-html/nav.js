@@ -54,6 +54,7 @@
     '<a class="nav-item" href="https://coldwar.ximg.app"><div class="nav-dot"></div>coldwar</a>' +
     '<a class="nav-item" href="https://tmux.ximg.app"><div class="nav-dot"></div>tmux</a>' +
     '<a class="nav-item" href="https://ansible.ximg.app"><div class="nav-dot"></div>ansible</a>' +
+    '<a class="nav-item" href="https://git.ximg.app"><div class="nav-dot"></div>git</a>' +
     '<a class="nav-item" href="https://passwords.ximg.app"><div class="nav-dot"></div>passwords</a>' +
     '<a class="nav-item" href="https://chess.ximg.app"><div class="nav-dot"></div>chess</a>' +
     '<a class="nav-item" href="https://programming.ximg.app"><div class="nav-dot"></div>programming</a>' +
