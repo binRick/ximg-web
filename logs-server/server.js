@@ -79,6 +79,7 @@ const LOG_FILES = {
   passwords: 'passwords.access.log',
   change:    'change.access.log',
   apps:      'apps.access.log',
+  tmux:      'tmux.access.log',
   ansible:   'ansible.access.log',
   chess:     'chess.access.log',
   logs:      'logs.access.log',

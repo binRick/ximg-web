@@ -52,6 +52,7 @@
     '<a class="nav-item" href="https://fidonet.ximg.app"><div class="nav-dot"></div>fidonet</a>' +
     '<a class="nav-item" href="https://change.ximg.app"><div class="nav-dot"></div>change</a>' +
     '<a class="nav-item" href="https://coldwar.ximg.app"><div class="nav-dot"></div>coldwar</a>' +
+    '<a class="nav-item" href="https://tmux.ximg.app"><div class="nav-dot"></div>tmux</a>' +
     '<a class="nav-item" href="https://ansible.ximg.app"><div class="nav-dot"></div>ansible</a>' +
     '<a class="nav-item" href="https://passwords.ximg.app"><div class="nav-dot"></div>passwords</a>' +
     '<a class="nav-item" href="https://chess.ximg.app"><div class="nav-dot"></div>chess</a>' +
