@@ -81,7 +81,9 @@ const LOG_FILES = {
   computers: 'computers.access.log',
   trump:     'trump.access.log',
   cnc:       'cnc.access.log',
+  simcity:   'simcity.access.log',
   rx:        'rx.access.log',
+  mail:      'mail.access.log',
   logs:      'logs.access.log',
 };
 
@@ -242,7 +244,9 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="computers">computers</button>
     <button class="tab"        data-site="trump">trump</button>
     <button class="tab"        data-site="cnc">cnc</button>
-    <button class="tab"        data-site="rx">RxFitt</button>
+    <button class="tab"        data-site="simcity">simcity</button>
+    <button class="tab"        data-site="rx">rx</button>
+    <button class="tab"        data-site="mail">mail</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">

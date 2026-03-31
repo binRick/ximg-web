@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimCity — simcity.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #020a0f;
+      --bg2:    #061420;
+      --sky:    #38c0ff;
+      --green:  #3ddd6a;
+      --amber:  #ffcc00;
+      --road:   #6b7a8d;
+      --text:   #a8cce0;
+      --dim:    #3a6070;
+      --border: rgba(56,192,255,.1);
+    }
+
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+      pointer-events: none; z-index: 1;
+    }
+
+    /* ── Header ── */
+    .sc-header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(2,20,40,.9) 0%, transparent 100%);
+    }
+    .sc-title {
+      font-size: clamp(1.8rem,6vw,3.5rem);
+      font-weight: 900;
+      letter-spacing: .12em;
+      color: var(--sky);
+      text-shadow: 0 0 30px rgba(56,192,255,.5), 0 0 60px rgba(56,192,255,.2);
+      line-height: 1;
+    }
+    .sc-subtitle {
+      font-size: .72rem;
+      color: var(--dim);
+      letter-spacing: .2em;
+      margin-top: .5rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky;
+      top: 44px; z-index: 100;
+      display: flex; align-items: center; gap: .4rem;
+      padding: .4rem .75rem;
+      background: rgba(2,10,15,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .sc-tab {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .28rem .8rem;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--dim); cursor: pointer; border-radius: 3px;
+      letter-spacing: .1em; transition: all .2s; white-space: nowrap;
+    }
+    .sc-tab:hover { background: rgba(56,192,255,.08); border-color: rgba(56,192,255,.3); color: var(--sky); }
+    .sc-tab.active { background: rgba(56,192,255,.12); border-color: rgba(56,192,255,.5); color: var(--sky); text-shadow: 0 0 8px rgba(56,192,255,.4); }
+
+    /* ── Sections ── */
+    .section { padding: 2rem 1rem 4rem; max-width: 1300px; margin: 0 auto; }
+    .hidden { display: none !important; }
+
+    .section-title {
+      font-size: .85rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--sky); text-transform: uppercase;
+      margin-bottom: 1.5rem; padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+      position: relative;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent, var(--sky)), transparent);
+      opacity: .5;
+    }
+    .card:hover { border-color: rgba(56,192,255,.28); box-shadow: 0 0 24px rgba(56,192,255,.05); }
+
+    /* ── Game card image ── */
+    .card-img-wrap {
+      height: 180px; overflow: hidden;
+      background: #030c14;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0; transition: opacity .5s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-ph {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .5rem;
+    }
+    .card-img-ph .ph-icon { font-size: 2.8rem; opacity: .15; }
+    .card-img-ph .ph-year { font-size: .6rem; letter-spacing: .2em; color: var(--dim); opacity: .6; }
+
+    .card-body { padding: 1.2rem; }
+    .card-name { font-size: 1rem; font-weight: 700; color: #c8e8f8; letter-spacing: .04em; margin-bottom: .45rem; }
+    .card-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+
+    .badge {
+      font-size: .62rem; font-weight: 700; letter-spacing: .08em;
+      padding: .15rem .5rem; border-radius: 2px; border: 1px solid; white-space: nowrap;
+    }
+    .by  { color: var(--amber);  border-color: rgba(255,204,0,.4);   background: rgba(255,204,0,.07); }
+    .bw  { color: #9be8d0;       border-color: rgba(155,232,208,.3); background: rgba(155,232,208,.05); }
+    .bp  { color: #c890ff;       border-color: rgba(200,144,255,.3); background: rgba(200,144,255,.05); }
+    .bg  { color: var(--green);  border-color: rgba(61,221,106,.35); background: rgba(61,221,106,.06); }
+    .br  { color: #7090a0;       border-color: rgba(112,144,160,.3); background: transparent; font-weight: 400; font-style: italic; }
+    .bx  { color: #ff6677;       border-color: rgba(255,102,119,.35); background: rgba(255,102,119,.06); }
+
+    .card-desc { font-size: .78rem; line-height: 1.7; color: #5a8898; }
+    .card-desc p { margin-bottom: .5rem; }
+    .card-desc p:last-child { margin-bottom: 0; }
+
+    .card-feats { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(255,255,255,.05); }
+    .card-feats ul { list-style: none; }
+    .card-feats li { font-size: .72rem; color: #4a7080; padding: .15rem 0 .15rem .85rem; position: relative; }
+    .card-feats li::before { content: '▸'; position: absolute; left: 0; color: var(--sky); opacity: .4; }
+
+    /* ── Timeline divider ── */
+    .era {
+      grid-column: 1/-1;
+      font-size: .66rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--dim); text-transform: uppercase;
+      padding: .25rem 0; margin-top: .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .era:first-child { margin-top: 0; }
+
+    /* ── Lore / article layout ── */
+    .article-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+    @media(max-width: 500px) { .article-grid { grid-template-columns: 1fr; } }
+
+    .art-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.5rem;
+    }
+    .art-card.wide { grid-column: span 2; }
+    @media(max-width: 900px) { .art-card.wide { grid-column: span 1; } }
+
+    .art-card h2 { font-size: 1rem; font-weight: 700; color: var(--sky); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .2rem; }
+    .art-card .asub { font-size: .64rem; color: var(--dim); letter-spacing: .15em; margin-bottom: .9rem; text-transform: uppercase; }
+    .art-card p { font-size: .78rem; line-height: 1.72; color: #5a8898; margin-bottom: .7rem; }
+    .art-card p:last-child { margin-bottom: 0; }
+    .art-card h3 { font-size: .75rem; font-weight: 700; color: #8ac8e0; letter-spacing: .08em; margin: 1rem 0 .3rem; text-transform: uppercase; }
+    .hi { color: #b0ddf0; font-style: italic; }
+
+    /* ── Comparison table ── */
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .73rem; margin-top: .8rem; }
+    .cmp-table th { text-align: left; padding: .4rem .6rem; font-size: .62rem; letter-spacing: .12em; color: var(--dim); border-bottom: 1px solid var(--border); }
+    .cmp-table td { padding: .4rem .6rem; border-bottom: 1px solid rgba(255,255,255,.04); color: #5a8898; vertical-align: top; }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table td:first-child { color: #8ac8e0; font-weight: 700; white-space: nowrap; }
+    .cmp-table .yes { color: var(--green); }
+    .cmp-table .no  { color: #ff6677; }
+  </style>
+</head>
+<body>
+  <script src="/shared/nav.js?v=4"></script>
+
+  <div class="sc-header">
+    <div class="sc-title">SIMCITY</div>
+    <div class="sc-subtitle">Build It. Zone It. Watch It Burn.</div>
+  </div>
+
+  <div class="sub-nav">
+    <button class="sc-tab active" data-tab="games">GAMES</button>
+    <button class="sc-tab" data-tab="wright">WILL WRIGHT</button>
+    <button class="sc-tab" data-tab="skylines">CITIES: SKYLINES</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       GAMES
+  ══════════════════════════════════════════════ -->
+  <section id="games" class="section">
+    <div class="section-title">The SimCity Games</div>
+    <div class="card-grid">
+
+      <div class="era">The Maxis Era — 1989–2003</div>
+
+      <div class="card" style="--accent:var(--sky)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">🏙️</div><div class="ph-year">1989</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity</div>
+          <div class="card-meta">
+            <span class="badge by">1989</span>
+            <span class="badge bw">Will Wright</span>
+            <span class="badge bp">Maxis / Broderbund</span>
+          </div>
+          <div class="card-desc">
+            <p>The game that invented the genre. Will Wright's original SimCity gave players an empty plot of land and a set of municipal tools — zone residential, commercial, and industrial areas; lay roads and rail; build power plants; manage budgets. There were no win conditions, no score to beat, no enemies. Just a city to grow or neglect.</p>
+            <p>It sold modestly at first — publishers thought a game with no way to win was unsellable. Broderbund eventually took it on, and it became a phenomenon. The idea that a simulation itself could be the entertainment was completely new.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>Introduced zoning mechanics: R/C/I, the foundation of every city sim since</li>
+            <li>Disasters: tornadoes, earthquakes, Godzilla-style monsters, nuclear meltdowns</li>
+            <li>Dr. Wright — your in-game advisor — named after the creator</li>
+            <li>Bundled with early Macs, introducing millions to the concept</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--green)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">🏗️</div><div class="ph-year">1993</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity 2000</div>
+          <div class="card-meta">
+            <span class="badge by">1993</span>
+            <span class="badge bw">Will Wright</span>
+            <span class="badge bp">Maxis</span>
+          </div>
+          <div class="card-desc">
+            <p>The jump that defined the series. SimCity 2000 added an isometric perspective, underground water and subway systems, elevation and terraforming, a proper budget window with bond financing, and an encyclopedia of in-game information. It was richer, deeper, and more beautiful than anything before it.</p>
+            <p>For many players, SimCity 2000 remains the definitive version of the game — the perfect balance of approachability and depth, before the series began adding complexity for its own sake.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>Isometric view — the visual identity of the series for a decade</li>
+            <li>Underground infrastructure: water pipes, subway tunnels</li>
+            <li>Arcologies: end-game megastructures housing thousands</li>
+            <li>SCURK (SC Urban Renewal Kit) — tile editor for custom buildings</li>
+            <li>Power grid modeling: individual buildings could lose power</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--amber)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">🌆</div><div class="ph-year">1999</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity 3000</div>
+          <div class="card-meta">
+            <span class="badge by">1999</span>
+            <span class="badge bw">Will Wright</span>
+            <span class="badge bp">Maxis / EA</span>
+          </div>
+          <div class="card-desc">
+            <p>The first SimCity published by Electronic Arts after their acquisition of Maxis. SimCity 3000 refined the 2000 formula with larger cities, a more detailed advisor system, improved terrain, and neighbor deals — trade agreements with adjacent cities for water, power, and garbage disposal. The animations and soundtrack were a step forward.</p>
+            <p>It was a refinement rather than a reinvention, and players appreciated that. The Unlimited edition added biome-based tilesets and additional buildings, keeping the game fresh years after release.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>Neighbor deals: buy and sell resources to adjacent cities</li>
+            <li>Waste management as a separate system</li>
+            <li>Three architectural eras: classic, modern, futuristic</li>
+            <li>Petitions: citizens lobby for specific changes</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--sky)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">🌃</div><div class="ph-year">2003</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity 4</div>
+          <div class="card-meta">
+            <span class="badge by">2003</span>
+            <span class="badge bw">Ocean Quigley</span>
+            <span class="badge bp">Maxis / EA</span>
+            <span class="badge bg">Community Peak</span>
+          </div>
+          <div class="card-desc">
+            <p>The most sophisticated SimCity ever made — and one of the greatest city builders in the history of the genre. SimCity 4 introduced full 3D, regional play across multiple interconnected cities, a day/night cycle, detailed commute simulation, and a modding system that spawned one of gaming's most dedicated communities.</p>
+            <p>The Rush Hour expansion added street-level traffic views, U-Drive-It vehicle control, and highway interchanges. The modding community's Network Addon Mod (NAM) is still actively updated today — adding transit types, interchanges, and mechanics that surpass the original game.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>Regional mode: build multiple linked cities that share commuters and resources</li>
+            <li>Full traffic simulation — individual Sims commute along real paths</li>
+            <li>Day/night cycle with distinct lighting</li>
+            <li>The Network Addon Mod (NAM) — 20 years later, still the gold standard city-sim mod</li>
+            <li>Terraforming and god mode for sculpting landscapes</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="era">The EA Divergence — 2007–2013</div>
+
+      <div class="card" style="--accent:var(--road)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">🏘️</div><div class="ph-year">2007</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity Societies</div>
+          <div class="card-meta">
+            <span class="badge by">2007</span>
+            <span class="badge bp">Tilted Mill / EA</span>
+            <span class="badge bx">Not a Maxis Title</span>
+          </div>
+          <div class="card-desc">
+            <p>The controversial departure. SimCity Societies was developed not by Maxis but by Tilted Mill Entertainment, and it showed. The traditional zoning system was replaced with a "social energy" mechanic — cities accumulated creativity, productivity, prosperity, or other traits based on buildings placed. The simulation depth of previous games was almost entirely absent.</p>
+            <p>It was not well received. Fans rejected it as a SimCity game in name only. The series' reputation took a hit, and Maxis was noticeably absent from the credits. Societies stands as a cautionary tale about what happens when a franchise is handed to a team that doesn't understand its core appeal.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>Social energy replaced zoning — a fundamentally different design philosophy</li>
+            <li>Six city archetypes: Authoritarian, Creative, Spiritual, Prosperous, etc.</li>
+            <li>No traffic simulation, no transit networks, no commute modeling</li>
+            <li>Considered non-canon by most of the community</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="card" style="--accent:var(--sky)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">🌉</div><div class="ph-year">2013</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity (2013)</div>
+          <div class="card-meta">
+            <span class="badge by">2013</span>
+            <span class="badge bw">Ocean Quigley</span>
+            <span class="badge bp">Maxis / EA</span>
+            <span class="badge bx">Always-Online DRM</span>
+          </div>
+          <div class="card-desc">
+            <p>The reboot that ended an era. The 2013 SimCity was visually stunning, built on the GlassBox simulation engine which modeled individual Sims moving through cities in real time. The multi-city region system was innovative and the art direction was excellent. But two decisions poisoned it entirely.</p>
+            <p>First: always-online DRM that required a server connection to play single-player. At launch, EA's servers collapsed under the load, making the game unplayable for days. The debacle became one of gaming's most notorious launches. Second: city sizes were a fraction of SimCity 4's — a decision later revealed to be driven by multiplayer design, not technical necessity, after modders unlocked larger maps within weeks.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>GlassBox engine: individual agent-based simulation of every Sim</li>
+            <li>Specializations: gambling, electronics, culture, drilling, mining</li>
+            <li>Multiplayer region play across connected cities</li>
+            <li>Launch server failure — unplayable for days, refunds issued</li>
+            <li>City sizes artificially constrained — the community never forgave it</li>
+          </ul></div>
+        </div>
+      </div>
+
+      <div class="era">Mobile & Legacy</div>
+
+      <div class="card" style="--accent:var(--green)">
+        <div class="card-img-wrap">
+          <div class="card-img-ph"><div class="ph-icon">📱</div><div class="ph-year">2014</div></div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">SimCity BuildIt</div>
+          <div class="card-meta">
+            <span class="badge by">2014</span>
+            <span class="badge bp">EA</span>
+            <span class="badge br">Mobile — iOS / Android</span>
+          </div>
+          <div class="card-desc">
+            <p>EA's mobile interpretation of SimCity, free-to-play with optional purchases. BuildIt strips the series to its most accessible form: place zones, collect resources from buildings, fulfill citizen requests. The core loop is more casual management than urban simulation — production chains, trade, and expanding districts in a compact format.</p>
+            <p>It has been consistently profitable for EA and continues to receive updates, making it the most actively maintained SimCity product. For many players' first introduction to city building on mobile, it succeeds on its own terms even if it shares little with its PC predecessors in depth or philosophy.</p>
+          </div>
+          <div class="card-feats"><ul>
+            <li>Free-to-play with cosmetic and speed-up purchases</li>
+            <li>Production chains: factories supply goods for commercial zones</li>
+            <li>Contest of Mayors: competitive events against other players</li>
+            <li>Seasonal themes and limited-time content</li>
+          </ul></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       WILL WRIGHT
+  ══════════════════════════════════════════════ -->
+  <section id="wright" class="section hidden">
+    <div class="section-title">Will Wright — The Visionary</div>
+    <div class="article-grid">
+
+      <div class="art-card wide">
+        <h2>The Man Who Invented a Genre</h2>
+        <div class="asub">William Ralph Wright · Born January 20, 1960 · Atlanta, Georgia</div>
+        <p>Will Wright is the most original game designer in the history of the medium. In a field crowded with war games, platformers, and shooters, Wright spent his career asking a different question: <span class="hi">what if the experience itself — the act of observing a complex system respond to your inputs — was enough?</span> What if a game didn't need a win condition, an enemy to defeat, or a story to tell?</p>
+        <p>The answer was SimCity, The Sims, and Spore — three of the most influential games ever made, each one redefining what games could be. Wright didn't iterate on existing genres. He invented new ones from scratch, repeatedly, across three decades.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>Origins: The Crash That Became SimCity</h2>
+        <div class="asub">1984 — Raid on Bungeling Bay</div>
+        <p>Wright's first commercial game was Raid on Bungeling Bay (1984) — a helicopter combat game for the Commodore 64. It was competent. Unremarkable. But while building it, Wright noticed something: creating the maps and towns was more engaging than playing the game itself. The editor was the fun part.</p>
+        <p>He kept the editor. Stripped out the helicopters. Added zoning rules, traffic simulation, and a city budget. What remained had no enemies, no win state, and no way to lose in any conventional sense. Publishers told him no one would buy a game you couldn't win. He pitched it for years before Broderbund finally took a chance. SimCity shipped in 1989 and changed everything.</p>
+        <h3>The Key Insight</h3>
+        <p>Wright understood something that the games industry had missed: <span class="hi">the human brain finds complex systems intrinsically rewarding to observe and manipulate</span>. The satisfaction of watching a city grow in response to your decisions is its own form of play — not competition, not narrative, but the pleasure of understanding a system well enough to make it thrive. He called it a "software toy" rather than a game, and the distinction mattered enormously.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>The Sims: Turning Inward</h2>
+        <div class="asub">2000 — The Best-Selling PC Game of All Time</div>
+        <p>After SimCity's success, Wright spent the 1990s thinking about a different kind of simulation. Cities were one level of human organization — what about the level below? What about the simulation of individual domestic life?</p>
+        <p>The Sims launched in 2000 and became the best-selling PC game series of all time. It applied Wright's same philosophy — observable complex system, no win condition, emergent behavior from simple rules — but turned the lens inward, onto the household rather than the city. The result resonated with audiences who had never played a "game" before: people who wanted a dollhouse with physics, a drama generator, a life simulator.</p>
+        <h3>Demographics Shattered</h3>
+        <p>The Sims was the first major game franchise where women constituted the majority of the audience. Wright had designed not a game but a <span class="hi">creative sandbox that appealed to human curiosity regardless of gender or gaming background</span>. The industry noticed. The lesson — that simulation and creative tools could reach audiences that combat and competition never would — permanently altered game development strategy at every major studio.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>Spore: The Most Ambitious Toy Ever Made</h2>
+        <div class="asub">2008 — Procedural Evolution Across Five Stages</div>
+        <p>Wright's final major project at Maxis was Spore — an attempt to compress the entire arc of biological and civilizational evolution into a single game. Players guided a species from single-celled organism through creature, tribe, civilization, and space-faring stages. Each stage was a different genre entirely: action, strategy, city-building, RTS, space exploration.</p>
+        <p>The ambition was breathtaking. The procedural creature animation engine — which could take any arbitrary shape and make it walk, swim, and fly believably — remains a technical achievement that has never been fully replicated. The promise of a procedurally generated galaxy populated by creatures made by millions of players worldwide anticipated what games would spend the next decade reaching for.</p>
+        <h3>The Gap Between Vision and Product</h3>
+        <p>Spore was critically praised but commercially divisive. Its deep simulation systems — years in development — were simplified late in production to broaden the audience. Players who had followed its development for years felt the final product fell short of its potential. <span class="hi">It is a game that is simultaneously a masterwork of creative vision and a demonstration of how hard it is to execute Wright's ideas at scale without compromising them.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>Philosophy: Toys, Not Games</h2>
+        <div class="asub">The Design Language of Will Wright</div>
+        <p>Wright has spoken extensively about the distinction between "games" — which have explicit goals, win/lose states, and competition — and "toys," which exist simply to be played with. SimCity, The Sims, and Spore are all toys in this sense. The player sets their own objectives. Failure is optional. The system rewards engagement, not performance.</p>
+        <p>This philosophy runs against the grain of most game design, which is built around challenge, mastery, and feedback loops reinforcing progress toward a defined objective. Wright argued that <span class="hi">the absence of a win condition is itself a design choice — one that frees the player to find their own meaning in the system</span>.</p>
+        <h3>Mental Models</h3>
+        <p>Wright's other central design principle is the mental model: a game should teach the player to build an accurate model of its simulation in their head. The more accurate the model, the more effective the player — and the more satisfying the experience. A city that responds predictably to your decisions is rewarding precisely because you can understand why. This is why SimCity's disasters, which violated the model, were so memorable: they were the moment the system surprised you.</p>
+        <h3>Legacy</h3>
+        <p>Wright left EA in 2009 to found Syntertainment, focused on the intersection of games and science education. He has spoken at TED, consulted for NASA on space exploration engagement, and lectured at universities worldwide. He is one of only a handful of game designers whose name alone is used to market a product — because his name means something specific: <span class="hi">a game that will make you think differently about systems, simulation, and what play actually is.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>The SimCity Influence</h2>
+        <div class="asub">How One Game Reshaped an Industry</div>
+        <p>SimCity's direct descendants include every city builder, colony sim, and management game made in the thirty-five years since its release. Tropico, Cities: Skylines, Anno, Frostpunk, Dwarf Fortress, Banished, Foundation, Workers &amp; Resources — all of them trace their lineage directly to Wright's 1989 original. The idea that a game can be built around managing a complex system — without a villain, without a level to complete — is his contribution to the medium.</p>
+        <p>Indirectly, his influence reaches further. The emergent narrative of The Sims — the stories players told about their Sims without any authorial intent on Wright's part — anticipated everything from open-world sandbox games to the player-generated content economy of the 2010s and 2020s. He built systems that told stories he never wrote.</p>
+        <h3>The Award Record</h3>
+        <p>Wright has received the Lifetime Achievement Award from BAFTA, the Game Developers Choice Award for Lifetime Achievement, induction into the Academy of Interactive Arts &amp; Sciences Hall of Fame, and numerous other recognitions. More meaningfully, virtually every designer working in simulation, management, or sandbox games today cites him as a foundational influence. <span class="hi">He didn't just make great games. He invented a way of making games that others have spent decades learning to replicate.</span></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       CITIES: SKYLINES
+  ══════════════════════════════════════════════ -->
+  <section id="skylines" class="section hidden">
+    <div class="section-title">Cities: Skylines — The Heir</div>
+    <div class="article-grid">
+
+      <div class="art-card wide">
+        <h2>The Game SimCity Should Have Been</h2>
+        <div class="asub">Colossal Order · Paradox Interactive · Released March 10, 2015</div>
+        <p>When SimCity 2013 launched in ruins — plagued by mandatory online connectivity, collapsed servers, and city sizes a fraction of SimCity 4's — the city-building genre had no home. Maxis had squandered its goodwill. EA had no credible path to redemption. Into that vacuum, a 14-person Finnish studio named Colossal Order shipped Cities: Skylines for $30, and the genre found its new standard-bearer overnight.</p>
+        <p>Within a week, Skylines had sold a million copies. Within a month, it had surpassed SimCity 2013's total lifetime sales. The community that had waited years for a worthy successor to SimCity 4 had found it. <span class="hi">Cities: Skylines didn't just fill the void left by SimCity — it made SimCity feel like a historical footnote.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>What Skylines Got Right</h2>
+        <div class="asub">The Lessons of SimCity's Failure, Applied</div>
+        <p>Colossal Order studied SimCity 4's community exhaustively before building Skylines. They knew what the hardcore audience wanted: large maps, real traffic simulation, mod support, and no online requirement. They delivered all four on launch day.</p>
+        <h3>Scale</h3>
+        <p>Where SimCity 2013 offered city tiles roughly 2km × 2km, Skylines launched with maps up to 36km². A single fully unlocked map in Skylines is larger than all of SimCity 2013's regions combined. The scale difference wasn't incremental — it was a statement about design philosophy.</p>
+        <h3>Traffic</h3>
+        <p>Skylines models individual vehicles traveling on real paths to real destinations. The traffic simulation is sophisticated enough that real urban planners have used the game to prototype intersection designs and study traffic flow. Road hierarchy, roundabouts, grade separation — Skylines rewards genuine urban planning knowledge in a way no SimCity ever did.</p>
+        <h3>Modding</h3>
+        <p>Steam Workshop integration at launch meant the modding community could build on Skylines immediately. Within months, mods had added features that surpassed the base game. <span class="hi">The modding ecosystem became the game's greatest feature — a multiplier on Colossal Order's own work that no single studio could replicate alone.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>The Expansion Record</h2>
+        <div class="asub">Ten Years of DLC — Building the Complete City Sim</div>
+        <p>Cities: Skylines has received more than twenty expansions since 2015, each adding a major new system to the game. After Dark added a day/night cycle and tourism-specific zones. Snowfall introduced seasonal weather and heating infrastructure. Mass Transit overhauled public transport with ferries, blimps, cable cars, and monorails. Industries added detailed production chains from raw resources to consumer goods. Campus, Green Cities, Parklife, and Natural Disasters each introduced complete new subsystems.</p>
+        <p>The cumulative result — base game plus expansions — is the most detailed city simulation ever shipped. No single system is modeled at the depth of a dedicated simulator, but the breadth and integration of systems produces emergent complexity that rivals anything in the genre's history.</p>
+        <h3>Cities: Skylines II</h3>
+        <p>The sequel launched in October 2023 to a mixed reception — performance issues and missing features at launch disappointed a community with high expectations. The development team has been transparent about the challenges and committed to a long roadmap of fixes and additions. The situation echoes, ironically, SimCity 2013's troubled launch — a reminder that even the successor to the genre is not immune to the pressures that felled the original.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>SimCity vs. Cities: Skylines</h2>
+        <div class="asub">A Direct Comparison</div>
+        <table class="cmp-table">
+          <tr>
+            <th>Feature</th>
+            <th>SimCity (2013)</th>
+            <th>Cities: Skylines</th>
+          </tr>
+          <tr><td>City size</td><td class="no">~2 km²</td><td class="yes">Up to 36 km²</td></tr>
+          <tr><td>Offline play</td><td class="no">No (DRM)</td><td class="yes">Yes, always</td></tr>
+          <tr><td>Traffic simulation</td><td>Agent-based</td><td class="yes">Agent-based + planning depth</td></tr>
+          <tr><td>Mod support</td><td class="no">Limited</td><td class="yes">Full Steam Workshop</td></tr>
+          <tr><td>Map editor</td><td class="no">No</td><td class="yes">Full terrain editor</td></tr>
+          <tr><td>Multiplayer</td><td>Regions (unstable)</td><td>No (by design)</td></tr>
+          <tr><td>Launch price</td><td>$60</td><td class="yes">$30</td></tr>
+          <tr><td>Launch stability</td><td class="no">Server failure</td><td class="yes">Stable</td></tr>
+          <tr><td>Active community</td><td class="no">Abandoned</td><td class="yes">Thriving</td></tr>
+        </table>
+      </div>
+
+      <div class="art-card">
+        <h2>The Spiritual Inheritance</h2>
+        <div class="asub">What Skylines Owes to Wright's Vision</div>
+        <p>Colossal Order has always been explicit about their debt to SimCity. The core design language — zone, build infrastructure, watch the city develop, react to problems — is pure Will Wright. The satisfaction of Skylines is the satisfaction Wright identified in 1989: <span class="hi">the pleasure of understanding a complex system well enough to make it thrive.</span></p>
+        <p>Where Skylines diverges is in depth and fidelity. Wright's games were toys — accessible, forgiving, focused on the pleasure of the system rather than mastery of it. Skylines trends harder toward simulation, rewarding genuine urban planning knowledge and penalizing poor road design in ways that Wright deliberately avoided. Both approaches are valid. They serve different players.</p>
+        <h3>The Succession Question</h3>
+        <p>Whether Cities: Skylines is SimCity's "successor" depends on what you think SimCity was. If SimCity was a simulation of urban systems, Skylines is the successor — it simulates more, better, at greater scale. If SimCity was Will Wright's software toy philosophy applied to cities — a creative sandbox with no wrong answers — then Skylines is something adjacent but distinct: it has opinions about good urban design, and it enforces them through its traffic simulation.</p>
+        <p>The truth is probably that Skylines is the closest thing to a new SimCity that the market has produced, and that it carries the torch with far more care and competence than EA ever showed after Wright left. <span class="hi">If Wright's original dream was a city simulation that respected the player's intelligence and gave them real tools, Cities: Skylines is the most complete realization of that dream yet built.</span></p>
+      </div>
+
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.sc-tab');
+      var secs = {
+        games:    document.getElementById('games'),
+        wright:   document.getElementById('wright'),
+        skylines: document.getElementById('skylines'),
+      };
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          tabs.forEach(function (t) { t.classList.remove('active'); });
+          Object.values(secs).forEach(function (s) { s.classList.add('hidden'); });
+          tab.classList.add('active');
+          secs[tab.dataset.tab].classList.remove('hidden');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

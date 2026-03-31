@@ -45,7 +45,9 @@
     '<a class="nav-item" href="https://computers.ximg.app"><div class="nav-dot"></div>computers</a>' +
     '<a class="nav-item" href="https://trump.ximg.app"><div class="nav-dot"></div>trump</a>' +
     '<a class="nav-item" href="https://cnc.ximg.app"><div class="nav-dot"></div>cnc</a>' +
+    '<a class="nav-item" href="https://simcity.ximg.app"><div class="nav-dot"></div>simcity</a>' +
     '<a class="nav-item" href="https://rx.ximg.app"><div class="nav-dot"></div>RxFitt</a>' +
+    '<a class="nav-item" href="https://mail.ximg.app"><div class="nav-dot"></div>mail</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
 
   // Highlight the current site
