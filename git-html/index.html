@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>git — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #0a0a0d;
+      --git:  #f05032;
+      --ora:  #fb923c;
+      --yel:  #fbbf24;
+      --grn:  #4ade80;
+      --cyn:  #22d3ee;
+      --pur:  #a78bfa;
+      --dim:  #64748b;
+      --text: #e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(240,80,50,.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(240,80,50,.03) 1px,transparent 1px);
+      background-size:44px 44px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(130px);opacity:.1;pointer-events:none;z-index:0}
+    .glow-1{width:700px;height:700px;background:#f05032;top:-250px;left:-200px}
+    .glow-2{width:500px;height:500px;background:#c0392b;bottom:-150px;right:-150px}
+
+    .wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.4rem}
+
+    h1{font-size:1.55rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#f05032 0%,#fb923c 50%,#fbbf24 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:#64748b;margin-top:.2rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:.4rem;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:#64748b;
+      font-family:inherit;transition:all .2s}
+    .tab.active{color:var(--git);border-color:rgba(240,80,50,.4);background:rgba(240,80,50,.07)}
+    .tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .section{display:flex;flex-direction:column;gap:1.25rem}
+    .section.hidden{display:none}
+
+    .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--git);margin-bottom:-.2rem}
+
+    /* ── Command table ── */
+    .cmd-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;overflow:hidden}
+    .cmd-row{display:grid;grid-template-columns:minmax(260px,auto) 1fr;
+      border-bottom:1px solid rgba(255,255,255,.05);align-items:start}
+    .cmd-row:last-child{border-bottom:none}
+    .cmd-code{font-family:'Courier New',monospace;font-size:.78rem;padding:.65rem 1rem;
+      color:var(--cyn);background:rgba(0,0,0,.25);border-right:1px solid rgba(255,255,255,.05);
+      word-break:break-all;line-height:1.5}
+    .cmd-code .arg{color:var(--yel)}
+    .cmd-code .flag{color:var(--grn)}
+    .cmd-code .key{color:var(--ora)}
+    .cmd-desc{font-size:.78rem;padding:.65rem 1rem;color:#94a3b8;line-height:1.5}
+
+    /* ── Info grid ── */
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}
+    .info-card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;padding:.9rem 1rem}
+    .info-head{font-size:.72rem;font-weight:700;font-family:'Courier New',monospace;
+      color:var(--ora);margin-bottom:.4rem}
+    .info-body{font-size:.72rem;color:#64748b;line-height:1.5}
+
+    /* ── Concept cards ── */
+    .concept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem}
+    .concept-card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;padding:1rem 1.1rem}
+    .concept-name{font-size:.82rem;font-weight:700;font-family:'Courier New',monospace;
+      margin-bottom:.3rem}
+    .concept-desc{font-size:.74rem;color:#94a3b8;line-height:1.45}
+
+    /* ── Flow diagram ── */
+    .flow{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.75rem;display:flex;flex-direction:column;gap:1rem}
+    .flow-row{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+    .flow-box{padding:.45rem 1rem;border-radius:8px;font-family:'Courier New',monospace;
+      font-size:.8rem;font-weight:700;text-align:center;white-space:nowrap}
+    .flow-arrow{color:#334155;font-size:1rem;flex-shrink:0}
+    .flow-label{font-size:.72rem;color:#64748b;font-family:'Courier New',monospace}
+    .box-work{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);color:var(--cyn)}
+    .box-stage{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:var(--yel)}
+    .box-local{background:rgba(240,80,50,.08);border:1px solid rgba(240,80,50,.3);color:var(--git)}
+    .box-remote{background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.3);color:var(--pur)}
+    .box-stash{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);color:var(--grn)}
+
+    /* ── Branch diagram ── */
+    .branch-vis{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.5rem;overflow-x:auto}
+    .branch-vis svg{display:block;min-width:520px}
+
+    /* ── Timeline ── */
+    .tl{position:relative;display:flex;flex-direction:column;gap:0;padding-left:0}
+    .tl::before{content:'';position:absolute;left:62px;top:8px;bottom:8px;width:2px;
+      background:linear-gradient(to bottom,transparent,rgba(240,80,50,.4) 8%,rgba(240,80,50,.4) 92%,transparent)}
+    .tl-item{display:flex;gap:1rem;padding:.8rem 0;align-items:flex-start}
+    .tl-year{font-family:'Courier New',monospace;font-size:.8rem;font-weight:700;
+      color:var(--git);min-width:48px;text-align:right;padding-top:.15rem;flex-shrink:0}
+    .tl-dot-wrap{width:28px;display:flex;justify-content:center;padding-top:.22rem;flex-shrink:0;position:relative;z-index:1}
+    .tl-dot{width:10px;height:10px;border-radius:50%;background:var(--git);
+      box-shadow:0 0 8px rgba(240,80,50,.7);flex-shrink:0}
+    .tl-dot.minor{width:7px;height:7px;background:#ef4444;box-shadow:0 0 5px rgba(239,68,68,.5)}
+    .tl-body{flex:1}
+    .tl-title{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+    .tl-desc{font-size:.75rem;color:#64748b;line-height:1.5}
+    .tl-tag{display:inline-block;font-size:.65rem;font-weight:700;padding:.1rem .45rem;
+      border-radius:4px;margin-left:.4rem;vertical-align:middle;font-family:'Courier New',monospace}
+    .tag-release{background:rgba(240,80,50,.12);color:var(--git);border:1px solid rgba(240,80,50,.25)}
+    .tag-major{background:rgba(251,191,36,.12);color:var(--yel);border:1px solid rgba(251,191,36,.25)}
+    .tag-milestone{background:rgba(74,222,128,.12);color:var(--grn);border:1px solid rgba(74,222,128,.25)}
+
+    /* ── Badge chips ── */
+    .legend{display:flex;flex-wrap:wrap;gap:.5rem .9rem}
+    .chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;
+      padding:.28rem .7rem;border-radius:99px;
+      border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);
+      font-family:'Courier New',monospace;white-space:nowrap}
+    .chip .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+    /* ── Config code card ── */
+    .code-card{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.25rem 1.5rem;
+      font-family:'Courier New',monospace;font-size:clamp(.76rem,1.5vw,.84rem);
+      line-height:2;position:relative;overflow-x:auto}
+    .code-card::before{content:attr(data-label);position:absolute;top:.55rem;right:1rem;
+      font-size:.65rem;color:#334155;letter-spacing:.1em;font-family:'Segoe UI',sans-serif}
+    .ck{color:var(--cyn)}
+    .cv{color:var(--grn)}
+    .cc{color:#475569;font-style:italic}
+    .cs{color:var(--yel)}
+    .cf{color:var(--git)}
+
+    /* ── Tip banner ── */
+    .tip{background:rgba(240,80,50,.06);border:1px solid rgba(240,80,50,.18);
+      border-radius:10px;padding:.75rem 1rem;font-size:.78rem;color:#94a3b8;line-height:1.5}
+    .tip strong{color:var(--git)}
+  </style>
+</head>
+<body>
+
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="wrap">
+  <div>
+    <h1>git</h1>
+    <div class="subtitle">VERSION CONTROL · DISTRIBUTED · LINUS TORVALDS · 2005</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="show('commands',this)">Commands</button>
+    <button class="tab" onclick="show('concepts',this)">Concepts</button>
+    <button class="tab" onclick="show('branching',this)">Branching</button>
+    <button class="tab" onclick="show('config',this)">Config</button>
+    <button class="tab" onclick="show('history',this)">History</button>
+  </div>
+
+  <!-- ══════════════ COMMANDS ══════════════ -->
+  <div class="section" id="tab-commands">
+
+    <div class="sec-title">Setup &amp; Init</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git init</div><div class="cmd-desc">Initialize a new repository in the current directory</div></div>
+      <div class="cmd-row"><div class="cmd-code">git init <span class="arg">&lt;dir&gt;</span></div><div class="cmd-desc">Create a new repo in a named subdirectory</div></div>
+      <div class="cmd-row"><div class="cmd-code">git clone <span class="arg">&lt;url&gt;</span></div><div class="cmd-desc">Clone a remote repository locally</div></div>
+      <div class="cmd-row"><div class="cmd-code">git clone <span class="arg">&lt;url&gt;</span> <span class="flag">--depth 1</span></div><div class="cmd-desc">Shallow clone — only the latest commit (fast)</div></div>
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--global</span> user.name <span class="arg">"Name"</span></div><div class="cmd-desc">Set your global commit author name</div></div>
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--global</span> user.email <span class="arg">"e@mail"</span></div><div class="cmd-desc">Set your global commit author email</div></div>
+    </div>
+
+    <div class="sec-title">Staging &amp; Committing</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git status</div><div class="cmd-desc">Show working tree status — staged, unstaged, untracked files</div></div>
+      <div class="cmd-row"><div class="cmd-code">git add <span class="arg">&lt;file&gt;</span></div><div class="cmd-desc">Stage a specific file for the next commit</div></div>
+      <div class="cmd-row"><div class="cmd-code">git add <span class="flag">-p</span></div><div class="cmd-desc">Interactively stage hunks — review each change before staging</div></div>
+      <div class="cmd-row"><div class="cmd-code">git add <span class="arg">.</span></div><div class="cmd-desc">Stage all changes in the current directory (use with caution)</div></div>
+      <div class="cmd-row"><div class="cmd-code">git commit <span class="flag">-m</span> <span class="arg">"message"</span></div><div class="cmd-desc">Commit staged changes with a message</div></div>
+      <div class="cmd-row"><div class="cmd-code">git commit <span class="flag">--amend</span></div><div class="cmd-desc">Amend the last commit — change message or add staged files</div></div>
+      <div class="cmd-row"><div class="cmd-code">git reset HEAD <span class="arg">&lt;file&gt;</span></div><div class="cmd-desc">Unstage a file without discarding changes</div></div>
+      <div class="cmd-row"><div class="cmd-code">git restore <span class="arg">&lt;file&gt;</span></div><div class="cmd-desc">Discard working-directory changes for a file</div></div>
+      <div class="cmd-row"><div class="cmd-code">git rm <span class="arg">&lt;file&gt;</span></div><div class="cmd-desc">Remove a file and stage the deletion</div></div>
+      <div class="cmd-row"><div class="cmd-code">git mv <span class="arg">&lt;old&gt;</span> <span class="arg">&lt;new&gt;</span></div><div class="cmd-desc">Move or rename a file and stage the change</div></div>
+    </div>
+
+    <div class="sec-title">Inspection &amp; Diff</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git log</div><div class="cmd-desc">Show commit history</div></div>
+      <div class="cmd-row"><div class="cmd-code">git log <span class="flag">--oneline --graph --all</span></div><div class="cmd-desc">Compact branch graph of all refs — essential for orientation</div></div>
+      <div class="cmd-row"><div class="cmd-code">git diff</div><div class="cmd-desc">Show unstaged changes vs the last commit</div></div>
+      <div class="cmd-row"><div class="cmd-code">git diff <span class="flag">--staged</span></div><div class="cmd-desc">Show staged changes that will go into the next commit</div></div>
+      <div class="cmd-row"><div class="cmd-code">git show <span class="arg">&lt;hash&gt;</span></div><div class="cmd-desc">Show details and diff for a specific commit</div></div>
+      <div class="cmd-row"><div class="cmd-code">git blame <span class="arg">&lt;file&gt;</span></div><div class="cmd-desc">Show who last changed each line of a file, and when</div></div>
+      <div class="cmd-row"><div class="cmd-code">git shortlog <span class="flag">-sn</span></div><div class="cmd-desc">Summary of commits per author, sorted by count</div></div>
+    </div>
+
+    <div class="sec-title">Branches</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git branch</div><div class="cmd-desc">List local branches</div></div>
+      <div class="cmd-row"><div class="cmd-code">git branch <span class="flag">-a</span></div><div class="cmd-desc">List all local and remote-tracking branches</div></div>
+      <div class="cmd-row"><div class="cmd-code">git branch <span class="arg">&lt;name&gt;</span></div><div class="cmd-desc">Create a new branch at HEAD (does not switch to it)</div></div>
+      <div class="cmd-row"><div class="cmd-code">git switch <span class="arg">&lt;name&gt;</span></div><div class="cmd-desc">Switch to a branch (modern replacement for checkout)</div></div>
+      <div class="cmd-row"><div class="cmd-code">git switch <span class="flag">-c</span> <span class="arg">&lt;name&gt;</span></div><div class="cmd-desc">Create and switch to a new branch in one step</div></div>
+      <div class="cmd-row"><div class="cmd-code">git merge <span class="arg">&lt;branch&gt;</span></div><div class="cmd-desc">Merge named branch into the current branch</div></div>
+      <div class="cmd-row"><div class="cmd-code">git rebase <span class="arg">&lt;branch&gt;</span></div><div class="cmd-desc">Rebase current branch onto another — linear history</div></div>
+      <div class="cmd-row"><div class="cmd-code">git branch <span class="flag">-d</span> <span class="arg">&lt;name&gt;</span></div><div class="cmd-desc">Delete a merged branch (safe)</div></div>
+      <div class="cmd-row"><div class="cmd-code">git branch <span class="flag">-D</span> <span class="arg">&lt;name&gt;</span></div><div class="cmd-desc">Force-delete a branch even if unmerged</div></div>
+    </div>
+
+    <div class="sec-title">Remote Operations</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git remote <span class="flag">-v</span></div><div class="cmd-desc">List remotes with their URLs</div></div>
+      <div class="cmd-row"><div class="cmd-code">git remote add <span class="key">origin</span> <span class="arg">&lt;url&gt;</span></div><div class="cmd-desc">Add a remote named origin</div></div>
+      <div class="cmd-row"><div class="cmd-code">git fetch</div><div class="cmd-desc">Download new commits/refs from remote without merging</div></div>
+      <div class="cmd-row"><div class="cmd-code">git pull</div><div class="cmd-desc">Fetch + merge (or rebase with --rebase) remote into current branch</div></div>
+      <div class="cmd-row"><div class="cmd-code">git push <span class="flag">-u</span> <span class="key">origin</span> <span class="arg">&lt;branch&gt;</span></div><div class="cmd-desc">Push branch and set upstream tracking reference</div></div>
+      <div class="cmd-row"><div class="cmd-code">git push <span class="key">origin</span> <span class="flag">--delete</span> <span class="arg">&lt;branch&gt;</span></div><div class="cmd-desc">Delete a remote branch</div></div>
+      <div class="cmd-row"><div class="cmd-code">git push <span class="flag">--tags</span></div><div class="cmd-desc">Push all local tags to the remote</div></div>
+    </div>
+
+    <div class="sec-title">Stash &amp; Clean</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git stash</div><div class="cmd-desc">Stash dirty working tree and index for later</div></div>
+      <div class="cmd-row"><div class="cmd-code">git stash push <span class="flag">-m</span> <span class="arg">"msg"</span></div><div class="cmd-desc">Stash with a descriptive label</div></div>
+      <div class="cmd-row"><div class="cmd-code">git stash list</div><div class="cmd-desc">Show all stash entries</div></div>
+      <div class="cmd-row"><div class="cmd-code">git stash pop</div><div class="cmd-desc">Apply and remove the most recent stash</div></div>
+      <div class="cmd-row"><div class="cmd-code">git stash drop <span class="arg">stash@{n}</span></div><div class="cmd-desc">Delete a specific stash entry</div></div>
+      <div class="cmd-row"><div class="cmd-code">git clean <span class="flag">-fd</span></div><div class="cmd-desc">Remove untracked files and directories (irreversible)</div></div>
+    </div>
+
+    <div class="sec-title">Undo &amp; Reset</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git revert <span class="arg">&lt;hash&gt;</span></div><div class="cmd-desc">Create a new commit that undoes the given commit — safe for shared history</div></div>
+      <div class="cmd-row"><div class="cmd-code">git reset <span class="flag">--soft</span> HEAD~1</div><div class="cmd-desc">Undo last commit, keep changes staged</div></div>
+      <div class="cmd-row"><div class="cmd-code">git reset <span class="flag">--mixed</span> HEAD~1</div><div class="cmd-desc">Undo last commit, keep changes unstaged (default)</div></div>
+      <div class="cmd-row"><div class="cmd-code">git reset <span class="flag">--hard</span> HEAD~1</div><div class="cmd-desc">Undo last commit and discard all changes — destructive</div></div>
+      <div class="cmd-row"><div class="cmd-code">git reflog</div><div class="cmd-desc">Show a log of all HEAD movements — last resort recovery tool</div></div>
+      <div class="cmd-row"><div class="cmd-code">git cherry-pick <span class="arg">&lt;hash&gt;</span></div><div class="cmd-desc">Apply a single commit from another branch onto current branch</div></div>
+    </div>
+
+    <div class="sec-title">Tags</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git tag</div><div class="cmd-desc">List all tags</div></div>
+      <div class="cmd-row"><div class="cmd-code">git tag <span class="arg">v1.0.0</span></div><div class="cmd-desc">Create a lightweight tag at HEAD</div></div>
+      <div class="cmd-row"><div class="cmd-code">git tag <span class="flag">-a</span> <span class="arg">v1.0.0</span> <span class="flag">-m</span> <span class="arg">"msg"</span></div><div class="cmd-desc">Create an annotated tag with a message</div></div>
+      <div class="cmd-row"><div class="cmd-code">git tag <span class="flag">-d</span> <span class="arg">v1.0.0</span></div><div class="cmd-desc">Delete a local tag</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ CONCEPTS ══════════════ -->
+  <div class="section hidden" id="tab-concepts">
+
+    <div class="sec-title">The Four Areas</div>
+    <div class="flow">
+      <div class="flow-row">
+        <div class="flow-box box-work">Working Tree</div>
+        <div class="flow-arrow">─── git add ───▶</div>
+        <div class="flow-box box-stage">Staging Area<br><span style="font-size:.68rem;opacity:.7">(Index)</span></div>
+        <div class="flow-arrow">─── git commit ───▶</div>
+        <div class="flow-box box-local">Local Repo<br><span style="font-size:.68rem;opacity:.7">(.git/)</span></div>
+        <div class="flow-arrow">─── git push ───▶</div>
+        <div class="flow-box box-remote">Remote Repo<br><span style="font-size:.68rem;opacity:.7">(GitHub etc.)</span></div>
+      </div>
+      <div class="flow-row">
+        <div class="flow-box box-stash">Stash</div>
+        <div class="flow-arrow">◀── git stash pop ──── git stash ──▶</div>
+        <div style="flex:1"></div>
+      </div>
+      <div style="font-size:.73rem;color:#475569;margin-top:.25rem">
+        git restore ◀── undo working tree changes &nbsp;|&nbsp; git reset HEAD ◀── unstage &nbsp;|&nbsp; git fetch ──▶ remote-tracking refs &nbsp;|&nbsp; git pull = fetch + merge
+      </div>
+    </div>
+
+    <div class="sec-title">Core Concepts</div>
+    <div class="concept-grid">
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--cyn)">Commit</div>
+        <div class="concept-desc">A snapshot of the entire working tree at a point in time. Each commit stores a tree hash, parent hash(es), author, committer, timestamp, and message. Commits are immutable — identified by a SHA-1 (now SHA-256 in new repos) hash.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--git)">Branch</div>
+        <div class="concept-desc">A lightweight, movable pointer to a commit. Creating a branch costs nothing — just 41 bytes on disk. The default branch is usually called <code style="color:var(--yel)">main</code> or <code style="color:var(--yel)">master</code>. HEAD points to the currently checked-out branch or commit.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--yel)">Staging Area</div>
+        <div class="concept-desc">Also called the "index." A preparation area between the working tree and the repo. You choose exactly which changes go into the next commit. This is what makes <code style="color:var(--yel)">git add -p</code> so powerful — surgical commits.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--pur)">Merge</div>
+        <div class="concept-desc">Integrates two branches. A fast-forward merge simply moves the pointer when there's no divergence. A three-way merge creates a merge commit. <code style="color:var(--yel)">--no-ff</code> forces a merge commit even when fast-forward is possible.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--ora)">Rebase</div>
+        <div class="concept-desc">Rewrites commits as if they branched from a different base. Produces a cleaner linear history. <strong>Never rebase commits that have been pushed to a shared remote</strong> — it rewrites history others depend on.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--grn)">HEAD</div>
+        <div class="concept-desc">A special pointer that tracks what you have checked out. Normally points to a branch name. In "detached HEAD" state it points directly to a commit hash — useful for exploring history but be careful not to commit there accidentally.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--cyn)">Remote</div>
+        <div class="concept-desc">A named reference to another repository URL (usually <code style="color:var(--yel)">origin</code>). Git stores a local copy of each remote branch as a remote-tracking ref like <code style="color:var(--yel)">origin/main</code>. These are updated by <code style="color:var(--yel)">git fetch</code>.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--git)">Tag</div>
+        <div class="concept-desc">A fixed pointer to a specific commit — unlike branches, tags don't move. Lightweight tags are just refs; annotated tags are full Git objects with a message, tagger, and timestamp. Used for release versioning (e.g., v2.4.1).</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--yel)">Stash</div>
+        <div class="concept-desc">A stack of temporary shelves for work-in-progress. Saves tracked modified files and staged changes so you can switch context cleanly. Use <code style="color:var(--yel)">git stash push -u</code> to also stash untracked files.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--pur)">Reflog</div>
+        <div class="concept-desc">A local, time-stamped log of every position HEAD and branch tips have pointed to — even after resets and rebases. Your safety net for recovering "deleted" commits. Entries expire after 90 days by default.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--grn)">.gitignore</div>
+        <div class="concept-desc">Patterns of files Git should never track. Supports wildcards, negations (<code style="color:var(--yel)">!</code>), and directory scoping. Checked-in files are never automatically ignored — use <code style="color:var(--yel)">git rm --cached</code> to stop tracking them.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--ora)">Object Store</div>
+        <div class="concept-desc">Git stores four object types in <code style="color:var(--yel)">.git/objects/</code>: <strong>blob</strong> (file content), <strong>tree</strong> (directory), <strong>commit</strong>, and <strong>tag</strong>. All are content-addressed by their SHA hash — making Git a content-addressable filesystem.</div>
+      </div>
+    </div>
+
+    <div class="sec-title">Common Workflows</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-head">Centralized Workflow</div>
+        <div class="info-body">Everyone commits to main. Simple for small teams. Conflicts resolved on push.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Feature Branch Workflow</div>
+        <div class="info-body">Each feature gets its own branch. Merged to main via pull request after review.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Forking Workflow</div>
+        <div class="info-body">Contributors fork the repo, push to their fork, open PRs to the upstream. Standard for open source.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Trunk-Based Dev</div>
+        <div class="info-body">Short-lived branches (hours to 1-2 days), merge to main frequently. Requires strong CI/CD and feature flags.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ BRANCHING ══════════════ -->
+  <div class="section hidden" id="tab-branching">
+
+    <div class="sec-title">GitFlow Strategy</div>
+    <div class="branch-vis">
+      <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:260px">
+        <!-- Track lines -->
+        <line x1="40" y1="230" x2="660" y2="230" stroke="#f05032" stroke-width="2.5"/>
+        <line x1="40" y1="170" x2="660" y2="170" stroke="#a78bfa" stroke-width="2"/>
+        <line x1="160" y1="110" x2="440" y2="110" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <line x1="160" y1="50"  x2="300" y2="50"  stroke="#4ade80" stroke-width="1.5"/>
+        <line x1="460" y1="50"  x2="600" y2="50"  stroke="#4ade80" stroke-width="1.5"/>
+        <!-- main nodes -->
+        <circle cx="80"  cy="230" r="6" fill="#f05032"/>
+        <circle cx="280" cy="230" r="6" fill="#f05032"/>
+        <circle cx="480" cy="230" r="6" fill="#f05032"/>
+        <circle cx="620" cy="230" r="6" fill="#f05032"/>
+        <!-- develop nodes -->
+        <circle cx="160" cy="170" r="5" fill="#a78bfa"/>
+        <circle cx="300" cy="170" r="5" fill="#a78bfa"/>
+        <circle cx="440" cy="170" r="5" fill="#a78bfa"/>
+        <circle cx="600" cy="170" r="5" fill="#a78bfa"/>
+        <!-- feature nodes -->
+        <circle cx="160" cy="110" r="4" fill="#22d3ee"/>
+        <circle cx="300" cy="110" r="4" fill="#22d3ee"/>
+        <circle cx="360" cy="110" r="4" fill="#22d3ee"/>
+        <circle cx="440" cy="110" r="4" fill="#22d3ee"/>
+        <!-- hotfix / release nodes -->
+        <circle cx="160" cy="50"  r="4" fill="#4ade80"/>
+        <circle cx="300" cy="50"  r="4" fill="#4ade80"/>
+        <circle cx="460" cy="50"  r="4" fill="#4ade80"/>
+        <circle cx="600" cy="50"  r="4" fill="#4ade80"/>
+        <!-- connectors develop ↔ main -->
+        <line x1="160" y1="170" x2="80"  y2="230" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="300" y1="170" x2="280" y2="230" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="600" y1="170" x2="620" y2="230" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3"/>
+        <!-- feature ↔ develop -->
+        <line x1="160" y1="110" x2="160" y2="170" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="440" y1="110" x2="440" y2="170" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3"/>
+        <!-- hotfix ↔ develop -->
+        <line x1="300" y1="50"  x2="300" y2="170" stroke="#4ade80" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="300" y1="50"  x2="280" y2="230" stroke="#4ade80" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="600" y1="50"  x2="600" y2="170" stroke="#4ade80" stroke-width="1" stroke-dasharray="3,3"/>
+        <!-- Labels -->
+        <text x="28" y="234" fill="#f05032" font-size="11" font-family="Courier New" font-weight="700" text-anchor="end">main</text>
+        <text x="28" y="174" fill="#a78bfa" font-size="11" font-family="Courier New" font-weight="700" text-anchor="end">develop</text>
+        <text x="28" y="114" fill="#22d3ee" font-size="11" font-family="Courier New" font-weight="700" text-anchor="end">feature</text>
+        <text x="28" y="54"  fill="#4ade80" font-size="11" font-family="Courier New" font-weight="700" text-anchor="end">hotfix</text>
+        <!-- Annotations -->
+        <text x="280" y="222" fill="#fbbf24" font-size="10" font-family="Courier New" text-anchor="middle">v1.0</text>
+        <text x="480" y="222" fill="#fbbf24" font-size="10" font-family="Courier New" text-anchor="middle">v1.1</text>
+        <text x="620" y="222" fill="#fbbf24" font-size="10" font-family="Courier New" text-anchor="middle">v2.0</text>
+      </svg>
+    </div>
+
+    <div class="sec-title">Branch Strategies Compared</div>
+    <div class="concept-grid">
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--git)">GitFlow</div>
+        <div class="concept-desc">Two long-lived branches (main + develop) plus short-lived feature, release, and hotfix branches. Great for versioned software with scheduled releases. Can feel heavyweight for fast-moving teams.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--pur)">GitHub Flow</div>
+        <div class="concept-desc">Just main + feature branches. Feature branch → PR → review → merge to main → deploy. Simple, fast, suited to continuous deployment. No release branch needed if you deploy from main.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--cyn)">Trunk-Based Dev</div>
+        <div class="concept-desc">All devs commit to main (the "trunk") daily or via very short-lived branches (&lt;2 days). Feature flags hide incomplete features in prod. Maximizes integration frequency, minimizes merge conflicts.</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-name" style="color:var(--grn)">OneFlow</div>
+        <div class="concept-desc">Simplified GitFlow — only one long-lived main branch. Feature branches merge directly to main. Hotfixes branch from a release tag. Cleaner than GitFlow, more disciplined than GitHub Flow.</div>
+      </div>
+    </div>
+
+    <div class="sec-title">Branch Naming Conventions</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code"><span class="key">feature/</span><span class="arg">user-auth</span></div><div class="cmd-desc">New feature development</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="key">fix/</span><span class="arg">login-redirect</span></div><div class="cmd-desc">Bug fix (non-urgent)</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="key">hotfix/</span><span class="arg">null-pointer-crash</span></div><div class="cmd-desc">Urgent production bug fix</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="key">release/</span><span class="arg">v2.1.0</span></div><div class="cmd-desc">Release preparation branch</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="key">chore/</span><span class="arg">update-deps</span></div><div class="cmd-desc">Maintenance, tooling, or dependency updates</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="key">refactor/</span><span class="arg">extract-service-layer</span></div><div class="cmd-desc">Code restructuring without behavior change</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="key">docs/</span><span class="arg">api-reference</span></div><div class="cmd-desc">Documentation updates only</div></div>
+    </div>
+
+    <div class="sec-title">Merge vs Rebase</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-head">git merge</div>
+        <div class="info-body">Preserves full history with a merge commit. Non-destructive — existing commits never change. History can look noisy with many merges. Safe on shared/public branches.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">git rebase</div>
+        <div class="info-body">Rewrites commits onto a new base — clean, linear history. Makes bisect and log easier to follow. Destructive — changes SHAs. Never rebase commits others have pulled.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Squash Merge</div>
+        <div class="info-body">Combines all branch commits into one commit on main. Keeps main history clean. Loses granular feature commit history. Popular in PR-based GitHub workflows.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Fast-Forward</div>
+        <div class="info-body">When main has no new commits since branch point, Git just moves the pointer — no merge commit. Use <code>--no-ff</code> to force a merge commit and preserve the branch topology.</div>
+      </div>
+    </div>
+
+    <div class="tip"><strong>Golden rule:</strong> Never rebase or force-push commits that exist on a remote branch other people are using. Rewriting shared history causes everyone else to diverge and can result in lost work.</div>
+  </div>
+
+  <!-- ══════════════ CONFIG ══════════════ -->
+  <div class="section hidden" id="tab-config">
+
+    <div class="sec-title">~/.gitconfig — Global Config</div>
+    <div class="code-card" data-label=".gitconfig">
+<span class="cc"># ~/.gitconfig — applies to all repos for this user</span>
+
+[user]
+    <span class="ck">name</span>  = <span class="cv">Your Name</span>
+    <span class="ck">email</span> = <span class="cv">you@example.com</span>
+
+[core]
+    <span class="ck">editor</span>       = <span class="cv">nvim</span>          <span class="cc"># default commit message editor</span>
+    <span class="ck">autocrlf</span>     = <span class="cv">input</span>         <span class="cc"># LF on checkout (Mac/Linux)</span>
+    <span class="ck">pager</span>        = <span class="cv">delta</span>         <span class="cc"># prettier diffs (requires git-delta)</span>
+    <span class="ck">excludesfile</span> = <span class="cv">~/.gitignore</span>  <span class="cc"># global ignore patterns</span>
+
+[init]
+    <span class="ck">defaultBranch</span> = <span class="cv">main</span>
+
+[pull]
+    <span class="ck">rebase</span> = <span class="cv">false</span>   <span class="cc"># or true for rebase-on-pull style</span>
+
+[push]
+    <span class="ck">default</span>       = <span class="cv">current</span>
+    <span class="ck">autoSetupRemote</span> = <span class="cv">true</span>  <span class="cc"># git 2.37+ — auto -u on first push</span>
+
+[fetch]
+    <span class="ck">prune</span> = <span class="cv">true</span>   <span class="cc"># delete remote-tracking refs for gone branches</span>
+
+[alias]
+    <span class="ck">lg</span>  = <span class="cv">log --oneline --graph --all --decorate</span>
+    <span class="ck">st</span>  = <span class="cv">status -sb</span>
+    <span class="ck">co</span>  = <span class="cv">switch</span>
+    <span class="ck">undo</span> = <span class="cv">reset --soft HEAD~1</span>
+    <span class="ck">aliases</span> = <span class="cv">config --get-regexp alias</span>
+
+[color]
+    <span class="ck">ui</span> = <span class="cv">auto</span>
+
+[diff]
+    <span class="ck">algorithm</span>  = <span class="cv">histogram</span>  <span class="cc"># better diffs for moved code</span>
+    <span class="ck">colorMoved</span> = <span class="cv">zebra</span>
+
+[merge]
+    <span class="ck">conflictstyle</span> = <span class="cv">zdiff3</span>   <span class="cc"># shows base + both sides in conflicts</span>
+
+[rerere]
+    <span class="ck">enabled</span> = <span class="cv">true</span>   <span class="cc"># remember conflict resolutions across rebases</span>
+    </div>
+
+    <div class="sec-title">Project-Level .gitignore</div>
+    <div class="code-card" data-label=".gitignore">
+<span class="cc"># Dependencies</span>
+node_modules/
+vendor/
+.venv/
+
+<span class="cc"># Build output</span>
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+
+<span class="cc"># Environment &amp; secrets — NEVER commit these</span>
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+<span class="cc"># IDE / OS</span>
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+<span class="cc"># Logs &amp; temp</span>
+*.log
+*.tmp
+*.swp
+
+<span class="cc"># Negation example — track this even if parent dir is ignored</span>
+!dist/.gitkeep
+    </div>
+
+    <div class="sec-title">Useful git config Commands</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--list --show-origin</span></div><div class="cmd-desc">Show all config values and the file they come from</div></div>
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--global</span> <span class="key">alias.lg</span> <span class="arg">"log --oneline --graph --all"</span></div><div class="cmd-desc">Set a global alias</div></div>
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--local</span> <span class="key">core.hooksPath</span> <span class="arg">.githooks</span></div><div class="cmd-desc">Point to a custom hooks directory for this repo</div></div>
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--unset</span> <span class="key">user.email</span></div><div class="cmd-desc">Remove a config key</div></div>
+      <div class="cmd-row"><div class="cmd-code">git config <span class="flag">--global</span> <span class="key">credential.helper</span> <span class="arg">store</span></div><div class="cmd-desc">Cache credentials (use osxkeychain / manager on Mac/Windows)</div></div>
+    </div>
+
+    <div class="sec-title">Commit Message Convention</div>
+    <div class="code-card" data-label="Conventional Commits">
+<span class="cf">&lt;type&gt;</span><span class="cc">[optional scope]</span>: <span class="cv">&lt;short summary&gt;</span>
+
+<span class="cc"># Types</span>
+<span class="cf">feat</span>:     new feature
+<span class="cf">fix</span>:      bug fix
+<span class="cf">docs</span>:     documentation only
+<span class="cf">style</span>:    formatting, whitespace
+<span class="cf">refactor</span>: code restructure, no behavior change
+<span class="cf">test</span>:     add or fix tests
+<span class="cf">chore</span>:    build system, tooling, dependencies
+<span class="cf">perf</span>:     performance improvement
+<span class="cf">ci</span>:       CI/CD changes
+
+<span class="cc"># Examples</span>
+<span class="cv">feat(auth): add OAuth2 login with Google</span>
+<span class="cv">fix(api): handle null response from payment service</span>
+<span class="cv">chore(deps): bump express from 4.18 to 5.0</span>
+<span class="cv">feat!: rename config key server_port → port  ← ! = breaking change</span>
+    </div>
+  </div>
+
+  <!-- ══════════════ HISTORY ══════════════ -->
+  <div class="section hidden" id="tab-history">
+
+    <div class="sec-title">Git Timeline</div>
+    <div class="tl">
+
+      <div class="tl-item">
+        <div class="tl-year">2002</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Linux Kernel Adopts BitKeeper</div>
+          <div class="tl-desc">Linus Torvalds and the Linux kernel project begin using BitKeeper, a proprietary distributed VCS, free for open-source use. It works well — but the dependency on a closed tool worries the community.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2005</div>
+        <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">BitKeeper Revokes Free License <span class="tl-tag tag-milestone">Crisis</span></div>
+          <div class="tl-desc">In April 2005, BitMover revokes the free-use license after Andrew Tridgell reverse-engineers the BitKeeper protocol. Linus Torvalds needs a replacement — fast — for managing the world's largest open-source project.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2005</div>
+        <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Linus Writes Git in 10 Days <span class="tl-tag tag-release">Birth of Git</span></div>
+          <div class="tl-desc">Torvalds starts writing Git on April 3, 2005. The first self-hosted Git commit is made on April 7 — Git is used to manage its own source code. Designed around speed, correctness, and distributed workflows. The name "git" is British slang for "unpleasant person" — Linus called it a joke.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2005</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Linux Kernel Migrates to Git <span class="tl-tag tag-milestone">Adoption</span></div>
+          <div class="tl-desc">By June 2005, the Linux kernel — then 6.7 million lines of code across 27,000 files and 2,000 contributors — is fully migrated to Git. Junio Hamano takes over as maintainer, a role he holds to this day.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2005</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git v1.0 Released <span class="tl-tag tag-release">v1.0</span></div>
+          <div class="tl-desc">Git 1.0 released December 21, 2005. Core features: branching, merging, rebasing, diff, stash, log, and remotes. The data model — content-addressable blobs, trees, commits — remains unchanged to this day.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2007</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git Gains Windows Support</div>
+          <div class="tl-desc">msysGit brings native Git to Windows. Previously a Unix-only tool, Git begins reaching a much wider developer audience beyond Linux and macOS.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2008</div>
+        <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">GitHub Launches <span class="tl-tag tag-milestone">Game Changer</span></div>
+          <div class="tl-desc">Tom Preston-Werner, Chris Wanstrath, and PJ Hyett launch GitHub in April 2008. It adds a social layer to Git — pull requests, forks, issues, and a web UI. Within two years, it becomes the center of open-source development worldwide.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2011</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">GitLab Founded</div>
+          <div class="tl-desc">Dmitriy Zaporozhets launches GitLab as a self-hosted alternative to GitHub. It later adds CI/CD pipelines, DevSecOps features, and a SaaS offering, becoming a major platform for enterprise teams.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2013</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git v1.8 — Reachability &amp; Performance</div>
+          <div class="tl-desc">The 1.8.x series brings major performance improvements for large repositories, smarter pack operations, and the <code style="color:var(--cyn)">rerere</code> feature (reuse recorded resolution) for repeated merge conflicts during rebases.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2014</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git v2.0 Released <span class="tl-tag tag-major">v2.0</span></div>
+          <div class="tl-desc">First major version bump. Cleans up old defaults: push.default changes to "simple," several deprecated options removed. Signals Git's maturity and commitment to stable, consistent behavior.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2015</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git LFS — Large File Storage</div>
+          <div class="tl-desc">GitHub releases Git Large File Storage (LFS), extending Git to handle binary assets like images, videos, and ML models efficiently — replacing them with text pointers in the repo and storing the actual content on a separate server.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2018</div>
+        <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Microsoft Acquires GitHub for $7.5B <span class="tl-tag tag-milestone">Industry</span></div>
+          <div class="tl-desc">Announced June 4, 2018. Nat Friedman becomes CEO. Under Microsoft, GitHub launches Actions (CI/CD), Codespaces (cloud dev environments), Copilot (AI coding assistant), and Advanced Security — becoming a full DevOps platform.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2020</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">GitHub Renames Default Branch to "main"</div>
+          <div class="tl-desc">GitHub changes the default branch name from "master" to "main" for all new repositories. Git 2.28 introduces the <code style="color:var(--cyn)">init.defaultBranch</code> config option so users can set their own default.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2022</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git v2.36 — SHA-256 Repository Support</div>
+          <div class="tl-desc">Git gains experimental support for SHA-256 object hashing — a long-awaited upgrade from SHA-1, which has known theoretical collision vulnerabilities. SHA-256 repos are not yet interoperable with SHA-1 remotes but the migration path is underway.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2023</div>
+        <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git v2.40 — Performance &amp; UX Improvements</div>
+          <div class="tl-desc">The 2.40.x series brings significant fetch performance improvements for monorepos, better partial clone support, improved <code style="color:var(--cyn)">git bisect</code> with AI-assisted regression hunting, and incremental improvements to the bundle URI protocol for faster clones.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-year">2025</div>
+        <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Git Powers 420M+ Repositories <span class="tl-tag tag-milestone">Today</span></div>
+          <div class="tl-desc">Git is the undisputed standard for version control. GitHub alone hosts over 420 million repositories. Git is installed on virtually every developer machine on the planet. What Linus hacked together in 10 days in 2005 is now as fundamental to software as the compiler itself.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="sec-title">By the Numbers</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-head">Born</div>
+        <div class="info-body">April 7, 2005 — first self-hosted commit by Linus Torvalds</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Maintainer</div>
+        <div class="info-body">Junio C. Hamano — has maintained Git since June 2005</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Language</div>
+        <div class="info-body">Primarily C, with shell scripts, Perl, and Python components</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">License</div>
+        <div class="info-body">GNU GPL v2 — free and open source forever</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Repos on GitHub</div>
+        <div class="info-body">420 million+ public and private repositories (2025)</div>
+      </div>
+      <div class="info-card">
+        <div class="info-head">Market Share</div>
+        <div class="info-body">~95% of professional developers use Git as their VCS</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.add('hidden'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('tab-'+id).classList.remove('hidden');
+  btn.classList.add('active');
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
