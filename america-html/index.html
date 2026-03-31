@@ -157,6 +157,109 @@
     .facts-list { display: flex; flex-direction: column; gap: .55rem; }
     .fact { display: flex; gap: .55rem; align-items: flex-start; font-size: .8rem; line-height: 1.55; color: rgba(216,224,240,.82); }
     .fact-icon { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+
+    /* ── History Timeline ── */
+    .tl-wrap {
+      position: relative;
+      padding: .5rem 0 2rem;
+    }
+    .tl-wrap::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--red), var(--blue), transparent);
+    }
+    .tl-item {
+      display: flex;
+      justify-content: flex-end;
+      padding-right: calc(50% + 2.5rem);
+      margin-bottom: 2.5rem;
+      position: relative;
+    }
+    .tl-item:nth-child(even) {
+      justify-content: flex-start;
+      padding-right: 0;
+      padding-left: calc(50% + 2.5rem);
+    }
+    .tl-dot {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 1rem;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--amber);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 12px rgba(240,180,41,.55);
+      z-index: 2;
+    }
+    .tl-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      max-width: 420px;
+      width: 100%;
+      backdrop-filter: blur(10px);
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .tl-card:hover {
+      border-color: rgba(60,59,110,.55);
+      box-shadow: 0 6px 28px rgba(60,59,110,.18);
+      transform: translateY(-2px);
+    }
+    .tl-year-badge {
+      font-size: .68rem;
+      font-weight: 700;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      letter-spacing: .1em;
+      color: var(--amber);
+      margin-bottom: .3rem;
+    }
+    .tl-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: .35rem;
+      line-height: 1.3;
+    }
+    .tl-cat {
+      display: inline-block;
+      font-size: .62rem;
+      font-weight: 700;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: .15rem .5rem;
+      border-radius: 5px;
+      margin-bottom: .5rem;
+    }
+    .cat-founding  { background: rgba(178,34,52,.15); border: 1px solid rgba(178,34,52,.35); color: #e87a88; }
+    .cat-war       { background: rgba(60,59,110,.2);  border: 1px solid rgba(60,59,110,.45); color: #9a9de0; }
+    .cat-rights    { background: rgba(212,160,23,.12); border: 1px solid rgba(212,160,23,.35); color: var(--amber); }
+    .cat-politics  { background: rgba(100,160,80,.1);  border: 1px solid rgba(100,160,80,.3); color: #8ecc78; }
+    .cat-science   { background: rgba(60,150,200,.1);  border: 1px solid rgba(60,150,200,.3); color: #6bbfe0; }
+    .cat-economy   { background: rgba(180,120,60,.1);  border: 1px solid rgba(180,120,60,.3); color: #d4915a; }
+    .cat-tragedy   { background: rgba(80,80,80,.15);   border: 1px solid rgba(120,120,120,.3); color: #aaa; }
+    .tl-body {
+      font-size: .82rem;
+      color: rgba(216,224,240,.82);
+      line-height: 1.65;
+    }
+
+    @media(max-width: 700px) {
+      .tl-wrap::before { left: 1rem; transform: none; }
+      .tl-item, .tl-item:nth-child(even) {
+        justify-content: flex-start;
+        padding-left: 3rem;
+        padding-right: 0;
+      }
+      .tl-dot { left: 1rem; transform: translateX(-50%); }
+      .tl-card { max-width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -177,6 +280,7 @@
       <button class="tab" onclick="switchTab('military')">🛡️ Military</button>
       <button class="tab" onclick="switchTab('energy')">⚡ Energy &amp; Infrastructure</button>
       <button class="tab" onclick="switchTab('culture')">🎸 Culture</button>
+      <button class="tab" onclick="switchTab('history')">📜 History</button>
     </div>
 
     <div id="section-science"    class="section"><div class="cards" id="science-grid"></div></div>
@@ -186,6 +290,9 @@
     <div id="section-military"   class="section hidden"><div class="cards" id="military-grid"></div></div>
     <div id="section-energy"     class="section hidden"><div class="cards" id="energy-grid"></div></div>
     <div id="section-culture"    class="section hidden"><div class="cards" id="culture-grid"></div></div>
+    <div id="section-history"    class="section hidden">
+      <div class="tl-wrap" id="history-tl"></div>
+    </div>
   </div>
 
 <script>
@@ -1177,7 +1284,7 @@ function loadWikiImage(img) {
 }
 
 function switchTab(name) {
-  var tabs = ['science','tech','medicine','economy','military','energy','culture'];
+  var tabs = ['science','tech','medicine','economy','military','energy','culture','history'];
   if (!tabs.includes(name)) name = 'science';
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', tabs[i] === name);
@@ -1188,6 +1295,85 @@ function switchTab(name) {
   localStorage.setItem('america_tab', name);
 }
 
+const HISTORY = [
+  { year: '1607', title: 'Jamestown — First Permanent English Settlement', cat: 'founding',
+    body: 'English colonists establish Jamestown, Virginia — the first permanent English settlement in the Americas. It is the fragile, disease-ridden, desperate seed from which the greatest nation on Earth eventually grows.' },
+  { year: '1620', title: 'The Mayflower Compact', cat: 'founding',
+    body: '102 Pilgrims cross the Atlantic on the Mayflower and draft the Mayflower Compact aboard ship — one of the earliest frameworks for self-governance in the New World. They land at Plymouth and survive against extraordinary odds.' },
+  { year: '1776', title: 'Declaration of Independence', cat: 'founding',
+    body: 'On July 4th, the Continental Congress adopts Thomas Jefferson\'s Declaration of Independence. "We hold these truths to be self-evident, that all men are created equal." It is the most consequential sentence ever written about human freedom.' },
+  { year: '1783', title: 'Treaty of Paris — The Revolution Won', cat: 'war',
+    body: 'Britain recognizes American independence. A volunteer army of farmers, tradesmen, and idealists — led by George Washington — defeated the most powerful military empire on Earth. It has never been adequately explained.' },
+  { year: '1787', title: 'The Constitution of the United States', cat: 'founding',
+    body: '55 delegates meet in Philadelphia and produce the most enduring written constitution in human history. James Madison\'s masterpiece of checks, balances, and limited government has governed the United States for over 235 years.' },
+  { year: '1803', title: 'Louisiana Purchase', cat: 'politics',
+    body: 'President Jefferson doubles the size of the United States overnight, purchasing 828,000 square miles from Napoleon for $15 million — approximately 3 cents per acre. The most consequential real estate deal in history.' },
+  { year: '1812', title: 'War of 1812', cat: 'war',
+    body: 'The young republic goes to war with Britain again. British forces burn the White House in 1814, but America does not yield. Andrew Jackson\'s spectacular victory at the Battle of New Orleans cements a new sense of national identity.' },
+  { year: '1848', title: 'Gold Rush — California Explodes', cat: 'economy',
+    body: 'Gold is discovered at Sutter\'s Mill, California. 300,000 people pour in from around the world. San Francisco becomes a boomtown overnight. The West is opened. America\'s destiny as a continental power is confirmed.' },
+  { year: '1861', title: 'The Civil War Begins', cat: 'war',
+    body: 'Confederate forces fire on Fort Sumter. The bloodiest conflict in American history begins — 620,000 soldiers will die over four years. The war tests whether a nation "conceived in liberty" can survive its own contradictions.' },
+  { year: '1865', title: 'The Union Preserved — Slavery Abolished', cat: 'rights',
+    body: 'The Civil War ends with Confederate surrender at Appomattox. Days later, Lincoln is assassinated. The 13th Amendment abolishes slavery forever. The nation is reunited, scarred, and forced to become what it had always claimed to be.' },
+  { year: '1869', title: 'Transcontinental Railroad Completed', cat: 'science',
+    body: 'The golden spike is driven at Promontory Summit, Utah, connecting the Atlantic and Pacific coasts by rail for the first time. A continent-spanning nation is now bound together in days instead of months.' },
+  { year: '1898', title: 'Spanish-American War — America Becomes a World Power', cat: 'war',
+    body: 'A ten-week war against Spain ends with the US acquiring Puerto Rico, Guam, and the Philippines. America steps onto the world stage as a major power for the first time. The age of American global influence has begun.' },
+  { year: '1903', title: 'The Wright Brothers Take Flight', cat: 'science',
+    body: 'Orville and Wilbur Wright achieve the first powered, controlled airplane flight at Kitty Hawk, North Carolina. The flight lasts 12 seconds. Sixty-six years later, Americans walk on the Moon.' },
+  { year: '1917', title: 'America Enters World War I', cat: 'war',
+    body: 'President Wilson asks Congress to declare war on Germany. Two million American soldiers arrive in Europe. Their presence breaks the stalemate and ends the war by November 1918. Europe is saved by the New World for the first time.' },
+  { year: '1920', title: '19th Amendment — Women\'s Suffrage', cat: 'rights',
+    body: 'The 19th Amendment is ratified, guaranteeing American women the right to vote. After decades of struggle led by suffragists including Susan B. Anthony and Elizabeth Cady Stanton, half the population gains full democratic participation.' },
+  { year: '1929', title: 'The Great Depression', cat: 'economy',
+    body: 'The stock market crashes on Black Tuesday. Banks fail. Unemployment reaches 25%. The Dust Bowl devastates the Great Plains. FDR\'s New Deal reshapes the relationship between government and citizens — and the nation endures.' },
+  { year: '1941', title: 'Pearl Harbor — America Enters WWII', cat: 'war',
+    body: 'Japan attacks Pearl Harbor on December 7th — "a date which will live in infamy." The sleeping giant awakens. America mobilizes the most extraordinary industrial and military effort in human history.' },
+  { year: '1944', title: 'D-Day — Liberation of Europe', cat: 'war',
+    body: 'On June 6th, 156,000 Allied troops storm the beaches of Normandy under supreme commander Dwight Eisenhower. The largest seaborne invasion in history turns the tide of the war. Western Europe begins its liberation.' },
+  { year: '1945', title: 'World War II Ends — The American Century Begins', cat: 'war',
+    body: 'Germany surrenders in May; Japan follows in September after atomic bombs fall on Hiroshima and Nagasaki. The United States emerges as the world\'s preeminent economic, military, and moral power. The American Century begins.' },
+  { year: '1947', title: 'The Marshall Plan & Cold War', cat: 'politics',
+    body: 'Secretary of State George Marshall proposes a $13 billion plan to rebuild war-shattered Europe. The Cold War with the Soviet Union begins. America chooses to rebuild its former enemies rather than exploit them — changing history.' },
+  { year: '1954', title: 'Brown v. Board of Education', cat: 'rights',
+    body: 'The Supreme Court unanimously rules that racial segregation in public schools is unconstitutional, overturning Plessy v. Ferguson. Chief Justice Warren\'s decision ignites the modern Civil Rights Movement.' },
+  { year: '1962', title: 'Cuban Missile Crisis', cat: 'politics',
+    body: 'For 13 days in October, the world stands on the brink of nuclear war. President Kennedy faces down Soviet missiles in Cuba. The crisis ends without nuclear exchange — the most dangerous fortnight in human history, narrowly survived.' },
+  { year: '1964', title: 'Civil Rights Act', cat: 'rights',
+    body: 'President Johnson signs the Civil Rights Act of 1964, outlawing discrimination based on race, color, religion, sex, or national origin. Martin Luther King Jr.\'s dream — earned through years of marches, arrests, and sacrifice — becomes law.' },
+  { year: '1969', title: 'Apollo 11 — First Humans on the Moon', cat: 'science',
+    body: 'Neil Armstrong steps onto the lunar surface on July 20th. "One small step for man, one giant leap for mankind." Eight years earlier, Kennedy had promised the Moon. America delivered — watched by 600 million people worldwide.' },
+  { year: '1974', title: 'Nixon Resigns — Watergate', cat: 'politics',
+    body: 'Richard Nixon becomes the only US president to resign from office, undone by the Watergate break-in and cover-up. The free press and independent judiciary function as the Founders designed. The system holds.' },
+  { year: '1989', title: 'The Berlin Wall Falls', cat: 'politics',
+    body: 'On November 9th, East Germans pour through the Berlin Wall. The Cold War — America\'s 40-year struggle against Soviet communism — is won. President Reagan\'s "Mr. Gorbachev, tear down this wall!" becomes prophecy fulfilled.' },
+  { year: '1991', title: 'The Soviet Union Collapses', cat: 'politics',
+    body: 'The USSR dissolves on Christmas Day. 15 independent republics emerge. The United States stands as the world\'s sole superpower — a position of unrivaled global influence no nation in history had ever occupied.' },
+  { year: '2001', title: '9/11 — America Under Attack', cat: 'tragedy',
+    body: 'Al-Qaeda terrorists hijack four commercial aircraft. The Twin Towers fall. 2,977 people are killed in the deadliest attack on American soil since Pearl Harbor. America responds with a global war on terror that reshapes the 21st century.' },
+  { year: '2008', title: 'Barack Obama — First Black President', cat: 'rights',
+    body: 'Barack Obama is elected the 44th President and first African American to hold the office. On a night in November, America demonstrates once more its capacity to surprise the world and itself.' },
+  { year: '2020', title: 'COVID-19 Pandemic', cat: 'tragedy',
+    body: 'A novel coronavirus paralyzes the globe. America loses over a million lives. But American scientists — at Moderna and Pfizer/BioNTech — develop the world\'s first mRNA vaccines in under a year, a scientific miracle that saved millions of lives worldwide.' },
+  { year: '2025', title: 'Donald Trump Returns — 47th President', cat: 'politics',
+    body: 'Donald J. Trump wins the 2024 presidential election and is inaugurated on January 20, 2025 — completing the most remarkable political comeback in American history. America\'s story, as always, continues.' },
+];
+
+function buildTimeline(items, containerId) {
+  var c = document.getElementById(containerId);
+  c.innerHTML = items.map(function(e, i) {
+    return '<div class="tl-item">'
+      + '<div class="tl-dot"></div>'
+      + '<div class="tl-card">'
+      + '<div class="tl-year-badge">' + e.year + '</div>'
+      + '<div class="tl-title">' + e.title + '</div>'
+      + '<span class="tl-cat cat-' + e.cat + '">' + e.cat + '</span>'
+      + '<div class="tl-body">' + e.body + '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
 buildCards(SCIENCE,  'science-grid',  'Entry', '🚀');
 buildCards(TECH,     'tech-grid',     'Entry', '💻');
 buildCards(MEDICINE, 'medicine-grid', 'Entry', '🏥');
@@ -1195,6 +1381,7 @@ buildCards(ECONOMY,  'economy-grid',  'Entry', '📈');
 buildCards(MILITARY, 'military-grid', 'Entry', '🛡️');
 buildCards(ENERGY,   'energy-grid',   'Entry', '⚡');
 buildCards(CULTURE,  'culture-grid',  'Entry', '🎸');
+buildTimeline(HISTORY, 'history-tl');
 switchTab(localStorage.getItem('america_tab') || 'science');
 </script>
 </body>
