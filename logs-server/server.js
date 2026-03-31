@@ -2,6 +2,7 @@ const http = require('http');
 const fs   = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
+const geoip = require('geoip-lite');
 
 const LOGS_DIR   = '/logs';
 const SSH_DIR    = '/ssh-logs';
@@ -14,29 +15,17 @@ function stripAnsi(s) {
           .replace(/\r/g, '\n');
 }
 
-// ── GeoIP lookup via ip-api.com (free, no key) ───────────────────────────────
+// ── GeoIP lookup via local geoip-lite database ────────────────────────────────
 const ipGeoCache = new Map(); // ip -> { countryCode, country, city, lat, lon }
 
 function lookupGeo(ip) {
   if (ipGeoCache.has(ip)) return Promise.resolve(ipGeoCache.get(ip));
-  return new Promise(resolve => {
-    const done = g => { ipGeoCache.set(ip, g); resolve(g); };
-    const req = http.get(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=countryCode,country,city,lat,lon`,
-      res => {
-        let data = '';
-        res.on('data', d => data += d);
-        res.on('end', () => {
-          try {
-            const { countryCode = '', country = '', city = '', lat = 0, lon = 0 } = JSON.parse(data);
-            done({ countryCode, country, city, lat, lon });
-          } catch { done({ countryCode: '', country: '', city: '', lat: 0, lon: 0 }); }
-        });
-      }
-    );
-    req.setTimeout(4000, () => { req.destroy(); done({ countryCode: '', country: '', city: '', lat: 0, lon: 0 }); });
-    req.on('error', () => done({ countryCode: '', country: '', city: '', lat: 0, lon: 0 }));
-  });
+  const result = geoip.lookup(ip);
+  const geo = result
+    ? { countryCode: result.country || '', country: result.country || '', city: result.city || '', lat: result.ll[0] || 0, lon: result.ll[1] || 0 }
+    : { countryCode: '', country: '', city: '', lat: 0, lon: 0 };
+  ipGeoCache.set(ip, geo);
+  return Promise.resolve(geo);
 }
 
 function ipFromFilename(filename) {

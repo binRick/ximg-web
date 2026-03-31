@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tampa — tampa.ximg.app</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="vendor/leaflet.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -378,17 +377,7 @@
     <!-- ── Traffic ── -->
     <div id="tab-traffic" class="tab-panel hidden">
       <div class="sec-header">Live Tampa Traffic</div>
-      <div class="traffic-info">
-        <span class="traffic-badge"><span class="traffic-live-dot"></span> LIVE</span>
-        Real-time traffic conditions · Tampa Bay area · Powered by Waze
-      </div>
-      <div id="traffic-frame-wrap">
-        <iframe
-          src="https://embed.waze.com/iframe?zoom=12&lat=27.9506&lon=-82.4572&ct=livemap&pin=0"
-          allowfullscreen
-          title="Tampa live traffic map">
-        </iframe>
-      </div>
+      <div style="text-align:center;padding:3rem;color:#64748b;font-size:1.1rem">Live traffic data requires an internet connection.</div>
     </div>
 
     <!-- ── Old West Tampa ── -->
@@ -456,7 +445,6 @@
 
   </div>
 
-<script src="vendor/leaflet.js"></script>
 <script>
 
 /* ── Tab switching ── */
@@ -683,20 +671,10 @@ const CAT_LABELS = {
 };
 
 /* ── Build eats cards ── */
-async function loadWikiImage(img) {
-  const title = img.dataset.wiki;
-  try {
-    const res = await fetch('https://en.wikipedia.org/w/api.php?action=query&titles=' +
-      encodeURIComponent(title) + '&prop=pageimages&format=json&pithumbsize=900&origin=*');
-    const data = await res.json();
-    const page = Object.values(data.query.pages)[0];
-    if (page && page.thumbnail) { img.src = page.thumbnail.source; return; }
-  } catch(e) {}
-  try {
-    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
-    const data = await res.json();
-    if (data.thumbnail) img.src = data.thumbnail.source;
-  } catch(e) {}
+function loadWikiImage(img) {
+  const M = {"Bungalow":"Bungalow.jpg","Cigar":"Cigar.jpg","Columbia_Restaurant":"Columbia_Restaurant.png","Craft_beer":"Craft_beer.jpg","Cuban_sandwich":"Cuban_sandwich.jpg","Hillsborough_River_(Florida)":"Hillsborough_River_(Florida).jpg","Jos\u00e9_Mart\u00ed":"Jos\u00e9_Mart\u00ed.jpg","South_Tampa":"South_Tampa.jpg","Tampa,_Florida":"Tampa,_Florida.jpg","Tampa_Bay":"Tampa_Bay.jpg","West_Tampa":"West_Tampa.jpg","Ybor_City":"Ybor_City.jpg","Bern's_Steak_House":"Bern_s_Steak_House.png"};
+  const f = M[img.dataset.wiki];
+  if (f) { img.onload = () => img.classList.add('loaded'); img.onerror = () => img.style.display='none'; img.src = 'images/' + f; }
 }
 
 function buildCard(item, gridId) {
@@ -774,48 +752,61 @@ function buildEatsCard(item) {
 
 /* ── Build map ── */
 function initMap() {
-  const map = L.map('map', { center: [27.9506, -82.4572], zoom: 12 });
+  // Static map: OSM tiles stitched at zoom 11, tiles x=552-555, y=857-859
+  // Image: 1024x768 px, bounds lat 27.68-28.15, lon -82.97 to -82.27
+  const IMG_W = 1024, IMG_H = 768;
+  const ZOOM = 11, N = Math.pow(2, ZOOM);
+  const TILE_X0 = 552, TILE_Y0 = 857;
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 19,
-  }).addTo(map);
+  function latLonToPx(lat, lon) {
+    var xt = (lon + 180) / 360 * N;
+    var yt = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * N;
+    return { x: Math.round((xt - TILE_X0) * 256), y: Math.round((yt - TILE_Y0) * 256) };
+  }
 
-  PLACES.forEach(p => {
-    const color = CAT_COLORS[p.cat];
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="
-        background:${color};
-        width:32px;height:32px;border-radius:50% 50% 50% 4px;
-        display:flex;align-items:center;justify-content:center;
-        font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.55);
-        border:2px solid rgba(255,255,255,.3);
-        transform:rotate(-45deg)">
-        <span style="transform:rotate(45deg)">${p.icon}</span>
-      </div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 30],
-      popupAnchor: [0, -32],
+  var container = document.getElementById('map-container');
+  container.innerHTML = '';
+  container.style.cssText = 'position:relative;width:100%;max-width:1024px;margin:0 auto;user-select:none;';
+
+  var img = document.createElement('img');
+  img.src = 'images/tampa-map.png';
+  img.alt = 'Tampa area map';
+  img.style.cssText = 'width:100%;height:auto;display:block;border-radius:8px;';
+  container.appendChild(img);
+
+  var tooltip = document.createElement('div');
+  tooltip.style.cssText = 'position:absolute;background:rgba(7,22,36,.92);border:1px solid rgba(14,165,233,.4);border-radius:8px;padding:.6rem .85rem;font-size:.85rem;color:#dff4ff;pointer-events:none;display:none;z-index:10;max-width:220px;line-height:1.4;';
+  container.appendChild(tooltip);
+
+  PLACES.forEach(function(p) {
+    var pos = latLonToPx(p.lat, p.lng);
+    var pct_x = pos.x / IMG_W * 100;
+    var pct_y = pos.y / IMG_H * 100;
+    if (pct_x < 0 || pct_x > 100 || pct_y < 0 || pct_y > 100) return;
+
+    var color = CAT_COLORS[p.cat];
+    var marker = document.createElement('div');
+    marker.style.cssText = 'position:absolute;width:28px;height:28px;border-radius:50% 50% 50% 4px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.7);border:2px solid rgba(255,255,255,.35);transform:rotate(-45deg) translate(-50%,-50%);left:' + pct_x + '%;top:' + pct_y + '%;cursor:pointer;background:' + color + ';';
+    marker.innerHTML = '<span style="transform:rotate(45deg)">' + p.icon + '</span>';
+    marker.title = p.name;
+
+    marker.addEventListener('mouseenter', function(e) {
+      tooltip.innerHTML = '<strong>' + p.icon + ' ' + p.name + '</strong><br>' + p.desc;
+      tooltip.style.display = 'block';
+      var left = pct_x + 3;
+      var top = pct_y - 5;
+      if (left > 55) left = pct_x - 35;
+      tooltip.style.left = left + '%';
+      tooltip.style.top = top + '%';
     });
-
-    L.marker([p.lat, p.lng], { icon })
-      .addTo(map)
-      .bindPopup(`
-        <div class="popup-name">${p.icon} ${p.name}</div>
-        <div class="popup-desc">${p.desc}</div>
-        <div class="popup-cat">${CAT_LABELS[p.cat]}</div>
-      `);
+    marker.addEventListener('mouseleave', function() { tooltip.style.display = 'none'; });
+    container.appendChild(marker);
   });
 
   // Legend
-  const legend = document.getElementById('map-legend');
-  Object.entries(CAT_LABELS).forEach(([key, label]) => {
-    legend.innerHTML +=
-      `<span class="legend-item">
-        <span class="legend-dot" style="background:${CAT_COLORS[key]}"></span>
-        ${label}
-      </span>`;
+  var legend = document.getElementById('map-legend');
+  Object.entries(CAT_LABELS).forEach(function([key, label]) {
+    legend.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + CAT_COLORS[key] + '"></span>' + label + '</span>';
   });
 }
 
