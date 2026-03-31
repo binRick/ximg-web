@@ -86,6 +86,7 @@ const LOG_FILES = {
   mail:      'mail.access.log',
   internet:  'internet.access.log',
   change:    'change.access.log',
+  apps:      'apps.access.log',
   logs:      'logs.access.log',
 };
 
