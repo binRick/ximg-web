@@ -1,168 +1,149 @@
 # ximg-web
 
-Production multi-site web stack running on a single Linux VM at `172.238.205.61`. nginx sits in front of all services as a reverse proxy, handles SSL termination via Let's Encrypt, and enforces HTTPS across four subdomains. Apache serves static content on the internal Docker network — all public traffic enters through nginx only.
+Production multi-site web portfolio stack running on a single Linux VM at `172.238.205.61`. nginx sits in front as a reverse proxy handling SSL termination and virtual hosting. Apache serves static content per subdomain on the internal Docker network. Several Node.js and Python services power dynamic features.
 
 ## Live Sites
 
-### [ximg.app](https://ximg.app)
-The main landing page. Animated grid background, floating colour orbs, frosted-glass card, and a set of tech chips showing the stack. Served by Apache httpd.
-
-### [linux.ximg.app](https://linux.ximg.app)
-A mock Linux terminal running entirely in the browser via [xterm.js](https://xtermjs.org/). Supports ~20 commands (`ls`, `cat`, `neofetch`, `docker`, `curl`, …), arrow-key history, and Tab completion. A Tux penguin SVG bounces around the background DVD-screensaver style, changing glow colour on each wall hit. Served by Apache httpd.
-
-### [butterfly.ximg.app](https://butterfly.ximg.app)
-Interactive parametric animation built on the [butterfly curve](https://en.wikipedia.org/wiki/Butterfly_curve_(transcendental)) equation. Particles trace butterfly-shaped paths and drift toward the mouse cursor. Click or tap anywhere to spawn a burst of new particles. Served by Apache httpd.
-
-### [ascii.ximg.app](https://ascii.ximg.app)
-Three interactive ASCII art demos rendered frame-by-frame onto an HTML5 canvas: a spinning 3D torus (the classic [a1k0n donut](https://www.a1k0n.net/2011/07/20/donut-math.html)), a Matrix-style character rain, and a sine-wave plasma effect. Switch demos with the buttons or keys 1–3. Served by Apache httpd.
-
-### [json.ximg.app](https://json.ximg.app)
-A visual reference card for JSON. Syntax-highlighted example covering all six JSON types, a colour-coded legend, and individual type cards explaining each one. Served by Apache httpd.
-
-### [logs.ximg.app](https://logs.ximg.app)
-Live nginx log viewer. A Node.js WebSocket server tails the per-site nginx access logs and streams new entries to the browser in real time. Newest events appear at the top. Features a tab switcher between all subdomains, colour-coded HTTP status codes, live per-class request counters, and pause/resume without disconnecting.
+| Subdomain | Description |
+|-----------|-------------|
+| [ximg.app](https://ximg.app) | Landing page — animated grid, floating orbs, frosted-glass app directory card |
+| [apps.ximg.app](https://apps.ximg.app) | Full searchable directory of every app in the stack |
+| [linux.ximg.app](https://linux.ximg.app) | Browser terminal via xterm.js — ~20 mock shell commands, DVD-bouncing Tux mascot |
+| [butterfly.ximg.app](https://butterfly.ximg.app) | Canvas particle animation driven by the butterfly curve polar equation |
+| [ascii.ximg.app](https://ascii.ximg.app) | Three ASCII demos: spinning 3D donut, matrix rain, sine-wave plasma |
+| [json.ximg.app](https://json.ximg.app) | JSON type reference card with syntax-highlighted examples |
+| [yaml.ximg.app](https://yaml.ximg.app) | YAML reference covering scalars, sequences, mappings, anchors, and gotchas |
+| [poker.ximg.app](https://poker.ximg.app) | Texas Hold'em hand evaluator — hole cards, hand rank, probability chart, GTO preflop chart |
+| [mario.ximg.app](https://mario.ximg.app) | Canvas-based Mario platformer playable in the browser — move, jump, enemies, score |
+| [doom.ximg.app](https://doom.ximg.app) | DOOM lore deep-dive — weapons, enemies, levels, id Software history |
+| [cnc.ximg.app](https://cnc.ximg.app) | Command & Conquer franchise — every game, factions, units, buildings, lore, plus a browser RTS tab |
+| [simcity.ximg.app](https://simcity.ximg.app) | SimCity legacy — every game, Will Wright, and Cities: Skylines as its heir |
+| [kombat.ximg.app](https://kombat.ximg.app) | Full Mortal Kombat character roster with bios and fighting stats |
+| [wargames.ximg.app](https://wargames.ximg.app) | 1983 cold-war thriller guide — cast, plot, WOPR terminal Easter egg |
+| [docker.ximg.app](https://docker.ximg.app) | Docker command reference and annotated Docker Compose guide |
+| [internet.ximg.app](https://internet.ximg.app) | What the internet is, how DARPA built it, top 20 protocols |
+| [computers.ximg.app](https://computers.ximg.app) | History of American computing — timeline, pioneering companies, key people |
+| [pizza.ximg.app](https://pizza.ximg.app) | Top pizza chains and regional styles across America |
+| [chinese.ximg.app](https://chinese.ximg.app) | Eight regional Chinese cuisines and their iconic dishes |
+| [moto.ximg.app](https://moto.ximg.app) | Motorcycle culture — types, iconic brands, notable bikes |
+| [monkey.ximg.app](https://monkey.ximg.app) | Primate species, facts, and fun content |
+| [india.ximg.app](https://india.ximg.app) | India explorer — culture, food, landmarks, history |
+| [wood.ximg.app](https://wood.ximg.app) | Woodworking — species, joinery, hand/power tools, finishing |
+| [guns.ximg.app](https://guns.ximg.app) | Firearm types and the top 10 most popular guns in America |
+| [tampa.ximg.app](https://tampa.ximg.app) | Tampa Bay guide — best restaurants, interactive map, live traffic |
+| [florida.ximg.app](https://florida.ximg.app) | Florida — beaches, nature, food, and eternal summer |
+| [america.ximg.app](https://america.ximg.app) | Why the USA is the greatest country — science, tech, military, culture |
+| [trump.ximg.app](https://trump.ximg.app) | Donald J. Trump — fun facts, life timeline, presidency achievements, photo gallery |
+| [rx.ximg.app](https://rx.ximg.app) | RxFitt health coaching — GLP-1 tracking, metabolic labs, body composition, workouts |
+| [fidonet.ximg.app](https://fidonet.ximg.app) | FidoNet BBS history — how it worked, culture, the 40,000-node volunteer network |
+| [logs.ximg.app](https://logs.ximg.app) | Real-time nginx access log viewer over WebSocket + SSH honeypot session browser |
+| [mail.ximg.app](https://mail.ximg.app) | Webmail inbox for @ximg.app — live SMTP receiver with Gmail-style reader UI |
+| [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    client(["Browser"])
-
-    subgraph host ["Linux VM — 172.238.205.61"]
-        nginx["nginx\n:80 / :443\nSSL termination\nHTTP→HTTPS\nVirtual hosting"]
-        web["Apache httpd\nximg.app\nstatic HTML"]
-        linux["Apache httpd\nlinux.ximg.app\nxterm.js terminal"]
-        butterfly["Apache httpd\nbutterfly.ximg.app\ncanvas animation"]
-        logs["Node.js\nlogs.ximg.app\nWebSocket log streamer"]
-        certs["/etc/letsencrypt\nLet's Encrypt cert\n(ximg.app + subdomains)"]
-        logfiles["./logs/\nper-site access\n& error logs"]
-    end
-
-    client -->|"HTTPS :443"| nginx
-    nginx -->|"proxy_pass"| web
-    nginx -->|"proxy_pass"| linux
-    nginx -->|"proxy_pass"| butterfly
-    nginx -->|"proxy_pass\n(WebSocket)"| logs
-    certs -->|"mounted read-only"| nginx
-    nginx -->|"writes"| logfiles
-    logfiles -->|"mounted read-only"| logs
 ```
+Browser
+  │
+  └─► nginx :80/:443  (SSL termination, HTTP→HTTPS, virtual hosting)
+        │
+        ├─► Apache httpd containers (one per static subdomain, :80 internal)
+        │     └── shared-html/nav.js volume-mounted into every container
+        │
+        ├─► logs-server (Node.js :3000)
+        │     ├── WebSocket /ws  — tails nginx access logs + SSH session files
+        │     └── HTTP          — log viewer + SSH session browser UI
+        │
+        ├─► change-server (Node.js)
+        │     └── Serves live git log as JSON
+        │
+        ├─► mail-server (Node.js :25)
+        │     └── SMTP receiver + webmail reader UI
+        │
+        └─► ssh-server (Python/paramiko :22, isolated ssh-net)
+              └── SSH honeypot — accepts any login, records full sessions
+```
+
+All containers run on an internal Docker bridge network. Only nginx (80/443), ssh-server (22), and mail-server (25) have public ports.
 
 ## Stack
 
 | Component | Image / Runtime | Role |
 |-----------|----------------|------|
-| nginx | `nginx:alpine` | Reverse proxy, SSL termination, HTTP→HTTPS redirect, virtual hosting |
-| Apache (ximg) | `httpd:2.4-alpine` | Serves `ximg.app` static files |
-| Apache (linux) | `httpd:2.4-alpine` | Serves `linux.ximg.app` — xterm.js terminal + Tux DVD screensaver |
-| Apache (butterfly) | `httpd:2.4-alpine` | Serves `butterfly.ximg.app` — interactive canvas animation |
-| Node.js (logs) | `node:22-alpine` | WebSocket server that tails nginx logs and streams them to the browser |
+| nginx | `nginx:alpine` | Reverse proxy, SSL termination, HTTP→HTTPS, virtual hosting |
+| Apache httpd | `httpd:2.4-alpine` | Static file serving — one container per subdomain |
+| logs-server | `node:22-alpine` | WebSocket log streamer; tails nginx logs and SSH session files |
+| change-server | `node:22-alpine` | Serves live git commit history |
+| mail-server | `node:22-alpine` | SMTP receiver on port 25, webmail reader UI |
+| ssh-server | `python:3.12-alpine` + paramiko | SSH honeypot on port 22, records sessions to `ssh-logs/` |
+| systemd | `ximg-web.service` | Manages the entire Docker Compose stack on boot |
 
-All containers run on an internal Docker bridge network. Only nginx has public ports (80, 443).
+## Shared Nav
 
-## Technologies
+`shared-html/nav.js` — shared navigation bar (IIFE) volume-mounted read-only into every Apache container at `/shared/`. Load it as the **last script before `</body>`** — it calls `document.body.prepend()` and silently fails if the body doesn't exist yet.
 
-| Technology | Usage |
-|-----------|-------|
-| **nginx** | Reverse proxy, virtual hosting, SSL termination, HSTS |
-| **Apache httpd** | Static file serving for three subdomains |
-| **Docker** | Containerisation for all services |
-| **Docker Compose** | Multi-service orchestration |
-| **Alpine Linux** | Base image for all containers (minimal footprint) |
-| **Let's Encrypt / Certbot** | Free TLS certificates via HTTP-01 webroot challenge |
-| **Node.js** | WebSocket log-streaming server |
-| **ws** | WebSocket library for Node.js |
-| **xterm.js** | Browser-based terminal emulation (`linux.ximg.app`) |
-| **xterm-addon-fit** | Auto-resize xterm.js to viewport |
-| **Canvas API** | Parametric butterfly particle animation (`butterfly.ximg.app`) |
-| **SELinux** | Disabled on host (permissive → disabled in `/etc/selinux/config`) |
+## SSH Honeypot
 
-## Subdomains & Virtual Hosting
+- Listens on host port 22; accepts any username/password
+- Drops attacker into `/bin/bash` as non-root `user` inside an isolated container
+- Outbound traffic blocked via iptables; runs on a separate `ssh-net` Docker network
+- Sessions recorded to `ssh-logs/YYYYMMDD-HHMMSS-IP-PID.log` (gitignored)
+- Browsable live at `logs.ximg.app` under the "SSH Sessions" tab
 
-nginx routes incoming requests by `server_name`:
+## Mail Server
 
-| Domain | Backend | Notes |
-|--------|---------|-------|
-| `ximg.app`, `www.ximg.app` | `web:80` | Main site |
-| `linux.ximg.app` | `linux:80` | Terminal page |
-| `butterfly.ximg.app` | `butterfly:80` | Canvas animation page |
-| `logs.ximg.app` | `logs:3000` | WebSocket — Upgrade/Connection headers forwarded, HTTP/1.1 required |
+- Listens on port 25 and receives any email addressed to `@ximg.app`
+- Messages stored in `mail-data/` and viewable through the webmail UI at `mail.ximg.app`
 
-HTTP requests on port 80 are redirected to HTTPS. ACME challenge paths (`.well-known/acme-challenge/`) are exempt so certbot renewals work without stopping nginx.
+## Live Log Viewer (`logs.ximg.app`)
+
+Node.js server (`logs-server/server.js`) tails nginx access logs and SSH session files, streaming new lines to the browser over WebSockets. On connect it replays the last 100 lines, then streams live. Uses `fs.watch` with a 1s polling fallback.
+
+Frontend features: tab per subdomain, color-coded HTTP status codes (2xx green / 3xx cyan / 4xx yellow / 5xx red), live per-class counters, pause/resume, auto-reconnect.
+
+## Change Log (`change.ximg.app`)
+
+`change-server` reads the repo's git log and serves it as JSON. The frontend renders a searchable table of every commit — message, hash, author, date — updated on each page load.
 
 ## SSL
 
-Certificates are issued and auto-renewed via [Certbot](https://certbot.eff.org/) using the webroot HTTP-01 challenge method.
+Certificates issued via [Certbot](https://certbot.eff.org/) HTTP-01 webroot challenge. The cert covers all subdomains via `--expand`. Stored at `/etc/letsencrypt/live/ximg.app/`, mounted read-only into nginx. Auto-renewed by the certbot systemd timer; a deploy hook reloads nginx on renewal. TLS 1.2/1.3 only, HSTS enforced (`max-age=63072000`).
 
-- Cert covers `ximg.app`, `www.ximg.app`, `linux.ximg.app`, `logs.ximg.app`, `butterfly.ximg.app`
-- Stored at `/etc/letsencrypt/live/ximg.app/` and mounted read-only into nginx
-- Auto-renewed by the certbot systemd timer; a deploy hook reloads nginx on renewal
-- TLS 1.2 / 1.3 only, HSTS enforced (`max-age=63072000`)
-
-Manual renewal test:
 ```bash
-certbot renew --dry-run
+certbot renew --dry-run   # test renewal
 ```
 
 ## Logging
 
-nginx writes per-site logs to `./logs/` on the host, mounted read-only into the logs container:
+nginx writes per-site logs to `./logs/` on the host, mounted read-only into the logs container.
 
-```
-logs/
-├── ximg.access.log           # ximg.app requests
-├── ximg.error.log
-├── linux.access.log          # linux.ximg.app requests
-├── linux.error.log
-├── butterfly.access.log      # butterfly.ximg.app requests
-├── butterfly.error.log
-├── logs.access.log           # logs.ximg.app requests
-├── logs.error.log
-└── error.log
-```
-
-Generate a markdown summary report:
 ```bash
-bash log-summary.sh
+bash log-summary.sh   # generate a markdown summary report
 ```
-
-## Live Log Viewer (`logs.ximg.app`)
-
-A Node.js server (`logs-server/server.js`) tails the per-site nginx access logs and streams new lines to the browser over **WebSockets**. On connect it immediately replays the last 100 lines, then streams live updates as they are written. Uses `fs.watch` with a 1 s polling fallback.
-
-The frontend features:
-- Tab switcher between `ximg.app`, `linux.ximg.app`, and `butterfly.ximg.app` logs
-- Color-coded status codes (green 2xx, cyan 3xx, yellow 4xx, red 5xx)
-- Live per-class request counters
-- Pause/resume without disconnecting
-- Auto-reconnect on connection drop
-
-## Interactive Terminal (`linux.ximg.app`)
-
-Built with [xterm.js](https://xtermjs.org/). A mock shell runs entirely in the browser — no server-side execution. Supported commands: `ls`, `cd`, `cat`, `pwd`, `echo`, `uname`, `whoami`, `hostname`, `date`, `uptime`, `free`, `df`, `ps`, `docker`, `curl`, `env`, `history`, `neofetch`, `clear`, `exit`, `help`. Features arrow-key history, Tab completion, and Ctrl+C/L. A Tux SVG bounces around the background DVD-screensaver style.
-
-## Butterfly Simulation (`butterfly.ximg.app`)
-
-Canvas-based interactive particle system built on the [butterfly curve](https://en.wikipedia.org/wiki/Butterfly_curve_(transcendental)) parametric equation. Particles trace butterfly-shaped paths and drift gently toward the mouse cursor. Click or tap anywhere to spawn a burst of new particles.
 
 ## Usage
 
-**Start all services:**
 ```bash
+# Start all services
 docker compose up -d
-```
 
-**Rebuild after changes:**
-```bash
+# Rebuild after changes
 docker compose up -d --build
-```
 
-**View live logs on the terminal:**
-```bash
+# View live logs
 tail -f logs/ximg.access.log
-```
 
-**Stop:**
-```bash
+# Stop
 docker compose down
 ```
+
+## Adding a New App
+
+Every new app must be wired into four places:
+
+1. **`shared-html/nav.js`** — add nav entry
+2. **`public-html/index.html`** — add landing page card
+3. **`logs-server/server.js`** — add subdomain to the tab list
+4. **`apps-html/index.html`** — add a row to the `APPS` array
+
+For a new subdomain also: add DNS A record → `172.238.205.61`, run `certbot --expand`, add `server {}` block in `nginx/nginx.conf`, add service in `compose.yaml`, create `*-html/` directory.
