@@ -84,6 +84,7 @@ const LOG_FILES = {
   simcity:   'simcity.access.log',
   rx:        'rx.access.log',
   mail:      'mail.access.log',
+  internet:  'internet.access.log',
   logs:      'logs.access.log',
 };
 
