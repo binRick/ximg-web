@@ -444,15 +444,20 @@
       <div class="cards-grid" id="neighborhoods-grid"></div>
     </div>
 
+    <div id="tab-history" class="tab-panel hidden">
+      <div class="sec-header">Florida — From Ancient Peoples to the 21st Century</div>
+      <div class="tl-wrap" id="history-tl"></div>
+    </div>
 
   </div>
 
 <script>
 /* ── Tabs ── */
-const TABS = ['why','beaches','nature','freedom','food','weather','neighborhoods'];
+const TABS = ['why','beaches','nature','freedom','food','weather','neighborhoods','history'];
 function switchTab(name) {
   TABS.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
   document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', TABS[i] === name));
+  if (name === 'history' && !window._histInited) { window._histInited = true; buildHistory(); }
   localStorage.setItem('florida_tab', name);
 }
 
@@ -1352,6 +1357,74 @@ FOOD.forEach(item => buildCard(item, 'food-grid'));
 WEATHER.forEach(item => buildCard(item, 'weather-grid'));
 NEIGHBORHOODS.forEach(item => buildCard(item, 'neighborhoods-grid'));
 
+/* ── Florida History ── */
+const FLORIDA_HISTORY = [
+  { year: '~12,000 BC', cat: 'exploration', title: 'The First Floridians',
+    body: 'Paleo-Indians arrive in Florida at least 14,000 years ago, hunting mastodons, mammoths, and giant sloths across a landscape twice as wide as today\'s state — sea levels were much lower. Sites like Little Salt Spring and Warm Mineral Springs preserve some of the oldest human remains in North America.' },
+  { year: '1513', cat: 'exploration', title: 'Juan Ponce de León — Florida Named',
+    body: 'Spanish explorer Juan Ponce de León lands on Florida\'s northeast coast in April 1513 and names it "La Florida" — Land of Flowers — likely because he arrived during the Pascua Florida (Easter) season. He is the first European to document the Florida landmass. The Fountain of Youth legend attaches to his name centuries later.' },
+  { year: '1528', cat: 'exploration', title: 'Narváez Expedition — Disaster in the Gulf',
+    body: 'Spanish Governor Pánfilo de Narváez lands near Tampa Bay with 300 men to conquer Florida\'s interior. The expedition is catastrophic — disease, starvation, and Apalachee warriors destroy the force. Only four survivors eventually reach Mexico after years of wandering. Florida resists conquest.' },
+  { year: '1539', cat: 'exploration', title: 'Hernando de Soto — Brutal March Through Florida',
+    body: 'Hernando de Soto lands near Tampa Bay with 600 soldiers and embarks on a four-year journey through the Southeast, treating the indigenous Calusa, Timucua, and Apalachee peoples with extreme cruelty. He never finds the gold he seeks. He dies of fever on the banks of the Mississippi in 1542.' },
+  { year: '1565', cat: 'colonial', title: 'St. Augustine — Oldest Continuously Occupied European City in the US',
+    body: 'Spanish admiral Pedro Menéndez de Avilés founds St. Augustine on September 8, 1565 — 55 years before the Pilgrims land at Plymouth Rock. It is the oldest continuously occupied European settlement in the continental United States. The Spanish build the Castillo de San Marcos, a coquina stone fort that still stands today.' },
+  { year: '1763', cat: 'colonial', title: 'Britain Takes Florida — The First of Two Times',
+    body: 'Spain cedes Florida to Britain at the end of the Seven Years\' War. The British divide it into East Florida and West Florida, bringing an influx of Loyalist settlers. Plantations are established. Britain holds Florida for only 20 years — Spain reclaims it in 1783 after supporting the American Revolution.' },
+  { year: '1817', cat: 'war', title: 'First Seminole War — Andrew Jackson Invades',
+    body: 'General Andrew Jackson leads US forces into Spanish Florida pursuing Seminole warriors who have been raiding Georgia settlements and harboring escaped slaves. Jackson\'s unauthorized invasion of a foreign territory provokes an international incident but pressures Spain to sell Florida to the United States.' },
+  { year: '1821', cat: 'statehood', title: 'Florida Becomes a US Territory',
+    body: 'Spain formally cedes Florida to the United States through the Adams-Onís Treaty for $5 million. Andrew Jackson becomes Florida\'s first territorial governor. Tallahassee is selected as the capital in 1824 — a compromise between the existing settlements at Pensacola and St. Augustine.' },
+  { year: '1835', cat: 'war', title: 'Second Seminole War — The Longest Indian War in US History',
+    body: 'The Second Seminole War erupts when the US government attempts to forcibly relocate the Seminole people to Oklahoma under the Indian Removal Act. Chief Osceola leads a fierce resistance. The war lasts seven years, costs the government $40 million and 1,500 soldiers\' lives. Most Seminoles are removed — but some never surrender.' },
+  { year: '1845', cat: 'statehood', title: 'Florida Becomes the 27th State',
+    body: 'Florida is admitted to the Union as the 27th state on March 3, 1845. It enters as a slave state alongside Iowa as a free state — part of the endless sectional balancing act. The population is only 66,000. Few imagine this swampy, remote territory will one day become the third most populous state in the nation.' },
+  { year: '1861', cat: 'war', title: 'Florida Secedes — Joins the Confederacy',
+    body: 'Florida secedes from the Union on January 10, 1861, the third state to do so. Though the smallest Confederate state by population, Florida plays a vital role as the breadbasket of the Confederacy — supplying beef, pork, salt, and cotton to the Southern war effort. Most of Florida\'s Civil War action is coastal skirmishing and blockade-running.' },
+  { year: '1880s', cat: 'growth', title: 'Henry Flagler — The Man Who Built Modern Florida',
+    body: 'Standard Oil co-founder Henry Flagler discovers Florida and decides to transform it. He builds the Florida East Coast Railway down the Atlantic coast, opens luxury hotels in St. Augustine, Palm Beach, and Miami, and essentially creates the tourism infrastructure of modern Florida. Without Flagler, Miami doesn\'t exist.' },
+  { year: '1896', cat: 'growth', title: 'Miami Incorporated — America\'s Youngest Major City',
+    body: 'The City of Miami is incorporated on July 28, 1896 — entirely because Henry Flagler agreed to extend his railroad to Biscayne Bay after Julia Tuttle sent him orange blossoms to prove the frost hadn\'t killed the citrus. The entire city exists because of one eccentric woman\'s gesture and one railroad magnate\'s ambition.' },
+  { year: '1920s', cat: 'growth', title: 'The Great Florida Land Boom — and Bust',
+    body: 'Speculation fever grips Florida in the early 1920s as developers, investors, and dreamers pour in hoping to get rich on land. Cities are platted from swamp. Lots sell unseen from northern offices. The boom collapses in 1926 — a massive hurricane hits Miami and Okeechobee, and Florida\'s Great Depression begins three years before the rest of America\'s.' },
+  { year: '1928', cat: 'disaster', title: 'Okeechobee Hurricane — 2,500 Dead',
+    body: 'The Okeechobee Hurricane strikes on September 16-17, 1928, driving Lake Okeechobee over its dikes and drowning over 2,500 people — mostly Black farm laborers — in the surrounding communities. It is one of the deadliest natural disasters in US history and remains a largely forgotten tragedy.' },
+  { year: '1947', cat: 'nature', title: 'Everglades National Park Established',
+    body: 'President Harry Truman dedicates Everglades National Park — the only subtropical wilderness in the US and the only national park created specifically to protect an ecosystem rather than a landscape. The "River of Grass," as Marjory Stoneman Douglas called it, covers 1.5 million acres of sawgrass marsh, mangrove, and coastal prairie.' },
+  { year: '1958', cat: 'culture', title: 'NASA Comes to Florida — Cape Canaveral',
+    body: 'NASA is established and chooses Cape Canaveral on Florida\'s Atlantic coast as its primary launch site, drawn by its proximity to the equator (maximizing rocket efficiency) and the ocean (providing a safe downrange trajectory). Every American astronaut who has reached orbit has launched from Florida soil.' },
+  { year: '1969', cat: 'culture', title: 'Apollo 11 Launches from Kennedy Space Center',
+    body: 'Apollo 11 lifts off from Launch Complex 39A at Kennedy Space Center on July 16, 1969, carrying Neil Armstrong, Buzz Aldrin, and Michael Collins to the Moon. The Saturn V rocket\'s engines shake windows 50 miles away. Florida is the launchpad for humanity\'s greatest adventure.' },
+  { year: '1971', cat: 'culture', title: 'Walt Disney World Opens',
+    body: 'Walt Disney World opens in Orlando on October 1, 1971, forever altering Central Florida\'s destiny. Disney had secretly purchased 27,000 acres of swamp for $5 million in the 1960s. The resort eventually employs 75,000 people, welcomes 58 million visitors annually, and makes Orlando one of the most-visited tourist destinations on Earth.' },
+  { year: '1980', cat: 'politics', title: 'Mariel Boatlift — 125,000 Cubans Arrive',
+    body: 'In five months in 1980, some 125,000 Cuban refugees arrive in South Florida via the Mariel Boatlift after Fidel Castro briefly opens emigration. The influx transforms Miami culturally and demographically, accelerating its evolution into a bilingual, bicultural gateway city between the Americas.' },
+  { year: '1992', cat: 'disaster', title: 'Hurricane Andrew — Category 5 Catastrophe',
+    body: 'Hurricane Andrew makes landfall south of Miami on August 24, 1992, as a Category 5 storm with 165 mph winds. It destroys 125,000 homes and leaves 175,000 people homeless. The $27 billion in damage makes it the costliest US natural disaster to that point. It reshapes Florida\'s building codes and insurance industry forever.' },
+  { year: '2000', cat: 'politics', title: 'The Recount That Decided a Presidency',
+    body: 'The 2000 presidential election comes down to Florida\'s 25 electoral votes. For 36 days, the nation watches Florida election officials examine "hanging chads" and "pregnant chads" under magnifying glasses. The Supreme Court stops the recount in Bush v. Gore. George W. Bush wins Florida by 537 votes — and the presidency. Florida becomes synonymous with election chaos.' },
+  { year: '2004', cat: 'disaster', title: 'Four Hurricanes in Six Weeks',
+    body: 'In the summer of 2004, four major hurricanes strike Florida in rapid succession: Charley, Frances, Ivan, and Jeanne. It is the most active hurricane season to hit a single state in recorded history. Over $40 billion in damage. Nearly every county in Florida receives a federal disaster declaration.' },
+  { year: '2010s', cat: 'growth', title: 'The Great Migration South — Florida Booms',
+    body: 'Florida becomes the fastest-growing large state in America through the 2010s and into the 2020s. Driven by zero income tax, warm weather, and remote work, roughly 900 new residents arrive every single day. The population surpasses 22 million. Florida overtakes New York to become the third most populous state in 2023.' },
+  { year: '2022', cat: 'disaster', title: 'Hurricane Ian — Category 4 Devastation',
+    body: 'Hurricane Ian makes landfall near Fort Myers as a Category 4 storm on September 28, 2022, with a catastrophic storm surge exceeding 15 feet in some areas. Over 150 people die and $113 billion in damage is recorded — making it the costliest Florida hurricane in history. Fort Myers Beach and Pine Island are nearly wiped off the map.' },
+];
+
+function buildHistory() {
+  const c = document.getElementById('history-tl');
+  c.innerHTML = FLORIDA_HISTORY.map(e =>
+    `<div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-card">
+        <div class="tl-year">${e.year}</div>
+        <div class="tl-title">${e.title}</div>
+        <span class="tl-cat cat-${e.cat}">${e.cat}</span>
+        <div class="tl-body">${e.body}</div>
+      </div>
+    </div>`
+  ).join('');
+}
 
 const saved = localStorage.getItem('florida_tab');
 if (saved && TABS.includes(saved)) switchTab(saved);
