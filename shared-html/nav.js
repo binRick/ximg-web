@@ -49,6 +49,7 @@
     '<a class="nav-item" href="https://rx.ximg.app"><div class="nav-dot"></div>RxFitt</a>' +
     '<a class="nav-item" href="https://mail.ximg.app"><div class="nav-dot"></div>mail</a>' +
     '<a class="nav-item" href="https://internet.ximg.app"><div class="nav-dot"></div>internet</a>' +
+    '<a class="nav-item" href="https://change.ximg.app"><div class="nav-dot"></div>change</a>' +
     '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
 
   // Highlight the current site
