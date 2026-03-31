@@ -340,6 +340,91 @@
       color: var(--sun); letter-spacing: .08em; text-transform: uppercase;
     }
 
+    /* ── History Timeline ── */
+    .tl-wrap {
+      position: relative;
+      padding: .5rem 0 2rem;
+    }
+    .tl-wrap::before {
+      content: '';
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--teal), var(--sun), transparent);
+    }
+    .tl-item {
+      display: flex;
+      justify-content: flex-end;
+      padding-right: calc(50% + 2.5rem);
+      margin-bottom: 2.5rem;
+      position: relative;
+    }
+    .tl-item:nth-child(even) {
+      justify-content: flex-start;
+      padding-right: 0;
+      padding-left: calc(50% + 2.5rem);
+    }
+    .tl-dot {
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      top: 1rem;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: var(--teal);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 10px rgba(14,165,233,.6);
+      z-index: 2;
+    }
+    .tl-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      max-width: 420px; width: 100%;
+      backdrop-filter: blur(10px);
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .tl-card:hover {
+      border-color: rgba(14,165,233,.45);
+      box-shadow: 0 6px 28px rgba(14,165,233,.12);
+      transform: translateY(-2px);
+    }
+    .tl-year {
+      font-size: .68rem; font-weight: 700; letter-spacing: .12em;
+      color: var(--teal); margin-bottom: .3rem;
+      font-family: inherit;
+    }
+    .tl-title {
+      font-size: 1rem; font-weight: 800;
+      color: var(--text); margin-bottom: .3rem; line-height: 1.3;
+    }
+    .tl-cat {
+      display: inline-block;
+      font-size: .6rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .14rem .48rem; border-radius: 5px; margin-bottom: .5rem;
+    }
+    .cat-exploration { background: rgba(14,165,233,.12); border: 1px solid rgba(14,165,233,.35); color: var(--sky); }
+    .cat-founding    { background: rgba(245,158,11,.1);  border: 1px solid rgba(245,158,11,.35); color: #fcd34d; }
+    .cat-war         { background: rgba(251,146,60,.1);  border: 1px solid rgba(251,146,60,.35); color: var(--coral); }
+    .cat-industry    { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3);  color: #6ee7b7; }
+    .cat-growth      { background: rgba(167,139,250,.08);border: 1px solid rgba(167,139,250,.3); color: #c4b5fd; }
+    .cat-sports      { background: rgba(248,113,113,.08);border: 1px solid rgba(248,113,113,.3); color: #fca5a5; }
+    .cat-culture     { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3);  color: #fde68a; }
+    .tl-body {
+      font-size: .82rem; color: rgba(223,244,255,.78); line-height: 1.65;
+    }
+    @media(max-width: 680px) {
+      .tl-wrap::before { left: 1rem; transform: none; }
+      .tl-item, .tl-item:nth-child(even) {
+        justify-content: flex-start;
+        padding-left: 3rem; padding-right: 0;
+      }
+      .tl-dot { left: 1rem; transform: translateX(-50%); }
+      .tl-card { max-width: 100%; }
+    }
+
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   </style>
 </head>
@@ -359,6 +444,7 @@
       <button class="tab-btn" onclick="switchTab('map')">🗺️ Map</button>
       <button class="tab-btn" onclick="switchTab('traffic')">🚦 Traffic</button>
       <button class="tab-btn" onclick="switchTab('owt')" style="color:var(--sun);border-color:rgba(245,158,11,.3)">🌆 Old West Tampa</button>
+      <button class="tab-btn" onclick="switchTab('history')">📜 History</button>
     </div>
 
     <!-- ── Eats ── -->
@@ -378,6 +464,12 @@
     <div id="tab-traffic" class="tab-panel hidden">
       <div class="sec-header">Live Tampa Traffic</div>
       <div style="text-align:center;padding:3rem;color:#64748b;font-size:1.1rem">Live traffic data requires an internet connection.</div>
+    </div>
+
+    <!-- ── History ── -->
+    <div id="tab-history" class="tab-panel hidden">
+      <div class="sec-header">Tampa Bay — From Spanish Exploration to Super Bowl Champions</div>
+      <div class="tl-wrap" id="history-tl"></div>
     </div>
 
     <!-- ── Old West Tampa ── -->
@@ -448,7 +540,7 @@
 <script>
 
 /* ── Tab switching ── */
-const TABS = ['eats','map','traffic','owt'];
+const TABS = ['eats','map','traffic','owt','history'];
 let mapInited = false;
 
 function switchTab(name) {
@@ -460,6 +552,7 @@ function switchTab(name) {
   });
   if (name === 'map' && !mapInited) { initMap(); mapInited = true; }
   if (name === 'owt' && !window._owtInited) { window._owtInited = true; buildOwt(); }
+  if (name === 'history' && !window._histInited) { window._histInited = true; buildHistory(); }
   localStorage.setItem('tampa_tab', name);
 }
 
@@ -1054,6 +1147,74 @@ const OWT_LIFE = [
 function buildOwt() {
   OWT_HISTORY.forEach(item => buildCard(item, 'owt-history-grid'));
   OWT_LIFE.forEach(item => buildCard(item, 'owt-life-grid'));
+}
+
+/* ── Tampa History ── */
+const TAMPA_HISTORY = [
+  { year: '1528', cat: 'exploration', title: 'Narváez Expedition — First European Contact',
+    body: 'Spanish explorer Pánfilo de Narváez lands near Tampa Bay with 300 men, becoming the first documented European to set foot in the region. He finds Tocobagan and Calusa peoples who have lived here for thousands of years. The expedition ends in disaster — only four survivors reach Mexico eight years later.' },
+  { year: '1539', cat: 'exploration', title: 'Hernando de Soto Lands at Tampa Bay',
+    body: 'Conquistador Hernando de Soto lands near present-day Tampa with 600 soldiers and begins his brutal four-year march through the American Southeast, searching for gold. He never finds it. Tampa Bay\'s strategic importance as a deep natural harbor is established in European minds.' },
+  { year: '1763', cat: 'founding', title: 'Florida Becomes British — Then Spanish Again',
+    body: 'Britain takes Florida from Spain after the Seven Years\' War, only to return it to Spain in 1783 following the American Revolution. Tampa Bay remains a remote, mosquito-ridden wilderness with no permanent European settlement for decades.' },
+  { year: '1824', cat: 'founding', title: 'Fort Brooke Established',
+    body: 'The U.S. Army establishes Fort Brooke at the mouth of the Hillsborough River — the nucleus around which the city of Tampa will eventually grow. Named for Colonel George Mercer Brooke, it serves as a supply depot and military staging point during the Seminole Wars.' },
+  { year: '1835', cat: 'war', title: 'Second Seminole War — Tampa as Frontier Outpost',
+    body: 'The Second Seminole War (1835–1842) turns Tampa into a critical military hub. Fort Brooke serves as headquarters for operations against Seminole chief Osceola and his warriors. The war is the longest, costliest Indian war in American history — and the Seminoles are never fully defeated.' },
+  { year: '1849', cat: 'founding', title: 'Tampa Incorporated as a Town',
+    body: 'Tampa is officially incorporated with fewer than 200 residents. The tiny settlement clings to the edge of the wilderness, its future uncertain. Yellow fever, malaria, and hurricanes regularly remind residents of the frontier\'s hostility.' },
+  { year: '1858', cat: 'war', title: 'Third Seminole War Ends — Permanent Settlement Begins',
+    body: 'The Third Seminole War concludes. With the threat of conflict subsiding, settlers pour into Hillsborough County. Cattle ranching becomes the backbone of the local economy. Tampa cowboys — called "cow hunters" — drive cattle to the port for shipment to Cuba.' },
+  { year: '1883', cat: 'industry', title: 'Henry Plant\'s Railroad Arrives — Tampa Transformed',
+    body: 'Railroad magnate Henry B. Plant extends his South Florida Railroad to Tampa, ending the city\'s isolation overnight. The railroad brings settlers, commerce, and investment flooding in. Tampa\'s population surges. Plant understood that infrastructure creates civilization — and he was right.' },
+  { year: '1886', cat: 'industry', title: 'Vicente Martínez-Ybor Founds Ybor City',
+    body: 'Cuban cigar manufacturer Vicente Martínez-Ybor relocates his factory from Key West and founds Ybor City just east of Tampa. Thousands of Cuban, Spanish, and Italian immigrants follow. By 1900, Ybor City produces over 100 million hand-rolled cigars per year — making Tampa the Cigar Capital of the World.' },
+  { year: '1891', cat: 'culture', title: 'Tampa Bay Hotel Opens',
+    body: 'Henry Plant opens the Tampa Bay Hotel — a 511-room Moorish-style palace with minarets, horseshoe arches, and every luxury of the Gilded Age. It is the most opulent building in Florida, intended to put Tampa on the map as a tourist destination. Today it houses the University of Tampa.' },
+  { year: '1895', cat: 'founding', title: 'West Tampa Incorporated as Its Own City',
+    body: 'West Tampa incorporates as an independent city — separate from Tampa — after cigar manufacturer Hugh Macfarlane develops the land west of the Hillsborough River. It becomes a thriving cigar hub with its own government, fire department, and mutual-aid societies until Tampa annexes it in 1925.' },
+  { year: '1898', cat: 'war', title: 'Spanish-American War — Tampa Becomes a Military Boomtown',
+    body: 'Tampa serves as the primary staging point for U.S. forces in the Spanish-American War. Theodore Roosevelt and his Rough Riders train here before sailing for Cuba. The war lasts ten weeks; Tampa is permanently transformed by the attention, infrastructure investment, and national spotlight.' },
+  { year: '1914', cat: 'culture', title: 'World\'s First Scheduled Airline Passenger Service',
+    body: 'Pilot Tony Jannus flies the world\'s first scheduled commercial airline passenger service across Tampa Bay from St. Petersburg to Tampa on January 1, 1914. The fare is $5. Aviation history is made on Tampa Bay\'s waters.' },
+  { year: '1924', cat: 'growth', title: 'Gandy Bridge Opens — Tampa Connected to St. Pete',
+    body: 'The Gandy Bridge opens as the first bridge linking Tampa to St. Petersburg across Tampa Bay — 2.5 miles of concrete over open water. Built by George Gandy at a cost of $1.75 million, it slashes the 40-mile road trip to a 3-mile crossing and reshapes the Bay Area\'s geography forever.' },
+  { year: '1926', cat: 'growth', title: 'Davis Islands Created from Tampa Bay',
+    body: 'Developer D.P. Davis dredges two islands from the mud of Tampa Bay, creating Davis Islands — one of the most audacious real estate projects in Florida history. The land sells out in hours during the Florida land boom. The islands are eventually home to a hospital, a small airport, and some of Tampa\'s finest homes.' },
+  { year: '1929', cat: 'founding', title: 'Tampa Municipal Airport Opens',
+    body: 'Tampa Municipal Airport opens on Drew Field, laying the foundation for what will become Tampa International Airport — today consistently ranked among the best airports in the United States. Tampa\'s connection to the world by air begins.' },
+  { year: '1942', cat: 'war', title: 'MacDill Air Force Base — Tampa Becomes a Military City',
+    body: 'MacDill Army Air Field activates as a pilot training base during World War II. Tens of thousands of servicemen pass through Tampa. MacDill becomes a permanent fixture — and today, as home to U.S. Central Command and U.S. Special Operations Command, it remains one of the most strategically important military bases on Earth.' },
+  { year: '1959', cat: 'culture', title: 'Busch Gardens Opens',
+    body: 'Anheuser-Busch opens a hospitality center adjacent to its Tampa brewery, featuring a small bird garden and train ride. It grows into Busch Gardens Africa — one of Florida\'s most-visited theme parks, drawing over 4 million visitors annually and establishing Tampa as an entertainment destination.' },
+  { year: '1971', cat: 'growth', title: 'Tampa International Airport — A New Standard',
+    body: 'The new Tampa International Airport opens, pioneering a revolutionary "Landside-Airside" terminal design that separates ticketing and baggage claim from gates. The concept is widely copied across the world. TIA is repeatedly voted America\'s best airport.' },
+  { year: '1974', cat: 'sports', title: 'Tampa Bay Buccaneers — NFL Comes to Tampa',
+    body: 'The NFL awards Tampa Bay an expansion franchise — the Tampa Bay Buccaneers. They join the league in 1976 and lose their first 26 games. Nobody holds it against them. The Bucs will eventually win three Super Bowls, becoming one of the most beloved franchises in Florida.' },
+  { year: '1992', cat: 'sports', title: 'Tampa Bay Lightning — NHL Hockey Arrives',
+    body: 'The Tampa Bay Lightning play their inaugural NHL season. Hockey in Florida seems absurd to outsiders. Tampa doesn\'t care. The Lightning will go on to win the Stanley Cup in 2004, 2020, and 2021 — becoming one of the NHL\'s great dynasties.' },
+  { year: '1998', cat: 'sports', title: 'Raymond James Stadium Opens',
+    body: 'Raymond James Stadium opens with its iconic 103-foot pirate ship in the north end zone. It immediately becomes one of the most distinctive venues in the NFL and hosts four Super Bowls — including Super Bowl LV in 2021, where the hometown Buccaneers won on their own field.' },
+  { year: '2004', cat: 'sports', title: 'Tampa Bay Lightning Win the Stanley Cup',
+    body: 'The Tampa Bay Lightning defeat the Calgary Flames in seven games to win their first Stanley Cup. Captain Dave Andreychuk hoists the Cup after 23 years as the longest-serving NHL player to have never won it. The city erupts. Tampa is a championship city.' },
+  { year: '2021', cat: 'sports', title: 'The Greatest Year in Tampa Sports History',
+    body: 'The Tampa Bay Buccaneers win Super Bowl LV at home at Raymond James Stadium — the first team ever to play and win a Super Bowl in their home stadium. Three months later, the Tampa Bay Lightning win their second consecutive Stanley Cup. In the same calendar year. In the same city. It has never happened anywhere else.' },
+  { year: '2025', cat: 'growth', title: 'Tampa — One of America\'s Fastest-Growing Cities',
+    body: 'Tampa Bay is one of the fastest-growing metropolitan areas in the United States, with a population surpassing 3.2 million. Downtown Tampa has transformed with gleaming towers, the Riverwalk, Water Street development, and a booming tech and finance sector. The cigar city has become a world city — and it\'s only getting started.' },
+];
+
+function buildHistory() {
+  var c = document.getElementById('history-tl');
+  c.innerHTML = TAMPA_HISTORY.map(function(e) {
+    return '<div class="tl-item">'
+      + '<div class="tl-dot"></div>'
+      + '<div class="tl-card">'
+      + '<div class="tl-year">' + e.year + '</div>'
+      + '<div class="tl-title">' + e.title + '</div>'
+      + '<span class="tl-cat cat-' + e.cat + '">' + e.cat + '</span>'
+      + '<div class="tl-body">' + e.body + '</div>'
+      + '</div></div>';
+  }).join('');
 }
 
 /* ── Init ── */
