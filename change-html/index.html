@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Change Log — change.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #030a0d;
+      --panel:  #061018;
+      --green:  #00e676;
+      --ltgrn:  #69f0ae;
+      --teal:   #00acc1;
+      --amber:  #ffb300;
+      --steel:  #607d8b;
+      --text:   #cfe8f0;
+      --muted:  #3d6070;
+      --card:   rgba(4,18,28,.9);
+      --border: rgba(0,230,118,.15);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 100% 50% at 50% 0%, #001a0a 0%, transparent 60%),
+        linear-gradient(180deg, #030a0d 0%, #020508 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(0,230,118,.012) 0, rgba(0,230,118,.012) 1px, transparent 1px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(0,230,118,.008) 0, rgba(0,230,118,.008) 1px, transparent 1px, transparent 72px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 900px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 4rem;
+      display: flex; flex-direction: column; gap: 1.75rem;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .6rem; }
+    .hero-icon { font-size: 2.5rem; filter: drop-shadow(0 0 18px rgba(0,230,118,.6)); }
+    .hero h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #69f0ae 0%, #ffffff 45%, #00acc1 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub { font-size: .9rem; color: var(--muted); max-width: 480px; line-height: 1.6; }
+    .hero-divider {
+      width: 120px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green), var(--teal), transparent);
+    }
+
+    /* ── Stats bar ── */
+    .stats {
+      display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center;
+    }
+    .stat {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: .6rem 1.1rem; text-align: center;
+    }
+    .stat-n { font-size: 1.4rem; font-weight: 900; color: var(--ltgrn); line-height: 1; }
+    .stat-l { font-size: .68rem; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .08em; margin-top: .2rem; }
+
+    /* ── Search / filter bar ── */
+    .toolbar {
+      display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
+    }
+    .search-wrap {
+      flex: 1; min-width: 220px; position: relative;
+    }
+    .search-icon {
+      position: absolute; left: .75rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: .9rem; pointer-events: none;
+    }
+    #search {
+      width: 100%; padding: .55rem .75rem .55rem 2.2rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-size: .88rem; font-family: inherit; outline: none;
+      transition: border-color .2s;
+    }
+    #search::placeholder { color: var(--muted); }
+    #search:focus { border-color: rgba(0,230,118,.4); }
+
+    .count-badge {
+      font-size: .8rem; color: var(--muted); white-space: nowrap;
+      font-weight: 600; padding: .4rem .8rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    }
+    .count-badge span { color: var(--ltgrn); }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; }
+
+    .day-group { display: flex; flex-direction: column; }
+    .day-label {
+      font-size: .72rem; font-weight: 700; color: var(--amber);
+      text-transform: uppercase; letter-spacing: .12em;
+      padding: .5rem 0 .4rem 52px;
+    }
+    .day-label.hidden { display: none; }
+
+    .commit-row {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 0;
+      align-items: stretch;
+    }
+    .commit-row.hidden { display: none; }
+
+    /* spine */
+    .spine {
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: .55rem;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+      transition: transform .15s;
+    }
+    .commit-row:hover .dot { transform: scale(1.4); }
+    .line {
+      flex: 1; width: 2px;
+      background: linear-gradient(180deg, rgba(0,230,118,.3) 0%, rgba(0,230,118,.08) 100%);
+      min-height: 8px;
+    }
+
+    /* card */
+    .commit-card {
+      margin: 0 0 .75rem 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: .75rem 1rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .commit-row:hover .commit-card {
+      border-color: rgba(0,230,118,.35);
+      box-shadow: 0 4px 20px rgba(0,230,118,.1);
+    }
+
+    .commit-top {
+      display: flex; align-items: flex-start; gap: .75rem; flex-wrap: wrap;
+    }
+    .commit-subject {
+      flex: 1; min-width: 0;
+      font-size: .92rem; font-weight: 600; color: var(--text);
+      line-height: 1.45; word-break: break-word;
+    }
+    .commit-meta {
+      display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+      margin-top: .45rem;
+    }
+    .hash-chip {
+      font-family: 'Courier New', monospace;
+      font-size: .72rem; color: var(--teal);
+      background: rgba(0,172,193,.12); border: 1px solid rgba(0,172,193,.2);
+      border-radius: 4px; padding: .1rem .45rem;
+      letter-spacing: .03em;
+    }
+    .author-chip {
+      font-size: .72rem; color: var(--muted);
+      display: flex; align-items: center; gap: .25rem;
+    }
+    .time-chip {
+      font-size: .72rem; color: var(--muted);
+      margin-left: auto;
+    }
+
+    .no-results {
+      text-align: center; color: var(--muted); font-size: .9rem;
+      padding: 3rem 1rem; display: none;
+    }
+    .no-results.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-icon">📋</div>
+    <h1>Change Log</h1>
+    <p class="hero-sub">Every commit to ximg.app — searchable, with author and timestamp.</p>
+    <div class="hero-divider"></div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="search" type="search" placeholder="Search commits, hashes, authors…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="count-badge">Showing <span id="visible-count">0</span> of <span id="total-count">0</span></div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+  <div class="no-results" id="no-results">No commits match your search.</div>
+
+</div>
+
+<script>
+const COMMITS = [{"hash":"3041ab945def540e2cda422dde1617e622c79e04","short":"3041ab9","author":"rick","email":"rick@ximg.app","date":"2026-03-30 20:08:31 -0400","subject":"simcity: add Will Wright portrait photo to Will Wright tab"},{"hash":"be942b9e1c02f117be8e11f57bec5f5c14091267","short":"be942b9","author":"rick","email":"rick@ximg.app","date":"2026-03-30 20:07:18 -0400","subject":"add internet.ximg.app \u2014 overview, history, DOD origins, top 20 protocols, connected humanity"},{"hash":"d305dfd4867b3603b9bc3e92fd8dcd992ed2992d","short":"d305dfd","author":"rick","email":"rick@ximg.app","date":"2026-03-30 20:02:01 -0400","subject":"add simcity app; wire into nav, landing page, logs, nginx, compose"},{"hash":"382e13d0c5c3365b8b81f1758f6e3dff87da6e6f","short":"382e13d","author":"rick","email":"rick@ximg.app","date":"2026-03-30 19:53:49 -0400","subject":"cnc: rename vehicles\u2192units, add images to all unit/building cards; update CLAUDE.md"},{"hash":"ad3a589d5578355234c84569ee2215741fd48f4f","short":"ad3a589","author":"rick","email":"rick@ximg.app","date":"2026-03-30 19:51:02 -0400","subject":"rename rx app to RxFitt across nav, landing page, logs, and app title"},{"hash":"67d0b260827e0104afc68e13d9c9a38d4a639823","short":"67d0b26","author":"rick","email":"rick@ximg.app","date":"2026-03-30 19:45:33 -0400","subject":"cnc: add browser RTS game tab (OpenRA-style)"},{"hash":"27b952e13f87b3322fadc084cbfee83264b22fb9","short":"27b952e","author":"rick","email":"rick@ximg.app","date":"2026-03-30 19:31:43 -0400","subject":"Add cnc, trump apps; vendor assets, images, and various app updates"},{"hash":"e2a35887aeef2b38bba077e909cc788ae158d612","short":"e2a3588","author":"rick","email":"rick@ximg.app","date":"2026-03-30 19:24:22 -0400","subject":"kombat: fix cached image race \u2014 set onload before src"},{"hash":"ab9ea63ac8ff3be0ba78315b788a2416dd4a155f","short":"ab9ea63","author":"rick","email":"rick@ximg.app","date":"2026-03-30 19:15:51 -0400","subject":"kombat: batch Fandom API requests to fix broken character images"},{"hash":"11139ba824c96e8f65db5319cc153bcf414a7f84","short":"11139ba","author":"rick","email":"rick@ximg.app","date":"2026-03-29 17:29:12 -0400","subject":"Update florida, tampa, and poker apps"},{"hash":"8ea95558fd0f23a6fce1c006a733145e59dc8f83","short":"8ea9555","author":"rick","email":"rick@ximg.app","date":"2026-03-29 16:54:30 -0400","subject":"doom: fix weapon images to show real-world photos; add computers app; various app updates"},{"hash":"5657860555d23a590d7a5be078fe1123d621d84c","short":"5657860","author":"rick","email":"rick@ximg.app","date":"2026-03-29 16:38:44 -0400","subject":"Add florida app, america app, and all pending changes"},{"hash":"c66df7c1fc51e117725e8c3d4d0b1eb9ac40e713","short":"c66df7c","author":"rick","email":"rick@ximg.app","date":"2026-03-29 16:18:14 -0400","subject":"Add tampa, moto, chinese, india, wargames, wood, guns, kombat apps + infra updates"},{"hash":"177536eac6e4fea9530600039ddaeb70d8d17582","short":"177536e","author":"rick","email":"rick@ximg.app","date":"2026-03-29 12:45:25 -0400","subject":"pizza: fix image loading \u2014 set src in template, use CSS class for fade-in"},{"hash":"6ecbac229c361984568517977e04cd6a5b5ae784","short":"6ecbac2","author":"rick","email":"rick@ximg.app","date":"2026-03-29 12:41:37 -0400","subject":"pizza: fix apostrophe syntax errors, replace Wikipedia API with direct image URLs"},{"hash":"55ff18a806d8840f81a7a91bd581963a4b8c55a9","short":"55ff18a","author":"rick","email":"rick@ximg.app","date":"2026-03-29 12:26:04 -0400","subject":"Add pizza.ximg.app \u2014 top chains and styles with Wikipedia images and fun facts"},{"hash":"2aa1f705aa7865aed3063ef7d1788854de7fabad","short":"2aa1f70","author":"rick","email":"rick@ximg.app","date":"2026-03-29 12:15:59 -0400","subject":"Add docker app, yaml/doom/monkey apps, GeoIP map on SSH sessions, localStorage tab persistence"},{"hash":"500af1e5810d53b790e8193d7a9b6dd69785440c","short":"500af1e","author":"rick","email":"rick@ximg.app","date":"2026-03-29 10:38:40 -0400","subject":"Add mario.ximg.app \u2014 canvas platformer game"},{"hash":"9f1b86ab6f5a6de6a2c01d08e298b0abaa40ecbb","short":"9f1b86a","author":"rick","email":"rick@ximg.app","date":"2026-03-28 15:54:05 -0400","subject":"poker: add GTO chart tab with axis labels, fix highlight; homepage: app grid; ssh: password prompt"},{"hash":"ab83fd1b35803d5a57f18563083c71227e20f139","short":"ab83fd1","author":"rick","email":"rick@ximg.app","date":"2026-03-28 14:56:13 -0400","subject":"ssh: hide honeypot file, fix supplementary groups"},{"hash":"a318025ad32963c8a9bfc4f06ec98faa8bcc70f9","short":"a318025","author":"rick","email":"rick@ximg.app","date":"2026-03-28 14:46:19 -0400","subject":"Add poker hand evaluator, SSH honeypot, and logs SSH viewer"},{"hash":"2a2ba98ca5d805d93ac9d469aaa42bca7d522d16","short":"2a2ba98","author":"rick","email":"rick@ximg.app","date":"2026-03-28 13:18:36 -0400","subject":"ascii: make matrix the default demo"},{"hash":"d5025f767d784db1eea51dc9999c28d98dd92e8c","short":"d5025f7","author":"rick","email":"rick@ximg.app","date":"2026-03-28 13:16:33 -0400","subject":"logs: fix IP+status concatenation in log line grid"},{"hash":"a3828c1d63df59ee74e4dbbc0a964af7da79e93c","short":"a3828c1","author":"rick","email":"rick@ximg.app","date":"2026-03-28 13:14:54 -0400","subject":"logs: fix nav.js route path /nav.js \u2192 /shared/nav.js"},{"hash":"5e217cc7f0a3e16c244d71eb2e410f81b02bf822","short":"5e217cc","author":"rick","email":"rick@ximg.app","date":"2026-03-28 13:13:51 -0400","subject":"Fix nav.js serving: switch to directory mount, drop per-file bind mounts"},{"hash":"b65fc63f1e49981bd70843f7ef67dab202801fb3","short":"b65fc63","author":"rick","email":"rick@ximg.app","date":"2026-03-28 13:11:22 -0400","subject":"Add systemd unit and install.sh for fresh-system setup"},{"hash":"4fa5b12f3a1c2954b9209881e6671871889e494d","short":"4fa5b12","author":"rick","email":"rick@ximg.app","date":"2026-03-28 13:10:30 -0400","subject":"Add ascii + json subdomains; butterfly rotator; nav updates; systemd unit"},{"hash":"519fd68c0c0bf63b285fbccaeba7559d9b190b1a","short":"519fd68","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:57:41 -0400","subject":"Fix nginx DNS caching + update README with per-app summaries"},{"hash":"43f11d70f6f15c77324b7c566b6d93c15cf34b19","short":"43f11d7","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:56:08 -0400","subject":"logs: new events appear at top, fix vertical scroll"},{"hash":"940d266b90d46bca86e8143fe5a61099ef1a60db","short":"940d266","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:54:41 -0400","subject":"Fix nav.js Docker bind-mount: restore placeholder files and document fresh-clone requirement"},{"hash":"d88ff2901e65d24d25c7f16ca17b416e7fa75d54","short":"d88ff29","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:53:01 -0400","subject":"Add butterfly subdomain, shared nav, interactive simulation, and logging"},{"hash":"d15f2d5f91a7d87949fb392c155ad4001bb15a0e","short":"d15f2d5","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:40:08 -0400","subject":"Replace SSE with WebSockets for log streaming"},{"hash":"14badd824c0b7af721697a523aff6f448f569299","short":"14badd8","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:37:10 -0400","subject":"Fix SSE connection dropping \u2014 handle fs.watch errors, add keep-alive pings"},{"hash":"c41eda539620a8a3d1e39571195ef2a41f2c533c","short":"c41eda5","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:33:37 -0400","subject":"Unify nav bar across all three sites"},{"hash":"4dd15d59f4b27dda2d82a9931242ebacc8041e76","short":"4dd15d5","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:31:08 -0400","subject":"Fix SSE proxy: force HTTP/1.1 and clear Connection header for Firefox"},{"hash":"0a0d1879834cf4e941ad5accbf8a203a1a1ad975","short":"0a0d187","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:30:09 -0400","subject":"Add green dot to ximg.app nav link for consistency"},{"hash":"627b0b2915d5bd8ef94aa12807f88f35b38b8579","short":"627b0b2","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:28:46 -0400","subject":"Rewrite README to cover full stack including logs.ximg.app"},{"hash":"335c04144157cd76a2392c53608953cc51e0dd68","short":"335c041","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:28:00 -0400","subject":"Fix logs page: stream last 100 lines on connect before tailing"},{"hash":"a7c21d69c4530a5d82aaa78e1121338bec722288","short":"a7c21d6","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:25:11 -0400","subject":"Add logs.ximg.app link to nav on ximg.app and linux.ximg.app"},{"hash":"bb30bd27477caea0a3473f374166e4dc9ba85e22","short":"bb30bd2","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:23:26 -0400","subject":"Add logs.ximg.app \u2014 live nginx log viewer via SSE"},{"hash":"bca5860068304f093b7b58408f33f7eaaa986547","short":"bca5860","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:19:49 -0400","subject":"Add log-summary.sh to generate markdown report from nginx logs"},{"hash":"f6abb8c8ab84b8c01dc9f4b5e6e65cdbfa7ce00a","short":"f6abb8c","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:14:48 -0400","subject":"Add SVG favicons to ximg.app and linux.ximg.app"},{"hash":"6c79403aebad9b954ae9f4dc0d900810f5352a72","short":"6c79403","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:10:06 -0400","subject":"Fix Tux bounce variable conflict with xterm color helpers"},{"hash":"17e051fa0ee4a0ecaf3b2670aa2b34cc48b9552b","short":"17e051f","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:09:02 -0400","subject":"Fix Tux z-index so it renders above background"},{"hash":"3172dd5ea55123acfb08e5533be76a0d7bcdfa2a","short":"3172dd5","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:06:53 -0400","subject":"Add Compose, Alpine, xterm.js to tech chips"},{"hash":"fcdb00efec5c01beba4cf5445a82d0420c13e006","short":"fcdb00e","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:06:19 -0400","subject":"Add DVD screensaver Tux bouncing behind terminal"},{"hash":"3af4d2d7a43d6235a0a179133c61a14d2f73a9dd","short":"3af4d2d","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:04:43 -0400","subject":"Add shared nav bar across ximg.app and linux.ximg.app"},{"hash":"d44a0e38d5b9931f0dee298ea443ec0ecfa475cb","short":"d44a0e3","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:02:45 -0400","subject":"Remove Explore button, enlarge linux.ximg.app nav link"},{"hash":"043aedd4fdf182adb9f0e8f33fa8cd0f1c9c7684","short":"043aedd","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:02:12 -0400","subject":"Remove redundant linux.ximg.app link from card"},{"hash":"1bbaa19a1f456e28d145843e3d8c055a406de1c4","short":"1bbaa19","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:01:49 -0400","subject":"Move linux.ximg.app link to top-right corner of ximg.app"},{"hash":"4183cd3d210c112375864b27170237f36ca3ed5e","short":"4183cd3","author":"rick","email":"rick@ximg.app","date":"2026-03-28 12:00:32 -0400","subject":"Split nginx logs per subdomain, add linux.ximg.app link"},{"hash":"91aa6c2fbb29e5ef227a55d7e51122d2a5e25137","short":"91aa6c2","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:59:37 -0400","subject":"Replace linux page with xterm.js interactive terminal"},{"hash":"d1d7520afde7053c3d8c7b783691bdc31457c901","short":"d1d7520","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:57:05 -0400","subject":"Remove Dockerfile, use httpd:2.4-alpine image directly"},{"hash":"aabb3d567e24cf52f846e9543df5f2f01743b775","short":"aabb3d5","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:54:55 -0400","subject":"Add stylish inline SVG Tux to linux subdomain page"},{"hash":"9be6aa341e59fc2d5f66da3f0f8d0a5f788a6247","short":"9be6aa3","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:52:43 -0400","subject":"Add linux.ximg.app subdomain with dedicated Apache container"},{"hash":"c3e4a6145ce27ce2a33501071e06437e4ad0b0b0","short":"c3e4a61","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:45:31 -0400","subject":"Fix misleading README wording about Apache exposure"},{"hash":"32efc638c1b623a951835be734c11a55f35c8d75","short":"32efc63","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:41:09 -0400","subject":"Add landing page for ximg.app"},{"hash":"da7bafb18aaf85926f0df3ed30dfec46338e778d","short":"da7bafb","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:39:41 -0400","subject":"Add README with architecture diagram and usage docs"},{"hash":"bd2a3e60323efa8113e92c5adc881f2b69212f77","short":"bd2a3e6","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:38:52 -0400","subject":"Add nginx reverse proxy with SSL termination"},{"hash":"f77ba241c69d61b0aa22b33defd536f052afe1a1","short":"f77ba24","author":"rick","email":"rick@ximg.app","date":"2026-03-28 11:28:53 -0400","subject":"Add Docker/Compose setup for Apache webserver"}];
+
+// ── Build stats ──────────────────────────────────────────────────────────────
+(function() {
+  var days = new Set();
+  COMMITS.forEach(function(c) { days.add(c.date.slice(0,10)); });
+  var authors = new Set(COMMITS.map(function(c){ return c.author; }));
+  var first = COMMITS[COMMITS.length-1].date.slice(0,10);
+  var statsEl = document.getElementById('stats');
+  statsEl.innerHTML =
+    '<div class="stat"><div class="stat-n">' + COMMITS.length + '</div><div class="stat-l">Commits</div></div>' +
+    '<div class="stat"><div class="stat-n">' + days.size + '</div><div class="stat-l">Active Days</div></div>' +
+    '<div class="stat"><div class="stat-n">' + authors.size + '</div><div class="stat-l">Author' + (authors.size>1?'s':'') + '</div></div>' +
+    '<div class="stat"><div class="stat-n">' + first + '</div><div class="stat-l">First Commit</div></div>';
+})();
+
+// ── Build timeline ───────────────────────────────────────────────────────────
+function formatDate(dateStr) {
+  var d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+}
+function formatTime(dateStr) {
+  var d = new Date(dateStr);
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function highlight(text, q) {
+  if (!q) return escHtml(text);
+  var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+  return escHtml(text).replace(re, '<mark style="background:rgba(0,230,118,.25);color:#69f0ae;border-radius:2px">$1</mark>');
+}
+
+var timelineEl = document.getElementById('timeline');
+var groups = {}; // date -> [{commit, rowEl, labelEl}]
+var rows = [];
+
+COMMITS.forEach(function(c, i) {
+  var day = c.date.slice(0, 10);
+  if (!groups[day]) {
+    var labelEl = document.createElement('div');
+    labelEl.className = 'day-label';
+    labelEl.dataset.day = day;
+    labelEl.textContent = formatDate(c.date);
+    timelineEl.appendChild(labelEl);
+    groups[day] = { labelEl: labelEl, items: [] };
+  }
+
+  var rowEl = document.createElement('div');
+  rowEl.className = 'commit-row';
+  rowEl.dataset.hash = c.hash;
+  rowEl.dataset.subject = c.subject.toLowerCase();
+  rowEl.dataset.author = c.author.toLowerCase();
+  rowEl.innerHTML =
+    '<div class="spine"><div class="dot"></div>' + (i < COMMITS.length - 1 ? '<div class="line"></div>' : '') + '</div>' +
+    '<div class="commit-card">' +
+      '<div class="commit-top">' +
+        '<div class="commit-subject" data-orig="' + escHtml(c.subject) + '">' + escHtml(c.subject) + '</div>' +
+      '</div>' +
+      '<div class="commit-meta">' +
+        '<span class="hash-chip">' + c.short + '</span>' +
+        '<span class="author-chip">👤 ' + escHtml(c.author) + '</span>' +
+        '<span class="time-chip">🕐 ' + formatTime(c.date) + '</span>' +
+      '</div>' +
+    '</div>';
+
+  timelineEl.appendChild(rowEl);
+  groups[day].items.push(rowEl);
+  rows.push({ rowEl: rowEl, commit: c, day: day });
+});
+
+document.getElementById('total-count').textContent = COMMITS.length;
+document.getElementById('visible-count').textContent = COMMITS.length;
+
+// ── Search ───────────────────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', function() {
+  var q = this.value.trim().toLowerCase();
+  var visible = 0;
+
+  rows.forEach(function(r) {
+    var match = !q ||
+      r.commit.subject.toLowerCase().includes(q) ||
+      r.commit.hash.includes(q) ||
+      r.commit.short.includes(q) ||
+      r.commit.author.toLowerCase().includes(q);
+
+    r.rowEl.classList.toggle('hidden', !match);
+    if (match) {
+      visible++;
+      var subj = r.rowEl.querySelector('.commit-subject');
+      subj.innerHTML = highlight(r.commit.subject, this.value.trim());
+    }
+  }.bind(this));
+
+  // hide day labels when all their commits are hidden
+  Object.keys(groups).forEach(function(day) {
+    var g = groups[day];
+    var anyVisible = g.items.some(function(row) { return !row.classList.contains('hidden'); });
+    g.labelEl.classList.toggle('hidden', !anyVisible);
+  });
+
+  document.getElementById('visible-count').textContent = visible;
+  document.getElementById('no-results').classList.toggle('visible', visible === 0);
+});
+</script>
+
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
