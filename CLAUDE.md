@@ -70,13 +70,14 @@ Each subdomain has its own Apache container and `*-html/` directory for static f
 
 ## Adding a New App (Checklist)
 
-Every new app must be wired into **three places** in addition to its own files:
+Every new app must be wired into **four places** in addition to its own files:
 
 1. **Nav bar** — add an entry to `shared-html/nav.js`
 2. **Landing page** — add a card/link on `public-html/index.html` (ximg.app)
 3. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` so its nginx logs are streamed
+4. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app) with name, domain, date added, and description
 
-Missing any of these three means the app is invisible or incomplete.
+Missing any of these four means the app is invisible or incomplete.
 
 ## SSL / Adding a New Subdomain
 
@@ -89,7 +90,8 @@ Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdoma
 6. **Add entry to `shared-html/nav.js`** (don't forget this — every app needs a nav entry)
 7. **Add a card to `public-html/index.html`** (landing page)
 8. **Add subdomain to `logs-server/server.js`** tab list
-9. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
+9. **Add a row to the `APPS` array in `apps-html/index.html`** (apps.ximg.app directory)
+10. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
 
 ## SSH Honeypot
 
