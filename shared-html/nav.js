@@ -48,6 +48,7 @@
     '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario</a>' +
     '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
     '<a class="nav-item" href="https://moto.ximg.app"><div class="nav-dot"></div>moto</a>' +
+    '<a class="nav-item" href="https://nav.ximg.app"><div class="nav-dot"></div>nav</a>' +
     '<a class="nav-item" href="https://passwords.ximg.app"><div class="nav-dot"></div>passwords</a>' +
     '<a class="nav-item" href="https://pizza.ximg.app"><div class="nav-dot"></div>pizza</a>' +
     '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker</a>' +
