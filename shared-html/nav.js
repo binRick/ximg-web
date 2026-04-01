@@ -6,8 +6,8 @@
       ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [
-      ['america','america'],['chinese','chinese'],['coldwar','coldwar'],['florida','florida'],
-      ['guns','guns'],['india','india'],['internet','internet'],['moto','moto'],
+      ['america','america'],['coldwar','coldwar'],['florida','florida'],
+      ['guns','guns'],['internet','internet'],['moto','moto'],
       ['tampa','tampa'],['trump','trump'],['wood','wood']
     ]},
     { label: 'Games', apps: [
@@ -15,7 +15,7 @@
       ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity']
     ]},
     { label: 'Food', apps: [
-      ['pizza','pizza'],
+      ['chinese','chinese'],['india','india'],['pizza','pizza'],
     ]},
     { label: 'More', apps: [
       ['apps','apps'],['change','change'],['fidonet','fidonet'],['logs','logs'],
