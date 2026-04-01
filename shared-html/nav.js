@@ -3,7 +3,7 @@
     { label: 'Tech', apps: [
       ['ansible','ansible'],['ascii','ascii'],['computers','computers'],
       ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],
-      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
+      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['ximg','ximg'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coldwar','coldwar'],['florida','florida'],

@@ -97,6 +97,7 @@ const LOG_FILES = {
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   nav:         'nav.access.log',
+  'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
 };
 
@@ -271,6 +272,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="programming">programming</button>
     <button class="tab"        data-site="systemd">systemd</button>
     <button class="tab"        data-site="nav">nav</button>
+    <button class="tab"        data-site="ximg-app">ximg-app</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
