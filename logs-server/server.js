@@ -220,6 +220,7 @@ const HTML = `<!DOCTYPE html>
   <script src="/shared/nav.js?v=2"></script>
 
   <div class="toolbar">
+    <button class="tab"        data-site="all">[all]</button>
     <button class="tab active" data-site="ximg">ximg</button>
     <button class="tab"        data-site="linux">linux</button>
     <button class="tab"        data-site="butterfly">butterfly</button>
@@ -256,7 +257,6 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="chess">chess</button>
     <button class="tab"        data-site="programming">programming</button>
     <button class="tab"        data-site="logs">logs</button>
-    <button class="tab"        data-site="all">[all]</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
