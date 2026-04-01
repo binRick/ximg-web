@@ -44,6 +44,16 @@ function writeScores(scores) {
   try { fs.writeFileSync(MARIO_SCORES_FILE, JSON.stringify(scores)); } catch (_) {}
 }
 
+const MARIO_SCORES_SMB2_FILE = '/data/mario-scores-smb2.json';
+
+function readScoresSMB2() {
+  try { return JSON.parse(fs.readFileSync(MARIO_SCORES_SMB2_FILE, 'utf8')); }
+  catch (_) { return []; }
+}
+function writeScoresSMB2(scores) {
+  try { fs.writeFileSync(MARIO_SCORES_SMB2_FILE, JSON.stringify(scores)); } catch (_) {}
+}
+
 const LOG_FILES = {
   ximg:      'ximg.access.log',
   linux:     'linux.access.log',
@@ -714,6 +724,43 @@ const server = http.createServer(async (req, res) => {
           scores.push({ initials: String(initials), score: Math.floor(score), ts: new Date().toISOString() });
           scores.sort((a, b) => b.score - a.score);
           writeScores(scores.slice(0, 200));
+          res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (_) { res.writeHead(400, cors); res.end(); }
+      });
+      return;
+    }
+    res.writeHead(405, cors); res.end(); return;
+  }
+
+  if (req.url === '/mario-scores-smb2') {
+    const cors = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
+
+    if (req.method === 'GET') {
+      const top = readScoresSMB2().sort((a, b) => b.score - a.score).slice(0, 10);
+      res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(top)); return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', d => { body += d; if (body.length > 512) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const { initials, score } = JSON.parse(body);
+          if (!/^[A-Z0-9]{1,3}$/.test(String(initials)) ||
+              !Number.isFinite(score) || score < 0 || score > 999999) {
+            res.writeHead(400, cors); res.end(); return;
+          }
+          const scores = readScoresSMB2();
+          scores.push({ initials: String(initials), score: Math.floor(score), ts: new Date().toISOString() });
+          scores.sort((a, b) => b.score - a.score);
+          writeScoresSMB2(scores.slice(0, 200));
           res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true }));
         } catch (_) { res.writeHead(400, cors); res.end(); }
