@@ -210,6 +210,7 @@ const HTML = `<!DOCTYPE html>
     .col-geo{color:#a5b4fc;font-size:.75rem}
     .col-path{color:var(--text)}
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
+    .col-site{color:var(--dim);font-size:.72rem;margin-right:.25rem}
     .raw-line{color:var(--dim);font-size:.75rem;padding:.1rem .25rem}
     .connecting{color:var(--dim);padding:1rem;animation:blink2 1s step-end infinite}
     @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
@@ -255,6 +256,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="chess">chess</button>
     <button class="tab"        data-site="programming">programming</button>
     <button class="tab"        data-site="logs">logs</button>
+    <button class="tab"        data-site="all">[all]</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
@@ -329,7 +331,7 @@ const HTML = `<!DOCTYPE html>
           '<span class="col-ip">'  + esc(data.ip)                             + '</span>' +
           '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
           '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
-          '<span class="col-path">' + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
+          '<span class="col-path">' + (data.site ? '<span class="col-site">[' + esc(data.site) + ']</span> ' : '') + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
         stats.total++;
         const key = Math.floor(data.status / 100) + 'xx';
         if (stats[key] !== undefined) stats[key]++;
@@ -736,13 +738,13 @@ const server = http.createServer(async (req, res) => {
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws, req) => {
-  const site    = new URL(req.url, 'http://x').searchParams.get('site') || 'ximg';
-  const logFile = path.join(LOGS_DIR, LOG_FILES[site] || LOG_FILES.ximg);
+  const site = new URL(req.url, 'http://x').searchParams.get('site') || 'ximg';
 
-  const send = async line => {
+  const makeSend = (siteName) => async line => {
     if (ws.readyState !== ws.OPEN) return;
     try {
       const parsed = parseLine(line);
+      if (siteName) parsed.site = siteName;
       if (parsed.ip) {
         const geo = await lookupGeo(parsed.ip);
         parsed.countryCode = geo.countryCode;
@@ -752,6 +754,23 @@ wss.on('connection', (ws, req) => {
       ws.send(JSON.stringify(parsed));
     } catch (_) {}
   };
+
+  if (site === 'all') {
+    const stopFns = [];
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      const logFile = path.join(LOGS_DIR, logFilename);
+      const send = makeSend(siteName);
+      lastLines(logFile, 10).forEach(send);
+      stopFns.push(tailFile(logFile, send));
+    }
+    const stopAll = () => stopFns.forEach(fn => fn());
+    ws.on('close', stopAll);
+    ws.on('error', stopAll);
+    return;
+  }
+
+  const logFile = path.join(LOGS_DIR, LOG_FILES[site] || LOG_FILES.ximg);
+  const send = makeSend(null);
 
   // Replay last 100 lines on connect
   lastLines(logFile, 100).forEach(send);
