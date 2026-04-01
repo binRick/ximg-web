@@ -12,11 +12,11 @@
     { label: 'Culture', apps: [
       ['america','america'],['chinese','chinese'],['coldwar','coldwar'],['florida','florida'],
       ['guns','guns'],['india','india'],['internet','internet'],['moto','moto'],
-      ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
+      ['tampa','tampa'],['trump','trump'],['wood','wood']
     ]},
     { label: 'More', apps: [
       ['apps','apps'],['change','change'],['fidonet','fidonet'],['mail','mail'],
-      ['nav','nav'],['pizza','pizza'],['rx','RxFitt']
+      ['nav','nav'],['pizza','pizza'],['rx','RxFitt'],['wargames','wargames']
     ]},
   ];
 
