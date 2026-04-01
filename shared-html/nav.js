@@ -2,7 +2,7 @@
   var GROUPS = [
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kombat','kombat'],
-      ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity'],['wargames','wargames']
+      ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity']
     ]},
     { label: 'Tech', apps: [
       ['ansible','ansible'],['ascii','ascii'],['butterfly','butterfly'],['computers','computers'],
@@ -12,7 +12,7 @@
     { label: 'Culture', apps: [
       ['america','america'],['chinese','chinese'],['coldwar','coldwar'],['florida','florida'],
       ['guns','guns'],['india','india'],['internet','internet'],['moto','moto'],
-      ['tampa','tampa'],['trump','trump'],['wood','wood']
+      ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'More', apps: [
       ['apps','apps'],['change','change'],['fidonet','fidonet'],['mail','mail'],
