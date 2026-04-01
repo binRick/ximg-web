@@ -626,10 +626,30 @@ function doPlace(type,tx,ty){
   bgDirty=true;sndBuild();return true;
 }
 
+function canPlaceFree(type,tx,ty){
+  // Like canPlace but no proximity requirement (for MCV deploy — first building)
+  const d=BDEFS[type];
+  if(tx<0||ty<0||tx+d.w>MAP_W||ty+d.h>MAP_H)return false;
+  for(let y=ty;y<ty+d.h;y++)for(let x=tx;x<tx+d.w;x++){
+    if(map[y][x]!==G)return false;
+    for(const b of buildings)if(!b.dead&&x>=b.tx&&x<b.tx+b.def.w&&y>=b.ty&&y<b.ty+b.def.h)return false;
+  }
+  return true;
+}
+
 function deployMCV(u){
-  const tx=u.tx-1,ty=u.ty-1;
-  if(!canPlace('yard',tx,ty,0))return false;
-  u.dead=true;buildings.push(new Building('yard',0,tx,ty));recalcPwr(0);bgDirty=true;sndBuild();return true;
+  // Try placing 3x3 Construction Yard centered on MCV, then spiral outward
+  const base={tx:u.tx-1,ty:u.ty-1};
+  let found=null;
+  outer:for(let r=0;r<=6;r++){
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      if(Math.abs(dx)!==r&&Math.abs(dy)!==r)continue;
+      const tx=base.tx+dx,ty=base.ty+dy;
+      if(canPlaceFree('yard',tx,ty)){found={tx,ty};break outer;}
+    }
+  }
+  if(!found)return false;
+  u.dead=true;buildings.push(new Building('yard',0,found.tx,found.ty));recalcPwr(0);bgDirty=true;sndBuild();return true;
 }
 
 /* ═══════════════════════════════════════════════════════
