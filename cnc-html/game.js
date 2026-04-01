@@ -59,8 +59,8 @@ const UDEFS={
 };
 
 const BDEFS={
-  yard:    {name:'Construction Yard',hp:1000,w:3,h:3,cost:0,   pwr:-5, col:'#1a3510',req:[],           desc:'Base command center'},
-  power:   {name:'Power Plant',      hp:400, w:2,h:2,cost:300, pwr:15, col:'#0e2235',req:['yard'],      desc:'Powers your base (+15)'},
+  yard:    {name:'Construction Yard',hp:1000,w:3,h:3,cost:0,   pwr:0,  col:'#1a3510',req:[],           desc:'Base command center'},
+  power:   {name:'Power Plant',      hp:400, w:2,h:2,cost:300, pwr:20, col:'#0e2235',req:['yard'],      desc:'Powers your base (+20)'},
   barracks:{name:'Barracks',         hp:500, w:2,h:3,cost:400, pwr:-5, col:'#2a1e08',req:['power'],     trains:['soldier','rocket','engineer'],desc:'Trains infantry'},
   factory: {name:'War Factory',      hp:600, w:3,h:2,cost:800, pwr:-10,col:'#1e1208',req:['barracks'],  trains:['tank','mammoth','artillery'],desc:'Produces vehicles'},
   refinery:{name:'Tib. Refinery',    hp:700, w:3,h:3,cost:1000,pwr:-8, col:'#102808',req:['power'],     desc:'Processes Tiberium (+$600/load)'},
@@ -1078,7 +1078,14 @@ function drawBuildPanel(sx,y,W,H){
     if(nameLines.length>1)ctx.fillText(nameLines.slice(1).join(' '),bx+btnW/2,by+26);
 
     ctx.fillStyle=canAfford?'#8aaa66':'#3a4a33';ctx.font='bold 9px monospace';
-    ctx.fillText(`$${def.cost}`,bx+btnW/2,by+38);
+    ctx.fillText(`$${def.cost}`,bx+btnW/2,by+36);
+
+    // Power delta
+    if(def.pwr!==0){
+      const afterPwr=players[0].power+def.pwr;
+      ctx.fillStyle=afterPwr>=0?'rgba(74,255,42,0.55)':'rgba(255,80,60,0.7)';
+      ctx.font='6px monospace';ctx.fillText(`pwr${def.pwr>0?'+':''}${def.pwr}`,bx+btnW/2,by+46);
+    }
 
     if(!reqsMet){
       ctx.fillStyle='rgba(0,0,0,0.48)';ctx.fillRect(bx,by,btnW,btnH);
@@ -1104,6 +1111,17 @@ function drawTrainPanel(sx,y,W,H){
   ctx.strokeStyle='rgba(74,255,42,0.2)';ctx.lineWidth=1;ctx.strokeRect(sx+4,y,W-8,18);
   ctx.fillStyle='#8aaa66';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.fillText(selBldg.def.name,sx+W/2,y+12);
   y+=22;
+
+  // Power warning
+  if(players[0].power<0){
+    ctx.fillStyle='rgba(200,40,40,0.18)';ctx.fillRect(sx+4,y,W-8,20);
+    ctx.strokeStyle='rgba(220,60,60,0.45)';ctx.lineWidth=1;ctx.strokeRect(sx+4,y,W-8,20);
+    ctx.fillStyle='#ff7755';ctx.font='bold 8px monospace';ctx.textAlign='center';
+    ctx.fillText('LOW POWER — BUILD MORE',sx+W/2,y+9);
+    ctx.fillStyle='rgba(255,100,80,0.7)';ctx.font='7px monospace';
+    ctx.fillText('POWER PLANTS TO TRAIN',sx+W/2,y+18);
+    y+=24;
+  }
 
   const btnW=(W-12)/2,btnH=56;
   selBldg.def.trains.forEach((t,i)=>{
@@ -1227,7 +1245,13 @@ function setupInput(){
     keys[e.key]=true;
     if(e.key==='Escape'){placing=null;selected.clear();}
     if((e.key==='r'||e.key==='R')&&gameOver)restart();
-    if(e.key==='Tab'){e.preventDefault();sideTab=sideTab==='bldg'?'unit':'bldg';}
+    if(e.key==='Tab'){
+      e.preventDefault();sideTab=sideTab==='bldg'?'unit':'bldg';
+      if(sideTab==='unit'){
+        const hasTrainSel=[...selected].some(id=>{const e2=findEnt(id);return e2&&!e2.dead&&e2 instanceof Building&&e2.playerId===0&&e2.def.trains;});
+        if(!hasTrainSel){const prod=buildings.find(b=>!b.dead&&b.playerId===0&&b.def.trains);if(prod){selected.clear();selected.add(prod.id);sndSelect();}}
+      }
+    }
   });
   window.addEventListener('keyup',e=>{keys[e.key]=false;});
 }
@@ -1255,7 +1279,14 @@ function handleSidebarClick(sx,sy){
     return;
   }
   // Tabs
-  for(const t of _tabBtns)if(sx>=t.x&&sx<=t.x+t.w&&sy>=t.y&&sy<=t.y+t.h){sideTab=t.tab;return;}
+  for(const t of _tabBtns)if(sx>=t.x&&sx<=t.x+t.w&&sy>=t.y&&sy<=t.y+t.h){
+    sideTab=t.tab;
+    if(t.tab==='unit'){
+      const hasTrainSel=[...selected].some(id=>{const e=findEnt(id);return e&&!e.dead&&e instanceof Building&&e.playerId===0&&e.def.trains;});
+      if(!hasTrainSel){const prod=buildings.find(b=>!b.dead&&b.playerId===0&&b.def.trains);if(prod){selected.clear();selected.add(prod.id);sndSelect();}}
+    }
+    return;
+  }
   // Build buttons
   for(const b of _bldgBtns){
     if(sx>=b.x&&sx<=b.x+b.w&&sy>=b.y&&sy<=b.y+b.h){
