@@ -2,7 +2,7 @@
   var GROUPS = [
     { label: 'Tech', apps: [
       ['ansible','ansible'],['ascii','ascii'],['butterfly','butterfly'],['computers','computers'],
-      ['docker','docker'],['git','git'],['json','json'],['linux','linux'],['logs','logs'],
+      ['docker','docker'],['git','git'],['json','json'],['linux','linux'],
       ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [
@@ -15,8 +15,8 @@
       ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity']
     ]},
     { label: 'More', apps: [
-      ['apps','apps'],['change','change'],['fidonet','fidonet'],['mail','mail'],
-      ['nav','nav'],['pizza','pizza'],['rx','RxFitt'],['wargames','wargames']
+      ['apps','apps'],['change','change'],['fidonet','fidonet'],['logs','logs'],
+      ['mail','mail'],['nav','nav'],['pizza','pizza'],['rx','RxFitt'],['wargames','wargames']
     ]},
   ];
 
