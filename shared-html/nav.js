@@ -2,12 +2,12 @@
   var GROUPS = [
     { label: 'Tech', apps: [
       ['ansible','ansible'],['ascii','ascii'],['butterfly','butterfly'],['computers','computers'],
-      ['docker','docker'],['git','git'],['json','json'],['linux','linux'],
+      ['docker','docker'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],
       ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coldwar','coldwar'],['florida','florida'],
-      ['guns','guns'],['internet','internet'],['moto','moto'],
+      ['guns','guns'],['moto','moto'],
       ['tampa','tampa'],['trump','trump'],['wood','wood']
     ]},
     { label: 'Games', apps: [
