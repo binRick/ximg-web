@@ -14,9 +14,12 @@
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kombat','kombat'],
       ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity']
     ]},
+    { label: 'Food', apps: [
+      ['pizza','pizza'],
+    ]},
     { label: 'More', apps: [
       ['apps','apps'],['change','change'],['fidonet','fidonet'],['logs','logs'],
-      ['mail','mail'],['nav','nav'],['pizza','pizza'],['rx','RxFitt'],['wargames','wargames']
+      ['mail','mail'],['nav','nav'],['rx','RxFitt'],['wargames','wargames']
     ]},
   ];
 
