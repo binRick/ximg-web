@@ -1904,9 +1904,9 @@ class Fighter {
     if(this.state==='dead') return;
     this.state=s; this.stateTimer=0; this.attackActive=false;
   }
-  jump(){ if(!this.grounded) return; this.vy=-15; this.grounded=false; sndJump(); }
-  doPunch(){ if(this.stunTimer>0) return; this.setState(this.state==='jump'?'jump_punch':'punch'); }
-  doKick(){  if(this.stunTimer>0) return; this.setState(this.state==='crouch'?'crouch_kick':this.state==='jump'?'jump_kick':'kick'); }
+  jump(){ if(!this.grounded) return; this.vy=-15; this.grounded=false; this.setState('jump'); sndJump(); }
+  doPunch(){ if(this.stunTimer>0) return; this.setState(!this.grounded?'jump_punch':'punch'); }
+  doKick(){  if(this.stunTimer>0) return; this.setState(!this.grounded?'jump_kick':this.state==='crouch'?'crouch_kick':'kick'); }
   doSpecial(opp){
     if(this.spCd>0||this.stunTimer>0||!this.grounded) return;
     this.setState('special'); this.spCd=3.5; sndFire();
@@ -1924,7 +1924,7 @@ class Fighter {
     spawnHit(this.x, this.y-65, !blocked);
     if(blocked){ sndBlock(); this.vx=-attacker.facing*2; return actual; }
     sndHit(actual);
-    this.vx=attacker.facing*(3+actual/10); this.vy=-2.5;
+    this.vx=attacker.facing*(3+actual/10); this.vy=-2.5; this.grounded=false;
     if(this.health<=0){ this.setState('dead'); this.vy=-7; this.vx=attacker.facing*6; }
     else { this.setState('hurt'); this.stunTimer=0.32; }
     return actual;
@@ -1939,10 +1939,15 @@ class Fighter {
     if(this.state!=='dead') this.facing=opp.x>this.x?1:-1;
     // Physics
     if(!this.grounded) this.vy+=0.6;
-    this.y=Math.min(FLOOR, this.y+this.vy);
+    this.y+=this.vy;
     this.x+=this.vx;
-    if(this.y>=FLOOR){ this.y=FLOOR; if(this.vy>0)this.vy=0; this.grounded=true;
-      if(['jump','jump_punch','jump_kick'].includes(this.state)) this.setState('idle'); }
+    if(this.y>=FLOOR){
+      this.y=FLOOR; this.vy=0; this.grounded=true;
+      if(['jump','jump_punch','jump_kick'].includes(this.state)) this.setState('idle');
+    } else {
+      this.grounded=false;
+      if(this.y<20){ this.y=20; if(this.vy<0) this.vy=0; } // ceiling clamp
+    }
     this.x=Math.max(48,Math.min(GW-48,this.x));
     this.vx*=0.72; if(Math.abs(this.vx)<0.2) this.vx=0;
     // Attack windows
