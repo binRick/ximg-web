@@ -21,45 +21,45 @@
   var nav = document.createElement('nav');
   nav.innerHTML =
     '<a class="nav-brand" href="https://ximg.app">ximg.app</a>' +
-    '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux</a>' +
-    '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly</a>' +
-    '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii</a>' +
-    '<a class="nav-item" href="https://yaml.ximg.app"><div class="nav-dot"></div>yaml</a>' +
-    '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json</a>' +
-    '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker</a>' +
-    '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario</a>' +
-    '<a class="nav-item" href="https://doom.ximg.app"><div class="nav-dot"></div>doom</a>' +
-    '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
-    '<a class="nav-item" href="https://docker.ximg.app"><div class="nav-dot"></div>docker</a>' +
-    '<a class="nav-item" href="https://pizza.ximg.app"><div class="nav-dot"></div>pizza</a>' +
-    '<a class="nav-item" href="https://kombat.ximg.app"><div class="nav-dot"></div>kombat</a>' +
-    '<a class="nav-item" href="https://chinese.ximg.app"><div class="nav-dot"></div>chinese</a>' +
-    '<a class="nav-item" href="https://wargames.ximg.app"><div class="nav-dot"></div>wargames</a>' +
-    '<a class="nav-item" href="https://moto.ximg.app"><div class="nav-dot"></div>moto</a>' +
-    '<a class="nav-item" href="https://india.ximg.app"><div class="nav-dot"></div>india</a>' +
-    '<a class="nav-item" href="https://wood.ximg.app"><div class="nav-dot"></div>wood</a>' +
-    '<a class="nav-item" href="https://guns.ximg.app"><div class="nav-dot"></div>guns</a>' +
-    '<a class="nav-item" href="https://florida.ximg.app"><div class="nav-dot"></div>florida</a>' +
-    '<a class="nav-item" href="https://tampa.ximg.app"><div class="nav-dot"></div>tampa</a>' +
     '<a class="nav-item" href="https://america.ximg.app"><div class="nav-dot"></div>america</a>' +
-    '<a class="nav-item" href="https://computers.ximg.app"><div class="nav-dot"></div>computers</a>' +
-    '<a class="nav-item" href="https://trump.ximg.app"><div class="nav-dot"></div>trump</a>' +
-    '<a class="nav-item" href="https://cnc.ximg.app"><div class="nav-dot"></div>cnc</a>' +
-    '<a class="nav-item" href="https://simcity.ximg.app"><div class="nav-dot"></div>simcity</a>' +
-    '<a class="nav-item" href="https://rx.ximg.app"><div class="nav-dot"></div>RxFitt</a>' +
-    '<a class="nav-item" href="https://mail.ximg.app"><div class="nav-dot"></div>mail</a>' +
-    '<a class="nav-item" href="https://internet.ximg.app"><div class="nav-dot"></div>internet</a>' +
-    '<a class="nav-item" href="https://fidonet.ximg.app"><div class="nav-dot"></div>fidonet</a>' +
-    '<a class="nav-item" href="https://change.ximg.app"><div class="nav-dot"></div>change</a>' +
-    '<a class="nav-item" href="https://coldwar.ximg.app"><div class="nav-dot"></div>coldwar</a>' +
-    '<a class="nav-item" href="https://tmux.ximg.app"><div class="nav-dot"></div>tmux</a>' +
     '<a class="nav-item" href="https://ansible.ximg.app"><div class="nav-dot"></div>ansible</a>' +
-    '<a class="nav-item" href="https://git.ximg.app"><div class="nav-dot"></div>git</a>' +
-    '<a class="nav-item" href="https://passwords.ximg.app"><div class="nav-dot"></div>passwords</a>' +
-    '<a class="nav-item" href="https://chess.ximg.app"><div class="nav-dot"></div>chess</a>' +
-    '<a class="nav-item" href="https://programming.ximg.app"><div class="nav-dot"></div>programming</a>' +
     '<a class="nav-item" href="https://apps.ximg.app"><div class="nav-dot"></div>apps</a>' +
-    '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>';
+    '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii</a>' +
+    '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly</a>' +
+    '<a class="nav-item" href="https://change.ximg.app"><div class="nav-dot"></div>change</a>' +
+    '<a class="nav-item" href="https://chess.ximg.app"><div class="nav-dot"></div>chess</a>' +
+    '<a class="nav-item" href="https://chinese.ximg.app"><div class="nav-dot"></div>chinese</a>' +
+    '<a class="nav-item" href="https://cnc.ximg.app"><div class="nav-dot"></div>cnc</a>' +
+    '<a class="nav-item" href="https://coldwar.ximg.app"><div class="nav-dot"></div>coldwar</a>' +
+    '<a class="nav-item" href="https://computers.ximg.app"><div class="nav-dot"></div>computers</a>' +
+    '<a class="nav-item" href="https://docker.ximg.app"><div class="nav-dot"></div>docker</a>' +
+    '<a class="nav-item" href="https://doom.ximg.app"><div class="nav-dot"></div>doom</a>' +
+    '<a class="nav-item" href="https://fidonet.ximg.app"><div class="nav-dot"></div>fidonet</a>' +
+    '<a class="nav-item" href="https://florida.ximg.app"><div class="nav-dot"></div>florida</a>' +
+    '<a class="nav-item" href="https://git.ximg.app"><div class="nav-dot"></div>git</a>' +
+    '<a class="nav-item" href="https://guns.ximg.app"><div class="nav-dot"></div>guns</a>' +
+    '<a class="nav-item" href="https://india.ximg.app"><div class="nav-dot"></div>india</a>' +
+    '<a class="nav-item" href="https://internet.ximg.app"><div class="nav-dot"></div>internet</a>' +
+    '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json</a>' +
+    '<a class="nav-item" href="https://kombat.ximg.app"><div class="nav-dot"></div>kombat</a>' +
+    '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux</a>' +
+    '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>' +
+    '<a class="nav-item" href="https://mail.ximg.app"><div class="nav-dot"></div>mail</a>' +
+    '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario</a>' +
+    '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
+    '<a class="nav-item" href="https://moto.ximg.app"><div class="nav-dot"></div>moto</a>' +
+    '<a class="nav-item" href="https://passwords.ximg.app"><div class="nav-dot"></div>passwords</a>' +
+    '<a class="nav-item" href="https://pizza.ximg.app"><div class="nav-dot"></div>pizza</a>' +
+    '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker</a>' +
+    '<a class="nav-item" href="https://programming.ximg.app"><div class="nav-dot"></div>programming</a>' +
+    '<a class="nav-item" href="https://rx.ximg.app"><div class="nav-dot"></div>RxFitt</a>' +
+    '<a class="nav-item" href="https://simcity.ximg.app"><div class="nav-dot"></div>simcity</a>' +
+    '<a class="nav-item" href="https://tampa.ximg.app"><div class="nav-dot"></div>tampa</a>' +
+    '<a class="nav-item" href="https://tmux.ximg.app"><div class="nav-dot"></div>tmux</a>' +
+    '<a class="nav-item" href="https://trump.ximg.app"><div class="nav-dot"></div>trump</a>' +
+    '<a class="nav-item" href="https://wargames.ximg.app"><div class="nav-dot"></div>wargames</a>' +
+    '<a class="nav-item" href="https://wood.ximg.app"><div class="nav-dot"></div>wood</a>' +
+    '<a class="nav-item" href="https://yaml.ximg.app"><div class="nav-dot"></div>yaml</a>';
 
   // Highlight the current site
   nav.querySelectorAll('.nav-item').forEach(function (a) {
