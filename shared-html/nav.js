@@ -1,8 +1,8 @@
 (function () {
   var GROUPS = [
     { label: 'Tech', apps: [
-      ['ansible','ansible'],['ascii','ascii'],['butterfly','butterfly'],['computers','computers'],
-      ['docker','docker'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],
+      ['ansible','ansible'],['ascii','ascii'],['computers','computers'],
+      ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],
       ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [
@@ -18,7 +18,7 @@
       ['chinese','chinese'],['india','india'],['pizza','pizza'],
     ]},
     { label: 'More', apps: [
-      ['apps','apps'],['change','change'],['fidonet','fidonet'],['logs','logs'],
+      ['apps','apps'],['butterfly','butterfly'],['change','change'],['logs','logs'],
       ['mail','mail'],['nav','nav'],['rx','RxFitt'],['wargames','wargames']
     ]},
   ];
