@@ -1,78 +1,130 @@
 (function () {
-  // Inject nav CSS once
+  var GROUPS = [
+    { label: 'Games', apps: [
+      ['chess','chess'],['cnc','cnc'],['doom','doom'],['kombat','kombat'],
+      ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity'],['wargames','wargames']
+    ]},
+    { label: 'Tech', apps: [
+      ['ansible','ansible'],['ascii','ascii'],['butterfly','butterfly'],['computers','computers'],
+      ['docker','docker'],['git','git'],['json','json'],['linux','linux'],['logs','logs'],
+      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
+    ]},
+    { label: 'Culture', apps: [
+      ['america','america'],['chinese','chinese'],['coldwar','coldwar'],['florida','florida'],
+      ['guns','guns'],['india','india'],['internet','internet'],['moto','moto'],
+      ['tampa','tampa'],['trump','trump'],['wood','wood']
+    ]},
+    { label: 'More', apps: [
+      ['apps','apps'],['change','change'],['fidonet','fidonet'],['mail','mail'],
+      ['nav','nav'],['pizza','pizza'],['rx','RxFitt']
+    ]},
+  ];
+
   var s = document.createElement('style');
   s.textContent =
     'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
-    'flex-wrap:wrap;gap:.2rem;padding:.4rem .75rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
+    'gap:.35rem;padding:.4rem .75rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
     'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;}' +
-    '.nav-brand{font-weight:700;font-size:.88rem;color:#f1f5f9;margin-right:.4rem;letter-spacing:-.02em;text-decoration:none;flex-shrink:0}' +
-    '.nav-item{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;' +
-    'text-decoration:none;padding:.3rem .65rem;border-radius:6px;transition:all .2s;white-space:nowrap;flex-shrink:0;' +
-    'color:#c9d1d9;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}' +
-    '.nav-item:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);transform:translateY(-1px)}' +
-    '.nav-item.active{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07);' +
-    'pointer-events:none;cursor:default}' +
-    '.nav-dot{width:6px;height:6px;border-radius:50%;background:#00ff41;box-shadow:0 0 5px #00ff41;' +
-    'animation:navpulse 2s ease-in-out infinite;flex-shrink:0}' +
-    '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}';
+
+    '.nav-brand{font-weight:700;font-size:.88rem;color:#f1f5f9;margin-right:.5rem;' +
+    'letter-spacing:-.02em;text-decoration:none;flex-shrink:0}' +
+
+    '.nav-group{position:relative;flex-shrink:0}' +
+
+    '.nav-trigger{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;' +
+    'padding:.3rem .65rem;border-radius:6px;cursor:pointer;white-space:nowrap;' +
+    'color:#c9d1d9;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);' +
+    'font-family:\'Courier New\',monospace;user-select:none;transition:all .18s;}' +
+    '.nav-trigger:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18);}' +
+    '.nav-trigger.open{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);}' +
+    '.nav-trigger.has-active{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07);}' +
+    '.nav-trigger.has-active:hover{background:rgba(0,255,65,.12);}' +
+
+    '.nav-caret{font-size:.55rem;opacity:.6;transition:transform .2s;line-height:1}' +
+    '.nav-trigger.open .nav-caret{transform:rotate(180deg)}' +
+
+    '.nav-dropdown{position:absolute;top:calc(100% + 5px);left:0;' +
+    'background:#0d0d16;border:1px solid rgba(255,255,255,.1);border-radius:10px;' +
+    'padding:.35rem;z-index:300;box-shadow:0 16px 40px rgba(0,0,0,.75);' +
+    'opacity:0;transform:translateY(-6px);pointer-events:none;' +
+    'transition:opacity .16s,transform .16s;}' +
+    '.nav-dropdown.open{opacity:1;transform:none;pointer-events:all;}' +
+    '.nav-dropdown.wide{display:grid;grid-template-columns:1fr 1fr;gap:.05rem .2rem;min-width:220px;}' +
+
+    '.nav-dd-item{display:flex;align-items:center;gap:.4rem;font-size:.73rem;font-weight:600;' +
+    'color:#c9d1d9;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;' +
+    'text-decoration:none;transition:background .1s;font-family:\'Courier New\',monospace;}' +
+    '.nav-dd-item:hover{background:rgba(255,255,255,.08);color:#fff;}' +
+    '.nav-dd-item.active{color:#00ff41;cursor:default;}' +
+
+    '.nav-dd-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;' +
+    'background:rgba(255,255,255,.2);}' +
+    '.nav-dd-item.active .nav-dd-dot{background:#00ff41;box-shadow:0 0 5px #00ff41;' +
+    'animation:navpulse 2s ease-in-out infinite;}' +
+    '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.3}}';
+
   document.head.appendChild(s);
 
-  // Build nav
   var nav = document.createElement('nav');
-  nav.innerHTML =
-    '<a class="nav-brand" href="https://ximg.app">ximg.app</a>' +
-    '<a class="nav-item" href="https://america.ximg.app"><div class="nav-dot"></div>america</a>' +
-    '<a class="nav-item" href="https://ansible.ximg.app"><div class="nav-dot"></div>ansible</a>' +
-    '<a class="nav-item" href="https://apps.ximg.app"><div class="nav-dot"></div>apps</a>' +
-    '<a class="nav-item" href="https://ascii.ximg.app"><div class="nav-dot"></div>ascii</a>' +
-    '<a class="nav-item" href="https://butterfly.ximg.app"><div class="nav-dot"></div>butterfly</a>' +
-    '<a class="nav-item" href="https://change.ximg.app"><div class="nav-dot"></div>change</a>' +
-    '<a class="nav-item" href="https://chess.ximg.app"><div class="nav-dot"></div>chess</a>' +
-    '<a class="nav-item" href="https://chinese.ximg.app"><div class="nav-dot"></div>chinese</a>' +
-    '<a class="nav-item" href="https://cnc.ximg.app"><div class="nav-dot"></div>cnc</a>' +
-    '<a class="nav-item" href="https://coldwar.ximg.app"><div class="nav-dot"></div>coldwar</a>' +
-    '<a class="nav-item" href="https://computers.ximg.app"><div class="nav-dot"></div>computers</a>' +
-    '<a class="nav-item" href="https://docker.ximg.app"><div class="nav-dot"></div>docker</a>' +
-    '<a class="nav-item" href="https://doom.ximg.app"><div class="nav-dot"></div>doom</a>' +
-    '<a class="nav-item" href="https://fidonet.ximg.app"><div class="nav-dot"></div>fidonet</a>' +
-    '<a class="nav-item" href="https://florida.ximg.app"><div class="nav-dot"></div>florida</a>' +
-    '<a class="nav-item" href="https://git.ximg.app"><div class="nav-dot"></div>git</a>' +
-    '<a class="nav-item" href="https://guns.ximg.app"><div class="nav-dot"></div>guns</a>' +
-    '<a class="nav-item" href="https://india.ximg.app"><div class="nav-dot"></div>india</a>' +
-    '<a class="nav-item" href="https://internet.ximg.app"><div class="nav-dot"></div>internet</a>' +
-    '<a class="nav-item" href="https://json.ximg.app"><div class="nav-dot"></div>json</a>' +
-    '<a class="nav-item" href="https://kombat.ximg.app"><div class="nav-dot"></div>kombat</a>' +
-    '<a class="nav-item" href="https://linux.ximg.app"><div class="nav-dot"></div>linux</a>' +
-    '<a class="nav-item" href="https://logs.ximg.app"><div class="nav-dot"></div>logs</a>' +
-    '<a class="nav-item" href="https://mail.ximg.app"><div class="nav-dot"></div>mail</a>' +
-    '<a class="nav-item" href="https://mario.ximg.app"><div class="nav-dot"></div>mario</a>' +
-    '<a class="nav-item" href="https://monkey.ximg.app"><div class="nav-dot"></div>monkey</a>' +
-    '<a class="nav-item" href="https://moto.ximg.app"><div class="nav-dot"></div>moto</a>' +
-    '<a class="nav-item" href="https://nav.ximg.app"><div class="nav-dot"></div>nav</a>' +
-    '<a class="nav-item" href="https://passwords.ximg.app"><div class="nav-dot"></div>passwords</a>' +
-    '<a class="nav-item" href="https://pizza.ximg.app"><div class="nav-dot"></div>pizza</a>' +
-    '<a class="nav-item" href="https://poker.ximg.app"><div class="nav-dot"></div>poker</a>' +
-    '<a class="nav-item" href="https://programming.ximg.app"><div class="nav-dot"></div>programming</a>' +
-    '<a class="nav-item" href="https://rx.ximg.app"><div class="nav-dot"></div>RxFitt</a>' +
-    '<a class="nav-item" href="https://simcity.ximg.app"><div class="nav-dot"></div>simcity</a>' +
-    '<a class="nav-item" href="https://tampa.ximg.app"><div class="nav-dot"></div>tampa</a>' +
-    '<a class="nav-item" href="https://tmux.ximg.app"><div class="nav-dot"></div>tmux</a>' +
-    '<a class="nav-item" href="https://trump.ximg.app"><div class="nav-dot"></div>trump</a>' +
-    '<a class="nav-item" href="https://systemd.ximg.app"><div class="nav-dot"></div>systemd</a>' +
-    '<a class="nav-item" href="https://vr.ximg.app"><div class="nav-dot"></div>vr</a>' +
-    '<a class="nav-item" href="https://wargames.ximg.app"><div class="nav-dot"></div>wargames</a>' +
-    '<a class="nav-item" href="https://wood.ximg.app"><div class="nav-dot"></div>wood</a>' +
-    '<a class="nav-item" href="https://yaml.ximg.app"><div class="nav-dot"></div>yaml</a>';
+  nav.innerHTML = '<a class="nav-brand" href="https://ximg.app">ximg.app</a>';
 
-  // Highlight the current site
-  nav.querySelectorAll('.nav-item').forEach(function (a) {
-    if (new URL(a.href).hostname === window.location.hostname) {
-      a.classList.add('active');
-      a.removeAttribute('href');
-    }
+  var curHost = window.location.hostname;
+
+  GROUPS.forEach(function (g) {
+    var hasActive = g.apps.some(function (a) { return a[0] + '.ximg.app' === curHost; });
+
+    var group = document.createElement('div');
+    group.className = 'nav-group';
+
+    var trigger = document.createElement('div');
+    trigger.className = 'nav-trigger' + (hasActive ? ' has-active' : '');
+    trigger.innerHTML = g.label + ' <span class="nav-caret">▾</span>';
+
+    var dd = document.createElement('div');
+    dd.className = 'nav-dropdown' + (g.apps.length >= 9 ? ' wide' : '');
+
+    g.apps.forEach(function (a) {
+      var subdomain = a[0], label = a[1];
+      var isActive = subdomain + '.ximg.app' === curHost;
+      var item = document.createElement('a');
+      item.className = 'nav-dd-item' + (isActive ? ' active' : '');
+      item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
+      if (!isActive) item.href = 'https://' + subdomain + '.ximg.app';
+      dd.appendChild(item);
+    });
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = dd.classList.contains('open');
+      closeAll();
+      if (!isOpen) {
+        dd.classList.add('open');
+        trigger.classList.add('open');
+        // flip left/right if dropdown would overflow viewport
+        var rect = dd.getBoundingClientRect();
+        if (rect.right > window.innerWidth - 8) {
+          dd.style.left = 'auto';
+          dd.style.right = '0';
+        } else {
+          dd.style.left = '';
+          dd.style.right = '';
+        }
+      }
+    });
+
+    group.appendChild(trigger);
+    group.appendChild(dd);
+    nav.appendChild(group);
   });
 
-  // Spacer — keeps content below the fixed nav in flex-column layouts
+  document.addEventListener('click', closeAll);
+
+  function closeAll() {
+    nav.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+    nav.querySelectorAll('.nav-trigger.open').forEach(function (t) { t.classList.remove('open'); });
+  }
+
+  // Spacer — keeps content below the fixed nav
   var spacer = document.createElement('div');
   spacer.setAttribute('aria-hidden', 'true');
   spacer.style.cssText = 'width:100%;flex-shrink:0;pointer-events:none';
@@ -80,7 +132,6 @@
   document.body.prepend(spacer);
   document.body.prepend(nav);
 
-  // Match spacer height to actual nav height (handles wrapping)
   function syncSpacer() { spacer.style.height = nav.offsetHeight + 'px'; }
   syncSpacer();
   window.addEventListener('resize', syncSpacer);
