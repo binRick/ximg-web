@@ -374,6 +374,55 @@
     @media(max-width:420px) { .pioneers-grid { grid-template-columns: 1fr; } }
 
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── Performance tab ── */
+    .perf-legend {
+      display: flex; flex-wrap: wrap; gap: .6rem; align-items: center;
+      font-family: 'Segoe UI', system-ui, sans-serif; font-size: .78rem;
+    }
+    .perf-legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .perf-legend-item { display: flex; align-items: center; gap: .4rem; color: var(--muted); }
+
+    .perf-table-wrap { overflow-x: auto; }
+    .perf-table {
+      width: 100%; border-collapse: collapse;
+      font-family: 'Segoe UI', system-ui, sans-serif; font-size: .84rem;
+    }
+    .perf-table th {
+      text-align: left; padding: .5rem .75rem;
+      font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    .perf-table td { padding: .55rem .75rem; border-bottom: 1px solid rgba(0,180,60,.07); vertical-align: middle; }
+    .perf-table tr:hover td { background: rgba(0,180,60,.05); }
+    .perf-lang-cell { display: flex; align-items: center; gap: .5rem; font-weight: 700; color: var(--text); }
+    .perf-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .perf-type { font-size: .72rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .perf-bar-cell { min-width: 200px; }
+    .perf-bar-bg { background: rgba(255,255,255,.05); border-radius: 4px; height: 14px; overflow: hidden; }
+    .perf-bar-fill { height: 100%; border-radius: 4px; }
+    .perf-score { font-weight: 700; font-size: .82rem; color: var(--gold); white-space: nowrap; }
+    .perf-rank { font-weight: 700; font-size: .8rem; color: var(--ltgreen); text-align: center; }
+    .perf-note { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+
+    #perf-radar { display: block; width: 100%; max-width: 580px; margin: 0 auto; }
+
+    .perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    @media(max-width:640px){ .perf-grid { grid-template-columns: 1fr; } }
+
+    .perf-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(10px);
+    }
+    .perf-card-title { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ltgreen); }
+    .perf-card-desc  { font-size: .73rem; color: var(--muted); margin-bottom: .15rem; }
+    .perf-card-rows { display: flex; flex-direction: column; gap: .35rem; }
+    .perf-card-row { display: flex; align-items: center; gap: .5rem; }
+    .perf-card-label { width: 72px; font-size: .75rem; font-weight: 700; color: var(--text); flex-shrink: 0; }
+    .perf-card-bar-bg { flex: 1; background: rgba(255,255,255,.06); border-radius: 3px; height: 10px; overflow: hidden; }
+    .perf-card-bar-fill { height: 100%; border-radius: 3px; }
+    .perf-card-val { font-size: .75rem; font-weight: 700; color: var(--gold); width: 36px; text-align: right; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -402,6 +451,7 @@
       <button class="tab-btn" onclick="switchTab('languages')">🗣️ Languages</button>
       <button class="tab-btn" onclick="switchTab('paradigms')">🧠 Paradigms</button>
       <button class="tab-btn" onclick="switchTab('pioneers')">👤 Pioneers</button>
+      <button class="tab-btn" onclick="switchTab('performance')">⚡ Performance</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -450,15 +500,41 @@
       <div class="pioneers-grid" id="pioneers-grid"></div>
     </div>
 
+    <!-- PERFORMANCE -->
+    <div id="tab-performance" class="tab-panel hidden">
+      <div class="sec-header">How Languages Compare in Speed</div>
+
+      <div class="perf-legend" id="perf-legend"></div>
+      <canvas id="perf-radar" height="420"></canvas>
+      <div class="perf-grid" id="perf-cards"></div>
+
+      <div class="perf-table-wrap">
+        <table class="perf-table">
+          <thead>
+            <tr>
+              <th>Language</th>
+              <th>Type</th>
+              <th style="min-width:180px">Overall Speed</th>
+              <th>Score</th>
+              <th>#</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="perf-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
 <script>
 /* ── Tabs ── */
-const TABS = ['overview','timeline','languages','paradigms','pioneers'];
+const TABS = ['overview','timeline','languages','paradigms','pioneers','performance'];
 function switchTab(name) {
   TABS.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
   document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', TABS[i] === name));
   localStorage.setItem('prog_tab', name);
+  if (name === 'performance') buildPerformance();
 }
 
 /* ── Card builder ── */
@@ -918,6 +994,178 @@ const PIONEERS = [
     tags: ['Apollo', 'Software Engineering', 'NASA', 'Reliability'],
   },
 ];
+
+/* ══════════════════════════════════════════
+   PERFORMANCE TAB
+══════════════════════════════════════════ */
+const PERF_LANGS = [
+  { name:'Assembly',   color:'#ff4444', type:'Native / Manual',     overall:100, cats:[100,100,100,40,10],  note:'Maximum possible speed. Full hardware control. Used in bootloaders, cryptography, and codec inner-loops.' },
+  { name:'C',          color:'#4a9fff', type:'Compiled / Native',   overall:99,  cats:[99,96,99,60,72],     note:'Gold standard for raw speed. Direct hardware access, zero runtime overhead. Powers OS kernels, databases, and embedded systems.' },
+  { name:'Zig',        color:'#f7a41d', type:'Compiled / Native',   overall:97,  cats:[97,98,98,75,60],     note:'No hidden control flow, no runtime, no GC. Manual memory like C but safer. Compiles C and C++ code too.' },
+  { name:'C++',        color:'#5bc0de', type:'Compiled / Native',   overall:97,  cats:[97,94,98,62,70],     note:'Near-C speed with zero-cost abstractions. Powers game engines, browsers (V8, SpiderMonkey), and HPC workloads.' },
+  { name:'Rust',       color:'#f0b429', type:'Compiled / Native',   overall:96,  cats:[96,99,97,88,65],     note:'C-speed with guaranteed memory safety. No GC pauses. Growing fast in systems, WebAssembly, and OS development.' },
+  { name:'Fortran',    color:'#d4a0ff', type:'Compiled / Native',   overall:95,  cats:[98,92,96,45,75],     note:'Still the fastest for floating-point math. Climate models, physics simulations, and scientific HPC run on Fortran.' },
+  { name:'D',          color:'#ba2828', type:'Compiled / Native',   overall:88,  cats:[90,88,90,72,78],     note:'Native compiled; competitive with C++ in benchmarks. GC optional. Powerful metaprogramming.' },
+  { name:'Go',         color:'#00acd7', type:'Compiled / GC',       overall:82,  cats:[80,78,95,97,90],     note:'Fast compilation, tiny binaries, goroutine concurrency. Excellent for servers, CLIs, and cloud tooling (Docker, Kubernetes).' },
+  { name:'Swift',      color:'#ff6b35', type:'Compiled / Native',   overall:78,  cats:[80,82,78,70,68],     note:'LLVM-compiled, ARC memory management instead of GC. Faster than Java/C# in most benchmarks. Apple-ecosystem native.' },
+  { name:'Java',       color:'#f89820', type:'JIT / VM',            overall:72,  cats:[74,68,30,80,60],     note:'JIT warms up to near-native speed for long-running processes. GC pauses hurt latency. Dominates enterprise and Android.' },
+  { name:'C#',         color:'#9b4dca', type:'JIT / VM',            overall:70,  cats:[72,66,32,78,62],     note:'.NET JIT rivals Java. Spans game dev (Unity), cloud (Azure), and desktop. GC tuning required for real-time apps.' },
+  { name:'Kotlin',     color:'#7f52ff', type:'JIT / VM',            overall:68,  cats:[70,65,28,76,58],     note:'JVM-based; similar performance to Java. Coroutines for async. Some overhead from JVM warm-up time.' },
+  { name:'Haskell',    color:'#5e5185', type:'Compiled / GC',       overall:65,  cats:[68,60,45,72,55],     note:'GHC compiles to efficient native code but GC and lazy evaluation add overhead. Excellent for algorithmic code.' },
+  { name:'Lua',        color:'#000080', type:'Interpreted / JIT',   overall:38,  cats:[40,36,55,32,97],     note:'LuaJIT is one of the fastest dynamic language runtimes. Embedded in Redis, Nginx, game engines (Roblox, LÖVE).' },
+  { name:'Elixir',     color:'#6e4a7e', type:'VM / Interpreted',    overall:30,  cats:[25,30,35,99,80],     note:'BEAM VM optimised for massive concurrency (millions of lightweight processes). CPU speed is secondary to reliability.' },
+  { name:'Erlang',     color:'#a90533', type:'VM / Interpreted',    overall:28,  cats:[22,28,32,99,82],     note:'Same BEAM VM as Elixir. WhatsApp ran 2 million connections per server. Latency guarantees, not raw throughput.' },
+  { name:'MATLAB',     color:'#e16737', type:'Interpreted / JIT',   overall:22,  cats:[20,24,28,25,90],     note:'JIT-accelerated for matrix math. Slower than Python for general code. Dominant in academia and engineering.' },
+  { name:'PHP',        color:'#8892be', type:'Interpreted / JIT',   overall:20,  cats:[18,22,30,42,90],     note:'OPcache JIT since PHP 8.0 improves CPU tasks. Still ~10× slower than Go/Java for computation.' },
+  { name:'Python',     color:'#3572a5', type:'Interpreted',         overall:18,  cats:[15,20,25,38,96],     note:'CPython is 10–100× slower than C for CPU work. NumPy/PyTorch bypass this by calling native C/CUDA kernels.' },
+  { name:'Ruby',       color:'#cc342d', type:'Interpreted',         overall:16,  cats:[14,18,22,34,94],     note:'YARV interpreter; similar slowness to Python. YJIT (Ruby 3.1) brings meaningful JIT gains for some workloads.' },
+  { name:'Perl',       color:'#39457e', type:'Interpreted',         overall:14,  cats:[12,16,20,30,95],     note:'Legacy scripting; slower than modern interpreted languages. Still used for text processing and sysadmin.' },
+  { name:'R',          color:'#276dc3', type:'Interpreted',         overall:12,  cats:[10,14,18,20,96],     note:'Statistics-focused; very slow for general computation. Vectorised R code (via BLAS/LAPACK) offloads to native libs.' },
+  { name:'JavaScript', color:'#f7df1e', type:'JIT / Interpreted',   overall:50,  cats:[52,46,40,65,92],     note:'V8 JIT is impressive but can\'t match native compilation. Excellent for I/O-bound work; CPU-heavy tasks suffer.' },
+  { name:'TypeScript', color:'#3178c6', type:'JIT / Interpreted',   overall:49,  cats:[51,45,39,64,88],     note:'Compiles to JS; same V8 runtime performance as JavaScript. Type-safety overhead is compile-time only.' },
+];
+
+const PERF_CATS = ['CPU', 'Memory', 'Startup', 'Concurrency', 'Dev Speed'];
+let perfBuilt = false;
+
+function buildPerformance() {
+  if (perfBuilt) return;
+  perfBuilt = true;
+  _buildPerfLegend();
+  _buildPerfRadar();
+  _buildPerfCards();
+  _buildPerfTable();
+}
+
+function _buildPerfLegend() {
+  const seen = {};
+  PERF_LANGS.forEach(l => { seen[l.type] = l.color; });
+  const el = document.getElementById('perf-legend');
+  Object.entries(seen).forEach(([t, c]) => {
+    el.innerHTML += `<div class="perf-legend-item"><div class="perf-legend-dot" style="background:${c}"></div>${t}</div>`;
+  });
+}
+
+function _buildPerfRadar() {
+  const canvas = document.getElementById('perf-radar');
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.min(canvas.parentElement.clientWidth, 580);
+  const H = 420;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const cx = W / 2, cy = H / 2 - 10;
+  const R = Math.min(cx, cy) * 0.68;
+  const N = PERF_CATS.length;
+  const step = (Math.PI * 2) / N;
+  const a0 = -Math.PI / 2;
+
+  // Grid rings
+  for (let ring = 1; ring <= 5; ring++) {
+    const r = R * ring / 5;
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const a = a0 + i * step;
+      i === 0 ? ctx.moveTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r)
+              : ctx.lineTo(cx + Math.cos(a)*r, cy + Math.sin(a)*r);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = ring === 5 ? 'rgba(0,180,60,.3)' : 'rgba(0,180,60,.1)';
+    ctx.lineWidth = 1; ctx.stroke();
+    if (ring % 2 === 0) {
+      ctx.fillStyle = 'rgba(74,122,74,.7)'; ctx.font = '10px Segoe UI,sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(ring*20+'', cx+4, cy - r + 3);
+    }
+  }
+  // Spokes
+  for (let i = 0; i < N; i++) {
+    const a = a0 + i * step;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a)*R, cy + Math.sin(a)*R);
+    ctx.strokeStyle = 'rgba(0,180,60,.15)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  // Axis labels
+  ctx.font = 'bold 11px Segoe UI,sans-serif'; ctx.fillStyle = '#4a7a4a';
+  for (let i = 0; i < N; i++) {
+    const a = a0 + i * step;
+    const lx = cx + Math.cos(a)*(R+18), ly = cy + Math.sin(a)*(R+18);
+    ctx.textAlign = Math.cos(a) < -0.3 ? 'right' : Math.cos(a) > 0.3 ? 'left' : 'center';
+    ctx.textBaseline = Math.sin(a) < -0.3 ? 'bottom' : Math.sin(a) > 0.3 ? 'top' : 'middle';
+    ctx.fillText(PERF_CATS[i], lx, ly);
+  }
+  // Top 6 polygons
+  const TOP6 = PERF_LANGS.slice().sort((a,b)=>b.overall-a.overall).slice(0,6);
+  TOP6.forEach(lang => {
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const a = a0 + i * step, v = lang.cats[i]/100;
+      const x = cx + Math.cos(a)*R*v, y = cy + Math.sin(a)*R*v;
+      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.globalAlpha = 0.12; ctx.fillStyle = lang.color; ctx.fill();
+    ctx.globalAlpha = 1; ctx.strokeStyle = lang.color; ctx.lineWidth = 1.5; ctx.stroke();
+    for (let i = 0; i < N; i++) {
+      const a = a0 + i * step, v = lang.cats[i]/100;
+      ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R*v, cy+Math.sin(a)*R*v, 3, 0, Math.PI*2);
+      ctx.fillStyle = lang.color; ctx.fill();
+    }
+  });
+  // Bottom legend
+  const lgY = H - 14, lgX0 = cx - TOP6.length * 36;
+  ctx.font = 'bold 10px Segoe UI,sans-serif'; ctx.textBaseline = 'middle';
+  TOP6.forEach((lang, li) => {
+    const x = lgX0 + li * 72;
+    ctx.beginPath(); ctx.arc(x+6, lgY, 5, 0, Math.PI*2);
+    ctx.fillStyle = lang.color; ctx.fill();
+    ctx.fillStyle = '#b8e0b8'; ctx.textAlign = 'left';
+    ctx.fillText(lang.name, x+14, lgY);
+  });
+}
+
+function _buildPerfCards() {
+  const cats = [
+    { key:'CPU',         idx:0, desc:'Raw compute throughput (matrix ops, compression, hashing)' },
+    { key:'Memory',      idx:1, desc:'Efficient allocation, cache usage, GC pressure' },
+    { key:'Startup',     idx:2, desc:'Time from launch to first useful output' },
+    { key:'Concurrency', idx:3, desc:'Throughput under parallel or async workloads' },
+  ];
+  const grid = document.getElementById('perf-cards');
+  cats.forEach(cat => {
+    const sorted = PERF_LANGS.slice().sort((a,b)=>b.cats[cat.idx]-a.cats[cat.idx]).slice(0,8);
+    const rows = sorted.map(l => `
+      <div class="perf-card-row">
+        <div class="perf-card-label">${l.name}</div>
+        <div class="perf-card-bar-bg"><div class="perf-card-bar-fill" style="width:${l.cats[cat.idx]}%;background:${l.color}"></div></div>
+        <div class="perf-card-val">${l.cats[cat.idx]}</div>
+      </div>`).join('');
+    grid.innerHTML += `<div class="perf-card">
+      <div class="perf-card-title">${cat.key}</div>
+      <div class="perf-card-desc">${cat.desc}</div>
+      <div class="perf-card-rows">${rows}</div>
+    </div>`;
+  });
+}
+
+function _buildPerfTable() {
+  const sorted = PERF_LANGS.slice().sort((a,b)=>b.overall-a.overall);
+  const tbody = document.getElementById('perf-tbody');
+  sorted.forEach((l, i) => {
+    tbody.innerHTML += `<tr>
+      <td><div class="perf-lang-cell"><div class="perf-dot" style="background:${l.color}"></div>${l.name}</div></td>
+      <td><div class="perf-type">${l.type}</div></td>
+      <td class="perf-bar-cell"><div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${l.overall}%;background:${l.color}"></div></div></td>
+      <td><div class="perf-score">${l.overall}</div></td>
+      <td><div class="perf-rank">${i+1}</div></td>
+      <td><div class="perf-note">${l.note}</div></td>
+    </tr>`;
+  });
+}
 
 /* ══════════════════════════════
    INIT
