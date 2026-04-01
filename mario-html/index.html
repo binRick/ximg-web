@@ -493,9 +493,22 @@
     <div id="smb2-gw">
       <canvas id="smb2-c"></canvas>
       <div id="smb2-overlay">
-        <h2>&#127880; SUPER MARIO BROS. 2</h2>
-        <p class="smb2-body">Play as Princess Peach!<br>Hold &#8593; while falling to <b style="color:#FFD700">FLOAT</b>.<br>Press Z/Shift near plants to pull them.<br>Throw veggies at Shy Guys to win!</p>
-        <p class="smb2-hint">Press any key or tap to start</p>
+        <h2 id="smb2-ov-title">&#127880; SUPER MARIO BROS. 2</h2>
+        <p class="smb2-body" id="smb2-ov-body">Play as Princess Peach!<br>Hold &#8593; while falling to <b style="color:#FFD700">FLOAT</b>.<br>Press Z/Shift near plants to pull them.<br>Throw veggies at Shy Guys to win!</p>
+        <p class="smb2-hint" id="smb2-ov-hint">Press any key or tap to start</p>
+        <div id="smb2-score-form" style="display:none;flex-direction:column;align-items:center;gap:.65rem;">
+          <div style="font-size:clamp(.34rem,1.1vw,.52rem);color:#aaa;letter-spacing:.08em;">ENTER INITIALS</div>
+          <input id="smb2-initials" type="text" maxlength="3" autocomplete="off" spellcheck="false"
+            style="font-family:'Press Start 2P',monospace;font-size:1.3rem;width:6rem;text-align:center;
+                   background:#111;border:2px solid #FF69B4;color:#FF69B4;padding:.35rem .2rem;
+                   text-transform:uppercase;outline:none;border-radius:3px;">
+          <div style="display:flex;gap:.6rem;">
+            <button id="smb2-submit-btn" style="font-family:'Press Start 2P',monospace;font-size:clamp(.3rem,1vw,.48rem);padding:.4rem .9rem;border:2px solid #FF69B4;background:transparent;color:#FF69B4;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='#FF69B4';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#FF69B4'">SUBMIT</button>
+            <button id="smb2-skip-btn"   style="font-family:'Press Start 2P',monospace;font-size:clamp(.3rem,1vw,.48rem);padding:.4rem .9rem;border:2px solid #444;background:transparent;color:#555;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='#888';this.style.color='#aaa'" onmouseout="this.style.borderColor='#444';this.style.color='#555'">SKIP</button>
+          </div>
+          <div id="smb2-submit-status" style="min-height:1em;font-size:clamp(.26rem,.85vw,.4rem);color:#ff6b6b;"></div>
+          <button id="smb2-play-again" style="display:none;font-family:'Press Start 2P',monospace;font-size:clamp(.3rem,1vw,.48rem);padding:.4rem .9rem;border:2px solid #FFD700;background:transparent;color:#FFD700;cursor:pointer;margin-top:.3rem;" onmouseover="this.style.background='#FFD700';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#FFD700'">PLAY AGAIN</button>
+        </div>
       </div>
       <div id="smb2-ctrl">
         <div class="dpad">
@@ -584,8 +597,17 @@
   <!-- ── SCORES SECTION ── -->
   <div id="section-scores">
     <div class="scores-wrap">
-      <div class="scores-title">&#127942; HIGH SCORES</div>
-      <div id="scores-table"><div class="lb-empty">Loading…</div></div>
+      <div class="scores-main-title">&#127942; HIGH SCORES</div>
+      <div class="scores-cols">
+        <div class="scores-col smb1">
+          <div class="scores-col-title">&#9824; Super Mario Bros. 1</div>
+          <div class="scores-col-table" id="scores-smb1"><div class="lb-empty">Loading…</div></div>
+        </div>
+        <div class="scores-col smb2">
+          <div class="scores-col-title">&#128120; Super Mario Bros. 2</div>
+          <div class="scores-col-table" id="scores-smb2"><div class="lb-empty">Loading…</div></div>
+        </div>
+      </div>
       <button id="scores-refresh" onclick="loadScoresTab()">&#8635; refresh</button>
     </div>
   </div>
@@ -630,23 +652,30 @@ function switchTab(id) {
   if (id === 'smb2' && window._smb2Activate) window._smb2Activate();
 }
 
+function renderScoreTable(el, scores) {
+  if (!scores.length) { el.innerHTML = '<div class="lb-empty">No scores yet.</div>'; return; }
+  el.innerHTML = scores.map((s, i) =>
+    `<div class="lb-row">` +
+    `<span class="lb-rank">${i+1}</span>` +
+    `<span class="lb-init">${esc(s.initials)}</span>` +
+    `<span class="lb-score">${Number(s.score).toLocaleString()}</span>` +
+    `</div>`
+  ).join('');
+}
+
 async function loadScoresTab() {
-  const el = document.getElementById('scores-table');
-  el.innerHTML = '<div class="lb-empty">Loading…</div>';
-  try {
-    const res = await fetch(SCORES_URL);
-    const scores = await res.json();
-    if (!scores.length) { el.innerHTML = '<div class="lb-empty">No scores yet.</div>'; return; }
-    el.innerHTML = scores.map((s, i) =>
-      `<div class="lb-row">` +
-      `<span class="lb-rank">${i+1}</span>` +
-      `<span class="lb-init">${esc(s.initials)}</span>` +
-      `<span class="lb-score">${Number(s.score).toLocaleString()}</span>` +
-      `</div>`
-    ).join('');
-  } catch (_) {
-    el.innerHTML = '<div class="lb-empty">Could not load scores.</div>';
-  }
+  const el1 = document.getElementById('scores-smb1');
+  const el2 = document.getElementById('scores-smb2');
+  el1.innerHTML = '<div class="lb-empty">Loading…</div>';
+  el2.innerHTML = '<div class="lb-empty">Loading…</div>';
+  const [r1, r2] = await Promise.allSettled([
+    fetch(SCORES_URL).then(r => r.json()),
+    fetch(SCORES_URL.replace('mario-scores', 'mario-scores-smb2')).then(r => r.json()),
+  ]);
+  if (r1.status === 'fulfilled') renderScoreTable(el1, r1.value);
+  else el1.innerHTML = '<div class="lb-empty">Could not load scores.</div>';
+  if (r2.status === 'fulfilled') renderScoreTable(el2, r2.value);
+  else el2.innerHTML = '<div class="lb-empty">No scores yet.</div>';
 }
 
 /* ═══════════════════════════════════════════
@@ -1394,11 +1423,11 @@ loop();
   function onK(e) {
     if (!document.getElementById('section-smb2').classList.contains('active')) return;
     K2[e.code]=(e.type==='keydown');
-    if (e.type==='keydown'&&gSt!=='playing') begin2();
+    if (e.type==='keydown'&&(gSt==='splash'||gSt==='over')) begin2();
     if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
   }
   document.addEventListener('keydown',onK); document.addEventListener('keyup',onK);
-  s2ov.addEventListener('click',()=>{ if(gSt!=='playing') begin2(); });
+  s2ov.addEventListener('click',()=>{ if(gSt==='splash'||gSt==='over') begin2(); });
 
   function bindB(id,name){
     const el=document.getElementById(id); if(!el) return;
@@ -1464,18 +1493,66 @@ loop();
     }
   }
 
-  function begin2(){gSt='playing';s2resize();buildLv();s2ov.classList.add('off');}
+  const SMB2_SCORES_URL = 'https://logs.ximg.app/mario-scores-smb2';
 
-  function showMsg2(title,body){
-    s2ov.querySelector('h2').textContent=title;
-    s2ov.querySelector('.smb2-body').innerHTML=body;
-    s2ov.querySelector('.smb2-hint').textContent='Press any key or tap to restart';
+  function showOverlay2(title,body){
+    document.getElementById('smb2-ov-title').textContent=title;
+    document.getElementById('smb2-ov-body').innerHTML=body;
+    document.getElementById('smb2-ov-hint').style.display='block';
+    document.getElementById('smb2-ov-hint').textContent='Press any key or tap to restart';
+    document.getElementById('smb2-score-form').style.display='none';
     s2ov.classList.remove('off');
   }
 
+  function begin2(){gSt='playing';s2resize();buildLv();s2ov.classList.add('off');
+    document.getElementById('smb2-score-form').style.display='none';
+    document.getElementById('smb2-play-again').style.display='none';
+    document.getElementById('smb2-submit-status').textContent='';
+    document.getElementById('smb2-initials').value='';
+  }
+
+  function showMsg2(title,body){
+    document.getElementById('smb2-ov-title').textContent=title;
+    document.getElementById('smb2-ov-body').innerHTML=body;
+    document.getElementById('smb2-ov-hint').style.display='none';
+    document.getElementById('smb2-score-form').style.display='flex';
+    document.getElementById('smb2-play-again').style.display='none';
+    document.getElementById('smb2-submit-btn').disabled=false;
+    document.getElementById('smb2-submit-status').textContent='';
+    document.getElementById('smb2-initials').value='';
+    s2ov.classList.remove('off');
+    setTimeout(()=>document.getElementById('smb2-initials').focus(),80);
+  }
+
+  function showSmb2Board(){
+    document.getElementById('smb2-score-form').style.display='none';
+    document.getElementById('smb2-ov-hint').style.display='none';
+    document.getElementById('smb2-play-again').style.display='block';
+  }
+
+  async function smb2Submit(){
+    const raw=document.getElementById('smb2-initials').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+    const initials=(raw||'AAA').slice(0,3).padEnd(3,'A');
+    const statusEl=document.getElementById('smb2-submit-status');
+    const btn=document.getElementById('smb2-submit-btn');
+    btn.disabled=true; statusEl.textContent='Saving…';
+    try {
+      const res=await fetch(SMB2_SCORES_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initials,score:gSc})});
+      if(!res.ok) throw new Error();
+      statusEl.textContent='Saved! \u2728';
+    } catch(_){ statusEl.textContent='Could not save score.'; }
+    setTimeout(showSmb2Board,900);
+  }
+
+  document.getElementById('smb2-submit-btn').addEventListener('click',smb2Submit);
+  document.getElementById('smb2-skip-btn').addEventListener('click',showSmb2Board);
+  document.getElementById('smb2-play-again').addEventListener('click',()=>{ gSt='over'; begin2(); });
+  document.getElementById('smb2-initials').addEventListener('keydown',e=>{ if(e.code==='Enter') smb2Submit(); e.stopPropagation(); });
+  document.getElementById('smb2-initials').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+
   function loseLife2(){
     gPl.lives--;
-    if(gPl.lives<=0){gSt='over';showMsg2('GAME OVER',`Score: ${gSc}`);return;}
+    if(gPl.lives<=0){gSt='over';showOverlay2('GAME OVER',`Score: ${gSc}`);return;}
     gPl.x=Math.max(80,gCx+80); gPl.y=s2c.height-T-gPl.h-60;
     gPl.vx=0;gPl.vy=0;gPl.ifr=150;gHeld=null;gFT=FL_FRAMES;
   }
