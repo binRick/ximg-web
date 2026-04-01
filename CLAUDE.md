@@ -2,6 +2,10 @@
 
 Multi-site web portfolio/demo stack hosted at ximg.app.
 
+## Task Completion
+
+After completing any task, always show a brief plain-language summary of what was done — what changed, what was added, and why — so the user understands the result without reading diffs.
+
 ## Git Workflow
 
 **All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
