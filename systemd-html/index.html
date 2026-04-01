@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>systemd.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #0b0f18;
+      --red:  #f87171;
+      --org:  #fb923c;
+      --yel:  #fbbf24;
+      --grn:  #4ade80;
+      --cyn:  #22d3ee;
+      --blu:  #60a5fa;
+      --vio:  #a78bfa;
+      --dim:  #64748b;
+      --text: #e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(250,204,21,.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(250,204,21,.03) 1px,transparent 1px);
+      background-size:44px 44px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(120px);opacity:.13;pointer-events:none;z-index:0}
+    .glow-1{width:600px;height:600px;background:#92400e;top:-200px;left:-150px}
+    .glow-2{width:400px;height:400px;background:#7c3aed;bottom:-100px;right:-100px}
+
+    .wrap{position:relative;z-index:1;max-width:880px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.4rem}
+
+    h1{font-size:1.55rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#fbbf24 0%,#fb923c 50%,#f87171 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:var(--dim);margin-top:.2rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .sd-tabs{display:flex;flex-wrap:wrap;gap:.4rem;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .sd-tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
+      font-family:inherit;transition:all .2s}
+    .sd-tab.active{color:var(--yel);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
+    .sd-tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .sd-section{display:flex;flex-direction:column;gap:1.25rem}
+    .sd-section.hidden{display:none}
+
+    /* ── Section heading ── */
+    .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--yel);margin-bottom:-.2rem}
+
+    /* ── Command table card ── */
+    .cmd-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;overflow:hidden}
+    .cmd-row{display:grid;grid-template-columns:minmax(240px,auto) 1fr;
+      border-bottom:1px solid rgba(255,255,255,.05);align-items:start}
+    .cmd-row:last-child{border-bottom:none}
+    .cmd-code{font-family:'Courier New',monospace;font-size:.78rem;padding:.65rem 1rem;
+      color:var(--cyn);background:rgba(0,0,0,.25);border-right:1px solid rgba(255,255,255,.05);
+      word-break:break-all;line-height:1.5}
+    .cmd-code .arg{color:var(--yel)}
+    .cmd-code .flag{color:var(--grn)}
+    .cmd-code .kw{color:var(--vio)}
+    .cmd-desc{font-size:.78rem;padding:.65rem 1rem;color:#94a3b8;line-height:1.5}
+    .cmd-desc code{font-family:'Courier New',monospace;color:var(--cyn)}
+
+    /* ── Unit file display ── */
+    .unit-card{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.4rem 1.6rem;
+      font-family:'Courier New',monospace;font-size:clamp(.74rem,1.5vw,.86rem);
+      line-height:2;position:relative;overflow:hidden}
+    .unit-card::before{content:attr(data-file);position:absolute;top:.6rem;right:1rem;
+      font-size:.63rem;color:#334155;letter-spacing:.1em;font-family:'Segoe UI',sans-serif}
+    .uk{color:var(--yel)}   /* key */
+    .uv{color:var(--grn)}   /* value */
+    .us{color:var(--vio);font-weight:700} /* section header */
+    .uc{color:#475569;font-style:italic} /* comment */
+    .ub{color:var(--blu)}   /* boolean */
+
+    /* ── Tips grid ── */
+    .tip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.75rem}
+    .tip-card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;padding:.9rem 1rem}
+    .tip-head{font-size:.72rem;font-weight:700;font-family:'Courier New',monospace;
+      color:var(--cyn);margin-bottom:.4rem}
+    .tip-body{font-size:.72rem;color:#64748b;line-height:1.55}
+    .tip-body code{color:var(--cyn);font-family:'Courier New',monospace}
+
+    /* ── Unit type grid ── */
+    .unit-type-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}
+    .unit-type{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);
+      border-radius:12px;padding:.85rem 1rem;display:flex;flex-direction:column;gap:.35rem}
+    .ut-name{font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;color:var(--yel)}
+    .ut-ext{font-family:'Courier New',monospace;font-size:.72rem;color:var(--dim)}
+    .ut-desc{font-size:.72rem;color:#64748b;line-height:1.5}
+
+    /* ── History timeline ── */
+    .tl{position:relative;display:flex;flex-direction:column;gap:0;padding-left:0}
+    .tl::before{content:'';position:absolute;left:62px;top:8px;bottom:8px;width:2px;
+      background:linear-gradient(to bottom,transparent,rgba(251,191,36,.4) 8%,rgba(251,191,36,.4) 92%,transparent)}
+    .tl-item{display:flex;gap:1rem;padding:.8rem 0;align-items:flex-start}
+    .tl-year{font-family:'Courier New',monospace;font-size:.8rem;font-weight:700;
+      color:var(--yel);min-width:48px;text-align:right;padding-top:.15rem;flex-shrink:0}
+    .tl-dot-wrap{width:28px;display:flex;justify-content:center;padding-top:.22rem;flex-shrink:0;position:relative;z-index:1}
+    .tl-dot{width:10px;height:10px;border-radius:50%;background:var(--yel);
+      box-shadow:0 0 8px rgba(251,191,36,.7);flex-shrink:0}
+    .tl-dot.minor{width:7px;height:7px;background:#d97706;box-shadow:0 0 5px rgba(217,119,6,.5)}
+    .tl-body{flex:1}
+    .tl-title{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+    .tl-desc{font-size:.75rem;color:var(--dim);line-height:1.5}
+    .tl-tag{display:inline-block;font-size:.65rem;font-weight:700;padding:.1rem .45rem;
+      border-radius:4px;margin-left:.4rem;vertical-align:middle;font-family:'Courier New',monospace}
+    .tag-release{background:rgba(251,191,36,.12);color:var(--yel);border:1px solid rgba(251,191,36,.25)}
+    .tag-distro{background:rgba(74,222,128,.12);color:var(--grn);border:1px solid rgba(74,222,128,.25)}
+    .tag-debate{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)}
+    .tag-milestone{background:rgba(167,139,250,.12);color:var(--vio);border:1px solid rgba(167,139,250,.25)}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .wrap > *{opacity:0;animation:fadeUp .6s ease forwards}
+    .wrap > *:nth-child(1){animation-delay:.1s}
+    .wrap > *:nth-child(2){animation-delay:.2s}
+    .wrap > *:nth-child(3){animation-delay:.3s}
+    .wrap > *:nth-child(4){animation-delay:.4s}
+  </style>
+</head>
+<body>
+
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="wrap">
+    <div>
+      <h1>⚙️ systemd</h1>
+      <p class="subtitle">Service Manager · Unit Files · Journal · Boot</p>
+    </div>
+
+    <div class="sd-tabs">
+      <button class="sd-tab active" onclick="switchTab('systemctl')">systemctl</button>
+      <button class="sd-tab" onclick="switchTab('units')">Unit Files</button>
+      <button class="sd-tab" onclick="switchTab('journal')">journalctl</button>
+      <button class="sd-tab" onclick="switchTab('concepts')">Concepts</button>
+      <button class="sd-tab" onclick="switchTab('history')">History</button>
+    </div>
+
+    <!-- ── systemctl section ── -->
+    <div id="section-systemctl" class="sd-section">
+
+      <div class="sec-title">Service Control</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl start <span class="arg">unit</span></div>
+          <div class="cmd-desc">Start a unit immediately (does not persist across reboots)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl stop <span class="arg">unit</span></div>
+          <div class="cmd-desc">Stop a running unit</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl restart <span class="arg">unit</span></div>
+          <div class="cmd-desc">Stop then start — used after config changes that need a full restart</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl reload <span class="arg">unit</span></div>
+          <div class="cmd-desc">Ask the service to re-read its config (SIGHUP) without killing it</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl reload-or-restart <span class="arg">unit</span></div>
+          <div class="cmd-desc">Reload if supported, otherwise restart</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl enable <span class="arg">unit</span></div>
+          <div class="cmd-desc">Enable unit to start at boot (creates symlink in target wants/)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl enable <span class="flag">--now</span> <span class="arg">unit</span></div>
+          <div class="cmd-desc">Enable and immediately start in one command</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl disable <span class="arg">unit</span></div>
+          <div class="cmd-desc">Disable autostart at boot (removes symlink)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl mask <span class="arg">unit</span></div>
+          <div class="cmd-desc">Hard-block a unit — symlinks to /dev/null, cannot be started at all</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl unmask <span class="arg">unit</span></div>
+          <div class="cmd-desc">Remove the /dev/null block, restoring the unit</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Status &amp; Inspection</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl status <span class="arg">unit</span></div>
+          <div class="cmd-desc">Show state, PID, last log lines, and active/failed status</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl is-active <span class="arg">unit</span></div>
+          <div class="cmd-desc">Print <code>active</code> or <code>inactive</code> — exit code 0 = active</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl is-enabled <span class="arg">unit</span></div>
+          <div class="cmd-desc">Print <code>enabled</code>, <code>disabled</code>, <code>masked</code>, etc.</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl is-failed <span class="arg">unit</span></div>
+          <div class="cmd-desc">Exit 0 if unit is in failed state — useful in scripts</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl list-units</div>
+          <div class="cmd-desc">List all loaded units and their state</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl list-units <span class="flag">--failed</span></div>
+          <div class="cmd-desc">Show only units in a failed state</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl list-unit-files</div>
+          <div class="cmd-desc">List installed unit files and whether they're enabled</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl list-timers</div>
+          <div class="cmd-desc">Show all timers with next/last trigger times</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl list-dependencies <span class="arg">unit</span></div>
+          <div class="cmd-desc">Show dependency tree for a unit</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl cat <span class="arg">unit</span></div>
+          <div class="cmd-desc">Print the unit file(s) as loaded, including drop-ins</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl show <span class="arg">unit</span></div>
+          <div class="cmd-desc">Dump all low-level properties for a unit (key=value format)</div>
+        </div>
+      </div>
+
+      <div class="sec-title">System State</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl daemon-reload</div>
+          <div class="cmd-desc">Re-read all unit files after editing — required before restart takes effect</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl daemon-reexec</div>
+          <div class="cmd-desc">Re-execute systemd itself (upgrade in place without losing state)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl poweroff</div>
+          <div class="cmd-desc">Shut down and power off the system</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl reboot</div>
+          <div class="cmd-desc">Reboot the system cleanly</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl suspend</div>
+          <div class="cmd-desc">Suspend to RAM</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl hibernate</div>
+          <div class="cmd-desc">Suspend to disk (swap)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl rescue</div>
+          <div class="cmd-desc">Drop into rescue mode (single-user target)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl isolate <span class="arg">target</span></div>
+          <div class="cmd-desc">Switch to a different target (e.g. <code>graphical.target</code>), stopping units not in it</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl set-default <span class="arg">target</span></div>
+          <div class="cmd-desc">Set the default boot target (replaces runlevel in SysV)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl get-default</div>
+          <div class="cmd-desc">Print the current default boot target</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl edit <span class="arg">unit</span></div>
+          <div class="cmd-desc">Create a drop-in override file (preserves vendor unit, safer than editing directly)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemctl edit <span class="flag">--full</span> <span class="arg">unit</span></div>
+          <div class="cmd-desc">Edit a full copy of the unit file in /etc/systemd/system/</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemd-analyze blame</div>
+          <div class="cmd-desc">List units sorted by startup time — find boot bottlenecks</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">systemd-analyze critical-chain</div>
+          <div class="cmd-desc">Show the critical path of the boot sequence</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Unit Files section ── -->
+    <div id="section-units" class="sd-section hidden">
+
+      <div class="sec-title">Unit Types</div>
+      <div class="unit-type-grid">
+        <div class="unit-type">
+          <div class="ut-name">service</div>
+          <div class="ut-ext">.service</div>
+          <div class="ut-desc">A background process — daemon, one-shot script, or forking service. Most common unit type.</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">socket</div>
+          <div class="ut-ext">.socket</div>
+          <div class="ut-desc">An IPC or network socket. Activates its companion service on first connection (socket activation).</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">target</div>
+          <div class="ut-ext">.target</div>
+          <div class="ut-desc">A sync point grouping other units. Replaces SysV runlevels. Example: <code style="color:var(--cyn)">multi-user.target</code>.</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">timer</div>
+          <div class="ut-ext">.timer</div>
+          <div class="ut-desc">A cron replacement. Activates a companion .service on a calendar or monotonic schedule.</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">mount</div>
+          <div class="ut-ext">.mount</div>
+          <div class="ut-desc">A filesystem mount point. Generated from /etc/fstab entries or written manually.</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">path</div>
+          <div class="ut-ext">.path</div>
+          <div class="ut-desc">Watches a file or directory path. Activates a service when the path changes (inotify-based).</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">slice</div>
+          <div class="ut-ext">.slice</div>
+          <div class="ut-desc">A cgroup hierarchy node for resource management. Services live under system.slice by default.</div>
+        </div>
+        <div class="unit-type">
+          <div class="ut-name">device</div>
+          <div class="ut-ext">.device</div>
+          <div class="ut-desc">A kernel device exposed by udev. Used to express hardware availability as a dependency.</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Annotated .service File</div>
+      <div class="unit-card" data-file="myapp.service">
+<pre><span class="us">[Unit]</span>
+<span class="uk">Description</span>=<span class="uv">My Application Server</span>           <span class="uc"># shown in systemctl status</span>
+<span class="uk">Documentation</span>=<span class="uv">https://example.com/docs</span>   <span class="uc"># man: or https: URI</span>
+<span class="uk">After</span>=<span class="uv">network-online.target</span>              <span class="uc"># ordering — start after network</span>
+<span class="uk">Wants</span>=<span class="uv">network-online.target</span>              <span class="uc"># soft dependency (won't fail if missing)</span>
+<span class="uk">Requires</span>=<span class="uv">postgresql.service</span>             <span class="uc"># hard dependency — fails if dep fails</span>
+<span class="uk">PartOf</span>=<span class="uv">myapp.target</span>                      <span class="uc"># stop/restart together with target</span>
+
+<span class="us">[Service]</span>
+<span class="uk">Type</span>=<span class="uv">simple</span>                               <span class="uc"># simple|forking|oneshot|notify|idle</span>
+<span class="uk">User</span>=<span class="uv">myapp</span>                                <span class="uc"># run as this user</span>
+<span class="uk">Group</span>=<span class="uv">myapp</span>
+<span class="uk">WorkingDirectory</span>=<span class="uv">/opt/myapp</span>
+<span class="uk">EnvironmentFile</span>=<span class="uv">/etc/myapp/env</span>           <span class="uc"># load KEY=VALUE pairs from file</span>
+<span class="uk">ExecStartPre</span>=<span class="uv">/opt/myapp/check-config.sh</span>  <span class="uc"># run before main process</span>
+<span class="uk">ExecStart</span>=<span class="uv">/opt/myapp/bin/server --port 8080</span>
+<span class="uk">ExecReload</span>=<span class="uv">/bin/kill -HUP $MAINPID</span>      <span class="uc"># what systemctl reload does</span>
+<span class="uk">ExecStop</span>=<span class="uv">/bin/kill -TERM $MAINPID</span>
+<span class="uk">Restart</span>=<span class="uv">on-failure</span>                       <span class="uc"># no|always|on-failure|on-abnormal</span>
+<span class="uk">RestartSec</span>=<span class="uv">5s</span>                            <span class="uc"># wait before restarting</span>
+<span class="uk">TimeoutStartSec</span>=<span class="uv">30s</span>
+<span class="uk">TimeoutStopSec</span>=<span class="uv">30s</span>
+<span class="uk">StandardOutput</span>=<span class="uv">journal</span>                   <span class="uc"># stdout → journald</span>
+<span class="uk">StandardError</span>=<span class="uv">journal</span>
+<span class="uk">SyslogIdentifier</span>=<span class="uv">myapp</span>                   <span class="uc"># tag in journal (journalctl -t myapp)</span>
+
+<span class="uc"># Hardening</span>
+<span class="uk">NoNewPrivileges</span>=<span class="ub">yes</span>
+<span class="uk">ProtectSystem</span>=<span class="uv">strict</span>
+<span class="uk">ProtectHome</span>=<span class="ub">yes</span>
+<span class="uk">PrivateTmp</span>=<span class="ub">yes</span>
+<span class="uk">ReadWritePaths</span>=<span class="uv">/var/lib/myapp</span>
+
+<span class="us">[Install]</span>
+<span class="uk">WantedBy</span>=<span class="uv">multi-user.target</span>               <span class="uc"># systemctl enable creates link here</span></pre>
+      </div>
+
+      <div class="sec-title">Annotated .timer File</div>
+      <div class="unit-card" data-file="myapp-backup.timer">
+<pre><span class="us">[Unit]</span>
+<span class="uk">Description</span>=<span class="uv">Daily backup for myapp</span>
+
+<span class="us">[Timer]</span>
+<span class="uk">OnCalendar</span>=<span class="uv">*-*-* 02:30:00</span>               <span class="uc"># every day at 02:30 local time</span>
+<span class="uk">RandomizedDelaySec</span>=<span class="uv">5min</span>                 <span class="uc"># jitter — prevents thundering herd</span>
+<span class="uk">Persistent</span>=<span class="ub">true</span>                          <span class="uc"># catch up if the timer was missed</span>
+<span class="uk">Unit</span>=<span class="uv">myapp-backup.service</span>               <span class="uc"># defaults to same-named .service</span>
+
+<span class="us">[Install]</span>
+<span class="uk">WantedBy</span>=<span class="uv">timers.target</span></pre>
+      </div>
+
+      <div class="sec-title">Drop-in Overrides</div>
+      <div class="tip-grid">
+        <div class="tip-card">
+          <div class="tip-head">override location</div>
+          <div class="tip-body"><code>/etc/systemd/system/unit.d/override.conf</code> — created by <code>systemctl edit unit</code>. Takes precedence over the vendor file.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">clearing a list</div>
+          <div class="tip-body">To reset a list directive (e.g. <code>ExecStart=</code>), set it empty first, then to the new value:<br><code>ExecStart=<br>ExecStart=/new/cmd</code></div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">unit file locations</div>
+          <div class="tip-body"><code>/lib/systemd/system/</code> — vendor units<br><code>/etc/systemd/system/</code> — admin overrides<br><code>~/.config/systemd/user/</code> — user units</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">after editing</div>
+          <div class="tip-body">Always run <code>systemctl daemon-reload</code> after adding or changing a unit file, then <code>systemctl restart unit</code> to apply.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">user units</div>
+          <div class="tip-body">Run per-user services with <code>systemctl --user</code>. Enable lingering with <code>loginctl enable-linger user</code> to keep them alive after logout.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">service types</div>
+          <div class="tip-body"><code>simple</code> — main process is ExecStart<br><code>forking</code> — daemonizes via fork<br><code>oneshot</code> — runs to completion<br><code>notify</code> — signals readiness via sd_notify</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── journalctl section ── -->
+    <div id="section-journal" class="sd-section hidden">
+
+      <div class="sec-title">Viewing Logs</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl</div>
+          <div class="cmd-desc">Show all journal entries, oldest first</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-f</span></div>
+          <div class="cmd-desc">Follow (tail) the journal in real time</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-e</span></div>
+          <div class="cmd-desc">Jump to the end of the journal</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-n</span> <span class="arg">100</span></div>
+          <div class="cmd-desc">Show last 100 lines</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-u</span> <span class="arg">nginx.service</span></div>
+          <div class="cmd-desc">Show logs for a specific unit</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-u</span> <span class="arg">nginx</span> <span class="flag">-f</span></div>
+          <div class="cmd-desc">Follow logs for a specific service</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-p</span> <span class="arg">err</span></div>
+          <div class="cmd-desc">Show only error-level and above messages</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-p</span> <span class="arg">warning..err</span></div>
+          <div class="cmd-desc">Show warnings through errors (priority range)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-b</span></div>
+          <div class="cmd-desc">Show logs from the current boot only</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-b</span> <span class="arg">-1</span></div>
+          <div class="cmd-desc">Show logs from the previous boot</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--list-boots</span></div>
+          <div class="cmd-desc">List all recorded boots with their boot IDs</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Filtering &amp; Output</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--since</span> <span class="arg">"1 hour ago"</span></div>
+          <div class="cmd-desc">Show entries from the last hour</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--since</span> <span class="arg">"2024-01-15 10:00"</span> <span class="flag">--until</span> <span class="arg">"2024-01-15 11:00"</span></div>
+          <div class="cmd-desc">Show entries in a specific time window</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-t</span> <span class="arg">myapp</span></div>
+          <div class="cmd-desc">Filter by syslog identifier (set via SyslogIdentifier= in unit)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="kw">_PID</span>=<span class="arg">1234</span></div>
+          <div class="cmd-desc">Show logs from a specific process ID</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="kw">_UID</span>=<span class="arg">1000</span></div>
+          <div class="cmd-desc">Show logs from a specific user ID</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-o</span> <span class="arg">json-pretty</span></div>
+          <div class="cmd-desc">Output entries as formatted JSON (useful for log pipelines)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-o</span> <span class="arg">short-precise</span></div>
+          <div class="cmd-desc">Show microsecond-precision timestamps</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">-k</span></div>
+          <div class="cmd-desc">Show kernel messages only (dmesg equivalent)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--grep</span> <span class="arg">"error"</span></div>
+          <div class="cmd-desc">Filter log messages by regex pattern</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Maintenance</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--disk-usage</span></div>
+          <div class="cmd-desc">Show how much disk space the journal is using</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--vacuum-time</span>=<span class="arg">30d</span></div>
+          <div class="cmd-desc">Delete journal entries older than 30 days</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--vacuum-size</span>=<span class="arg">500M</span></div>
+          <div class="cmd-desc">Trim journal to stay under 500 MB</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--rotate</span></div>
+          <div class="cmd-desc">Request immediate rotation of active journal files</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code">journalctl <span class="flag">--verify</span></div>
+          <div class="cmd-desc">Check journal files for consistency / corruption</div>
+        </div>
+      </div>
+
+      <div class="tip-grid">
+        <div class="tip-card">
+          <div class="tip-head">priority levels</div>
+          <div class="tip-body"><code>0</code> emerg &nbsp;<code>1</code> alert &nbsp;<code>2</code> crit<br><code>3</code> err &nbsp;<code>4</code> warning &nbsp;<code>5</code> notice<br><code>6</code> info &nbsp;<code>7</code> debug</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">persistent journal</div>
+          <div class="tip-body">Create <code>/var/log/journal/</code> to make logs persist across reboots. Otherwise stored in <code>/run/log/journal/</code> (volatile).</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">journal limits</div>
+          <div class="tip-body">Configure in <code>/etc/systemd/journald.conf</code>: <code>SystemMaxUse=</code>, <code>MaxRetentionSec=</code>, <code>RateLimitBurst=</code>.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Concepts section ── -->
+    <div id="section-concepts" class="sd-section hidden">
+
+      <div class="sec-title">Core Concepts</div>
+      <div class="tip-grid">
+        <div class="tip-card">
+          <div class="tip-head">PID 1</div>
+          <div class="tip-body">systemd runs as PID 1 — the first process the kernel starts. It bootstraps everything else: mounts, sockets, services, targets.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">units</div>
+          <div class="tip-body">Every resource systemd manages is a unit: services, mounts, sockets, devices, timers. Units are defined in declarative text files.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">targets</div>
+          <div class="tip-body">Targets group units and define sync points. <code>multi-user.target</code> ≈ runlevel 3; <code>graphical.target</code> ≈ runlevel 5.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">cgroups v2</div>
+          <div class="tip-body">systemd places every service in its own cgroup, enabling per-service CPU/memory accounting and resource limits without extra config.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">socket activation</div>
+          <div class="tip-body">systemd can hold sockets open and start the service on first connection. The service inherits the socket — zero-downtime restarts, parallel init.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">D-Bus</div>
+          <div class="tip-body">systemd exposes its API over D-Bus. Tools like <code>systemctl</code> are just D-Bus clients. Third-party apps can start/query units programmatically.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">dependencies</div>
+          <div class="tip-body"><code>Requires=</code> — hard dep. <code>Wants=</code> — soft dep. <code>After=</code>/<code>Before=</code> — ordering only. These are orthogonal — you usually need both Wants + After.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">drop-ins</div>
+          <div class="tip-body">Override vendor units without touching them via <code>.d/override.conf</code> files. Survives package upgrades. Created safely with <code>systemctl edit</code>.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">transient units</div>
+          <div class="tip-body"><code>systemd-run --unit=name cmd</code> starts a one-off transient service. Useful for testing ExecStart lines or running tasks under resource limits.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">sd_notify</div>
+          <div class="tip-body">Services set <code>Type=notify</code> and call <code>sd_notify(READY=1)</code> when fully started. systemd waits for this signal before marking the service active.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">security sandboxing</div>
+          <div class="tip-body">Unit directives like <code>ProtectSystem=strict</code>, <code>PrivateTmp=yes</code>, <code>NoNewPrivileges=yes</code> apply kernel-level restrictions — no code changes required.</div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-head">watchdog</div>
+          <div class="tip-body">Set <code>WatchdogSec=30s</code> and call <code>sd_notify(WATCHDOG=1)</code> from your app. systemd will restart the service if it stops sending pings.</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Common Targets</div>
+      <div class="cmd-card">
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">poweroff.target</span></div>
+          <div class="cmd-desc">Shut down system (runlevel 0)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">rescue.target</span></div>
+          <div class="cmd-desc">Single-user rescue mode (runlevel 1)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">multi-user.target</span></div>
+          <div class="cmd-desc">Multi-user, no GUI (runlevel 3) — default for servers</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">graphical.target</span></div>
+          <div class="cmd-desc">Multi-user with display manager (runlevel 5)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">reboot.target</span></div>
+          <div class="cmd-desc">Reboot (runlevel 6)</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">network-online.target</span></div>
+          <div class="cmd-desc">Reached when at least one network interface has an address — use in <code>After=</code> for network-dependent services</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">timers.target</span></div>
+          <div class="cmd-desc">Parent target for all timer units — <code>WantedBy=</code> this to enable a timer</div>
+        </div>
+        <div class="cmd-row">
+          <div class="cmd-code"><span class="arg">default.target</span></div>
+          <div class="cmd-desc">Symlink to the boot target — usually <code>graphical.target</code> or <code>multi-user.target</code></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── History section ── -->
+    <div id="section-history" class="sd-section hidden">
+      <div class="tl">
+
+        <div class="tl-item">
+          <div class="tl-year">2010</div>
+          <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">systemd Born — Lennart Poettering &amp; Kay Sievers<span class="tl-tag tag-release">release</span></div>
+            <div class="tl-desc">Lennart Poettering and Kay Sievers (both Red Hat) announce systemd as a replacement for SysV init and Upstart. The first public version is posted to the Fedora devel mailing list in April 2010, with the stated goals of faster boot, better dependency tracking, and first-class socket activation.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2011</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">Fedora 15 — First Major Distro Adoption<span class="tl-tag tag-distro">distro</span></div>
+            <div class="tl-desc">Fedora 15 ships systemd as the default init system — the first major Linux distribution to do so. Boot time drops dramatically. Lennart publishes a series of blog posts explaining the architecture, sparking widespread discussion across the Linux community.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2012</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">Arch Linux Adopts systemd<span class="tl-tag tag-distro">distro</span></div>
+            <div class="tl-desc">Arch Linux switches to systemd, bringing it to the power-user community and accelerating ecosystem adoption. OpenSUSE follows shortly after, adopting systemd in version 12.1.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2012</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">journald &amp; logind Added<span class="tl-tag tag-milestone">milestone</span></div>
+            <div class="tl-desc">systemd-journald replaces syslog with a structured binary log format indexed by unit, PID, UID, and boot. systemd-logind takes over session and seat management from ConsoleKit, sparking early controversy about scope creep.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2013</div>
+          <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">Debian Votes for systemd — The Init Wars<span class="tl-tag tag-debate">debate</span></div>
+            <div class="tl-desc">The Debian Technical Committee votes to adopt systemd as the default init for Debian Jessie after a bitter, months-long public debate. Opponents object to complexity and Unix philosophy violations. The vote results in forks: Devuan (systemd-free Debian) is announced by dissenters.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2014</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">RHEL 7 &amp; Ubuntu 15.04 Adopt systemd<span class="tl-tag tag-distro">distro</span></div>
+            <div class="tl-desc">Red Hat Enterprise Linux 7 ships with systemd, cementing its place in the enterprise. Ubuntu 15.04 drops Upstart for systemd, completing the consolidation across the major distributions. The init wars are effectively over.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2015</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">cgroups v2 &amp; Resource Management<span class="tl-tag tag-milestone">milestone</span></div>
+            <div class="tl-desc">systemd becomes the primary driver of cgroups v2 adoption in the kernel. The unified cgroup hierarchy enables per-service CPU and memory accounting by default, making resource isolation available without container runtimes.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2016</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">networkd, resolved, timesyncd<span class="tl-tag tag-milestone">milestone</span></div>
+            <div class="tl-desc">systemd-networkd, systemd-resolved (DNS stub resolver), and systemd-timesyncd (SNTP client) reach production quality, further expanding systemd's scope into networking and time synchronization — and intensifying the "systemd does too much" debate.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2018</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">systemd-homed &amp; Portable Services<span class="tl-tag tag-release">release</span></div>
+            <div class="tl-desc">Portable services (container-like images that integrate with the host systemd) and early work on systemd-homed (self-contained home directories with encryption) begin shipping, pushing systemd further into OS architecture.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2020</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">systemd 245 — Unified Kernel Images<span class="tl-tag tag-release">release</span></div>
+            <div class="tl-desc">systemd-boot, systemd-stub, and the Unified Kernel Image (UKI) concept emerge — kernel + initrd + cmdline bundled into a single signed EFI binary, enabling measured boot and TPM-based disk encryption key release via systemd-cryptenroll.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2022</div>
+          <div class="tl-dot-wrap"><div class="tl-dot minor"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">systemd 251 — Credentials &amp; TPM2<span class="tl-tag tag-release">release</span></div>
+            <div class="tl-desc">Service credentials (encrypted secrets passed at startup), deep TPM2 integration for cryptographic attestation, and <code>systemd-sysupdate</code> for A/B OS updates ship. systemd becomes a platform for the full trusted boot chain, not just PID 1.</div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2024</div>
+          <div class="tl-dot-wrap"><div class="tl-dot"></div></div>
+          <div class="tl-body">
+            <div class="tl-title">systemd 256 — The "OS Framework"<span class="tl-tag tag-milestone">milestone</span></div>
+            <div class="tl-desc">systemd 256 ships with 51 components, covering init, service management, logging, networking, DNS, NTP, boot loading, cryptographic attestation, and OS updates. It is now the de facto standard init system for Linux, running on every major server, desktop, and embedded distribution.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const TABS = ['systemctl', 'units', 'journal', 'concepts', 'history'];
+    function switchTab(name) {
+      document.querySelectorAll('.sd-tab').forEach(function(t, i) {
+        t.classList.toggle('active', TABS[i] === name);
+      });
+      TABS.forEach(function(id) {
+        document.getElementById('section-' + id).classList.toggle('hidden', id !== name);
+      });
+      localStorage.setItem('sd_tab', name);
+    }
+    switchTab(localStorage.getItem('sd_tab') || 'systemctl');
+  </script>
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

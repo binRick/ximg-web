@@ -94,6 +94,7 @@ const LOG_FILES = {
   git:         'git.access.log',
   chess:       'chess.access.log',
   programming: 'programming.access.log',
+  systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   logs:        'logs.access.log',
 };
@@ -267,6 +268,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="ansible">ansible</button>
     <button class="tab"        data-site="chess">chess</button>
     <button class="tab"        data-site="programming">programming</button>
+    <button class="tab"        data-site="systemd">systemd</button>
     <button class="tab"        data-site="logs">logs</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
