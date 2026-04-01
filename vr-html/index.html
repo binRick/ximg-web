@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR — vr.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root {
+      --bg:      #07080f;
+      --surface: #0d0f1a;
+      --surface2:#131626;
+      --border:  rgba(255,255,255,.07);
+      --accent:  #7c3aed;
+      --accent2: #06b6d4;
+      --accent3: #f59e0b;
+      --text:    #f1f5f9;
+      --muted:   #64748b;
+      --green:   #00ff41;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 5rem 1.5rem 3rem;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,.18) 0%, transparent 70%),
+                  radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,.12) 0%, transparent 60%);
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(124,58,237,.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,58,237,.07) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridshift 20s linear infinite;
+    }
+    @keyframes gridshift { to { background-position: 0 40px; } }
+    .hero > * { position: relative; z-index: 1; }
+    .hero-eyebrow { font-size: .75rem; letter-spacing: .15em; color: var(--accent2); text-transform: uppercase; margin-bottom: .75rem; }
+    .hero h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 700; letter-spacing: -.03em; line-height: 1; margin-bottom: 1rem; }
+    .hero h1 span { color: var(--accent); }
+    .hero-sub { font-size: 1.05rem; color: var(--muted); max-width: 620px; margin: 0 auto 2rem; line-height: 1.7; }
+    .hero-divider { width: 60px; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); margin: 0 auto 2rem; border-radius: 2px; }
+    .hero-stats { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; }
+    .hero-stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: .35rem .9rem; font-size: .8rem; color: var(--muted);
+    }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; flex-wrap: wrap; gap: .5rem; padding: 1.5rem 1.5rem 0; border-bottom: 1px solid var(--border); }
+    .tab-btn {
+      background: none; border: 1px solid transparent; color: var(--muted); font-family: inherit;
+      font-size: .8rem; padding: .45rem .9rem; border-radius: 6px 6px 0 0; cursor: pointer;
+      transition: all .2s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--surface); }
+    .tab-btn.active { color: var(--accent2); border-color: var(--border); border-bottom-color: var(--bg); background: var(--surface); }
+    .tab-panel { padding: 2rem 1.5rem; }
+    .tab-panel.hidden { display: none; }
+    .sec-header {
+      font-size: 1.4rem; font-weight: 700; letter-spacing: -.02em;
+      margin-bottom: 1.5rem; color: var(--text);
+    }
+    .sec-header::before { content: '// '; color: var(--accent); }
+
+    /* ── Cards grid ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+    }
+    .card:hover { transform: translateY(-3px); border-color: rgba(124,58,237,.35); box-shadow: 0 8px 32px rgba(124,58,237,.12); }
+    .card-img-wrap { position: relative; height: 200px; overflow: hidden; background: var(--surface2); }
+    .card-img-wrap img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s; }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-placeholder {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+    }
+    .card-badge {
+      position: absolute; top: .6rem; right: .6rem;
+      background: var(--accent); color: #fff; font-size: .65rem; font-weight: 700;
+      letter-spacing: .08em; padding: .2rem .5rem; border-radius: 4px;
+    }
+    .card-body { padding: 1.1rem 1.25rem 1.25rem; }
+    .card-name { font-size: 1.05rem; font-weight: 700; margin-bottom: .2rem; }
+    .card-sub  { font-size: .78rem; color: var(--muted); margin-bottom: .75rem; }
+    .card-tag  { display: inline-block; font-size: .7rem; color: var(--accent2); background: rgba(6,182,212,.1); border: 1px solid rgba(6,182,212,.2); border-radius: 4px; padding: .15rem .45rem; margin-bottom: .75rem; }
+    .card-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: .4rem; margin-bottom: .85rem; }
+    .card-stat { background: var(--surface2); border-radius: 6px; padding: .4rem .6rem; }
+    .card-stat-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .card-stat-val   { font-size: .85rem; font-weight: 700; color: var(--text); }
+    .card-pills { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .85rem; }
+    .pill { font-size: .65rem; background: rgba(255,255,255,.05); border: 1px solid var(--border); border-radius: 10px; padding: .15rem .5rem; color: var(--muted); }
+    .card-facts { display: flex; flex-direction: column; gap: .6rem; }
+    .fact { display: flex; gap: .6rem; font-size: .8rem; line-height: 1.55; color: var(--muted); }
+    .fact-icon { flex-shrink: 0; font-size: 1rem; }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .tl-item { display: flex; gap: 1.5rem; padding: 1.25rem 0; border-bottom: 1px solid var(--border); }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-year { flex-shrink: 0; width: 70px; font-size: .85rem; font-weight: 700; color: var(--accent); padding-top: .1rem; }
+    .tl-dot  { flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-top: .35rem; box-shadow: 0 0 8px var(--accent); }
+    .tl-content {}
+    .tl-title { font-size: .95rem; font-weight: 700; margin-bottom: .3rem; }
+    .tl-cat {
+      display: inline-block; font-size: .62rem; letter-spacing: .07em; text-transform: uppercase;
+      border-radius: 3px; padding: .1rem .4rem; margin-bottom: .4rem;
+    }
+    .tl-cat.hardware  { background: rgba(124,58,237,.2); color: #a78bfa; }
+    .tl-cat.software  { background: rgba(6,182,212,.15); color: #67e8f9; }
+    .tl-cat.milestone { background: rgba(245,158,11,.15); color: #fcd34d; }
+    .tl-cat.concept   { background: rgba(99,102,241,.15); color: #a5b4fc; }
+    .tl-body { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── Concept boxes ── */
+    .concepts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .concept-icon { font-size: 2rem; margin-bottom: .65rem; }
+    .concept-title { font-size: .95rem; font-weight: 700; margin-bottom: .4rem; }
+    .concept-sub { font-size: .75rem; color: var(--accent2); margin-bottom: .6rem; }
+    .concept-body { font-size: .8rem; color: var(--muted); line-height: 1.6; }
+
+    @media (max-width: 600px) {
+      .cards-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-eyebrow">Extended Reality</div>
+    <h1>Virtual <span>Reality</span></h1>
+    <div class="hero-sub">Immersive computing — from $100K laboratory rigs to $500 standalone headsets worn by millions. A technology that took 60 years to reach your living room.</div>
+    <div class="hero-divider"></div>
+    <div class="hero-stats">
+      <span class="hero-stat">🥽 40M+ headsets sold (2024)</span>
+      <span class="hero-stat">📅 60+ years of development</span>
+      <span class="hero-stat">🎮 2,000+ VR titles on Steam</span>
+      <span class="hero-stat">💰 $22B market (2023)</span>
+      <span class="hero-stat">🌐 6DoF spatial tracking</span>
+    </div>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('headsets')">🥽 Headsets</button>
+    <button class="tab-btn" onclick="switchTab('games')">🎮 Games</button>
+    <button class="tab-btn" onclick="switchTab('concepts')">🧠 Concepts</button>
+    <button class="tab-btn" onclick="switchTab('history')">📅 History</button>
+  </div>
+
+  <!-- ── Headsets ── -->
+  <div id="tab-headsets" class="tab-panel">
+    <div class="sec-header">Major Headsets</div>
+    <div class="cards-grid" id="headsets-grid"></div>
+  </div>
+
+  <!-- ── Games ── -->
+  <div id="tab-games" class="tab-panel hidden">
+    <div class="sec-header">Landmark VR Games</div>
+    <div class="cards-grid" id="games-grid"></div>
+  </div>
+
+  <!-- ── Concepts ── -->
+  <div id="tab-concepts" class="tab-panel hidden">
+    <div class="sec-header">How VR Works</div>
+    <div class="concepts-grid" id="concepts-grid"></div>
+  </div>
+
+  <!-- ── History ── -->
+  <div id="tab-history" class="tab-panel hidden">
+    <div class="sec-header">Timeline</div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+<script>
+/* ── Tab switching ── */
+const TABS = ['headsets','games','concepts','history'];
+function switchTab(name) {
+  TABS.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', TABS[i] === name));
+}
+
+/* ── Image loader ── */
+let MANIFEST = null;
+async function loadManifest() {
+  if (MANIFEST) return MANIFEST;
+  const r = await fetch('images/manifest.json');
+  MANIFEST = await r.json();
+  return MANIFEST;
+}
+async function loadImg(img) {
+  const m = await loadManifest();
+  const f = m[img.dataset.wiki];
+  if (f) {
+    img.onload  = () => img.classList.add('loaded');
+    img.onerror = () => img.style.display = 'none';
+    img.src = 'images/' + f;
+  } else {
+    img.style.display = 'none';
+  }
+}
+
+/* ── Build card ── */
+function buildCard(item, gridId) {
+  const grid = document.getElementById(gridId);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card-img-wrap">
+      <div class="card-placeholder">${item.ph}</div>
+      ${item.wiki ? `<img data-wiki="${item.wiki}" alt="${item.name}" style="position:relative;z-index:1">` : ''}
+      ${item.badge ? `<div class="card-badge">${item.badge}</div>` : ''}
+    </div>
+    <div class="card-body">
+      <div class="card-name">${item.name}</div>
+      <div class="card-sub">${item.sub}</div>
+      ${item.tag ? `<div class="card-tag">${item.tag}</div>` : ''}
+      <div class="card-stats">${(item.stats||[]).map(s=>`<div class="card-stat"><div class="card-stat-label">${s.label}</div><div class="card-stat-val">${s.val}</div></div>`).join('')}</div>
+      <div class="card-pills">${(item.pills||[]).map(p=>`<span class="pill">${p}</span>`).join('')}</div>
+      <div class="card-facts">${(item.facts||[]).map(f=>`<div class="fact"><span class="fact-icon">${f.icon}</span><span>${f.text}</span></div>`).join('')}</div>
+    </div>`;
+  const imgEl = card.querySelector('img');
+  if (imgEl) loadImg(imgEl);
+  grid.appendChild(card);
+}
+
+/* ── Headsets ── */
+const HEADSETS = [
+  {
+    name: 'Meta Quest 3',
+    sub:  'Meta · Standalone · 2023',
+    badge: 'BEST SELLER',
+    tag:  'Mixed Reality',
+    wiki: 'Oculus_Quest_2',
+    ph: '🥽',
+    stats: [
+      { label: 'Price',      val: '$499' },
+      { label: 'Resolution', val: '2064×2208 per eye' },
+      { label: 'Refresh',    val: '120Hz' },
+      { label: 'Weight',     val: '515g' },
+    ],
+    pills: ['Standalone', 'Mixed Reality', 'Hand Tracking', 'No PC Required', 'Pancake Lenses', 'Touch Plus'],
+    facts: [
+      { icon: '🔮', text: 'The Quest 3 introduced full-color passthrough mixed reality — the front cameras capture the real world at 18 PPD resolution, letting virtual objects coexist with your physical environment without any visual lag.' },
+      { icon: '📱', text: 'No PC, no wires, no base stations. The Quest 3 runs on a Snapdragon XR2 Gen 2 chip with 8GB RAM. For demanding PC games it can connect via Air Link or USB-C cable — the best of both worlds.' },
+      { icon: '🎮', text: 'The Meta Quest platform has over 500 dedicated VR titles and has crossed $2 billion in developer revenue. Its success convinced the industry that standalone VR was the right form factor for consumer adoption.' },
+    ],
+  },
+  {
+    name: 'Apple Vision Pro',
+    sub:  'Apple · Spatial Computing · 2024',
+    badge: 'MOST ADVANCED',
+    tag:  'Spatial Computing',
+    wiki: 'Apple_Vision_Pro',
+    ph: '👁️',
+    stats: [
+      { label: 'Price',      val: '$3,499' },
+      { label: 'Resolution', val: '3660×3200 per eye' },
+      { label: 'Chips',      val: 'M2 + R1' },
+      { label: 'Display',    val: 'micro-OLED' },
+    ],
+    pills: ['Eye Tracking', 'Hand Tracking', 'Voice Control', 'EyeSight Display', 'visionOS', 'Spatial Audio'],
+    facts: [
+      { icon: '👁️', text: 'The Vision Pro\'s eye-tracking system uses IR cameras to track your gaze with sub-millimeter precision — you look at an app icon and pinch to open it. No controller required. This input method is so natural users call it "magic."' },
+      { icon: '⚡', text: 'The dedicated R1 chip processes sensor data (12 cameras, 5 sensors, 6 microphones) in 12 milliseconds — faster than a single frame — eliminating the motion sickness that plagued earlier headsets.' },
+      { icon: '🌍', text: 'visionOS introduced spatial computing as a new computing paradigm: infinite screen real estate, apps that float in physical space, and FaceTime calls where your digital avatar mirrors your exact facial expressions in real time.' },
+    ],
+  },
+  {
+    name: 'PlayStation VR2',
+    sub:  'Sony · PS5-tethered · 2023',
+    badge: 'CONSOLE VR',
+    tag:  'Eye Tracking + Haptics',
+    wiki: 'PlayStation_VR2',
+    ph: '🎮',
+    stats: [
+      { label: 'Price',      val: '$549' },
+      { label: 'Resolution', val: '2000×2040 per eye' },
+      { label: 'FOV',        val: '110°' },
+      { label: 'Tracking',   val: 'Inside-out' },
+    ],
+    pills: ['PS5 Required', 'OLED Display', 'Eye Tracking', 'Adaptive Triggers', 'Haptic Feedback', 'Foveated Rendering'],
+    facts: [
+      { icon: '🎯', text: 'PSVR2 uses eye tracking to enable foveated rendering — the headset renders the sharpest image precisely where your eyes are looking and lower resolution at the periphery. This cuts GPU load by up to 50% with no visible quality loss.' },
+      { icon: '🎮', text: 'The Sense controllers inherit DualSense\'s adaptive triggers and haptic feedback. In Horizon Call of the Mountain, you feel bowstring tension in your trigger finger; in Pistol Whip you feel the recoil through the grip.' },
+      { icon: '🔌', text: 'A single USB-C cable connects PSVR2 to the PS5 — no external processing box, no camera bar, no sync units. Sony designed the entire pipeline to run off console hardware, delivering near-PC-quality VR from a $500 console.' },
+    ],
+  },
+  {
+    name: 'Valve Index',
+    sub:  'Valve · PC-tethered · 2019',
+    badge: 'ENTHUSIAST',
+    tag:  'Finger Tracking',
+    wiki: 'Valve_Index',
+    ph: '🖥️',
+    stats: [
+      { label: 'Price',      val: '$999 (full kit)' },
+      { label: 'Refresh',    val: '144Hz' },
+      { label: 'FOV',        val: '130°' },
+      { label: 'Tracking',   val: 'SteamVR 2.0' },
+    ],
+    pills: ['Knuckles Controllers', 'Finger Tracking', '144Hz Display', 'SteamVR', 'Room Scale', 'Base Stations'],
+    facts: [
+      { icon: '✋', text: 'The Index Controllers track all five fingers individually using 87 sensors per hand. You can make a thumbs-up, spread your fingers, or gently squeeze a virtual object — the first consumer VR controllers to capture natural hand expression.' },
+      { icon: '🎯', text: 'At 144Hz, the Valve Index has the highest refresh rate of any major consumer VR headset. The difference between 90Hz and 144Hz in fast-motion scenarios is immediately perceptible — it\'s the difference between motion blur and crystal clarity.' },
+      { icon: '🚂', text: 'Half-Life: Alyx was built specifically around the Index. Valve\'s own game is considered the gold standard of VR game design: every mechanic was designed to feel natural in 3D space, and it remains the most critically acclaimed VR title ever made.' },
+    ],
+  },
+  {
+    name: 'HTC Vive Pro 2',
+    sub:  'HTC · PC-tethered · 2021',
+    badge: 'PROFESSIONAL',
+    tag:  '5K Resolution',
+    wiki: 'Virtual_reality_headset',
+    ph: '🔵',
+    stats: [
+      { label: 'Price',       val: '$799' },
+      { label: 'Resolution',  val: '2448×2448 per eye' },
+      { label: 'FOV',         val: '120°' },
+      { label: 'Refresh',     val: '120Hz' },
+    ],
+    pills: ['5K Display', 'SteamVR', 'Enterprise', 'Base Stations', 'Modular Design', 'IPD Adjustment'],
+    facts: [
+      { icon: '🏭', text: 'The Vive Pro 2 is the go-to headset for enterprise VR — architecture visualization, surgical training, industrial design review, and military simulation. Its 5K display resolves fine detail that lower-resolution headsets smear into blur.' },
+      { icon: '🔧', text: 'HTC\'s modular philosophy allows the headset to be upgraded piecemeal — swap the face gasket, add eye tracking, bolt on an audio strap. Enterprise customers can spec exactly what they need without replacing the entire device.' },
+      { icon: '🧠', text: 'HTC\'s VIVE Business division has deployed over 100,000 enterprise headsets globally. Use cases range from Ford\'s virtual car design reviews to Walmart\'s employee training simulations, where each worker can practice handling scenarios without real-world risk.' },
+    ],
+  },
+];
+
+/* ── Games ── */
+const GAMES = [
+  {
+    name: 'Half-Life: Alyx',
+    sub:  'Valve · 2020 · SteamVR',
+    badge: '#1 VR GAME',
+    tag:  'Masterpiece',
+    wiki: null,
+    ph: '🧪',
+    stats: [
+      { label: 'Metacritic', val: '93/100' },
+      { label: 'Length',     val: '10–15 hours' },
+      { label: 'Developer',  val: 'Valve' },
+      { label: 'Engine',     val: 'Source 2' },
+    ],
+    pills: ['Physics Interaction', 'Gravity Gloves', 'Headcrab Horror', 'Puzzle Design', 'City 17', 'PC Required'],
+    facts: [
+      { icon: '🏆', text: 'Half-Life: Alyx is the highest-rated VR game ever made. Valve spent years designing every interaction from scratch — opening drawers, loading magazines, solving puzzles — purely for the medium of VR, with no flat-screen concessions.' },
+      { icon: '🧤', text: 'The Gravity Gloves are Alyx\'s signature mechanic: gesture toward any object and snap it to your hand. It feels so natural within minutes that returning to traditional controllers feels like using oven mitts. Considered the best virtual hand-tool ever designed.' },
+      { icon: '😱', text: 'The barnacle and headcrab encounters in Alyx are genuinely terrifying in VR. When something grabs your virtual leg and lifts you, your vestibular system and visual cortex disagree in exactly the way horror designers dreamed of for 30 years.' },
+    ],
+  },
+  {
+    name: 'Beat Saber',
+    sub:  'Beat Games · 2019 · Meta / PCVR',
+    badge: 'MOST PLAYED',
+    tag:  'Rhythm · Exercise',
+    wiki: null,
+    ph: '⚔️',
+    stats: [
+      { label: 'Revenue',    val: '$100M+' },
+      { label: 'Songs',      val: '200+ official' },
+      { label: 'Players',    val: '4M+' },
+      { label: 'Difficulty', val: 'Expert+' },
+    ],
+    pills: ['Rhythm Game', 'Full Body Workout', 'Custom Songs', 'Multiplayer', 'Modded Community', 'Fitness Tracker'],
+    facts: [
+      { icon: '🗡️', text: 'Beat Saber is the best-selling VR game of all time — the Tetris of virtual reality. The core loop of slicing color-coded blocks with lightsabers in time to music is so clean and satisfying that it became the universal demo for every new headset.' },
+      { icon: '💪', text: 'At Expert+ difficulty, Beat Saber burns more calories per minute than rowing or cycling. Many players have lost significant weight playing it. The game accidentally became one of the most effective fitness applications ever made.' },
+      { icon: '🎵', text: 'The custom songs modding community created thousands of community-made levels, some mapping K-pop, metal, and classical music with surgical precision. Custom Beat Saber maps have become an art form — competitive mappers train for months on single songs.' },
+    ],
+  },
+  {
+    name: 'Superhot VR',
+    sub:  'Superhot Team · 2017 · Multi-platform',
+    badge: 'ICONIC',
+    tag:  'Time = Movement',
+    wiki: null,
+    ph: '🔴',
+    stats: [
+      { label: 'Mechanic',  val: 'Time moves when you move' },
+      { label: 'Platform',  val: 'Quest, PSVR, PCVR' },
+      { label: 'Genre',     val: 'Action / Puzzle' },
+      { label: 'Year',      val: '2017' },
+    ],
+    pills: ['Time Manipulation', 'Bullet Time', 'No UI', 'Physical Dodging', 'VR-Native Design', 'Mind-Bending'],
+    facts: [
+      { icon: '⏱️', text: 'Superhot VR\'s core mechanic — time only moves when you move — is physically embodied in VR in a way impossible on flat screens. You physically lean around bullets, snatch guns from the air, and throw objects at enemies. Your body IS the controller.' },
+      { icon: '🧩', text: 'The game deliberately uses minimalist visuals (red enemies, white environments) to maximize readability in VR. Every design decision — the lack of HUD, the sparse sound design — was made to keep players in the physical world of the game.' },
+      { icon: '🥋', text: 'Superhot VR teaches players that VR games need to be designed for the body, not the thumbstick. Its success inspired an entire genre of physically-embodied VR games where the act of movement itself is the central mechanic.' },
+    ],
+  },
+  {
+    name: 'Lone Echo II',
+    sub:  'Ready at Dawn · 2021 · Oculus PC',
+    badge: 'BEST STORY',
+    tag:  'Zero-G Locomotion',
+    wiki: null,
+    ph: '🌌',
+    stats: [
+      { label: 'Metacritic', val: '89/100' },
+      { label: 'Setting',    val: 'Saturn orbit' },
+      { label: 'Genre',      val: 'Sci-Fi Narrative' },
+      { label: 'Length',     val: '8–10 hours' },
+    ],
+    pills: ['Zero Gravity', 'Grabbing Locomotion', 'AI Companion', 'Space Setting', 'Narrative-Driven', 'Presence'],
+    facts: [
+      { icon: '🌠', text: 'Lone Echo II achieves what VR researchers call "presence" — the subjective feeling that you are actually inside the virtual world. The zero-gravity locomotion (grabbing surfaces to pull yourself through space) is the most comfortable VR movement system ever created.' },
+      { icon: '🤖', text: 'Your AI companion Olivia reacts to you dynamically, making eye contact, physically repositioning herself during conversations, and referencing your specific actions. For many players it\'s the most emotionally resonant relationship they\'ve had with a video game character.' },
+      { icon: '🪐', text: 'Saturn\'s rings rendered in VR at full stereo depth — close enough to seemingly touch the ice particles drifting past — remains one of the most awe-inspiring moments in the history of the medium. The scale of space only works in VR.' },
+    ],
+  },
+  {
+    name: 'Resident Evil 4 VR',
+    sub:  'Armature Studio · 2021 · Meta Quest 2',
+    badge: 'BEST ADAPTATION',
+    tag:  'VR Reimagining',
+    wiki: null,
+    ph: '🧟',
+    stats: [
+      { label: 'Original',   val: '2005 masterpiece' },
+      { label: 'Platform',   val: 'Meta Quest 2' },
+      { label: 'Rating',     val: 'M (Mature)' },
+      { label: 'VR Mode',    val: 'Full campaign' },
+    ],
+    pills: ['Full Campaign', 'Physical Reloading', 'Knife Parrying', 'Inventory Management', 'Co-op Mode', 'Quest Exclusive'],
+    facts: [
+      { icon: '🔫', text: 'RE4 VR forces you to physically reload every weapon — drop the mag, grab ammo from your vest, insert it, rack the slide. What was a button press in the original becomes a motor-memory sequence under pressure. Infinitely more tense.' },
+      { icon: '📦', text: 'The iconic RE4 briefcase inventory — managing a grid of items to fit guns, herbs, and grenades — becomes physical manipulation in VR. You reach into your virtual inventory and rearrange items with your hands. Still one of VR\'s best UI moments.' },
+      { icon: '🏆', text: 'RE4 VR won the 2021 Game Award for Best VR/AR Game. Armature Studio\'s adaptation is considered the gold standard for converting flat-screen classics to VR — proving that great game design transcends the input method.' },
+    ],
+  },
+  {
+    name: 'No Man\'s Sky VR',
+    sub:  'Hello Games · 2019 · Multi-platform',
+    badge: 'MOST EXPANSIVE',
+    tag:  'Infinite Universe',
+    wiki: null,
+    ph: '🚀',
+    stats: [
+      { label: 'Planets',    val: '18 quintillion' },
+      { label: 'VR Mode',    val: 'Full game' },
+      { label: 'Price',      val: 'Free update' },
+      { label: 'Cross-play', val: 'Yes' },
+    ],
+    pills: ['Infinite Exploration', 'Base Building', 'Multiplayer', 'Space Flight', 'Full VR', 'Free Update'],
+    facts: [
+      { icon: '🌍', text: 'No Man\'s Sky added full VR support as a free update — the entire 18-quintillion planet procedural universe is playable in VR. Standing on an alien world with two suns setting over crystalline mountains and looking at your hands holding a scanner is a genuine sci-fi fantasy come true.' },
+      { icon: '🛸', text: 'Space flight in NMS VR means physically sitting in your cockpit, reaching for controls, and watching stars blur to warp trails around you. The sense of scale — docking with a space station the size of a city — is only fully conveyed in VR.' },
+      { icon: '🤝', text: 'NMS VR supports cross-play between VR and flat-screen players in the same session. A headset user and a monitor user can explore the same alien planet together — the flat-screen player seeing a tiny VR avatar running around with floating controllers.' },
+    ],
+  },
+];
+
+/* ── Concepts ── */
+const CONCEPTS = [
+  { icon: '🧠', title: '6DoF Tracking', sub: 'Six Degrees of Freedom', body: 'Full 6DoF means the headset tracks both rotation (pitch, yaw, roll) and translation (x, y, z). You can lean around corners, crouch behind cover, and walk across a room. 3DoF headsets (like early Gear VR) only track rotation — lean and the world tilts with you, causing instant nausea.' },
+  { icon: '👁️', title: 'Foveated Rendering', sub: 'Eye-tracked performance trick', body: 'The human eye only perceives sharp detail in the central 5° of vision (the fovea). Eye tracking locates exactly where you\'re looking and renders that region at full resolution, everything else at lower quality. Cuts GPU load by 30–50% with zero perceptible quality loss — the biggest VR rendering advancement since the mid-2010s.' },
+  { icon: '📐', title: 'Interpupillary Distance', sub: 'IPD — Why fit matters', body: 'IPD is the distance between your pupils — averages 63mm but ranges from 55–74mm. A headset with wrong IPD delivers a blurry, headache-inducing image no matter how powerful the display. Modern headsets have physical IPD adjustment; the Quest 3 added a software slider for fine-tuning.' },
+  { icon: '🌀', title: 'Vergence-Accommodation', sub: 'The fundamental VR problem', body: 'In the real world, your eyes both converge on objects AND your lens accommodates (focuses) at that distance — two linked systems. In VR, the display is always at a fixed optical distance (~2m) but objects appear at all depths. This mismatch causes eye strain. Varifocal and light-field displays (like Vision Pro\'s micro-OLED) partially address it.' },
+  { icon: '🕹️', title: 'Room-Scale vs. Stationary', sub: 'VR locomotion modes', body: 'Room-scale VR lets you physically walk around a mapped play space (typically 2×2m to 4×4m). Stationary VR sits you in a chair. Teleportation and smooth locomotion let virtual spaces be larger than physical ones, but only room-scale walking satisfies the full proprioceptive loop that makes VR feel physically real.' },
+  { icon: '💉', title: 'Cybersickness', sub: 'Not the same as motion sickness', body: 'Traditional motion sickness comes from movement without visual confirmation (reading in a car). Cybersickness is the reverse — visual movement without physical motion. Low frame rate (below 72Hz), high latency (above 20ms), and artificial locomotion all trigger it. Modern headsets run 90–144Hz with <10ms motion-to-photon latency to minimize it.' },
+  { icon: '📡', title: 'Inside-Out Tracking', sub: 'No external sensors needed', body: 'Early VR required external base stations (like SteamVR Lighthouses) to track the headset\'s position. Inside-out tracking uses cameras on the headset itself — SLAM (Simultaneous Localization and Mapping) algorithms build a 3D map of the room in real time and track the headset within it. Now universal in standalone headsets.' },
+  { icon: '🔊', title: 'Spatial Audio', sub: 'Sound in three dimensions', body: 'Head-Related Transfer Functions (HRTFs) model how your outer ear and head shape sound differently depending on direction. VR spatial audio applies your personal HRTF to position sounds in 3D space — a helicopter behind you, footsteps to the left, a voice above. Combined with head tracking, sounds stay pinned to their virtual sources as you move.' },
+  { icon: '🪞', title: 'Passthrough / Mixed Reality', sub: 'Blending real and virtual', body: 'Passthrough uses forward-facing cameras to display the real world inside the headset, then composites virtual objects into it. Full-color stereo passthrough (Quest 3, Vision Pro) enables mixed reality — a virtual screen floating on your real couch, a game board on your real table. The boundary between AR and VR disappears.' },
+];
+
+/* ── History ── */
+const HISTORY = [
+  { year: '1962', cat: 'hardware', title: 'Sensorama — The First Immersive Experience', body: 'Morton Heilig\'s Sensorama is the first documented immersive experience machine — a motorcycle simulator that combined stereoscopic 3D film, binaural sound, vibrating seat, and even smell generators. Built entirely from mechanical components, it\'s a direct conceptual ancestor of modern VR despite predating computers.' },
+  { year: '1968', cat: 'hardware', title: 'The Sword of Damocles', body: 'Ivan Sutherland and Bob Sproull build the first head-mounted display at Harvard/MIT. Called "Sword of Damocles" because it hung from the ceiling by a mechanical arm (it was far too heavy to wear freely), it displayed wireframe rooms that tracked with head movement. The foundational prototype that proved the concept.' },
+  { year: '1985', cat: 'concept', title: 'VPL Research & the Term "Virtual Reality"', body: 'Jaron Lanier founds VPL Research and popularizes the term "virtual reality." VPL creates the DataGlove, EyePhone headset, and DataSuit — the first commercial VR system for $100,000+. Lanier becomes the public face of VR and his evangelism plants the idea in a generation of engineers and futurists.' },
+  { year: '1991', cat: 'milestone', title: 'Virtuality Arcades Go Public', body: 'Virtuality Group deploys the first networked multiplayer VR arcade machines worldwide. Players don head-mounted displays and joysticks to play Dactyl Nightmare (pterodactyl combat) in real time against opponents in other pods. The first time most humans encounter interactive 3D virtual environments.' },
+  { year: '1993', cat: 'concept', title: 'CAVE Automatic Virtual Environment', body: 'The CAVE system, developed at the University of Illinois, projects stereoscopic imagery on the walls, floor, and ceiling of a room-sized cube. Researchers inside perceive full immersion without wearing a headset. CAVE installations become the gold standard for scientific visualization, architecture walkthrough, and aerospace simulation through the 2000s.' },
+  { year: '1995', cat: 'hardware', title: 'Nintendo Virtual Boy — VR\'s Biggest Failure', body: 'Nintendo releases the Virtual Boy — a tabletop stereoscopic game console that displays monochromatic red graphics. It causes severe eye strain, sells 770,000 units, and is discontinued in less than a year. The failure sets back consumer VR by nearly two decades as the industry concludes the technology wasn\'t ready.' },
+  { year: '2012', cat: 'milestone', title: 'Oculus Rift Kickstarter — The Comeback', body: 'Palmer Luckey launches the Oculus Rift developer kit on Kickstarter and raises $2.4M. The design — wide FOV, low persistence display, head tracking — addresses every failure mode of 1990s VR. John Carmack demos it at QuakeCon; the VR revival begins. Modern VR as a consumer category starts here.' },
+  { year: '2014', cat: 'milestone', title: 'Facebook Acquires Oculus for $2B', body: 'Facebook buys Oculus nine months after its Kickstarter launch for $2 billion. Mark Zuckerberg calls VR the "next computing platform." The acquisition provides resources to scale manufacturing but triggers a developer backlash. It also signals to every major tech company that VR is worth a strategic bet.' },
+  { year: '2016', cat: 'hardware', title: 'HTC Vive & Room-Scale VR', body: 'HTC and Valve launch the Vive with SteamVR Lighthouse tracking — the first consumer system enabling room-scale VR. Players physically walk around a mapped area. The Vive ships with Tiltbrush, a 3D painting application that becomes the proof-of-concept that VR is a new creative medium, not just a gaming peripheral.' },
+  { year: '2019', cat: 'hardware', title: 'Oculus Quest — Standalone Goes Mainstream', body: 'The original Oculus Quest launches at $399 — a standalone 6DoF headset with inside-out tracking, no PC required. It sells out immediately and backordered for months. Quest marks the transition from VR as an enthusiast hobby to a consumer product viable at scale. The modern VR market begins.' },
+  { year: '2020', cat: 'software', title: 'Half-Life: Alyx Proves the Medium', body: 'Valve releases Half-Life: Alyx, a $60 AAA VR exclusive with a full 10-hour campaign. It scores 93 on Metacritic and becomes the best-reviewed game released that year on any platform. Proves that VR games can be commercial and critical successes at the level of the industry\'s best flat-screen titles.' },
+  { year: '2023', cat: 'hardware', title: 'Apple Vision Pro — Spatial Computing', body: 'Apple announces the Vision Pro at $3,499 — the highest-profile VR/AR product launch in history. Featuring dual 4K micro-OLED displays, the R1 real-time chip, and eye/hand/voice input with no controller, it reframes the category as "spatial computing." Ships February 2024 to critical acclaim and significant controversy over price.' },
+  { year: '2024', cat: 'milestone', title: 'Meta Quest 3 & Mainstream Mixed Reality', body: 'The Quest 3 ships at $499 with full-color passthrough mixed reality, making blended virtual/physical environments accessible to mainstream consumers for the first time. Simultaneously, Apple Vision Pro ships and the entire industry aligns around mixed reality as the next phase — the boundary between VR and AR formally dissolves.' },
+];
+
+/* ── Render ── */
+HEADSETS.forEach(h => buildCard(h, 'headsets-grid'));
+GAMES.forEach(g => buildCard(g, 'games-grid'));
+
+CONCEPTS.forEach(c => {
+  const grid = document.getElementById('concepts-grid');
+  const el = document.createElement('div');
+  el.className = 'concept-card';
+  el.innerHTML = `<div class="concept-icon">${c.icon}</div><div class="concept-title">${c.title}</div><div class="concept-sub">${c.sub}</div><div class="concept-body">${c.body}</div>`;
+  grid.appendChild(el);
+});
+
+const tlEl = document.getElementById('timeline');
+HISTORY.forEach(h => {
+  const row = document.createElement('div');
+  row.className = 'tl-item';
+  row.innerHTML = `<div class="tl-year">${h.year}</div><div class="tl-dot"></div><div class="tl-content"><span class="tl-cat ${h.cat}">${h.cat}</span><div class="tl-title">${h.title}</div><div class="tl-body">${h.body}</div></div>`;
+  tlEl.appendChild(row);
+});
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

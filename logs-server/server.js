@@ -94,6 +94,7 @@ const LOG_FILES = {
   git:         'git.access.log',
   chess:       'chess.access.log',
   programming: 'programming.access.log',
+  vr:          'vr.access.log',
   logs:        'logs.access.log',
 };
 

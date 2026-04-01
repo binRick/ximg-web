@@ -57,6 +57,7 @@
     '<a class="nav-item" href="https://tampa.ximg.app"><div class="nav-dot"></div>tampa</a>' +
     '<a class="nav-item" href="https://tmux.ximg.app"><div class="nav-dot"></div>tmux</a>' +
     '<a class="nav-item" href="https://trump.ximg.app"><div class="nav-dot"></div>trump</a>' +
+    '<a class="nav-item" href="https://vr.ximg.app"><div class="nav-dot"></div>vr</a>' +
     '<a class="nav-item" href="https://wargames.ximg.app"><div class="nav-dot"></div>wargames</a>' +
     '<a class="nav-item" href="https://wood.ximg.app"><div class="nav-dot"></div>wood</a>' +
     '<a class="nav-item" href="https://yaml.ximg.app"><div class="nav-dot"></div>yaml</a>';
