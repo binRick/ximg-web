@@ -1488,7 +1488,7 @@ function reset(){
   aiTimer=0;aiAtkTimer=20;aiBuildIdx=0;vp={x:0,y:0};
   genMap();
   players=[
-    {id:0,isHuman:true, color:'#4aff2a',credits:2000,power:0},
+    {id:0,isHuman:true, color:'#4aff2a',credits:10000,power:0},
     {id:1,isHuman:false,color:'#ff9900',credits:2500,power:0},
   ];
   spawnUnit('mcv',0,7*TILE,7*TILE);
