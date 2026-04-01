@@ -4,7 +4,7 @@ Multi-site web portfolio/demo stack hosted at ximg.app.
 
 ## Task Completion
 
-After completing any task, always show a brief plain-language summary of what was done — what changed, what was added, and why — so the user understands the result without reading diffs.
+After completing any task, show a one or two sentence summary of what changed and why. Keep it brief.
 
 ## Git Workflow
 
