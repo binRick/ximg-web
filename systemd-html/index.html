@@ -120,6 +120,40 @@
     .tag-debate{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)}
     .tag-milestone{background:rgba(167,139,250,.12);color:var(--vio);border:1px solid rgba(167,139,250,.25)}
 
+    /* ── Reasons sub-nav ── */
+    .reasons-subnav{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.2rem}
+    .reasons-btn{font-size:.75rem;padding:.25rem .8rem;border-radius:99px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.09);background:transparent;color:#64748b;
+      font-family:inherit;transition:all .2s;white-space:nowrap}
+    .reasons-btn.active{color:var(--org);border-color:rgba(251,146,60,.4);background:rgba(251,146,60,.07)}
+    .reasons-btn:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.18)}
+    .reasons-panel{display:none}
+    .reasons-panel.active{display:flex;flex-direction:column;gap:1.1rem}
+
+    /* ── Comparison card ── */
+    .cmp-hero{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.4rem 1.6rem;display:flex;flex-direction:column;gap:1rem}
+    .cmp-head{display:flex;align-items:center;gap:.75rem}
+    .cmp-icon{font-size:1.6rem;line-height:1;flex-shrink:0}
+    .cmp-name{font-size:1.05rem;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+    .cmp-era{font-size:.74rem;color:var(--dim);margin-top:.1rem}
+    .cmp-summary{font-size:.82rem;color:#94a3b8;line-height:1.7;
+      border-left:3px solid rgba(251,146,60,.35);padding-left:.9rem}
+    .cmp-cols{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    @media(max-width:560px){.cmp-cols{grid-template-columns:1fr}}
+    .cmp-col{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+      border-radius:10px;padding:.85rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+    .cmp-col-title{font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+    .cmp-col-title.was{color:var(--red)}
+    .cmp-col-title.now{color:var(--grn)}
+    .cmp-item{font-size:.74rem;color:#64748b;line-height:1.5;display:flex;gap:.5rem}
+    .cmp-item::before{content:'•';flex-shrink:0;margin-top:.05rem}
+    .cmp-item code{color:var(--cyn);font-family:'Courier New',monospace}
+    .cmp-verdict{font-size:.78rem;background:rgba(251,191,36,.05);
+      border:1px solid rgba(251,191,36,.15);border-radius:10px;
+      padding:.75rem 1rem;color:#94a3b8;line-height:1.65}
+    .cmp-verdict strong{color:var(--yel)}
+
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .wrap > *{opacity:0;animation:fadeUp .6s ease forwards}
     .wrap > *:nth-child(1){animation-delay:.1s}
@@ -144,6 +178,7 @@
       <button class="sd-tab" onclick="switchTab('units')">Unit Files</button>
       <button class="sd-tab" onclick="switchTab('journal')">journalctl</button>
       <button class="sd-tab" onclick="switchTab('concepts')">Concepts</button>
+      <button class="sd-tab" onclick="switchTab('reasons')">Reasons</button>
       <button class="sd-tab" onclick="switchTab('history')">History</button>
     </div>
 
@@ -660,6 +695,235 @@
 
     </div>
 
+    <!-- ── Reasons section ── -->
+    <div id="section-reasons" class="sd-section hidden">
+
+      <div class="reasons-subnav">
+        <button class="reasons-btn active" onclick="switchReason('sysv')">SysV init</button>
+        <button class="reasons-btn" onclick="switchReason('upstart')">Upstart</button>
+        <button class="reasons-btn" onclick="switchReason('daemontools')">daemontools</button>
+        <button class="reasons-btn" onclick="switchReason('runit')">runit</button>
+        <button class="reasons-btn" onclick="switchReason('openrc')">OpenRC</button>
+        <button class="reasons-btn" onclick="switchReason('launchd')">launchd</button>
+      </div>
+
+      <!-- SysV init -->
+      <div id="reason-sysv" class="reasons-panel active">
+        <div class="cmp-hero">
+          <div class="cmp-head">
+            <div class="cmp-icon">🏛️</div>
+            <div>
+              <div class="cmp-name">SysV init</div>
+              <div class="cmp-era">Unix System V · 1983 → ~2015 · shell scripts + runlevels</div>
+            </div>
+          </div>
+          <div class="cmp-summary">
+            SysV init was the dominant Linux init system for over two decades. PID 1 ran <code>/etc/inittab</code>, spawned getty processes, and executed shell scripts in <code>/etc/rc.d/</code> or <code>/etc/init.d/</code> in strict numeric order. Runlevels (0–6) defined which services were active. It worked, but its age showed badly by the 2000s.
+          </div>
+          <div class="cmp-cols">
+            <div class="cmp-col">
+              <div class="cmp-col-title was">Problems with SysV</div>
+              <div class="cmp-item">Sequential startup — scripts ran one after another, even when services had no dependency on each other, making boot times painfully slow on modern hardware with many services.</div>
+              <div class="cmp-item">Shell scripts — every service was a <code>bash</code> script implementing start/stop/status/reload by hand. No consistency, no standard, constant reimplementation of the same boilerplate.</div>
+              <div class="cmp-item">No dependency tracking — numeric prefixes (<code>S20foo</code>, <code>S80bar</code>) encoded ordering but said nothing about <em>why</em>. A service that needed the network had to guess the right number.</div>
+              <div class="cmp-item">No process supervision — if a daemon crashed, it stayed dead. Keeping it alive required wrapping it in a custom loop or using a separate tool like monit.</div>
+              <div class="cmp-item">No logging infrastructure — each script was responsible for its own logging. Some wrote to syslog, some to files, some to nowhere. Capturing stdout/stderr was left to the script author.</div>
+              <div class="cmp-item">Runlevels were blunt — changing between runlevels stopped and started large groups of services. No way to say "start nginx but only after postgresql is healthy."</div>
+            </div>
+            <div class="cmp-col">
+              <div class="cmp-col-title now">What systemd replaced it with</div>
+              <div class="cmp-item">Parallel activation — units with no dependency relationship start simultaneously. Boot time dropped from 30–60 seconds to 5–10 seconds on typical servers.</div>
+              <div class="cmp-item">Declarative unit files — a standard <code>.service</code> format replaces hundreds of subtly different shell scripts. <code>ExecStart=</code> is just the binary to run.</div>
+              <div class="cmp-item">Explicit dependency declarations — <code>Requires=</code>, <code>Wants=</code>, <code>After=</code>, <code>Before=</code> express what a service actually needs, and systemd computes the correct startup order.</div>
+              <div class="cmp-item">Built-in supervision — <code>Restart=on-failure</code> in a unit file is all it takes. systemd monitors the PID and restarts on crash with configurable backoff.</div>
+              <div class="cmp-item">journald — all service stdout/stderr is captured automatically and stored in a structured, indexed binary log queryable by unit, time, PID, priority, and more.</div>
+              <div class="cmp-item">Targets replace runlevels — fine-grained dependency graph instead of coarse numeric groups. <code>network-online.target</code> is a real synchronization point, not a guessed number.</div>
+            </div>
+          </div>
+          <div class="cmp-verdict"><strong>Bottom line:</strong> SysV init was designed for a world where a server ran a handful of services and reboots were infrequent. Modern Linux systems run dozens to hundreds of units. SysV's sequential, script-based model simply could not keep pace — the community had been patching around its limitations for years before systemd arrived with a coherent replacement.</div>
+        </div>
+      </div>
+
+      <!-- Upstart -->
+      <div id="reason-upstart" class="reasons-panel">
+        <div class="cmp-hero">
+          <div class="cmp-head">
+            <div class="cmp-icon">⬆️</div>
+            <div>
+              <div class="cmp-name">Upstart</div>
+              <div class="cmp-era">Canonical / Ubuntu · 2006–2015 · event-driven init</div>
+            </div>
+          </div>
+          <div class="cmp-summary">
+            Upstart was Ubuntu's answer to SysV's limitations, introduced in Ubuntu 6.10 and used as Ubuntu's default until 14.10. It replaced sequential scripts with an event-driven model — services started when events fired (e.g. <code>filesystem</code>, <code>net-device-up</code>) and could emit their own events when ready. It was a genuine improvement, but lost the init wars to systemd by 2015.
+          </div>
+          <div class="cmp-cols">
+            <div class="cmp-col">
+              <div class="cmp-col-title was">Problems with Upstart</div>
+              <div class="cmp-item">Event model complexity — the <code>start on</code> / <code>stop on</code> event syntax was powerful but hard to reason about. Dependencies expressed as events were implicit; you had to know which events existed and when they fired.</div>
+              <div class="cmp-item">No explicit dependency graph — Upstart had no <code>Requires=</code>/<code>After=</code> concept. Ordering fell out of event sequencing, which was opaque and hard to audit.</div>
+              <div class="cmp-item">Limited socket activation — Upstart didn't support the zero-downtime socket hand-off pattern that lets services restart without dropping connections.</div>
+              <div class="cmp-item">Ubuntu-only ecosystem — Upstart was tightly associated with Canonical. Fedora, RHEL, and Debian were skeptical, limiting community investment and third-party tooling.</div>
+              <div class="cmp-item">CLA controversy — Canonical required a Contributor License Agreement for Upstart contributions, chilling outside involvement at a critical moment when systemd was building momentum.</div>
+              <div class="cmp-item">Slower adoption by upstreams — application developers writing <code>.service</code> files for systemd got a format that worked across all distros. Writing Upstart jobs was Ubuntu-specific work that few wanted to duplicate.</div>
+            </div>
+            <div class="cmp-col">
+              <div class="cmp-col-title now">What systemd did better</div>
+              <div class="cmp-item">Explicit, auditable dependency graph — <code>systemctl list-dependencies nginx</code> shows exactly what must start first and why, with no implicit event reasoning required.</div>
+              <div class="cmp-item">Socket activation as a first-class feature — <code>.socket</code> units hold open sockets across service restarts, enabling zero-downtime upgrades and lazy service start with no connections dropped.</div>
+              <div class="cmp-item">Broad distro buy-in — Fedora, Arch, openSUSE, and eventually Debian and Ubuntu all adopted systemd, creating a single target for upstream developers and documentation writers.</div>
+              <div class="cmp-item">Integrated logging — <code>journald</code> captures everything from every unit without per-service configuration. Upstart's logging story relied on each job redirecting its own output.</div>
+              <div class="cmp-item">cgroup-based resource accounting — systemd ties every service to a cgroup automatically, enabling CPU/memory limits and reliable process tracking with no extra setup.</div>
+            </div>
+          </div>
+          <div class="cmp-verdict"><strong>Bottom line:</strong> Upstart was a genuine advance over SysV and might have won had it been embraced across distros. But the CLA requirement, the Ubuntu-centric development, and systemd's faster feature velocity — socket activation, journald, cgroups integration — left Upstart behind. Ubuntu dropped it in 2014; Canonical deprecated it in 2015.</div>
+        </div>
+      </div>
+
+      <!-- daemontools -->
+      <div id="reason-daemontools" class="reasons-panel">
+        <div class="cmp-hero">
+          <div class="cmp-head">
+            <div class="cmp-icon">🔧</div>
+            <div>
+              <div class="cmp-name">daemontools</div>
+              <div class="cmp-era">D. J. Bernstein · 1990s–present · Unix philosophy process supervision</div>
+            </div>
+          </div>
+          <div class="cmp-summary">
+            daemontools, written by D. J. Bernstein (author of qmail and djbdns), is a suite of small, single-purpose Unix tools for process supervision. Its centrepiece is <code>supervise</code>, which watches a process directory and restarts the process if it exits. It is still used today, particularly in high-security or minimal environments. Its design directly inspired runit, s6, and perp.
+          </div>
+          <div class="cmp-cols">
+            <div class="cmp-col">
+              <div class="cmp-col-title was">Limitations of daemontools</div>
+              <div class="cmp-item">Not an init system — daemontools supervises services but doesn't replace PID 1. You still needed SysV or something else to bootstrap it and manage boot sequencing.</div>
+              <div class="cmp-item">No dependency management — services start independently. Expressing "start nginx only after postgresql" required external scripts or careful manual ordering.</div>
+              <div class="cmp-item">No native logging to a central store — logging is done via <code>multilog</code> writing to per-service directories. No unified query interface; searching across services requires grep across directories.</div>
+              <div class="cmp-item">Manual service directory setup — each supervised service needs a hand-crafted <code>run</code> script in a specific directory layout. No standard format; packaging integration is poor.</div>
+              <div class="cmp-item">No integration with the OS — no socket activation, no cgroup integration, no knowledge of mount points or network state. It supervises processes and nothing else.</div>
+              <div class="cmp-item">Public domain, not maintained — Bernstein released daemontools into the public domain but development effectively stopped. No new features, no security patches, no official packages in most distros.</div>
+            </div>
+            <div class="cmp-col">
+              <div class="cmp-col-title now">What systemd brought</div>
+              <div class="cmp-item">PID 1 + supervision in one — systemd is both the init system and the supervisor. No separate tool needed; every service gets supervision automatically just by having a unit file.</div>
+              <div class="cmp-item">Dependency graph — <code>Requires=</code> and <code>After=</code> ensure services start in the correct order with automatic retry if a dependency fails.</div>
+              <div class="cmp-item">journald — all service output lands in one structured, indexed log store. <code>journalctl -u nginx -f</code> works the same way for every service without per-service log setup.</div>
+              <div class="cmp-item">Standard packaging — distro packages ship <code>.service</code> files. Enabling a service is <code>systemctl enable foo</code> — no directory trees to manage by hand.</div>
+              <div class="cmp-item">Broad OS integration — socket activation, cgroup accounting, hardware event awareness, network readiness, timer scheduling — all in one coherent system.</div>
+            </div>
+          </div>
+          <div class="cmp-verdict"><strong>Bottom line:</strong> daemontools got process supervision right and its ideas were ahead of their time — systemd's supervision model owes it a debt. But it was never a complete init replacement, and its deliberate minimalism left dependency management, logging, and OS integration as unsolved problems for the operator. systemd solved all of them in one package.</div>
+        </div>
+      </div>
+
+      <!-- runit -->
+      <div id="reason-runit" class="reasons-panel">
+        <div class="cmp-hero">
+          <div class="cmp-head">
+            <div class="cmp-icon">▶️</div>
+            <div>
+              <div class="cmp-name">runit</div>
+              <div class="cmp-era">Gerrit Pape · 2004–present · used by Void Linux, Artix</div>
+            </div>
+          </div>
+          <div class="cmp-summary">
+            runit is a daemontools-inspired init and supervision suite that <em>can</em> act as PID 1. It runs in three stages: stage 1 (one-time system init), stage 2 (service supervision), stage 3 (system shutdown). It's the default init on Void Linux and is popular in the anti-systemd community. It is small, fast, and has a well-understood design.
+          </div>
+          <div class="cmp-cols">
+            <div class="cmp-col">
+              <div class="cmp-col-title was">Limitations of runit</div>
+              <div class="cmp-item">No dependency ordering — services are all supervised in parallel with no built-in mechanism to say "start B after A is ready." Workarounds require polling scripts or careful shell logic in <code>run</code> files.</div>
+              <div class="cmp-item">Shell scripts for boot stages — stages 1 and 3 are shell scripts. This recreates the SysV problem in a smaller package: inconsistency, difficult error handling, no parallel execution within stages.</div>
+              <div class="cmp-item">No socket activation — runit has no concept of holding sockets open across service restarts. Zero-downtime upgrades require application-level support.</div>
+              <div class="cmp-item">No unified logging — like daemontools, each service gets its own <code>log</code> process writing to its own directory. Cross-service log querying requires custom tooling.</div>
+              <div class="cmp-item">Minimal distro adoption — outside of Void Linux and Artix (an Arch fork), runit is not the default on any major distribution, limiting documentation, packaging standards, and community support.</div>
+              <div class="cmp-item">No cgroup integration — runit doesn't place services in cgroups, so CPU/memory accounting and resource limits require separate configuration through cgconfig or similar.</div>
+            </div>
+            <div class="cmp-col">
+              <div class="cmp-col-title now">What systemd brought</div>
+              <div class="cmp-item">Dependency graph with correct parallelism — services that have no ordering relationship start simultaneously; services with dependencies wait correctly. No shell polling required.</div>
+              <div class="cmp-item">Socket activation — <code>.socket</code> units keep listening sockets alive across restarts, enabling zero-downtime service upgrades transparently.</div>
+              <div class="cmp-item">journald — one structured log for everything, queryable by unit, boot, time, priority, PID. No per-service log directories to manage.</div>
+              <div class="cmp-item">Automatic cgroup placement — every service lives in its own cgroup slice. <code>MemoryLimit=512M</code> in a unit file is all it takes to cap a service's RAM usage.</div>
+              <div class="cmp-item">Universal adoption — the same <code>.service</code> file works on Fedora, Ubuntu, Debian, Arch, openSUSE, and RHEL. Upstream projects ship unit files; operators don't write them from scratch.</div>
+            </div>
+          </div>
+          <div class="cmp-verdict"><strong>Bottom line:</strong> runit is genuinely good at what it does and remains the right choice for minimal, philosophy-first setups like Void Linux. But its deliberate refusal to grow beyond process supervision — no dependency graph, no socket activation, no unified logging, no cgroup integration — means operators on larger systems must assemble those pieces themselves. systemd assembles them by default.</div>
+        </div>
+      </div>
+
+      <!-- OpenRC -->
+      <div id="reason-openrc" class="reasons-panel">
+        <div class="cmp-hero">
+          <div class="cmp-head">
+            <div class="cmp-icon">🪨</div>
+            <div>
+              <div class="cmp-name">OpenRC</div>
+              <div class="cmp-era">Gentoo / Roy Marples · 2007–present · used by Gentoo, Alpine, Artix</div>
+            </div>
+          </div>
+          <div class="cmp-summary">
+            OpenRC is a dependency-aware init system that runs on top of a traditional Unix init (it is not itself PID 1 — it typically uses sysvinit or busybox init as PID 1). It replaces SysV's numeric-prefix ordering with explicit <code>need</code>/<code>use</code>/<code>before</code>/<code>after</code> declarations in service scripts. It is the default on Gentoo and Alpine Linux, and is well-regarded for being understandable and hackable.
+          </div>
+          <div class="cmp-cols">
+            <div class="cmp-col">
+              <div class="cmp-col-title was">Limitations of OpenRC</div>
+              <div class="cmp-item">Still shell scripts — OpenRC service files are shell scripts sourcing a common library. Better than raw SysV scripts, but still inconsistent, hard to validate, and easy to break with a typo in a case statement.</div>
+              <div class="cmp-item">No process supervision — OpenRC starts services and tracks their PID, but if a service crashes it does not automatically restart it. A separate supervisor (like runit or s6) is needed for that.</div>
+              <div class="cmp-item">Not PID 1 — OpenRC delegates to busybox init or sysvinit for PID 1 duties. This splits responsibility and means OpenRC can't own the full boot lifecycle or perform socket activation.</div>
+              <div class="cmp-item">No socket activation — like SysV and runit, OpenRC has no mechanism for handing pre-opened sockets to services on startup or restart.</div>
+              <div class="cmp-item">No integrated logging — service output goes to syslog or files via whatever the service script configures. No unified structured log store.</div>
+              <div class="cmp-item">Limited cgroup support — Alpine and Gentoo have added basic cgroup awareness, but it is not core to OpenRC's design and is far behind systemd's integrated accounting.</div>
+            </div>
+            <div class="cmp-col">
+              <div class="cmp-col-title now">What systemd brought</div>
+              <div class="cmp-item">Declarative unit files — not scripts. A missing semicolon can't break a <code>.service</code> file. Unit files are validated, parsed, and version-controlled cleanly.</div>
+              <div class="cmp-item">Built-in supervision — <code>Restart=on-failure</code> in the unit file. No separate supervisor needed; the same daemon that starts a service also watches and restarts it.</div>
+              <div class="cmp-item">True PID 1 — systemd owns the full lifecycle from kernel handoff to shutdown. Socket activation, cgroup management, and boot performance optimizations all follow from this.</div>
+              <div class="cmp-item">Parallel startup with real dependency satisfaction — systemd activates ready services immediately in parallel, and blocks dependents only as long as necessary.</div>
+              <div class="cmp-item">journald and structured logging — one query interface for all services. <code>journalctl --since yesterday -p err</code> finds errors across the whole system instantly.</div>
+            </div>
+          </div>
+          <div class="cmp-verdict"><strong>Bottom line:</strong> OpenRC is arguably the best of the pre-systemd init systems: readable, dependency-aware, and maintainable. Alpine Linux's continued use of it proves it works at scale for containers and minimal servers. Its core gap is that it is a service <em>activator</em>, not a service <em>supervisor</em>, and it has no answer for socket activation, structured logging, or cgroup-native resource limits.</div>
+        </div>
+      </div>
+
+      <!-- launchd -->
+      <div id="reason-launchd" class="reasons-panel">
+        <div class="cmp-hero">
+          <div class="cmp-head">
+            <div class="cmp-icon">🍎</div>
+            <div>
+              <div class="cmp-name">launchd</div>
+              <div class="cmp-era">Apple / Dave Zarzycki · macOS 10.4 Tiger (2005) → present</div>
+            </div>
+          </div>
+          <div class="cmp-summary">
+            launchd is Apple's combined init, service manager, and process supervisor — introduced in Mac OS X 10.4 Tiger to replace a hodgepodge of SysV init, mach_init, xinetd, cron, and rc scripts. It was one of the first production init systems to unify all of those roles. Lennart Poettering has cited launchd as an explicit influence on systemd's design, particularly socket activation and unified process supervision.
+          </div>
+          <div class="cmp-cols">
+            <div class="cmp-col">
+              <div class="cmp-col-title was">What launchd got right (and systemd adopted)</div>
+              <div class="cmp-item">Socket activation — launchd pioneered holding listening sockets across service restarts and passing them to services on first connection. systemd adopted this pattern directly.</div>
+              <div class="cmp-item">Unified PID 1 + supervisor — launchd is both the init system and the supervisor. This is the exact model systemd follows on Linux.</div>
+              <div class="cmp-item">On-demand service start — services can be configured to start only when first accessed, reducing idle resource usage. systemd replicates this via socket and path activation.</div>
+              <div class="cmp-item">Property list job definitions — launchd uses XML <code>.plist</code> files to declare services, their environment, and restart behavior. systemd's unit files serve the same purpose in a more readable INI format.</div>
+            </div>
+            <div class="cmp-col">
+              <div class="cmp-col-title was">Where launchd falls short (on Linux)</div>
+              <div class="cmp-item">macOS-only — launchd is deeply integrated with the Mach microkernel, XPC, and Apple's closed platform. It is not portable to Linux.</div>
+              <div class="cmp-item">XPC coupling — advanced launchd features rely on XPC (Apple's IPC framework), which is unavailable outside macOS. Linux equivalents require D-Bus, which systemd provides natively.</div>
+              <div class="cmp-item">No cgroup integration — macOS uses a different resource management model. launchd has no equivalent to systemd's per-service cgroup slices and resource accounting.</div>
+              <div class="cmp-item">Closed development — launchd is developed entirely within Apple. There is no public bug tracker, no RFC process, no community contribution path.</div>
+              <div class="cmp-item">No structured logging equivalent — Console.app and the Unified Logging System on macOS serve a similar role to journald, but are platform-specific. journald is open, standardized, and grep-friendly.</div>
+            </div>
+          </div>
+          <div class="cmp-verdict"><strong>Bottom line:</strong> launchd is the direct intellectual predecessor of systemd. Poettering read Apple's launchd paper and set out to build the same thing for Linux — unified PID 1, socket activation, on-demand services, declarative job descriptions — but open, cross-distro, and integrated with Linux-specific primitives like cgroups and D-Bus. systemd is, in many ways, what launchd would look like if it were open source and running on a monolithic kernel.</div>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ── History section ── -->
     <div id="section-history" class="sd-section hidden">
       <div class="tl">
@@ -778,7 +1042,7 @@
   </div>
 
   <script>
-    const TABS = ['systemctl', 'units', 'journal', 'concepts', 'history'];
+    const TABS = ['systemctl', 'units', 'journal', 'concepts', 'reasons', 'history'];
     function switchTab(name) {
       document.querySelectorAll('.sd-tab').forEach(function(t, i) {
         t.classList.toggle('active', TABS[i] === name);
@@ -788,6 +1052,21 @@
       });
       localStorage.setItem('sd_tab', name);
     }
+
+    const REASONS = ['sysv', 'upstart', 'daemontools', 'runit', 'openrc', 'launchd'];
+    function switchReason(name) {
+      document.querySelectorAll('.reasons-btn').forEach(function(b, i) {
+        b.classList.toggle('active', REASONS[i] === name);
+      });
+      REASONS.forEach(function(id) {
+        document.getElementById('reason-' + id).classList.toggle('active', id === name);
+      });
+      localStorage.setItem('sd_reason', name);
+    }
+
+    var savedReason = localStorage.getItem('sd_reason');
+    if (savedReason && REASONS.includes(savedReason)) switchReason(savedReason);
+
     switchTab(localStorage.getItem('sd_tab') || 'systemctl');
   </script>
   <script src="/shared/nav.js?v=2"></script>
