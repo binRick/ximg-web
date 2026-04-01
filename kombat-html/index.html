@@ -500,6 +500,7 @@ function switchTab(name) {
     document.getElementById('section-' + t).classList.toggle('hidden', name !== t)
   );
   localStorage.setItem('kombat_tab', name);
+  if (typeof mkGameSetActive === 'function') mkGameSetActive(name === 'play');
 }
 document.querySelectorAll('.snav-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -1798,7 +1799,7 @@ const GW = 880, GH = 490, FLOOR = 400;
 let canvas, ctx, gameState = 'attract', curRound = 1, roundTimer = 60;
 let fighters, particles, projectiles;
 let overlay = { text:'', sub:'', alpha:0, timer:0 };
-let lastTS = 0, gameActive = false;
+let lastTS = 0, gameActive = false, rafId = null;
 const K = {};
 
 /* ── Audio ─────────────────────────────────────────────────── */
@@ -2301,7 +2302,7 @@ function processInput(){
 
 /* ── Game loop ───────────────────────────────────────────────── */
 function loop(ts){
-  requestAnimationFrame(loop);
+  rafId = requestAnimationFrame(loop);
   const dt=Math.min((ts-lastTS)/1000,.05); lastTS=ts;
   processInput();
   if(gameState==='fight'||gameState==='finish'){
@@ -2397,8 +2398,15 @@ function initMKGame(){
   });
   document.addEventListener('keyup', e=>{ K[e.code]=false; });
   lastTS=performance.now();
-  requestAnimationFrame(loop);
+  rafId = requestAnimationFrame(loop);
 }
+window.mkGameSetActive = function(active) {
+  if (active) {
+    if (!rafId) { lastTS = performance.now(); rafId = requestAnimationFrame(loop); }
+  } else {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+};
 window.initMKGame=initMKGame;
 })();
 /* ════════════════════════════════════════════════════════════════ */
