@@ -83,6 +83,17 @@ Every new app must be wired into **four places** in addition to its own files:
 
 Missing any of these four means the app is invisible or incomplete.
 
+## New App Verification
+
+After creating a new app, always verify all of the following before considering the task done:
+
+1. **Cert acquired** — confirm the new subdomain is covered by the cert: `certbot certificates | grep <subdomain>`
+2. **Container up** — confirm the Docker container is running: `docker compose ps <service>`
+3. **Website works** — confirm the site returns HTTP 200: `curl -sk https://<subdomain>.ximg.app | head -5`
+4. **App is unique** — confirm the page HTML is NOT identical to the main landing page (`ximg.app`): compare `<title>` tags and page content to ensure the new app loaded its own page, not the default
+
+If any check fails, fix it before finishing.
+
 ## SSL / Adding a New Subdomain
 
 Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdomain:
