@@ -103,8 +103,9 @@
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
       var isOpen = dd.classList.contains('open');
+      var isActiveOnly = dd.classList.contains('active-only');
       closeAll();
-      if (!isOpen) {
+      if (!isOpen || isActiveOnly) {
         dd.classList.add('open');
         dd.classList.remove('active-only'); // manual open always shows all apps
         trigger.classList.add('open');
