@@ -1603,53 +1603,36 @@
           if (DTMF[ch]) tone(DTMF[ch], 0.08, 0.22);
         },
 
+        // Single ring pulse — call once per visual RING line (~900ms)
         ring: function() {
-          // North-American ring: 440+480 Hz, 2s on / 4s off
-          var self = this;
-          tone([440, 480], 2.0, 0.28);
-          ringTid = setTimeout(function() {
-            if (ringTid !== null) self.ring();
-          }, 4000);
+          tone([440, 480], 0.9, 0.30);
         },
 
         stopRing: function() {
-          // Just prevent next ring from scheduling; current tone fades naturally
           if (ringTid) { clearTimeout(ringTid); ringTid = null; }
         },
 
         connect: function() {
-          // Approximate V.22bis handshake:
-          // 1) CNG (originate) — 1100 Hz pulses
-          // 2) ANS (answer)    — 2100 Hz tone
-          // 3) Phase reversal / training squeals
-          // 4) Carrier lock
+          // V.22bis handshake compressed to ~2s so it finishes around CONNECT text
           var c = ac();
           var t = c.currentTime;
 
-          // CNG: 1100 Hz, 3 × (500ms on / 500ms gap)
-          for (var i = 0; i < 3; i++) {
-            tone(1100, 0.42, 0.18, t + i * 1.0);
-          }
-          // ANS: 2100 Hz sustained
-          tone(2100, 0.8, 0.22, t + 3.2);
+          // ANS tone: 2100 Hz
+          tone(2100, 0.35, 0.22, t);
 
-          // Handshake squeal — alternating carrier tones
-          var sq = [
-            2400, 1200, 2400, 600, 1800, 2400,
-            1200, 600, 2400, 1800, 600, 2400,
-            1200, 2400, 600, 1800, 1200, 2400
-          ];
+          // Handshake squeal — 14 rapid alternating carrier tones
+          var sq = [2400,1200,2400,600,1800,2400,1200,600,2400,1800,600,2400,1200,600];
           for (var j = 0; j < sq.length; j++) {
-            tone(sq[j], 0.14, 0.12, t + 4.2 + j * 0.16);
+            tone(sq[j], 0.10, 0.13, t + 0.4 + j * 0.10);
           }
 
-          // Noise bursts during scramble phase
-          for (var k = 0; k < 6; k++) {
-            noise(0.18, 0.06, t + 4.4 + k * 0.48);
+          // Noise bursts during scramble
+          for (var k = 0; k < 4; k++) {
+            noise(0.12, 0.06, t + 0.45 + k * 0.33);
           }
 
-          // Carrier lock — quiet sustained tones fade out
-          tone([1200, 2400], 1.2, 0.06, t + 7.2);
+          // Carrier lock fade-out
+          tone([1200, 2400], 0.6, 0.05, t + 1.85);
         }
       };
     })();
@@ -1743,13 +1726,15 @@
       {t:'line', h:'', b:0},
       {t:'line', h:'', b:400},
       {t:'sound', action:'ring'},
-      {t:'line', h:'   ' + H.dy('RING ...'), b:1000},
-      {t:'line', h:'   ' + H.dy('RING ...'), b:1000},
-      {t:'line', h:'   ' + H.dy('RING ...'), b:950},
-      {t:'sound', action:'ring-stop'},
-      {t:'line', h:'', b:400},
+      {t:'line', h:'   ' + H.dy('RING ...'), b:900},
+      {t:'sound', action:'ring'},
+      {t:'line', h:'   ' + H.dy('RING ...'), b:900},
+      {t:'sound', action:'ring'},
+      {t:'line', h:'   ' + H.dy('RING ...'), b:900},
+      {t:'line', h:'', b:300},
       {t:'sound', action:'connect'},
-      {t:'line', h: H.bgg(' CONNECT 2400 '), b:500},
+      {t:'wait', ms:500},
+      {t:'line', h: H.bgg(' CONNECT 2400 '), b:0},
       {t:'line', h:'', b:0},
       {t:'wait', ms:700},
 
