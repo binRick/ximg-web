@@ -1428,6 +1428,7 @@ loop();
   let gSt='select', gSc=0, gCx=0, gAn=0;
   let gPl=null, gPlats=[], gEns=[], gPots=[], gVegs=[], gPtcl=[];
   let gHeld=null, gFT=FL_FRAMES, gJP=false, gPP=false, gDoor=null;
+  let gStartTime=0; // ms timestamp when level play begins
 
   const K2={}, T2={};
   const L2=()=>K2.ArrowLeft ||K2.KeyA||T2.left;
@@ -1577,6 +1578,7 @@ loop();
 
   function begin2(){
     gSt='playing'; s2resize(); buildLv(); s2ov.classList.add('off');
+    gStartTime=performance.now();
     document.getElementById('smb2-score-form').style.display='none';
     document.getElementById('smb2-play-again').style.display='none';
     document.getElementById('smb2-submit-status').textContent='';
@@ -1746,7 +1748,12 @@ loop();
     // Door (goal!)
     if(!gDoor.done&&ov(pl,gDoor)){
       gDoor.done=true;gSt='won';
-      showMsg2('YOU WIN! \u2728',`Peach escapes Subcon!<br>Score: ${gSc}`);
+      const elapsedSec=Math.max(0,(performance.now()-gStartTime)/1000);
+      const BASE_SCORE=10000, PENALTY=100;
+      const timeScore=Math.max(0,Math.round(BASE_SCORE-elapsedSec*PENALTY));
+      gSc+=timeScore;
+      const tStr=elapsedSec<60?`${Math.floor(elapsedSec)}s`:`${Math.floor(elapsedSec/60)}m ${Math.floor(elapsedSec%60)}s`;
+      showMsg2('YOU WIN! \u2728',`Peach escapes Subcon!<br>Time: <b style="color:#FFD700">${tStr}</b> &nbsp;·&nbsp; Score: <b style="color:#FF69B4">${gSc.toLocaleString()}</b>`);
     }
 
     if(pl.y>s2c.height+200)loseLife2();
@@ -2022,6 +2029,14 @@ loop();
     function sh(t,x,y,c){s2x.fillStyle='#000';s2x.fillText(t,x+1,y+1);s2x.fillStyle=c||'#fff';s2x.fillText(t,x,y);}
     sh(`SCORE ${gSc}`,16,28);
     sh(`\u2665 ${gPl.lives}`,s2c.width/2-30,28,'#FF69B4');
+    // Timer display
+    if(gSt==='playing'&&gStartTime){
+      const elapsed=Math.max(0,(performance.now()-gStartTime)/1000);
+      const remaining=Math.max(0,100-elapsed);
+      const tDisp=Math.ceil(remaining);
+      const col=tDisp<=10?'#ff4040':tDisp<=30?'#FFD700':'#ffffff';
+      sh(`TIME ${tDisp}`,s2c.width/2+40,28,col);
+    }
     // Float bar
     const bx=s2c.width-96,by=20,bw=80,bh=6;
     s2x.fillStyle='rgba(0,0,0,.5)';s2x.fillRect(bx,by,bw,bh);

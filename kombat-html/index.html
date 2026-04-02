@@ -384,6 +384,58 @@
     @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
     .hero { animation: fadeUp .7s ease both; }
     .games { animation: fadeUp .7s ease both .15s; }
+
+    /* ── Scores section ── */
+    .mk-scores-wrap {
+      max-width: 760px; margin: 0 auto; width: 100%;
+      padding: 1.5rem 0 3rem;
+      display: flex; flex-direction: column; gap: 1.75rem;
+    }
+    .mk-scores-title {
+      font-size: 1.1rem; font-weight: 900; text-align: center; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--crimson);
+      text-shadow: 0 0 20px rgba(176,16,16,.5);
+    }
+    .mk-scores-table {
+      width: 100%; border-collapse: collapse;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .mk-scores-table thead th {
+      background: rgba(122,0,0,.35); color: var(--gold);
+      padding: .55rem 1rem; text-align: left;
+      font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;
+      border-bottom: 1px solid rgba(176,16,16,.3);
+    }
+    .mk-scores-table tbody tr {
+      border-bottom: 1px solid rgba(176,16,16,.06); transition: background .15s;
+    }
+    .mk-scores-table tbody tr:hover { background: rgba(176,16,16,.06); }
+    .mk-scores-table tbody td { padding: .45rem 1rem; font-size: .82rem; color: var(--text); vertical-align: middle; }
+    .mk-scores-table .rank-gold   { color: var(--gold); font-weight: 800; }
+    .mk-scores-table .rank-silver { color: #bbb; font-weight: 700; }
+    .mk-scores-table .rank-bronze { color: #cd7f32; font-weight: 700; }
+    .mk-scores-table .rank-normal { color: var(--muted); }
+    .mk-scores-empty {
+      text-align: center; padding: 3rem 1rem; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-style: italic; font-size: .85rem;
+    }
+    .mk-scores-table-wrap {
+      border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+      background: var(--card);
+    }
+    .mk-scores-actions {
+      display: flex; justify-content: center;
+    }
+    .mk-scores-clear {
+      background: transparent; border: 1px solid rgba(176,16,16,.3); color: var(--muted);
+      padding: .4rem 1.2rem; border-radius: 6px; cursor: pointer; font-size: .72rem;
+      font-family: 'Segoe UI', system-ui, sans-serif; transition: all .2s;
+    }
+    .mk-scores-clear:hover { border-color: rgba(176,16,16,.6); color: #e08080; background: rgba(176,16,16,.07); }
+    .mk-scores-note {
+      text-align: center; font-size: .72rem; color: var(--muted);
+      font-family: 'Segoe UI', system-ui, sans-serif; font-style: italic; line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -402,7 +454,8 @@
       <button class="snav-btn"        data-tab="fatalities">Fatalities</button>
       <button class="snav-btn"        data-tab="characters">Characters</button>
       <button class="snav-btn"        data-tab="history">History</button>
-      <button class="snav-btn"        data-tab="play" style="color:#e0c060;border-color:rgba(200,150,0,.35)">⚔️ Play</button>
+      <button class="snav-btn"        data-tab="play"   style="color:#e0c060;border-color:rgba(200,150,0,.35)">⚔️ Play</button>
+      <button class="snav-btn"        data-tab="scores" style="color:#c8960c;border-color:rgba(200,150,12,.3)">🏆 Scores</button>
     </div>
 
     <!-- ── GAMES SECTION ── -->
@@ -490,17 +543,48 @@
       </div>
     </div>
 
+    <!-- ── SCORES SECTION ── -->
+    <div id="section-scores" class="mk-section hidden">
+      <div class="mk-scores-wrap">
+        <div class="mk-scores-title">🏆 High Scores</div>
+        <div class="mk-scores-table-wrap">
+          <table class="mk-scores-table">
+            <thead>
+              <tr>
+                <th style="width:2.5rem">#</th>
+                <th>Player</th>
+                <th>Score</th>
+                <th>Difficulty</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="mk-scores-tbody">
+              <tr><td colspan="5" class="mk-scores-empty">No scores yet — play a match to get on the board!</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mk-scores-actions">
+          <button class="mk-scores-clear" id="mk-scores-clear-btn">Clear All Scores</button>
+        </div>
+        <div class="mk-scores-note">
+          Scores are stored locally in your browser.<br>
+          Win a match in the <strong style="color:var(--gold)">Play</strong> tab to record your score.
+        </div>
+      </div>
+    </div>
+
   </div>
 
 <script>
 /* ─── Sub-nav ─────────────────────────────────────────────── */
 function switchTab(name) {
   document.querySelectorAll('.snav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  ['games','fatalities','characters','history','play'].forEach(t =>
+  ['games','fatalities','characters','history','play','scores'].forEach(t =>
     document.getElementById('section-' + t).classList.toggle('hidden', name !== t)
   );
   localStorage.setItem('kombat_tab', name);
   if (typeof mkGameSetActive === 'function') mkGameSetActive(name === 'play');
+  if (name === 'scores') renderMKScores();
 }
 document.querySelectorAll('.snav-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -1782,6 +1866,8 @@ if (savedTab === 'fatalities') {
 } else if (savedTab === 'history') {
   switchTab('history');
   buildHistory();
+} else if (savedTab === 'scores') {
+  switchTab('scores');
 } else {
   switchTab('games');
 }
@@ -1790,6 +1876,58 @@ document.querySelector('[data-tab="fatalities"]').addEventListener('click', buil
 document.querySelector('[data-tab="characters"]').addEventListener('click', buildCharacters, { once: true });
 document.querySelector('[data-tab="history"]').addEventListener('click', buildHistory, { once: true });
 // initMKGame listener registered after IIFE (see bottom of script)
+
+/* ─── Scores (localStorage) ────────────────────────────────── */
+const MK_SCORES_KEY = 'kombat_hiscores';
+
+function getMKScores() {
+  try { return JSON.parse(localStorage.getItem(MK_SCORES_KEY) || '[]'); }
+  catch(_) { return []; }
+}
+
+function saveMKScore(entry) {
+  const scores = getMKScores();
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  scores.splice(10); // keep top 10
+  localStorage.setItem(MK_SCORES_KEY, JSON.stringify(scores));
+}
+
+function renderMKScores() {
+  const tbody = document.getElementById('mk-scores-tbody');
+  const scores = getMKScores();
+  if (!scores.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="mk-scores-empty">No scores yet — win a match in the Play tab to get on the board!</td></tr>';
+    return;
+  }
+  const rankClass = i => i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : 'rank-normal';
+  tbody.innerHTML = scores.map((s, i) =>
+    `<tr>
+      <td class="${rankClass(i)}">${i + 1}</td>
+      <td style="font-weight:700;color:var(--text)">${esc(s.player || 'P1')}</td>
+      <td style="color:var(--gold);font-weight:700">${Number(s.score).toLocaleString()}</td>
+      <td style="color:var(--steel);font-size:.75rem">${esc(s.difficulty || 'Normal')}</td>
+      <td style="color:var(--muted);font-size:.75rem">${esc(s.date || '')}</td>
+    </tr>`
+  ).join('');
+}
+
+function addMKScore(score, difficulty) {
+  const entry = {
+    player: 'P1',
+    score,
+    difficulty: difficulty || 'Normal',
+    date: new Date().toLocaleDateString()
+  };
+  saveMKScore(entry);
+}
+
+document.getElementById('mk-scores-clear-btn').addEventListener('click', function() {
+  if (confirm('Clear all Mortal Kombat high scores?')) {
+    localStorage.removeItem(MK_SCORES_KEY);
+    renderMKScores();
+  }
+});
 
 /* ═══════════════════════════════════════════════════════════════
    MORTAL KOMBAT — Canvas Fighting Game
@@ -2266,6 +2404,12 @@ function endRound(winner){
     showOverlay(isP?'YOU WIN':'YOU LOSE', mw.name+' WINS', 4);
     sndAnnounce();
     gameState='matchover';
+    if(isP && typeof addMKScore === 'function'){
+      const healthBonus = Math.round(fighters[0].health * 50);
+      const timeBonus = Math.round(roundTimer * 30);
+      const matchScore = 5000 + healthBonus + timeBonus;
+      addMKScore(matchScore, 'Normal');
+    }
     setTimeout(()=>{ showOverlay('PRESS ENTER','to play again',9999); },4200);
   } else {
     curRound++;
