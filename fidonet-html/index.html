@@ -1528,6 +1528,132 @@
     }
     function ms(base) { return Math.max(1, base * mult()); }
 
+    // ── Audio system ──────────────────────────────────────────────────────
+    var audio = (function() {
+      var ctx = null;
+      var nodes = [];     // live oscillators to stop
+      var ringTid = null; // ring interval timer
+
+      function ac() {
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // Resume if suspended (browser autoplay policy)
+        if (ctx.state === 'suspended') ctx.resume();
+        return ctx;
+      }
+
+      // Play one or two sine waves; returns the gain node
+      function tone(freqs, dur, vol, when) {
+        var c = ac();
+        var t = when !== undefined ? when : c.currentTime;
+        var g = c.createGain();
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        g.connect(c.destination);
+        (Array.isArray(freqs) ? freqs : [freqs]).forEach(function(f) {
+          var o = c.createOscillator();
+          o.type = 'sine';
+          o.frequency.value = f;
+          o.connect(g);
+          o.start(t);
+          o.stop(t + dur + 0.02);
+          nodes.push(o);
+        });
+      }
+
+      // White-noise burst (for modem scramble)
+      function noise(dur, vol, when) {
+        var c = ac();
+        var t = when !== undefined ? when : c.currentTime;
+        var buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+        var data = buf.getChannelData(0);
+        for (var i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+        var src = c.createBufferSource();
+        src.buffer = buf;
+        var g = c.createGain();
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        // Band-pass to make it sound more like modem noise
+        var bp = c.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 1800;
+        bp.Q.value = 0.8;
+        src.connect(bp);
+        bp.connect(g);
+        g.connect(c.destination);
+        src.start(t);
+        src.stop(t + dur + 0.02);
+        nodes.push(src);
+      }
+
+      var DTMF = {
+        '1':[697,1209],'2':[697,1336],'3':[697,1477],
+        '4':[770,1209],'5':[770,1336],'6':[770,1477],
+        '7':[852,1209],'8':[852,1336],'9':[852,1477],
+        '0':[941,1336],'*':[941,1209],'#':[941,1477]
+      };
+
+      return {
+        stopAll: function() {
+          nodes.forEach(function(n) { try { n.stop(0); } catch(e) {} });
+          nodes = [];
+          if (ringTid) { clearTimeout(ringTid); ringTid = null; }
+        },
+
+        dtmf: function(ch) {
+          if (DTMF[ch]) tone(DTMF[ch], 0.08, 0.22);
+        },
+
+        ring: function() {
+          // North-American ring: 440+480 Hz, 2s on / 4s off
+          var self = this;
+          tone([440, 480], 2.0, 0.28);
+          ringTid = setTimeout(function() {
+            if (ringTid !== null) self.ring();
+          }, 4000);
+        },
+
+        stopRing: function() {
+          // Just prevent next ring from scheduling; current tone fades naturally
+          if (ringTid) { clearTimeout(ringTid); ringTid = null; }
+        },
+
+        connect: function() {
+          // Approximate V.22bis handshake:
+          // 1) CNG (originate) — 1100 Hz pulses
+          // 2) ANS (answer)    — 2100 Hz tone
+          // 3) Phase reversal / training squeals
+          // 4) Carrier lock
+          var c = ac();
+          var t = c.currentTime;
+
+          // CNG: 1100 Hz, 3 × (500ms on / 500ms gap)
+          for (var i = 0; i < 3; i++) {
+            tone(1100, 0.42, 0.18, t + i * 1.0);
+          }
+          // ANS: 2100 Hz sustained
+          tone(2100, 0.8, 0.22, t + 3.2);
+
+          // Handshake squeal — alternating carrier tones
+          var sq = [
+            2400, 1200, 2400, 600, 1800, 2400,
+            1200, 600, 2400, 1800, 600, 2400,
+            1200, 2400, 600, 1800, 1200, 2400
+          ];
+          for (var j = 0; j < sq.length; j++) {
+            tone(sq[j], 0.14, 0.12, t + 4.2 + j * 0.16);
+          }
+
+          // Noise bursts during scramble phase
+          for (var k = 0; k < 6; k++) {
+            noise(0.18, 0.06, t + 4.4 + k * 0.48);
+          }
+
+          // Carrier lock — quiet sustained tones fade out
+          tone([1200, 2400], 1.2, 0.06, t + 7.2);
+        }
+      };
+    })();
+
     // ── Color helpers (return HTML strings) ──────────────────────────────
     var H = {
       r:  function(t){ return '<span style="color:#ff5555">'+t+'</span>'; },
@@ -1580,7 +1706,7 @@
     }
 
     // ── Typing simulation ─────────────────────────────────────────────────
-    function typeText(text, speed, color, cb) {
+    function typeText(text, speed, color, dtmf, cb) {
       var span = document.createElement('span');
       if      (color === 'inp') span.style.color = '#ffee44';
       else if (color === 'dim') span.style.color = '#444455';
@@ -1590,7 +1716,9 @@
       function tick() {
         if (!running) return;
         if (i < text.length) {
-          span.textContent += text[i++];
+          var ch = text[i++];
+          span.textContent += ch;
+          if (dtmf) audio.dtmf(ch);
           screen.scrollTop = screen.scrollHeight;
           timer = setTimeout(tick, ms(speed));
         } else { cb(); }
@@ -1611,13 +1739,16 @@
       {t:'line', h:'', b:0},
       {t:'line', h: H.g('OK'), b:250},
       {t:'line', h:'', b:0},
-      {t:'type', text:'ATDT 1-714-555-3434', speed:90, color:'inp', b:500},
+      {t:'type', text:'ATDT 1-714-555-3434', speed:90, color:'inp', dtmf:true, b:500},
       {t:'line', h:'', b:0},
       {t:'line', h:'', b:400},
+      {t:'sound', action:'ring'},
       {t:'line', h:'   ' + H.dy('RING ...'), b:1000},
       {t:'line', h:'   ' + H.dy('RING ...'), b:1000},
       {t:'line', h:'   ' + H.dy('RING ...'), b:950},
+      {t:'sound', action:'ring-stop'},
       {t:'line', h:'', b:400},
+      {t:'sound', action:'connect'},
       {t:'line', h: H.bgg(' CONNECT 2400 '), b:500},
       {t:'line', h:'', b:0},
       {t:'wait', ms:700},
@@ -1975,7 +2106,7 @@
 
         case 'type':
           timer = setTimeout(function() {
-            typeText(step.text, step.speed || 100, step.color || 'inp', function() {
+            typeText(step.text, step.speed || 100, step.color || 'inp', !!step.dtmf, function() {
               next();
             });
           }, ms(step.b || 0));
@@ -1998,6 +2129,13 @@
           }, ms(step.b || 0));
           break;
 
+        case 'sound':
+          if      (step.action === 'ring')      audio.ring();
+          else if (step.action === 'ring-stop') audio.stopRing();
+          else if (step.action === 'connect')   audio.connect();
+          next();
+          break;
+
         case 'end':
           running = false;
           caret.style.display = 'none';
@@ -2008,6 +2146,7 @@
 
     function startSim() {
       if (timer) clearTimeout(timer);
+      audio.stopAll();
       running = false;
       clr();
       caret.style.display = 'inline-block';
@@ -2019,8 +2158,9 @@
 
     document.getElementById('sim-restart').addEventListener('click', startSim);
 
-    // expose start for tab-switch trigger
+    // expose start/stop for tab-switch
     window._bbsSimStart = startSim;
+    window._bbsSimStop  = function() { audio.stopAll(); };
     window._bbsSimRunning = function() { return running; };
   })();
 </script>
@@ -2036,6 +2176,8 @@
     btn.classList.add('active');
     document.getElementById('tab-' + tab).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Stop audio when leaving the simulator tab
+    if (tab !== 'simulator' && window._bbsSimStop) window._bbsSimStop();
     // Auto-start BBS simulator when that tab is selected
     if (tab === 'simulator' && window._bbsSimStart && !window._bbsSimRunning()) {
       setTimeout(window._bbsSimStart, 300);
