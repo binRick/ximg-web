@@ -117,6 +117,7 @@
           dd.style.left = '';
           dd.style.right = '';
         }
+        syncSpacer();
       }
     });
 
@@ -142,6 +143,7 @@
   function closeAll() {
     nav.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
     nav.querySelectorAll('.nav-trigger.open').forEach(function (t) { t.classList.remove('open'); });
+    syncSpacer();
   }
 
   // Spacer — keeps content below the fixed nav
@@ -153,11 +155,15 @@
   document.body.prepend(nav);
 
   // Auto-open the dropdown for the active group so the current page is visible on load
+  var activeDD = null;
   nav.querySelectorAll('.nav-group').forEach(function (g) {
-    if (g._autoOpen) g._autoOpen();
+    if (g._autoOpen) { g._autoOpen(); activeDD = g.querySelector('.nav-dropdown'); }
   });
 
-  function syncSpacer() { spacer.style.height = nav.offsetHeight + 'px'; }
+  function syncSpacer() {
+    var extra = (activeDD && activeDD.classList.contains('open')) ? activeDD.offsetHeight + 8 : 0;
+    spacer.style.height = (nav.offsetHeight + extra) + 'px';
+  }
   syncSpacer();
   window.addEventListener('resize', syncSpacer);
 })();

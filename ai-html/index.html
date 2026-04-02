@@ -228,6 +228,46 @@
     .lineage-node b{display:block;color:#fff;font-size:.82rem}
     .lineage-arrow{color:rgba(167,139,250,.5);font-size:1.1rem;flex-shrink:0}
 
+    /* ── BBS Simulator ── */
+    .bbs-wrap{
+      display:flex;flex-direction:column;gap:1rem;
+    }
+    .bbs-screen{
+      position:relative;
+      background:#0a0800;border:2px solid #3a3000;border-radius:8px;
+      padding:1rem 1.2rem;font-family:'Courier New',monospace;font-size:.82rem;
+      line-height:1.6;min-height:420px;max-height:520px;overflow-y:auto;
+      box-shadow:0 0 32px rgba(255,160,0,.12),inset 0 0 60px rgba(0,0,0,.6);
+      color:#ffb300;
+    }
+    .bbs-screen::after{
+      content:'';position:absolute;inset:0;pointer-events:none;border-radius:6px;
+      background:repeating-linear-gradient(0deg,rgba(0,0,0,.15) 0,rgba(0,0,0,.15) 1px,transparent 1px,transparent 3px);
+    }
+    .bbs-line{margin:0;white-space:pre-wrap;word-break:break-all}
+    .bbs-line.dim{color:#7a5800}
+    .bbs-line.bright{color:#ffd54f;font-weight:bold}
+    .bbs-line.cyan{color:#00e5ff}
+    .bbs-line.green{color:#69ff47}
+    .bbs-line.red{color:#ff5252}
+    .bbs-line.white{color:#fff}
+    .bbs-cursor{display:inline-block;width:9px;height:1em;background:#ffb300;animation:bbsblink .8s step-end infinite;vertical-align:text-bottom}
+    @keyframes bbsblink{0%,100%{opacity:1}50%{opacity:0}}
+    .bbs-controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+    .bbs-btn{
+      font-size:.78rem;padding:.38rem .9rem;border-radius:7px;cursor:pointer;
+      border:1px solid rgba(255,160,0,.35);background:rgba(255,160,0,.07);
+      color:#ffb300;font-family:'Courier New',monospace;transition:all .15s;
+    }
+    .bbs-btn:hover{background:rgba(255,160,0,.15);border-color:rgba(255,160,0,.6)}
+    .bbs-btn:disabled{opacity:.35;cursor:default}
+    .bbs-status{
+      font-size:.72rem;color:#7a5800;font-family:'Courier New',monospace;
+      border:1px solid rgba(255,160,0,.1);border-radius:6px;padding:.3rem .7rem;
+      background:rgba(255,160,0,.04);
+    }
+    .bbs-status span{color:#ffb300}
+
     @media(max-width:600px){
       .hero-text h1{font-size:1.8rem}
       .timeline::before{left:56px}
@@ -257,6 +297,7 @@
       <button class="tab" onclick="show('timeline',this)">📅 Timeline</button>
       <button class="tab" onclick="show('concepts',this)">📐 Concepts</button>
       <button class="tab" onclick="show('sbaitso',this)">🩺 Dr. Sbaitso</button>
+      <button class="tab" onclick="show('bbs',this)">📟 BBS</button>
     </div>
 
     <!-- ══════════════════ OVERVIEW ══════════════════ -->
@@ -769,8 +810,8 @@
           <div class="shot-caption">Dr. Sbaitso · Title / intro screen · 640×400 VGA · Internet Archive</div>
         </div>
         <div class="shot">
-          <img src="images/dr-sbaitso-classicreload.png" alt="Dr. Sbaitso running in DOSBox via ClassicReload" loading="lazy">
-          <div class="shot-caption">Dr. Sbaitso running in DOSBox emulation · Classic DOS text-mode UI</div>
+          <img src="images/sbaitso-conversation.jpg" alt="Dr. Sbaitso conversation session — ELIZA-style therapy dialogue" loading="lazy">
+          <div class="shot-caption">Dr. Sbaitso in session · Patient dialogue · ELIZA-style pattern responses · 640×400 VGA</div>
         </div>
       </div>
 
@@ -899,15 +940,313 @@
 
     </div>
 
+    <!-- ══════════════════ BBS SIMULATOR ══════════════════ -->
+    <div class="section hidden" id="s-bbs">
+      <div>
+        <div class="sec-label">Bulletin Board Systems — 1978–1996</div>
+        <div class="sec-title">Dial Into a BBS</div>
+        <p class="sec-intro">Before the Web, there were BBSes — Bulletin Board Systems reachable by modem over telephone lines. You'd dial in, hear the handshake scream, and land in a text-menu world of messages, files, games, and community. This is a simulation of that experience.</p>
+      </div>
+
+      <div class="bbs-wrap">
+        <div class="bbs-controls">
+          <button class="bbs-btn" id="bbs-dial-btn" onclick="BBS.dial()">📞 Dial BBS</button>
+          <button class="bbs-btn" id="bbs-disc-btn" onclick="BBS.disconnect()" disabled>⏏ Hang Up</button>
+          <div class="bbs-status" id="bbs-status">STATUS: <span>OFFLINE</span></div>
+        </div>
+        <div class="bbs-screen" id="bbs-screen">
+          <p class="bbs-line dim">── XIMG TERMINAL v1.0 ──────────────────────────────</p>
+          <p class="bbs-line dim">Ready. Press [Dial BBS] to connect.</p>
+          <p class="bbs-line"> </p>
+          <span class="bbs-cursor"></span>
+        </div>
+      </div>
+
+    </div>
+
   </div>
 
   <script>
     function show(id, btn) {
+      if (id !== 'bbs' && window.BBS) BBS.stopAudio();
       document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.getElementById('s-' + id).classList.remove('hidden');
       btn.classList.add('active');
     }
+  </script>
+
+  <script>
+  (function () {
+    var screen = document.getElementById('bbs-screen');
+    var statusEl = document.getElementById('bbs-status').querySelector('span');
+    var dialBtn = document.getElementById('bbs-dial-btn');
+    var discBtn = document.getElementById('bbs-disc-btn');
+
+    var _nodes = []; // all live oscillator/gain nodes
+    var _actx = null;
+    var _timers = [];
+    var _state = 'offline';
+
+    function getCtx() {
+      if (!_actx || _actx.state === 'closed') _actx = new (window.AudioContext || window.webkitAudioContext)();
+      return _actx;
+    }
+
+    function stopAll() {
+      _timers.forEach(clearTimeout); _timers = [];
+      _nodes.forEach(function(n){ try{ n.stop(0); }catch(e){} try{ n.disconnect(); }catch(e){} });
+      _nodes = [];
+    }
+
+    // Tone generator: freq (or [f1,f2]), duration seconds, waveType, volume
+    function tone(freqs, dur, wave, vol) {
+      var ctx = getCtx();
+      if (!Array.isArray(freqs)) freqs = [freqs];
+      var gain = ctx.createGain();
+      gain.gain.setValueAtTime(vol || 0.12, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(vol || 0.12, ctx.currentTime + dur - 0.02);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
+      gain.connect(ctx.destination);
+      _nodes.push(gain);
+      freqs.forEach(function(f) {
+        var osc = ctx.createOscillator();
+        osc.type = wave || 'sine';
+        osc.frequency.setValueAtTime(f, ctx.currentTime);
+        osc.connect(gain);
+        osc.start();
+        osc.stop(ctx.currentTime + dur);
+        _nodes.push(osc);
+      });
+    }
+
+    // DTMF key map
+    var DTMF_ROW = [697, 770, 852, 941];
+    var DTMF_COL = [1209, 1336, 1477, 1633];
+    var DTMF_MAP = {
+      '1':[0,0],'2':[0,1],'3':[0,2],'4':[1,0],'5':[1,1],'6':[1,2],
+      '7':[2,0],'8':[2,1],'9':[2,2],'*':[3,0],'0':[3,1],'#':[3,2]
+    };
+
+    function dtmfTone(digit, dur) {
+      var m = DTMF_MAP[digit]; if (!m) return;
+      tone([DTMF_ROW[m[0]], DTMF_COL[m[1]]], dur, 'sine', 0.09);
+    }
+
+    // Swept oscillator for V.21 handshake screech
+    function screech(dur) {
+      var ctx = getCtx();
+      var gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.07, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
+      gain.connect(ctx.destination);
+      _nodes.push(gain);
+      [0, 0.07, 0.14].forEach(function(offset) {
+        var osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1200 + offset * 400, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(2400 + offset * 300, ctx.currentTime + dur * 0.5);
+        osc.frequency.linearRampToValueAtTime(1100, ctx.currentTime + dur);
+        osc.connect(gain);
+        osc.start();
+        osc.stop(ctx.currentTime + dur);
+        _nodes.push(osc);
+      });
+    }
+
+    function t(fn, ms) { var id = setTimeout(fn, ms); _timers.push(id); return id; }
+
+    // ── Terminal output ──
+    function clear() {
+      screen.innerHTML = '';
+    }
+
+    var _cursor = null;
+    function ensureCursor() {
+      if (!_cursor || !screen.contains(_cursor)) {
+        _cursor = document.createElement('span');
+        _cursor.className = 'bbs-cursor';
+        screen.appendChild(_cursor);
+      }
+    }
+
+    function print(text, cls, delay) {
+      return new Promise(function(resolve) {
+        t(function() {
+          if (_cursor && screen.contains(_cursor)) screen.removeChild(_cursor);
+          var p = document.createElement('p');
+          p.className = 'bbs-line' + (cls ? ' ' + cls : '');
+          p.textContent = text;
+          screen.appendChild(p);
+          ensureCursor();
+          screen.scrollTop = screen.scrollHeight;
+          resolve();
+        }, delay || 0);
+      });
+    }
+
+    function setStatus(s) { statusEl.textContent = s; }
+
+    // ── Dial sequence ──
+    window.BBS = {
+      stopAudio: function() { stopAll(); },
+      disconnect: function() {
+        stopAll();
+        _state = 'offline';
+        setStatus('OFFLINE');
+        dialBtn.disabled = false;
+        discBtn.disabled = true;
+        clear();
+        var p = document.createElement('p'); p.className='bbs-line dim'; p.textContent='── Connection closed. ──'; screen.appendChild(p);
+        ensureCursor();
+      },
+      dial: function() {
+        if (_state !== 'offline') return;
+        _state = 'dialing';
+        dialBtn.disabled = true;
+        discBtn.disabled = false;
+        stopAll();
+        clear();
+        setStatus('DIALING');
+
+        // Print status line
+        var delay = 0;
+        function q(text, cls, d) { delay += d||80; print(text, cls, delay); }
+
+        q('── XIMG TERMINAL v1.0 ──────────────────────────────', 'dim', 0);
+        q('Dialing  1-800-BBS-XIMG ...', '', 200);
+
+        // Dial tone 350+440 Hz for 0.6s
+        t(function(){ tone([350,440], 0.6, 'sine', 0.1); }, 300);
+
+        // DTMF digits: 1-800-227-9464
+        var digits = '18002279464';
+        var dtmfStart = 1000;
+        digits.split('').forEach(function(d, i) {
+          t(function(){ dtmfTone(d, 0.12); }, dtmfStart + i * 200);
+        });
+
+        var afterDTMF = dtmfStart + digits.length * 200 + 300;
+
+        q('', '', afterDTMF - delay);
+        q('Ringing ...', 'dim', afterDTMF - delay + 100);
+
+        // Ringback: 440+480 Hz, on 2s off 4s pattern, twice
+        t(function(){ tone([440,480], 2.0, 'sine', 0.08); }, afterDTMF);
+        t(function(){ tone([440,480], 2.0, 'sine', 0.08); }, afterDTMF + 4000);
+
+        var connectTime = afterDTMF + 8500;
+        t(function(){
+          _state = 'handshake';
+          setStatus('HANDSHAKING');
+          var p = document.createElement('p'); p.className='bbs-line cyan'; p.textContent='CONNECT 14400'; screen.appendChild(p);
+          screen.scrollTop = screen.scrollHeight;
+        }, connectTime);
+
+        // CED answer tone: 2100 Hz for 2.6s
+        t(function(){ tone(2100, 2.6, 'sine', 0.09); }, connectTime + 100);
+
+        // V.21 handshake screech
+        t(function(){ screech(3.5); }, connectTime + 2800);
+
+        // Welcome screen
+        var wt = connectTime + 6500;
+        t(function(){
+          _state = 'connected';
+          setStatus('CONNECTED · 14400 BAUD');
+          screen.innerHTML = '';
+          ensureCursor();
+        }, wt);
+
+        var wd = 0;
+        function w(text, cls, d) { wd += d||60; t(function(){
+          if(_cursor&&screen.contains(_cursor)) screen.removeChild(_cursor);
+          var p=document.createElement('p'); p.className='bbs-line'+(cls?' '+cls:''); p.textContent=text; screen.appendChild(p);
+          ensureCursor(); screen.scrollTop=screen.scrollHeight;
+        }, wt + wd); }
+
+        w('', 'dim', 0);
+        w('  ██╗  ██╗██╗███╗   ███╗ ██████╗', 'bright', 50);
+        w('  ╚██╗██╔╝██║████╗ ████║██╔════╝', 'bright', 50);
+        w('   ╚███╔╝ ██║██╔████╔██║██║  ███╗', 'bright', 50);
+        w('   ██╔██╗ ██║██║╚██╔╝██║██║   ██║', 'bright', 50);
+        w('  ██╔╝ ██╗██║██║ ╚═╝ ██║╚██████╔╝', 'bright', 50);
+        w('  ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝ ╚═════╝', 'bright', 50);
+        w('', '', 50);
+        w('  ░░░ XIMG BBS ░░░  Node 3 of 8  ░░░ 14400 BAUD ░░░', 'cyan', 80);
+        w('  Running: RemoteAccess 2.62  ·  SysOp: ximg', 'dim', 60);
+        w('', '', 40);
+        w('  Welcome, NEW USER!  Last caller: HACKER_99 @ 02:14', '', 80);
+        w('  Calls today: 47  ·  Files online: 2,841  ·  Msgs: 18,204', 'dim', 60);
+        w('', '', 40);
+        w('  ┌─────────────────────────────────────────────────┐', 'dim', 60);
+        w('  │  MAIN MENU                                      │', 'white', 50);
+        w('  ├─────────────────────────────────────────────────┤', 'dim', 50);
+        w('  │  [M] Messages     [F] Files      [D] Doors      │', '', 50);
+        w('  │  [U] User list    [B] Bulletins  [G] Goodbye    │', '', 50);
+        w('  └─────────────────────────────────────────────────┘', 'dim', 50);
+        w('', '', 40);
+        w('  Main Board (?):', 'green', 80);
+
+        // Auto-navigate the menu for show
+        var menuTime = wt + wd + 1200;
+        t(function(){ autoNav(menuTime); }, menuTime);
+      }
+    };
+
+    function autoNav(base) {
+      var d = 0;
+      function n(text, cls, delay) { d+=delay||100; t(function(){
+        if(_cursor&&screen.contains(_cursor)) screen.removeChild(_cursor);
+        var p=document.createElement('p'); p.className='bbs-line'+(cls?' '+cls:''); p.textContent=text; screen.appendChild(p);
+        ensureCursor(); screen.scrollTop=screen.scrollHeight;
+      }, base+d); }
+
+      n('  M', 'green', 600);
+      n('', '', 100);
+      n('  ── MESSAGE BASES ─────────────────────────────────', 'cyan', 200);
+      n('  1. General Discussion        (1,204 msgs)', '', 80);
+      n('  2. Programming & Hacking     (4,891 msgs)', '', 70);
+      n('  3. Warez & Shareware         (9,012 msgs)', '', 70);
+      n('  4. Adult 18+                 (RESTRICTED)', 'dim', 70);
+      n('  5. SysOp Corner              (88 msgs)', '', 70);
+      n('', '', 60);
+      n('  Read msgs in base [1]: ', 'green', 500);
+      n('  1', 'green', 800);
+      n('', '', 100);
+      n('  ── Msg #18201 ── From: PHREAKMASTER ── To: ALL ────', 'cyan', 300);
+      n('  Subj: Anyone try the new Quake beta??', 'white', 80);
+      n('', '', 60);
+      n('  Grabbed it off FTP last night. Runs smooth on my', '', 80);
+      n('  Pentium 90 with 16MB RAM. The 3D engine is INSANE.', '', 70);
+      n('  Sound Blaster 16 required for proper audio.', '', 70);
+      n('  Anyone else get it? What IRC channel are you on?', '', 70);
+      n('', '', 60);
+      n('  [N]ext  [R]eply  [M]ain menu: ', 'green', 600);
+      n('  M', 'green', 900);
+      n('', '', 100);
+      n('  ── MAIN MENU ──────────────────────────────────────', 'cyan', 300);
+      n('  Main Board (?):', 'green', 400);
+      n('  G', 'green', 1200);
+      n('', '', 100);
+      n('  Thank you for calling XIMG BBS!', 'bright', 300);
+      n('  Please call again soon.  -- The SysOp', '', 200);
+      n('', '', 100);
+      n('  NO CARRIER', 'red', 600);
+      n('', '', 100);
+      t(function(){
+        if (_state === 'connected') {
+          _state = 'offline';
+          setStatus('OFFLINE');
+          dialBtn.disabled = false;
+          discBtn.disabled = true;
+          stopAll();
+          ensureCursor();
+        }
+      }, base + d + 800);
+    }
+
+  })();
   </script>
   <script src="/shared/nav.js?v=4"></script>
 </body>
