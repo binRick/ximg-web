@@ -57,6 +57,7 @@ function writeScoresSMB2(scores) {
 const LOG_FILES = {
   ximg:      'ximg.access.log',
   linux:     'linux.access.log',
+  ai:        'ai.access.log',
   mac:       'mac.access.log',
   butterfly: 'butterfly.access.log',
   ascii:     'ascii.access.log',
