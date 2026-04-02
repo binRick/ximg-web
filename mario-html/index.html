@@ -648,6 +648,7 @@ function switchTab(id) {
   document.body.style.overflow = 'hidden';
   if (id === 'smb1') resize();
   if (id !== 'smb1') SMB_MUSIC.stop();
+  if (id !== 'smb2') SMB2_MUSIC.stop();
   if (id === 'scores') loadScoresTab();
   if (id === 'history' && !window._histInited) { window._histInited = true; buildHistory(); }
   if (id === 'smb2' && window._smb2Activate) window._smb2Activate();
@@ -1533,6 +1534,161 @@ const SMB_MUSIC = (() => {
   };
 })();
 
+/* ── SMB2 Music & SFX Engine (Web Audio API) ───────────────────────── */
+const SMB2_MUSIC = (() => {
+  let actx = null, masterGain = null;
+  let noteIdx = 0, nextNoteTime = 0;
+  let schedId = null, running = false;
+
+  // ~220 BPM (slightly faster/bouncier than SMB1)
+  const E=0.110, Q=0.220, D=0.330, H=0.440, T=0.073;
+  const _=0;
+
+  const f = {
+    G4:392.00, Ab4:415.30, A4:440.00, Bb4:466.16, B4:493.88,
+    C5:523.25, D5:587.33, Eb5:622.25, E5:659.25,
+    F5:698.46, Fs5:739.99, G5:783.99, Ab5:830.61, A5:880.00,
+    Bb5:932.33, C6:1046.50,
+  };
+
+  // SMB2 USA overworld theme
+  const PHRASE_A = [
+    [f.G5,D],[f.A5,E],[f.F5,Q],[f.G5,Q],
+    [f.E5,D],[f.D5,E],[f.C5,Q],[f.D5,Q],
+    [f.E5,Q],[f.D5,E],[f.C5,E],[f.B4,D],[f.A4,E],
+    [f.G4,H],[_,Q],
+  ];
+  const PHRASE_B = [
+    [f.C5,D],[f.D5,E],[f.E5,Q],[f.D5,Q],
+    [f.C5,D],[f.B4,E],[f.A4,Q],[f.G4,Q],
+    [f.A4,D],[f.B4,E],[f.C5,Q],[f.B4,Q],
+    [f.A4,H],[_,Q],
+  ];
+  const BRIDGE = [
+    [f.E5,Q],[f.F5,Q],[f.G5,Q],[f.A5,Q],
+    [f.G5,Q],[f.F5,Q],[f.E5,H],
+    [f.D5,Q],[f.E5,Q],[f.F5,Q],[f.G5,Q],
+    [f.F5,Q],[f.E5,Q],[f.D5,H],
+    [f.C5,Q],[f.D5,Q],[f.E5,Q],[f.F5,Q],
+    [f.E5,Q],[f.D5,Q],[f.C5,H],
+  ];
+
+  const SEQ = [
+    // Quick ascending run intro
+    [f.G4,E],[f.A4,E],[f.B4,E],[f.C5,E],[f.D5,E],[f.E5,E],[f.F5,E],[f.G5,Q],[_,Q],
+    // MAIN: A+B ×2
+    ...PHRASE_A,...PHRASE_B,
+    ...PHRASE_A,...PHRASE_B,
+    // BRIDGE
+    ...BRIDGE,
+    // OUTRO: A+B
+    ...PHRASE_A,...PHRASE_B,
+  ];
+
+  function playNote(freq, when, dur) {
+    if (!actx || freq === 0) return;
+    const osc = actx.createOscillator(), g = actx.createGain();
+    osc.connect(g); g.connect(masterGain);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.10, when);
+    g.gain.setValueAtTime(0.10, when + Math.max(0, dur - 0.020));
+    g.gain.linearRampToValueAtTime(0, when + dur);
+    osc.start(when); osc.stop(when + dur + 0.01);
+  }
+
+  function scheduleAhead() {
+    if (!running || !actx) return;
+    while (nextNoteTime < actx.currentTime + 0.3) {
+      const [freq, dur] = SEQ[noteIdx];
+      playNote(freq, nextNoteTime, dur);
+      nextNoteTime += dur;
+      noteIdx = (noteIdx + 1) % SEQ.length;
+    }
+  }
+
+  function ensureCtx() {
+    if (!actx) {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = actx.createGain();
+      masterGain.gain.value = 0.7;
+      masterGain.connect(actx.destination);
+    }
+    if (actx.state === 'suspended') actx.resume();
+  }
+
+  const sfx = {
+    jump() {
+      if (!actx) return;
+      const osc = actx.createOscillator(), g = actx.createGain();
+      osc.connect(g); g.connect(actx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(280, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(700, actx.currentTime + 0.11);
+      g.gain.setValueAtTime(0.13, actx.currentTime);
+      g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.12);
+      osc.start(); osc.stop(actx.currentTime + 0.13);
+    },
+    toss() {
+      if (!actx) return;
+      const osc = actx.createOscillator(), g = actx.createGain();
+      osc.connect(g); g.connect(actx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(700, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(250, actx.currentTime + 0.10);
+      g.gain.setValueAtTime(0.12, actx.currentTime);
+      g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.11);
+      osc.start(); osc.stop(actx.currentTime + 0.12);
+    },
+    hit() {
+      if (!actx) return;
+      [500, 380, 250].forEach((freq, i) => {
+        const osc = actx.createOscillator(), g = actx.createGain();
+        osc.connect(g); g.connect(actx.destination);
+        osc.type = 'square'; osc.frequency.value = freq;
+        const t = actx.currentTime + i * 0.05;
+        g.gain.setValueAtTime(0.13, t); g.gain.linearRampToValueAtTime(0, t + 0.05);
+        osc.start(t); osc.stop(t + 0.06);
+      });
+    },
+    die() {
+      if (!actx) return;
+      [440,392,330,294,247,196].forEach((freq, i) => {
+        const osc = actx.createOscillator(), g = actx.createGain();
+        osc.connect(g); g.connect(actx.destination);
+        osc.type = 'square'; osc.frequency.value = freq;
+        const t = actx.currentTime + i * 0.09;
+        g.gain.setValueAtTime(0.13, t); g.gain.linearRampToValueAtTime(0, t + 0.08);
+        osc.start(t); osc.stop(t + 0.09);
+      });
+    },
+    win() {
+      if (!actx) return;
+      [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+        const osc = actx.createOscillator(), g = actx.createGain();
+        osc.connect(g); g.connect(actx.destination);
+        osc.type = 'square'; osc.frequency.value = freq;
+        const t = actx.currentTime + i * 0.11;
+        g.gain.setValueAtTime(0.14, t); g.gain.linearRampToValueAtTime(0, t + 0.10);
+        osc.start(t); osc.stop(t + 0.12);
+      });
+    },
+  };
+
+  return {
+    start() {
+      ensureCtx();
+      if (running) this.stop();
+      running = true; noteIdx = 0;
+      nextNoteTime = actx.currentTime + 0.05;
+      scheduleAhead();
+      schedId = setInterval(scheduleAhead, 100);
+    },
+    stop() { running = false; clearInterval(schedId); },
+    sfx,
+  };
+})();
+
 /* ═══════════════════════════════════════════
    SMB2 GAME — CHARACTER SELECT + GAMEPLAY
    Peach floats · Mario runs fast · Luigi jumps high
@@ -1724,6 +1880,7 @@ const SMB_MUSIC = (() => {
   function begin2(){
     gSt='playing'; s2resize(); buildLv(); s2ov.classList.add('off');
     gStartTime=performance.now();
+    SMB2_MUSIC.start();
     document.getElementById('smb2-score-form').style.display='none';
     document.getElementById('smb2-play-again').style.display='none';
     document.getElementById('smb2-submit-status').textContent='';
@@ -1772,7 +1929,7 @@ const SMB_MUSIC = (() => {
   function loseLife2(){
     gPl.lives--;
     if(gPl.lives<=0){
-      gSt='over';
+      gSt='over'; SMB2_MUSIC.stop(); SMB2_MUSIC.sfx.die();
       showOverlay2('GAME OVER',`${gChar.label} · Score: ${gSc}`);
       return;
     }
@@ -1797,7 +1954,7 @@ const SMB_MUSIC = (() => {
     if(R2()){pl.vx=gChar.spd;pl.face=1;}else if(L2()){pl.vx=-gChar.spd;pl.face=-1;}else pl.vx*=0.72;
 
     // Jump (Luigi jumps higher)
-    if(jj&&pl.onG){pl.vy=gChar.jvy;gFT=FL_FRAMES;}
+    if(jj&&pl.onG){pl.vy=gChar.jvy;gFT=FL_FRAMES;SMB2_MUSIC.sfx.jump();}
     if(!jn&&pl.vy<-3) pl.vy+=3; // variable height
 
     // Float — Peach only
@@ -1819,7 +1976,7 @@ const SMB_MUSIC = (() => {
     if(pj){
       if(gHeld){
         // Throw!
-        gHeld.state='thrown';gHeld.vx=pl.face*10;gHeld.vy=-6;gHeld=null;
+        gHeld.state='thrown';gHeld.vx=pl.face*10;gHeld.vy=-6;gHeld=null;SMB2_MUSIC.sfx.toss();
       } else {
         let got=false;
         for(const v of gVegs){
@@ -1856,7 +2013,7 @@ const SMB_MUSIC = (() => {
         for(const e of gEns){
           if(!e.alive)continue;
           if(ov({x:v.x,y:v.y,w:20,h:20},e)){
-            e.alive=false;e.sq=22;
+            e.alive=false;e.sq=22; SMB2_MUSIC.sfx.hit();
             gSc+=(e.type==='nj'?400:200);
             burst2(e.x+12,e.y,e.type==='nj'?'#7FFF00':'#FF69B4');
             rm=true;break;
@@ -1892,7 +2049,7 @@ const SMB_MUSIC = (() => {
 
     // Door (goal!)
     if(!gDoor.done&&ov(pl,gDoor)){
-      gDoor.done=true;gSt='won';
+      gDoor.done=true;gSt='won';SMB2_MUSIC.stop();SMB2_MUSIC.sfx.win();
       const elapsedSec=Math.max(0,(performance.now()-gStartTime)/1000);
       const BASE_SCORE=10000, PENALTY=100;
       const timeScore=Math.max(0,Math.round(BASE_SCORE-elapsedSec*PENALTY));
