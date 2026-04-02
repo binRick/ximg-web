@@ -550,6 +550,75 @@
 
     .blinking { animation: blink 1.2s step-end infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── BBS Simulator ── */
+    .sim-wrap { max-width: 900px; margin: 0 auto; }
+    .sim-titlebar {
+      background: #111;
+      border: 1px solid #2a2a3a;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: .42rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .73rem;
+      color: #556655;
+    }
+    .sim-dots { display: flex; gap: .35rem; }
+    .sim-dot { width: 11px; height: 11px; border-radius: 50%; }
+    .sim-screen {
+      background: #000a12;
+      border: 1px solid #2a2a3a;
+      border-radius: 0 0 8px 8px;
+      padding: 1.4rem 1.6rem;
+      min-height: 500px;
+      max-height: 620px;
+      overflow-y: auto;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.48;
+      font-family: 'Courier New', 'Consolas', monospace;
+      white-space: pre;
+      color: #aaaaaa;
+      scroll-behavior: smooth;
+    }
+    .sim-screen::-webkit-scrollbar { width: 4px; height: 4px; }
+    .sim-screen::-webkit-scrollbar-thumb { background: #1e2e1e; border-radius: 2px; }
+    #sim-out { display: inline; }
+    .sim-caret {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      background: #55ff55;
+      animation: sim-blink 1.1s step-end infinite;
+      vertical-align: bottom;
+      margin-left: 1px;
+    }
+    @keyframes sim-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .sim-controls {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      flex-wrap: wrap;
+    }
+    .sim-btn {
+      background: rgba(57,255,20,.07);
+      border: 1px solid rgba(57,255,20,.22);
+      color: var(--green);
+      padding: .38rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: .78rem;
+      letter-spacing: .04em;
+      transition: all .15s;
+    }
+    .sim-btn:hover { background: rgba(57,255,20,.15); }
+    .sim-status { font-size: .74rem; color: var(--muted); flex: 1; }
+    .sim-speed-wrap { display: flex; align-items: center; gap: .5rem; font-size: .73rem; color: var(--muted); }
+    .sim-speed { accent-color: var(--green); cursor: pointer; }
   </style>
 </head>
 <body>
@@ -582,6 +651,7 @@
   <button class="subnav-btn" data-tab="addressing">Addressing</button>
   <button class="subnav-btn" data-tab="bbs-culture">BBS Culture</button>
   <button class="subnav-btn" data-tab="legacy">Legacy &amp; Impact</button>
+  <button class="subnav-btn" data-tab="simulator">▶ BBS Simulator</button>
 </div>
 
 <!-- ══════════════════════════════════════════════ OVERVIEW ══ -->
@@ -1398,6 +1468,563 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════ SIMULATOR ══ -->
+<div class="section" id="tab-simulator">
+  <div class="section-title">BBS Simulator</div>
+  <div class="section-sub">Dial into Wildcat! BBS — play Legend of the Red Dragon — live the 1990s</div>
+
+  <p>
+    Experience what it felt like to dial up a bulletin board system in 1993.
+    Watch the modem connect, log into <em>Wildcat! BBS</em>, navigate the menus,
+    shell out to the classic door game <em>Legend of the Red Dragon</em> (LORD),
+    fight monsters in the Dark Forest, and flirt with Violet the barmaid.
+  </p>
+
+  <div class="sim-wrap">
+    <div class="sim-titlebar">
+      <div class="sim-dots">
+        <div class="sim-dot" style="background:#ff5f56"></div>
+        <div class="sim-dot" style="background:#ffbd2e"></div>
+        <div class="sim-dot" style="background:#27c93f"></div>
+      </div>
+      <span>HyperACCESS/5 — COM1: 2400,N,8,1 — VT102</span>
+      <span>FidoNet 1:103/722</span>
+    </div>
+    <div class="sim-screen" id="sim-screen"><pre id="sim-out"></pre><span class="sim-caret" id="sim-caret"></span></div>
+    <div class="sim-controls">
+      <button class="sim-btn" id="sim-restart">↺ Reconnect</button>
+      <span class="sim-status" id="sim-status">Click Reconnect or select this tab to dial in</span>
+      <div class="sim-speed-wrap">
+        Speed:&nbsp;
+        <input type="range" class="sim-speed" id="sim-speed" min="1" max="5" value="3">
+        <span id="sim-speed-label">Normal</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── BBS Simulator ─────────────────────────────────────────────────────────
+  (function () {
+    var out    = document.getElementById('sim-out');
+    var screen = document.getElementById('sim-screen');
+    var caret  = document.getElementById('sim-caret');
+    var status = document.getElementById('sim-status');
+    var speedEl= document.getElementById('sim-speed');
+    var speedLabelEl = document.getElementById('sim-speed-label');
+
+    var running = false;
+    var timer   = null;
+    var seqIdx  = 0;
+
+    var speedLabels = ['Slow', 'Normal-', 'Normal', 'Fast', 'Turbo'];
+    speedEl.addEventListener('input', function() {
+      speedLabelEl.textContent = speedLabels[parseInt(speedEl.value) - 1];
+    });
+
+    function mult() {
+      var v = parseInt(speedEl.value);
+      return [2.5, 1.5, 1, 0.45, 0.18][v - 1];
+    }
+    function ms(base) { return Math.max(1, base * mult()); }
+
+    // ── Color helpers (return HTML strings) ──────────────────────────────
+    var H = {
+      r:  function(t){ return '<span style="color:#ff5555">'+t+'</span>'; },
+      g:  function(t){ return '<span style="color:#55ff55">'+t+'</span>'; },
+      y:  function(t){ return '<span style="color:#ffff55">'+t+'</span>'; },
+      c:  function(t){ return '<span style="color:#55ffff">'+t+'</span>'; },
+      w:  function(t){ return '<span style="color:#ffffff">'+t+'</span>'; },
+      m:  function(t){ return '<span style="color:#ff88ff">'+t+'</span>'; },
+      b:  function(t){ return '<span style="color:#8899ff">'+t+'</span>'; },
+      dr: function(t){ return '<span style="color:#cc3333">'+t+'</span>'; },
+      dg: function(t){ return '<span style="color:#22aa22">'+t+'</span>'; },
+      dy: function(t){ return '<span style="color:#bb8800">'+t+'</span>'; },
+      dc: function(t){ return '<span style="color:#22aaaa">'+t+'</span>'; },
+      dm: function(t){ return '<span style="color:#aa22aa">'+t+'</span>'; },
+      gray:function(t){ return '<span style="color:#888888">'+t+'</span>'; },
+      dim: function(t){ return '<span style="color:#444455">'+t+'</span>'; },
+      // bg combos
+      bgr: function(t){ return '<span style="background:#990000;color:#ffff55;font-weight:bold">'+t+'</span>'; },
+      bgg: function(t){ return '<span style="background:#006600;color:#ffffff;font-weight:bold">'+t+'</span>'; },
+      bgb: function(t){ return '<span style="background:#000099;color:#ffffff">'+t+'</span>'; },
+      bgm: function(t){ return '<span style="background:#880088;color:#ffffff">'+t+'</span>'; },
+      bgy: function(t){ return '<span style="background:#886600;color:#ffff55">'+t+'</span>'; },
+      inp: function(t){ return '<span style="color:#ffee44">'+t+'</span>'; },  // user input
+    };
+
+    // ── DOM helpers ───────────────────────────────────────────────────────
+    function append(html) {
+      out.insertAdjacentHTML('beforeend', html);
+      screen.scrollTop = screen.scrollHeight;
+    }
+    function line(html) { append((html||'') + '\n'); }
+    function clr()      { out.innerHTML = ''; }
+
+    // ── Progress bar ──────────────────────────────────────────────────────
+    function progress(label, totalMs, cb) {
+      var span = document.createElement('span');
+      out.appendChild(span);
+      out.appendChild(document.createTextNode('\n'));
+      var step = 0, steps = 32;
+      var iv = setInterval(function() {
+        if (!running) { clearInterval(iv); return; }
+        step++;
+        var fill = Math.round(step / steps * 32);
+        var pct  = Math.round(step / steps * 100);
+        var bar  = '█'.repeat(fill) + '░'.repeat(32 - fill);
+        span.innerHTML = label + H.dg('[') + H.g(bar) + H.dg(']') + ' ' + H.w(pct + '%');
+        screen.scrollTop = screen.scrollHeight;
+        if (step >= steps) { clearInterval(iv); cb(); }
+      }, ms(totalMs / steps));
+    }
+
+    // ── Typing simulation ─────────────────────────────────────────────────
+    function typeText(text, speed, color, cb) {
+      var span = document.createElement('span');
+      if      (color === 'inp') span.style.color = '#ffee44';
+      else if (color === 'dim') span.style.color = '#444455';
+      out.appendChild(span);
+      screen.scrollTop = screen.scrollHeight;
+      var i = 0;
+      function tick() {
+        if (!running) return;
+        if (i < text.length) {
+          span.textContent += text[i++];
+          screen.scrollTop = screen.scrollHeight;
+          timer = setTimeout(tick, ms(speed));
+        } else { cb(); }
+      }
+      tick();
+    }
+
+    // ── Sequence ──────────────────────────────────────────────────────────
+    // step types: line, type, wait, clr, progress, end
+    var SEQ = [
+
+      // ── DIALING ────────────────────────────────────────────────────────
+      {t:'line', h: H.gray('┌──────────────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h: H.gray('│') + H.dc(' HyperACCESS/5 v5.02         COM1:2400,N,8,1          VT102 Mode') + H.gray('     │'), b:40},
+      {t:'line', h: H.gray('└──────────────────────────────────────────────────────────────────────────────┘'), b:40},
+      {t:'line', h:'', b:300},
+      {t:'type', text:'ATZ', speed:130, color:'inp', b:400},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.g('OK'), b:250},
+      {t:'line', h:'', b:0},
+      {t:'type', text:'ATDT 1-714-555-3434', speed:90, color:'inp', b:500},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'', b:400},
+      {t:'line', h:'   ' + H.dy('RING ...'), b:1000},
+      {t:'line', h:'   ' + H.dy('RING ...'), b:1000},
+      {t:'line', h:'   ' + H.dy('RING ...'), b:950},
+      {t:'line', h:'', b:400},
+      {t:'line', h: H.bgg(' CONNECT 2400 '), b:500},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:700},
+
+      // ── WILDCAT BANNER ─────────────────────────────────────────────────
+      {t:'line', h: H.dc('╔══════════════════════════════════════════════════════════════════════════════╗'), b:0},
+      {t:'line', h: H.dc('║') + '                                                                              ' + H.dc('║'), b:25},
+      {t:'line', h: H.dc('║') + H.y('   ██╗    ██╗██╗██╗     ██████╗  ██████╗ █████╗ ████████╗██╗') + H.dc('              ║'), b:25},
+      {t:'line', h: H.dc('║') + H.y('   ██║    ██║██║██║     ██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██║') + H.dc('              ║'), b:25},
+      {t:'line', h: H.dc('║') + H.y('   ██║ █╗ ██║██║██║     ██║  ██║██║     ███████║   ██║   ██║') + H.dc('              ║'), b:25},
+      {t:'line', h: H.dc('║') + H.y('   ██║███╗██║██║██║     ██║  ██║██║     ██╔══██║   ██║   ╚═╝') + H.dc('              ║'), b:25},
+      {t:'line', h: H.dc('║') + H.y('   ╚███╔███╔╝██║███████╗██████╔╝╚██████╗██║  ██║   ██║   ██╗') + H.dc('              ║'), b:25},
+      {t:'line', h: H.dc('║') + H.y('    ╚══╝╚══╝ ╚═╝╚══════╝╚═════╝  ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚═╝') + H.dc('             ║'), b:25},
+      {t:'line', h: H.dc('║') + '                                                                              ' + H.dc('║'), b:25},
+      {t:'line', h: H.dc('║') + H.m('          ░░░  U N D E R G R O U N D   E M P I R E   B B S  ░░░') + H.dc('          ║'), b:40},
+      {t:'line', h: H.dc('║') + '                                                                              ' + H.dc('║'), b:25},
+      {t:'line', h: H.dc('║') + H.gray('        ♦ Node 1 of 4   ♦ FidoNet 1:103/722   ♦ Southern Cal  ♦') + H.dc('         ║'), b:25},
+      {t:'line', h: H.dc('║') + H.gray('        ♦ 714-555-FIDO  ♦ Wildcat! v4.10      ♦ 24 hrs / day  ♦') + H.dc('         ║'), b:25},
+      {t:'line', h: H.dc('║') + '                                                                              ' + H.dc('║'), b:25},
+      {t:'line', h: H.dc('╚══════════════════════════════════════════════════════════════════════════════╝'), b:25},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:600},
+
+      // ── LOGIN ──────────────────────────────────────────────────────────
+      {t:'line', h: H.w('What is your FIRST name, Stranger?') + H.gray(' : '), b:0},
+      {t:'type', text:'SNAKE', speed:115, color:'inp', b:500},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.w('Last name') + H.gray(' : '), b:200},
+      {t:'type', text:'PLISSKEN', speed:95, color:'inp', b:400},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.w('Password') + H.gray(' (will not echo): '), b:200},
+      {t:'type', text:'••••••••', speed:135, color:'dim', b:500},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'', b:400},
+      {t:'line', h: H.gray('  Verifying...'), b:0},
+      {t:'wait', ms:800},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.bgg('  Welcome back, SNAKE PLISSKEN!  '), b:200},
+      {t:'line', h:'', b:0},
+
+      // ── WELCOME STATS ──────────────────────────────────────────────────
+      {t:'line', h: H.dc('Last call   :') + ' Yesterday at 11:42 PM  ·  415-555-0192', b:0},
+      {t:'line', h: H.dc('Calls today :') + ' 1 of 5 allowed per day  ·  Call #48 total', b:30},
+      {t:'line', h: H.dc('Time limit  :') + ' 60 minutes remaining', b:30},
+      {t:'line', h:'', b:30},
+      {t:'line', h: H.y('  ► You have ') + H.w('2') + H.y(' personal messages waiting.'), b:50},
+      {t:'line', h: H.y('  ► ') + H.w('14') + H.y(' Echomail areas have new messages since your last call.'), b:50},
+      {t:'line', h: H.y('  ► ') + H.w('7') + H.y(' new files added to the download database.'), b:50},
+      {t:'line', h:'', b:30},
+      {t:'line', h: H.m("  Today's Birthday: ") + H.w('HEXMASTER') + H.m(' (turns 28 today — give him grief!)'), b:50},
+      {t:'line', h:'', b:100},
+      {t:'line', h: H.gray('Press [ENTER] to continue...'), b:0},
+      {t:'wait', ms:1100},
+      {t:'line', h:'', b:0},
+
+      // ── MAIN MENU ──────────────────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h: H.dc('┌────────────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h: H.dc('│') + H.bgb('              UNDERGROUND EMPIRE BBS — WILDCAT! v4.10                      ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('│') + H.bgb('                           M A I N   M E N U                              ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('├────────────────────────────────────────────────────────────────────────────┤'), b:20},
+      {t:'line', h: H.dc('│  ') + H.y('[B]') + H.w('ulletins       ') + H.y('[D]') + H.w('oor Programs    ') + H.y('[L]') + H.w('ast Callers     ') + H.y('[T]') + H.w('ime Check  ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('│  ') + H.y('[C]') + H.w('hat/Sysop      ') + H.y('[E]') + H.w('nter Message    ') + H.y('[N]') + H.w('ew Files        ') + H.y('[U]') + H.w('pload File ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('│  ') + H.y('[F]') + H.w('ile Browser    ') + H.y('[J]') + H.w('oin Conference  ') + H.y('[P]') + H.w('age the Sysop   ') + H.y('[W]') + H.w("ho's On    ") + H.dc('│'), b:20},
+      {t:'line', h: H.dc('│  ') + H.y('[G]') + H.w('ames/Doors     ') + H.y('[K]') + H.w('ill Message     ') + H.y('[R]') + H.w('ead Messages    ') + H.y('[X]') + H.w('pert Mode  ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('│  ') + H.r('[Q]') + H.w('uit/Logoff') + '                                                          ' + H.dc('│'), b:20},
+      {t:'line', h: H.dc('├────────────────────────────────────────────────────────────────────────────┤'), b:20},
+      {t:'line', h: H.dc('│  ') + H.gray('Time Remaining: 58 min  │  Security: Regular  │  Downloads: 14 / 50') + H.dc('       │'), b:20},
+      {t:'line', h: H.dc('└────────────────────────────────────────────────────────────────────────────┘'), b:20},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.w('Main Menu Command') + H.gray(' [?=Help]: '), b:0},
+      {t:'type', text:'D', speed:250, color:'inp', b:700},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:400},
+
+      // ── DOOR GAME MENU ─────────────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h: H.dc('┌────────────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h: H.dc('│') + H.bgm('                       DOOR GAME PROGRAMS                                  ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('├────────────────────────────────────────────────────────────────────────────┤'), b:20},
+      {t:'line', h: H.dc('│  ') + H.y(' 1.') + H.g(' Legend of the Red Dragon (LORD) ') + H.gray(' Seth A. Robinson        ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 2.') + H.c(' Trade Wars 2002                 ') + H.gray(' Gary Martin             ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 3.') + H.c(' Global War                      ') + H.gray(' Everett Kaser           ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 4.') + H.c(' Barren Realms Elite             ') + H.gray(' Mehul Patel             ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 5.') + H.c(' Operation Overkill II           ') + H.gray(' Mike Mulvey             ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 6.') + H.c(' Usurper                         ') + H.gray(' Scott Brinker           ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 7.') + H.c(' Planets: The Eminent Olympians  ') + H.gray(' Evan Elias              ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.y(' 8.') + H.c(' Space Dynasty                   ') + H.gray(' Laird Heal              ') + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('│  ') + H.r(' Q.') + H.w(' Return to Main Menu') + '                                          ' + H.dc('  │'), b:30},
+      {t:'line', h: H.dc('└────────────────────────────────────────────────────────────────────────────┘'), b:20},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.w('Your choice: '), b:0},
+      {t:'type', text:'1', speed:300, color:'inp', b:900},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:300},
+
+      // ── LORD LOADING ───────────────────────────────────────────────────
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.gray('  *** Shelling to door: LEGEND OF THE RED DRAGON ***'), b:0},
+      {t:'line', h: H.gray('  Writing DOOR.SYS ... OK'), b:350},
+      {t:'line', h: H.gray('  Dropping DTR ...'), b:350},
+      {t:'progress', ms:2000, label:'  ' + H.dc('Loading LORD v4.06c  '), b:250},
+      {t:'wait', ms:500},
+
+      // ── LORD TITLE ─────────────────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h: H.r('  ╔══════════════════════════════════════════════════════════════════════════╗'), b:0},
+      {t:'line', h: H.r('  ║') + H.dr('▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + '                                                                          ' + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.y('    ██╗      ██████╗ ██████╗ ██████╗                                   ') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.y('    ██║     ██╔═══██╗██╔══██╗██╔══██╗                                  ') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.y('    ██║     ██║   ██║██████╔╝██║  ██║                                  ') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.y('    ██║     ██║   ██║██╔══██╗██║  ██║                                  ') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.y('    ███████╗╚██████╔╝██║  ██║██████╔╝                                  ') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.y('    ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝                                   ') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + '                                                                          ' + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.g('       of the ') + H.r('R') + H.g('ed ') + H.r('D') + H.g('ragon') + '                                                    ' + H.r('║'), b:30},
+      {t:'line', h: H.r('  ║') + '                                                                          ' + H.r('║'), b:25},
+      {t:'line', h: H.r('  ║') + H.dr('▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓') + H.r('║'), b:25},
+      {t:'line', h: H.r('  ╚══════════════════════════════════════════════════════════════════════════╝'), b:25},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.gray('           Copyright (C) 1989-1995, Seth Able Robinson'), b:40},
+      {t:'line', h: H.gray('           v4.06c — Registered to Underground Empire BBS'), b:40},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.y('┌──────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.y('│  ') + H.g('1.') + H.w(' Enter the Realm                    ') + H.y('│'), b:30},
+      {t:'line', h:'  ' + H.y('│  ') + H.g('2.') + H.w(' Create a New Character             ') + H.y('│'), b:30},
+      {t:'line', h:'  ' + H.y('│  ') + H.g('3.') + H.w(' Read about LORD                    ') + H.y('│'), b:30},
+      {t:'line', h:'  ' + H.y('│  ') + H.r('Q.') + H.w(' Return to BBS                      ') + H.y('│'), b:30},
+      {t:'line', h:'  ' + H.y('└──────────────────────────────────────────┘'), b:30},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'1', speed:300, color:'inp', b:800},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:400},
+
+      // ── LORD CHARACTER SCREEN ──────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h: H.y('  ══════════════════════════════════════════════════════════════════════════'), b:0},
+      {t:'line', h:'    ' + H.bgr('  SNAKE PLISSKEN  ') + '  ' + H.c('Human Thief') + '  ·  ' + H.g('Level 4'), b:30},
+      {t:'line', h: H.y('  ══════════════════════════════════════════════════════════════════════════'), b:25},
+      {t:'line', h:'    ' + H.dc('Hit Points  :') + H.g(' 325 / 325    ') + '  ' + H.dc('Gold        :') + H.y(' 4,820 gp'), b:30},
+      {t:'line', h:'    ' + H.dc('Strength    :') + H.w(' 62           ') + '  ' + H.dc('Experience  :') + H.w(' 12,450 xp'), b:30},
+      {t:'line', h:'    ' + H.dc('Defense     :') + H.w(' 44           ') + '  ' + H.dc('To Next Lv  :') + H.w(' 7,550 xp'), b:30},
+      {t:'line', h:'    ' + H.dc('Charm       :') + H.m(' 31           ') + '  ' + H.dc('Gems        :') + H.b(' 3'), b:30},
+      {t:'line', h: H.y('  ══════════════════════════════════════════════════════════════════════════'), b:25},
+      {t:'line', h:'    ' + H.w('Forest fights today  : ') + H.g('5 remaining'), b:30},
+      {t:'line', h:'    ' + H.w('Player fights today  : ') + H.g('1 remaining'), b:30},
+      {t:'line', h:'    ' + H.w('Daily news           : ') + H.r('The Dragon grows more powerful...'), b:30},
+      {t:'line', h: H.y('  ══════════════════════════════════════════════════════════════════════════'), b:25},
+      {t:'line', h:'', b:0},
+
+      // ── LORD MAIN MENU ─────────────────────────────────────────────────
+      {t:'line', h:'  ' + H.c('┌──────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.c('│  ') + H.y('(F)') + H.w('orest   ') + H.y('(T)') + H.w('avern   ') + H.y('(H)') + H.w('ealer   ') + H.y('(W)') + H.w('eapons   ') + H.y('(A)') + H.w('rmor          ') + H.c('│'), b:15},
+      {t:'line', h:'  ' + H.c('│  ') + H.y('(S)') + H.w('tats    ') + H.y('(M)') + H.w('ail     ') + H.y('(O)') + H.w('ther players  ') + H.y('(E)') + H.w('vening   ') + H.r('(Q)') + H.w('uit      ') + H.c('│'), b:15},
+      {t:'line', h:'  ' + H.c('└──────────────────────────────────────────────────────────────────────┘'), b:15},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'F', speed:250, color:'inp', b:800},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:300},
+
+      // ── FOREST ENCOUNTER ───────────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h:'  ' + H.dg('You step into the ') + H.g('Dark Forest') + H.dg('...'), b:0},
+      {t:'line', h:'', b:300},
+      {t:'line', h:'  ' + H.gray('The ancient oaks close in around you. Sunlight dies.'), b:350},
+      {t:'line', h:'  ' + H.gray('Shadows shift between the gnarled roots. Your hand finds your blade.'), b:400},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.r('A shape drops from the canopy with an eight-legged fury!'), b:450},
+      {t:'line', h:'', b:250},
+      {t:'line', h:'  ' + H.bgr('  A GIANT SPIDER  ') + H.r(' hurls itself at you!'), b:300},
+      {t:'line', h:'', b:200},
+      {t:'line', h:'  ' + H.dc('┌──────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.dc('│  ') + H.r('GIANT SPIDER') + '                              ' + H.dc('HP: ') + H.g('182') + '               ' + H.dc('│'), b:20},
+      {t:'line', h:'  ' + H.dc('│  ') + H.dim('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~') + H.dc('│'), b:20},
+      {t:'line', h:'  ' + H.dc('│  ') + H.y('(A)') + H.w('ttack      ') + H.y('(R)') + H.w('un Away      ') + H.y('(U)') + H.w('se a Gem                     ') + H.dc('│'), b:20},
+      {t:'line', h:'  ' + H.dc('└──────────────────────────────────────────────────────────────────────┘'), b:20},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'A', speed:200, color:'inp', b:900},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'', b:200},
+
+      // ── COMBAT ROUND 1 ─────────────────────────────────────────────────
+      {t:'line', h:'  ' + H.w('You slash fiercely with your blade!'), b:0},
+      {t:'line', h:'  ' + H.g('  *** You hit the GIANT SPIDER for ') + H.w('47') + H.g(' damage!') + H.gray('  [Spider HP: ') + H.y('135') + H.gray(']'), b:250},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.r('The GIANT SPIDER LUNGES with dripping fangs!'), b:250},
+      {t:'line', h:'  ' + H.r('  *** The GIANT SPIDER bites you for ') + H.w('23') + H.r(' damage!') + H.gray('  [Your HP: ') + H.y('302/325') + H.gray(']'), b:250},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.dc('┌──────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.dc('│  ') + H.r('GIANT SPIDER') + '                              ' + H.dc('HP: ') + H.y('135') + '               ' + H.dc('│'), b:10},
+      {t:'line', h:'  ' + H.dc('│  ') + H.y('(A)') + H.w('ttack      ') + H.y('(R)') + H.w('un Away      ') + H.y('(U)') + H.w('se a Gem                     ') + H.dc('│'), b:10},
+      {t:'line', h:'  ' + H.dc('└──────────────────────────────────────────────────────────────────────┘'), b:10},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'A', speed:200, color:'inp', b:800},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'', b:200},
+
+      // ── COMBAT ROUND 2 ─────────────────────────────────────────────────
+      {t:'line', h:'  ' + H.w('You slash fiercely with your blade!'), b:0},
+      {t:'line', h:'  ' + H.g('  *** You hit the GIANT SPIDER for ') + H.w('53') + H.g(' damage!') + H.gray('  [Spider HP: ') + H.y('82') + H.gray(']'), b:250},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.r('The GIANT SPIDER SPITS caustic venom!'), b:250},
+      {t:'line', h:'  ' + H.r('  *** The GIANT SPIDER hits you for ') + H.w('19') + H.r(' damage!') + H.gray('  [Your HP: ') + H.y('283/325') + H.gray(']'), b:250},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.dc('┌──────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.dc('│  ') + H.r('GIANT SPIDER') + '                              ' + H.dc('HP: ') + H.y('82') + '                ' + H.dc('│'), b:10},
+      {t:'line', h:'  ' + H.dc('│  ') + H.y('(A)') + H.w('ttack      ') + H.y('(R)') + H.w('un Away      ') + H.y('(U)') + H.w('se a Gem                     ') + H.dc('│'), b:10},
+      {t:'line', h:'  ' + H.dc('└──────────────────────────────────────────────────────────────────────┘'), b:10},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'A', speed:200, color:'inp', b:800},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'', b:200},
+
+      // ── KILLING BLOW ───────────────────────────────────────────────────
+      {t:'line', h:'  ' + H.w('You slash fiercely with your blade!'), b:0},
+      {t:'line', h:'  ' + H.bgg(' *** CRITICAL HIT! ') + H.g(' You cleave the GIANT SPIDER for ') + H.w('82') + H.g(' damage — ') + H.y('KILLING BLOW!'), b:250},
+      {t:'line', h:'', b:600},
+      {t:'line', h:'  ' + H.bgr('  *** The GIANT SPIDER is DEAD! ***  '), b:250},
+      {t:'line', h:'', b:250},
+      {t:'line', h:'  ' + H.y('╔═══════════════════════════════════════════════════════════════════════╗'), b:0},
+      {t:'line', h:'  ' + H.y('║') + H.bgg('  V I C T O R Y !  ') + '                                                   ' + H.y('║'), b:20},
+      {t:'line', h:'  ' + H.y('║  ') + H.g('You gained ') + H.w('280') + H.g(' experience points!') + '                                 ' + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('║  ') + H.g('You found ') + H.y('150') + H.g(' gold pieces!') + '                                    ' + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('║  ') + H.gray('Forest fights remaining today: ') + H.w('4') + '                                 ' + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('╚═══════════════════════════════════════════════════════════════════════╝'), b:30},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.gray('Press [ENTER] to continue...'), b:0},
+      {t:'wait', ms:1400},
+      {t:'line', h:'', b:0},
+
+      // ── BACK TO LORD MENU + GO TAVERN ──────────────────────────────────
+      {t:'clr'},
+      {t:'line', h:'  ' + H.c('┌──────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.c('│  ') + H.y('(F)') + H.w('orest   ') + H.y('(T)') + H.w('avern   ') + H.y('(H)') + H.w('ealer   ') + H.y('(W)') + H.w('eapons   ') + H.y('(A)') + H.w('rmor          ') + H.c('│'), b:10},
+      {t:'line', h:'  ' + H.c('│  ') + H.y('(S)') + H.w('tats    ') + H.y('(M)') + H.w('ail     ') + H.y('(O)') + H.w('ther players  ') + H.y('(E)') + H.w('vening   ') + H.r('(Q)') + H.w('uit      ') + H.c('│'), b:10},
+      {t:'line', h:'  ' + H.c('└──────────────────────────────────────────────────────────────────────┘'), b:10},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'T', speed:250, color:'inp', b:900},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:300},
+
+      // ── TAVERN ─────────────────────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h:'  ' + H.dy('You push through the heavy oak doors of the ') + H.y('Golden Dragon Tavern') + H.dy('...'), b:0},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.gray('The smoky room hums with laughter and dice. A bard plucks a lute.'), b:350},
+      {t:'line', h:'  ' + H.gray('The smell of roasted venison and cheap ale fills your lungs.'), b:350},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.m('Violet') + H.gray(', the barmaid, looks up from behind the counter.'), b:350},
+      {t:'line', h:'  ' + H.m('Her eyes find yours across the crowded room. She smiles. Your heart skips.'), b:350},
+      {t:'line', h:'', b:200},
+      {t:'line', h:'  ' + H.y('╔═══════════════════════════════════════════════════════════════════════╗'), b:0},
+      {t:'line', h:'  ' + H.y('║') + H.bgb('                   THE GOLDEN DRAGON TAVERN                        ') + H.y('║'), b:20},
+      {t:'line', h:'  ' + H.y('╠═══════════════════════════════════════════════════════════════════════╣'), b:20},
+      {t:'line', h:'  ' + H.y('║  ') + H.g('(D)') + H.w('rink Ale          ') + H.dy('— 10 gold —  ') + H.gray('Restores HP, lifts spirits ') + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('║  ') + H.m('(F)') + H.w('lirt with Violet  ') + H.dy('— free —     ') + H.gray('She has a soft spot for you') + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('║  ') + H.r('(G)') + H.w('amble             ') + H.dy('— risky —    ') + H.gray('Win big or lose everything ') + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('║  ') + H.c('(S)') + H.w('hare your story   ') + H.dy('— free —     ') + H.gray('Tell tales of the forest   ') + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('║  ') + H.gray('(L)') + H.w('eave tavern                                              ') + H.y('║'), b:30},
+      {t:'line', h:'  ' + H.y('╚═══════════════════════════════════════════════════════════════════════╝'), b:20},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'F', speed:200, color:'inp', b:900},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:300},
+
+      // ── FLIRT WITH VIOLET ──────────────────────────────────────────────
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.m('You saunter over, flashing your most roguish smile...'), b:0},
+      {t:'line', h:'', b:500},
+      {t:'line', h:'  ' + H.m('Violet sets down her rag and turns to face you fully.'), b:450},
+      {t:'line', h:'  ' + H.m('A slow blush colors her cheeks.'), b:450},
+      {t:'line', h:'', b:350},
+      {t:'line', h:'  ' + H.m('  ❤  ') + H.w('"Oh, SNAKE... you\'re the bravest soul in the whole realm!"'), b:350},
+      {t:'line', h:'  ' + H.m('     She leans close and whispers something delightful in your ear.'), b:450},
+      {t:'line', h:'  ' + H.m('     She slips you a FREE ALE — and presses a warm kiss to your cheek.'), b:450},
+      {t:'line', h:'', b:300},
+      {t:'line', h:'  ' + H.bgg(' +50 HP restored! ') + H.gray('  [Your HP: 325 / 325 — full!]'), b:250},
+      {t:'line', h:'', b:300},
+      {t:'line', h:'  ' + H.gray('Press [ENTER] to continue...'), b:0},
+      {t:'wait', ms:1400},
+
+      // ── LORD MENU → QUIT ───────────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h:'  ' + H.c('┌──────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h:'  ' + H.c('│  ') + H.y('(F)') + H.w('orest   ') + H.y('(T)') + H.w('avern   ') + H.y('(H)') + H.w('ealer   ') + H.y('(W)') + H.w('eapons   ') + H.y('(A)') + H.w('rmor          ') + H.c('│'), b:10},
+      {t:'line', h:'  ' + H.c('│  ') + H.y('(S)') + H.w('tats    ') + H.y('(M)') + H.w('ail     ') + H.y('(O)') + H.w('ther players  ') + H.y('(E)') + H.w('vening   ') + H.r('(Q)') + H.w('uit      ') + H.c('│'), b:10},
+      {t:'line', h:'  ' + H.c('└──────────────────────────────────────────────────────────────────────┘'), b:10},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.w('Your choice: '), b:0},
+      {t:'type', text:'Q', speed:250, color:'inp', b:1000},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:350},
+      {t:'line', h:'', b:0},
+      {t:'line', h:'  ' + H.dr('Farewell, brave soul. The realm will remember your deeds.'), b:0},
+      {t:'line', h:'  ' + H.dr('Return tomorrow — 4 forest fights await, and Violet misses you already.'), b:300},
+      {t:'line', h:'', b:600},
+      {t:'line', h: H.gray('  *** Returning to Underground Empire BBS ***'), b:400},
+      {t:'wait', ms:800},
+
+      // ── BBS MAIN MENU → QUIT ───────────────────────────────────────────
+      {t:'clr'},
+      {t:'line', h: H.dc('┌────────────────────────────────────────────────────────────────────────────┐'), b:0},
+      {t:'line', h: H.dc('│') + H.bgb('              UNDERGROUND EMPIRE BBS — WILDCAT! v4.10                      ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('│') + H.bgb('                           M A I N   M E N U                              ') + H.dc('│'), b:20},
+      {t:'line', h: H.dc('├────────────────────────────────────────────────────────────────────────────┤'), b:20},
+      {t:'line', h: H.dc('│  ') + H.y('[B]') + H.w('ulletins       ') + H.y('[D]') + H.w('oor Programs    ') + H.y('[L]') + H.w('ast Callers     ') + H.y('[T]') + H.w('ime Check  ') + H.dc('│'), b:15},
+      {t:'line', h: H.dc('│  ') + H.y('[C]') + H.w('hat/Sysop      ') + H.y('[E]') + H.w('nter Message    ') + H.y('[N]') + H.w('ew Files        ') + H.y('[U]') + H.w('pload File ') + H.dc('│'), b:15},
+      {t:'line', h: H.dc('│  ') + H.y('[F]') + H.w('ile Browser    ') + H.y('[J]') + H.w('oin Conference  ') + H.y('[P]') + H.w('age the Sysop   ') + H.y('[W]') + H.w("ho's On    ") + H.dc('│'), b:15},
+      {t:'line', h: H.dc('│  ') + H.y('[G]') + H.w('ames/Doors     ') + H.y('[K]') + H.w('ill Message     ') + H.y('[R]') + H.w('ead Messages    ') + H.y('[X]') + H.w('pert Mode  ') + H.dc('│'), b:15},
+      {t:'line', h: H.dc('│  ') + H.r('[Q]') + H.w('uit/Logoff') + '                                                          ' + H.dc('│'), b:15},
+      {t:'line', h: H.dc('└────────────────────────────────────────────────────────────────────────────┘'), b:15},
+      {t:'line', h:'', b:0},
+      {t:'line', h: H.w('Main Menu Command') + H.gray(' [?=Help]: '), b:0},
+      {t:'type', text:'Q', speed:200, color:'inp', b:900},
+      {t:'line', h:'', b:0},
+      {t:'wait', ms:400},
+      {t:'line', h:'', b:0},
+
+      // ── LOGOFF ─────────────────────────────────────────────────────────
+      {t:'line', h: H.y('  Thank you for calling UNDERGROUND EMPIRE BBS!'), b:0},
+      {t:'line', h: H.gray('  SNAKE PLISSKEN  ·  Call #48  ·  Duration: 8 min  ·  DL: 0  ·  UL: 0'), b:200},
+      {t:'line', h: H.gray('  Total gold earned today: ') + H.y('150') + H.gray('  ·  Experience gained: ') + H.w('280'), b:200},
+      {t:'line', h:'', b:300},
+      {t:'line', h: H.dc('  ♦ FidoNet 1:103/722  ·  Node 1 of 4  ·  Call again soon!  ♦'), b:200},
+      {t:'line', h:'', b:500},
+      {t:'line', h: H.r('NO CARRIER'), b:500},
+      {t:'line', h:'', b:200},
+      {t:'line', h: H.dim('ATH0'), b:400},
+      {t:'line', h: H.gray('OK'), b:200},
+      {t:'wait', ms:800},
+      {t:'end'},
+    ];
+
+    // ── Runner ────────────────────────────────────────────────────────────
+    function runStep() {
+      if (!running || seqIdx >= SEQ.length) return;
+      var step = SEQ[seqIdx++];
+
+      function next()        { if (running) timer = setTimeout(runStep, 0); }
+      function nextMs(n)     { if (running) timer = setTimeout(runStep, ms(n)); }
+
+      switch (step.t) {
+        case 'line':
+          timer = setTimeout(function() {
+            line(step.h || '');
+            next();
+          }, ms(step.b || 0));
+          break;
+
+        case 'type':
+          timer = setTimeout(function() {
+            typeText(step.text, step.speed || 100, step.color || 'inp', function() {
+              next();
+            });
+          }, ms(step.b || 0));
+          break;
+
+        case 'wait':
+          timer = setTimeout(runStep, ms(step.ms || 500));
+          break;
+
+        case 'clr':
+          clr();
+          next();
+          break;
+
+        case 'progress':
+          timer = setTimeout(function() {
+            progress(step.label || '  Loading... ', step.ms || 2000, function() {
+              nextMs(200);
+            });
+          }, ms(step.b || 0));
+          break;
+
+        case 'end':
+          running = false;
+          caret.style.display = 'none';
+          status.textContent = 'Session complete — click ↺ Reconnect to dial in again';
+          break;
+      }
+    }
+
+    function startSim() {
+      if (timer) clearTimeout(timer);
+      running = false;
+      clr();
+      caret.style.display = 'inline-block';
+      status.textContent = 'Dialing 1-714-555-3434 ...';
+      running = true;
+      seqIdx = 0;
+      timer = setTimeout(runStep, 100);
+    }
+
+    document.getElementById('sim-restart').addEventListener('click', startSim);
+
+    // expose start for tab-switch trigger
+    window._bbsSimStart = startSim;
+    window._bbsSimRunning = function() { return running; };
+  })();
+</script>
+
 <script>
   // Sub-nav tab switching
   document.getElementById('subnav').addEventListener('click', function(e) {
@@ -1409,6 +2036,10 @@
     btn.classList.add('active');
     document.getElementById('tab-' + tab).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Auto-start BBS simulator when that tab is selected
+    if (tab === 'simulator' && window._bbsSimStart && !window._bbsSimRunning()) {
+      setTimeout(window._bbsSimStart, 300);
+    }
   });
 </script>
 <script src="/shared/nav.js?v=2"></script>
