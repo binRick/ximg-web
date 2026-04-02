@@ -15,7 +15,7 @@
       ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'Food', apps: [
-      ['chinese','chinese'],['india','india'],['pizza','pizza'],
+      ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['logs','logs'],['mail','mail'],['nav','nav'],['ximg','ximg']

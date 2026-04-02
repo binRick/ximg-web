@@ -66,6 +66,7 @@ const LOG_FILES = {
   mario:     'mario.access.log',
   monkey:    'monkey.access.log',
   doom:      'doom.access.log',
+  grilling:  'grilling.access.log',
   pizza:     'pizza.access.log',
   docker:    'docker.access.log',
   yaml:      'yaml.access.log',
@@ -249,6 +250,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="mario">mario</button>
     <button class="tab"        data-site="monkey">monkey</button>
     <button class="tab"        data-site="doom">doom</button>
+    <button class="tab"        data-site="grilling">grilling</button>
     <button class="tab"        data-site="pizza">pizza</button>
     <button class="tab"        data-site="docker">docker</button>
     <button class="tab"        data-site="yaml">yaml</button>
