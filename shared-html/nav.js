@@ -56,6 +56,7 @@
     '.nav-dropdown.open{opacity:1;transform:none;pointer-events:all;}' +
     '.nav-dropdown.wide{display:grid;grid-template-columns:1fr 1fr;gap:.05rem .2rem;min-width:220px;}' +
     '.nav-dropdown.active-only .nav-dd-item:not(.active){display:none;}' +
+    '.nav-dropdown.active-only{display:block;min-width:0;width:auto;}' +
 
     '.nav-dd-item{display:flex;align-items:center;gap:.4rem;font-size:.73rem;font-weight:600;' +
     'color:#c9d1d9;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;' +
