@@ -2,7 +2,7 @@
   var GROUPS = [
     { label: 'Tech', apps: [
       ['ansible','ansible'],['ascii','ascii'],['computers','computers'],
-      ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],
+      ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
       ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [

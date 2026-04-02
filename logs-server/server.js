@@ -57,6 +57,7 @@ function writeScoresSMB2(scores) {
 const LOG_FILES = {
   ximg:      'ximg.access.log',
   linux:     'linux.access.log',
+  mac:       'mac.access.log',
   butterfly: 'butterfly.access.log',
   ascii:     'ascii.access.log',
   json:      'json.access.log',
@@ -237,6 +238,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab active" data-site="all">[all]</button>
     <button class="tab"        data-site="ximg">ximg</button>
     <button class="tab"        data-site="linux">linux</button>
+    <button class="tab"        data-site="mac">mac</button>
     <button class="tab"        data-site="butterfly">butterfly</button>
     <button class="tab"        data-site="ascii">ascii</button>
     <button class="tab"        data-site="json">json</button>
