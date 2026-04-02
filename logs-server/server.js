@@ -234,8 +234,8 @@ const HTML = `<!DOCTYPE html>
   <script src="/shared/nav.js?v=2"></script>
 
   <div class="toolbar">
-    <button class="tab"        data-site="all">[all]</button>
-    <button class="tab active" data-site="ximg">ximg</button>
+    <button class="tab active" data-site="all">[all]</button>
+    <button class="tab"        data-site="ximg">ximg</button>
     <button class="tab"        data-site="linux">linux</button>
     <button class="tab"        data-site="butterfly">butterfly</button>
     <button class="tab"        data-site="ascii">ascii</button>
@@ -299,7 +299,7 @@ const HTML = `<!DOCTYPE html>
 
   <script>
     const MAX_LINES = 500;
-    let currentSite = 'ximg';
+    let currentSite = 'all';
     let ws = null;
     let paused = false;
     let reconnectTimer = null;
