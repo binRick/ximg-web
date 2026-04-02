@@ -1969,6 +1969,94 @@ function sndJump()    { tone(200,0.06,'sine',0.06); tone(280,0.04,'sine',0.05); 
 function sndFire()    { tone(440,0.08,'sawtooth',0.12); tone(280,0.12,'sawtooth',0.1); }
 function sndAnnounce(){ [330,440,550,660].forEach((f,i)=>setTimeout(()=>tone(f,0.14,'square',0.14),i*90)); }
 
+/* ── Techno Syndrome Theme ────────────────────────────────────── */
+let mkMusicActive=false, mkMusicNextTime=0, mkMusicTimer=null;
+const MK_BPM=138, MK_B=60/MK_BPM; // seconds per beat
+
+function mkKick(t){
+  const o=aCtx.createOscillator(),g=aCtx.createGain();
+  o.connect(g);g.connect(aCtx.destination);o.type='sine';
+  o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(35,t+0.1);
+  g.gain.setValueAtTime(0.9,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+  o.start(t);o.stop(t+0.18);
+}
+function mkSnare(t){
+  const bufLen=Math.floor(aCtx.sampleRate*0.14),buf=aCtx.createBuffer(1,bufLen,aCtx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<bufLen;i++) d[i]=(Math.random()*2-1)*(1-i/bufLen);
+  const src=aCtx.createBufferSource(),g=aCtx.createGain();
+  src.buffer=buf;src.connect(g);g.connect(aCtx.destination);
+  g.gain.setValueAtTime(0.35,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);src.start(t);
+}
+function mkHihat(t,vol){
+  const bufLen=Math.floor(aCtx.sampleRate*0.025),buf=aCtx.createBuffer(1,bufLen,aCtx.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<bufLen;i++) d[i]=Math.random()*2-1;
+  const src=aCtx.createBufferSource(),g=aCtx.createGain(),f=aCtx.createBiquadFilter();
+  f.type='highpass';f.frequency.value=7000;src.buffer=buf;src.connect(f);f.connect(g);g.connect(aCtx.destination);
+  g.gain.setValueAtTime(vol||0.055,t);src.start(t);
+}
+function mkSynth(freq,t,dur,type,vol){
+  const o=aCtx.createOscillator(),g=aCtx.createGain();
+  o.connect(g);g.connect(aCtx.destination);o.type=type||'square';o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol||0.12,t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.start(t);o.stop(t+dur+0.02);
+}
+function mkBass(freq,t,dur){
+  const o=aCtx.createOscillator(),g=aCtx.createGain(),f=aCtx.createBiquadFilter();
+  f.type='lowpass';f.frequency.value=300;f.Q.value=2;
+  o.connect(f);f.connect(g);g.connect(aCtx.destination);o.type='sawtooth';o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.28,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.start(t);o.stop(t+dur+0.02);
+}
+
+// 2-bar loop at 138 BPM, A minor — iconic Techno Syndrome riff
+function scheduleMKMusicBar(t0){
+  const B=MK_B;
+  // Kick: syncopated techno pattern
+  [0,0.75,1.5,2,2.75,3.5,4,4.75,5.5,6,6.75,7.5].forEach(b=>mkKick(t0+b*B));
+  // Snare: beats 2 and 4 of each bar
+  [1,3,5,7].forEach(b=>mkSnare(t0+b*B));
+  // Hi-hat: every 8th note
+  for(let i=0;i<16;i++) mkHihat(t0+i*B/2);
+  // Bass
+  mkBass(55,t0+0*B,0.35); mkBass(55,t0+0.5*B,0.30); mkBass(55,t0+1.5*B,0.35);
+  mkBass(55,t0+2*B,0.35); mkBass(49,t0+3*B,0.50);
+  mkBass(55,t0+4*B,0.35); mkBass(55,t0+4.5*B,0.30); mkBass(55,t0+5.5*B,0.35);
+  mkBass(55,t0+6*B,0.35); mkBass(41,t0+7*B,0.80);
+  // Lead melody: Techno Syndrome main riff (A minor)
+  const A3=220,G3=196,Fs3=185,B3=247,C4=261;
+  // Bar 1: A A G A  A A F# —
+  mkSynth(A3,t0+0*B,  0.20,'square',0.13); mkSynth(A3,t0+0.5*B,0.20,'square',0.13);
+  mkSynth(G3,t0+1*B,  0.18,'square',0.11); mkSynth(A3,t0+1.5*B,0.20,'square',0.13);
+  mkSynth(A3,t0+2*B,  0.18,'square',0.13); mkSynth(A3,t0+2.25*B,0.14,'square',0.11);
+  mkSynth(Fs3,t0+2.5*B,0.30,'square',0.11);
+  // Bar 2: A A G A  C B A —
+  mkSynth(A3,t0+4*B,  0.20,'square',0.13); mkSynth(A3,t0+4.5*B,0.20,'square',0.13);
+  mkSynth(G3,t0+5*B,  0.18,'square',0.11); mkSynth(A3,t0+5.5*B,0.20,'square',0.13);
+  mkSynth(C4,t0+6*B,  0.28,'square',0.13); mkSynth(B3,t0+6.5*B,0.25,'square',0.12);
+  mkSynth(A3,t0+7*B,  0.55,'square',0.13);
+}
+
+function startMKMusic(){
+  if(mkMusicActive) return;
+  mkMusicActive=true;
+  mkMusicNextTime=aCtx.currentTime+0.05;
+  scheduleMKMusicBar(mkMusicNextTime);
+  const loopMs=MK_B*8*1000;
+  mkMusicNextTime+=MK_B*8;
+  function loopSched(){
+    if(!mkMusicActive) return;
+    scheduleMKMusicBar(mkMusicNextTime);
+    mkMusicNextTime+=MK_B*8;
+    mkMusicTimer=setTimeout(loopSched,loopMs-150);
+  }
+  mkMusicTimer=setTimeout(loopSched,loopMs-150);
+}
+function stopMKMusic(){
+  mkMusicActive=false;
+  if(mkMusicTimer){clearTimeout(mkMusicTimer);mkMusicTimer=null;}
+}
+
 /* ── Particles ─────────────────────────────────────────────── */
 class Particle {
   constructor(x,y,color,vx,vy,sz) {
@@ -2390,6 +2478,7 @@ function startRound(){
   roundTimer=60;
   showOverlay('ROUND '+curRound,'FIGHT!',2.3);
   sndAnnounce();
+  startMKMusic();
   setTimeout(()=>{ if(gameState==='roundstart') gameState='fight'; },2300);
 }
 function endRound(winner){
@@ -2403,6 +2492,7 @@ function endRound(winner){
     const isP=mw===fighters[0];
     showOverlay(isP?'YOU WIN':'YOU LOSE', mw.name+' WINS', 4);
     sndAnnounce();
+    stopMKMusic();
     gameState='matchover';
     if(isP && typeof addMKScore === 'function'){
       const healthBonus = Math.round(fighters[0].health * 50);
@@ -2549,6 +2639,7 @@ window.mkGameSetActive = function(active) {
     if (!rafId) { lastTS = performance.now(); rafId = requestAnimationFrame(loop); }
   } else {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    stopMKMusic();
   }
 };
 window.initMKGame=initMKGame;
