@@ -71,6 +71,7 @@ const LOG_FILES = {
   yaml:      'yaml.access.log',
   kombat:    'kombat.access.log',
   wargames:  'wargames.access.log',
+  warcraft:  'warcraft.access.log',
   moto:      'moto.access.log',
   india:     'india.access.log',
   chinese:   'chinese.access.log',
@@ -252,6 +253,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="yaml">yaml</button>
     <button class="tab"        data-site="kombat">kombat</button>
     <button class="tab"        data-site="wargames">wargames</button>
+    <button class="tab"        data-site="warcraft">warcraft</button>
     <button class="tab"        data-site="moto">moto</button>
     <button class="tab"        data-site="india">india</button>
     <button class="tab"        data-site="chinese">chinese</button>

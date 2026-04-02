@@ -12,7 +12,7 @@
     ]},
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kombat','kombat'],
-      ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity']
+      ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['india','india'],['pizza','pizza'],
