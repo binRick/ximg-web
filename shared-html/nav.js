@@ -17,11 +17,11 @@
     { label: 'Food', apps: [
       ['chinese','chinese'],['india','india'],['pizza','pizza'],
     ]},
-    { label: 'More', apps: [
-      ['butterfly','butterfly'],['rx','RxFitt'],['wargames','wargames']
-    ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['logs','logs'],['mail','mail'],['nav','nav'],['ximg','ximg']
+    ]},
+    { label: 'More', apps: [
+      ['butterfly','butterfly'],['rx','RxFitt'],['wargames','wargames']
     ]},
   ];
 
