@@ -11,7 +11,7 @@
       ['tampa','tampa'],['trump','trump'],['wood','wood']
     ]},
     { label: 'Games', apps: [
-      ['chess','chess'],['cnc','cnc'],['doom','doom'],['kombat','kombat'],
+      ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
       ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'Food', apps: [

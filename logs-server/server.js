@@ -69,6 +69,7 @@ const LOG_FILES = {
   pizza:     'pizza.access.log',
   docker:    'docker.access.log',
   yaml:      'yaml.access.log',
+  kart:      'kart.access.log',
   kombat:    'kombat.access.log',
   wargames:  'wargames.access.log',
   warcraft:  'warcraft.access.log',
@@ -251,6 +252,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="pizza">pizza</button>
     <button class="tab"        data-site="docker">docker</button>
     <button class="tab"        data-site="yaml">yaml</button>
+    <button class="tab"        data-site="kart">kart</button>
     <button class="tab"        data-site="kombat">kombat</button>
     <button class="tab"        data-site="wargames">wargames</button>
     <button class="tab"        data-site="warcraft">warcraft</button>
