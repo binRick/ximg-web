@@ -668,6 +668,87 @@
   function sndPollen(){gTone(660,0.08,'sine',0.09);gTone(880,0.06,'sine',0.07);}
   function sndDie(){[280,200,140].forEach((f,i)=>setTimeout(()=>gTone(f,0.18,'sawtooth',0.14),i*90));}
 
+  /* Relaxing ambient music */
+  let flyMusicActive=false,flyMusicNextTime=0,flyMusicTimer=null;
+  const FLY_BPM=76,FLY_B=60/FLY_BPM; // dreamy 76 BPM
+
+  function flyNote(freq,t,dur,type,vol){
+    if(!ac)return;
+    const atk=Math.min(0.18,dur*0.3),rel=Math.min(0.25,dur*0.35);
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.type=type||'sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||0.07,t+atk);
+    g.gain.setValueAtTime(vol||0.07,t+dur-rel);
+    g.gain.linearRampToValueAtTime(0,t+dur);
+    o.start(t);o.stop(t+dur+0.02);
+  }
+
+  function scheduleFlyMusic(t0){
+    const B=FLY_B;
+    // Melody — C major, dreamy and light (sine)
+    // Bar 1 (I: C major feel)
+    flyNote(659,t0+0*B,  B*1.6,'sine',0.075); // E5
+    flyNote(784,t0+2*B,  B*0.8,'sine',0.065); // G5
+    flyNote(659,t0+3*B,  B*1.2,'sine',0.07);  // E5
+    flyNote(587,t0+4.5*B,B*1.6,'sine',0.07);  // D5
+    // Bar 2 (IV: F major feel)
+    flyNote(523,t0+6.5*B,B*1.5,'sine',0.07);  // C5
+    flyNote(440,t0+8*B,  B*0.9,'sine',0.065); // A4
+    flyNote(494,t0+9.2*B,B*0.9,'sine',0.06);  // B4
+    flyNote(523,t0+10.5*B,B*1.4,'sine',0.07); // C5
+    // Bar 3 (vi: A minor feel)
+    flyNote(587,t0+12*B, B*1.0,'sine',0.075); // D5
+    flyNote(659,t0+13.3*B,B*0.9,'sine',0.07); // E5
+    flyNote(587,t0+14.5*B,B*1.0,'sine',0.065);// D5
+    flyNote(523,t0+15.8*B,B*1.2,'sine',0.065);// C5
+    // Bar 4 (V: G major resolve)
+    flyNote(494,t0+17*B, B*1.8,'sine',0.075); // B4
+    flyNote(440,t0+19.2*B,B*0.9,'sine',0.065);// A4
+    flyNote(392,t0+20.5*B,B*2.5,'sine',0.07); // G4
+
+    // Chord pads — very soft sine, slow swell
+    flyNote(330,t0+0*B,  B*5.5,'sine',0.03);  // E4 (C chord)
+    flyNote(392,t0+0*B,  B*5.5,'sine',0.025); // G4
+    flyNote(349,t0+6*B,  B*5.5,'sine',0.03);  // F4 (F chord)
+    flyNote(523,t0+6*B,  B*5.5,'sine',0.022); // C5
+    flyNote(330,t0+12*B, B*5.5,'sine',0.03);  // E4 (Am chord)
+    flyNote(440,t0+12*B, B*5.5,'sine',0.022); // A4
+    flyNote(294,t0+17*B, B*5.5,'sine',0.03);  // D4 (G chord)
+    flyNote(392,t0+17*B, B*5.5,'sine',0.022); // G4
+
+    // Bass — triangle, gentle low notes
+    flyNote(130,t0+0*B,  B*5.8,'triangle',0.055); // C3
+    flyNote(175,t0+6*B,  B*5.8,'triangle',0.05);  // F3
+    flyNote(220,t0+12*B, B*5.8,'triangle',0.05);  // A3
+    flyNote(196,t0+17*B, B*5.8,'triangle',0.05);  // G3
+
+    // High shimmer — barely audible
+    flyNote(1046,t0+0*B, B*11,'sine',0.012); // C6
+    flyNote(1318,t0+12*B,B*11,'sine',0.01);  // E6
+  }
+
+  function startFlyMusic(){
+    if(flyMusicActive||!ac)return;
+    flyMusicActive=true;
+    flyMusicNextTime=ac.currentTime+0.1;
+    scheduleFlyMusic(flyMusicNextTime);
+    const loopDur=FLY_B*22; // 22 beats per loop
+    flyMusicNextTime+=loopDur;
+    function loopSched(){
+      if(!flyMusicActive)return;
+      scheduleFlyMusic(flyMusicNextTime);
+      flyMusicNextTime+=loopDur;
+      flyMusicTimer=setTimeout(loopSched,(loopDur-0.25)*1000);
+    }
+    flyMusicTimer=setTimeout(loopSched,(loopDur-0.25)*1000);
+  }
+  function stopFlyMusic(){
+    flyMusicActive=false;
+    if(flyMusicTimer){clearTimeout(flyMusicTimer);flyMusicTimer=null;}
+  }
+
   /* Butterfly */
   class Butterfly{
     constructor(){this.reset();}
@@ -852,6 +933,7 @@
     sparks=[];popups=[];
     score=0;dist=0;spd=3.2;frameN=0;pollenN=0;bgScroll=0;
     gameState='playing';inputHeld=false;
+    stopFlyMusic();startFlyMusic();
   }
 
   function drawBG(c){
@@ -960,7 +1042,7 @@
       const BR=9;
       obstacles.forEach(o=>{
         if(o.hits(butterfly.x,butterfly.y,BR)){
-          butterfly.die();gameState='dead';
+          butterfly.die();gameState='dead';stopFlyMusic();
           score=Math.floor(dist/10)+pollenN*5;
           if(score>hiScore){hiScore=score;localStorage.setItem('bf_hi',hiScore);}
         }
@@ -1028,6 +1110,7 @@
   window.setButterflyGameActive=function(active){
     gameActive=active;
     if(active&&!raf){lastTs=performance.now();raf=requestAnimationFrame(gLoop);}
+    if(!active)stopFlyMusic();
   };
   })();
   /* ─────────────────────────────────────────────────────────────── */
