@@ -55,6 +55,7 @@
     'transition:opacity .16s,transform .16s;}' +
     '.nav-dropdown.open{opacity:1;transform:none;pointer-events:all;}' +
     '.nav-dropdown.wide{display:grid;grid-template-columns:1fr 1fr;gap:.05rem .2rem;min-width:220px;}' +
+    '.nav-dropdown.active-only .nav-dd-item:not(.active){display:none;}' +
 
     '.nav-dd-item{display:flex;align-items:center;gap:.4rem;font-size:.73rem;font-weight:600;' +
     'color:#c9d1d9;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;' +
@@ -104,6 +105,7 @@
       closeAll();
       if (!isOpen) {
         dd.classList.add('open');
+        dd.classList.remove('active-only'); // manual open always shows all apps
         trigger.classList.add('open');
         // flip left/right if dropdown would overflow viewport
         var rect = dd.getBoundingClientRect();
@@ -123,7 +125,7 @@
 
     if (hasActive) {
       group._autoOpen = function () {
-        dd.classList.add('open');
+        dd.classList.add('open', 'active-only'); // auto-open shows only the active item
         trigger.classList.add('open');
         var rect = dd.getBoundingClientRect();
         if (rect.right > window.innerWidth - 8) {
