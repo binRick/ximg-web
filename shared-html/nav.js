@@ -120,6 +120,18 @@
     group.appendChild(trigger);
     group.appendChild(dd);
     nav.appendChild(group);
+
+    if (hasActive) {
+      group._autoOpen = function () {
+        dd.classList.add('open');
+        trigger.classList.add('open');
+        var rect = dd.getBoundingClientRect();
+        if (rect.right > window.innerWidth - 8) {
+          dd.style.left = 'auto';
+          dd.style.right = '0';
+        }
+      };
+    }
   });
 
   document.addEventListener('click', closeAll);
@@ -136,6 +148,11 @@
 
   document.body.prepend(spacer);
   document.body.prepend(nav);
+
+  // Auto-open the dropdown for the active group so the current page is visible on load
+  nav.querySelectorAll('.nav-group').forEach(function (g) {
+    if (g._autoOpen) g._autoOpen();
+  });
 
   function syncSpacer() { spacer.style.height = nav.offsetHeight + 'px'; }
   syncSpacer();
