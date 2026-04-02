@@ -3,7 +3,7 @@
     { label: 'Tech', apps: [
       ['ansible','ansible'],['ascii','ascii'],['computers','computers'],
       ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],
-      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['ximg','ximg'],['yaml','yaml']
+      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coldwar','coldwar'],['florida','florida'],
@@ -18,8 +18,10 @@
       ['chinese','chinese'],['india','india'],['pizza','pizza'],
     ]},
     { label: 'More', apps: [
-      ['apps','apps'],['butterfly','butterfly'],['change','change'],['logs','logs'],
-      ['mail','mail'],['nav','nav'],['rx','RxFitt'],['wargames','wargames']
+      ['butterfly','butterfly'],['rx','RxFitt'],['wargames','wargames']
+    ]},
+    { label: 'System', apps: [
+      ['apps','apps'],['change','change'],['logs','logs'],['mail','mail'],['nav','nav'],['ximg','ximg']
     ]},
   ];
 
