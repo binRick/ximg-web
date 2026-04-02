@@ -177,6 +177,12 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
     .hero,.cards{animation:fadeUp .7s ease both}
     .cards{animation-delay:.12s}
+
+    /* ── Game section ── */
+    #section-game{position:relative;z-index:5;flex:1;display:flex;flex-direction:column;overflow:hidden}
+    #section-game.hidden{display:none}
+    #game-wrap{flex:1;position:relative;min-height:0;overflow:hidden;background:#0d001f}
+    #game-canvas{display:block;width:100%;height:100%;cursor:pointer;touch-action:none;outline:none;user-select:none}
   </style>
 </head>
 <body class="no-scroll">
@@ -188,6 +194,7 @@
   <div class="subnav">
     <button class="subnav-btn active" onclick="switchTab('facts')">🦋 Facts</button>
     <button class="subnav-btn" onclick="switchTab('species')">📖 Species</button>
+    <button class="subnav-btn" onclick="switchTab('game')">🎮 Joyride</button>
   </div>
 
   <!-- Facts tab -->
@@ -207,6 +214,13 @@
         <div class="hero-divider"></div>
       </div>
       <div class="cards" id="species-grid"></div>
+    </div>
+  </div>
+
+  <!-- Game tab -->
+  <div id="section-game" class="hidden">
+    <div id="game-wrap">
+      <canvas id="game-canvas" tabindex="0"></canvas>
     </div>
   </div>
 
@@ -625,16 +639,416 @@
   }
   buildSpecies();
 
+  /* ── Butterfly Joyride Game ──────────────────────────────────── */
+  (function(){
+  'use strict';
+  const GW=640,GH=360;
+  let gc=null,gctx=null;
+  let gameActive=false,gameState='idle';
+  let score=0,hiScore=parseInt(localStorage.getItem('bf_hi')||'0');
+  let dist=0,spd=3.2,frameN=0,pollenN=0;
+  let inputHeld=false,bgScroll=0;
+  let butterfly,obstacles,pollens,clouds,sparks,popups;
+  let raf=null,lastTs=0;
+
+  /* Audio */
+  let ac=null;
+  function gAudio(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();}
+  function gTone(f,d,tp,v){
+    if(!ac)return;
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.type=tp||'sine';o.frequency.value=f;
+    g.gain.setValueAtTime(v||0.1,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+d);
+    o.start();o.stop(ac.currentTime+d);
+  }
+  function sndFlap(){gTone(480,0.05,'sine',0.06);}
+  function sndPollen(){gTone(660,0.08,'sine',0.09);gTone(880,0.06,'sine',0.07);}
+  function sndDie(){[280,200,140].forEach((f,i)=>setTimeout(()=>gTone(f,0.18,'sawtooth',0.14),i*90));}
+
+  /* Butterfly */
+  class Butterfly{
+    constructor(){this.reset();}
+    reset(){
+      this.x=GW*0.22;this.y=GH*0.5;this.vy=0;
+      this.wp=0;this.dead=false;this.dt=0;this.trail=[];
+    }
+    update(dt){
+      if(this.dead){this.dt+=dt;return;}
+      if(inputHeld)this.vy-=0.55;
+      this.vy+=0.32;
+      this.vy=Math.max(-7,Math.min(7,this.vy));
+      this.y+=this.vy;
+      this.wp+=inputHeld?0.38:0.14;
+      this.trail.push({x:this.x,y:this.y});
+      if(this.trail.length>16)this.trail.shift();
+      if(this.y<18){this.y=18;this.vy=0.5;}
+      if(this.y>GH-22){this.y=GH-22;this.die();}
+    }
+    die(){
+      if(this.dead)return;
+      this.dead=true;sndDie();
+      spawnSparks(this.x,this.y,'#c084fc',16);
+    }
+    draw(c){
+      this.trail.forEach((p,i)=>{
+        const t=i/this.trail.length;
+        c.save();c.globalAlpha=t*0.2;c.fillStyle='#e879f9';
+        c.beginPath();c.arc(p.x,p.y,3*t,0,Math.PI*2);c.fill();c.restore();
+      });
+      const wf=Math.sin(this.wp);
+      c.save();c.translate(this.x,this.y);
+      if(this.dead)c.rotate(Math.min(this.dt*5,Math.PI*1.5));
+      const yo=wf*13,ly=wf*7;
+      // left upper wing
+      c.beginPath();c.moveTo(0,2);
+      c.bezierCurveTo(-7,-5+yo*0.35,-26,-16+yo,-28,-4+yo*0.75);
+      c.bezierCurveTo(-28,5,-10,9,0,5);
+      c.fillStyle='#7c3aed';c.strokeStyle='#4c1d95';c.lineWidth=0.8;c.fill();c.stroke();
+      // right upper wing
+      c.beginPath();c.moveTo(0,2);
+      c.bezierCurveTo(7,-5+yo*0.35,26,-16+yo,28,-4+yo*0.75);
+      c.bezierCurveTo(28,5,10,9,0,5);
+      c.fillStyle='#c084fc';c.fill();c.stroke();
+      // left lower wing
+      c.beginPath();c.moveTo(-2,5);
+      c.bezierCurveTo(-9,10+ly,-20,20+ly,-17,25+ly*0.5);
+      c.bezierCurveTo(-12,29,-4,20,-2,12);
+      c.fillStyle='#6d28d9';c.fill();c.stroke();
+      // right lower wing
+      c.beginPath();c.moveTo(2,5);
+      c.bezierCurveTo(9,10+ly,20,20+ly,17,25+ly*0.5);
+      c.bezierCurveTo(12,29,4,20,2,12);
+      c.fillStyle='#a855f7';c.fill();c.stroke();
+      // spots
+      c.globalAlpha=0.55;c.fillStyle='#f0abfc';
+      c.beginPath();c.arc(-13,yo*0.6-9,3,0,Math.PI*2);c.fill();
+      c.beginPath();c.arc(13,yo*0.6-9,3,0,Math.PI*2);c.fill();
+      c.globalAlpha=1;
+      // body
+      c.fillStyle='#1e0033';c.strokeStyle='#5b21b6';c.lineWidth=0.5;
+      c.beginPath();c.ellipse(0,9,3,12,0,0,Math.PI*2);c.fill();c.stroke();
+      // head
+      c.fillStyle='#2d0052';c.strokeStyle='#5b21b6';
+      c.beginPath();c.arc(0,-1,4.5,0,Math.PI*2);c.fill();c.stroke();
+      c.fillStyle='#f0e6ff';c.beginPath();c.arc(2,-2,1.3,0,Math.PI*2);c.fill();
+      // antennae
+      c.strokeStyle='#9333ea';c.lineWidth=0.9;
+      c.beginPath();c.moveTo(-2,-4);c.quadraticCurveTo(-11,-17,-12,-21);c.stroke();
+      c.beginPath();c.moveTo(2,-4);c.quadraticCurveTo(11,-17,12,-21);c.stroke();
+      c.fillStyle='#e879f9';
+      c.beginPath();c.arc(-12,-21,2.2,0,Math.PI*2);c.fill();
+      c.beginPath();c.arc(12,-21,2.2,0,Math.PI*2);c.fill();
+      c.restore();
+    }
+  }
+
+  /* Obstacle */
+  class Obstacle{
+    constructor(x){
+      this.x=x;
+      this.gap=Math.max(70,105-Math.floor(dist/600));
+      this.gapY=68+Math.random()*(GH-156);
+      this.w=26;this.passed=false;
+      this.isStem=Math.random()<0.65;
+    }
+    get right(){return this.x+this.w;}
+    get topBot(){return this.gapY-this.gap/2;}
+    get botTop(){return this.gapY+this.gap/2;}
+    hits(bx,by,br){
+      if(bx+br<this.x||bx-br>this.right)return false;
+      return by-br<this.topBot||by+br>this.botTop;
+    }
+    update(){this.x-=spd;}
+    draw(c){
+      if(this.isStem){
+        c.fillStyle='#14532d';
+        c.fillRect(this.x+7,0,12,this.topBot);
+        drawFlowerHead(c,this.x+13,this.topBot,true);
+        c.fillStyle='#14532d';
+        c.fillRect(this.x+7,this.botTop,12,GH-this.botTop);
+        drawFlowerHead(c,this.x+13,this.botTop,false);
+      } else {
+        c.save();
+        c.fillStyle='rgba(72,0,120,0.82)';
+        c.fillRect(this.x,0,this.w,this.topBot);
+        c.strokeStyle='rgba(147,51,234,0.22)';c.lineWidth=1;
+        for(let y=8;y<this.topBot;y+=10){
+          c.beginPath();c.moveTo(this.x,y);c.lineTo(this.x+this.w,y);c.stroke();
+        }
+        c.fillStyle='#7c3aed';c.fillRect(this.x-4,this.topBot-8,this.w+8,8);
+        c.fillStyle='rgba(72,0,120,0.82)';
+        c.fillRect(this.x,this.botTop,this.w,GH-this.botTop);
+        for(let y=this.botTop;y<GH;y+=10){
+          c.beginPath();c.moveTo(this.x,y);c.lineTo(this.x+this.w,y);c.stroke();
+        }
+        c.fillStyle='#7c3aed';c.fillRect(this.x-4,this.botTop,this.w+8,8);
+        c.restore();
+      }
+    }
+  }
+
+  function drawFlowerHead(c,cx,cy,dn){
+    c.fillStyle='#f59e0b';
+    [0,60,120,180,240,300].forEach(a=>{
+      const r=a*Math.PI/180;
+      c.beginPath();c.arc(cx+Math.cos(r)*9,cy+(dn?1:-1)*Math.sin(r)*9,5,0,Math.PI*2);c.fill();
+    });
+    c.fillStyle='#fbbf24';c.beginPath();c.arc(cx,cy,7,0,Math.PI*2);c.fill();
+    c.fillStyle='#f97316';c.beginPath();c.arc(cx,cy,4,0,Math.PI*2);c.fill();
+  }
+
+  /* Pollen */
+  class Pollen{
+    constructor(x,y){this.x=x;this.y=y;this.r=5.5;this.ph=Math.random()*Math.PI*2;this.done=false;}
+    update(){this.x-=spd;this.ph+=0.06;}
+    hits(bx,by,br){
+      if(this.done)return false;
+      const dx=this.x-bx,dy=this.y-by;
+      return dx*dx+dy*dy<(this.r+br)*(this.r+br);
+    }
+    draw(c){
+      if(this.done)return;
+      const g=Math.sin(this.ph)*0.3+0.7;
+      c.save();c.shadowBlur=10*g;c.shadowColor='#fbbf24';
+      c.fillStyle='#fde68a';
+      c.beginPath();c.arc(this.x,this.y+Math.sin(this.ph)*2.5,this.r,0,Math.PI*2);c.fill();
+      c.fillStyle='#f59e0b';
+      c.beginPath();c.arc(this.x,this.y+Math.sin(this.ph)*2.5,this.r*0.45,0,Math.PI*2);c.fill();
+      c.shadowBlur=0;c.restore();
+    }
+  }
+
+  /* Cloud */
+  class Cloud{
+    constructor(x){
+      this.x=x!=null?x:GW+50+Math.random()*150;
+      this.y=20+Math.random()*GH*0.45;
+      this.s=0.5+Math.random()*0.7;
+      this.sp=0.25+Math.random()*0.4;
+    }
+    update(){this.x-=this.sp;}
+    draw(c){
+      c.save();c.globalAlpha=0.12;c.fillStyle='#d8b4fe';
+      const cx=this.x,cy=this.y,s=this.s;
+      c.beginPath();
+      c.arc(cx,cy,22*s,0,Math.PI*2);c.arc(cx+18*s,cy-9*s,15*s,0,Math.PI*2);
+      c.arc(cx+34*s,cy,20*s,0,Math.PI*2);c.arc(cx+18*s,cy+9*s,13*s,0,Math.PI*2);
+      c.fill();c.restore();
+    }
+  }
+
+  function spawnSparks(x,y,color,n){
+    for(let i=0;i<n;i++)
+      sparks.push({x,y,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5-2,life:1,color});
+  }
+
+  function initGame(){
+    butterfly=new Butterfly();
+    obstacles=[];pollens=[];
+    clouds=[new Cloud(GW*0.25),new Cloud(GW*0.6),new Cloud(GW*0.9)];
+    sparks=[];popups=[];
+    score=0;dist=0;spd=3.2;frameN=0;pollenN=0;bgScroll=0;
+    gameState='playing';inputHeld=false;
+  }
+
+  function drawBG(c){
+    const g=c.createLinearGradient(0,0,0,GH);
+    g.addColorStop(0,'#160026');g.addColorStop(0.65,'#250038');g.addColorStop(1,'#0d001f');
+    c.fillStyle=g;c.fillRect(0,0,GW,GH);
+    c.fillStyle='rgba(240,220,255,1)';
+    for(let i=0;i<35;i++){
+      const sx=((i*83-bgScroll*0.15)%GW+GW)%GW;
+      const sy=(i*41+13)%(GH*0.65);
+      const tw=Math.sin(frameN*0.02+i)*0.5+0.5;
+      c.globalAlpha=tw*0.35;
+      c.beginPath();c.arc(sx,sy,0.9,0,Math.PI*2);c.fill();
+    }
+    c.globalAlpha=1;
+    c.fillStyle='#0d001a';c.fillRect(0,GH-22,GW,22);
+    c.fillStyle='#14532d';c.fillRect(0,GH-25,GW,5);
+    for(let i=0;i<18;i++){
+      const fx=((i*97-bgScroll*0.8)%GW+GW)%GW;
+      c.fillStyle=i%3===0?'#f472b6':i%3===1?'#fbbf24':'#a78bfa';
+      c.beginPath();c.arc(fx,GH-29,2.5,0,Math.PI*2);c.fill();
+      c.fillStyle='#166534';c.fillRect(fx-0.8,GH-29,1.6,5);
+    }
+  }
+
+  function drawHUD(c){
+    c.save();
+    c.font='bold 16px "Segoe UI",system-ui,sans-serif';
+    c.fillStyle='rgba(240,230,255,0.9)';c.textAlign='left';
+    c.fillText('🌸 '+score,10,22);
+    c.font='11px "Segoe UI",system-ui,sans-serif';
+    c.fillStyle='rgba(192,132,252,0.65)';c.fillText('Best: '+hiScore,10,36);
+    c.textAlign='right';c.font='bold 14px "Segoe UI",system-ui,sans-serif';
+    c.fillStyle='#fde68a';c.fillText('✿ '+pollenN,GW-10,22);
+    c.font='11px "Segoe UI",system-ui,sans-serif';
+    c.fillStyle='rgba(192,132,252,0.65)';c.fillText(Math.floor(dist/10)+'m',GW-10,36);
+    c.restore();
+  }
+
+  function drawIdle(c){
+    c.save();
+    c.fillStyle='rgba(0,0,0,0.5)';c.fillRect(0,0,GW,GH);
+    c.textAlign='center';
+    c.font='bold 38px Georgia,serif';
+    c.shadowBlur=24;c.shadowColor='#c084fc';
+    c.fillStyle='#e879f9';c.fillText('BUTTERFLY',GW/2,GH/2-28);c.fillText('JOYRIDE',GW/2,GH/2+14);
+    c.shadowBlur=0;
+    c.font='bold 13px "Segoe UI",system-ui,sans-serif';c.fillStyle='#fde68a';
+    if(Math.floor(Date.now()/580)%2)c.fillText('HOLD SPACE  or  HOLD TAP  to fly',GW/2,GH/2+48);
+    c.font='11px "Segoe UI",system-ui,sans-serif';c.fillStyle='rgba(192,132,252,0.7)';
+    c.fillText('Dodge flower stems & webs · Collect ✿ pollen for bonus points',GW/2,GH/2+68);
+    if(hiScore>0){c.fillStyle='rgba(253,230,138,0.75)';c.fillText('Best: '+hiScore,GW/2,GH/2+88);}
+    c.restore();
+  }
+
+  function drawDead(c){
+    if(butterfly.dt<0.4)return;
+    c.save();
+    c.fillStyle='rgba(0,0,0,0.6)';c.fillRect(0,0,GW,GH);
+    c.textAlign='center';
+    c.font='bold 30px Georgia,serif';c.shadowBlur=18;c.shadowColor='#c084fc';
+    c.fillStyle='#f0e6ff';c.fillText('GAME OVER',GW/2,GH/2-25);c.shadowBlur=0;
+    c.font='bold 18px "Segoe UI",system-ui,sans-serif';c.fillStyle='#fde68a';
+    c.fillText('Score: '+score,GW/2,GH/2+8);
+    c.font='13px "Segoe UI",system-ui,sans-serif';c.fillStyle='rgba(192,132,252,0.85)';
+    c.fillText('Best: '+hiScore+'  ·  Pollen: '+pollenN+'  ·  '+Math.floor(dist/10)+'m',GW/2,GH/2+30);
+    if(butterfly.dt>0.9){
+      c.font='bold 12px "Segoe UI",system-ui,sans-serif';c.fillStyle='#f0e6ff';
+      if(Math.floor(Date.now()/580)%2)c.fillText('HOLD SPACE  or  HOLD TAP  to try again',GW/2,GH/2+56);
+    }
+    c.restore();
+  }
+
+  function gLoop(ts){
+    if(!gameActive){raf=null;return;}
+    raf=requestAnimationFrame(gLoop);
+    const dt=Math.min((ts-lastTs)/1000,0.05);lastTs=ts;
+    if(!gctx)return;
+    const cw=gc.width,ch=gc.height;
+    const sc=Math.min(cw/GW,ch/GH);
+    const ox=(cw-GW*sc)/2,oy=(ch-GH*sc)/2;
+    gctx.clearRect(0,0,cw,ch);
+    gctx.save();gctx.translate(ox,oy);gctx.scale(sc,sc);
+    drawBG(gctx);
+    if(gameState==='idle'){drawIdle(gctx);gctx.restore();return;}
+    frameN++;bgScroll+=spd;
+    if(gameState==='playing'){
+      spd=3.2+dist/4000;dist++;
+      const interval=Math.max(75,130-Math.floor(dist/250));
+      if(frameN%interval===0){
+        const last=obstacles[obstacles.length-1];
+        if(!last||last.x<GW-100){
+          const obs=new Obstacle(GW+20);obstacles.push(obs);
+          for(let i=0;i<3;i++)
+            pollens.push(new Pollen(GW+55+i*24,obs.gapY+(Math.random()-0.5)*obs.gap*0.55));
+        }
+      }
+      if(frameN%110===0)clouds.push(new Cloud());
+    }
+    clouds.forEach(cl=>cl.update());clouds=clouds.filter(cl=>cl.x>-100);
+    obstacles.forEach(o=>o.update());obstacles=obstacles.filter(o=>o.right>-60);
+    pollens.forEach(p=>p.update());pollens=pollens.filter(p=>p.x>-20&&!p.done);
+    butterfly.update(dt);
+    if(inputHeld&&frameN%7===0)sndFlap();
+    if(gameState==='playing'&&!butterfly.dead){
+      const BR=9;
+      obstacles.forEach(o=>{
+        if(o.hits(butterfly.x,butterfly.y,BR)){
+          butterfly.die();gameState='dead';
+          score=Math.floor(dist/10)+pollenN*5;
+          if(score>hiScore){hiScore=score;localStorage.setItem('bf_hi',hiScore);}
+        }
+        if(!o.passed&&o.right<butterfly.x)o.passed=true;
+      });
+      pollens.forEach(p=>{
+        if(p.hits(butterfly.x,butterfly.y,BR)){
+          p.done=true;pollenN++;sndPollen();
+          spawnSparks(p.x,p.y,'#fbbf24',8);
+          popups.push({x:butterfly.x+22,y:butterfly.y-18,txt:'+5',life:1});
+          score=Math.floor(dist/10)+pollenN*5;
+        }
+      });
+    }
+    sparks.forEach(s=>{s.x+=s.vx;s.y+=s.vy;s.vy+=0.12;s.life-=0.04;});
+    sparks=sparks.filter(s=>s.life>0);
+    popups.forEach(p=>{p.y-=0.9;p.life-=0.03;});
+    popups=popups.filter(p=>p.life>0);
+    clouds.forEach(cl=>cl.draw(gctx));
+    obstacles.forEach(o=>o.draw(gctx));
+    pollens.forEach(p=>p.draw(gctx));
+    sparks.forEach(s=>{
+      gctx.save();gctx.globalAlpha=s.life;gctx.fillStyle=s.color;
+      gctx.beginPath();gctx.arc(s.x,s.y,2.5,0,Math.PI*2);gctx.fill();gctx.restore();
+    });
+    butterfly.draw(gctx);
+    popups.forEach(p=>{
+      gctx.save();gctx.globalAlpha=p.life;
+      gctx.font='bold 13px "Segoe UI",sans-serif';gctx.fillStyle='#fde68a';
+      gctx.textAlign='center';gctx.fillText(p.txt,p.x,p.y);gctx.restore();
+    });
+    drawHUD(gctx);
+    if(gameState==='dead')drawDead(gctx);
+    gctx.restore();
+  }
+
+  function onPress(){
+    gAudio();inputHeld=true;
+    if(gameState==='idle'||(gameState==='dead'&&butterfly&&butterfly.dt>0.8))initGame();
+  }
+  function onRelease(){inputHeld=false;}
+
+  let kDown=false;
+  window.initButterflyGame=function(){
+    gc=document.getElementById('game-canvas');if(!gc)return;
+    gctx=gc.getContext('2d');
+    function resizeGC(){const w=gc.parentElement;gc.width=w.clientWidth||640;gc.height=w.clientHeight||360;}
+    window.addEventListener('resize',resizeGC);resizeGC();
+    butterfly=new Butterfly();
+    obstacles=[];pollens=[];clouds=[new Cloud(GW*0.25),new Cloud(GW*0.65)];
+    sparks=[];popups=[];
+    score=0;dist=0;spd=3.2;frameN=0;pollenN=0;bgScroll=0;
+    gameState='idle';gameActive=true;
+    gc.addEventListener('mousedown',onPress);
+    gc.addEventListener('mouseup',onRelease);
+    gc.addEventListener('mouseleave',onRelease);
+    gc.addEventListener('touchstart',e=>{e.preventDefault();onPress();},{passive:false});
+    gc.addEventListener('touchend',onRelease);
+    document.addEventListener('keydown',e=>{
+      if(e.code==='Space'&&gameActive&&!kDown){e.preventDefault();kDown=true;onPress();}
+    });
+    document.addEventListener('keyup',e=>{if(e.code==='Space'){kDown=false;onRelease();}});
+    lastTs=performance.now();raf=requestAnimationFrame(gLoop);
+  };
+  window.setButterflyGameActive=function(active){
+    gameActive=active;
+    if(active&&!raf){lastTs=performance.now();raf=requestAnimationFrame(gLoop);}
+  };
+  })();
+  /* ─────────────────────────────────────────────────────────────── */
+
   /* ── Tab switching ── */
+  const TAB_NAMES=['facts','species','game'];
   function switchTab(name) {
-    document.querySelectorAll('.subnav-btn').forEach((btn, i) => {
-      btn.classList.toggle('active', (i === 0 ? 'facts' : 'species') === name);
+    document.querySelectorAll('.subnav-btn').forEach((btn,i)=>{
+      btn.classList.toggle('active',TAB_NAMES[i]===name);
     });
     document.getElementById('section-facts').classList.toggle('hidden', name !== 'facts');
     document.getElementById('section-species').classList.toggle('hidden', name !== 'species');
-    document.body.classList.toggle('no-scroll', name === 'facts');
+    document.getElementById('section-game').classList.toggle('hidden', name !== 'game');
+    document.body.classList.toggle('no-scroll', name === 'facts' || name === 'game');
     if (name === 'species') {
       document.querySelectorAll('img[data-wiki]:not([src])').forEach(loadWikiImage);
+    }
+    if (name === 'game') {
+      if (!window._bfGameInited) { window._bfGameInited=true; window.initButterflyGame(); }
+      else if (typeof window.setButterflyGameActive === 'function') window.setButterflyGameActive(true);
+    } else {
+      if (typeof window.setButterflyGameActive === 'function') window.setButterflyGameActive(false);
     }
     localStorage.setItem('butterfly_tab', name);
   }
