@@ -114,6 +114,24 @@
     .tab-panel { display: flex; flex-direction: column; gap: 1.75rem; animation: fadeUp .55s ease both .12s; }
     .tab-panel.hidden { display: none; }
 
+    /* ── Traffic tab ── */
+    .traffic-info {
+      display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+      font-size: .72rem; color: var(--muted);
+    }
+    .traffic-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .22rem .7rem; border-radius: 99px;
+      border: 1px solid rgba(34,197,94,.3); background: rgba(34,197,94,.07);
+      color: var(--green); font-size: .65rem; font-weight: 700; letter-spacing: .06em;
+    }
+    .traffic-live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #22c55e; box-shadow: 0 0 6px #22c55e;
+      animation: livepulse 2s ease-in-out infinite;
+    }
+    @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
     /* ── Section header ── */
     .sec-header {
       display: flex; align-items: center; gap: 1rem;
@@ -373,6 +391,7 @@
       <button class="tab-btn" onclick="switchTab('weather')">☀️ Weather</button>
       <button class="tab-btn" onclick="switchTab('neighborhoods')">🏘️ Neighborhoods</button>
       <button class="tab-btn" onclick="switchTab('history')">📜 History</button>
+      <button class="tab-btn" onclick="switchTab('traffic')">🚦 Traffic</button>
     </div>
 
     <!-- ── Why Florida ── -->
@@ -449,15 +468,37 @@
       <div class="tl-wrap" id="history-tl"></div>
     </div>
 
+    <!-- ── Traffic ── -->
+    <div id="tab-traffic" class="tab-panel hidden">
+      <div class="sec-header">Florida Statewide Traffic</div>
+      <div class="traffic-info" style="margin-bottom:.9rem">
+        <span class="traffic-badge"><span class="traffic-live-dot"></span> LIVE</span>
+        <span id="fl-traffic-time-label" style="color:var(--muted);font-size:.72rem"></span>
+        <span id="fl-traffic-status-label" style="font-size:.72rem"></span>
+      </div>
+      <div style="position:relative;max-width:900px;margin:0 auto;">
+        <canvas id="fl-traffic-canvas" style="width:100%;border-radius:10px;border:1px solid var(--border);display:block;cursor:crosshair;"></canvas>
+        <div id="fl-traffic-tooltip" style="position:absolute;display:none;background:rgba(5,20,10,.93);border:1px solid rgba(34,197,94,.4);border-radius:8px;padding:.5rem .8rem;font-size:.78rem;color:#d0f0d8;pointer-events:none;z-index:10;max-width:220px;line-height:1.5;white-space:nowrap;"></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem 1.4rem;margin-top:.85rem;font-size:.72rem;color:var(--muted)">
+        <span><span style="display:inline-block;width:18px;height:4px;background:#22c55e;border-radius:2px;vertical-align:middle;margin-right:.35rem"></span>Free flow</span>
+        <span><span style="display:inline-block;width:18px;height:4px;background:#eab308;border-radius:2px;vertical-align:middle;margin-right:.35rem"></span>Moderate</span>
+        <span><span style="display:inline-block;width:18px;height:4px;background:#f97316;border-radius:2px;vertical-align:middle;margin-right:.35rem"></span>Heavy</span>
+        <span><span style="display:inline-block;width:18px;height:4px;background:#ef4444;border-radius:2px;vertical-align:middle;margin-right:.35rem"></span>Standstill</span>
+      </div>
+      <div id="fl-traffic-road-stats" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;"></div>
+    </div>
+
   </div>
 
 <script>
 /* ── Tabs ── */
-const TABS = ['why','beaches','nature','freedom','food','weather','neighborhoods','history'];
+const TABS = ['why','beaches','nature','freedom','food','weather','neighborhoods','history','traffic'];
 function switchTab(name) {
   TABS.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
   document.querySelectorAll('.tab-btn').forEach((btn, i) => btn.classList.toggle('active', TABS[i] === name));
   if (name === 'history' && !window._histInited) { window._histInited = true; buildHistory(); }
+  if (name === 'traffic' && !window._flTrafficInited) { window._flTrafficInited = true; initFlTraffic(); }
   localStorage.setItem('florida_tab', name);
 }
 
@@ -1488,6 +1529,261 @@ function buildHistory() {
 
 const saved = localStorage.getItem('florida_tab');
 if (saved && TABS.includes(saved)) switchTab(saved);
+
+/* ── Florida Statewide Traffic ── */
+function initFlTraffic() {
+  // Web mercator projection — zoom 7 (N=128), origin tile (32, 52)
+  var IMG_W = 760, IMG_H = 820;
+  var ZOOM = 7, N = Math.pow(2, ZOOM);
+  var TILE_X0 = 32.76, TILE_Y0 = 52.30;
+
+  function ll2px(lat, lon) {
+    var xt = (lon + 180) / 360 * N;
+    var yt = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * N;
+    return [Math.round((xt - TILE_X0) * 256), Math.round((yt - TILE_Y0) * 256)];
+  }
+
+  // Florida state boundary (simplified polygon, clockwise)
+  var FL_BORDER = [
+    [30.42,-87.22],[30.54,-87.00],[30.66,-86.62],[30.72,-86.12],[30.78,-85.54],
+    [30.77,-85.23],[30.70,-84.75],[30.44,-84.28],[30.50,-83.86],[30.49,-83.22],
+    [30.70,-82.80],[30.65,-82.30],[30.72,-81.47],[30.50,-81.30],[30.10,-81.40],
+    [29.70,-81.31],[29.21,-81.02],[28.73,-80.75],[28.46,-80.58],[27.98,-80.65],
+    [27.50,-80.38],[27.00,-80.13],[26.71,-80.07],[26.12,-80.14],[25.77,-80.19],
+    [25.50,-80.38],[25.34,-80.68],[25.18,-80.90],[25.08,-81.10],[24.90,-81.40],
+    [24.56,-81.78],[24.70,-81.50],[24.90,-81.30],[25.20,-81.10],[25.60,-81.40],
+    [25.90,-81.72],[26.14,-81.80],[26.64,-81.87],[27.00,-82.10],[27.34,-82.54],
+    [27.76,-82.64],[27.97,-82.82],[28.30,-82.70],[28.80,-82.75],[29.18,-83.01],
+    [29.60,-83.26],[29.93,-84.00],[30.06,-84.36],[30.05,-84.89],[30.10,-85.40],
+    [30.22,-85.97],[30.38,-86.52],[30.42,-87.22]
+  ];
+
+  // Florida major roads
+  var ROADS = [
+    { name:'I-10 (Pensacola→Jacksonville)', baseLoad:0.45, pts:[
+      [30.42,-87.22],[30.56,-86.93],[30.72,-86.12],[30.78,-85.54],[30.77,-85.23],
+      [30.70,-84.75],[30.44,-84.28],[30.50,-83.86],[30.49,-83.22],[30.32,-82.80],
+      [30.21,-82.64],[30.33,-81.66]
+    ]},
+    { name:'I-75 (Georgia→Naples)', baseLoad:0.50, pts:[
+      [30.73,-83.22],[30.45,-83.00],[29.98,-82.73],[29.65,-82.43],[29.19,-82.14],
+      [28.61,-82.18],[28.00,-82.38],[27.50,-82.57],[27.34,-82.54],[26.97,-82.09],
+      [26.64,-81.87],[26.13,-81.72]
+    ]},
+    { name:'I-75 Alligator Alley (Naples→Ft Lauderdale)', baseLoad:0.38, pts:[
+      [26.13,-81.72],[25.98,-81.50],[25.84,-81.20],[25.73,-80.90],[25.72,-80.34]
+    ]},
+    { name:'I-95 (Jacksonville→Miami)', baseLoad:0.60, pts:[
+      [30.72,-81.47],[30.33,-81.66],[29.70,-81.31],[29.21,-81.02],[28.73,-80.75],
+      [28.46,-80.58],[27.98,-80.65],[27.50,-80.38],[26.71,-80.07],[26.12,-80.14],
+      [25.77,-80.19]
+    ]},
+    { name:'I-4 (Tampa→Daytona)', baseLoad:0.55, pts:[
+      [27.97,-82.44],[28.13,-82.17],[28.33,-81.80],[28.41,-81.62],[28.54,-81.38],
+      [28.54,-81.23],[28.54,-81.12],[29.21,-81.02]
+    ]},
+    { name:'I-275 (St Pete→Tampa)', baseLoad:0.58, pts:[
+      [27.76,-82.64],[27.86,-82.56],[27.92,-82.52],[27.97,-82.44]
+    ]},
+    { name:'Florida Turnpike', baseLoad:0.42, pts:[
+      [28.61,-81.35],[28.40,-81.35],[28.20,-81.37],[27.80,-81.40],[27.40,-81.43],
+      [27.00,-81.48],[26.55,-80.74],[26.30,-80.42],[26.14,-80.26],[25.90,-80.22],
+      [25.77,-80.19]
+    ]},
+    { name:'SR-528 Beachline (Orlando→Cape Canaveral)', baseLoad:0.30, pts:[
+      [28.44,-81.39],[28.43,-81.10],[28.44,-80.90],[28.46,-80.58]
+    ]},
+    { name:'US-27 (Gainesville→Miami)', baseLoad:0.33, pts:[
+      [29.65,-82.43],[29.20,-82.00],[28.80,-81.65],[28.40,-81.43],[27.90,-81.48],
+      [27.40,-81.45],[27.00,-81.22],[26.55,-80.85],[26.14,-80.56],[25.77,-80.37]
+    ]},
+    { name:'US-41 Tamiami Trail (Naples→Miami)', baseLoad:0.28, pts:[
+      [25.90,-81.72],[25.88,-81.50],[25.85,-81.20],[25.83,-80.94],[25.80,-80.60],
+      [25.77,-80.19]
+    ]},
+    { name:'I-595 (Fort Lauderdale connector)', baseLoad:0.62, pts:[
+      [26.10,-80.42],[26.10,-80.20],[26.10,-80.07]
+    ]},
+    { name:'US-19 Gulf Coast (Crystal River→Clearwater)', baseLoad:0.35, pts:[
+      [29.18,-83.01],[29.00,-82.85],[28.80,-82.75],[28.50,-82.70],[28.30,-82.72],
+      [27.97,-82.82],[27.76,-82.64]
+    ]},
+    { name:'I-10 / US-90 Panhandle', baseLoad:0.25, pts:[
+      [30.44,-84.28],[30.20,-84.40],[30.07,-84.53],[30.06,-84.88]
+    ]},
+  ];
+
+  // Road-specific rush bias
+  var ROAD_BIAS = {
+    'I-95 (Jacksonville→Miami)':   { am: 1.1, pm: 1.4 },
+    'I-75 (Georgia→Naples)':       { am: 1.3, pm: 0.9 },
+    'I-4 (Tampa→Daytona)':         { am: 1.2, pm: 1.3 },
+    'I-275 (St Pete→Tampa)':       { am: 1.4, pm: 1.0 },
+    'Florida Turnpike':             { am: 0.9, pm: 1.2 },
+    'I-595 (Fort Lauderdale connector)': { am: 1.5, pm: 1.5 },
+  };
+
+  function congestionMult() {
+    var h = new Date().getHours();
+    var m = new Date().getMinutes();
+    var t = h + m / 60;
+    if (t >= 7 && t < 9)   return 0.55 + 0.45 * Math.sin((t - 7) / 2 * Math.PI);
+    if (t >= 16 && t < 19) return 0.65 + 0.35 * Math.sin((t - 16) / 3 * Math.PI);
+    if (t >= 11 && t < 14) return 0.30 + 0.10 * Math.sin((t - 11) / 3 * Math.PI);
+    if (t >= 22 || t < 5)  return 0.05;
+    return 0.20;
+  }
+
+  function loadForRoad(road) {
+    var h = new Date().getHours();
+    var bias = ROAD_BIAS[road.name];
+    var mult = congestionMult();
+    if (bias) mult *= (h < 12 ? bias.am : bias.pm);
+    var seed = Math.floor(Date.now() / 60000) + road.name.charCodeAt(0);
+    var jitter = ((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff * 0.12 - 0.06;
+    return Math.min(1, Math.max(0, road.baseLoad * mult + jitter));
+  }
+
+  function loadColor(load) {
+    if (load < 0.35) return '#22c55e';
+    if (load < 0.60) return '#eab308';
+    if (load < 0.80) return '#f97316';
+    return '#ef4444';
+  }
+
+  function loadLabel(load) {
+    if (load < 0.35) return 'Free flow';
+    if (load < 0.60) return 'Moderate';
+    if (load < 0.80) return 'Heavy';
+    return 'Standstill';
+  }
+
+  function speedMph(load) { return Math.round(65 - load * 55); }
+
+  var canvas = document.getElementById('fl-traffic-canvas');
+  var ctx = canvas.getContext('2d');
+  var tooltip = document.getElementById('fl-traffic-tooltip');
+
+  canvas.width  = IMG_W;
+  canvas.height = IMG_H;
+
+  var roadPaths = [];
+
+  function draw() {
+    ctx.clearRect(0, 0, IMG_W, IMG_H);
+
+    // Background
+    ctx.fillStyle = '#060f08';
+    ctx.fillRect(0, 0, IMG_W, IMG_H);
+
+    // Florida land fill
+    var bpts = FL_BORDER.map(function(p) { return ll2px(p[0], p[1]); });
+    ctx.beginPath();
+    ctx.moveTo(bpts[0][0], bpts[0][1]);
+    for (var i = 1; i < bpts.length; i++) ctx.lineTo(bpts[i][0], bpts[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = '#0d1f10';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(34,197,94,.18)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    roadPaths = [];
+
+    ROADS.forEach(function(road) {
+      var load = loadForRoad(road);
+      var color = loadColor(load);
+      var pts = road.pts.map(function(p) { return ll2px(p[0], p[1]); });
+      pts = pts.filter(function(p) { return p[0] >= -50 && p[0] <= IMG_W+50 && p[1] >= -50 && p[1] <= IMG_H+50; });
+      if (pts.length < 2) return;
+
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      roadPaths.push({ road: road, load: load, pts: pts });
+    });
+
+    updateStats();
+    updateStatusLabel();
+  }
+
+  function updateStats() {
+    var el = document.getElementById('fl-traffic-road-stats');
+    el.innerHTML = roadPaths.map(function(rp) {
+      var color = loadColor(rp.load);
+      return '<span style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:.25rem .6rem;font-size:.68rem;color:#c8d8c8">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>' +
+        '<span>' + rp.road.name + '</span>' +
+        '<span style="color:' + color + ';font-weight:700;margin-left:.2rem">' + speedMph(rp.load) + ' mph</span>' +
+        '</span>';
+    }).join('');
+  }
+
+  function updateStatusLabel() {
+    var now = new Date();
+    var h = now.getHours(), m = now.getMinutes();
+    var ampm = h < 12 ? 'AM' : 'PM';
+    var h12 = h % 12 || 12;
+    var mStr = m < 10 ? '0' + m : String(m);
+    document.getElementById('fl-traffic-time-label').textContent = 'Updated ' + h12 + ':' + mStr + ' ' + ampm;
+    var mult = congestionMult();
+    var status, color;
+    if (mult < 0.15)      { status = 'Light traffic statewide'; color = '#22c55e'; }
+    else if (mult < 0.35) { status = 'Moderate conditions'; color = '#eab308'; }
+    else if (mult < 0.55) { status = 'Heavy in spots'; color = '#f97316'; }
+    else                  { status = 'Rush hour — expect delays'; color = '#ef4444'; }
+    document.getElementById('fl-traffic-status-label').innerHTML = '&nbsp;·&nbsp;<span style="color:' + color + ';font-weight:700">' + status + '</span>';
+  }
+
+  // Hover tooltip
+  canvas.addEventListener('mousemove', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = IMG_W / rect.width;
+    var scaleY = IMG_H / rect.height;
+    var mx = (e.clientX - rect.left) * scaleX;
+    var my = (e.clientY - rect.top)  * scaleY;
+    var hit = null, hitDist = 14;
+    roadPaths.forEach(function(rp) {
+      for (var i = 0; i < rp.pts.length - 1; i++) {
+        var ax = rp.pts[i][0], ay = rp.pts[i][1];
+        var bx = rp.pts[i+1][0], by = rp.pts[i+1][1];
+        var dx = bx - ax, dy = by - ay;
+        var t = Math.max(0, Math.min(1, ((mx-ax)*dx + (my-ay)*dy) / (dx*dx + dy*dy)));
+        var px = ax + t*dx - mx, py = ay + t*dy - my;
+        var d = Math.sqrt(px*px + py*py);
+        if (d < hitDist) { hitDist = d; hit = rp; }
+      }
+    });
+    if (hit) {
+      tooltip.innerHTML = '<strong style="color:#22c55e">' + hit.road.name + '</strong><br>' +
+        loadLabel(hit.load) + ' · ' + speedMph(hit.load) + ' mph avg';
+      tooltip.style.display = 'block';
+      var cx = e.clientX - rect.left;
+      var cy = e.clientY - rect.top;
+      tooltip.style.left = (cx / rect.width * 100 + 1) + '%';
+      tooltip.style.top  = (cy / rect.height * 100 - 8) + '%';
+    } else {
+      tooltip.style.display = 'none';
+    }
+  });
+  canvas.addEventListener('mouseleave', function() { tooltip.style.display = 'none'; });
+
+  draw();
+  setInterval(draw, 60000);
+}
 </script>
 </body>
 </html>
