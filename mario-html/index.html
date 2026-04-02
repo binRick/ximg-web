@@ -647,6 +647,7 @@ function switchTab(id) {
   smb2Section.classList.toggle('active', id === 'smb2');
   document.body.style.overflow = 'hidden';
   if (id === 'smb1') resize();
+  if (id !== 'smb1') SMB_MUSIC.stop();
   if (id === 'scores') loadScoresTab();
   if (id === 'history' && !window._histInited) { window._histInited = true; buildHistory(); }
   if (id === 'smb2' && window._smb2Activate) window._smb2Activate();
@@ -1059,6 +1060,7 @@ function begin() {
     winOverlay.classList.add('off');
   }
   overlay.classList.add('off');
+  SMB_MUSIC.start();
 }
 
 function showMsg(title, body) {
@@ -1070,7 +1072,7 @@ function showMsg(title, body) {
 
 function loseLife() {
   lives--;
-  if (lives<=0) { state='over'; showMsg('GAME OVER', `Score: ${score}`); return; }
+  if (lives<=0) { state='over'; SMB_MUSIC.stop(); SMB_MUSIC.sfx.die(); showMsg('GAME OVER', `Score: ${score}`); return; }
   player.x = Math.max(80, camX+80);
   player.y = canvas.height-TILE-player.h-80;
   player.vx=0; player.vy=0; player.iframes=150;
@@ -1197,7 +1199,7 @@ function update() {
   else if (L()) { player.vx=-SPD; player.face=-1; }
   else player.vx*=0.72;
 
-  if (J()&&!jumpHeld&&player.onGround) { player.vy=JVY; jumpHeld=true; }
+  if (J()&&!jumpHeld&&player.onGround) { player.vy=JVY; jumpHeld=true; SMB_MUSIC.sfx.jump(); }
   if (!J()) { jumpHeld=false; if (player.vy<-4) player.vy+=2; }
 
   player.vy = Math.min(player.vy+GRAV, 20);
@@ -1210,7 +1212,7 @@ function update() {
 
   coins.forEach(c => {
     if (c.got||!overlap(player,c)) return;
-    c.got=true; score+=100;
+    c.got=true; score+=100; SMB_MUSIC.sfx.coin();
     burst(c.x+8, c.y+8, '#FFD700');
   });
 
@@ -1222,7 +1224,7 @@ function update() {
     if (!overlap(player,e)) continue;
     if (player.iframes>0) continue;
     if (player.vy>0 && player.y+player.h < e.y+e.h*0.55) {
-      e.alive=false; e.squash=18; score+=200;
+      e.alive=false; e.squash=18; score+=200; SMB_MUSIC.sfx.stomp();
       player.vy=-8;
       burst(e.x+14, e.y, '#8D6E63');
     } else {
@@ -1234,6 +1236,7 @@ function update() {
     flag.triggered=true;
     score += 1000+coins.filter(c=>c.got).length*20;
     state='win-entry';
+    SMB_MUSIC.stop();
     showWinEntry(score);
   }
 
@@ -1387,6 +1390,148 @@ function render() {
 
 function loop() { update(); render(); requestAnimationFrame(loop); }
 loop();
+
+/* ── SMB1 Music & SFX Engine (Web Audio API) ───────────────────────── */
+const SMB_MUSIC = (() => {
+  let actx = null, masterGain = null;
+  let noteIdx = 0, nextNoteTime = 0;
+  let schedId = null, running = false;
+
+  // durations in seconds at ~200 BPM (quarter = 0.300s)
+  const E=0.150, Q=0.300, D=0.450, H=0.600, T=0.100;
+  const _=0; // rest (silence)
+
+  const f = {
+    E4:329.63, G4:392.00, Ab4:415.30, A4:440.00,
+    Bb4:466.16, B4:493.88, C5:523.25, D5:587.33, E5:659.25,
+    F5:698.46, Fs5:739.99, G5:783.99, A5:880.00, C6:1046.50,
+  };
+
+  // [freq|0=rest, duration_sec]
+  const THEME_A = [
+    [f.C5,D],[f.G4,D],[_,E],[f.E4,D],[_,Q],
+    [f.A4,Q],[f.B4,Q],[f.Bb4,E],[f.A4,Q],
+    [f.G4,T],[f.E5,T],[f.G5,T],[f.A5,Q],[f.F5,E],[f.G5,E],[_,E],
+    [f.E5,Q],[f.C5,E],[f.D5,E],[f.B4,D],[_,E],
+  ];
+
+  const SEQ = [
+    // INTRO
+    [f.E5,E],[f.E5,E],[_,E],[f.E5,E],[_,E],[f.C5,E],[f.E5,Q],
+    [f.G5,Q],[_,H+Q],[f.G4,Q],[_,H+Q],
+    // THEME A × 2
+    ...THEME_A, ...THEME_A,
+    // BRIDGE
+    [_,E],[f.G5,E],[_,E],[f.Fs5,E],[f.F5,E],[_,E],[f.D5,Q],[_,E],
+    [f.E5,Q],[_,E],[f.Ab4,E],[f.A4,E],[f.C5,Q],[_,E],[f.A4,E],[f.C5,E],[f.D5,E],[_,Q],
+    [_,E],[f.G5,E],[_,E],[f.Fs5,E],[f.F5,E],[_,E],[f.D5,Q],[_,E],
+    [f.E5,Q],[_,E],[f.C6,Q],[_,D+E],
+    [_,E],[f.G5,E],[_,E],[f.Fs5,E],[f.F5,E],[_,E],[f.D5,Q],[_,E],
+    [f.E5,Q],[_,E],[f.Ab4,E],[f.A4,E],[f.C5,Q],[_,E],[f.A4,E],[f.C5,E],[f.D5,E],[_,Q],
+    // OUTRO = THEME A once more
+    ...THEME_A,
+  ];
+
+  function playNote(freq, when, dur) {
+    if (!actx || freq === 0) return;
+    const osc = actx.createOscillator();
+    const g   = actx.createGain();
+    osc.connect(g); g.connect(masterGain);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.10, when);
+    g.gain.setValueAtTime(0.10, when + Math.max(0, dur - 0.022));
+    g.gain.linearRampToValueAtTime(0, when + dur);
+    osc.start(when);
+    osc.stop(when + dur + 0.01);
+  }
+
+  function scheduleAhead() {
+    if (!running || !actx) return;
+    while (nextNoteTime < actx.currentTime + 0.3) {
+      const [freq, dur] = SEQ[noteIdx];
+      playNote(freq, nextNoteTime, dur);
+      nextNoteTime += dur;
+      noteIdx = (noteIdx + 1) % SEQ.length;
+    }
+  }
+
+  function ensureCtx() {
+    if (!actx) {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = actx.createGain();
+      masterGain.gain.value = 0.7;
+      masterGain.connect(actx.destination);
+    }
+    if (actx.state === 'suspended') actx.resume();
+  }
+
+  const sfx = {
+    coin() {
+      if (!actx) return;
+      const osc = actx.createOscillator(), g = actx.createGain();
+      osc.connect(g); g.connect(actx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(988, actx.currentTime);
+      osc.frequency.setValueAtTime(1319, actx.currentTime + 0.05);
+      g.gain.setValueAtTime(0.15, actx.currentTime);
+      g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.13);
+      osc.start(); osc.stop(actx.currentTime + 0.14);
+    },
+    jump() {
+      if (!actx) return;
+      const osc = actx.createOscillator(), g = actx.createGain();
+      osc.connect(g); g.connect(actx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(220, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(660, actx.currentTime + 0.12);
+      g.gain.setValueAtTime(0.14, actx.currentTime);
+      g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.13);
+      osc.start(); osc.stop(actx.currentTime + 0.14);
+    },
+    stomp() {
+      if (!actx) return;
+      const osc = actx.createOscillator(), g = actx.createGain();
+      osc.connect(g); g.connect(actx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(440, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, actx.currentTime + 0.08);
+      g.gain.setValueAtTime(0.18, actx.currentTime);
+      g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.10);
+      osc.start(); osc.stop(actx.currentTime + 0.11);
+    },
+    die() {
+      if (!actx) return;
+      [523,440,392,330,280,220].forEach((freq, i) => {
+        const osc = actx.createOscillator(), g = actx.createGain();
+        osc.connect(g); g.connect(actx.destination);
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        const t = actx.currentTime + i * 0.09;
+        g.gain.setValueAtTime(0.13, t);
+        g.gain.linearRampToValueAtTime(0, t + 0.08);
+        osc.start(t); osc.stop(t + 0.09);
+      });
+    },
+  };
+
+  return {
+    start() {
+      ensureCtx();
+      if (running) this.stop();
+      running = true;
+      noteIdx = 0;
+      nextNoteTime = actx.currentTime + 0.05;
+      scheduleAhead();
+      schedId = setInterval(scheduleAhead, 100);
+    },
+    stop() {
+      running = false;
+      clearInterval(schedId);
+    },
+    sfx,
+  };
+})();
 
 /* ═══════════════════════════════════════════
    SMB2 GAME — CHARACTER SELECT + GAMEPLAY
