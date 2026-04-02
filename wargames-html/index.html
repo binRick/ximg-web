@@ -1996,6 +1996,95 @@ document.getElementById('user-input').addEventListener('keydown', e => {
 /* ─────────────────────────────────────────────────────────────
    WAR DIALER SIMULATION
 ───────────────────────────────────────────────────────────── */
+// ── Dialer Audio Engine ─────────────────────────────────────────────
+let _actx = null, _mgain = null;
+
+function _dctx() {
+  if (!_actx) {
+    _actx = new (window.AudioContext || window.webkitAudioContext)();
+    _mgain = _actx.createGain();
+    _mgain.connect(_actx.destination);
+  }
+  if (_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
+
+function stopAllAudio() {
+  if (!_mgain) return;
+  _mgain.gain.cancelScheduledValues(_actx.currentTime);
+  _mgain.gain.setValueAtTime(0, _actx.currentTime);
+  const t = _actx.currentTime;
+  setTimeout(() => { if (_mgain) _mgain.gain.setValueAtTime(1, _actx.currentTime); }, 120);
+}
+
+function _tones(freqs, dur, vol, t0, type='sine') {
+  const ctx = _dctx();
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.linearRampToValueAtTime(0, t0 + dur);
+  g.connect(_mgain);
+  freqs.forEach(f => {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = f;
+    o.connect(g);
+    o.start(t0);
+    o.stop(t0 + dur + 0.05);
+  });
+  return t0 + dur;
+}
+
+const _DTMF = {
+  '0':[941,1336],'1':[697,1209],'2':[697,1336],'3':[697,1477],
+  '4':[770,1209],'5':[770,1336],'6':[770,1477],
+  '7':[852,1209],'8':[852,1336],'9':[852,1477]
+};
+
+function playDialTone(dur) {
+  stopAllAudio();
+  setTimeout(() => _tones([350,440], dur, 0.12, _dctx().currentTime), 130);
+}
+
+function playDTMF(num) {
+  const digits = num.replace(/\D/g,'').slice(-7);
+  let t = _dctx().currentTime;
+  for (const ch of digits) {
+    if (_DTMF[ch]) t = _tones(_DTMF[ch], 0.065, 0.15, t) + 0.04;
+  }
+}
+
+function playBusy() {
+  const ctx = _dctx();
+  const t = ctx.currentTime;
+  _tones([480,620], 0.5, 0.1, t);
+  _tones([480,620], 0.5, 0.1, t + 1.0);
+}
+
+function playRing() {
+  _tones([440,480], 0.45, 0.09, _dctx().currentTime);
+}
+
+function playModem() {
+  const ctx = _dctx();
+  let t = ctx.currentTime;
+  // CED answer tone 2100 Hz
+  _tones([2100], 0.85, 0.1, t);
+  t += 0.95;
+  // V.22 handshake squeal
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.linearRampToValueAtTime(0, t + 2.8);
+  g.connect(_mgain);
+  const o = ctx.createOscillator();
+  o.type = 'sawtooth';
+  const sq = [1200,1800,2200,1070,2100,900,1500,2400,1200,1800,2100,1070,900,2200,1500,1200];
+  sq.forEach((f,i) => o.frequency.setValueAtTime(f, t + i * 0.175));
+  o.connect(g);
+  o.start(t);
+  o.stop(t + 2.9);
+}
+// ────────────────────────────────────────────────────────────────────
+
 let dialerTimer = null;
 let dialerRunning = false;
 let dialerCurrent = 0;
@@ -2078,6 +2167,7 @@ function dialerStep() {
   if (outcome === 0) {
     // Only show a sample of no-answers to avoid flooding
     if (dialerStats.dialed % 7 === 0) {
+      playDTMF(fullNum);
       dialOut('DIALING ' + fullNum + ' ... NO ANSWER', 'dl-dial');
     }
     dialerStats.noans++;
@@ -2089,6 +2179,8 @@ function dialerStep() {
 
   if (outcome === 1) {
     if (dialerStats.dialed % 5 === 0) {
+      playDTMF(fullNum);
+      setTimeout(playBusy, 500);
       dialOut('DIALING ' + fullNum + ' ... BUSY', 'dl-busy');
     }
     dialerStats.busy++;
@@ -2106,11 +2198,14 @@ function dialerStep() {
   dialerHits.push({ num: fullNum, label, baud, isWopr });
   updateStats();
 
+  playDTMF(fullNum);
+  setTimeout(playRing, 500);
   dialOut('DIALING ' + fullNum + ' ... RINGING', 'dl-ring');
 
   if (isWopr) {
     wopnFound = true;
     setTimeout(() => {
+      playModem();
       dialOut('CARRIER DETECTED — ' + baud + ' BAUD', 'dl-wopr');
       dialOut('*** CONNECT ' + baud + ' ***', 'dl-wopr');
       dialOut('IDENTIFICATION: ' + label, 'dl-wopr');
@@ -2126,6 +2221,7 @@ function dialerStep() {
   }
 
   setTimeout(() => {
+    playModem();
     dialOut('CARRIER DETECTED — ' + baud + ' BAUD', 'dl-hit');
     dialOut('CONNECT ' + baud + ' // ' + label, 'dl-hit');
     addHit(fullNum, label, baud, false);
@@ -2157,6 +2253,7 @@ function dialerStart() {
 
   const out = document.getElementById('dialer-output');
   out.innerHTML = '';
+  playDialTone(1.1);
   dialOut('WAR DIALER v2.3 — DEMON DIALING SYSTEM', 'dl-info');
   dialOut('Target: (' + dialerAreaCode + ') ' +
     String(dialerCurrent).padStart(4,'0').slice(0,3) + '-XXXX  through  ' +
@@ -2171,6 +2268,7 @@ function dialerStart() {
 function dialerStop() {
   dialerRunning = false;
   clearTimeout(dialerTimer);
+  stopAllAudio();
   document.getElementById('wd-start-btn').style.display = '';
   document.getElementById('wd-stop-btn').style.display  = 'none';
   if (document.getElementById('ds-status').textContent === 'SCANNING') {
