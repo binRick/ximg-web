@@ -12,25 +12,31 @@ sys.argv[0] = 'sshd: listener'
 LOG_DIR  = '/ssh-logs'
 HOST_KEY = paramiko.RSAKey.generate(2048)
 
+# Track cumulative auth attempts per IP across connections
+_auth_attempts = {}
+_auth_lock = threading.Lock()
+
 
 class HoneypotServer(paramiko.ServerInterface):
-    def __init__(self):
+    def __init__(self, ip):
         self.shell_ready = threading.Event()
         self.pty_w = 80
         self.pty_h = 24
         self.username = ''
         self.password = ''
-        self.auth_attempts = 0
+        self.ip = ip
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == 'session' \
                else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
     def check_auth_password(self, username, password):
-        self.auth_attempts += 1
         self.username = username
         self.password = password
-        if self.auth_attempts < 10:
+        with _auth_lock:
+            _auth_attempts[self.ip] = _auth_attempts.get(self.ip, 0) + 1
+            count = _auth_attempts[self.ip]
+        if count < 10:
             return paramiko.AUTH_FAILED
         return paramiko.AUTH_SUCCESSFUL
 
@@ -63,7 +69,7 @@ def handle(sock, addr):
     trans = paramiko.Transport(sock)
     trans.local_version = 'SSH-2.0-OpenSSH_8.9p1'
     trans.add_server_key(HOST_KEY)
-    srv = HoneypotServer()
+    srv = HoneypotServer(addr[0])
 
     try:
         trans.start_server(server=srv)
