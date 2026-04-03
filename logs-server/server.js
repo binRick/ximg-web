@@ -292,17 +292,12 @@ const HTML = `<!DOCTYPE html>
     .ssh-session-name{color:var(--text);word-break:break-all;display:flex;align-items:baseline;gap:.4rem}
     .ssh-flag{font-size:1rem;line-height:1;flex-shrink:0}
     .ssh-session-meta{color:var(--dim);font-size:.68rem;margin-top:1px}
-    #ssh-right{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
+    #ssh-right{flex:1;overflow:hidden;display:flex;flex-direction:column}
     #ssh-content{flex:1;overflow-y:auto;padding:1rem;font-size:.76rem;line-height:1.6;
       white-space:pre-wrap;word-break:break-all}
     #ssh-content::-webkit-scrollbar{width:6px}
     #ssh-content::-webkit-scrollbar-track{background:transparent}
     #ssh-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-    #ssh-map-widget{position:absolute;top:.75rem;right:.75rem;width:320px;display:none;
-      border:1px solid rgba(0,255,65,.45);border-radius:2px;
-      box-shadow:0 0 24px rgba(0,255,65,.1),0 0 0 1px rgba(0,255,65,.06);
-      background:#010901;overflow:hidden;z-index:5}
-    #ssh-map-canvas{display:block;width:320px;height:200px}
     .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
     .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
     .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 1fr;gap:.75rem;
@@ -389,7 +384,6 @@ const HTML = `<!DOCTYPE html>
     <div id="ssh-list"><div class="ssh-empty">Loading sessions…</div></div>
     <div id="ssh-right">
       <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
-      <div id="ssh-map-widget"><canvas id="ssh-map-canvas" width="640" height="400"></canvas></div>
     </div>
   </div>
 
@@ -498,183 +492,7 @@ const HTML = `<!DOCTYPE html>
     const logContainer = document.getElementById('log-container');
     const sshList      = document.getElementById('ssh-list');
     const sshContent   = document.getElementById('ssh-content');
-    const sshMapWidget = document.getElementById('ssh-map-widget');
-    const sshMapCanvas = document.getElementById('ssh-map-canvas');
     let sshMode = false;
-    let mapAnimId = null;
-
-    // ── World map: load Natural Earth 110m topojson, decode to [lon,lat] rings ─
-    let worldRings = null;
-
-    async function loadWorldMap() {
-      if (worldRings) return worldRings;
-      try {
-        const topo = JSON.parse(fs.readFileSync(path.join(__dirname, 'vendor/land-110m.json'), 'utf8'));
-        const { scale: [sx, sy], translate: [tx, ty] } = topo.transform;
-
-        // Delta-decode arcs → geographic [lon, lat]
-        const arcs = topo.arcs.map(arc => {
-          let x = 0, y = 0;
-          return arc.map(([dx, dy]) => [x += dx, y += dy]).map(([ix, iy]) => [ix * sx + tx, iy * sy + ty]);
-        });
-
-        // Build rings from land MultiPolygon (outer ring of every polygon only)
-        const rings = [];
-        function addGeom(geom) {
-          const polys = geom.type === 'MultiPolygon' ? geom.arcs : [geom.arcs];
-          polys.forEach(poly => {
-            const pts = [];
-            poly[0].forEach(i => { // outer ring only
-              const arc = i >= 0 ? arcs[i] : [...arcs[~i]].reverse();
-              pts.push(...arc);
-            });
-            if (pts.length) rings.push(pts);
-          });
-        }
-        const land = topo.objects.land;
-        if (land.type === 'GeometryCollection') land.geometries.forEach(addGeom);
-        else addGeom(land);
-
-        worldRings = rings;
-        return rings;
-      } catch(e) {
-        return [];
-      }
-    }
-
-    function drawMapFrame(ctx, W, H, lat, lon, phase, rings) {
-      // Mercator projection, fitted to canvas height (shows ~±83°)
-      const mercMax = Math.log(Math.tan(Math.PI / 4 + 83 * Math.PI / 360));
-      function proj(plon, plat) {
-        const x = (plon + 180) / 360 * W;
-        const latC = Math.max(-83, Math.min(83, plat));
-        const mercY = Math.log(Math.tan(Math.PI / 4 + latC * Math.PI / 360));
-        const y = H / 2 - (H / (2 * mercMax)) * mercY;
-        return [x, y];
-      }
-
-      // Background
-      ctx.fillStyle = '#010901';
-      ctx.fillRect(0, 0, W, H);
-
-      // Graticule grid (every 30°)
-      ctx.lineWidth = 0.4;
-      ctx.strokeStyle = 'rgba(0,255,65,.07)';
-      for (let g = -180; g <= 180; g += 30) {
-        const [x] = proj(g, 0);
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      }
-      for (let g = -80; g <= 80; g += 30) {
-        ctx.beginPath();
-        for (let lon2 = -180; lon2 <= 180; lon2 += 2) {
-          const [x, y] = proj(lon2, g);
-          lon2 === -180 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-      // Equator & prime meridian brighter
-      ctx.strokeStyle = 'rgba(0,255,65,.2)';
-      ctx.lineWidth = 0.6;
-      const [mx] = proj(0, 0);
-      ctx.beginPath();
-      for (let lon2 = -180; lon2 <= 180; lon2 += 2) {
-        const [x, y] = proj(lon2, 0);
-        lon2 === -180 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, H); ctx.stroke();
-
-      // Land
-      ctx.fillStyle = 'rgba(0,255,65,.18)';
-      ctx.strokeStyle = 'rgba(0,255,65,.65)';
-      ctx.lineWidth = 0.6;
-      (rings || []).forEach(ring => {
-        ctx.beginPath();
-        ring.forEach(([plon, plat], i) => {
-          const [x, y] = proj(plon, plat);
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        });
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      });
-
-      // Target
-      const [tx2, ty2] = proj(lon, lat);
-
-      // Pulsing rings
-      for (let i = 0; i < 3; i++) {
-        const p = (phase + i / 3) % 1;
-        ctx.strokeStyle = \`rgba(0,255,65,\${(1 - p) * 0.75})\`;
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(tx2, ty2, p * 18, 0, Math.PI * 2); ctx.stroke();
-      }
-
-      // Crosshair
-      ctx.strokeStyle = 'rgba(0,255,65,.9)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(tx2 - 22, ty2); ctx.lineTo(tx2 - 5, ty2);
-      ctx.moveTo(tx2 + 5,  ty2); ctx.lineTo(tx2 + 22, ty2);
-      ctx.moveTo(tx2, ty2 - 22); ctx.lineTo(tx2, ty2 - 5);
-      ctx.moveTo(tx2, ty2 + 5);  ctx.lineTo(tx2, ty2 + 22);
-      ctx.stroke();
-
-      // Center dot (glowing)
-      ctx.shadowColor = '#00ff41';
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = '#00ff41';
-      ctx.beginPath(); ctx.arc(tx2, ty2, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Corner brackets
-      ctx.strokeStyle = 'rgba(0,255,65,.5)';
-      ctx.lineWidth = 1.5;
-      const b = 8;
-      [[0,0],[W,0],[0,H],[W,H]].forEach(([cx, cy]) => {
-        const sx2 = cx === 0 ? 1 : -1, sy2 = cy === 0 ? 1 : -1;
-        ctx.beginPath();
-        ctx.moveTo(cx + sx2 * b, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy2 * b);
-        ctx.stroke();
-      });
-
-      // Coordinate label
-      const ns = lat >= 0 ? 'N' : 'S', ew = lon >= 0 ? 'E' : 'W';
-      ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = 'rgba(0,255,65,.8)';
-      ctx.textAlign = 'left';
-      ctx.fillText(Math.abs(lat).toFixed(2) + '°' + ns + '  ' + Math.abs(lon).toFixed(2) + '°' + ew, 5, H - 5);
-
-      // Title
-      ctx.font = '7px monospace';
-      ctx.fillStyle = 'rgba(0,255,65,.35)';
-      ctx.textAlign = 'center';
-      ctx.fillText('THREAT ORIGIN // TACTICAL OVERLAY', W / 2, 8);
-      ctx.textAlign = 'left';
-    }
-
-    async function startMapAnim(lat, lon) {
-      stopMapAnim();
-      const rings = await loadWorldMap();
-      const ctx = sshMapCanvas.getContext('2d');
-      const W = sshMapCanvas.width, H = sshMapCanvas.height;
-      let phase = 0;
-      // Draw static background once (land doesn't move)
-      drawMapFrame(ctx, W, H, lat, lon, 0, rings);
-      // Only animate the target overlay on a separate pass
-      function frame() {
-        drawMapFrame(ctx, W, H, lat, lon, phase, rings);
-        phase = (phase + 0.018) % 1;
-        mapAnimId = requestAnimationFrame(frame);
-      }
-      sshMapWidget.style.display = 'block';
-      frame();
-    }
-
-    function stopMapAnim() {
-      if (mapAnimId) { cancelAnimationFrame(mapAnimId); mapAnimId = null; }
-      sshMapWidget.style.display = 'none';
-    }
 
     function enterSshMode() {
       sshMode = true;
@@ -691,7 +509,6 @@ const HTML = `<!DOCTYPE html>
 
     function leaveSshMode() {
       sshMode = false;
-      stopMapAnim();
       sshTab.classList.remove('active');
       document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
       document.querySelector('.tab[data-site="all"]').classList.add('active');
@@ -748,11 +565,8 @@ const HTML = `<!DOCTYPE html>
         .then(text => {
           sshContent.textContent = text;
           sshContent.scrollTop = 0;
-          const geo = sessionGeo.get(filename);
-          if (geo && (geo.lat || geo.lon)) startMapAnim(geo.lat, geo.lon);
-          else stopMapAnim();
         })
-        .catch(() => { sshContent.textContent = 'Failed to load session.'; stopMapAnim(); });
+        .catch(() => { sshContent.textContent = 'Failed to load session.'; });
     }
 
     sshTab.addEventListener('click', () => {
