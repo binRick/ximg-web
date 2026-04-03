@@ -8,7 +8,7 @@
     { label: 'Culture', apps: [
       ['america','america'],['coldwar','coldwar'],['florida','florida'],
       ['guns','guns'],['moto','moto'],
-      ['tampa','tampa'],['trump','trump'],['wood','wood']
+      ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
@@ -21,7 +21,7 @@
       ['apps','apps'],['change','change'],['logs','logs'],['mail','mail'],['nav','nav'],['ximg','ximg']
     ]},
     { label: 'More', apps: [
-      ['butterfly','butterfly'],['rx','RxFitt'],['wargames','wargames']
+      ['butterfly','butterfly'],['rx','RxFitt']
     ]},
   ];
 
