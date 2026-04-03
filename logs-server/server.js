@@ -111,6 +111,88 @@ const LOG_FILES = {
   stats:       'stats.access.log',
 };
 
+// ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
+const IDS_EVE_LOG    = '/var/log/suricata/eve.json';
+const IDS_MAX_ALERTS = 1000;
+
+const idsAlerts     = [];
+const idsByProto    = {};
+const idsBySeverity = { 1: 0, 2: 0, 3: 0 };
+const idsBySig      = {};
+const idsByCategory = {};
+const idsBySrcIp    = {};
+const idsHourly     = new Array(24).fill(0);
+let   idsTotalCount = 0;
+const idsWsClients  = new Set();
+
+function parseEveAlert(line) {
+  try {
+    const ev = JSON.parse(line);
+    if (ev.event_type !== 'alert') return null;
+    const a = ev.alert || {};
+    return {
+      ts:       ev.timestamp ? ev.timestamp.slice(0, 19).replace('T', ' ') : '',
+      srcIp:    ev.src_ip    || '',
+      srcPort:  ev.src_port  || 0,
+      dstIp:    ev.dest_ip   || '',
+      dstPort:  ev.dest_port || 0,
+      proto:    ev.proto     || '',
+      sig:      a.signature  || '',
+      sigId:    a.signature_id || 0,
+      category: a.category   || '',
+      severity: Math.min(3, Math.max(1, a.severity || 3)),
+      action:   a.action     || 'allowed',
+    };
+  } catch (_) { return null; }
+}
+
+function idsIngestAlert(alert) {
+  idsByProto[alert.proto]       = (idsByProto[alert.proto]       || 0) + 1;
+  idsBySeverity[alert.severity] = (idsBySeverity[alert.severity] || 0) + 1;
+  if (alert.sig)      idsBySig[alert.sig]           = (idsBySig[alert.sig]           || 0) + 1;
+  if (alert.category) idsByCategory[alert.category] = (idsByCategory[alert.category] || 0) + 1;
+  idsTotalCount++;
+  if (alert.srcIp) {
+    if (!idsBySrcIp[alert.srcIp]) idsBySrcIp[alert.srcIp] = { count: 0, lastSeen: '', geo: {} };
+    idsBySrcIp[alert.srcIp].count++;
+    idsBySrcIp[alert.srcIp].lastSeen = alert.ts;
+  }
+  idsHourly[new Date().getHours()] = (idsHourly[new Date().getHours()] || 0) + 1;
+  idsAlerts.push(alert);
+  if (idsAlerts.length > IDS_MAX_ALERTS) idsAlerts.shift();
+}
+
+async function idsEnrichAndBroadcast(alert) {
+  if (alert.srcIp) {
+    const geo = await lookupGeo(alert.srcIp);
+    alert.countryCode = geo.countryCode;
+    alert.country     = geo.country;
+    alert.city        = geo.city;
+    alert.lat         = geo.lat;
+    alert.lon         = geo.lon;
+    if (idsBySrcIp[alert.srcIp]) idsBySrcIp[alert.srcIp].geo = geo;
+  }
+  const msg = JSON.stringify(alert);
+  idsWsClients.forEach(ws => { try { if (ws.readyState === ws.OPEN) ws.send(msg); } catch(_) {} });
+}
+
+// Startup: seed IDS stats from recent EVE log history
+(function seedIdsHistory() {
+  try {
+    lastLines(IDS_EVE_LOG, 500).forEach(line => {
+      const a = parseEveAlert(line); if (a) idsIngestAlert(a);
+    });
+    const uniqueIps = [...new Set(idsAlerts.map(a => a.srcIp).filter(Boolean))];
+    Promise.all(uniqueIps.map(ip => lookupGeo(ip).then(geo => {
+      idsAlerts.filter(a => a.srcIp === ip).forEach(a => {
+        a.countryCode = geo.countryCode; a.country = geo.country;
+        a.city = geo.city; a.lat = geo.lat; a.lon = geo.lon;
+      });
+      if (idsBySrcIp[ip]) idsBySrcIp[ip].geo = geo;
+    }))).catch(() => {});
+  } catch (_) {}
+})();
+
 // ── Read last N lines from end of file ───────────────────────────────────────
 function lastLines(filePath, n) {
   try {
@@ -394,6 +476,7 @@ const HTML = `<!DOCTYPE html>
 
     document.querySelectorAll('.tab:not(#ssh-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (sshMode) return; // leaveSshMode handles this case
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentSite = btn.dataset.site;
@@ -610,10 +693,14 @@ const HTML = `<!DOCTYPE html>
       sshMode = false;
       stopMapAnim();
       sshTab.classList.remove('active');
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      document.querySelector('.tab[data-site="all"]').classList.add('active');
+      currentSite = 'all';
       document.getElementById('pause-btn').style.display = '';
       document.querySelector('.stats').style.display = '';
       sshContainer.style.display = 'none';
       logContainer.style.display = '';
+      connect('all');
     }
 
     function countryFlag(code) {
@@ -674,7 +761,7 @@ const HTML = `<!DOCTYPE html>
 
     document.querySelectorAll('.tab:not(#ssh-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (sshMode) leaveSshMode();
+        if (sshMode) { leaveSshMode(); }
       });
     });
   </script>
@@ -799,6 +886,45 @@ const server = http.createServer(async (req, res) => {
     } catch (_) { res.writeHead(404); res.end(); }
     return;
   }
+
+  // ── IDS endpoints ──────────────────────────────────────────────────────────
+  if (req.url === '/land-110m.json') {
+    try {
+      const data = fs.readFileSync(path.join(__dirname, 'vendor/land-110m.json'));
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400', 'Access-Control-Allow-Origin': '*' });
+      res.end(data);
+    } catch (_) { res.writeHead(404); res.end(); }
+    return;
+  }
+
+  if (req.url === '/ids-stats') {
+    const now = Date.now();
+    const last1h = idsAlerts.filter(a => {
+      try { return (now - new Date(a.ts.replace(' ', 'T') + 'Z').getTime()) < 3600000; } catch(_) { return false; }
+    }).length;
+    const topSigs     = Object.entries(idsBySig).sort((a,b) => b[1]-a[1]).slice(0, 15);
+    const topCats     = Object.entries(idsByCategory).sort((a,b) => b[1]-a[1]).slice(0, 10);
+    const topSrcIps   = Object.entries(idsBySrcIp).sort((a,b) => b[1].count-a[1].count).slice(0, 20)
+                          .map(([ip, d]) => ({ ip, count: d.count, lastSeen: d.lastSeen, ...d.geo }));
+    const recent      = idsAlerts.slice(-100).reverse();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({
+      total: idsTotalCount,
+      last1h,
+      inMemory: idsAlerts.length,
+      uniqueIps: Object.keys(idsBySrcIp).length,
+      highSev: idsBySeverity[1] || 0,
+      byProto: idsByProto,
+      bySeverity: idsBySeverity,
+      topSigs,
+      topCats,
+      topSrcIps,
+      hourlyBuckets: idsHourly,
+      recent,
+    }));
+    return;
+  }
+
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(HTML);
 });
@@ -846,6 +972,28 @@ wss.on('connection', (ws, req) => {
   const stop = tailFile(logFile, send);
   ws.on('close', stop);
   ws.on('error', stop);
+});
+
+// ── IDS WebSocket (/ids-ws) ───────────────────────────────────────────────────
+const idsWss = new WebSocketServer({ server, path: '/ids-ws' });
+
+idsWss.on('connection', (ws) => {
+  idsWsClients.add(ws);
+  // Replay last 100 geo-enriched alerts on connect
+  const recent = idsAlerts.slice(-100);
+  for (const alert of recent) {
+    try { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(alert)); } catch(_) {}
+  }
+  ws.on('close', () => idsWsClients.delete(ws));
+  ws.on('error', () => idsWsClients.delete(ws));
+});
+
+// Tail EVE log for live alerts (started after server is ready)
+tailFile(IDS_EVE_LOG, async line => {
+  const alert = parseEveAlert(line);
+  if (!alert) return;
+  idsIngestAlert(alert);
+  await idsEnrichAndBroadcast(alert);
 });
 
 server.listen(PORT, () => console.log('logs server listening on :' + PORT));

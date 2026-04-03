@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IDS — ids.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d1117'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='%23ff4444' font-family='monospace' font-weight='bold'>⚠</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d1117;--green:#00ff41;--red:#ff4444;--orange:#ff8800;
+      --yellow:#facc15;--dim:#484f58;--text:#c9d1d9;--border:rgba(255,255,255,.08);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+
+    /* ── header ── */
+    .hdr{display:flex;align-items:center;gap:1rem;padding:.6rem 1rem;
+      background:rgba(10,10,15,.95);border-bottom:1px solid var(--border);
+      position:sticky;top:0;z-index:50;flex-wrap:wrap}
+    .hdr-title{font-size:1rem;font-weight:700;color:var(--red);letter-spacing:.05em}
+    .hdr-sub{font-size:.72rem;color:var(--dim)}
+    .hdr-status{margin-left:auto;display:flex;align-items:center;gap:.5rem;font-size:.72rem}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+    .dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .badge{padding:.15rem .45rem;border-radius:4px;font-size:.68rem;font-weight:700}
+    .badge-red{background:rgba(255,68,68,.15);color:var(--red);border:1px solid rgba(255,68,68,.3)}
+    .badge-orange{background:rgba(255,136,0,.15);color:var(--orange);border:1px solid rgba(255,136,0,.3)}
+    .badge-yellow{background:rgba(250,204,21,.12);color:var(--yellow);border:1px solid rgba(250,204,21,.25)}
+    .badge-dim{background:rgba(255,255,255,.06);color:var(--dim);border:1px solid var(--border)}
+    .counter{font-size:1.1rem;font-weight:700;color:var(--text)}
+    .counter-lbl{font-size:.62rem;color:var(--dim);margin-left:.15rem}
+
+    /* ── sub-nav ── */
+    .subnav{display:flex;gap:.35rem;padding:.45rem .75rem;
+      background:rgba(10,10,15,.8);border-bottom:1px solid var(--border);overflow-x:auto}
+    .tab{padding:.3rem .75rem;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--dim);
+      font-family:'Courier New',monospace;transition:all .15s;white-space:nowrap}
+    .tab:hover:not(.active){border-color:rgba(255,255,255,.18);color:var(--text)}
+    .tab.active{color:var(--red);border-color:rgba(255,68,68,.4);background:rgba(255,68,68,.07)}
+
+    /* ── layout ── */
+    .page{display:none;padding:0 1rem 1.5rem}
+    .page.active{display:block}
+
+    /* ── live feed ── */
+    .toolbar{display:flex;align-items:center;gap:.75rem;padding:.5rem 0;flex-wrap:wrap}
+    .btn{padding:.28rem .7rem;border-radius:5px;font-size:.72rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);
+      font-family:'Courier New',monospace;transition:all .15s}
+    .btn:hover{background:rgba(255,255,255,.09)}
+    .btn.paused{color:var(--green);border-color:rgba(0,255,65,.4)}
+    .filter-row{display:flex;gap:.4rem;flex-wrap:wrap}
+    .filter{padding:.22rem .55rem;border-radius:4px;font-size:.68rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--dim);
+      font-family:'Courier New',monospace;transition:all .15s}
+    .filter:hover,.filter.on{border-color:rgba(255,68,68,.4);color:var(--red);background:rgba(255,68,68,.07)}
+
+    .feed{font-size:.71rem;line-height:1.55}
+    .row{display:grid;grid-template-columns:135px 42px 130px 1fr 56px 56px;
+      gap:.35rem;padding:.28rem .4rem;border-bottom:1px solid rgba(255,255,255,.03);
+      align-items:center;transition:background .1s}
+    .row:hover{background:rgba(255,255,255,.025)}
+    .row.sev1{border-left:2px solid var(--red)}
+    .row.sev2{border-left:2px solid var(--orange)}
+    .row.sev3{border-left:2px solid rgba(250,204,21,.4)}
+    .col-ts{color:var(--dim);font-size:.67rem}
+    .col-sig{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+    .col-ip{color:#60a5fa;white-space:nowrap}
+    .col-geo{color:var(--dim);font-size:.66rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .col-port{color:#a78bfa;text-align:right;font-size:.7rem}
+    .col-proto{color:var(--dim);font-size:.67rem;text-align:right}
+    .connecting{color:var(--dim);padding:1.5rem;animation:blink 1s step-end infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* ── stats ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;padding:.75rem 0}
+    .stat-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem}
+    .stat-val{font-size:1.6rem;font-weight:700;color:var(--text);line-height:1}
+    .stat-val.red{color:var(--red)}
+    .stat-val.orange{color:var(--orange)}
+    .stat-val.green{color:var(--green)}
+    .stat-lbl{font-size:.63rem;color:var(--dim);margin-top:.2rem}
+    .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.75rem 0}
+    .chart-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem}
+    .chart-title{font-size:.72rem;color:var(--dim);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em}
+    canvas{display:block;width:100% !important}
+    .heatmap-wrap{margin:.75rem 0;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem}
+    .heatmap-title{font-size:.72rem;color:var(--dim);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em}
+    .table-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;
+      overflow:hidden;margin:.75rem 0}
+    .table-box table{width:100%;border-collapse:collapse;font-size:.71rem}
+    .table-box th{background:rgba(255,255,255,.04);color:var(--dim);padding:.35rem .6rem;
+      text-align:left;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.05em}
+    .table-box td{padding:.32rem .6rem;border-top:1px solid rgba(255,255,255,.03);color:var(--text)}
+    .table-box tr:hover td{background:rgba(255,255,255,.025)}
+    .bar-bg{background:rgba(255,255,255,.06);border-radius:2px;height:5px;margin-top:3px}
+    .bar-fill{background:var(--red);border-radius:2px;height:5px;transition:width .4s}
+
+    /* ── attackers ── */
+    .atk-table{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+    .atk-table table{width:100%;border-collapse:collapse;font-size:.71rem}
+    .atk-table th{background:rgba(255,255,255,.04);color:var(--dim);padding:.4rem .7rem;
+      text-align:left;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.05em}
+    .atk-table td{padding:.35rem .7rem;border-top:1px solid rgba(255,255,255,.03)}
+    .atk-table tr:hover td{background:rgba(255,255,255,.025)}
+    .rank{color:var(--dim);font-size:.65rem}
+
+    /* ── map ── */
+    #map-canvas{width:100%;border-radius:8px;border:1px solid var(--border);cursor:crosshair}
+    .map-legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.66rem;color:var(--dim);margin-top:.4rem}
+    .legend-item{display:flex;align-items:center;gap:.3rem}
+    .legend-dot{width:8px;height:8px;border-radius:50%}
+  </style>
+</head>
+<body>
+
+  <!-- header -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">IDS — Intrusion Detection</div>
+      <div class="hdr-sub">Suricata · EVE JSON · live stream</div>
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <span><span class="counter" id="c-total">0</span><span class="counter-lbl">total</span></span>
+      <span><span class="counter red" id="c-high" style="color:var(--red)">0</span><span class="counter-lbl">high</span></span>
+      <span><span class="counter" id="c-ips">0</span><span class="counter-lbl">unique IPs</span></span>
+    </div>
+    <div class="hdr-status">
+      <div class="dot" id="ws-dot"></div>
+      <span id="ws-label" style="color:var(--dim)">connecting…</span>
+    </div>
+  </div>
+
+  <!-- sub-nav -->
+  <div class="subnav">
+    <button class="tab active" data-tab="live">Live Feed</button>
+    <button class="tab" data-tab="stats">Stats</button>
+    <button class="tab" data-tab="attackers">Top Attackers</button>
+    <button class="tab" data-tab="map">Map</button>
+  </div>
+
+  <!-- ── LIVE FEED ── -->
+  <div class="page active" id="page-live">
+    <div class="toolbar">
+      <button class="btn" id="pause-btn">⏸ pause</button>
+      <div class="filter-row" id="sev-filters">
+        <span style="font-size:.68rem;color:var(--dim);align-self:center">severity:</span>
+        <button class="filter on" data-sev="1">P1 critical</button>
+        <button class="filter on" data-sev="2">P2 major</button>
+        <button class="filter on" data-sev="3">P3 minor</button>
+      </div>
+    </div>
+    <div style="font-size:.62rem;color:var(--dim);padding:.2rem .4rem .4rem;
+      display:grid;grid-template-columns:135px 42px 130px 1fr 56px 56px;gap:.35rem">
+      <span>TIMESTAMP</span><span>SEV</span><span>SOURCE IP</span>
+      <span>SIGNATURE</span><span style="text-align:right">PORT</span><span style="text-align:right">PROTO</span>
+    </div>
+    <div class="feed" id="feed"><div class="connecting">connecting to IDS stream…</div></div>
+  </div>
+
+  <!-- ── STATS ── -->
+  <div class="page" id="page-stats">
+    <div class="stats-grid" id="stat-cards">
+      <div class="stat-card"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">total alerts (all time)</div></div>
+      <div class="stat-card"><div class="stat-val red" id="s-high">—</div><div class="stat-lbl">P1 critical</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-1h">—</div><div class="stat-lbl">last hour</div></div>
+      <div class="stat-card"><div class="stat-val green" id="s-ips">—</div><div class="stat-lbl">unique source IPs</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-box">
+        <div class="chart-title">Protocol Distribution</div>
+        <canvas id="chart-proto" height="160"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">Severity Breakdown</div>
+        <canvas id="chart-sev" height="160"></canvas>
+      </div>
+    </div>
+    <div class="heatmap-wrap">
+      <div class="heatmap-title">Alert Volume — 24-Hour Heatmap (UTC)</div>
+      <canvas id="chart-heatmap" height="60"></canvas>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.5rem">
+      <div class="table-box">
+        <table>
+          <thead><tr><th>Top Signatures</th><th style="text-align:right">Count</th></tr></thead>
+          <tbody id="tbl-sigs"></tbody>
+        </table>
+      </div>
+      <div class="table-box">
+        <table>
+          <thead><tr><th>Top Categories</th><th style="text-align:right">Count</th></tr></thead>
+          <tbody id="tbl-cats"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ATTACKERS ── -->
+  <div class="page" id="page-attackers">
+    <div style="padding:.75rem 0;font-size:.72rem;color:var(--dim)">
+      Top source IPs by alert count, with GeoIP resolution.
+    </div>
+    <div class="atk-table">
+      <table>
+        <thead><tr>
+          <th>#</th><th>IP Address</th><th>Country</th><th>City</th>
+          <th style="text-align:right">Alerts</th><th>Last Seen</th>
+        </tr></thead>
+        <tbody id="tbl-attackers"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── MAP ── -->
+  <div class="page" id="page-map">
+    <div style="padding:.75rem 0;font-size:.72rem;color:var(--dim)">
+      Attack origins plotted by GeoIP. Dot size = alert volume. Color = severity (red P1 → yellow P3).
+    </div>
+    <canvas id="map-canvas" height="480"></canvas>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> P1 Critical</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> P2 Major</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> P3 Minor</div>
+    </div>
+    <div id="map-status" style="font-size:.67rem;color:var(--dim);margin-top:.4rem">Loading map data…</div>
+  </div>
+
+  <script src="/shared/nav.js?v=2"></script>
+  <script>
+    const LOGS = 'https://logs.ximg.app';
+    const WS_URL = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//logs.ximg.app/ids-ws';
+
+    // ── Tab switching ──────────────────────────────────────────────────────────
+    const tabs  = document.querySelectorAll('.tab[data-tab]');
+    const pages = document.querySelectorAll('.page');
+
+    tabs.forEach(btn => btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      pages.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('page-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'stats')     refreshStats();
+      if (btn.dataset.tab === 'attackers') refreshAttackers();
+      if (btn.dataset.tab === 'map')       refreshMap();
+    }));
+
+    // ── Header counters ────────────────────────────────────────────────────────
+    let totalCount = 0, highCount = 0, uniqueIps = new Set();
+    const cTotal = document.getElementById('c-total');
+    const cHigh  = document.getElementById('c-high');
+    const cIps   = document.getElementById('c-ips');
+
+    function updateCounters() {
+      cTotal.textContent = totalCount;
+      cHigh.textContent  = highCount;
+      cIps.textContent   = uniqueIps.size;
+    }
+
+    // ── Live feed ──────────────────────────────────────────────────────────────
+    const feed      = document.getElementById('feed');
+    const pauseBtn  = document.getElementById('pause-btn');
+    const MAX_ROWS  = 500;
+    let paused      = false;
+    let sevFilter   = new Set(['1','2','3']);
+    let ws          = null;
+    let reconnTimer = null;
+
+    document.getElementById('sev-filters').addEventListener('click', e => {
+      const f = e.target.closest('.filter');
+      if (!f) return;
+      const s = f.dataset.sev;
+      if (sevFilter.has(s)) sevFilter.delete(s); else sevFilter.add(s);
+      f.classList.toggle('on', sevFilter.has(s));
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      paused = !paused;
+      pauseBtn.textContent = paused ? '▶ resume' : '⏸ pause';
+      pauseBtn.classList.toggle('paused', paused);
+    });
+
+    function countryFlag(code) {
+      if (!code || code.length !== 2) return '';
+      return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+    }
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function sevBadge(s) {
+      if (s===1) return '<span class="badge badge-red">P1</span>';
+      if (s===2) return '<span class="badge badge-orange">P2</span>';
+      return '<span class="badge badge-yellow">P3</span>';
+    }
+
+    function addRow(d) {
+      if (paused) return;
+      if (!sevFilter.has(String(d.severity))) return;
+      if (feed.querySelector('.connecting')) feed.innerHTML = '';
+      const el = document.createElement('div');
+      const geo = d.countryCode ? (countryFlag(d.countryCode) + ' ' + (d.city || d.country || d.countryCode)) : '';
+      el.className = 'row sev' + d.severity;
+      el.innerHTML =
+        '<span class="col-ts">'  + esc(d.ts)                             + '</span>' +
+        '<span>'                  + sevBadge(d.severity)                  + '</span>' +
+        '<span class="col-ip">'  + esc(d.srcIp)                          + '</span>' +
+        '<span class="col-sig" title="' + esc(d.sig) + '">' + esc(d.sig) + '</span>' +
+        '<span class="col-port">' + esc(d.dstPort)                       + '</span>' +
+        '<span class="col-proto">'+ esc(d.proto)                          + '</span>';
+      feed.prepend(el);
+      while (feed.children.length > MAX_ROWS) feed.removeChild(feed.lastChild);
+    }
+
+    // ── statsCache for map and attackers ──────────────────────────────────────
+    let statsCache = null;
+
+    function connect() {
+      clearTimeout(reconnTimer);
+      if (ws) { try { ws.onclose = null; ws.close(); } catch(_){} }
+      ws = new WebSocket(WS_URL);
+      const dot   = document.getElementById('ws-dot');
+      const label = document.getElementById('ws-label');
+
+      ws.onopen = () => {
+        dot.className = 'dot live';
+        label.textContent = 'live';
+        label.style.color = 'var(--green)';
+      };
+      ws.onmessage = e => {
+        try {
+          const d = JSON.parse(e.data);
+          // Update counters
+          totalCount++;
+          if (d.severity === 1) highCount++;
+          if (d.srcIp) uniqueIps.add(d.srcIp);
+          updateCounters();
+          addRow(d);
+        } catch(_) {}
+      };
+      ws.onclose = () => {
+        dot.className = 'dot';
+        label.textContent = 'disconnected';
+        label.style.color = 'var(--dim)';
+        reconnTimer = setTimeout(connect, 4000);
+      };
+      ws.onerror = () => { try { ws.close(); } catch(_){} };
+    }
+
+    connect();
+
+    // ── Fetch stats ────────────────────────────────────────────────────────────
+    async function fetchStats() {
+      const r = await fetch(LOGS + '/ids-stats');
+      statsCache = await r.json();
+      // Sync counters from stats (historical + live)
+      document.getElementById('c-total').textContent = statsCache.total;
+      document.getElementById('c-high').textContent  = statsCache.bySeverity[1] || 0;
+      document.getElementById('c-ips').textContent   = statsCache.uniqueIps;
+      totalCount = statsCache.total;
+      highCount  = statsCache.bySeverity[1] || 0;
+      uniqueIps  = new Set(); // reset (stats has authoritative count)
+      return statsCache;
+    }
+
+    // ── Stats page ─────────────────────────────────────────────────────────────
+    async function refreshStats() {
+      const s = await fetchStats().catch(() => null);
+      if (!s) return;
+
+      document.getElementById('s-total').textContent = s.total;
+      document.getElementById('s-high').textContent  = s.bySeverity[1] || 0;
+      document.getElementById('s-1h').textContent    = s.last1h;
+      document.getElementById('s-ips').textContent   = s.uniqueIps;
+
+      // Protocol donut chart
+      drawDonut(document.getElementById('chart-proto'), s.byProto, {
+        '#60a5fa': 'TCP', '#a78bfa': 'UDP', '#34d399': 'ICMP', '#fb923c': 'other',
+      });
+
+      // Severity bar chart
+      drawBars(document.getElementById('chart-sev'), {
+        'P1 Critical': [s.bySeverity[1]||0, '#ff4444'],
+        'P2 Major':    [s.bySeverity[2]||0, '#ff8800'],
+        'P3 Minor':    [s.bySeverity[3]||0, '#facc15'],
+      });
+
+      // 24-hour heatmap
+      drawHeatmap(document.getElementById('chart-heatmap'), s.hourlyBuckets);
+
+      // Top signatures
+      const tbSigs = document.getElementById('tbl-sigs');
+      const maxSig = s.topSigs[0]?.[1] || 1;
+      tbSigs.innerHTML = s.topSigs.map(([sig, cnt]) =>
+        '<tr><td>' + esc(sig.length > 55 ? sig.slice(0, 55) + '…' : sig) +
+        '<div class="bar-bg"><div class="bar-fill" style="width:' + Math.round(cnt/maxSig*100) + '%"></div></div>' +
+        '</td><td style="text-align:right;color:var(--red)">' + cnt + '</td></tr>'
+      ).join('');
+
+      // Top categories
+      const tbCats = document.getElementById('tbl-cats');
+      const maxCat = s.topCats[0]?.[1] || 1;
+      tbCats.innerHTML = s.topCats.map(([cat, cnt]) =>
+        '<tr><td>' + esc(cat) +
+        '<div class="bar-bg"><div class="bar-fill" style="width:' + Math.round(cnt/maxCat*100) + '%;background:var(--orange)"></div></div>' +
+        '</td><td style="text-align:right;color:var(--orange)">' + cnt + '</td></tr>'
+      ).join('');
+    }
+
+    // ── Canvas: donut chart ────────────────────────────────────────────────────
+    function drawDonut(canvas, data, colorMap) {
+      const W = canvas.offsetWidth || 300, H = 160;
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'transparent'; ctx.clearRect(0, 0, W, H);
+
+      const entries = Object.entries(data);
+      const total   = entries.reduce((s, [, v]) => s + v, 0);
+      if (!total) { ctx.fillStyle = 'var(--dim)'; ctx.font = '11px monospace'; ctx.textAlign = 'center'; ctx.fillText('no data', W/2, H/2); return; }
+
+      const cx = H/2, cy = H/2, R = H/2 - 10, r = R * 0.52;
+      const colors = ['#ff4444','#ff8800','#facc15','#60a5fa','#a78bfa','#34d399','#f472b6'];
+      let angle = -Math.PI / 2;
+
+      entries.forEach(([key, val], i) => {
+        const sweep = (val / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, R, angle, angle + sweep);
+        ctx.closePath();
+        const col = colors[i % colors.length];
+        ctx.fillStyle = col;
+        ctx.fill();
+        angle += sweep;
+      });
+
+      // Donut hole
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+      ctx.fillStyle = '#0d1117'; ctx.fill();
+
+      // Center label
+      ctx.fillStyle = 'var(--text)'; ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(total, cx, cy);
+
+      // Legend
+      let lx = H + 10, ly = 14;
+      entries.forEach(([key, val], i) => {
+        const col = colors[i % colors.length];
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(lx + 5, ly, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'var(--text)'; ctx.font = '9px monospace';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(key + ' (' + val + ')', lx + 13, ly);
+        ly += 18;
+      });
+    }
+
+    // ── Canvas: bar chart ──────────────────────────────────────────────────────
+    function drawBars(canvas, data) {
+      const W = canvas.offsetWidth || 300, H = 160;
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+
+      const entries = Object.entries(data);
+      const max     = Math.max(...entries.map(([,[v]]) => v), 1);
+      const pad = 36, barW = Math.floor((W - pad * 2) / entries.length) - 8;
+
+      entries.forEach(([label, [val, col]], i) => {
+        const x  = pad + i * (barW + 8);
+        const bH = Math.round((val / max) * (H - 50));
+        const y  = H - 24 - bH;
+        ctx.fillStyle = col + '33';
+        ctx.fillRect(x, y, barW, bH);
+        ctx.fillStyle = col;
+        ctx.fillRect(x, y, barW, 2);
+        ctx.font = '9px monospace'; ctx.fillStyle = col; ctx.textAlign = 'center';
+        ctx.fillText(val, x + barW/2, y - 4);
+        ctx.fillStyle = 'var(--dim)'; ctx.font = '8px monospace';
+        ctx.fillText(label, x + barW/2, H - 8);
+      });
+    }
+
+    // ── Canvas: 24h heatmap ────────────────────────────────────────────────────
+    function drawHeatmap(canvas, buckets) {
+      const W = canvas.offsetWidth || 600, H = 60;
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+      const max = Math.max(...buckets, 1);
+      const cW  = Math.floor(W / 24);
+      const now = new Date().getHours();
+
+      buckets.forEach((v, h) => {
+        const x    = h * cW;
+        const t    = v / max;
+        const r    = Math.round(t * 255);
+        const g    = Math.round((1 - t) * 68 + t * 68);
+        const b    = Math.round((1 - t) * 68);
+        ctx.fillStyle = `rgba(${r},${g},${b},${0.2 + t * 0.8})`;
+        ctx.fillRect(x + 1, 14, cW - 2, H - 28);
+        ctx.fillStyle = h === now ? 'rgba(0,255,65,.9)' : 'var(--dim)';
+        ctx.font = '7px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(String(h).padStart(2,'0'), x + cW/2, H - 4);
+        ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = 'bold 8px monospace';
+        if (v > 0) ctx.fillText(v, x + cW/2, 10);
+      });
+    }
+
+    // ── Attackers page ─────────────────────────────────────────────────────────
+    async function refreshAttackers() {
+      const s = statsCache || await fetchStats().catch(() => null);
+      if (!s) return;
+      const tbody = document.getElementById('tbl-attackers');
+      const max   = s.topSrcIps[0]?.count || 1;
+      tbody.innerHTML = s.topSrcIps.map((ip, i) => {
+        const flag = ip.countryCode ? countryFlag(ip.countryCode) : '';
+        return '<tr>' +
+          '<td class="rank">' + (i+1) + '</td>' +
+          '<td style="color:#60a5fa;font-weight:600">' + esc(ip.ip) + '</td>' +
+          '<td>' + flag + ' ' + esc(ip.country || ip.countryCode || '—') + '</td>' +
+          '<td style="color:var(--dim)">' + esc(ip.city || '—') + '</td>' +
+          '<td style="text-align:right;color:var(--red);font-weight:700">' + ip.count + '</td>' +
+          '<td style="color:var(--dim);font-size:.66rem">' + esc(ip.lastSeen || '—') + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    // ── Map page ───────────────────────────────────────────────────────────────
+    let worldRings = null;
+    let mapPoints  = [];
+
+    async function loadWorldMap() {
+      if (worldRings) return worldRings;
+      const topo = await fetch(LOGS + '/land-110m.json').then(r => r.json());
+      const { scale: [sx, sy], translate: [tx, ty] } = topo.transform;
+      const arcs = topo.arcs.map(arc => {
+        let x = 0, y = 0;
+        return arc.map(([dx, dy]) => [x += dx, y += dy]).map(([ix, iy]) => [ix * sx + tx, iy * sy + ty]);
+      });
+      const rings = [];
+      function addGeom(geom) {
+        const polys = geom.type === 'MultiPolygon' ? geom.arcs : [geom.arcs];
+        polys.forEach(poly => {
+          const pts = [];
+          poly[0].forEach(i => {
+            const arc = i >= 0 ? arcs[i] : [...arcs[~i]].reverse();
+            pts.push(...arc);
+          });
+          if (pts.length) rings.push(pts);
+        });
+      }
+      const land = topo.objects.land;
+      if (land.type === 'GeometryCollection') land.geometries.forEach(addGeom);
+      else addGeom(land);
+      worldRings = rings;
+      return rings;
+    }
+
+    async function refreshMap() {
+      const status = document.getElementById('map-status');
+      status.textContent = 'Loading…';
+      const s = statsCache || await fetchStats().catch(() => null);
+      if (!s) { status.textContent = 'Failed to load stats.'; return; }
+      const rings = await loadWorldMap().catch(() => null);
+      if (!rings) { status.textContent = 'Failed to load map data.'; return; }
+
+      // Build map points from topSrcIps that have lat/lon
+      mapPoints = s.topSrcIps.filter(ip => ip.lat || ip.lon);
+
+      const canvas = document.getElementById('map-canvas');
+      const W = canvas.offsetWidth || 900;
+      const H = 480;
+      canvas.width = W; canvas.height = H;
+      drawMap(canvas, rings, mapPoints, s);
+      status.textContent = mapPoints.length + ' source IP' + (mapPoints.length !== 1 ? 's' : '') + ' plotted · ' + s.topSrcIps.length + ' total attackers';
+    }
+
+    function drawMap(canvas, rings, points, s) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const mercMax = Math.log(Math.tan(Math.PI / 4 + 83 * Math.PI / 360));
+
+      function proj(lon, lat) {
+        const x  = (lon + 180) / 360 * W;
+        const lc = Math.max(-83, Math.min(83, lat));
+        const my = Math.log(Math.tan(Math.PI / 4 + lc * Math.PI / 360));
+        return [x, H / 2 - (H / (2 * mercMax)) * my];
+      }
+
+      // Background
+      ctx.fillStyle = '#010901';
+      ctx.fillRect(0, 0, W, H);
+
+      // Graticule
+      ctx.lineWidth = 0.3;
+      ctx.strokeStyle = 'rgba(0,255,65,.05)';
+      for (let g = -180; g <= 180; g += 30) {
+        const [x] = proj(g, 0);
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let g = -80; g <= 80; g += 30) {
+        ctx.beginPath();
+        for (let lo = -180; lo <= 180; lo += 2) {
+          const [x, y] = proj(lo, g);
+          lo === -180 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // Land
+      ctx.fillStyle = 'rgba(0,255,65,.12)';
+      ctx.strokeStyle = 'rgba(0,255,65,.4)';
+      ctx.lineWidth = 0.5;
+      rings.forEach(ring => {
+        ctx.beginPath();
+        ring.forEach(([lo, la], i) => {
+          const [x, y] = proj(lo, la);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      // Attack dots
+      const maxCount = points[0]?.count || 1;
+      points.forEach(p => {
+        if (!p.lat && !p.lon) return;
+        const [x, y] = proj(p.lon, p.lat);
+        const radius = 3 + Math.sqrt(p.count / maxCount) * 9;
+        // Glow
+        const grd = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+        const col = p.count > maxCount * 0.5 ? '#ff4444' : p.count > maxCount * 0.2 ? '#ff8800' : '#facc15';
+        grd.addColorStop(0, col + '88');
+        grd.addColorStop(1, col + '00');
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(x, y, radius * 2, 0, Math.PI * 2); ctx.fill();
+        // Core dot
+        ctx.fillStyle = col;
+        ctx.shadowColor = col; ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.arc(x, y, Math.max(2, radius * 0.6), 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // Corner brackets
+      ctx.strokeStyle = 'rgba(0,255,65,.4)'; ctx.lineWidth = 1.5;
+      [[0,0],[W,0],[0,H],[W,H]].forEach(([cx, cy]) => {
+        const bx = cx === 0 ? 1 : -1, by = cy === 0 ? 1 : -1, b = 10;
+        ctx.beginPath();
+        ctx.moveTo(cx + bx * b, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + by * b);
+        ctx.stroke();
+      });
+
+      // Label
+      ctx.font = '7px monospace'; ctx.fillStyle = 'rgba(0,255,65,.35)';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText('IDS · ATTACK ORIGINS · ' + new Date().toUTCString().slice(0, 22), W - 6, H - 4);
+    }
+  </script>
+</body>
+</html>
