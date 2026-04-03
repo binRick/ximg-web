@@ -18,12 +18,16 @@ class HoneypotServer(paramiko.ServerInterface):
         self.shell_ready = threading.Event()
         self.pty_w = 80
         self.pty_h = 24
+        self.username = ''
+        self.password = ''
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == 'session' \
                else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
     def check_auth_password(self, username, password):
+        self.username = username
+        self.password = password
         return paramiko.AUTH_SUCCESSFUL
 
     def check_auth_publickey(self, username, key):
@@ -106,6 +110,8 @@ def handle(sock, addr):
             f"=== SSH Honeypot Session ===\n"
             f"Time:   {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n"
             f"Client: {addr[0]}:{addr[1]}\n"
+            f"User:   {srv.username}\n"
+            f"Pass:   {srv.password}\n"
             f"{'='*28}\n\n"
         ).encode())
 
