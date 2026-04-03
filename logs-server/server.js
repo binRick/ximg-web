@@ -743,7 +743,17 @@ const server = http.createServer(async (req, res) => {
   res.end(HTML);
 });
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss    = new WebSocketServer({ noServer: true });
+const idsWss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+  const pathname = req.url ? req.url.split('?')[0] : '';
+  if (pathname === '/ids-ws') {
+    idsWss.handleUpgrade(req, socket, head, ws => idsWss.emit('connection', ws, req));
+  } else {
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+  }
+});
 
 wss.on('connection', (ws, req) => {
   const site = new URL(req.url, 'http://x').searchParams.get('site') || 'ximg';
@@ -789,8 +799,6 @@ wss.on('connection', (ws, req) => {
 });
 
 // ── IDS WebSocket (/ids-ws) ───────────────────────────────────────────────────
-const idsWss = new WebSocketServer({ server, path: '/ids-ws' });
-
 idsWss.on('connection', (ws) => {
   idsWsClients.add(ws);
   // Replay last 100 geo-enriched alerts on connect
