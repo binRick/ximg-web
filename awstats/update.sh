@@ -10,6 +10,17 @@ LOGDIR=/logs
 
 echo "[$(date)] Starting AWStats update..."
 
+# ── Dark mode + nav injection ─────────────────────────────────────────────────
+# Inject dark.css link and shared nav bar into an AWStats-generated HTML file
+inject_theme() {
+    local f="$1"
+    [ -f "$f" ] || return
+    perl -i -pe '
+        s|</head>|<link rel="stylesheet" href="/dark.css"></head>|;
+        s|</body>|<script src="/shared/nav.js?v=2"></script></body>|;
+    ' "$f"
+}
+
 # ── Per-site update ───────────────────────────────────────────────────────────
 for site in $SITES; do
     logfile="${LOGDIR}/${site}.access.log"
@@ -25,6 +36,7 @@ for site in $SITES; do
     # Generate static HTML for current month (no -month/-year = current)
     awstats.pl -config="$site" -configdir="$CONFDIR" \
         -output -staticlinks > "${outdir}/index.html" 2>/dev/null || true
+    inject_theme "${outdir}/index.html"
 
     # Generate one HTML file per historical data file
     for datafile in "${datadir}"/awstats[0-9]*.${site}.txt; do
@@ -38,6 +50,7 @@ for site in $SITES; do
         awstats.pl -config="$site" -configdir="$CONFDIR" \
             -month="$mm" -year="$yyyy" \
             -output -staticlinks > "${outdir}/${yyyy}-${mm}.html" 2>/dev/null || true
+        inject_theme "${outdir}/${yyyy}-${mm}.html"
     done
 done
 
@@ -46,6 +59,7 @@ mkdir -p "${DATADIR}/combined" "${OUTDIR}/combined"
 awstats.pl -update -config=combined -configdir="$CONFDIR" > /dev/null 2>&1 || true
 awstats.pl -config=combined -configdir="$CONFDIR" \
     -output -staticlinks > "${OUTDIR}/combined/index.html" 2>/dev/null || true
+inject_theme "${OUTDIR}/combined/index.html"
 
 for datafile in "${DATADIR}/combined"/awstats[0-9]*.combined.txt; do
     [ -f "$datafile" ] || continue
@@ -57,6 +71,7 @@ for datafile in "${DATADIR}/combined"/awstats[0-9]*.combined.txt; do
     awstats.pl -config=combined -configdir="$CONFDIR" \
         -month="$mm" -year="$yyyy" \
         -output -staticlinks > "${OUTDIR}/combined/${yyyy}-${mm}.html" 2>/dev/null || true
+    inject_theme "${OUTDIR}/combined/${yyyy}-${mm}.html"
 done
 
 # ── Regenerate index page ─────────────────────────────────────────────────────
