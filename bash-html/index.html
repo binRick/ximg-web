@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bash — Shell Scripting Reference</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --green: #00ff41;
+      --green-dim: rgba(0,255,65,.12);
+      --cyan: #79c0ff;
+      --yellow: #e3b341;
+      --orange: #f0883e;
+      --purple: #d2a8ff;
+      --red: #ff7b72;
+      --text: #e6edf3;
+      --muted: #8b949e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* hero */
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% -10%, rgba(0,255,65,.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-ascii {
+      font-size: .6rem;
+      line-height: 1.2;
+      color: var(--green);
+      text-shadow: 0 0 8px var(--green);
+      margin-bottom: 1rem;
+      white-space: pre;
+      display: inline-block;
+    }
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--green);
+      text-shadow: 0 0 20px rgba(0,255,65,.4);
+      letter-spacing: .05em;
+      margin-bottom: .4rem;
+    }
+    .hero-sub {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .hero-version {
+      display: inline-block;
+      font-size: .78rem;
+      padding: .2rem .7rem;
+      border: 1px solid var(--green);
+      border-radius: 4px;
+      color: var(--green);
+      background: var(--green-dim);
+    }
+
+    /* main */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      width: 100%;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--green);
+      margin: 2.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .section-title::before { content: '## '; opacity: .5; }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: .5rem;
+    }
+
+    /* reference grid */
+    .ref-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .ref-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .ref-card-hdr {
+      background: var(--surface2);
+      padding: .6rem 1rem;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--cyan);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .ref-card-hdr::before { content: '▸'; color: var(--green); }
+    .ref-card-body { padding: .75rem; }
+
+    /* code snippets */
+    .snippet {
+      background: #080c10;
+      border-radius: 6px;
+      padding: .5rem .75rem;
+      margin-bottom: .5rem;
+      font-size: .78rem;
+      line-height: 1.7;
+      border-left: 2px solid var(--green-dim);
+    }
+    .snippet:last-child { margin-bottom: 0; }
+
+    .kw  { color: var(--orange); }
+    .str { color: var(--yellow); }
+    .var { color: var(--cyan); }
+    .cm  { color: #484f58; }
+    .op  { color: var(--green); }
+    .fn  { color: var(--purple); }
+    .num { color: #79c0ff; }
+
+    /* shebang banner */
+    .shebang {
+      background: #080c10;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: .85rem;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    .shebang::before {
+      content: '#!/usr/bin/env bash';
+      display: block;
+      color: var(--green);
+      font-weight: 700;
+      margin-bottom: .5rem;
+      font-size: .9rem;
+    }
+
+    /* special operators table */
+    .ops-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+      margin-bottom: 2rem;
+    }
+    .ops-table th {
+      background: var(--surface2);
+      color: var(--cyan);
+      padding: .5rem .75rem;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+    }
+    .ops-table td {
+      padding: .4rem .75rem;
+      border-bottom: 1px solid rgba(48,54,61,.8);
+      vertical-align: top;
+    }
+    .ops-table tr:hover td { background: rgba(255,255,255,.02); }
+    .ops-table .op-sym {
+      font-family: 'Courier New', monospace;
+      color: var(--green);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .ops-table .op-desc { color: var(--muted); }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--muted);
+      font-size: .75rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-ascii">
+ ____            _
+| __ )  __ _ ___| |__
+|  _ \ / _` / __| '_ \
+| |_) | (_| \__ \ | | |
+|____/ \__,_|___/_| |_|</div>
+    <h1>Bash</h1>
+    <p class="hero-sub">Bourne Again SHell — the standard Unix scripting language</p>
+    <span class="hero-version">GNU Bash 5.x · POSIX compliant</span>
+  </div>
+
+  <main>
+
+    <div class="section-title">Variables &amp; Strings</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">Variables</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">NAME</span>=<span class="str">"Alice"</span>          <span class="cm"># assign (no spaces!)</span>
+<span class="fn">echo</span> <span class="str">"Hello $NAME"</span>    <span class="cm"># expand</span>
+<span class="fn">echo</span> <span class="str">"Hello ${NAME}"</span>  <span class="cm"># braces: safer</span>
+<span class="kw">unset</span> <span class="var">NAME</span>            <span class="cm"># delete</span>
+<span class="kw">readonly</span> <span class="var">PI</span>=<span class="num">3.14</span>     <span class="cm"># constant</span>
+<span class="kw">export</span> <span class="var">PATH</span>           <span class="cm"># pass to child procs</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">String Operations</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">s</span>=<span class="str">"hello world"</span>
+<span class="fn">echo</span> <span class="str">${#s}</span>           <span class="cm"># length: 11</span>
+<span class="fn">echo</span> <span class="str">${s:6}"</span>         <span class="cm"># slice: "world"</span>
+<span class="fn">echo</span> <span class="str">${s:0:5}</span>        <span class="cm"># "hello"</span>
+<span class="fn">echo</span> <span class="str">${s/hello/hi}</span>  <span class="cm"># replace first</span>
+<span class="fn">echo</span> <span class="str">${s^^}</span>          <span class="cm"># HELLO WORLD</span>
+<span class="fn">echo</span> <span class="str">${s,,}</span>          <span class="cm"># lowercase</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Default Values</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="str">${VAR:-default}</span>   <span class="cm"># use default if unset/null</span>
+<span class="str">${VAR:=default}</span>   <span class="cm"># assign default if unset</span>
+<span class="str">${VAR:?error}</span>     <span class="cm"># error if unset</span>
+<span class="str">${VAR:+other}</span>     <span class="cm"># use other if set</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Path / Filename Expansion</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">f</span>=<span class="str">"/home/user/script.sh"</span>
+<span class="fn">echo</span> <span class="str">${f##*/}</span>        <span class="cm"># script.sh (basename)</span>
+<span class="fn">echo</span> <span class="str">${f%/*}</span>         <span class="cm"># /home/user (dirname)</span>
+<span class="fn">echo</span> <span class="str">${f##*.}</span>        <span class="cm"># sh (extension)</span>
+<span class="fn">echo</span> <span class="str">${f%.*}</span>         <span class="cm"># strip extension</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Arrays</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">Indexed Arrays</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">arr</span>=(<span class="str">"a"</span> <span class="str">"b"</span> <span class="str">"c"</span>)      <span class="cm"># declare</span>
+<span class="fn">echo</span> <span class="str">${arr[0]}</span>        <span class="cm"># a</span>
+<span class="fn">echo</span> <span class="str">${arr[@]}</span>        <span class="cm"># all elements</span>
+<span class="fn">echo</span> <span class="str">${#arr[@]}</span>       <span class="cm"># length: 3</span>
+<span class="var">arr</span>+=(<span class="str">"d"</span>)           <span class="cm"># append</span>
+<span class="kw">unset</span> <span class="str">'arr[1]'</span>       <span class="cm"># delete element</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Associative Arrays</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">declare</span> -A <span class="var">map</span>
+<span class="var">map</span>[<span class="str">"key"</span>]=<span class="str">"value"</span>
+<span class="var">map</span>[<span class="str">"host"</span>]=<span class="str">"localhost"</span>
+<span class="fn">echo</span> <span class="str">${map["key"]}</span>    <span class="cm"># value</span>
+<span class="fn">echo</span> <span class="str">${!map[@]}</span>      <span class="cm"># all keys</span>
+<span class="fn">echo</span> <span class="str">${map[@]}</span>       <span class="cm"># all values</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Looping Arrays</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">for</span> <span class="var">item</span> <span class="kw">in</span> <span class="str">"${arr[@]}"</span>; <span class="kw">do</span>
+  <span class="fn">echo</span> <span class="str">"$item"</span>
+<span class="kw">done</span>
+
+<span class="cm"># indexed loop</span>
+<span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="str">"${!arr[@]}"</span>; <span class="kw">do</span>
+  <span class="fn">echo</span> <span class="str">"$i: ${arr[$i]}"</span>
+<span class="kw">done</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Control Flow</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">if / elif / else</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">if</span> [[ <span class="str">"$x"</span> <span class="op">==</span> <span class="str">"yes"</span> ]]; <span class="kw">then</span>
+  <span class="fn">echo</span> <span class="str">"yes"</span>
+<span class="kw">elif</span> [[ <span class="str">"$x"</span> <span class="op">-gt</span> <span class="num">10</span> ]]; <span class="kw">then</span>
+  <span class="fn">echo</span> <span class="str">"big"</span>
+<span class="kw">else</span>
+  <span class="fn">echo</span> <span class="str">"other"</span>
+<span class="kw">fi</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Test Operators</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="cm"># strings</span>
+[[ <span class="str">"$a"</span> <span class="op">==</span> <span class="str">"$b"</span> ]]   [[ <span class="str">"$a"</span> <span class="op">!=</span> <span class="str">"$b"</span> ]]
+[[ <span class="op">-z</span> <span class="str">"$a"</span> ]]       <span class="cm"># empty string</span>
+[[ <span class="op">-n</span> <span class="str">"$a"</span> ]]       <span class="cm"># non-empty</span>
+
+<span class="cm"># numbers</span>
+[[ <span class="var">$n</span> <span class="op">-eq</span> <span class="num">5</span> ]]        <span class="cm"># equal</span>
+[[ <span class="var">$n</span> <span class="op">-lt</span> <span class="num">10</span> ]]       <span class="cm"># less than</span>
+[[ <span class="var">$n</span> <span class="op">-ge</span> <span class="num">0</span> ]]        <span class="cm"># greater or eq</span>
+
+<span class="cm"># files</span>
+[[ <span class="op">-f</span> <span class="str">"$f"</span> ]]        <span class="cm"># is file</span>
+[[ <span class="op">-d</span> <span class="str">"$d"</span> ]]        <span class="cm"># is directory</span>
+[[ <span class="op">-x</span> <span class="str">"$f"</span> ]]        <span class="cm"># executable</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Loops</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="cm"># C-style for</span>
+<span class="kw">for</span> (( <span class="var">i</span>=<span class="num">0</span>; i&lt;<span class="num">10</span>; i++ )); <span class="kw">do</span>
+  <span class="fn">echo</span> <span class="var">$i</span>
+<span class="kw">done</span>
+
+<span class="cm"># while loop</span>
+<span class="kw">while</span> [[ <span class="var">$count</span> <span class="op">-lt</span> <span class="num">5</span> ]]; <span class="kw">do</span>
+  (( <span class="var">count</span>++ ))
+<span class="kw">done</span>
+
+<span class="cm"># read lines</span>
+<span class="kw">while</span> <span class="fn">read</span> -r <span class="var">line</span>; <span class="kw">do</span>
+  <span class="fn">echo</span> <span class="str">"$line"</span>
+<span class="kw">done</span> &lt; <span class="var">file.txt</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">case Statement</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">case</span> <span class="str">"$opt"</span> <span class="kw">in</span>
+  <span class="str">start</span>)   <span class="fn">echo</span> <span class="str">"starting"</span> ;;
+  <span class="str">stop</span>)    <span class="fn">echo</span> <span class="str">"stopping"</span> ;;
+  <span class="str">re*)     <span class="fn">echo</span> <span class="str">"restart*"</span> ;;</span>
+  <span class="str">-v|--verbose</span>) <span class="var">VERBOSE</span>=<span class="num">1</span> ;;
+  <span class="str">*</span>)       <span class="fn">echo</span> <span class="str">"unknown"</span>  ;;
+<span class="kw">esac</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Functions</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">Defining &amp; Calling</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="fn">greet</span>() {
+  <span class="kw">local</span> <span class="var">name</span>=<span class="str">"$1"</span>          <span class="cm"># local var</span>
+  <span class="fn">echo</span> <span class="str">"Hello, $name!"</span>
+  <span class="kw">return</span> <span class="num">0</span>               <span class="cm"># exit code</span>
+}
+
+<span class="fn">greet</span> <span class="str">"World"</span>             <span class="cm"># call it</span>
+<span class="fn">echo</span> <span class="str">"Exit: $?"</span>           <span class="cm"># check return</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Returning Values</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="cm"># capture stdout</span>
+<span class="fn">get_date</span>() {
+  <span class="fn">date</span> +<span class="str">"%Y-%m-%d"</span>
+}
+<span class="var">TODAY</span>=$(<span class="fn">get_date</span>)
+
+<span class="cm"># use a nameref (bash 4.3+)</span>
+<span class="fn">add</span>() {
+  <span class="kw">local</span> -n <span class="var">result</span>=<span class="str">$1</span>
+  <span class="var">result</span>=$(( <span class="var">$2</span> + <span class="var">$3</span> ))
+}
+<span class="fn">add</span> <span class="var">SUM</span> <span class="num">3</span> <span class="num">4</span>; <span class="fn">echo</span> <span class="var">$SUM</span>   <span class="cm"># 7</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Special Parameters</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">$0</span>   <span class="cm"># script name</span>
+<span class="var">$1</span>..<span class="var">$9</span> <span class="cm"># positional args</span>
+<span class="var">${10}</span> <span class="cm"># args beyond 9</span>
+<span class="var">$#</span>   <span class="cm"># number of args</span>
+<span class="var">$@</span>   <span class="cm"># all args (array-safe)</span>
+<span class="var">$*</span>   <span class="cm"># all args (as one string)</span>
+<span class="var">$?</span>   <span class="cm"># last exit code</span>
+<span class="var">$$</span>   <span class="cm"># current PID</span>
+<span class="var">$!</span>   <span class="cm"># last background PID</span>
+<span class="var">$-</span>   <span class="cm"># current shell options</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">I/O &amp; Redirection</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">Redirects</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">cmd</span> &gt; <span class="var">file</span>      <span class="cm"># stdout to file (overwrite)</span>
+<span class="var">cmd</span> &gt;&gt; <span class="var">file</span>     <span class="cm"># stdout append</span>
+<span class="var">cmd</span> 2&gt; <span class="var">err</span>     <span class="cm"># stderr to file</span>
+<span class="var">cmd</span> 2&gt;&amp;1       <span class="cm"># stderr → stdout</span>
+<span class="var">cmd</span> &amp;&gt; <span class="var">file</span>    <span class="cm"># both to file</span>
+<span class="var">cmd</span> &lt; <span class="var">file</span>     <span class="cm"># stdin from file</span>
+<span class="var">cmd</span> &lt;&lt; <span class="str">EOF</span>     <span class="cm"># here-doc</span>
+  <span class="str">multi line</span>
+<span class="str">EOF</span>
+<span class="var">cmd</span> &lt;&lt;&lt; <span class="str">"str"</span>  <span class="cm"># here-string</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Pipes &amp; Process Sub</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="var">cmd1</span> | <span class="var">cmd2</span>         <span class="cm"># pipe stdout</span>
+<span class="var">cmd1</span> |&amp; <span class="var">cmd2</span>        <span class="cm"># pipe stdout+stderr</span>
+
+<span class="cm"># process substitution</span>
+<span class="fn">diff</span> &lt;(<span class="fn">sort</span> <span class="var">a</span>) &lt;(<span class="fn">sort</span> <span class="var">b</span>)
+<span class="fn">tee</span> &gt;(<span class="fn">gzip</span> &gt; <span class="var">out.gz</span>)
+
+<span class="cm"># subshell</span>
+<span class="var">result</span>=$(<span class="fn">echo</span> <span class="str">"hello"</span> | <span class="fn">tr</span> <span class="str">a-z</span> <span class="str">A-Z</span>)
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">printf</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="fn">printf</span> <span class="str">"%-10s %5d\n"</span> <span class="str">"Name"</span> <span class="num">42</span>
+<span class="fn">printf</span> <span class="str">"%08.2f\n"</span> <span class="num">3.14</span>
+<span class="fn">printf</span> <span class="str">"%b"</span> <span class="str">"line\n"</span>  <span class="cm"># interpret \n</span>
+<span class="fn">printf</span> <span class="str">"%q"</span> <span class="str">"a b"</span>    <span class="cm"># shell-escape</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Arithmetic</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">Integer Math</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+(( <span class="var">x</span> = <span class="num">5</span> + <span class="num">3</span> ))         <span class="cm"># 8</span>
+(( <span class="var">x</span>++ ))               <span class="cm"># post-increment</span>
+(( <span class="var">x</span> **= <span class="num">2</span> ))           <span class="cm"># power</span>
+<span class="fn">echo</span> $(( <span class="num">17</span> % <span class="num">5</span> ))      <span class="cm"># modulo: 2</span>
+<span class="fn">echo</span> $(( <span class="num">0xFF</span> ))        <span class="cm"># hex: 255</span>
+<span class="fn">echo</span> $(( <span class="num">2#1010</span> ))      <span class="cm"># binary: 10</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">let &amp; bc</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">let</span> <span class="str">"x = 5 * 3"</span>
+<span class="fn">echo</span> <span class="var">$x</span>                  <span class="cm"># 15</span>
+
+<span class="cm"># floating point with bc</span>
+<span class="fn">echo</span> <span class="str">"scale=4; 22/7"</span> | <span class="fn">bc</span>
+<span class="fn">echo</span> <span class="str">"sqrt(2)"</span> | <span class="fn">bc</span> -l
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Useful Patterns</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">Error Handling</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">set</span> -euo pipefail        <span class="cm"># strict mode</span>
+<span class="cm"># -e: exit on error</span>
+<span class="cm"># -u: error on unset vars</span>
+<span class="cm"># -o pipefail: pipe errors count</span>
+
+<span class="fn">trap</span> <span class="str">'echo "ERR on line $LINENO"'</span> ERR
+<span class="fn">trap</span> <span class="str">'cleanup'</span> EXIT       <span class="cm"># always runs</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Script Template</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="op">#!/usr/bin/env bash</span>
+<span class="kw">set</span> -euo pipefail
+<span class="var">DIR</span>=$(<span class="fn">cd</span> <span class="str">"$(dirname "${BASH_SOURCE[0]}")"</span> &amp;&amp; <span class="fn">pwd</span>)
+
+<span class="fn">usage</span>() { <span class="fn">echo</span> <span class="str">"Usage: $0 &lt;arg&gt;"</span>; <span class="kw">exit</span> <span class="num">1</span>; }
+[[ <span class="var">$#</span> <span class="op">-lt</span> <span class="num">1</span> ]] &amp;&amp; <span class="fn">usage</span>
+
+<span class="fn">main</span>() {
+  <span class="fn">echo</span> <span class="str">"arg=$1 dir=$DIR"</span>
+}
+<span class="fn">main</span> <span class="str">"$@"</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">getopts (Arg Parsing)</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="kw">while</span> <span class="fn">getopts</span> <span class="str">":hv:o:"</span> <span class="var">opt</span>; <span class="kw">do</span>
+  <span class="kw">case</span> <span class="str">"$opt"</span> <span class="kw">in</span>
+    <span class="str">h</span>) <span class="fn">usage</span> ;;
+    <span class="str">v</span>) <span class="var">VERBOSE</span>=<span class="str">"$OPTARG"</span> ;;
+    <span class="str">o</span>) <span class="var">OUT</span>=<span class="str">"$OPTARG"</span> ;;
+    <span class="str">\?</span>) <span class="fn">echo</span> <span class="str">"Bad opt"</span>; <span class="fn">usage</span> ;;
+  <span class="kw">esac</span>
+<span class="kw">done</span>
+<span class="kw">shift</span> $(( <span class="var">OPTIND</span> - <span class="num">1</span> ))
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div class="ref-card-hdr">Common Idioms</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+<span class="cm"># check command exists</span>
+<span class="fn">command</span> -v <span class="var">docker</span> &amp;&gt;/dev/null || <span class="kw">exit</span> <span class="num">1</span>
+
+<span class="cm"># run if not root</span>
+[[ <span class="var">$EUID</span> <span class="op">-ne</span> <span class="num">0</span> ]] &amp;&amp; <span class="fn">exec</span> <span class="fn">sudo</span> <span class="str">"$0"</span> <span class="str">"$@"</span>
+
+<span class="cm"># temp file with cleanup</span>
+<span class="var">TMP</span>=$(<span class="fn">mktemp</span>)
+<span class="fn">trap</span> <span class="str">"rm -f $TMP"</span> EXIT
+
+<span class="cm"># multi-line string</span>
+<span class="fn">read</span> -r -d <span class="str">''</span> <span class="var">TEXT</span> &lt;&lt;'EOF'
+line one
+line two
+EOF
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Special Operators</div>
+    <table class="ops-table">
+      <thead><tr><th>Operator</th><th>Meaning</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td class="op-sym">&amp;&amp;</td><td>AND — run if previous succeeds</td><td class="op-sym">make &amp;&amp; make install</td></tr>
+        <tr><td class="op-sym">||</td><td>OR — run if previous fails</td><td class="op-sym">cd /tmp || exit 1</td></tr>
+        <tr><td class="op-sym">;</td><td>Sequence — always run next</td><td class="op-sym">cd /; ls</td></tr>
+        <tr><td class="op-sym">&amp;</td><td>Background — run async</td><td class="op-sym">sleep 10 &amp;</td></tr>
+        <tr><td class="op-sym">|</td><td>Pipe stdout to next stdin</td><td class="op-sym">cat f | grep x</td></tr>
+        <tr><td class="op-sym">$()</td><td>Command substitution</td><td class="op-sym">NOW=$(date)</td></tr>
+        <tr><td class="op-sym">$(())</td><td>Arithmetic expansion</td><td class="op-sym">echo $((2**10))</td></tr>
+        <tr><td class="op-sym">{}</td><td>Brace expansion</td><td class="op-sym">echo {a,b,c}.txt</td></tr>
+        <tr><td class="op-sym">~</td><td>Home directory</td><td class="op-sym">cd ~/projects</td></tr>
+        <tr><td class="op-sym">!</td><td>Negate exit status</td><td class="op-sym">if ! grep -q x f; then</td></tr>
+      </tbody>
+    </table>
+
+  </main>
+
+  <footer>Bash 5.x · GNU Project · man bash · https://www.gnu.org/software/bash/</footer>
+
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

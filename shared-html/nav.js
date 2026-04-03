@@ -1,9 +1,9 @@
 (function () {
   var GROUPS = [
     { label: 'Tech', apps: [
-      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['computers','computers'],
+      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['claude','claude'],['computers','computers'],
       ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['yaml','yaml']
+      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coldwar','coldwar'],['florida','florida'],
@@ -18,7 +18,7 @@
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['logs','logs'],['mail','mail'],['nav','nav'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['logs','logs'],['mail','mail'],['nav','nav'],['stats','stats'],['ximg','ximg']
     ]},
     { label: 'More', apps: [
       ['butterfly','butterfly'],['rx','RxFitt']
