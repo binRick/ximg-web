@@ -82,7 +82,9 @@ Every new app must be wired into **five places** in addition to its own files:
 4. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app) with name, domain, date added, and description
 5. **Install script** — add the new subdomain to the `DOMAINS` array in `install/setup.sh` so fresh-clone deployments include it in the SSL cert
 
-Missing any of these five means the app is invisible, incomplete, or won't be covered by SSL on a fresh install.
+6. **Favicon** — add an interesting, thematically appropriate `favicon.ico` (or `.png`) to the app's directory and reference it in `<head>`. Download a real image; don't use a generic placeholder.
+
+Missing any of these means the app is invisible, incomplete, or won't be covered by SSL on a fresh install.
 
 ## New App Verification
 
@@ -109,6 +111,7 @@ Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdoma
 9. **Add a row to the `APPS` array in `apps-html/index.html`** (apps.ximg.app directory)
 10. **Add the subdomain to the `DOMAINS` array in `install/setup.sh`** so it's included in SSL cert on fresh installs
 11. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
+12. **Favicon** — download a thematically appropriate favicon image, save it to the app's directory, and add `<link rel="icon" href="/favicon.ico">` (or `.png`) in `<head>`
 
 ## SSH Honeypot
 
