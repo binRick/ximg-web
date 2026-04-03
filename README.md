@@ -4,11 +4,15 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
+49 virtual hosts (root + 48 subdomains), each with its own Apache container.
+
 | Subdomain | Description |
 |-----------|-------------|
 | [ximg.app](https://ximg.app) | Landing page — animated grid, floating orbs, frosted-glass app directory card |
 | [apps.ximg.app](https://apps.ximg.app) | Full searchable directory of every app in the stack |
 | [linux.ximg.app](https://linux.ximg.app) | Browser terminal via xterm.js — ~20 mock shell commands, DVD-bouncing Tux mascot |
+| [ai.ximg.app](https://ai.ximg.app) | Artificial Intelligence deep dive — frontier LLMs, leading companies, 75-year history from Turing to ChatGPT |
+| [mac.ximg.app](https://mac.ximg.app) | Apple Silicon, macOS history (Cheetah to Sequoia), Mach microkernel, Mac hardware lineup, M1–M4 analysis |
 | [butterfly.ximg.app](https://butterfly.ximg.app) | Canvas particle animation driven by the butterfly curve polar equation |
 | [ascii.ximg.app](https://ascii.ximg.app) | Three ASCII demos: spinning 3D donut, matrix rain, sine-wave plasma |
 | [json.ximg.app](https://json.ximg.app) | JSON type reference card with syntax-highlighted examples |
@@ -18,16 +22,29 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [doom.ximg.app](https://doom.ximg.app) | DOOM lore deep-dive — weapons, enemies, levels, id Software history |
 | [cnc.ximg.app](https://cnc.ximg.app) | Command & Conquer franchise — every game, factions, units, buildings, lore, plus a browser RTS tab |
 | [simcity.ximg.app](https://simcity.ximg.app) | SimCity legacy — every game, Will Wright, and Cities: Skylines as its heir |
+| [chess.ximg.app](https://chess.ximg.app) | The game of kings — pieces, openings, tactics, all 16 world champions, 1,500 years of history |
 | [kombat.ximg.app](https://kombat.ximg.app) | Full Mortal Kombat character roster with bios and fighting stats |
 | [wargames.ximg.app](https://wargames.ximg.app) | 1983 cold-war thriller guide — cast, plot, WOPR terminal Easter egg |
+| [warcraft.ximg.app](https://warcraft.ximg.app) | Blizzard's fantasy franchise — RTS origins, WoW expansions, Arthas, Thrall, 30 years of Azeroth lore |
+| [kart.ximg.app](https://kart.ximg.app) | Mario Kart series — all 11 games, original 8 characters, cups, items, SNES 1992 to Switch 2 |
 | [docker.ximg.app](https://docker.ximg.app) | Docker command reference and annotated Docker Compose guide |
 | [internet.ximg.app](https://internet.ximg.app) | What the internet is, how DARPA built it, top 20 protocols |
 | [computers.ximg.app](https://computers.ximg.app) | History of American computing — timeline, pioneering companies, key people |
+| [programming.ximg.app](https://programming.ximg.app) | 180 years of code — languages, paradigms, pioneers, timeline from Ada Lovelace to AI code generation |
+| [git.ximg.app](https://git.ximg.app) | Git command cheatsheet, concepts, branching strategies, config, full history from 2005 |
+| [ansible.ximg.app](https://ansible.ximg.app) | Agentless automation — playbooks, modules, inventory, roles, Vault, history from 2012 |
+| [tmux.ximg.app](https://tmux.ximg.app) | Terminal multiplexer reference — cheatsheet, interactive pane simulator, .tmux.conf, 17-year history |
+| [systemd.ximg.app](https://systemd.ximg.app) | Linux service manager — systemctl reference, unit file anatomy, journalctl, history from 2010 |
+| [vr.ximg.app](https://vr.ximg.app) | Virtual reality — headsets, landmark games, how VR works, 60-year history to Apple Vision Pro |
+| [passwords.ximg.app](https://passwords.ximg.app) | Password generator, strength tester, crack-time estimator, and best-practice guide |
+| [fidonet.ximg.app](https://fidonet.ximg.app) | FidoNet BBS history — how it worked, culture, the 40,000-node volunteer network |
+| [coldwar.ximg.app](https://coldwar.ximg.app) | The 45-year standoff — nuclear arms race, proxy wars, space race, CIA vs KGB, Soviet collapse |
 | [pizza.ximg.app](https://pizza.ximg.app) | Top pizza chains and regional styles across America |
 | [chinese.ximg.app](https://chinese.ximg.app) | Eight regional Chinese cuisines and their iconic dishes |
+| [grilling.ximg.app](https://grilling.ximg.app) | The art of grilling — grill types, regional BBQ styles, temp guide, wood pairings, rubs, sauces, tools |
+| [india.ximg.app](https://india.ximg.app) | India explorer — culture, food, landmarks, history |
 | [moto.ximg.app](https://moto.ximg.app) | Motorcycle culture — types, iconic brands, notable bikes |
 | [monkey.ximg.app](https://monkey.ximg.app) | Primate species, facts, and fun content |
-| [india.ximg.app](https://india.ximg.app) | India explorer — culture, food, landmarks, history |
 | [wood.ximg.app](https://wood.ximg.app) | Woodworking — species, joinery, hand/power tools, finishing |
 | [guns.ximg.app](https://guns.ximg.app) | Firearm types and the top 10 most popular guns in America |
 | [tampa.ximg.app](https://tampa.ximg.app) | Tampa Bay guide — best restaurants, interactive map, live traffic |
@@ -35,7 +52,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [america.ximg.app](https://america.ximg.app) | Why the USA is the greatest country — science, tech, military, culture |
 | [trump.ximg.app](https://trump.ximg.app) | Donald J. Trump — fun facts, life timeline, presidency achievements, photo gallery |
 | [rx.ximg.app](https://rx.ximg.app) | RxFitt health coaching — GLP-1 tracking, metabolic labs, body composition, workouts |
-| [fidonet.ximg.app](https://fidonet.ximg.app) | FidoNet BBS history — how it worked, culture, the 40,000-node volunteer network |
+| [nav.ximg.app](https://nav.ximg.app) | Navigation design showcase — five interactive demos comparing nav patterns |
+| [ximg.ximg.app](https://ximg.ximg.app) | Full technical teardown of the ximg.app infrastructure — architecture, container topology, SSL lifecycle |
 | [logs.ximg.app](https://logs.ximg.app) | Real-time nginx access log viewer over WebSocket + SSH honeypot session browser |
 | [mail.ximg.app](https://mail.ximg.app) | Webmail inbox for @ximg.app — live SMTP receiver with Gmail-style reader UI |
 | [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
