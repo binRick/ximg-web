@@ -74,14 +74,15 @@ Each subdomain has its own Apache container and `*-html/` directory for static f
 
 ## Adding a New App (Checklist)
 
-Every new app must be wired into **four places** in addition to its own files:
+Every new app must be wired into **five places** in addition to its own files:
 
 1. **Nav bar** — add an entry to `shared-html/nav.js`
 2. **Landing page** — add a card/link on `public-html/index.html` (ximg.app)
 3. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` so its nginx logs are streamed
 4. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app) with name, domain, date added, and description
+5. **Install script** — add the new subdomain to the `DOMAINS` array in `install/setup.sh` so fresh-clone deployments include it in the SSL cert
 
-Missing any of these four means the app is invisible or incomplete.
+Missing any of these five means the app is invisible, incomplete, or won't be covered by SSL on a fresh install.
 
 ## New App Verification
 
@@ -106,7 +107,8 @@ Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdoma
 7. **Add a card to `public-html/index.html`** (landing page)
 8. **Add subdomain to `logs-server/server.js`** tab list
 9. **Add a row to the `APPS` array in `apps-html/index.html`** (apps.ximg.app directory)
-10. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
+10. **Add the subdomain to the `DOMAINS` array in `install/setup.sh`** so it's included in SSL cert on fresh installs
+11. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
 
 ## SSH Honeypot
 
