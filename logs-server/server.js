@@ -109,6 +109,7 @@ const LOG_FILES = {
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
   stats:       'stats.access.log',
+  ids:         'ids.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────

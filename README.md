@@ -11,6 +11,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ximg.app](https://ximg.app) | Landing page — animated grid, floating orbs, frosted-glass app directory card |
 | [apps.ximg.app](https://apps.ximg.app) | Full searchable directory of every app in the stack |
 | [linux.ximg.app](https://linux.ximg.app) | Browser terminal via xterm.js — ~20 mock shell commands, DVD-bouncing Tux mascot |
+| [claude.ximg.app](https://claude.ximg.app) | Claude AI showcase — Anthropic model overview, capabilities, and API reference |
 | [ai.ximg.app](https://ai.ximg.app) | Artificial Intelligence deep dive — frontier LLMs, leading companies, 75-year history from Turing to ChatGPT |
 | [mac.ximg.app](https://mac.ximg.app) | Apple Silicon, macOS history (Cheetah to Sequoia), Mach microkernel, Mac hardware lineup, M1–M4 analysis |
 | [butterfly.ximg.app](https://butterfly.ximg.app) | Canvas particle animation driven by the butterfly curve polar equation |
@@ -55,6 +56,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [nav.ximg.app](https://nav.ximg.app) | Navigation design showcase — five interactive demos comparing nav patterns |
 | [ximg.ximg.app](https://ximg.ximg.app) | Full technical teardown of the ximg.app infrastructure — architecture, container topology, SSL lifecycle |
 | [logs.ximg.app](https://logs.ximg.app) | Real-time nginx access log viewer over WebSocket + SSH honeypot session browser |
+| [ids.ximg.app](https://ids.ximg.app) | Live Suricata IDS feed — alerts, attacker world map, and threat statistics |
+| [stats.ximg.app](https://stats.ximg.app) | AWStats traffic analytics — per-site visitor counts, referrers, and bandwidth |
 | [mail.ximg.app](https://mail.ximg.app) | Webmail inbox for @ximg.app — live SMTP receiver with Gmail-style reader UI |
 | [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
 
