@@ -1,7 +1,10 @@
 FROM jasonrivers/nagios:latest
 
-# Disable CGI authentication for public read-only access
-RUN sed -i 's/^use_authentication=1/use_authentication=0/' /opt/nagios/etc/cgi.cfg
+# Disable CGI authentication and remove pagination limit
+RUN sed -i \
+    -e 's/^use_authentication=1/use_authentication=0/' \
+    -e 's/^result_limit=.*/result_limit=0/' \
+    /opt/nagios/etc/cgi.cfg
 
 # Disable external command submission (enforce read-only) and notifications (no email)
 RUN sed -i \
