@@ -147,7 +147,9 @@ fi
 section "5/8  systemd unit  (ximg-web.service)"
 # ─────────────────────────────────────────────────────────────────────────────
 
-install -m 644 "$REPO/ximg-web.service" /etc/systemd/system/ximg-web.service
+sed "s|WorkingDirectory=.*|WorkingDirectory=$REPO|" "$REPO/ximg-web.service" \
+  > /etc/systemd/system/ximg-web.service
+chmod 644 /etc/systemd/system/ximg-web.service
 systemctl daemon-reload
 systemctl enable ximg-web.service
 ok "ximg-web.service installed and enabled"
@@ -175,7 +177,7 @@ DOMAINS=(
   ximg.ximg.app yaml.ximg.app zsh.ximg.app
 )
 
-CERT_PATH="/etc/letsencrypt/live/ximg.app-0001/fullchain.pem"
+CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
 
 if [[ -f "$CERT_PATH" ]]; then
   ok "certificate already exists at $CERT_PATH"
@@ -193,6 +195,7 @@ else
     certbot certonly --webroot \
       -w "$REPO/public-html" \
       "${D_FLAGS[@]}" \
+      --cert-name ximg.app \
       --non-interactive \
       --agree-tos \
       --register-unsafely-without-email \
