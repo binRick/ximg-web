@@ -108,6 +108,7 @@ const LOG_FILES = {
   nav:         'nav.access.log',
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
+  stats:       'stats.access.log',
 };
 
 // ── Read last N lines from end of file ───────────────────────────────────────
