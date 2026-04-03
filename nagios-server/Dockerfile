@@ -12,6 +12,20 @@ RUN sed -i \
 # Remove Apache-level authentication (open read-only access)
 COPY nagios-apache.conf /etc/apache2/sites-available/nagios.conf
 
-# Add ximg.app host and service monitoring definitions
-COPY ximg-hosts.cfg /opt/nagios/etc/objects/ximg-hosts.cfg
-COPY ximg-services.cfg /opt/nagios/etc/objects/ximg-services.cfg
+# Add nagios user to the docker group (GID 992 on this host) so it can read the socket
+RUN groupadd -g 992 docker 2>/dev/null || true && \
+    usermod -aG docker nagios
+
+# Install custom check scripts
+COPY check_docker.py   /opt/nagios/libexec/check_docker.py
+COPY check_suricata.sh /opt/nagios/libexec/check_suricata.sh
+RUN chmod +x /opt/nagios/libexec/check_docker.py \
+             /opt/nagios/libexec/check_suricata.sh
+
+# Add ximg.app host and service monitoring definitions.
+# Copy to both the live path and /orig/etc (startup fallback) so they survive
+# volume re-initialization on fresh deploys.
+COPY ximg-hosts.cfg    /opt/nagios/etc/conf.d/ximg-hosts.cfg
+COPY ximg-hosts.cfg    /orig/etc/conf.d/ximg-hosts.cfg
+COPY ximg-services.cfg /opt/nagios/etc/conf.d/ximg-services.cfg
+COPY ximg-services.cfg /orig/etc/conf.d/ximg-services.cfg
