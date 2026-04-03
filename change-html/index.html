@@ -195,6 +195,17 @@
       padding: 3rem 1rem; display: none;
     }
     .no-results.visible { display: block; }
+
+    /* ── Commits chart ── */
+    .chart-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: .9rem 1.25rem .65rem;
+    }
+    .chart-title {
+      font-size: .7rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .1em; margin-bottom: .6rem;
+    }
+    #commits-chart { display: block; width: 100%; }
   </style>
 </head>
 <body>
@@ -209,6 +220,11 @@
   </div>
 
   <div class="stats" id="stats"></div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Commits over time</div>
+    <canvas id="commits-chart" height="90"></canvas>
+  </div>
 
   <div class="toolbar">
     <div class="search-wrap">
@@ -238,6 +254,80 @@ const COMMITS = [{"hash": "3b1ee1c180911c028e1500f8f29a484e949dda95", "short": "
     '<div class="stat"><div class="stat-n">' + days.size + '</div><div class="stat-l">Active Days</div></div>' +
     '<div class="stat"><div class="stat-n">' + authors.size + '</div><div class="stat-l">Author' + (authors.size>1?'s':'') + '</div></div>' +
     '<div class="stat"><div class="stat-n">' + first + '</div><div class="stat-l">First Commit</div></div>';
+})();
+
+// ── Commits-over-time chart ──────────────────────────────────────────────────
+(function() {
+  var buckets = {};
+  COMMITS.forEach(function(c) {
+    var day = c.date.slice(0, 10);
+    buckets[day] = (buckets[day] || 0) + 1;
+  });
+  var days = Object.keys(buckets).sort();
+  var counts = days.map(function(d) { return buckets[d]; });
+  var max = Math.max.apply(null, counts);
+
+  var canvas = document.getElementById('commits-chart');
+  var DPR = window.devicePixelRatio || 1;
+
+  function bar(ctx, x, y, w, h) {
+    var r = Math.min(3, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function draw() {
+    var W = canvas.parentElement.clientWidth - 50;
+    var H = 90;
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+
+    var n = days.length;
+    var gap = Math.max(4, Math.floor(W * 0.015));
+    var barW = Math.floor((W - gap * (n - 1)) / n);
+    var chartH = H - 28; // reserve bottom for date labels + top for count labels
+
+    days.forEach(function(day, i) {
+      var count = counts[i];
+      var barH = Math.max(2, Math.round((count / max) * (chartH - 16)));
+      var x = i * (barW + gap);
+      var y = chartH - barH;
+
+      var grad = ctx.createLinearGradient(0, y, 0, y + barH);
+      grad.addColorStop(0, '#00e676');
+      grad.addColorStop(1, 'rgba(0,230,118,.25)');
+      ctx.fillStyle = grad;
+      bar(ctx, x, y, barW, barH);
+
+      // count above bar
+      ctx.fillStyle = '#69f0ae';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(count, x + barW / 2, y - 3);
+
+      // date label below
+      ctx.fillStyle = '#607d8b';
+      ctx.font = '10px system-ui, sans-serif';
+      var label = day.slice(5); // MM-DD
+      ctx.fillText(label, x + barW / 2, H - 5);
+    });
+  }
+
+  draw();
+  window.addEventListener('resize', draw);
 })();
 
 // ── Build timeline ───────────────────────────────────────────────────────────
