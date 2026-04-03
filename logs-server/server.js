@@ -110,6 +110,7 @@ const LOG_FILES = {
   logs:        'logs.access.log',
   stats:       'stats.access.log',
   ids:         'ids.access.log',
+  nagios:      'nagios.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────

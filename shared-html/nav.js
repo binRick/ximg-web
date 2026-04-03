@@ -18,7 +18,7 @@
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['stats','stats'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nagios','nagios'],['nav','nav'],['stats','stats'],['ximg','ximg']
     ]},
     { label: 'More', apps: [
       ['butterfly','butterfly'],['rx','RxFitt']
