@@ -105,7 +105,7 @@ const LOG_FILES = {
   programming: 'programming.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
-  nav:         'nav.access.log',
+
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
   stats:       'stats.access.log',
