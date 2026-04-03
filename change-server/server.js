@@ -15,18 +15,30 @@ let cacheTime   = 0;
 function getCommits(cb) {
   const now = Date.now();
   if (commitCache && now - cacheTime < 15000) return cb(null, commitCache);
-  execFile('git', ['-C', REPO, 'log', '--pretty=format:%H\x1f%h\x1f%an\x1f%ae\x1f%ai\x1f%s'],
-    { maxBuffer: 4 * 1024 * 1024 },
-    (err, stdout) => {
-      if (err) return cb(err);
-      const commits = stdout.trim().split('\n').filter(Boolean).map(line => {
-        const parts = line.split('\x1f');
-        return { hash: parts[0], short: parts[1], author: parts[2], email: parts[3], date: parts[4], subject: parts.slice(5).join('\x1f') };
+  execFile('git', ['-C', REPO, 'log',
+    '--pretty=format:XCOMMIT\t%H\t%h\t%an\t%ae\t%ai\t%s',
+    '--patch'
+  ], { maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+    if (err) return cb(err);
+    const blocks = ('\n' + stdout).split(/\nXCOMMIT\t/).filter(Boolean);
+    const commits = blocks.map(block => {
+      const nl = block.indexOf('\n');
+      const parts = (nl >= 0 ? block.slice(0, nl) : block).split('\t');
+      const rest  = nl >= 0 ? block.slice(nl + 1) : '';
+      const hash = parts[0], short = parts[1], author = parts[2],
+            email = parts[3], date = parts[4], subject = parts.slice(5).join('\t');
+      let filesChanged = 0, linesAdded = 0, linesDeleted = 0, charsChanged = 0;
+      rest.split('\n').forEach(line => {
+        if (line.startsWith('diff --git '))                  { filesChanged++; }
+        else if (line.startsWith('+') && !line.startsWith('+++')) { linesAdded++;   charsChanged += line.length - 1; }
+        else if (line.startsWith('-') && !line.startsWith('---')) { linesDeleted++; charsChanged += line.length - 1; }
       });
-      commitCache = commits;
-      cacheTime = now;
-      cb(null, commits);
+      return { hash, short, author, email, date, subject, filesChanged, linesAdded, linesDeleted, charsChanged };
     });
+    commitCache = commits;
+    cacheTime = now;
+    cb(null, commits);
+  });
 }
 
 function renderPage(commits) {
