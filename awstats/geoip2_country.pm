@@ -51,10 +51,15 @@ sub _lookup {
     return '--' if $@ || !defined $rec;
 
     # Handle different .mmdb schema layouts
-    return $rec->{country}{iso_code}   # MaxMind GeoLite2-Country
-        || $rec->{country}{code}       # db-ip.com country lite
-        || $rec->{iso_code}            # flat layout
-        || '--';
+    my $c = $rec->{country};
+    if (defined $c) {
+        if (ref $c eq 'HASH') {
+            return $c->{iso_code} || $c->{code} || '--';  # MaxMind GeoLite2 / structured db-ip
+        } else {
+            return $c || '--';  # db-ip.com flat string "US"
+        }
+    }
+    return $rec->{iso_code} || '--';  # top-level flat layout
 }
 
 1;
