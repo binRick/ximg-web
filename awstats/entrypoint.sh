@@ -89,8 +89,8 @@ fi
 # ── Set up cron ───────────────────────────────────────────────────────────────
 mkdir -p /etc/crontabs
 cat > /etc/crontabs/root << 'CRONEOF'
-# Update AWStats stats every hour
-0 * * * * /usr/local/bin/awstats-update.sh >> /var/log/awstats.log 2>&1
+# Update AWStats stats every 5 minutes
+*/5 * * * * /usr/local/bin/awstats-update.sh >> /var/log/awstats.log 2>&1
 # Refresh GeoIP database on the 2nd of each month
 0 3 2 * * /usr/local/bin/refresh-geoip.sh >> /var/log/awstats.log 2>&1
 CRONEOF
