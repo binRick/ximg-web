@@ -20,14 +20,18 @@ class HoneypotServer(paramiko.ServerInterface):
         self.pty_h = 24
         self.username = ''
         self.password = ''
+        self.auth_attempts = 0
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == 'session' \
                else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
     def check_auth_password(self, username, password):
+        self.auth_attempts += 1
         self.username = username
         self.password = password
+        if self.auth_attempts < 10:
+            return paramiko.AUTH_FAILED
         return paramiko.AUTH_SUCCESSFUL
 
     def check_auth_publickey(self, username, key):
