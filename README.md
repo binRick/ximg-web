@@ -85,7 +85,6 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [evolution.ximg.app](https://evolution.ximg.app) | 3.8 billion years of life — natural selection, Darwin's voyage, fossil record, five mass extinctions, human evolution timeline |
 | [dns.ximg.app](https://dns.ximg.app) | Domain Name System reference — record types, resolution flow, dig/nslookup commands, DNSSEC chain of trust, DoH/DoT |
 | [suricata.ximg.app](https://suricata.ximg.app) | Suricata IDS/IPS reference — rule syntax, sticky buffers, protocol parsers, EVE JSON output, JA3 fingerprinting, CLI commands |
-| [netdata.ximg.app](https://netdata.ximg.app) | Real-time server metrics — CPU, memory, network bandwidth, disk I/O, and Docker container stats graphed live |
 | [readme.ximg.app](https://readme.ximg.app) | The ximg-web project README rendered as a styled web page — architecture overview, subdomain directory, and stack docs |
 
 ## Architecture
