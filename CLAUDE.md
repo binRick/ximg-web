@@ -103,7 +103,16 @@ If any check fails, fix it before finishing.
 
 Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdomain:
 1. DNS A record → 172.238.205.61
-2. `certbot --expand` to add the new domain
+2. Expand the cert — **CRITICAL: you MUST list ALL existing domains plus the new one.** Never run certbot with only the new domain or it will strip the cert down to just that domain and take every other site offline. Get the full current domain list first, then add the new one:
+   ```bash
+   # Get current domains in the wargames cert:
+   certbot certificates | grep -A50 "Certificate Name: wargames" | grep "Domains:" | sed 's/.*Domains: //'
+   # Then run certbot with ALL those domains plus the new subdomain:
+   certbot certonly --webroot --expand --cert-name wargames.ximg.app \
+     -w /root/ximg-web/public-html \
+     -d ximg.app -d existing1.ximg.app ... -d newsubdomain.ximg.app \
+     --non-interactive
+   ```
 3. New `server { }` block in `nginx/nginx.conf`
 4. New Apache service in `compose.yaml`
 5. New `*-html/` directory with static files
