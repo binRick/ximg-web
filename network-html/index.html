@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Playground — Live Systems Sandbox</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #02020f;
+      --card:    #070720;
+      --border:  #1e293b;
+      --cyan:    #22d3ee;
+      --green:   #00ff41;
+      --dim:     #475569;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+    }
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding-top: 44px;
+      overflow-x: hidden;
+    }
+
+    /* Background canvas */
+    #bgCanvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; opacity: 0.12;
+    }
+
+    /* Glow orbs */
+    .glow { position: fixed; border-radius: 50%; filter: blur(130px); pointer-events: none; z-index: 0; }
+    .glow-1 { width: 600px; height: 600px; background: #22d3ee; top: -200px; left: -150px; opacity: 0.07; }
+    .glow-2 { width: 500px; height: 500px; background: #00ff41; bottom: -150px; right: -100px; opacity: 0.06; }
+
+    /* Sub-nav */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; flex-wrap: wrap;
+      background: rgba(2,2,15,0.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(34,211,238,0.2);
+    }
+    .tab {
+      font-size: 0.8rem; font-weight: 600;
+      padding: 0.3rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(34,211,238,0.18); color: var(--muted);
+      background: transparent; font-family: inherit;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .tab:hover { background: rgba(34,211,238,0.08); color: var(--cyan); border-color: rgba(34,211,238,0.4); }
+    .tab.active { background: rgba(34,211,238,0.14); color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,0.25); }
+
+    /* Sections */
+    .section { display: none; position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .section.active { display: block; }
+
+    /* Page header */
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 {
+      font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #22d3ee 0%, #00ff41 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-header p { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+
+    /* Cards */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--cyan); margin-bottom: 1rem;
+    }
+
+    /* Canvas container */
+    .canvas-wrap {
+      background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; position: relative;
+    }
+    .canvas-wrap canvas { display: block; width: 100%; }
+
+    /* Controls row */
+    .controls {
+      display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+      margin-top: 1rem;
+    }
+    .btn {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em;
+      padding: 0.4rem 1.1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--cyan); color: var(--cyan);
+      background: rgba(34,211,238,0.08); font-family: inherit;
+      transition: all 0.18s;
+    }
+    .btn:hover { background: rgba(34,211,238,0.2); box-shadow: 0 0 10px rgba(34,211,238,0.3); }
+    .btn:active { transform: scale(0.97); }
+    .btn.green { border-color: var(--green); color: var(--green); background: rgba(0,255,65,0.06); }
+    .btn.green:hover { background: rgba(0,255,65,0.16); box-shadow: 0 0 10px rgba(0,255,65,0.3); }
+
+    /* Status log */
+    .log-box {
+      font-family: 'Courier New', monospace; font-size: 0.75rem;
+      background: rgba(0,0,0,0.6); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.8rem 1rem;
+      max-height: 140px; overflow-y: auto; margin-top: 1rem;
+      color: var(--muted); line-height: 1.7;
+    }
+    .log-box .log-cyan { color: var(--cyan); }
+    .log-box .log-green { color: var(--green); }
+    .log-box .log-yellow { color: #fbbf24; }
+    .log-box .log-red { color: #f87171; }
+
+    /* Slider controls */
+    .slider-group { display: flex; flex-direction: column; gap: 1rem; }
+    .slider-row { display: flex; align-items: center; gap: 1rem; }
+    .slider-label { font-size: 0.78rem; color: var(--muted); min-width: 130px; }
+    .slider-label span { color: var(--cyan); font-family: 'Courier New', monospace; font-weight: 700; }
+    input[type=range] {
+      flex: 1; height: 4px; border-radius: 2px;
+      -webkit-appearance: none; appearance: none;
+      background: linear-gradient(to right, var(--cyan) var(--pct, 50%), var(--border) var(--pct, 50%));
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--cyan);
+      box-shadow: 0 0 6px rgba(34,211,238,0.6);
+    }
+
+    /* Throughput bars */
+    .throughput-wrap { margin-top: 1rem; }
+    .tp-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .tp-label { font-size: 0.73rem; color: var(--muted); min-width: 90px; font-family: 'Courier New', monospace; }
+    .tp-bar-bg { flex: 1; height: 16px; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    .tp-bar { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .tp-val { font-size: 0.72rem; color: var(--text); min-width: 70px; text-align: right; font-family: 'Courier New', monospace; }
+
+    /* Step/hop list for DNS and Packet Flow */
+    .hop-list { display: flex; flex-direction: column; gap: 0; }
+    .hop {
+      display: flex; align-items: stretch; gap: 1rem;
+      padding: 0.6rem 0; position: relative;
+    }
+    .hop-connector { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 28px; }
+    .hop-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border); background: var(--card); flex-shrink: 0; transition: all 0.4s; }
+    .hop-dot.active { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,0.7); }
+    .hop-dot.done { border-color: var(--green); background: var(--green); box-shadow: 0 0 6px rgba(0,255,65,0.5); }
+    .hop-line { flex: 1; width: 2px; background: var(--border); margin: 2px 0; transition: background 0.4s; }
+    .hop-line.lit { background: var(--green); }
+    .hop-body { flex: 1; padding-bottom: 0.5rem; }
+    .hop-name { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .hop-name.active { color: var(--cyan); }
+    .hop-name.done { color: var(--green); }
+    .hop-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+    .hop-time { font-size: 0.7rem; font-family: 'Courier New', monospace; color: var(--green); margin-top: 0.15rem; display: none; }
+    .hop-time.show { display: block; }
+
+    /* Info grid */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .info-card {
+      background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem;
+    }
+    .info-card h3 { font-size: 0.78rem; font-weight: 700; color: var(--cyan); margin-bottom: 0.4rem; }
+    .info-card p { font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+
+    @media (max-width: 600px) {
+      .page-header h1 { font-size: 1.3rem; }
+      .canvas-wrap canvas { min-height: 260px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="sub-nav">
+  <button class="tab active" onclick="switchTab('handshake',this)">TCP Handshake</button>
+  <button class="tab" onclick="switchTab('packetflow',this)">Packet Flow</button>
+  <button class="tab" onclick="switchTab('latency',this)">Latency Simulator</button>
+  <button class="tab" onclick="switchTab('dns',this)">DNS Resolution</button>
+</div>
+
+<!-- ── TAB 1: TCP Handshake ── -->
+<div id="tab-handshake" class="section active">
+  <div class="page-header">
+    <h1>TCP 3-Way Handshake</h1>
+    <p>Watch how TCP establishes a connection before any data is sent.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Handshake Visualization</div>
+    <div class="canvas-wrap">
+      <canvas id="handshakeCanvas" height="340"></canvas>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="replayHandshake()">&#9654; Replay Animation</button>
+      <button class="btn green" onclick="runFullHandshake()">Run Full Handshake</button>
+    </div>
+    <div class="log-box" id="handshakeLog">
+      <span class="log-cyan">&gt; Click "Replay Animation" to watch the TCP 3-way handshake...</span>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Step 1 — SYN</h3>
+      <p>Client sends a SYN (synchronize) segment with an initial sequence number (ISN). This opens the connection request.</p>
+    </div>
+    <div class="info-card">
+      <h3>Step 2 — SYN-ACK</h3>
+      <p>Server responds with SYN-ACK: acknowledges the client's ISN and sends its own ISN. Connection is half-open.</p>
+    </div>
+    <div class="info-card">
+      <h3>Step 3 — ACK</h3>
+      <p>Client acknowledges the server's ISN. The connection is now ESTABLISHED and data transfer can begin.</p>
+    </div>
+    <div class="info-card">
+      <h3>Why 3 Steps?</h3>
+      <p>Both sides must synchronize sequence numbers and acknowledge each other's readiness. Two messages aren't enough to confirm bidirectional reliability.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 2: Packet Flow ── -->
+<div id="tab-packetflow" class="section">
+  <div class="page-header">
+    <h1>Packet Flow</h1>
+    <p>Follow a packet from your browser through the internet to a server and back.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Hop-by-Hop Journey</div>
+    <div class="canvas-wrap">
+      <canvas id="packetCanvas" height="200"></canvas>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="replayPacket()">&#9654; Send Packet</button>
+    </div>
+    <div class="log-box" id="packetLog">
+      <span class="log-cyan">&gt; Click "Send Packet" to trace the journey...</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Hop Timeline</div>
+    <div class="hop-list" id="hopList">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 3: Latency Simulator ── -->
+<div id="tab-latency" class="section">
+  <div class="page-header">
+    <h1>Latency Simulator</h1>
+    <p>Adjust latency and packet loss to see how network conditions affect throughput.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Network Conditions</div>
+    <div class="slider-group">
+      <div class="slider-row">
+        <div class="slider-label">Latency: <span id="latencyVal">50ms</span></div>
+        <input type="range" id="latencySlider" min="0" max="500" value="50" oninput="updateLatency(this)">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">Packet Loss: <span id="lossVal">0%</span></div>
+        <input type="range" id="lossSlider" min="0" max="50" value="0" oninput="updateLoss(this)">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">Bandwidth: <span id="bwVal">100 Mbps</span></div>
+        <input type="range" id="bwSlider" min="1" max="1000" value="100" oninput="updateBw(this)">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Throughput Impact</div>
+    <div class="throughput-wrap">
+      <div class="tp-row">
+        <div class="tp-label">Effective BW</div>
+        <div class="tp-bar-bg"><div class="tp-bar" id="tpEffective" style="background:#22d3ee;width:90%"></div></div>
+        <div class="tp-val" id="tpEffectiveVal">90.0 Mbps</div>
+      </div>
+      <div class="tp-row">
+        <div class="tp-label">TCP Goodput</div>
+        <div class="tp-bar-bg"><div class="tp-bar" id="tpGoodput" style="background:#00ff41;width:85%"></div></div>
+        <div class="tp-val" id="tpGoodputVal">85.0 Mbps</div>
+      </div>
+      <div class="tp-row">
+        <div class="tp-label">Retransmits</div>
+        <div class="tp-bar-bg"><div class="tp-bar" id="tpRetrans" style="background:#f87171;width:2%"></div></div>
+        <div class="tp-val" id="tpRetransVal">0.2 Mbps</div>
+      </div>
+      <div class="tp-row">
+        <div class="tp-label">Round-Trip</div>
+        <div class="tp-bar-bg"><div class="tp-bar" id="tpRTT" style="background:#fbbf24;width:5%"></div></div>
+        <div class="tp-val" id="tpRTTVal">100ms</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Packet Stream Simulation</div>
+    <div class="canvas-wrap">
+      <canvas id="latencyCanvas" height="160"></canvas>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="togglePacketStream()">&#9654; Start Stream</button>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Mathis Formula</h3>
+      <p>TCP throughput ≈ MSS / (RTT × √loss). Even 1% packet loss can cut throughput by 10x on a high-latency link.</p>
+    </div>
+    <div class="info-card">
+      <h3>Bufferbloat</h3>
+      <p>High latency without packet loss often means oversized buffers. Packets queue instead of dropping, adding 100s of ms delay.</p>
+    </div>
+    <div class="info-card">
+      <h3>TCP Congestion</h3>
+      <p>TCP detects loss via timeouts or duplicate ACKs, halving its congestion window. Recovery can take many RTTs on slow links.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 4: DNS Resolution ── -->
+<div id="tab-dns" class="section">
+  <div class="page-header">
+    <h1>DNS Resolution</h1>
+    <p>Watch how a domain name is resolved step-by-step to an IP address.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">DNS Lookup Chain</div>
+    <div class="canvas-wrap">
+      <canvas id="dnsCanvas" height="200"></canvas>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="startDNS()">&#9654; Resolve ximg.app</button>
+      <button class="btn green" onclick="resetDNS()">Reset</button>
+    </div>
+    <div class="log-box" id="dnsLog">
+      <span class="log-cyan">&gt; Click "Resolve ximg.app" to watch the DNS lookup chain...</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Resolution Steps</div>
+    <div class="hop-list" id="dnsHopList">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>DNS Cache</h3>
+      <p>Your OS and resolver cache results per TTL. A warm cache skips the chain entirely — resolution takes &lt;1ms.</p>
+    </div>
+    <div class="info-card">
+      <h3>Root Servers</h3>
+      <p>13 root nameserver clusters (A–M) exist globally, operated by ICANN. They don't know IPs, only where TLD servers are.</p>
+    </div>
+    <div class="info-card">
+      <h3>TLD Servers</h3>
+      <p>.com, .net, .app — each TLD has authoritative servers that know which nameservers are responsible for each domain.</p>
+    </div>
+    <div class="info-card">
+      <h3>TTL</h3>
+      <p>Time-To-Live in seconds. Low TTL (60s) allows fast failover. High TTL (86400s = 1 day) reduces resolver load.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Background canvas script -->
+<script>
+(function() {
+  var c = document.getElementById('bgCanvas');
+  var ctx = c.getContext('2d');
+  var nodes = [];
+  var W, H;
+
+  function resize() {
+    W = c.width = window.innerWidth;
+    H = c.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  for (var i = 0; i < 40; i++) {
+    nodes.push({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 2 + 1
+    });
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    nodes.forEach(function(n) {
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+    });
+    for (var i = 0; i < nodes.length; i++) {
+      for (var j = i + 1; j < nodes.length; j++) {
+        var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 160) {
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = 'rgba(34,211,238,' + (1 - dist/160) * 0.4 + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    nodes.forEach(function(n) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#22d3ee';
+      ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+
+<!-- Tab switching -->
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'packetflow') initPacketHops();
+  if (id === 'dns') initDNSHops();
+  if (id === 'latency') { initLatencyCanvas(); updateThroughput(); }
+}
+</script>
+
+<!-- ══ TCP HANDSHAKE ══ -->
+<script>
+var hsCanvas = document.getElementById('handshakeCanvas');
+var hsCtx = hsCanvas.getContext('2d');
+var hsAnimId = null;
+var hsPackets = [];
+var hsStep = -1;
+var hsPhase = 0; // 0=idle,1=running,2=done
+
+var STEPS = [
+  { label: 'SYN', from: 'client', flags: 'SYN', seq: 'ISN=1000', ack: '', color: '#22d3ee', desc: 'Client → Server: SYN' },
+  { label: 'SYN-ACK', from: 'server', flags: 'SYN+ACK', seq: 'ISN=5000', ack: 'ACK=1001', color: '#00ff41', desc: 'Server → Client: SYN-ACK' },
+  { label: 'ACK', from: 'client', flags: 'ACK', seq: 'SEQ=1001', ack: 'ACK=5001', color: '#22d3ee', desc: 'Client → Server: ACK — ESTABLISHED' },
+];
+
+function resizeHsCanvas() {
+  var wrap = hsCanvas.parentElement;
+  hsCanvas.width = wrap.clientWidth;
+  hsCanvas.height = 340;
+}
+
+function drawHsStatic() {
+  var W = hsCanvas.width, H = hsCanvas.height;
+  hsCtx.clearRect(0, 0, W, H);
+
+  // Draw client box
+  var cx = W * 0.12, cy = H * 0.5;
+  drawBox(hsCtx, cx, cy, '#22d3ee', 'CLIENT', '192.168.1.10');
+
+  // Draw server box
+  var sx = W * 0.88, sy = H * 0.5;
+  drawBox(hsCtx, sx, sy, '#00ff41', 'SERVER', '93.184.216.34');
+
+  // Draw step labels on left/right
+  var steps = ['SYN', 'SYN-ACK', 'ACK'];
+  var cols = ['#22d3ee', '#00ff41', '#22d3ee'];
+  var ypos = [H * 0.25, H * 0.5, H * 0.75];
+  for (var i = 0; i < 3; i++) {
+    hsCtx.font = 'bold 11px Courier New';
+    hsCtx.fillStyle = cols[i];
+    hsCtx.textAlign = 'center';
+    hsCtx.fillText(steps[i], W * 0.5, ypos[i] - 6);
+    // dotted line
+    hsCtx.setLineDash([4, 4]);
+    hsCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+    hsCtx.lineWidth = 1;
+    hsCtx.beginPath();
+    hsCtx.moveTo(cx + 54, ypos[i] + 8);
+    hsCtx.lineTo(sx - 54, ypos[i] + 8);
+    hsCtx.stroke();
+    hsCtx.setLineDash([]);
+  }
+}
+
+function drawBox(ctx, x, y, color, label, addr) {
+  ctx.save();
+  var w = 96, h = 52;
+  ctx.shadowColor = color; ctx.shadowBlur = 18;
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+  ctx.fillStyle = 'rgba(7,7,32,0.9)';
+  ctx.beginPath();
+  ctx.roundRect(x - w/2, y - h/2, w, h, 8);
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = color;
+  ctx.font = 'bold 11px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y - 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '9px Courier New';
+  ctx.fillText(addr, x, y + 11);
+  ctx.restore();
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, label, progress) {
+  var p = Math.min(1, Math.max(0, progress));
+  var ex = x1 + (x2 - x1) * p;
+  var ey = y1 + (y2 - y1) * p;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+  if (p > 0.05) {
+    var angle = Math.atan2(y2 - y1, x2 - x1);
+    var headLen = 8;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen * Math.cos(angle - 0.4), ey - headLen * Math.sin(angle - 0.4));
+    ctx.lineTo(ex - headLen * Math.cos(angle + 0.4), ey - headLen * Math.sin(angle + 0.4));
+    ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+  }
+  // Packet label traveling with arrow
+  if (p > 0 && p < 1) {
+    var midX = x1 + (x2 - x1) * p;
+    var midY = y1 + (y2 - y1) * p - 16;
+    ctx.font = 'bold 10px Courier New';
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+var hsArrows = []; // [{progress,step,done}]
+var hsStarted = false;
+
+function replayHandshake() {
+  hsArrows = [];
+  hsStep = -1;
+  hsPhase = 0;
+  hsPackets = [];
+  hsStarted = false;
+  var log = document.getElementById('handshakeLog');
+  log.innerHTML = '<span class="log-cyan">> Starting TCP 3-Way Handshake...</span>';
+  if (hsAnimId) cancelAnimationFrame(hsAnimId);
+  setTimeout(function() { startHandshakeStep(0); }, 200);
+}
+
+function runFullHandshake() {
+  replayHandshake();
+}
+
+var hsArrowProgress = [0, 0, 0];
+var hsArrowActive = [false, false, false];
+var hsArrowDone = [false, false, false];
+var hsCurrentStep = -1;
+
+function startHandshakeStep(idx) {
+  if (idx >= 3) {
+    addLog('handshakeLog', 'log-green', '> Connection ESTABLISHED — ready for data transfer!');
+    drawFinalHandshake();
+    return;
+  }
+  hsCurrentStep = idx;
+  hsArrowProgress[idx] = 0;
+  hsArrowActive[idx] = true;
+  var step = STEPS[idx];
+  addLog('handshakeLog', 'log-cyan', '> [' + (idx*80 + 5) + 'ms] ' + step.desc + '  flags=' + step.flags + '  ' + step.seq + (step.ack ? '  ' + step.ack : ''));
+
+  var W = hsCanvas.width, H = hsCanvas.height;
+  var cx = W * 0.12, sx = W * 0.88;
+  var ypos = [H * 0.25, H * 0.5, H * 0.75];
+  var fromX = step.from === 'client' ? cx + 48 : sx - 48;
+  var toX   = step.from === 'client' ? sx - 48 : cx + 48;
+  var y = ypos[idx] + 8;
+
+  function animate() {
+    hsArrowProgress[idx] += 0.018;
+    var W2 = hsCanvas.width, H2 = hsCanvas.height;
+    hsCtx.clearRect(0, 0, W2, H2);
+    drawHsStatic();
+
+    for (var i = 0; i < 3; i++) {
+      if (hsArrowDone[i]) {
+        var s = STEPS[i];
+        var fX = s.from === 'client' ? W2*0.12+48 : W2*0.88-48;
+        var tX = s.from === 'client' ? W2*0.88-48 : W2*0.12+48;
+        var yp = [H2*0.25, H2*0.5, H2*0.75][i] + 8;
+        drawArrow(hsCtx, fX, yp, tX, yp, s.color, s.flags, 1);
+      } else if (i === idx) {
+        var fX2 = step.from === 'client' ? W2*0.12+48 : W2*0.88-48;
+        var tX2 = step.from === 'client' ? W2*0.88-48 : W2*0.12+48;
+        var yp2 = ypos[idx] + 8;
+        drawArrow(hsCtx, fX2, yp2, tX2, yp2, step.color, step.flags, hsArrowProgress[idx]);
+      }
+    }
+
+    if (hsArrowProgress[idx] >= 1) {
+      hsArrowDone[idx] = true;
+      setTimeout(function() { startHandshakeStep(idx + 1); }, 400);
+    } else {
+      requestAnimationFrame(animate);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function drawFinalHandshake() {
+  var W = hsCanvas.width, H = hsCanvas.height;
+  hsCtx.clearRect(0, 0, W, H);
+  drawHsStatic();
+  for (var i = 0; i < 3; i++) {
+    var s = STEPS[i];
+    var fX = s.from === 'client' ? W*0.12+48 : W*0.88-48;
+    var tX = s.from === 'client' ? W*0.88-48 : W*0.12+48;
+    var yp = [H*0.25, H*0.5, H*0.75][i] + 8;
+    drawArrow(hsCtx, fX, yp, tX, yp, s.color, s.flags, 1);
+  }
+  // ESTABLISHED labels
+  hsCtx.font = 'bold 10px Courier New';
+  hsCtx.fillStyle = '#00ff41';
+  hsCtx.textAlign = 'center';
+  hsCtx.fillText('ESTABLISHED', W*0.12, H*0.5 + 44);
+  hsCtx.fillText('ESTABLISHED', W*0.88, H*0.5 + 44);
+}
+
+function addLog(id, cls, msg) {
+  var el = document.getElementById(id);
+  el.innerHTML += '<br><span class="' + cls + '">' + msg + '</span>';
+  el.scrollTop = el.scrollHeight;
+}
+
+window.addEventListener('load', function() {
+  resizeHsCanvas();
+  drawHsStatic();
+});
+window.addEventListener('resize', function() {
+  resizeHsCanvas();
+  drawHsStatic();
+});
+</script>
+
+<!-- ══ PACKET FLOW ══ -->
+<script>
+var HOPS = [
+  { name: 'Your Browser', desc: 'HTTP request created, TCP socket opened', time: '0ms', color: '#22d3ee' },
+  { name: 'OS Network Stack', desc: 'IP header added, routed to default gateway', time: '+0.1ms', color: '#22d3ee' },
+  { name: 'Home Router / NAT', desc: 'Source IP rewritten to public IP (NAT)', time: '+1ms', color: '#a78bfa' },
+  { name: 'ISP Gateway', desc: 'BGP routing decision, packet forwarded', time: '+8ms', color: '#fbbf24' },
+  { name: 'Backbone Router', desc: 'High-speed transit, 100Gbps links', time: '+20ms', color: '#fbbf24' },
+  { name: 'CDN / Edge PoP', desc: 'Anycast routing hits nearest edge node', time: '+28ms', color: '#00ff41' },
+  { name: 'Origin Server', desc: 'Request processed, response built', time: '+35ms', color: '#00ff41' },
+  { name: 'Response Arrives', desc: 'Packet ACK\'d, TCP window updated', time: '+70ms', color: '#22d3ee' },
+];
+
+function initPacketHops() {
+  var list = document.getElementById('hopList');
+  list.innerHTML = '';
+  HOPS.forEach(function(hop, i) {
+    var div = document.createElement('div');
+    div.className = 'hop';
+    div.innerHTML =
+      '<div class="hop-connector">' +
+        '<div class="hop-dot" id="pDot' + i + '"></div>' +
+        (i < HOPS.length - 1 ? '<div class="hop-line" id="pLine' + i + '"></div>' : '') +
+      '</div>' +
+      '<div class="hop-body">' +
+        '<div class="hop-name" id="pName' + i + '">' + hop.name + '</div>' +
+        '<div class="hop-desc">' + hop.desc + '</div>' +
+        '<div class="hop-time" id="pTime' + i + '">' + hop.time + '</div>' +
+      '</div>';
+    list.appendChild(div);
+  });
+
+  var pCanvas = document.getElementById('packetCanvas');
+  var wrap = pCanvas.parentElement;
+  pCanvas.width = wrap.clientWidth;
+  pCanvas.height = 200;
+  drawPacketStatic();
+}
+
+function drawPacketStatic() {
+  var c = document.getElementById('packetCanvas');
+  var ctx = c.getContext('2d');
+  var W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  var nodes = ['Browser', 'Router', 'ISP', 'Backbone', 'CDN', 'Server'];
+  var cols = ['#22d3ee', '#a78bfa', '#fbbf24', '#fbbf24', '#00ff41', '#00ff41'];
+  var xs = nodes.map(function(_, i) { return (W * 0.08) + i * (W * 0.84 / (nodes.length - 1)); });
+  var y = H / 2;
+
+  // Draw lines
+  for (var i = 0; i < nodes.length - 1; i++) {
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(xs[i], y);
+    ctx.lineTo(xs[i+1], y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  nodes.forEach(function(name, i) {
+    ctx.beginPath();
+    ctx.arc(xs[i], y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(7,7,32,0.9)';
+    ctx.fill();
+    ctx.strokeStyle = cols[i]; ctx.lineWidth = 1.5;
+    ctx.shadowColor = cols[i]; ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = cols[i];
+    ctx.font = 'bold 8px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(name, xs[i], y + 28);
+  });
+}
+
+var pktAnimId = null;
+var pktProgress = 0;
+var pktRunning = false;
+
+function replayPacket() {
+  pktProgress = 0; pktRunning = true;
+  document.getElementById('packetLog').innerHTML = '<span class="log-cyan">> Sending packet...</span>';
+  HOPS.forEach(function(_, i) {
+    document.getElementById('pDot' + i).className = 'hop-dot';
+    document.getElementById('pName' + i).className = 'hop-name';
+    document.getElementById('pTime' + i).className = 'hop-time';
+    if (i < HOPS.length - 1) document.getElementById('pLine' + i).className = 'hop-line';
+  });
+  if (pktAnimId) cancelAnimationFrame(pktAnimId);
+  animatePacket();
+}
+
+function animatePacket() {
+  var c = document.getElementById('packetCanvas');
+  var ctx = c.getContext('2d');
+  var W = c.width, H = c.height;
+  var nodes = ['Browser', 'Router', 'ISP', 'Backbone', 'CDN', 'Server'];
+  var xs = nodes.map(function(_, i) { return (W * 0.08) + i * (W * 0.84 / (nodes.length - 1)); });
+  var y = H / 2;
+
+  pktProgress += 0.006;
+  if (pktProgress > nodes.length - 1) pktProgress = nodes.length - 1;
+
+  ctx.clearRect(0, 0, W, H);
+  drawPacketStatic();
+
+  // Highlight traveled path
+  var seg = Math.floor(pktProgress);
+  var frac = pktProgress - seg;
+  for (var i = 0; i < Math.min(seg, nodes.length - 1); i++) {
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+    ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 6;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(xs[i], y);
+    ctx.lineTo(xs[i+1], y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  // Active segment
+  if (seg < nodes.length - 1) {
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+    ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 6;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(xs[seg], y);
+    ctx.lineTo(xs[seg] + (xs[seg+1]-xs[seg]) * frac, y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Draw moving packet
+  var px = xs[Math.min(seg, nodes.length-1)] + (seg < nodes.length-1 ? (xs[seg+1]-xs[seg]) * frac : 0);
+  ctx.beginPath();
+  ctx.arc(px, y, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#22d3ee';
+  ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 14;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Update hop list
+  var hopIdx = Math.floor(pktProgress * HOPS.length / (nodes.length - 1));
+  hopIdx = Math.min(hopIdx, HOPS.length - 1);
+  for (var j = 0; j <= hopIdx; j++) {
+    var dot = document.getElementById('pDot' + j);
+    var nm = document.getElementById('pName' + j);
+    var tm = document.getElementById('pTime' + j);
+    if (j < hopIdx) {
+      dot.className = 'hop-dot done';
+      nm.className = 'hop-name done';
+      tm.className = 'hop-time show';
+      if (j < HOPS.length - 1) document.getElementById('pLine' + j).className = 'hop-line lit';
+    } else {
+      dot.className = 'hop-dot active';
+      nm.className = 'hop-name active';
+      tm.className = 'hop-time show';
+    }
+  }
+
+  if (pktProgress < nodes.length - 1) {
+    pktAnimId = requestAnimationFrame(animatePacket);
+  } else {
+    addLog('packetLog', 'log-green', '> Packet arrived at server in ~35ms');
+    addLog('packetLog', 'log-cyan', '> Response traveling back...');
+    setTimeout(function() {
+      addLog('packetLog', 'log-green', '> Round-trip complete: 70ms total');
+    }, 800);
+  }
+}
+</script>
+
+<!-- ══ LATENCY SIMULATOR ══ -->
+<script>
+var latencyVal = 50, lossVal = 0, bwVal = 100;
+var streamRunning = false;
+var streamAnimId = null;
+var streamPackets = [];
+
+function updateLatency(el) {
+  latencyVal = parseInt(el.value);
+  document.getElementById('latencyVal').textContent = latencyVal + 'ms';
+  el.style.setProperty('--pct', (latencyVal / 500 * 100) + '%');
+  updateThroughput();
+}
+function updateLoss(el) {
+  lossVal = parseFloat(el.value);
+  document.getElementById('lossVal').textContent = lossVal + '%';
+  el.style.setProperty('--pct', (lossVal / 50 * 100) + '%');
+  updateThroughput();
+}
+function updateBw(el) {
+  bwVal = parseInt(el.value);
+  document.getElementById('bwVal').textContent = bwVal < 1000 ? bwVal + ' Mbps' : (bwVal/1000).toFixed(1) + ' Gbps';
+  el.style.setProperty('--pct', (bwVal / 1000 * 100) + '%');
+  updateThroughput();
+}
+
+function updateThroughput() {
+  var rtt = Math.max(1, latencyVal * 2);
+  var loss = lossVal / 100;
+  var mss = 1460 * 8 / 1e6; // Mbps
+  // Mathis formula: MSS / (RTT * sqrt(loss))
+  var mathis = loss > 0 ? Math.min(bwVal, mss / (rtt/1000 * Math.sqrt(loss))) : bwVal;
+  var effective = bwVal * (1 - loss) * (1 - Math.min(0.5, latencyVal / 2000));
+  var goodput = Math.min(effective, mathis) * 0.92;
+  var retrans = bwVal * loss * 1.2;
+
+  var maxBw = Math.max(bwVal, 1);
+  setBar('tpEffective', effective, maxBw, effective.toFixed(1) + ' Mbps');
+  setBar('tpGoodput',   goodput,  maxBw, goodput.toFixed(1) + ' Mbps');
+  setBar('tpRetrans',   Math.min(retrans, maxBw), maxBw, retrans.toFixed(2) + ' Mbps');
+  setBar('tpRTT',       Math.min(rtt, 1000), 1000, rtt + 'ms');
+}
+
+function setBar(id, val, max, label) {
+  var pct = Math.max(0, Math.min(100, val / max * 100));
+  document.getElementById(id).style.width = pct + '%';
+  document.getElementById(id + 'Val').textContent = label;
+}
+
+function initLatencyCanvas() {
+  var c = document.getElementById('latencyCanvas');
+  var wrap = c.parentElement;
+  c.width = wrap.clientWidth;
+  c.height = 160;
+}
+
+function togglePacketStream() {
+  var btn = event.target;
+  if (streamRunning) {
+    streamRunning = false;
+    if (streamAnimId) cancelAnimationFrame(streamAnimId);
+    btn.textContent = '▶ Start Stream';
+  } else {
+    streamRunning = true;
+    streamPackets = [];
+    btn.textContent = '⏹ Stop Stream';
+    runStream();
+  }
+}
+
+function runStream() {
+  var c = document.getElementById('latencyCanvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var W = c.width, H = c.height;
+
+  // Spawn packets
+  if (Math.random() < 0.15) {
+    var dropped = Math.random() * 100 < lossVal;
+    streamPackets.push({ x: 0, y: H/2 + (Math.random()-0.5)*40, speed: 2 + Math.random()*2, dropped: dropped, alpha: 1, delay: latencyVal/10 });
+  }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw pipe
+  ctx.fillStyle = 'rgba(30,41,59,0.5)';
+  ctx.fillRect(0, H/2 - 20, W, 40);
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  ctx.strokeRect(0, H/2 - 20, W, 40);
+
+  // BW label
+  ctx.font = '10px Courier New';
+  ctx.fillStyle = '#22d3ee';
+  ctx.textAlign = 'left';
+  ctx.fillText('BW: ' + bwVal + 'Mbps  Loss: ' + lossVal + '%  RTT: ' + latencyVal*2 + 'ms', 10, 20);
+
+  streamPackets.forEach(function(p, i) {
+    if (p.delay > 0) { p.delay--; return; }
+    p.x += p.speed * (1 - latencyVal/800);
+    if (p.dropped && p.x > W * 0.5) { p.alpha -= 0.06; }
+    if (p.x > W || p.alpha <= 0) { streamPackets[i] = null; return; }
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.beginPath();
+    ctx.rect(p.x - 6, p.y - 4, 12, 8);
+    ctx.fillStyle = p.dropped ? '#f87171' : '#22d3ee';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.restore();
+  });
+  streamPackets = streamPackets.filter(function(p) { return p !== null; });
+
+  if (streamRunning) streamAnimId = requestAnimationFrame(runStream);
+}
+
+window.addEventListener('load', function() {
+  updateThroughput();
+  document.getElementById('latencySlider').style.setProperty('--pct', '10%');
+  document.getElementById('lossSlider').style.setProperty('--pct', '0%');
+  document.getElementById('bwSlider').style.setProperty('--pct', '10%');
+});
+</script>
+
+<!-- ══ DNS RESOLUTION ══ -->
+<script>
+var DNS_HOPS = [
+  { name: 'Your Browser', desc: 'Check local browser DNS cache for ximg.app', time: '0ms', color: '#22d3ee' },
+  { name: 'OS Resolver', desc: 'Check /etc/hosts and OS DNS cache', time: '+0.1ms', color: '#22d3ee' },
+  { name: 'Recursive Resolver', desc: 'ISP or 8.8.8.8 — starts recursive lookup', time: '+2ms', color: '#a78bfa' },
+  { name: 'Root Nameserver', desc: 'Returns NS records for .app TLD', time: '+20ms', color: '#fbbf24' },
+  { name: '.app TLD Server', desc: 'Returns NS records for ximg.app', time: '+35ms', color: '#fbbf24' },
+  { name: 'Authoritative NS', desc: 'Returns A record: 172.238.205.61', time: '+48ms', color: '#00ff41' },
+  { name: 'Resolver Cache', desc: 'Caches result per TTL (300s)', time: '+49ms', color: '#00ff41' },
+  { name: 'Browser Connects', desc: 'TCP connect to 172.238.205.61:443', time: '+50ms', color: '#22d3ee' },
+];
+
+function initDNSHops() {
+  var list = document.getElementById('dnsHopList');
+  list.innerHTML = '';
+  DNS_HOPS.forEach(function(hop, i) {
+    var div = document.createElement('div');
+    div.className = 'hop';
+    div.innerHTML =
+      '<div class="hop-connector">' +
+        '<div class="hop-dot" id="dDot' + i + '"></div>' +
+        (i < DNS_HOPS.length - 1 ? '<div class="hop-line" id="dLine' + i + '"></div>' : '') +
+      '</div>' +
+      '<div class="hop-body">' +
+        '<div class="hop-name" id="dName' + i + '">' + hop.name + '</div>' +
+        '<div class="hop-desc">' + hop.desc + '</div>' +
+        '<div class="hop-time" id="dTime' + i + '">' + hop.time + '</div>' +
+      '</div>';
+    list.appendChild(div);
+  });
+
+  var c = document.getElementById('dnsCanvas');
+  var wrap = c.parentElement;
+  c.width = wrap.clientWidth;
+  c.height = 200;
+  drawDNSStatic();
+}
+
+function drawDNSStatic(highlightIdx) {
+  var c = document.getElementById('dnsCanvas');
+  var ctx = c.getContext('2d');
+  var W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  var nodes = ['Client', 'Resolver', 'Root NS', 'TLD NS', 'Auth NS'];
+  var cols  = ['#22d3ee', '#a78bfa', '#fbbf24', '#fbbf24', '#00ff41'];
+  var xs = nodes.map(function(_, i) { return W * 0.08 + i * (W * 0.84 / (nodes.length - 1)); });
+  var y = H / 2;
+
+  for (var i = 0; i < nodes.length - 1; i++) {
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xs[i], y); ctx.lineTo(xs[i+1], y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  nodes.forEach(function(name, i) {
+    var active = highlightIdx !== undefined && i <= highlightIdx;
+    ctx.beginPath();
+    ctx.arc(xs[i], y, 16, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(7,7,32,0.9)'; ctx.fill();
+    ctx.strokeStyle = active ? cols[i] : 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = active ? 2 : 1;
+    if (active) { ctx.shadowColor = cols[i]; ctx.shadowBlur = 12; }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = active ? cols[i] : 'rgba(255,255,255,0.3)';
+    ctx.font = 'bold 8px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(name, xs[i], y + 30);
+  });
+}
+
+var dnsStep = -1;
+var dnsAnimId = null;
+var dnsRunning = false;
+
+function startDNS() {
+  if (dnsRunning) return;
+  dnsRunning = true;
+  dnsStep = 0;
+  document.getElementById('dnsLog').innerHTML = '<span class="log-cyan">> Resolving ximg.app...</span>';
+  DNS_HOPS.forEach(function(_, i) {
+    document.getElementById('dDot' + i).className = 'hop-dot';
+    document.getElementById('dName' + i).className = 'hop-name';
+    document.getElementById('dTime' + i).className = 'hop-time';
+    if (i < DNS_HOPS.length - 1) document.getElementById('dLine' + i).className = 'hop-line';
+  });
+  runDNSStep(0);
+}
+
+function runDNSStep(i) {
+  if (i >= DNS_HOPS.length) {
+    dnsRunning = false;
+    addLog('dnsLog', 'log-green', '> Resolved! ximg.app → 172.238.205.61 (TTL 300s)');
+    return;
+  }
+  var hop = DNS_HOPS[i];
+  document.getElementById('dDot' + i).className = 'hop-dot active';
+  document.getElementById('dName' + i).className = 'hop-name active';
+  document.getElementById('dTime' + i).className = 'hop-time show';
+  addLog('dnsLog', i < 3 ? 'log-cyan' : i < 5 ? 'log-yellow' : 'log-green', '> ' + hop.time + ' ' + hop.name + ': ' + hop.desc);
+
+  var nodeIdx = Math.round(i * 4 / (DNS_HOPS.length - 1));
+  drawDNSStatic(nodeIdx);
+
+  setTimeout(function() {
+    document.getElementById('dDot' + i).className = 'hop-dot done';
+    document.getElementById('dName' + i).className = 'hop-name done';
+    if (i < DNS_HOPS.length - 1) document.getElementById('dLine' + i).className = 'hop-line lit';
+    runDNSStep(i + 1);
+  }, 400 + Math.random() * 200);
+}
+
+function resetDNS() {
+  dnsRunning = false;
+  dnsStep = -1;
+  document.getElementById('dnsLog').innerHTML = '<span class="log-cyan">> Click "Resolve ximg.app" to watch the DNS lookup chain...</span>';
+  if (document.getElementById('dDot0')) {
+    DNS_HOPS.forEach(function(_, i) {
+      document.getElementById('dDot' + i).className = 'hop-dot';
+      document.getElementById('dName' + i).className = 'hop-name';
+      document.getElementById('dTime' + i).className = 'hop-time';
+      if (i < DNS_HOPS.length - 1) document.getElementById('dLine' + i).className = 'hop-line';
+    });
+    drawDNSStatic();
+  }
+}
+
+window.addEventListener('load', function() {
+  resizeHsCanvas();
+  drawHsStatic();
+  initPacketHops();
+  initDNSHops();
+  initLatencyCanvas();
+  updateThroughput();
+});
+window.addEventListener('resize', function() {
+  resizeHsCanvas();
+  drawHsStatic();
+  initPacketHops();
+  if (document.getElementById('dDot0')) initDNSHops();
+  initLatencyCanvas();
+});
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

@@ -40,6 +40,9 @@
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
       ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
+    { label: 'Data', apps: [
+      ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
+    ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
     ]},

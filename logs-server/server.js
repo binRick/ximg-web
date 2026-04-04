@@ -154,6 +154,10 @@ const LOG_FILES = {
   temperature: 'temperature.access.log',
   embeddings:  'embeddings.access.log',
   agents:      'agents.access.log',
+  visualize:   'visualize.access.log',
+  statslab:    'statslab.access.log',
+  regression:  'regression.access.log',
+  probability: 'probability.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -492,6 +496,10 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="temperature">temperature</button>
           <button class="site-opt" data-site="embeddings">embeddings</button>
           <button class="site-opt" data-site="agents">agents</button>
+          <button class="site-opt" data-site="visualize">visualize</button>
+          <button class="site-opt" data-site="statslab">statslab</button>
+          <button class="site-opt" data-site="regression">regression</button>
+          <button class="site-opt" data-site="probability">probability</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

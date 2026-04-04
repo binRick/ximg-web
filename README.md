@@ -94,6 +94,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [database.ximg.app](https://database.ximg.app) | Database Visualizer — interactive ER diagram, JOIN type animator (INNER/LEFT/RIGHT/FULL OUTER), visual SQL query builder, B-tree index vs full-table scan performance demo |
 | [dns.ximg.app](https://dns.ximg.app) | Domain Name System reference — record types, resolution flow, dig/nslookup commands, DNSSEC chain of trust, DoH/DoT |
 | [suricata.ximg.app](https://suricata.ximg.app) | Suricata IDS/IPS reference — rule syntax, sticky buffers, protocol parsers, EVE JSON output, JA3 fingerprinting, CLI commands |
+| [network.ximg.app](https://network.ximg.app) | Interactive networking sandbox — animated TCP 3-way handshake, packet hop journey, latency/loss simulator with throughput charts, and DNS resolution |
+| [request.ximg.app](https://request.ximg.app) | How the Web Works — enter a URL and watch DNS lookup, TCP handshake, TLS negotiation, HTTP headers, and browser rendering pipeline with real timing |
 | [readme.ximg.app](https://readme.ximg.app) | The ximg-web project README rendered as a styled web page — architecture overview, subdomain directory, and stack docs |
 | [claudemd.ximg.app](https://claudemd.ximg.app) | The ximg-web CLAUDE.md rendered as a styled web page — AI assistant instructions, architecture notes, and project conventions |
 | [world.ximg.app](https://world.ximg.app) | Real-time world data dashboard — animated internet traffic map, live cyber attack feed, fake stock ticker with heat map, and live global stat counters |
@@ -103,6 +105,10 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [temperature.ximg.app](https://temperature.ximg.app) | LLM Temperature Explorer — interactive temperature slider with softmax probability charts and sample text outputs per zone |
 | [embeddings.ximg.app](https://embeddings.ximg.app) | Vector Embeddings Explorer — 2D semantic space, cosine similarity calculator, word analogies, and 8-dim radar chart |
 | [agents.ximg.app](https://agents.ximg.app) | AI Agent Loops — animated agent loop, tool use simulation, memory type diagram, and multi-agent orchestration canvas |
+| [visualize.ximg.app](https://visualize.ximg.app) | Chart Builder — interactive bar, line, pie/donut, and scatter plot builder with canvas rendering and live regression |
+| [statslab.ximg.app](https://statslab.ximg.app) | Statistics Lab — probability distributions, Central Limit Theorem, hypothesis testing, and variance/sampling demos |
+| [regression.ximg.app](https://regression.ximg.app) | Regression Playground — click-to-add linear/polynomial regression, gradient descent visualization, residual analysis |
+| [probability.ximg.app](https://probability.ximg.app) | Probability & Monte Carlo — Monte Carlo π, coin flip law of large numbers, birthday problem, Monty Hall simulation |
 
 ## Architecture
 
