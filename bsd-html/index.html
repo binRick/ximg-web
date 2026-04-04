@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BSD — ximg.app</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #cc2200;
+      --red2:   #ff6b6b;
+      --orange: #f97316;
+      --cyan:   #06b6d4;
+      --gold:   #facc15;
+      --green:  #3fb950;
+      --bg:     #0d0800;
+      --card:   #180f07;
+      --border: rgba(204,34,0,0.2);
+      --text:   #e8ddd5;
+      --muted:  #9a8578;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      padding-top: 88px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(204,34,0,.06) 0%, transparent 60%),
+                  radial-gradient(ellipse at bottom right, rgba(249,115,22,.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── sub nav ── */
+    .subnav {
+      position: fixed;
+      top: 44px;
+      left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      gap: .35rem;
+      padding: .4rem .75rem;
+      background: rgba(13,8,0,.96);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stab {
+      padding: .28rem .75rem;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+      transition: all .15s;
+    }
+    .stab:hover { background: rgba(204,34,0,.1); color: var(--red2); border-color: var(--border); }
+    .stab.active { background: rgba(204,34,0,.15); color: var(--red2); border-color: rgba(204,34,0,.4); }
+
+    /* ── page ── */
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 4rem; position: relative; z-index: 1; }
+    section { display: none; }
+    section.active { display: block; }
+
+    h1 { font-size: 2rem; font-weight: 700; color: var(--red2); margin-bottom: .4rem; letter-spacing: -.02em; }
+    h2 { font-size: 1.2rem; color: var(--orange); margin: 2rem 0 .75rem; border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+    h3 { font-size: .95rem; color: var(--gold); margin: 1.25rem 0 .4rem; }
+    p  { color: var(--muted); font-size: .88rem; line-height: 1.7; margin-bottom: .75rem; }
+    .lead { color: var(--text); font-size: .95rem; line-height: 1.7; margin-bottom: 1.5rem; }
+
+    /* ── variant cards ── */
+    .variant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
+    .variant-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.3rem 1.4rem;
+      border-top: 3px solid var(--red);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--red);
+    }
+    .variant-card.freebsd { border-top-color: #cc2200; }
+    .variant-card.openbsd  { border-top-color: #facc15; }
+    .variant-card.netbsd   { border-top-color: #f97316; }
+    .variant-card.dragonfly{ border-top-color: #06b6d4; }
+    .variant-card.ghost    { border-top-color: #a78bfa; }
+
+    .v-name { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+    .v-mascot { font-size: 1.4rem; float: right; margin-top: -.2rem; }
+    .v-tag { display: inline-block; font-size: .68rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; margin-bottom: .65rem; }
+    .freebsd  .v-tag { background: rgba(204,34,0,.2);   color: #ff6b6b; }
+    .openbsd  .v-tag { background: rgba(250,204,21,.2); color: var(--gold); }
+    .netbsd   .v-tag { background: rgba(249,115,22,.2); color: var(--orange); }
+    .dragonfly .v-tag{ background: rgba(6,182,212,.2);  color: var(--cyan); }
+    .ghost    .v-tag { background: rgba(167,139,250,.2); color: #a78bfa; }
+
+    .v-desc { font-size: .82rem; color: var(--muted); line-height: 1.65; margin-bottom: .75rem; }
+    .v-features { list-style: none; }
+    .v-features li { font-size: .77rem; color: var(--text); padding: .2rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .v-features li::before { content: '→ '; color: var(--red2); }
+
+    /* ── feature cards ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; }
+    .card-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; }
+    .card-sub   { font-size: .78rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── timeline ── */
+    .timeline { border-left: 2px solid var(--border); padding-left: 1.5rem; }
+    .tl-entry { position: relative; margin-bottom: 1.4rem; }
+    .tl-entry::before {
+      content: '';
+      position: absolute;
+      left: -1.6rem; top: .35rem;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red2);
+      box-shadow: 0 0 6px var(--red2);
+    }
+    .tl-year  { font-size: .78rem; color: var(--red2); font-weight: 700; margin-bottom: .25rem; }
+    .tl-title { font-size: .9rem; color: var(--text); font-weight: 700; margin-bottom: .2rem; }
+    .tl-desc  { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── comparison table ── */
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 1.5rem; }
+    .cmp-table th { text-align: left; padding: .65rem .8rem; background: rgba(204,34,0,.12); color: var(--orange); border-bottom: 2px solid var(--border); }
+    .cmp-table td { padding: .6rem .8rem; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--muted); }
+    .cmp-table tr:hover td { background: rgba(255,255,255,.02); }
+    .cmp-table td:first-child { color: var(--text); font-weight: 700; }
+    .yes { color: var(--green); }
+    .no  { color: rgba(255,255,255,.25); }
+    .partial { color: var(--gold); }
+
+    /* ── commands ── */
+    .cmd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .6rem; margin-bottom: 1.5rem; }
+    .cmd-card { background: var(--card); border: 1px solid rgba(255,255,255,.05); border-radius: 8px; padding: .7rem .9rem; }
+    .cmd-name { font-size: .85rem; font-weight: 700; color: var(--red2); font-family: monospace; margin-bottom: .15rem; }
+    .cmd-desc { font-size: .75rem; color: var(--muted); }
+    .cmd-ex   { font-size: .72rem; color: var(--cyan); font-family: monospace; margin-top: .1rem; }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 1.4rem; }
+      .variant-grid { grid-template-columns: 1fr; }
+      .cmp-table { font-size: .72rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="subnav">
+    <button class="stab active" data-tab="overview">overview</button>
+    <button class="stab" data-tab="variants">variants</button>
+    <button class="stab" data-tab="features">features</button>
+    <button class="stab" data-tab="commands">commands</button>
+    <button class="stab" data-tab="compare">compare</button>
+    <button class="stab" data-tab="history">history</button>
+  </nav>
+
+  <div class="page">
+
+    <!-- ── OVERVIEW ── -->
+    <section id="tab-overview" class="active">
+      <h1>BSD</h1>
+      <p class="lead">Berkeley Software Distribution — the branch of Unix that gave the world TCP/IP networking, the vi editor, virtual memory, and OpenSSH. Born at UC Berkeley in 1977, BSD shaped the modern internet and lives on in FreeBSD, macOS, PlayStation, and more.</p>
+
+      <h2>What is BSD?</h2>
+      <p>BSD (Berkeley Software Distribution) began as a set of additions to AT&T Unix made by students and researchers at the University of California, Berkeley. Over time it grew into a complete operating system in its own right. The 4.2BSD release in 1983 implemented the TCP/IP stack that became the networking foundation of the entire internet.</p>
+      <p>After a legal dispute with AT&T was settled in 1994, BSD was free to be distributed freely. Three main open source descendants emerged: FreeBSD (performance), OpenBSD (security), and NetBSD (portability). The BSD networking stack also formed the core of macOS, iOS, and Sony's PlayStation OS.</p>
+
+      <h2>Why BSD Matters</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">The Internet Runs on BSD</div>
+          <div class="card-sub">4.2BSD's TCP/IP implementation (1983) became the networking stack of the early internet. Every router and server in the 1990s internet used it.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">OpenSSH — Everywhere</div>
+          <div class="card-sub">Created by the OpenBSD project. Over 90% of the world's internet-facing servers use OpenSSH. Every cloud instance you SSH into uses OpenBSD code.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">macOS Is BSD</div>
+          <div class="card-sub">Apple's Darwin kernel merges BSD (FreeBSD userland) with the Mach microkernel. macOS is a certified UNIX built on BSD foundations.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">PlayStation OS</div>
+          <div class="card-sub">Sony's PlayStation 4 and PlayStation 5 operating systems (Orbis OS / Prospero OS) are based on FreeBSD. The same OS in 100M+ consoles.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Netflix CDN</div>
+          <div class="card-sub">Netflix runs its Open Connect CDN appliances on FreeBSD, streaming to 300M+ subscribers. FreeBSD's network stack is legendary for performance.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Security by Default</div>
+          <div class="card-sub">OpenBSD pioneered exploit mitigations (W^X, ASLR, pledge, unveil) years before any other OS. It's had only two remote holes in 25+ years.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">ZFS &amp; DTrace</div>
+          <div class="card-sub">FreeBSD ported Sun's revolutionary ZFS filesystem and DTrace dynamic tracing framework — technologies that later came to Linux and macOS.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Permissive License</div>
+          <div class="card-sub">The BSD license allows proprietary use without sharing source code. This is why Apple, Sony, and thousands of companies built on BSD.</div>
+        </div>
+      </div>
+
+      <h2>BSD Mascot: Beastie</h2>
+      <p>The BSD mascot is "Beastie" — a friendly red devil created by artist Phil Foglio in 1988. The name is a phonetic play on "BSD." Beastie holds a trident, representing the BSD kernel's power. Each BSD variant has adapted the mascot: OpenBSD has Puffy the pufferfish, NetBSD has a flag, and DragonFly BSD has a dragonfly.</p>
+    </section>
+
+    <!-- ── VARIANTS ── -->
+    <section id="tab-variants">
+      <h1>BSD Variants</h1>
+      <p class="lead">The four major open source BSDs, each with a distinct focus: performance, security, portability, and scalability.</p>
+
+      <div class="variant-grid">
+        <div class="variant-card freebsd">
+          <div class="v-mascot">😈</div>
+          <div class="v-name">FreeBSD</div>
+          <div class="v-tag">Performance &amp; Scale</div>
+          <div class="v-desc">The most widely deployed BSD. Known for excellent network performance, enterprise stability, and a complete base system. Runs Netflix, WhatsApp infrastructure, and PlayStation OS.</div>
+          <ul class="v-features">
+            <li>ZFS filesystem (ported from Solaris)</li>
+            <li>DTrace dynamic tracing</li>
+            <li>Jails — lightweight OS-level virtualization</li>
+            <li>Ports collection (30,000+ packages)</li>
+            <li>bhyve hypervisor</li>
+            <li>NUMA-aware networking stack</li>
+            <li>Capsicum capability framework</li>
+          </ul>
+        </div>
+
+        <div class="variant-card openbsd">
+          <div class="v-mascot">🐡</div>
+          <div class="v-name">OpenBSD</div>
+          <div class="v-tag">Security First</div>
+          <div class="v-desc">Founded by Theo de Raadt after a dispute in the NetBSD project. Security is not a feature — it's the goal. Only two remote holes in the default install in 25+ years.</div>
+          <ul class="v-features">
+            <li>OpenSSH — the world's most-used SSH</li>
+            <li>pf — packet filter firewall</li>
+            <li>W^X (writable XOR executable memory)</li>
+            <li>pledge() and unveil() syscall restrictions</li>
+            <li>ASLR on by default</li>
+            <li>LibreSSL (fork of OpenSSL)</li>
+            <li>OpenNTPD, OpenSMTPD</li>
+          </ul>
+        </div>
+
+        <div class="variant-card netbsd">
+          <div class="v-mascot">🚩</div>
+          <div class="v-name">NetBSD</div>
+          <div class="v-tag">Portability</div>
+          <div class="v-desc">The most portable OS in existence. Runs on more CPU architectures than any other OS — from old VAX hardware to modern ARM to SPARC. "Of course it runs NetBSD."</div>
+          <ul class="v-features">
+            <li>Runs on 60+ CPU architectures</li>
+            <li>pkgsrc — portable package system</li>
+            <li>Rump Kernels (kernel components as userspace libs)</li>
+            <li>Verified exec (veriexec)</li>
+            <li>NetBSD/embedded for IoT devices</li>
+            <li>Excellent cross-compilation support</li>
+          </ul>
+        </div>
+
+        <div class="variant-card dragonfly">
+          <div class="v-mascot">🐉</div>
+          <div class="v-name">DragonFly BSD</div>
+          <div class="v-tag">Multiprocessor Scalability</div>
+          <div class="v-desc">Forked from FreeBSD 4.x by Matt Dillon in 2003 to pursue a radically different approach to SMP scalability using a message-passing kernel architecture.</div>
+          <ul class="v-features">
+            <li>HAMMER2 — scalable, transactional filesystem</li>
+            <li>Lightweight Kernel Threads (LWKTs)</li>
+            <li>Message-passing IPC between CPUs</li>
+            <li>VKERNEL — run DragonFly as a userspace process</li>
+            <li>Excellent multi-core scalability</li>
+          </ul>
+        </div>
+
+        <div class="variant-card ghost">
+          <div class="v-mascot">🍎</div>
+          <div class="v-name">macOS / Darwin</div>
+          <div class="v-tag">Apple's BSD</div>
+          <div class="v-desc">Apple's Darwin OS combines a BSD (FreeBSD) userland with the XNU kernel (Mach + BSD). Certified as UNIX since 2007. Powers macOS, iOS, iPadOS, tvOS, and watchOS.</div>
+          <ul class="v-features">
+            <li>XNU hybrid kernel (Mach + FreeBSD)</li>
+            <li>APFS — Apple File System</li>
+            <li>Grand Central Dispatch</li>
+            <li>DTrace (ported from Solaris)</li>
+            <li>Homebrew package manager</li>
+            <li>2 billion active Apple devices</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FEATURES ── -->
+    <section id="tab-features">
+      <h1>BSD Features &amp; Technologies</h1>
+      <p class="lead">Technologies invented or pioneered by BSD that changed computing forever.</p>
+
+      <h2>Networking</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">TCP/IP Stack (4.2BSD, 1983)</div>
+          <div class="card-sub">Bill Joy's Berkeley TCP/IP implementation became the standard. DARPA funded it. Every internet-connected device descends from this code.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sockets API</div>
+          <div class="card-sub">BSD introduced the socket() abstraction for network programming. The BSD socket API is still the interface used by every language and OS for network I/O.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">pf (Packet Filter)</div>
+          <div class="card-sub">OpenBSD's firewall, later ported to FreeBSD and macOS. pf is the firewall inside every Mac and most BSDs. Known for its clean configuration language.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">OpenSSH</div>
+          <div class="card-sub">Created by OpenBSD in 1999. The SSH protocol implementation used on virtually every Linux/Unix server in the world. Replaced insecure telnet/rsh everywhere.</div>
+        </div>
+      </div>
+
+      <h2>File Systems</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">FFS / UFS (Fast File System)</div>
+          <div class="card-sub">Created by Kirk McKusick at Berkeley. Replaced the original Unix filesystem with cylinder groups and locality-optimized allocation. Basis of UFS2 still used in BSDs today.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">ZFS (Zettabyte File System)</div>
+          <div class="card-sub">Originally from Sun/Solaris, ported to FreeBSD. Combined filesystem + volume manager. 128-bit addressing, copy-on-write, atomic snapshots, and always-on checksumming.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">HAMMER2 (DragonFly BSD)</div>
+          <div class="card-sub">Matt Dillon's clustered filesystem. Fully transactional, supports live deduplication, and is designed to span multiple machines in a cluster.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">NFS (Network File System)</div>
+          <div class="card-sub">BSD was an early implementer of NFS, the protocol for mounting remote filesystems over a network. NFS was created by Sun; BSD spread it everywhere.</div>
+        </div>
+      </div>
+
+      <h2>Security</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Jails (FreeBSD)</div>
+          <div class="card-sub">Introduced in FreeBSD 4.0 (2000). OS-level virtualization — isolated environments sharing one kernel. The conceptual predecessor to Linux containers and Docker.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">pledge() / unveil()</div>
+          <div class="card-sub">OpenBSD's syscall sandboxing. pledge() restricts what syscalls a process can use. unveil() restricts filesystem access. Applied to almost every base utility.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">W^X</div>
+          <div class="card-sub">Write XOR Execute memory — memory pages cannot be both writable and executable simultaneously. OpenBSD pioneered this exploit mitigation in 2003.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Capsicum (FreeBSD)</div>
+          <div class="card-sub">A capability-based security model. Processes run with minimal privileges in a sandboxed mode. Used by Chromium's sandbox on FreeBSD.</div>
+        </div>
+      </div>
+
+      <h2>Virtualization</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">bhyve (FreeBSD)</div>
+          <div class="card-sub">A hypervisor built into FreeBSD. Runs Linux, Windows, and other BSDs as VMs with near-native performance. The foundation of iXsystems' TrueNAS hypervisor.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">VKERNEL (DragonFly BSD)</div>
+          <div class="card-sub">Run a full DragonFly BSD kernel as a userspace process. Useful for kernel development and testing without actual hardware or a VM.</div>
+        </div>
+      </div>
+
+      <h2>Observability</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">DTrace</div>
+          <div class="card-sub">Dynamic tracing framework from Sun, ported to FreeBSD and macOS. Observe any kernel or userspace event in real-time without restarting processes.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">ktrace / truss</div>
+          <div class="card-sub">BSD syscall tracing tools (analogous to Linux's strace). Trace every system call a process makes to understand its behavior.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── COMMANDS ── -->
+    <section id="tab-commands">
+      <h1>BSD Commands &amp; Tools</h1>
+      <p class="lead">Notable BSD-specific commands and tools — many of which were later adopted by Linux or influenced its alternatives.</p>
+
+      <h2>System Administration</h2>
+      <div class="cmd-grid">
+        <div class="cmd-card"><div class="cmd-name">pkg</div><div class="cmd-desc">FreeBSD binary package manager</div><div class="cmd-ex">pkg install nginx</div></div>
+        <div class="cmd-card"><div class="cmd-name">ports</div><div class="cmd-desc">Build software from source</div><div class="cmd-ex">cd /usr/ports/www/nginx && make install</div></div>
+        <div class="cmd-card"><div class="cmd-name">pkgsrc</div><div class="cmd-desc">NetBSD portable package system</div><div class="cmd-ex">cd /usr/pkgsrc/www/nginx && make install</div></div>
+        <div class="cmd-card"><div class="cmd-name">service</div><div class="cmd-desc">Manage rc.d services</div><div class="cmd-ex">service nginx start</div></div>
+        <div class="cmd-card"><div class="cmd-name">rc.conf</div><div class="cmd-desc">System configuration file</div><div class="cmd-ex">echo 'nginx_enable="YES"' >> /etc/rc.conf</div></div>
+        <div class="cmd-card"><div class="cmd-name">sysctl</div><div class="cmd-desc">Read/write kernel parameters</div><div class="cmd-ex">sysctl kern.version</div></div>
+        <div class="cmd-card"><div class="cmd-name">kldload</div><div class="cmd-desc">Load a kernel module (FreeBSD)</div><div class="cmd-ex">kldload pf</div></div>
+        <div class="cmd-card"><div class="cmd-name">loader.conf</div><div class="cmd-desc">Boot-time kernel config</div><div class="cmd-ex">echo 'zfs_load="YES"' >> /boot/loader.conf</div></div>
+      </div>
+
+      <h2>Jails (FreeBSD)</h2>
+      <div class="cmd-grid">
+        <div class="cmd-card"><div class="cmd-name">jail</div><div class="cmd-desc">Create and manage jails</div><div class="cmd-ex">jail -c path=/jails/web</div></div>
+        <div class="cmd-card"><div class="cmd-name">jls</div><div class="cmd-desc">List running jails</div><div class="cmd-ex">jls</div></div>
+        <div class="cmd-card"><div class="cmd-name">jexec</div><div class="cmd-desc">Execute command inside jail</div><div class="cmd-ex">jexec web /bin/sh</div></div>
+        <div class="cmd-card"><div class="cmd-name">jail.conf</div><div class="cmd-desc">Jail configuration file</div><div class="cmd-ex">cat /etc/jail.conf</div></div>
+      </div>
+
+      <h2>ZFS (FreeBSD / OpenBSD)</h2>
+      <div class="cmd-grid">
+        <div class="cmd-card"><div class="cmd-name">zpool create</div><div class="cmd-desc">Create a new ZFS pool</div><div class="cmd-ex">zpool create tank mirror da0 da1</div></div>
+        <div class="cmd-card"><div class="cmd-name">zpool status</div><div class="cmd-desc">Pool health and I/O stats</div><div class="cmd-ex">zpool status -v tank</div></div>
+        <div class="cmd-card"><div class="cmd-name">zfs create</div><div class="cmd-desc">Create a ZFS dataset</div><div class="cmd-ex">zfs create tank/data</div></div>
+        <div class="cmd-card"><div class="cmd-name">zfs snapshot</div><div class="cmd-desc">Atomic point-in-time snapshot</div><div class="cmd-ex">zfs snapshot tank/data@backup1</div></div>
+        <div class="cmd-card"><div class="cmd-name">zfs send/recv</div><div class="cmd-desc">Stream snapshots across systems</div><div class="cmd-ex">zfs send tank@snap | ssh host zfs recv</div></div>
+        <div class="cmd-card"><div class="cmd-name">zfs set</div><div class="cmd-desc">Set dataset properties</div><div class="cmd-ex">zfs set compression=lz4 tank</div></div>
+      </div>
+
+      <h2>pf Firewall (OpenBSD / FreeBSD)</h2>
+      <div class="cmd-grid">
+        <div class="cmd-card"><div class="cmd-name">pfctl -e</div><div class="cmd-desc">Enable pf firewall</div><div class="cmd-ex">pfctl -e</div></div>
+        <div class="cmd-card"><div class="cmd-name">pfctl -f</div><div class="cmd-desc">Load pf rules from file</div><div class="cmd-ex">pfctl -f /etc/pf.conf</div></div>
+        <div class="cmd-card"><div class="cmd-name">pfctl -si</div><div class="cmd-desc">Show pf info/state</div><div class="cmd-ex">pfctl -si</div></div>
+        <div class="cmd-card"><div class="cmd-name">pfctl -ss</div><div class="cmd-desc">Show state table</div><div class="cmd-ex">pfctl -ss</div></div>
+      </div>
+
+      <h2>Diagnostics</h2>
+      <div class="cmd-grid">
+        <div class="cmd-card"><div class="cmd-name">dmesg</div><div class="cmd-desc">Kernel ring buffer messages</div><div class="cmd-ex">dmesg | grep error</div></div>
+        <div class="cmd-card"><div class="cmd-name">top</div><div class="cmd-desc">BSD's enhanced top</div><div class="cmd-ex">top -m io</div></div>
+        <div class="cmd-card"><div class="cmd-name">systat</div><div class="cmd-desc">Interactive system statistics</div><div class="cmd-ex">systat -vmstat 1</div></div>
+        <div class="cmd-card"><div class="cmd-name">sockstat</div><div class="cmd-desc">List open sockets</div><div class="cmd-ex">sockstat -l -p 80</div></div>
+        <div class="cmd-card"><div class="cmd-name">dtrace</div><div class="cmd-desc">Dynamic tracing</div><div class="cmd-ex">dtrace -n 'syscall:::entry{@[execname]=count();}'</div></div>
+        <div class="cmd-card"><div class="cmd-name">truss</div><div class="cmd-desc">Trace syscalls (like strace)</div><div class="cmd-ex">truss -p 1234</div></div>
+        <div class="cmd-card"><div class="cmd-name">fstat</div><div class="cmd-desc">List open files by process</div><div class="cmd-ex">fstat -p 1234</div></div>
+        <div class="cmd-card"><div class="cmd-name">vmstat</div><div class="cmd-desc">Virtual memory statistics</div><div class="cmd-ex">vmstat 1</div></div>
+      </div>
+    </section>
+
+    <!-- ── COMPARE ── -->
+    <section id="tab-compare">
+      <h1>BSD vs Linux vs macOS</h1>
+      <p class="lead">How the major BSD variants and Linux compare across key dimensions.</p>
+
+      <h2>Feature Comparison</h2>
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>FreeBSD</th>
+            <th>OpenBSD</th>
+            <th>NetBSD</th>
+            <th>Linux</th>
+            <th>macOS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>ZFS</td><td class="yes">Native</td><td class="no">No</td><td class="partial">3rd party</td><td class="partial">OpenZFS</td><td class="partial">Read-only</td></tr>
+          <tr><td>Jails / Containers</td><td class="yes">Jails</td><td class="yes">vmm</td><td class="partial">vnd</td><td class="yes">cgroups/ns</td><td class="partial">Limited</td></tr>
+          <tr><td>DTrace</td><td class="yes">Full</td><td class="no">No</td><td class="partial">Partial</td><td class="partial">bpftrace</td><td class="yes">Full</td></tr>
+          <tr><td>pf Firewall</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="partial">nftables</td><td class="yes">Yes</td></tr>
+          <tr><td>Security default</td><td class="partial">Good</td><td class="yes">Excellent</td><td class="partial">Good</td><td class="partial">Varies</td><td class="partial">Good</td></tr>
+          <tr><td>Hardware support</td><td class="yes">Wide</td><td class="partial">Limited</td><td class="yes">Widest</td><td class="yes">Widest</td><td class="partial">Apple only</td></tr>
+          <tr><td>Package count</td><td class="yes">30,000+</td><td class="partial">9,000+</td><td class="yes">20,000+</td><td class="yes">50,000+</td><td class="partial">Homebrew</td></tr>
+          <tr><td>Base system design</td><td class="yes">Unified</td><td class="yes">Unified</td><td class="yes">Unified</td><td class="partial">Fragmented</td><td class="yes">Unified</td></tr>
+          <tr><td>BSD license</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">GPL</td><td class="partial">Mixed</td></tr>
+          <tr><td>Init system</td><td class="partial">rc.d</td><td class="partial">rc.d</td><td class="partial">rc.d</td><td class="partial">systemd</td><td class="partial">launchd</td></tr>
+          <tr><td>Desktop use</td><td class="partial">Via ports</td><td class="partial">Minimal</td><td class="no">Minimal</td><td class="yes">Wide</td><td class="yes">Primary</td></tr>
+          <tr><td>Server production</td><td class="yes">Excellent</td><td class="yes">Excellent</td><td class="yes">Good</td><td class="yes">Dominant</td><td class="partial">Limited</td></tr>
+        </tbody>
+      </table>
+
+      <h2>When to Choose BSD</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Choose FreeBSD when...</div>
+          <div class="card-sub">You need maximum network throughput, ZFS storage, jail-based isolation, or are building a NAS (TrueNAS). Netflix, WhatsApp, and CDN operators choose FreeBSD.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Choose OpenBSD when...</div>
+          <div class="card-sub">Security is the non-negotiable requirement. Firewalls, VPN gateways, and edge routers running pf. Used by security researchers and government systems.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Choose NetBSD when...</div>
+          <div class="card-sub">You need to run an OS on unusual or legacy hardware, or are building an embedded system. Also excellent for porting software to new architectures.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Choose Linux when...</div>
+          <div class="card-sub">You need the widest hardware support, the largest software ecosystem, Docker/Kubernetes, or are deploying to cloud VMs. Linux dominates cloud and containers.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── HISTORY ── -->
+    <section id="tab-history">
+      <h1>BSD History</h1>
+      <p class="lead">From Bill Joy's first patch set in 1977 to the OS inside every PlayStation today — the complete story of Berkeley Software Distribution.</p>
+
+      <div class="timeline">
+        <div class="tl-entry">
+          <div class="tl-year">1975</div>
+          <div class="tl-title">Berkeley Gets Unix V6</div>
+          <div class="tl-desc">AT&T licenses Unix Version 6 to the University of California, Berkeley, for a nominal fee of $400. The Computer Science Division begins modifying it immediately.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1977</div>
+          <div class="tl-title">1BSD — Bill Joy's First Distribution</div>
+          <div class="tl-desc">Graduate student Bill Joy releases the Berkeley Software Distribution — a package of additions to Unix V6 including a Pascal compiler and the ex line editor.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1978</div>
+          <div class="tl-title">2BSD — vi and csh</div>
+          <div class="tl-desc">Bill Joy releases 2BSD, which includes vi (the visual editor, still used everywhere) and the C shell (csh). These tools define a generation of Unix users.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1979</div>
+          <div class="tl-title">3BSD — Virtual Memory</div>
+          <div class="tl-desc">3BSD adds virtual memory support to Unix for the first time. This allows programs larger than physical RAM. DARPA begins funding BSD development.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1980</div>
+          <div class="tl-title">DARPA Funding — Building the Internet</div>
+          <div class="tl-desc">DARPA contracts UC Berkeley to add TCP/IP networking to Unix. This is the decision that shapes the entire internet. The team is led by Bill Joy and Bob Fabry.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1983</div>
+          <div class="tl-title">4.2BSD — The TCP/IP Revolution</div>
+          <div class="tl-desc">The landmark release. Includes a complete, high-quality implementation of TCP/IP. DARPA adopts it as the official internet protocol stack. This is the networking code that powers the internet.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1986</div>
+          <div class="tl-title">4.3BSD</div>
+          <div class="tl-desc">Major networking improvements, NFS support, and performance enhancements. Bill Joy leaves Berkeley to co-found Sun Microsystems. Marshall Kirk McKusick leads development.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1989</div>
+          <div class="tl-title">Net/1 — First Free Release</div>
+          <div class="tl-desc">Berkeley releases Net/1 — the networking code without AT&T-licensed components. The first freely redistributable part of BSD.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1991</div>
+          <div class="tl-title">Net/2 — Nearly Free BSD</div>
+          <div class="tl-desc">A nearly complete BSD system with all AT&T code removed. BSDI sells a commercial product based on Net/2. AT&T threatens to sue.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1992</div>
+          <div class="tl-title">AT&T Lawsuit</div>
+          <div class="tl-desc">AT&T's Unix Systems Laboratories sues BSDI and UC Berkeley over alleged copyright violation. Development freezes for two years while the lawsuit is in court. Linux fills the void.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1993</div>
+          <div class="tl-title">FreeBSD 1.0 and NetBSD 0.8</div>
+          <div class="tl-desc">While the lawsuit continues, FreeBSD (focus: x86) and NetBSD (focus: portability) are both released. Two distinct open source BSD projects begin independently.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1994</div>
+          <div class="tl-title">Lawsuit Settled — 4.4BSD-Lite</div>
+          <div class="tl-desc">The lawsuit is settled. Berkeley releases 4.4BSD-Lite with the AT&T-claimed files replaced. FreeBSD, NetBSD, and the new commercial BSDs all rebase on this. BSD is free.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1995</div>
+          <div class="tl-title">CSRG Disbands</div>
+          <div class="tl-desc">The Computer Systems Research Group at Berkeley is disbanded. Development continues through the independent FreeBSD, OpenBSD, and NetBSD projects.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1996</div>
+          <div class="tl-title">OpenBSD Founded</div>
+          <div class="tl-desc">Theo de Raadt forks NetBSD to create OpenBSD, focused purely on security. Begins systematic code auditing. Will go on to create OpenSSH and transform internet security.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">1999</div>
+          <div class="tl-title">OpenSSH Released</div>
+          <div class="tl-desc">OpenBSD team releases OpenSSH 1.2. Within a year it replaces every commercial and insecure SSH implementation worldwide. Today it's on virtually every server.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2000</div>
+          <div class="tl-title">FreeBSD Jails</div>
+          <div class="tl-desc">FreeBSD introduces Jails in version 4.0 — lightweight OS virtualization predating Linux containers by years. The conceptual ancestor of Docker.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2001</div>
+          <div class="tl-title">macOS — BSD Goes Mainstream</div>
+          <div class="tl-desc">Apple releases Mac OS X, built on Darwin — a combination of Mach microkernel and FreeBSD userland. BSD reaches mass consumers for the first time.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2003</div>
+          <div class="tl-title">DragonFly BSD Forked</div>
+          <div class="tl-desc">Matt Dillon forks FreeBSD 4.x to pursue a message-passing kernel architecture for better SMP scaling. Later creates HAMMER2 filesystem.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2007</div>
+          <div class="tl-title">macOS Certified UNIX</div>
+          <div class="tl-desc">Apple's Mac OS X Leopard receives official UNIX 03 certification from The Open Group. 150 million Mac users are now running a certified UNIX.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2013</div>
+          <div class="tl-title">PlayStation 4 Ships on FreeBSD</div>
+          <div class="tl-desc">Sony launches PS4 running Orbis OS — based on FreeBSD 9. Over 117 million PS4 units sold. BSD quietly powers the world's most popular gaming console.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2020</div>
+          <div class="tl-title">PlayStation 5 on FreeBSD</div>
+          <div class="tl-desc">PS5 launches with Prospero OS, also FreeBSD-based. Netflix's CDN, WhatsApp, and Xbox cloud gaming also run on BSD derivatives.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2024</div>
+          <div class="tl-title">BSD Turns 47</div>
+          <div class="tl-desc">FreeBSD 14.x, OpenBSD 7.x, and NetBSD 10.x are all actively developed. BSD is inside the device in your pocket (via iOS), your gaming console (via PlayStation), and the CDN streaming your video.</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    var tabs = document.querySelectorAll('.stab');
+    tabs.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var t = this.dataset.tab;
+        tabs.forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('section').forEach(function(s) { s.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById('tab-' + t).classList.add('active');
+      });
+    });
+  </script>
+
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

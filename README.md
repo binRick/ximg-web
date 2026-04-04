@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-52 virtual hosts (root + 51 subdomains), each with its own Apache container.
+54 virtual hosts (root + 53 subdomains), each with its own Apache container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -58,6 +58,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ids.ximg.app](https://ids.ximg.app) | Live Suricata IDS feed — alerts, attacker world map, and threat statistics |
 | [stats.ximg.app](https://stats.ximg.app) | AWStats traffic analytics — per-site visitor counts, referrers, and bandwidth |
 | [mail.ximg.app](https://mail.ximg.app) | Webmail inbox for @ximg.app — live SMTP receiver with Gmail-style reader UI |
+| [unix.ximg.app](https://unix.ximg.app) | Unix history, philosophy (17 rules), commands cheatsheet, family tree from Bell Labs to Linux, and key people |
+| [bsd.ximg.app](https://bsd.ximg.app) | BSD deep-dive — FreeBSD, OpenBSD, NetBSD, DragonFly, TCP/IP history, ZFS, pf firewall, and BSD in every Mac and PlayStation |
 | [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
 
 ## Architecture

@@ -105,6 +105,8 @@ const LOG_FILES = {
   programming: 'programming.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
+  unix:        'unix.access.log',
+  bsd:         'bsd.access.log',
 
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
@@ -364,6 +366,8 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="chess">chess</button>
     <button class="tab"        data-site="programming">programming</button>
     <button class="tab"        data-site="systemd">systemd</button>
+    <button class="tab"        data-site="unix">unix</button>
+    <button class="tab"        data-site="bsd">bsd</button>
     <button class="tab"        data-site="nav">nav</button>
     <button class="tab"        data-site="ximg-app">ximg-app</button>
     <button class="tab"        data-site="logs">logs</button>

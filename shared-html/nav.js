@@ -1,9 +1,9 @@
 (function () {
   var GROUPS = [
     { label: 'Tech', apps: [
-      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['claude','claude'],['computers','computers'],
+      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],
       ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coldwar','coldwar'],['florida','florida'],

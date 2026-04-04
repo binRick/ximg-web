@@ -174,6 +174,7 @@ DOMAINS=(
   simcity.ximg.app stats.ximg.app systemd.ximg.app tampa.ximg.app
   tmux.ximg.app trump.ximg.app vr.ximg.app vt101.ximg.app
   warcraft.ximg.app wargames.ximg.app wood.ximg.app
+  unix.ximg.app bsd.ximg.app
   ximg.ximg.app yaml.ximg.app zsh.ximg.app
   nagios.ximg.app
 )
