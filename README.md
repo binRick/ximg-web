@@ -109,6 +109,14 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [statslab.ximg.app](https://statslab.ximg.app) | Statistics Lab — probability distributions, Central Limit Theorem, hypothesis testing, and variance/sampling demos |
 | [regression.ximg.app](https://regression.ximg.app) | Regression Playground — click-to-add linear/polynomial regression, gradient descent visualization, residual analysis |
 | [probability.ximg.app](https://probability.ximg.app) | Probability & Monte Carlo — Monte Carlo π, coin flip law of large numbers, birthday problem, Monty Hall simulation |
+| [systemdesign.ximg.app](https://systemdesign.ximg.app) | System Design Explorer — URL shortener architecture, social feed fanout, consistent hashing ring, CAP theorem |
+| [loadbalancer.ximg.app](https://loadbalancer.ximg.app) | Load Balancer Simulator — round robin/least connections/IP hash/weighted algorithms, health checks, sticky sessions, geo routing |
+| [cdn.ximg.app](https://cdn.ximg.app) | CDN & Edge Caching — cache hit/miss animation, HTTP cache headers editor, PoP edge network map, invalidation demo |
+| [queue.ximg.app](https://queue.ximg.app) | Message Queue & Async Processing — queue basics, producer-consumer, dead letter queue, pub/sub fan-out |
+| [brain.ximg.app](https://brain.ximg.app) | Brain & Neuroscience — neuron action potential, neural network forward pass, brain regions, cognitive biases |
+| [sleep.ximg.app](https://sleep.ximg.app) | Sleep Science — hypnogram animation, circadian rhythm curves, sleep debt calculator, EEG wave patterns |
+| [nutrition.ximg.app](https://nutrition.ximg.app) | Nutrition & Metabolism — TDEE/macro calculator, macronutrient guide, metabolism pathways, food comparison table |
+| [training.ximg.app](https://training.ximg.app) | Strength & Fitness — progressive overload chart, muscle group diagram, recovery curve, program templates |
 
 ## Architecture
 

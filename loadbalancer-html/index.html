@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Load Balancer Simulator</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --blue: #3b82f6; --blue-bright: #60a5fa;
+      --white: #e2e8f0; --fg: #94a3b8; --fg-dim: #475569;
+      --green: #22c55e; --red: #ef4444; --yellow: #f59e0b;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 0.9rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover, .tab.active { color: var(--blue-bright); border-color: var(--blue); background: rgba(59,130,246,0.08); }
+    .section { display: none; padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 2rem; margin-bottom: 0.4rem; }
+    h2 { color: var(--blue-bright); font-size: 1.3rem; margin-bottom: 1rem; }
+    h3 { color: var(--white); font-size: 1rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.7; margin-bottom: 0.8rem; font-size: 0.92rem; }
+    .hero { text-align: center; padding: 2.5rem 1rem 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .badge { display: inline-block; background: rgba(59,130,246,0.12); color: var(--blue-bright); border: 1px solid rgba(59,130,246,0.25); border-radius: 12px; padding: 0.15rem 0.6rem; font-size: 0.75rem; margin: 0.15rem; }
+    .btn { background: rgba(59,130,246,0.12); border: 1px solid var(--blue); color: var(--blue-bright); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; }
+    .btn:hover { background: rgba(59,130,246,0.22); }
+    .btn.active { background: rgba(59,130,246,0.28); border-color: var(--blue-bright); }
+    canvas { display: block; border-radius: 8px; background: #030318; border: 1px solid var(--border); }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    .algo-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .server-bars { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+    .server-bar { flex: 1; min-width: 80px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; text-align: center; }
+    .server-bar .name { font-size: 0.75rem; color: var(--fg-dim); }
+    .server-bar .count { font-size: 1.4rem; font-weight: 700; color: var(--blue-bright); }
+    .server-bar .bar-wrap { height: 6px; background: #1e293b; border-radius: 3px; margin-top: 0.3rem; }
+    .server-bar .bar-fill { height: 100%; border-radius: 3px; background: var(--blue); transition: width 0.3s; }
+    label { color: var(--fg); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('algo', this)">Algorithms</button>
+    <button class="tab" onclick="showTab('health', this)">Health Checks</button>
+    <button class="tab" onclick="showTab('sticky', this)">Session Persistence</button>
+    <button class="tab" onclick="showTab('geo', this)">Geographic</button>
+  </div>
+</div>
+
+<!-- TAB 1: Algorithms -->
+<div id="tab-algo" class="section active">
+  <div class="hero">
+    <h1>Load Balancer Simulator</h1>
+    <p style="color:var(--fg-dim)">Watch requests distribute across servers in real time</p>
+  </div>
+  <h2>Distribution Algorithms</h2>
+  <div class="controls">
+    <div class="algo-btns">
+      <button class="btn active" onclick="setAlgo('rr', this)">Round Robin</button>
+      <button class="btn" onclick="setAlgo('lc', this)">Least Connections</button>
+      <button class="btn" onclick="setAlgo('iphash', this)">IP Hash</button>
+      <button class="btn" onclick="setAlgo('weighted', this)">Weighted</button>
+    </div>
+    <label>Rate: <input type="range" id="req-rate" min="1" max="10" value="4" style="vertical-align:middle"></label>
+    <button class="btn" onclick="sendBurst()">Burst!</button>
+  </div>
+  <div class="server-bars" id="server-bars"></div>
+  <canvas id="algo-canvas" width="900" height="300"></canvas>
+  <div class="card" style="margin-top:1rem" id="algo-desc">
+    <h3>Round Robin</h3>
+    <p>Requests are distributed sequentially across servers. Simple and effective when servers have equal capacity and request cost is uniform. Doesn't account for server load or request duration.</p>
+    <div><span class="badge">Complexity: O(1)</span><span class="badge">Best for: homogeneous requests</span><span class="badge">Used by: nginx default</span></div>
+  </div>
+</div>
+
+<!-- TAB 2: Health Checks -->
+<div id="tab-health" class="section">
+  <h2>Health Check Simulation</h2>
+  <div class="controls">
+    <button class="btn" onclick="killServer()">Kill Server</button>
+    <button class="btn" onclick="healServer()">Recover Server</button>
+    <button class="btn active" id="hc-running" onclick="toggleHC()">Pause Traffic</button>
+  </div>
+  <canvas id="health-canvas" width="900" height="340"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>How Health Checks Work</h3>
+    <p>The load balancer sends periodic HTTP requests (or TCP pings) to each server. If a server fails N consecutive checks, it's removed from rotation. Traffic is automatically redistributed to healthy servers.</p>
+    <div><span class="badge">Check interval: 5s</span><span class="badge">Failure threshold: 3 fails</span><span class="badge">Recovery: 2 passes</span><span class="badge">Protocol: HTTP GET /health</span></div>
+  </div>
+</div>
+
+<!-- TAB 3: Session Persistence -->
+<div id="tab-sticky" class="section">
+  <h2>Session Persistence (Sticky Sessions)</h2>
+  <div class="controls">
+    <button class="btn active" id="sticky-off" onclick="setStickyMode(false)">No Stickiness</button>
+    <button class="btn" id="sticky-on" onclick="setStickyMode(true)">Sticky Sessions</button>
+    <button class="btn" onclick="addStickyUser()">Add User</button>
+  </div>
+  <canvas id="sticky-canvas" width="900" height="320"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>When Do You Need Sticky Sessions?</h3>
+    <p>Without sticky sessions, each request may go to a different server — meaning session data (shopping cart, login state) stored in-memory would be lost. Solutions: sticky sessions (same server), or shared session store (Redis).</p>
+    <div><span class="badge">Problem: stateful apps</span><span class="badge">Cookie-based: JSESSIONID</span><span class="badge">Better: shared Redis session</span></div>
+  </div>
+</div>
+
+<!-- TAB 4: Geographic -->
+<div id="tab-geo" class="section">
+  <h2>Geographic Load Balancing</h2>
+  <div class="controls">
+    <button class="btn" onclick="addGeoUser()">Add User</button>
+    <button class="btn active" id="geo-nearest" onclick="setGeoMode('nearest')">Nearest DC</button>
+    <button class="btn" id="geo-random" onclick="setGeoMode('random')">Random DC</button>
+  </div>
+  <canvas id="geo-canvas" width="900" height="380"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>GeoDNS &amp; Anycast</h3>
+    <p>GeoDNS returns different IP addresses based on the user's location. Anycast uses BGP routing — multiple servers share the same IP, and internet routing protocols direct users to the nearest one automatically.</p>
+    <div><span class="badge">Latency: 20-50ms local vs 200ms+ global</span><span class="badge">GeoDNS: AWS Route53, Cloudflare</span><span class="badge">Anycast: Cloudflare, Akamai</span></div>
+  </div>
+</div>
+
+<script>
+// ── Shared ────────────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'health') initHealth();
+  if (name === 'sticky') initSticky();
+  if (name === 'geo') initGeo();
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// ── Tab 1: Algorithms ─────────────────────────────────────────────────────────
+let algo = 'rr';
+let rrIndex = 0;
+const servers = [
+  { name:'Server 1', count:0, connections:0, weight:3, color:'#3b82f6' },
+  { name:'Server 2', count:0, connections:0, weight:2, color:'#10b981' },
+  { name:'Server 3', count:0, connections:0, weight:1, color:'#f59e0b' },
+  { name:'Server 4', count:0, connections:0, weight:2, color:'#8b5cf6' },
+];
+const algoPackets = [];
+let algoFrame = 0;
+const algoCanvas = document.getElementById('algo-canvas');
+const algoCTX = algoCanvas.getContext('2d');
+
+const algoDescs = {
+  rr: ['Round Robin', 'Requests are distributed sequentially across servers. Simple and effective when servers have equal capacity and request cost is uniform. Doesn\'t account for server load or request duration.', 'Complexity: O(1)', 'Best for: homogeneous requests', 'Used by: nginx default'],
+  lc: ['Least Connections', 'Routes to the server with fewest active connections. Better for variable-length requests — prevents sending new long requests to an already-busy server.', 'Complexity: O(N)', 'Best for: variable request duration', 'Used by: HAProxy, nginx upstream'],
+  iphash: ['IP Hash', 'The client\'s IP address is hashed to always select the same server. Ensures session persistence without a shared session store.', 'Complexity: O(1)', 'Best for: stateful apps without Redis', 'Downside: uneven if few IPs'],
+  weighted: ['Weighted Round Robin', 'Servers get requests proportional to their weight. Server 1 (weight 3) gets 3x more requests than Server 3 (weight 1). Use when servers have different capacity.', 'Complexity: O(1)', 'Best for: heterogeneous hardware', 'Server 1: weight 3, Server 3: weight 1'],
+};
+
+function setAlgo(a, btn) {
+  algo = a; rrIndex = 0;
+  document.querySelectorAll('.algo-btns .btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const d = algoDescs[a];
+  document.getElementById('algo-desc').innerHTML = `<h3>${d[0]}</h3><p>${d[1]}</p><div>${d.slice(2).map(t=>`<span class="badge">${t}</span>`).join('')}</div>`;
+}
+
+function pickServer(ipSeed) {
+  if (algo === 'rr') { const s = rrIndex % servers.length; rrIndex++; return s; }
+  if (algo === 'lc') { return servers.reduce((b,s,i) => s.connections < servers[b].connections ? i : b, 0); }
+  if (algo === 'iphash') { return (ipSeed || Math.floor(Math.random()*1000)) % servers.length; }
+  if (algo === 'weighted') {
+    const total = servers.reduce((s,n) => s + n.weight, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < servers.length; i++) { r -= servers[i].weight; if (r <= 0) return i; }
+    return 0;
+  }
+  return 0;
+}
+
+function sendBurst() { for (let i = 0; i < 20; i++) spawnAlgoPacket(); }
+
+function spawnAlgoPacket(ip) {
+  const target = pickServer(ip);
+  servers[target].count++;
+  servers[target].connections++;
+  algoPackets.push({ target, t: 0, ip: ip || Math.floor(Math.random()*255) });
+  setTimeout(() => { servers[target].connections = Math.max(0, servers[target].connections - 1); }, 1000 + Math.random() * 2000);
+}
+
+function buildServerBars() {
+  const total = servers.reduce((s,n) => s + n.count, 0) || 1;
+  document.getElementById('server-bars').innerHTML = servers.map((s,i) =>
+    `<div class="server-bar">
+      <div class="name">${s.name}</div>
+      <div class="count" style="color:${s.color}">${s.count}</div>
+      <div style="font-size:0.7rem;color:var(--fg-dim)">${Math.round(s.count/total*100)}%</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(s.count/total*100)}%;background:${s.color}"></div></div>
+    </div>`
+  ).join('');
+}
+
+const LB_X = 100, LB_Y = 150;
+const serverPos = servers.map((_, i) => ({
+  x: 650, y: 50 + i * 65
+}));
+
+function drawAlgoFrame() {
+  algoCTX.clearRect(0, 0, algoCanvas.width, algoCanvas.height);
+
+  // LB box
+  algoCTX.fillStyle = '#070720'; algoCTX.strokeStyle = '#3b82f6'; algoCTX.lineWidth = 2;
+  algoCTX.beginPath(); algoCTX.roundRect(LB_X-60, LB_Y-30, 120, 60, 8); algoCTX.fill(); algoCTX.stroke();
+  algoCTX.fillStyle = '#e2e8f0'; algoCTX.font = 'bold 11px Segoe UI'; algoCTX.textAlign = 'center';
+  algoCTX.fillText('Load Balancer', LB_X, LB_Y - 5);
+  algoCTX.fillStyle = '#3b82f6'; algoCTX.font = '9px Segoe UI';
+  const algoLabel = {rr:'Round Robin',lc:'Least Connections',iphash:'IP Hash',weighted:'Weighted'};
+  algoCTX.fillText(algoLabel[algo], LB_X, LB_Y + 10);
+
+  // Server boxes
+  servers.forEach((s, i) => {
+    const p = serverPos[i];
+    const active = s.connections > 0;
+    algoCTX.fillStyle = active ? s.color + '22' : '#070720';
+    algoCTX.strokeStyle = active ? s.color : s.color + '55';
+    algoCTX.lineWidth = active ? 2 : 1;
+    algoCTX.beginPath(); algoCTX.roundRect(p.x-55, p.y-25, 110, 50, 8); algoCTX.fill(); algoCTX.stroke();
+    algoCTX.fillStyle = '#e2e8f0'; algoCTX.font = 'bold 10px Segoe UI'; algoCTX.textAlign = 'center';
+    algoCTX.fillText(s.name, p.x, p.y - 6);
+    algoCTX.fillStyle = s.color; algoCTX.font = '9px Segoe UI';
+    algoCTX.fillText(`${s.count} total · ${s.connections} active`, p.x, p.y + 8);
+    // weight badge
+    if (algo === 'weighted') {
+      algoCTX.fillStyle = s.color + 'aa'; algoCTX.font = 'bold 8px Segoe UI';
+      algoCTX.fillText(`w:${s.weight}`, p.x + 45, p.y - 18);
+    }
+    // connection line
+    algoCTX.strokeStyle = s.color + '33'; algoCTX.lineWidth = 1;
+    algoCTX.beginPath(); algoCTX.moveTo(LB_X+60, LB_Y); algoCTX.lineTo(p.x-55, p.y); algoCTX.stroke();
+  });
+
+  // Packets
+  for (let i = algoPackets.length - 1; i >= 0; i--) {
+    const pk = algoPackets[i];
+    pk.t += 0.03;
+    if (pk.t >= 1) { algoPackets.splice(i, 1); continue; }
+    const to = serverPos[pk.target];
+    const px = lerp(LB_X + 60, to.x - 55, pk.t);
+    const py = lerp(LB_Y, to.y, pk.t);
+    algoCTX.beginPath(); algoCTX.arc(px, py, 4, 0, Math.PI*2);
+    algoCTX.fillStyle = servers[pk.target].color;
+    algoCTX.shadowColor = algoCTX.fillStyle; algoCTX.shadowBlur = 8;
+    algoCTX.fill(); algoCTX.shadowBlur = 0;
+  }
+
+  // Incoming arrow
+  algoCTX.strokeStyle = '#60a5fa66'; algoCTX.lineWidth = 1;
+  algoCTX.setLineDash([4,3]);
+  algoCTX.beginPath(); algoCTX.moveTo(10, LB_Y); algoCTX.lineTo(LB_X-60, LB_Y); algoCTX.stroke();
+  algoCTX.setLineDash([]);
+  algoCTX.fillStyle = '#60a5fa'; algoCTX.font = '9px Segoe UI'; algoCTX.textAlign = 'center';
+  algoCTX.fillText('Clients', 35, LB_Y + 15);
+
+  buildServerBars();
+
+  const rate = parseInt(document.getElementById('req-rate').value);
+  if (algoFrame % Math.max(1, 12 - rate) === 0) spawnAlgoPacket();
+  algoFrame++;
+  requestAnimationFrame(drawAlgoFrame);
+}
+drawAlgoFrame();
+
+// ── Tab 2: Health Checks ──────────────────────────────────────────────────────
+let hcServers = [
+  { name:'Server A', health:'healthy', fails:0, passes:0, color:'#22c55e' },
+  { name:'Server B', health:'healthy', fails:0, passes:0, color:'#22c55e' },
+  { name:'Server C', health:'healthy', fails:0, passes:0, color:'#22c55e' },
+  { name:'Server D', health:'healthy', fails:0, passes:0, color:'#22c55e' },
+];
+let hcPackets2 = [];
+let hcRunning = true;
+let hcFrame = 0;
+let hcCanvas2, hcCtx2;
+
+function initHealth() {
+  hcCanvas2 = document.getElementById('health-canvas');
+  hcCtx2 = hcCanvas2.getContext('2d');
+  hcStep();
+}
+
+function toggleHC() {
+  hcRunning = !hcRunning;
+  document.getElementById('hc-running').textContent = hcRunning ? 'Pause Traffic' : 'Resume Traffic';
+}
+
+function killServer() {
+  const healthy = hcServers.filter(s => s.health === 'healthy');
+  if (healthy.length === 0) return;
+  const s = healthy[Math.floor(Math.random() * healthy.length)];
+  s.health = 'failing'; s.fails = 0;
+  setTimeout(() => { if (s.health === 'failing') { s.health = 'down'; s.color = '#ef4444'; } }, 2000);
+}
+
+function healServer() {
+  const down = hcServers.filter(s => s.health === 'down');
+  if (down.length === 0) return;
+  const s = down[Math.floor(Math.random() * down.length)];
+  s.health = 'recovering'; s.passes = 0; s.color = '#f59e0b';
+  setTimeout(() => { s.health = 'healthy'; s.color = '#22c55e'; }, 3000);
+}
+
+const hcSrvPos = hcServers.map((_, i) => ({ x: 650, y: 50 + i * 72 }));
+const HC_LB = { x: 200, y: 170 };
+
+function hcStep() {
+  if (!hcCtx2) return;
+  hcCtx2.clearRect(0, 0, hcCanvas2.width, hcCanvas2.height);
+
+  // LB
+  hcCtx2.fillStyle = '#070720'; hcCtx2.strokeStyle = '#3b82f6'; hcCtx2.lineWidth = 2;
+  hcCtx2.beginPath(); hcCtx2.roundRect(HC_LB.x-60, HC_LB.y-30, 120, 60, 8); hcCtx2.fill(); hcCtx2.stroke();
+  hcCtx2.fillStyle = '#e2e8f0'; hcCtx2.font = 'bold 11px Segoe UI'; hcCtx2.textAlign = 'center';
+  hcCtx2.fillText('Load Balancer', HC_LB.x, HC_LB.y - 6);
+  hcCtx2.fillStyle = '#60a5fa'; hcCtx2.font = '9px Segoe UI';
+  const healthyCnt = hcServers.filter(s => s.health === 'healthy').length;
+  hcCtx2.fillText(`${healthyCnt}/${hcServers.length} healthy`, HC_LB.x, HC_LB.y + 8);
+
+  // Servers
+  hcServers.forEach((s, i) => {
+    const p = hcSrvPos[i];
+    const isDead = s.health === 'down';
+    hcCtx2.fillStyle = isDead ? '#1a0505' : '#070720';
+    hcCtx2.strokeStyle = s.color;
+    hcCtx2.lineWidth = isDead ? 1 : 2;
+    hcCtx2.beginPath(); hcCtx2.roundRect(p.x-55, p.y-28, 110, 56, 8); hcCtx2.fill(); hcCtx2.stroke();
+    hcCtx2.fillStyle = '#e2e8f0'; hcCtx2.font = 'bold 10px Segoe UI'; hcCtx2.textAlign = 'center';
+    hcCtx2.fillText(s.name, p.x, p.y - 8);
+    const statusColor = {healthy:'#22c55e',failing:'#f59e0b',down:'#ef4444',recovering:'#a78bfa'}[s.health];
+    hcCtx2.fillStyle = statusColor; hcCtx2.font = '9px Segoe UI';
+    hcCtx2.fillText(s.health.toUpperCase(), p.x, p.y + 6);
+
+    // Connection line
+    if (!isDead) {
+      hcCtx2.strokeStyle = s.color + '44'; hcCtx2.lineWidth = 1;
+      hcCtx2.beginPath(); hcCtx2.moveTo(HC_LB.x+60, HC_LB.y); hcCtx2.lineTo(p.x-55, p.y); hcCtx2.stroke();
+    } else {
+      hcCtx2.strokeStyle = '#ef444433'; hcCtx2.lineWidth = 1;
+      hcCtx2.setLineDash([4,4]);
+      hcCtx2.beginPath(); hcCtx2.moveTo(HC_LB.x+60, HC_LB.y); hcCtx2.lineTo(p.x-55, p.y); hcCtx2.stroke();
+      hcCtx2.setLineDash([]);
+    }
+  });
+
+  // Health check ping packets (dashed)
+  if (hcFrame % 60 === 0) {
+    hcServers.forEach((s, i) => {
+      hcPackets2.push({ target: i, t: 0, isCheck: true, health: s.health });
+    });
+  }
+
+  // Traffic packets
+  if (hcRunning && hcFrame % 8 === 0) {
+    const healthy = hcServers.map((s,i) => s.health === 'healthy' ? i : -1).filter(i => i >= 0);
+    if (healthy.length > 0) {
+      const idx = healthy[hcFrame % healthy.length];
+      hcPackets2.push({ target: idx, t: 0, isCheck: false });
+    }
+  }
+
+  for (let i = hcPackets2.length - 1; i >= 0; i--) {
+    const pk = hcPackets2[i];
+    pk.t += pk.isCheck ? 0.015 : 0.04;
+    if (pk.t >= 1) { hcPackets2.splice(i, 1); continue; }
+    const to = hcSrvPos[pk.target];
+    const px = lerp(HC_LB.x + 60, to.x - 55, pk.t);
+    const py = lerp(HC_LB.y, to.y, pk.t);
+    hcCtx2.beginPath(); hcCtx2.arc(px, py, pk.isCheck ? 3 : 5, 0, Math.PI*2);
+    hcCtx2.fillStyle = pk.isCheck ? '#64748b' : hcServers[pk.target].color;
+    if (!pk.isCheck) { hcCtx2.shadowColor = hcCtx2.fillStyle; hcCtx2.shadowBlur = 8; }
+    hcCtx2.fill(); hcCtx2.shadowBlur = 0;
+  }
+
+  hcFrame++;
+  requestAnimationFrame(hcStep);
+}
+
+// ── Tab 3: Sticky Sessions ────────────────────────────────────────────────────
+let stickyMode = false;
+let stickyUsers = [];
+let stickyPackets = [];
+let stickyFrame = 0;
+let stickyCtx;
+const stickyColors = ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899'];
+const stickyServers = [{x:720,y:80},{x:720,y:160},{x:720,y:240}];
+
+function initSticky() {
+  stickyCtx = document.getElementById('sticky-canvas').getContext('2d');
+  stickyUsers = [
+    { id: 0, x: 80, y: 80,  color: stickyColors[0], assigned: -1 },
+    { id: 1, x: 80, y: 160, color: stickyColors[1], assigned: -1 },
+    { id: 2, x: 80, y: 240, color: stickyColors[2], assigned: -1 },
+  ];
+  stickyStep();
+}
+
+function setStickyMode(on) {
+  stickyMode = on;
+  stickyUsers.forEach(u => u.assigned = -1);
+  document.getElementById('sticky-off').classList.toggle('active', !on);
+  document.getElementById('sticky-on').classList.toggle('active', on);
+}
+
+function addStickyUser() {
+  if (stickyUsers.length >= 6) return;
+  stickyUsers.push({ id: stickyUsers.length, x: 80, y: 50 + stickyUsers.length * 50, color: stickyColors[stickyUsers.length % stickyColors.length], assigned: -1 });
+}
+
+let stickyRR = 0;
+function stickyStep() {
+  if (!stickyCtx) return;
+  const canvas = document.getElementById('sticky-canvas');
+  stickyCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const LBx = 380, LBy = 160;
+
+  // LB box
+  stickyCtx.fillStyle = '#070720'; stickyCtx.strokeStyle = '#3b82f6'; stickyCtx.lineWidth = 2;
+  stickyCtx.beginPath(); stickyCtx.roundRect(LBx-55, LBy-28, 110, 56, 8); stickyCtx.fill(); stickyCtx.stroke();
+  stickyCtx.fillStyle = '#e2e8f0'; stickyCtx.font = 'bold 10px Segoe UI'; stickyCtx.textAlign = 'center';
+  stickyCtx.fillText('Load Balancer', LBx, LBy-7);
+  stickyCtx.fillStyle = stickyMode ? '#22c55e' : '#64748b'; stickyCtx.font = '9px Segoe UI';
+  stickyCtx.fillText(stickyMode ? 'Sticky ON' : 'Sticky OFF', LBx, LBy+7);
+
+  // Server boxes
+  stickyServers.forEach((p, i) => {
+    stickyCtx.fillStyle = '#070720'; stickyCtx.strokeStyle = '#3b82f699'; stickyCtx.lineWidth = 1;
+    stickyCtx.beginPath(); stickyCtx.roundRect(p.x-45, p.y-22, 90, 44, 8); stickyCtx.fill(); stickyCtx.stroke();
+    stickyCtx.fillStyle = '#94a3b8'; stickyCtx.font = 'bold 10px Segoe UI'; stickyCtx.textAlign = 'center';
+    stickyCtx.fillText(`Server ${i+1}`, p.x, p.y+4);
+    stickyCtx.strokeStyle = '#1e293b22'; stickyCtx.lineWidth = 0.5;
+    stickyCtx.beginPath(); stickyCtx.moveTo(LBx+55, LBy); stickyCtx.lineTo(p.x-45, p.y); stickyCtx.stroke();
+  });
+
+  // Users
+  stickyUsers.forEach(u => {
+    stickyCtx.beginPath(); stickyCtx.arc(u.x, u.y, 14, 0, Math.PI*2);
+    stickyCtx.fillStyle = u.color + '33'; stickyCtx.strokeStyle = u.color; stickyCtx.lineWidth = 2;
+    stickyCtx.fill(); stickyCtx.stroke();
+    stickyCtx.fillStyle = u.color; stickyCtx.font = 'bold 9px Segoe UI'; stickyCtx.textAlign = 'center';
+    stickyCtx.fillText('U' + (u.id+1), u.x, u.y+4);
+    stickyCtx.strokeStyle = u.color + '33'; stickyCtx.lineWidth = 0.5;
+    stickyCtx.beginPath(); stickyCtx.moveTo(u.x+14, u.y); stickyCtx.lineTo(LBx-55, LBy); stickyCtx.stroke();
+  });
+
+  // Emit packets
+  if (stickyFrame % 30 === 0 && stickyUsers.length > 0) {
+    const u = stickyUsers[stickyFrame % stickyUsers.length];
+    let target;
+    if (stickyMode) {
+      if (u.assigned === -1) { u.assigned = stickyRR % stickyServers.length; stickyRR++; }
+      target = u.assigned;
+    } else { target = stickyRR % stickyServers.length; stickyRR++; }
+    stickyPackets.push({ ux: u.x, uy: u.y, target, t: 0, color: u.color });
+  }
+
+  for (let i = stickyPackets.length - 1; i >= 0; i--) {
+    const pk = stickyPackets[i];
+    pk.t += 0.025;
+    if (pk.t >= 1) { stickyPackets.splice(i, 1); continue; }
+    const half = pk.t < 0.5;
+    let px, py;
+    if (half) {
+      px = lerp(pk.ux + 14, LBx - 55, pk.t * 2);
+      py = lerp(pk.uy, LBy, pk.t * 2);
+    } else {
+      const to = stickyServers[pk.target];
+      px = lerp(LBx + 55, to.x - 45, (pk.t - 0.5) * 2);
+      py = lerp(LBy, to.y, (pk.t - 0.5) * 2);
+    }
+    stickyCtx.beginPath(); stickyCtx.arc(px, py, 4, 0, Math.PI*2);
+    stickyCtx.fillStyle = pk.color; stickyCtx.shadowColor = pk.color; stickyCtx.shadowBlur = 8;
+    stickyCtx.fill(); stickyCtx.shadowBlur = 0;
+  }
+
+  stickyFrame++;
+  requestAnimationFrame(stickyStep);
+}
+
+// ── Tab 4: Geographic ─────────────────────────────────────────────────────────
+let geoMode = 'nearest';
+let geoUsers = [];
+let geoPackets = [];
+let geoFrame = 0;
+let geoCtx;
+
+const dataCenters = [
+  { name:'US East', x: 200, y: 160, color:'#3b82f6', lat: 40, lon: -74 },
+  { name:'EU West', x: 480, y: 120, color:'#10b981', lat: 51, lon: -0 },
+  { name:'Asia',    x: 740, y: 200, color:'#f59e0b', lat: 35, lon: 139 },
+];
+
+function initGeo() {
+  geoCtx = document.getElementById('geo-canvas').getContext('2d');
+  geoUsers = [];
+  geoStep();
+}
+
+function setGeoMode(m) {
+  geoMode = m;
+  document.getElementById('geo-nearest').classList.toggle('active', m === 'nearest');
+  document.getElementById('geo-random').classList.toggle('active', m === 'random');
+}
+
+function addGeoUser() {
+  geoUsers.push({ x: 40 + Math.random() * 820, y: 80 + Math.random() * 240, age: 0 });
+  if (geoUsers.length > 15) geoUsers.shift();
+}
+
+function geoStep() {
+  if (!geoCtx) return;
+  const canvas = document.getElementById('geo-canvas');
+  geoCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw simplified world map outline
+  geoCtx.strokeStyle = '#1e293b'; geoCtx.lineWidth = 1;
+  geoCtx.strokeRect(20, 40, 860, 280);
+  geoCtx.fillStyle = '#03061a';
+  geoCtx.fillRect(20, 40, 860, 280);
+
+  // Draw continents (simplified rectangles/shapes)
+  geoCtx.fillStyle = '#0d1530';
+  geoCtx.beginPath(); geoCtx.roundRect(60, 80, 220, 150, 4); geoCtx.fill(); // N America
+  geoCtx.beginPath(); geoCtx.roundRect(80, 220, 120, 80, 4); geoCtx.fill(); // S America
+  geoCtx.beginPath(); geoCtx.roundRect(360, 60, 200, 120, 4); geoCtx.fill(); // Europe
+  geoCtx.beginPath(); geoCtx.roundRect(370, 170, 160, 100, 4); geoCtx.fill(); // Africa
+  geoCtx.beginPath(); geoCtx.roundRect(580, 70, 220, 180, 4); geoCtx.fill(); // Asia
+  geoCtx.beginPath(); geoCtx.roundRect(720, 230, 120, 70, 4); geoCtx.fill(); // Australia
+
+  // Data centers
+  dataCenters.forEach(dc => {
+    geoCtx.beginPath(); geoCtx.arc(dc.x, dc.y, 18, 0, Math.PI*2);
+    geoCtx.fillStyle = dc.color + '33'; geoCtx.strokeStyle = dc.color; geoCtx.lineWidth = 2;
+    geoCtx.fill(); geoCtx.stroke();
+    // Range circle
+    geoCtx.beginPath(); geoCtx.arc(dc.x, dc.y, 90, 0, Math.PI*2);
+    geoCtx.strokeStyle = dc.color + '22'; geoCtx.lineWidth = 1; geoCtx.stroke();
+    geoCtx.fillStyle = dc.color; geoCtx.font = 'bold 9px Segoe UI'; geoCtx.textAlign = 'center';
+    geoCtx.fillText(dc.name, dc.x, dc.y + 30);
+    geoCtx.fillStyle = '#e2e8f0'; geoCtx.font = '8px Segoe UI';
+    geoCtx.fillText('DC', dc.x, dc.y + 4);
+  });
+
+  // Emit user packets
+  if (geoFrame % 40 === 0 && geoUsers.length > 0) {
+    const u = geoUsers[geoFrame % geoUsers.length];
+    let target;
+    if (geoMode === 'nearest') {
+      target = dataCenters.reduce((best, dc, i) => {
+        const d = Math.hypot(dc.x - u.x, dc.y - u.y);
+        const bd = Math.hypot(dataCenters[best].x - u.x, dataCenters[best].y - u.y);
+        return d < bd ? i : best;
+      }, 0);
+    } else { target = Math.floor(Math.random() * dataCenters.length); }
+    const dc = dataCenters[target];
+    const dist = Math.hypot(dc.x - u.x, dc.y - u.y);
+    const latency = Math.round(dist * 0.3 + (geoMode === 'nearest' ? 10 : 80));
+    geoPackets.push({ ux: u.x, uy: u.y, target, t: 0, latency });
+  }
+
+  // Users
+  geoUsers.forEach(u => {
+    geoCtx.beginPath(); geoCtx.arc(u.x, u.y, 6, 0, Math.PI*2);
+    geoCtx.fillStyle = '#94a3b8'; geoCtx.strokeStyle = '#475569'; geoCtx.lineWidth = 1;
+    geoCtx.fill(); geoCtx.stroke();
+  });
+
+  // Packets
+  for (let i = geoPackets.length - 1; i >= 0; i--) {
+    const pk = geoPackets[i];
+    pk.t += 0.015;
+    if (pk.t >= 1) { geoPackets.splice(i, 1); continue; }
+    const dc = dataCenters[pk.target];
+    const px = lerp(pk.ux, dc.x, pk.t);
+    const py = lerp(pk.uy, dc.y, pk.t);
+    geoCtx.beginPath(); geoCtx.arc(px, py, 3, 0, Math.PI*2);
+    geoCtx.fillStyle = dc.color; geoCtx.shadowColor = dc.color; geoCtx.shadowBlur = 6;
+    geoCtx.fill(); geoCtx.shadowBlur = 0;
+    // Latency label at midpoint
+    if (pk.t > 0.4 && pk.t < 0.6) {
+      geoCtx.fillStyle = '#e2e8f0'; geoCtx.font = '8px Segoe UI'; geoCtx.textAlign = 'center';
+      geoCtx.fillText(pk.latency + 'ms', (pk.ux + dc.x)/2, (pk.uy + dc.y)/2 - 8);
+    }
+  }
+
+  // Legend
+  geoCtx.fillStyle = '#475569'; geoCtx.font = '10px Segoe UI'; geoCtx.textAlign = 'left';
+  geoCtx.fillText(geoMode === 'nearest' ? 'Nearest DC routing active' : 'Random DC routing active', 30, 355);
+
+  geoFrame++;
+  requestAnimationFrame(geoStep);
+}
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

@@ -157,7 +157,15 @@ const LOG_FILES = {
   visualize:   'visualize.access.log',
   statslab:    'statslab.access.log',
   regression:  'regression.access.log',
-  probability: 'probability.access.log',
+  probability:    'probability.access.log',
+  systemdesign:   'systemdesign.access.log',
+  loadbalancer:   'loadbalancer.access.log',
+  cdn:            'cdn.access.log',
+  queue:          'queue.access.log',
+  brain:          'brain.access.log',
+  sleep:          'sleep.access.log',
+  nutrition:      'nutrition.access.log',
+  training:       'training.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -500,6 +508,14 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="statslab">statslab</button>
           <button class="site-opt" data-site="regression">regression</button>
           <button class="site-opt" data-site="probability">probability</button>
+          <button class="site-opt" data-site="systemdesign">systemdesign</button>
+          <button class="site-opt" data-site="loadbalancer">loadbalancer</button>
+          <button class="site-opt" data-site="cdn">cdn</button>
+          <button class="site-opt" data-site="queue">queue</button>
+          <button class="site-opt" data-site="brain">brain</button>
+          <button class="site-opt" data-site="sleep">sleep</button>
+          <button class="site-opt" data-site="nutrition">nutrition</button>
+          <button class="site-opt" data-site="training">training</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

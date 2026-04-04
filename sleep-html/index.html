@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sleep Science</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --indigo: #6366f1; --purple: #8b5cf6; --bright: #a5b4fc;
+      --white: #e2e8f0; --fg: #94a3b8; --fg-dim: #475569;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 0.9rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover, .tab.active { color: var(--bright); border-color: var(--indigo); background: rgba(99,102,241,0.08); }
+    .section { display: none; padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 2rem; margin-bottom: 0.4rem; }
+    h2 { color: var(--bright); font-size: 1.3rem; margin-bottom: 1rem; }
+    h3 { color: var(--white); font-size: 1rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.7; margin-bottom: 0.8rem; font-size: 0.92rem; }
+    .hero { text-align: center; padding: 2.5rem 1rem 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .badge { display: inline-block; background: rgba(99,102,241,0.12); color: var(--bright); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 0.15rem 0.6rem; font-size: 0.75rem; margin: 0.15rem; }
+    .btn { background: rgba(99,102,241,0.12); border: 1px solid var(--indigo); color: var(--bright); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; }
+    .btn:hover { background: rgba(99,102,241,0.22); }
+    canvas { display: block; border-radius: 8px; background: #030318; border: 1px solid var(--border); }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media(max-width:640px){ .grid2 { grid-template-columns:1fr; } }
+    input[type=range] { accent-color: var(--indigo); }
+    input[type=number] { background: var(--card); border: 1px solid var(--border); color: var(--white); padding: 0.3rem 0.5rem; border-radius: 4px; width: 60px; font-family: inherit; }
+    .stage-info { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; min-height: 80px; }
+    .debt-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; }
+    .debt-day { color: var(--fg-dim); font-size: 0.82rem; min-width: 60px; }
+    .debt-input { background: var(--card); border: 1px solid var(--border); color: var(--white); padding: 0.25rem 0.4rem; border-radius: 4px; width: 55px; font-family: inherit; font-size: 0.85rem; }
+    .debt-bar { flex: 1; height: 14px; background: #0d1023; border-radius: 3px; overflow: hidden; }
+    .debt-fill { height: 100%; background: var(--indigo); border-radius: 3px; transition: width 0.4s; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('cycles', this)">Sleep Cycles</button>
+    <button class="tab" onclick="showTab('circadian', this)">Circadian Rhythm</button>
+    <button class="tab" onclick="showTab('debt', this)">Sleep Debt</button>
+    <button class="tab" onclick="showTab('rem', this)">REM &amp; Dreams</button>
+  </div>
+</div>
+
+<!-- TAB 1: Sleep Cycles -->
+<div id="tab-cycles" class="section active">
+  <div class="hero">
+    <h1>Sleep Science</h1>
+    <p style="color:var(--fg-dim)">The biology of rest, recovery, and consciousness</p>
+  </div>
+  <h2>Hypnogram — One Night of Sleep</h2>
+  <div class="controls">
+    <button class="btn" id="cycle-play" onclick="toggleCyclePlay()">Play Animation</button>
+    <button class="btn" onclick="resetCycleAnim()">Reset</button>
+  </div>
+  <canvas id="cycle-canvas" width="900" height="280"></canvas>
+  <div class="stage-info" id="cycle-stage-info">
+    <p style="color:var(--fg-dim)">Press Play to animate through a night of sleep stages. Click any point on the hypnogram to jump there.</p>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <h3>Sleep Stage Overview</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.8rem;margin-top:0.5rem">
+      <div style="border-left:3px solid #60a5fa;padding-left:0.7rem"><strong style="color:#60a5fa">Wake (W)</strong><p style="font-size:0.82rem">Beta waves, full consciousness. Brief awakenings are normal between cycles.</p></div>
+      <div style="border-left:3px solid #a78bfa;padding-left:0.7rem"><strong style="color:#a78bfa">N1 (Light)</strong><p style="font-size:0.82rem">1–5 min. Theta waves. Easy to wake. Hypnic jerks common here.</p></div>
+      <div style="border-left:3px solid #8b5cf6;padding-left:0.7rem"><strong style="color:#8b5cf6">N2 (Light)</strong><p style="font-size:0.82rem">Sleep spindles and K-complexes. Memory consolidation begins. 45–55% of total sleep.</p></div>
+      <div style="border-left:3px solid #6366f1;padding-left:0.7rem"><strong style="color:#6366f1">N3 (Deep)</strong><p style="font-size:0.82rem">Slow-wave sleep. Growth hormone released. Physical repair. Most N3 in first half of night.</p></div>
+      <div style="border-left:3px solid #ec4899;padding-left:0.7rem"><strong style="color:#ec4899">REM</strong><p style="font-size:0.82rem">Brain active as waking. Vivid dreams. Memory consolidation. Most REM in second half.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Circadian Rhythm -->
+<div id="tab-circadian" class="section">
+  <h2>24-Hour Circadian Clock</h2>
+  <div class="controls">
+    <label style="color:var(--fg);font-size:0.85rem">Wake time: <input type="range" id="wake-slider" min="4" max="12" value="7" oninput="updateCircadian(this.value)"> <span id="wake-label">7:00 AM</span></label>
+  </div>
+  <canvas id="circadian-canvas" width="900" height="380"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <div class="grid2">
+      <div>
+        <h3 style="color:#f59e0b">Cortisol</h3>
+        <p style="font-size:0.85rem">Peaks 30–45 min after waking (cortisol awakening response). Avoid caffeine for first 90 minutes — let cortisol do its job naturally. Chronically high = bad; morning peak = essential.</p>
+      </div>
+      <div>
+        <h3 style="color:#6366f1">Melatonin</h3>
+        <p style="font-size:0.85rem">Secreted by pineal gland 2 hours before sleep. Blue light (screens) suppresses it. Starts rising at ~9PM if you wake at 7AM. Peaks during middle of sleep.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Sleep Debt -->
+<div id="tab-debt" class="section">
+  <h2>Sleep Debt Calculator</h2>
+  <div class="card">
+    <h3>Hours slept per night this week:</h3>
+    <div id="debt-inputs"></div>
+    <div style="margin-top:1rem;display:flex;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1">
+        <label style="font-size:0.85rem;color:var(--fg-dim)">Your sleep need (hrs/night):</label>
+        <input type="range" id="sleep-need" min="6" max="10" value="8" step="0.5" style="display:block;margin-top:0.3rem;width:100%" oninput="calcDebt()">
+        <span id="sleep-need-label" style="color:var(--bright);font-size:0.85rem">8 hours</span>
+      </div>
+      <div style="text-align:center;flex:1">
+        <div style="font-size:2.5rem;font-weight:700" id="debt-total" style="color:#ef4444">0h</div>
+        <div style="color:var(--fg-dim);font-size:0.82rem">accumulated debt</div>
+        <div style="font-size:1rem;margin-top:0.3rem" id="debt-recovery" style="color:var(--bright)"></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="debt-canvas" width="900" height="240"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>Sleep Debt is Cumulative</h3>
+    <p>You cannot "catch up" on sleep by sleeping in on weekends — this disrupts circadian rhythm. Instead, recover gradually: sleep 1 extra hour per night until debt is cleared. Chronic sleep restriction causes measurable cognitive impairment even if you feel fine.</p>
+    <div><span class="badge">After 17h awake = .05% BAC equivalent</span><span class="badge">After 24h = .10% BAC</span><span class="badge">Reaction time doubled</span></div>
+  </div>
+</div>
+
+<!-- TAB 4: REM & Dreams -->
+<div id="tab-rem" class="section">
+  <h2>REM Sleep &amp; Brain Activity</h2>
+  <canvas id="rem-canvas" width="900" height="300"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem">
+      <div>
+        <h3 style="color:#ec4899">What Happens in REM</h3>
+        <ul style="font-size:0.85rem;padding-left:1.2rem;line-height:1.9">
+          <li>Eyes move rapidly (REM = Rapid Eye Movement)</li>
+          <li>Brain activity similar to waking</li>
+          <li>Body paralyzed (atonia) — can't act out dreams</li>
+          <li>Vivid, narrative dreams</li>
+          <li>Emotional memory consolidation</li>
+          <li>Creative problem solving</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="color:#6366f1">REM Deprivation Effects</h3>
+        <ul style="font-size:0.85rem;padding-left:1.2rem;line-height:1.9">
+          <li>Emotional dysregulation (irritability)</li>
+          <li>Impaired face reading (can't detect threat)</li>
+          <li>Memory and learning deficits</li>
+          <li>REM rebound on recovery night</li>
+          <li>Associated with depression</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="color:#a78bfa">EEG Wave Patterns</h3>
+        <p style="font-size:0.85rem">Each sleep stage has a distinct brainwave signature visible on EEG. The waves above show characteristic patterns for each stage.</p>
+        <div><span class="badge">Alpha: relaxed waking</span><span class="badge">Theta: N1/N2</span><span class="badge">Delta: N3 deep sleep</span><span class="badge">Beta: waking/REM</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'circadian') { circWake = 7; updateCircadian(7); initCircadian(); }
+  if (name === 'debt') initDebt();
+  if (name === 'rem') initREM();
+}
+
+// ── Tab 1: Sleep Cycles ───────────────────────────────────────────────────────
+const cycCanvas = document.getElementById('cycle-canvas');
+const cycCtx = cycCanvas.getContext('2d');
+let cycPos = 0, cycPlaying = false, cycAnimId = null;
+
+const STAGES = [
+  { name:'W',  level:0, color:'#60a5fa' },
+  { name:'N1', level:1, color:'#a78bfa' },
+  { name:'N2', level:2, color:'#8b5cf6' },
+  { name:'N3', level:3, color:'#6366f1' },
+  { name:'REM',level:0.5,color:'#ec4899'},
+];
+
+// Hypnogram as [stage_index, duration_in_min] pairs (compressed 8h)
+const HYPNO = [
+  [0,2],[1,5],[2,20],[3,40],[2,10],[4,20], // cycle 1
+  [0,1],[1,3],[2,20],[3,30],[2,15],[4,25], // cycle 2
+  [0,1],[1,3],[2,25],[3,15],[2,10],[4,35], // cycle 3
+  [0,1],[1,3],[2,25],[3,5], [2,5], [4,45], // cycle 4
+  [0,1],[1,3],[2,20],[4,50],[0,2],         // cycle 5
+];
+const TOTAL_MIN = HYPNO.reduce((s,[,d]) => s + d, 0);
+
+const STAGE_INFO = {
+  0: 'WAKE (W): Brief awakening between cycles is normal and healthy. Typically unremembered.',
+  1: 'N1 (Light Sleep): Transitional stage. Theta waves. Hypnic jerks may occur. Easy to wake.',
+  2: 'N2 (Light Sleep): Sleep spindles and K-complexes. Memory consolidation. Body temperature drops.',
+  3: 'N3 (Deep Sleep / SWS): Growth hormone released. Immune repair. Hardest to wake. No dreams.',
+  0.5: 'REM (Rapid Eye Movement): Brain active as waking. Vivid dreams. Body paralyzed. Emotional processing.',
+};
+
+function toggleCyclePlay() {
+  cycPlaying = !cycPlaying;
+  document.getElementById('cycle-play').textContent = cycPlaying ? 'Pause Animation' : 'Play Animation';
+  if (cycPlaying) cycStep();
+}
+function resetCycleAnim() { cycPos = 0; cycPlaying = false; document.getElementById('cycle-play').textContent = 'Play Animation'; drawHypnogram(0); }
+
+function drawHypnogram(pos) {
+  cycCtx.clearRect(0, 0, cycCanvas.width, cycCanvas.height);
+  const PAD = { l:60, r:20, t:20, b:50 };
+  const W = cycCanvas.width - PAD.l - PAD.r;
+  const H = cycCanvas.height - PAD.t - PAD.b;
+  const stageH = H / 4;
+
+  // Y axis labels
+  const stageNames = ['WAKE','N1','N2','N3/SWS'];
+  stageNames.forEach((s, i) => {
+    cycCtx.fillStyle = '#475569'; cycCtx.font = '9px Segoe UI'; cycCtx.textAlign = 'right';
+    cycCtx.fillText(s, PAD.l - 5, PAD.t + i * stageH + stageH/2 + 4);
+    // gridline
+    cycCtx.strokeStyle = '#1e293b'; cycCtx.lineWidth = 0.5;
+    cycCtx.beginPath(); cycCtx.moveTo(PAD.l, PAD.t + i * stageH + stageH); cycCtx.lineTo(PAD.l + W, PAD.t + i * stageH + stageH); cycCtx.stroke();
+  });
+
+  // REM band
+  cycCtx.fillStyle = '#ec489910';
+  cycCtx.fillRect(PAD.l, PAD.t, W, stageH * 0.5);
+  cycCtx.fillStyle = '#ec4899'; cycCtx.font = '8px Segoe UI'; cycCtx.textAlign = 'left';
+  cycCtx.fillText('REM', PAD.l + 2, PAD.t + 10);
+
+  // X axis (time)
+  for (let h = 0; h <= 8; h++) {
+    const xp = PAD.l + (h / 8) * W;
+    cycCtx.fillStyle = '#475569'; cycCtx.font = '9px Segoe UI'; cycCtx.textAlign = 'center';
+    cycCtx.fillText(h + 'h', xp, PAD.t + H + 16);
+    cycCtx.strokeStyle = '#1e293b22'; cycCtx.lineWidth = 0.5;
+    cycCtx.beginPath(); cycCtx.moveTo(xp, PAD.t); cycCtx.lineTo(xp, PAD.t + H); cycCtx.stroke();
+  }
+
+  // Draw hypnogram path
+  let t = 0, curStageIdx = 0;
+  cycCtx.strokeStyle = '#6366f1'; cycCtx.lineWidth = 2;
+  cycCtx.beginPath();
+  let started = false;
+  HYPNO.forEach(([si, dur]) => {
+    const stage = STAGES[si];
+    const startX = PAD.l + (t / TOTAL_MIN) * W;
+    const endX = PAD.l + ((t + dur) / TOTAL_MIN) * W;
+    const yOffset = stage.level === 0.5 ? 0.25 : stage.level;
+    const y = PAD.t + yOffset * stageH + stageH * 0.4;
+    if (!started) { cycCtx.moveTo(startX, y); started = true; }
+    else cycCtx.lineTo(startX, y);
+    cycCtx.lineTo(endX, y);
+    // Color the segment
+    cycCtx.stroke();
+    cycCtx.strokeStyle = stage.color;
+    cycCtx.beginPath(); cycCtx.moveTo(startX, y); cycCtx.lineTo(endX, y); cycCtx.stroke();
+    cycCtx.strokeStyle = '#6366f1';
+    cycCtx.beginPath(); cycCtx.moveTo(endX, y);
+    t += dur;
+  });
+  cycCtx.stroke();
+
+  // Cursor
+  if (pos > 0) {
+    const cx = PAD.l + (pos / TOTAL_MIN) * W;
+    cycCtx.strokeStyle = '#a5b4fc'; cycCtx.lineWidth = 1.5;
+    cycCtx.setLineDash([4,2]);
+    cycCtx.beginPath(); cycCtx.moveTo(cx, PAD.t); cycCtx.lineTo(cx, PAD.t + H); cycCtx.stroke();
+    cycCtx.setLineDash([]);
+    // current stage
+    let elapsed = 0;
+    for (const [si, dur] of HYPNO) {
+      if (elapsed + dur > pos) {
+        const stage = STAGES[si];
+        document.getElementById('cycle-stage-info').innerHTML = `<strong style="color:${stage.color}">${stage.name === 'N1' ? 'N1' : stage.name}</strong> — ${STAGE_INFO[stage.level]}`;
+        break;
+      }
+      elapsed += dur;
+    }
+  }
+}
+
+drawHypnogram(0);
+
+function cycStep() {
+  if (!cycPlaying) return;
+  cycPos += 0.5;
+  if (cycPos >= TOTAL_MIN) { cycPos = 0; cycPlaying = false; document.getElementById('cycle-play').textContent = 'Play Animation'; return; }
+  drawHypnogram(cycPos);
+  setTimeout(cycStep, 30);
+}
+
+// ── Tab 2: Circadian ──────────────────────────────────────────────────────────
+let circCtx, circWake = 7, circFrame = 0;
+
+function initCircadian() {
+  circCtx = document.getElementById('circadian-canvas').getContext('2d');
+  drawCircadian();
+}
+
+function updateCircadian(val) {
+  circWake = parseInt(val);
+  const h = circWake;
+  const ampm = h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h-12}:00 PM`;
+  document.getElementById('wake-label').textContent = ampm;
+  if (circCtx) drawCircadian();
+}
+
+function drawCircadian() {
+  if (!circCtx) return;
+  const canvas = document.getElementById('circadian-canvas');
+  circCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const PAD = { l:50, r:20, t:30, b:60 };
+  const W = canvas.width - PAD.l - PAD.r;
+  const H = canvas.height - PAD.t - PAD.b;
+  const sleepTime = (circWake + 15) % 24;
+
+  // Background day/night
+  const dayStart = (circWake - 4 + 24) % 24;
+  const sunriseX = PAD.l + (circWake / 24) * W;
+  const sunsetX = PAD.l + (sleepTime / 24) * W;
+  circCtx.fillStyle = '#0a0f2a';
+  circCtx.fillRect(PAD.l, PAD.t, W, H);
+  circCtx.fillStyle = '#0d1a3a';
+  circCtx.fillRect(sunriseX, PAD.t, sunsetX - sunriseX, H);
+
+  // Gridlines
+  for (let h = 0; h <= 24; h += 3) {
+    const xp = PAD.l + (h / 24) * W;
+    const hr = (circWake + h) % 24;
+    circCtx.strokeStyle = '#1e293b'; circCtx.lineWidth = 0.5;
+    circCtx.beginPath(); circCtx.moveTo(xp, PAD.t); circCtx.lineTo(xp, PAD.t + H); circCtx.stroke();
+    const label = hr === 0 ? '12AM' : hr < 12 ? `${hr}AM` : hr === 12 ? '12PM' : `${hr-12}PM`;
+    circCtx.fillStyle = '#475569'; circCtx.font = '9px Segoe UI'; circCtx.textAlign = 'center';
+    circCtx.fillText(label, xp, PAD.t + H + 15);
+  }
+
+  const CURVES = [
+    { label:'Cortisol', color:'#f59e0b', fn: h => {
+        const peak = (circWake + 0.5) % 24;
+        const diff = ((h - peak + 24) % 24);
+        return Math.exp(-diff*diff/8) * 0.8 + 0.1 + Math.exp(-((diff-16)*(diff-16))/8)*0.2;
+    }},
+    { label:'Melatonin', color:'#6366f1', fn: h => {
+        const onset = (sleepTime - 2 + 24) % 24;
+        const diff = ((h - onset + 24) % 24);
+        return diff < 10 ? Math.sin(Math.min(Math.PI, diff/10*Math.PI)) * 0.85 : 0.05;
+    }},
+    { label:'Body Temp', color:'#22c55e', fn: h => {
+        const peak = (circWake + 10) % 24;
+        const diff = ((h - peak + 24) % 24);
+        return 0.3 + 0.6 * Math.exp(-diff*diff/16);
+    }},
+  ];
+
+  CURVES.forEach((curve, ci) => {
+    circCtx.strokeStyle = curve.color; circCtx.lineWidth = 2.5;
+    circCtx.beginPath();
+    for (let xi = 0; xi <= W; xi++) {
+      const hOffset = (xi / W) * 24;
+      const h = (circWake + hOffset) % 24;
+      const v = curve.fn(h);
+      const y = PAD.t + H - v * H;
+      if (xi === 0) circCtx.moveTo(PAD.l + xi, y);
+      else circCtx.lineTo(PAD.l + xi, y);
+    }
+    circCtx.stroke();
+    // Legend
+    const lx = PAD.l + 20 + ci * 160;
+    circCtx.strokeStyle = curve.color; circCtx.lineWidth = 2;
+    circCtx.beginPath(); circCtx.moveTo(lx, 15); circCtx.lineTo(lx + 20, 15); circCtx.stroke();
+    circCtx.fillStyle = curve.color; circCtx.font = 'bold 9px Segoe UI'; circCtx.textAlign = 'left';
+    circCtx.fillText(curve.label, lx + 25, 19);
+  });
+
+  // Wake/sleep markers
+  circCtx.strokeStyle = '#60a5fa'; circCtx.lineWidth = 1.5; circCtx.setLineDash([4,3]);
+  circCtx.beginPath(); circCtx.moveTo(sunriseX, PAD.t); circCtx.lineTo(sunriseX, PAD.t + H); circCtx.stroke();
+  circCtx.beginPath(); circCtx.moveTo(sunsetX, PAD.t); circCtx.lineTo(sunsetX, PAD.t + H); circCtx.stroke();
+  circCtx.setLineDash([]);
+  circCtx.fillStyle = '#60a5fa'; circCtx.font = 'bold 9px Segoe UI'; circCtx.textAlign = 'center';
+  circCtx.fillText('Wake', sunriseX, PAD.t + H + 30);
+  circCtx.fillText('Sleep', sunsetX, PAD.t + H + 30);
+}
+
+// ── Tab 3: Sleep Debt ─────────────────────────────────────────────────────────
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+let sleepData = [6, 6.5, 7, 5.5, 6, 8, 7.5];
+
+function initDebt() {
+  const container = document.getElementById('debt-inputs');
+  container.innerHTML = DAYS.map((d, i) =>
+    `<div class="debt-row">
+      <span class="debt-day">${d}</span>
+      <input class="debt-input" type="number" min="0" max="12" step="0.5" value="${sleepData[i]}" oninput="sleepData[${i}]=parseFloat(this.value)||0;calcDebt()">
+      <div class="debt-bar"><div class="debt-fill" id="debtbar-${i}" style="width:${sleepData[i]/12*100}%"></div></div>
+      <span style="color:var(--bright);font-size:0.8rem;min-width:35px">${sleepData[i]}h</span>
+    </div>`
+  ).join('');
+  document.getElementById('sleep-need').addEventListener('input', e => {
+    document.getElementById('sleep-need-label').textContent = parseFloat(e.value).toFixed(1) + ' hours';
+    calcDebt();
+  });
+  calcDebt();
+  drawDebtChart();
+}
+
+function calcDebt() {
+  const need = parseFloat(document.getElementById('sleep-need').value);
+  let debt = 0;
+  sleepData.forEach(h => { debt += Math.max(0, need - h); });
+  DAYS.forEach((_, i) => {
+    const bar = document.getElementById('debtbar-' + i);
+    if (bar) { bar.style.width = (sleepData[i]/12*100) + '%'; bar.style.background = sleepData[i] < need ? '#ef4444' : '#6366f1'; }
+  });
+  const debtEl = document.getElementById('debt-total');
+  if (debtEl) { debtEl.textContent = debt.toFixed(1) + 'h'; debtEl.style.color = debt > 5 ? '#ef4444' : debt > 2 ? '#f59e0b' : '#22c55e'; }
+  const recEl = document.getElementById('debt-recovery');
+  if (recEl) recEl.textContent = `~${Math.ceil(debt / 1)} days to recover (1h extra/night)`;
+  drawDebtChart();
+}
+
+function drawDebtChart() {
+  const canvas = document.getElementById('debt-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const need = parseFloat(document.getElementById('sleep-need')?.value || 8);
+  const PAD = {l:50, r:20, t:20, b:40};
+  const W = canvas.width - PAD.l - PAD.r;
+  const H = canvas.height - PAD.t - PAD.b;
+  const barW = W / DAYS.length - 8;
+
+  // Baseline
+  const baselineY = PAD.t + H * (1 - need/12);
+  ctx.strokeStyle = '#6366f188'; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(PAD.l, baselineY); ctx.lineTo(PAD.l+W, baselineY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#6366f1'; ctx.font = '8px Segoe UI'; ctx.textAlign = 'left';
+  ctx.fillText('need: ' + need + 'h', PAD.l + 2, baselineY - 3);
+
+  DAYS.forEach((d, i) => {
+    const barH = (sleepData[i] / 12) * H;
+    const bx = PAD.l + i * (W / DAYS.length) + 4;
+    const by = PAD.t + H - barH;
+    const color = sleepData[i] < need ? '#ef4444' : '#6366f1';
+    ctx.fillStyle = color + '88';
+    ctx.beginPath(); ctx.roundRect(bx, by, barW, barH, [4,4,0,0]); ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, by, barW, barH, [4,4,0,0]); ctx.stroke();
+    ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 9px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText(sleepData[i] + 'h', bx + barW/2, by - 4);
+    ctx.fillStyle = '#475569'; ctx.font = '9px Segoe UI';
+    ctx.fillText(d, bx + barW/2, PAD.t + H + 15);
+  });
+
+  // Y axis
+  for (let h = 0; h <= 12; h += 2) {
+    const y = PAD.t + H * (1 - h/12);
+    ctx.fillStyle = '#475569'; ctx.font = '8px Segoe UI'; ctx.textAlign = 'right';
+    ctx.fillText(h + 'h', PAD.l - 4, y + 3);
+    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 0.3;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + W, y); ctx.stroke();
+  }
+}
+
+// ── Tab 4: REM ────────────────────────────────────────────────────────────────
+let remCtx, remFrame = 0;
+const EEG_STAGES = [
+  { name:'Awake (Beta)', color:'#60a5fa', freq:20, amp:8  },
+  { name:'N1 (Theta)',   color:'#a78bfa', freq:6,  amp:12 },
+  { name:'N2 (Spindles)',color:'#8b5cf6', freq:13, amp:15 },
+  { name:'N3 (Delta)',   color:'#6366f1', freq:2,  amp:35 },
+  { name:'REM (Mixed)',  color:'#ec4899', freq:15, amp:7  },
+];
+
+function initREM() {
+  remCtx = document.getElementById('rem-canvas').getContext('2d');
+  remStep();
+}
+
+function remStep() {
+  if (!remCtx) return;
+  const canvas = document.getElementById('rem-canvas');
+  remCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const rowH = canvas.height / EEG_STAGES.length;
+
+  EEG_STAGES.forEach((stage, si) => {
+    const y = si * rowH + rowH/2;
+    // Background row
+    remCtx.fillStyle = si % 2 === 0 ? '#020218' : '#03031a';
+    remCtx.fillRect(0, si * rowH, canvas.width, rowH);
+    // Label
+    remCtx.fillStyle = stage.color; remCtx.font = 'bold 9px Segoe UI'; remCtx.textAlign = 'left';
+    remCtx.fillText(stage.name, 8, y + 4);
+
+    // EEG wave
+    const waveStart = 160, waveW = canvas.width - 180;
+    remCtx.strokeStyle = stage.color; remCtx.lineWidth = 1.5;
+    remCtx.beginPath();
+    for (let xi = 0; xi < waveW; xi++) {
+      const t = xi / waveW;
+      const phase = remFrame * 0.05 + si * 0.7;
+      let wave = 0;
+      // Multi-frequency for N2 (spindles)
+      if (si === 2) {
+        wave = Math.sin(t * stage.freq * Math.PI * 2 + phase) * stage.amp;
+        const spindle = Math.sin(t * 4 * Math.PI) * 0.5 + 0.5;
+        wave *= spindle;
+      } else {
+        wave = Math.sin(t * stage.freq * Math.PI * 2 + phase) * stage.amp;
+        // Add noise
+        wave += (Math.random() - 0.5) * 3;
+      }
+      const px = waveStart + xi;
+      const py = y + wave;
+      if (xi === 0) remCtx.moveTo(px, py);
+      else remCtx.lineTo(px, py);
+    }
+    remCtx.stroke();
+  });
+
+  remFrame++;
+  requestAnimationFrame(remStep);
+}
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

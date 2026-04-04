@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nutrition &amp; Metabolism</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --green: #22c55e; --lime: #84cc16; --bright: #4ade80;
+      --white: #e2e8f0; --fg: #94a3b8; --fg-dim: #475569;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 0.9rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover, .tab.active { color: var(--bright); border-color: var(--green); background: rgba(34,197,94,0.08); }
+    .section { display: none; padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 2rem; margin-bottom: 0.4rem; }
+    h2 { color: var(--bright); font-size: 1.3rem; margin-bottom: 1rem; }
+    h3 { color: var(--white); font-size: 1rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.7; margin-bottom: 0.8rem; font-size: 0.92rem; }
+    .hero { text-align: center; padding: 2.5rem 1rem 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .badge { display: inline-block; background: rgba(34,197,94,0.12); color: var(--bright); border: 1px solid rgba(34,197,94,0.25); border-radius: 12px; padding: 0.15rem 0.6rem; font-size: 0.75rem; margin: 0.15rem; }
+    .btn { background: rgba(34,197,94,0.12); border: 1px solid var(--green); color: var(--bright); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; }
+    .btn:hover { background: rgba(34,197,94,0.22); }
+    .btn.active { background: rgba(34,197,94,0.28); }
+    canvas { display: block; border-radius: 8px; background: #030318; border: 1px solid var(--border); }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media(max-width:700px){ .grid2,.grid3 { grid-template-columns:1fr; } }
+    input, select { background: var(--card); border: 1px solid var(--border); color: var(--white); padding: 0.3rem 0.5rem; border-radius: 4px; font-family: inherit; font-size: 0.85rem; }
+    input[type=number] { width: 80px; }
+    input[type=range] { accent-color: var(--green); }
+    label { color: var(--fg); font-size: 0.85rem; }
+    .result-box { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    .macro-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.4rem 0; }
+    .macro-label { min-width: 80px; font-size: 0.85rem; }
+    .macro-bar { flex: 1; height: 16px; background: #0d1023; border-radius: 3px; overflow: hidden; }
+    .macro-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .macro-val { min-width: 80px; font-size: 0.82rem; text-align: right; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    th { color: var(--bright); border-bottom: 1px solid var(--border); padding: 0.5rem 0.4rem; text-align: left; }
+    td { padding: 0.4rem 0.4rem; border-bottom: 1px solid #0d1023; }
+    tr:hover td { background: #070720; }
+    .food-sel { cursor: pointer; }
+    .food-sel.selected td { background: rgba(34,197,94,0.08); }
+    input[type=text] { width: 200px; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('macro', this)">Macro Calculator</button>
+    <button class="tab" onclick="showTab('macros', this)">Macronutrients</button>
+    <button class="tab" onclick="showTab('metabolism', this)">Metabolism</button>
+    <button class="tab" onclick="showTab('food', this)">Food Comparison</button>
+  </div>
+</div>
+
+<!-- TAB 1: Macro Calculator -->
+<div id="tab-macro" class="section active">
+  <div class="hero">
+    <h1>Nutrition &amp; Metabolism</h1>
+    <p style="color:var(--fg-dim)">Calculate your macros, understand metabolism, compare foods</p>
+  </div>
+  <h2>TDEE &amp; Macro Calculator</h2>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem">
+      <div><label>Weight<br><input type="number" id="weight" value="75"> <select id="weight-unit"><option>kg</option><option>lbs</option></select></label></div>
+      <div><label>Height (cm)<br><input type="number" id="height" value="175"></label></div>
+      <div><label>Age<br><input type="number" id="age" value="28"></label></div>
+      <div><label>Sex<br><select id="sex"><option>male</option><option>female</option></select></label></div>
+      <div><label>Activity Level<br><select id="activity">
+        <option value="1.2">Sedentary (desk job)</option>
+        <option value="1.375">Lightly active (1-3x/wk)</option>
+        <option value="1.55" selected>Moderately active (3-5x)</option>
+        <option value="1.725">Very active (6-7x)</option>
+        <option value="1.9">Athlete (2x/day)</option>
+      </select></label></div>
+      <div><label>Goal<br><select id="goal">
+        <option value="0">Maintain</option>
+        <option value="-500">Cut (-500 kcal)</option>
+        <option value="300">Lean Bulk (+300)</option>
+        <option value="500">Bulk (+500)</option>
+      </select></label></div>
+    </div>
+    <button class="btn" style="margin-top:1rem" onclick="calcMacros()">Calculate</button>
+  </div>
+  <div id="macro-results" style="display:none">
+    <div class="result-box">
+      <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+        <div style="text-align:center;flex:1"><div style="font-size:2rem;font-weight:700;color:var(--bright)" id="tdee-val">0</div><div style="color:var(--fg-dim);font-size:0.8rem">TDEE kcal/day</div></div>
+        <div style="text-align:center;flex:1"><div style="font-size:2rem;font-weight:700;color:#60a5fa" id="target-val">0</div><div style="color:var(--fg-dim);font-size:0.8rem">Target kcal</div></div>
+        <div style="text-align:center;flex:1"><div style="font-size:2rem;font-weight:700;color:#f59e0b" id="bmr-val">0</div><div style="color:var(--fg-dim);font-size:0.8rem">BMR</div></div>
+      </div>
+      <div id="macro-bars"></div>
+    </div>
+    <div style="display:flex;gap:1rem;margin-top:1rem">
+      <canvas id="donut-canvas" width="200" height="200"></canvas>
+      <div id="macro-detail" style="flex:1;display:flex;flex-direction:column;gap:0.5rem;justify-content:center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Macronutrients -->
+<div id="tab-macros" class="section">
+  <h2>Macronutrients Deep Dive</h2>
+  <div class="grid3">
+    <div class="card" style="border-color:#60a5fa44">
+      <h3 style="color:#60a5fa">Protein</h3>
+      <p style="font-size:0.85rem"><strong>4 kcal/gram</strong> — builds and repairs muscle tissue, enzymes, hormones, immune cells.</p>
+      <div><span class="badge" style="background:rgba(96,165,250,0.12);color:#60a5fa;border-color:rgba(96,165,250,0.3)">0.8–2.2g/kg BW</span></div>
+      <p style="font-size:0.8rem;margin-top:0.5rem">Sources: chicken, eggs, fish, greek yogurt, legumes, whey</p>
+      <p style="font-size:0.78rem;color:#ef444488;margin-top:0.3rem">Deficiency: muscle wasting, edema, immune failure</p>
+      <canvas id="protein-digest" width="200" height="60" style="margin-top:0.5rem"></canvas>
+      <div style="font-size:0.75rem;color:var(--fg-dim);margin-top:0.2rem">Digestion speed: 1–4 hours</div>
+    </div>
+    <div class="card" style="border-color:#f59e0b44">
+      <h3 style="color:#f59e0b">Carbohydrates</h3>
+      <p style="font-size:0.85rem"><strong>4 kcal/gram</strong> — primary fuel for brain and high-intensity exercise. Stored as glycogen (liver/muscle).</p>
+      <div><span class="badge" style="background:rgba(245,158,11,0.12);color:#f59e0b;border-color:rgba(245,158,11,0.3)">45–65% of calories</span></div>
+      <p style="font-size:0.8rem;margin-top:0.5rem">Sources: rice, oats, bread, fruit, potatoes, legumes</p>
+      <p style="font-size:0.78rem;color:#f59e0b88;margin-top:0.3rem">Deficiency: fatigue, brain fog, poor workout performance</p>
+      <canvas id="carb-digest" width="200" height="60" style="margin-top:0.5rem"></canvas>
+      <div style="font-size:0.75rem;color:var(--fg-dim);margin-top:0.2rem">Digestion speed: 30min–2 hours</div>
+    </div>
+    <div class="card" style="border-color:#ec489944">
+      <h3 style="color:#ec4899">Fats</h3>
+      <p style="font-size:0.85rem"><strong>9 kcal/gram</strong> — hormone production, fat-soluble vitamins (ADEK), cell membranes, long-duration fuel.</p>
+      <div><span class="badge" style="background:rgba(236,72,153,0.12);color:#ec4899;border-color:rgba(236,72,153,0.3)">20–35% of calories</span></div>
+      <p style="font-size:0.8rem;margin-top:0.5rem">Sources: olive oil, avocado, nuts, fatty fish, eggs</p>
+      <p style="font-size:0.78rem;color:#ec489988;margin-top:0.3rem">Deficiency: hormonal issues, dry skin, vitamin deficiency</p>
+      <canvas id="fat-digest" width="200" height="60" style="margin-top:0.5rem"></canvas>
+      <div style="font-size:0.75rem;color:var(--fg-dim);margin-top:0.2rem">Digestion speed: 4–6+ hours</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Metabolism -->
+<div id="tab-metabolism" class="section">
+  <h2>Energy Metabolism Pathways</h2>
+  <div class="controls">
+    <button class="btn active" id="path-normal" onclick="setMetabPath('normal')">Normal (Glucose)</button>
+    <button class="btn" id="path-fast" onclick="setMetabPath('fast')">Fasted State</button>
+    <button class="btn" id="path-keto" onclick="setMetabPath('keto')">Ketosis</button>
+  </div>
+  <canvas id="metab-canvas" width="900" height="380"></canvas>
+  <div class="card" style="margin-top:1rem" id="metab-explain">
+    <h3>Glycolysis → ATP</h3>
+    <p>In fed state, glucose from carbohydrates enters glycolysis, producing pyruvate → acetyl-CoA → Krebs cycle → 36 ATP per glucose. Most efficient energy pathway.</p>
+    <div><span class="badge">Net: 36–38 ATP per glucose</span><span class="badge">Anaerobic: 2 ATP (fast)</span><span class="badge">Aerobic: 36 ATP (slow)</span></div>
+  </div>
+</div>
+
+<!-- TAB 4: Food Comparison -->
+<div id="tab-food" class="section">
+  <h2>Food Nutrition Database</h2>
+  <div class="controls">
+    <input type="text" id="food-search" placeholder="Search foods..." oninput="filterFoods(this.value)" style="font-size:0.85rem">
+    <button class="btn" onclick="clearSelection()">Clear Selection</button>
+    <span style="color:var(--fg-dim);font-size:0.82rem" id="selection-count">0 selected (max 3)</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table id="food-table">
+      <thead><tr><th>Food</th><th>Calories</th><th>Protein (g)</th><th>Carbs (g)</th><th>Fat (g)</th><th>Fiber (g)</th></tr></thead>
+      <tbody id="food-tbody"></tbody>
+    </table>
+  </div>
+  <canvas id="food-canvas" width="900" height="260" style="margin-top:1rem;display:none"></canvas>
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'macros') initMacroNutrients();
+  if (name === 'metabolism') { metabPath = 'normal'; initMetabolism(); }
+  if (name === 'food') initFoodTable();
+}
+
+// ── Tab 1: Macro Calc ─────────────────────────────────────────────────────────
+function calcMacros() {
+  let weight = parseFloat(document.getElementById('weight').value);
+  const unit = document.getElementById('weight-unit').value;
+  if (unit === 'lbs') weight *= 0.453592;
+  const height = parseFloat(document.getElementById('height').value);
+  const age = parseFloat(document.getElementById('age').value);
+  const sex = document.getElementById('sex').value;
+  const activity = parseFloat(document.getElementById('activity').value);
+  const goal = parseFloat(document.getElementById('goal').value);
+
+  // Mifflin-St Jeor BMR
+  let bmr = sex === 'male'
+    ? 10 * weight + 6.25 * height - 5 * age + 5
+    : 10 * weight + 6.25 * height - 5 * age - 161;
+  const tdee = Math.round(bmr * activity);
+  const target = tdee + goal;
+  bmr = Math.round(bmr);
+
+  // Macros: 30% protein, 35% carbs, 35% fat for maintain; adjust for goal
+  const proteinCal = target * 0.30;
+  const carbCal = target * 0.40;
+  const fatCal = target * 0.30;
+  const proteinG = Math.round(proteinCal / 4);
+  const carbG = Math.round(carbCal / 4);
+  const fatG = Math.round(fatCal / 9);
+
+  document.getElementById('tdee-val').textContent = tdee;
+  document.getElementById('target-val').textContent = target;
+  document.getElementById('bmr-val').textContent = bmr;
+  document.getElementById('macro-results').style.display = 'block';
+
+  const bars = document.getElementById('macro-bars');
+  bars.innerHTML = [
+    { name:'Protein', g: proteinG, cal: Math.round(proteinCal), color:'#60a5fa' },
+    { name:'Carbs',   g: carbG,    cal: Math.round(carbCal),   color:'#f59e0b' },
+    { name:'Fat',     g: fatG,     cal: Math.round(fatCal),    color:'#ec4899' },
+  ].map(m => `
+    <div class="macro-row">
+      <span class="macro-label" style="color:${m.color}">${m.name}</span>
+      <div class="macro-bar"><div class="macro-fill" style="width:${Math.round(m.cal/target*100)}%;background:${m.color}"></div></div>
+      <span class="macro-val" style="color:${m.color}">${m.g}g / ${m.cal}kcal</span>
+    </div>`).join('');
+
+  // Detail
+  document.getElementById('macro-detail').innerHTML = `
+    <p style="color:var(--bright)"><strong>${target}</strong> kcal/day target</p>
+    <p style="font-size:0.82rem">Protein: <strong style="color:#60a5fa">${proteinG}g</strong> (${Math.round(proteinG/weight*10)/10}g/kg)</p>
+    <p style="font-size:0.82rem">Carbs: <strong style="color:#f59e0b">${carbG}g</strong></p>
+    <p style="font-size:0.82rem">Fat: <strong style="color:#ec4899">${fatG}g</strong></p>
+    <p style="font-size:0.78rem;color:var(--fg-dim);margin-top:0.5rem">Based on Mifflin-St Jeor formula. Adjust based on body composition and progress.</p>`;
+
+  drawDonut(Math.round(proteinCal), Math.round(carbCal), Math.round(fatCal));
+}
+
+function drawDonut(p, c, f) {
+  const canvas = document.getElementById('donut-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 200, 200);
+  const total = p + c + f;
+  const slices = [
+    { val: p, color: '#60a5fa', label: 'P' },
+    { val: c, color: '#f59e0b', label: 'C' },
+    { val: f, color: '#ec4899', label: 'F' },
+  ];
+  let angle = -Math.PI / 2;
+  slices.forEach(s => {
+    const sweep = (s.val / total) * Math.PI * 2;
+    ctx.fillStyle = s.color;
+    ctx.beginPath(); ctx.moveTo(100, 100); ctx.arc(100, 100, 80, angle, angle + sweep); ctx.closePath(); ctx.fill();
+    // Inner donut hole
+    ctx.beginPath(); ctx.arc(100, 100, 48, 0, Math.PI*2); ctx.fillStyle = '#030318'; ctx.fill();
+    angle += sweep;
+  });
+  ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText(total + '', 100, 97);
+  ctx.fillStyle = '#64748b'; ctx.font = '8px Segoe UI';
+  ctx.fillText('kcal', 100, 112);
+}
+
+// ── Tab 2: Macronutrients ─────────────────────────────────────────────────────
+function initMacroNutrients() {
+  drawDigestBar('protein-digest', '#60a5fa', 0.3);
+  drawDigestBar('carb-digest', '#f59e0b', 0.7);
+  drawDigestBar('fat-digest', '#ec4899', 0.1);
+}
+
+function drawDigestBar(id, color, speed) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 200, 60);
+  const stages = ['Mouth','Stomach','Small Int','Blood'];
+  const delays = speed > 0.5 ? [5,15,30,40] : speed > 0.25 ? [5,25,60,120] : [5,30,120,240];
+  stages.forEach((s, i) => {
+    const x = 10 + i * 46;
+    ctx.fillStyle = i < 3 ? color + '44' : color;
+    ctx.beginPath(); ctx.roundRect(x, 15, 38, 25, 4); ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(x, 15, 38, 25, 4); ctx.stroke();
+    ctx.fillStyle = '#e2e8f0'; ctx.font = '6px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText(s, x + 19, 26);
+    ctx.fillStyle = color; ctx.font = '6px Segoe UI';
+    ctx.fillText(delays[i] + 'min', x + 19, 36);
+    if (i < 3) {
+      ctx.fillStyle = color; ctx.font = '8px Segoe UI';
+      ctx.fillText('→', x + 41, 30);
+    }
+  });
+}
+
+// ── Tab 3: Metabolism ─────────────────────────────────────────────────────────
+let metabPath = 'normal';
+let metabCtx, metabFrame = 0, metabPackets = [];
+
+function setMetabPath(p) {
+  metabPath = p;
+  ['normal','fast','keto'].forEach(n => document.getElementById('path-' + n).classList.toggle('active', n === p));
+  metabPackets = [];
+  const explains = {
+    normal: ['Glycolysis → ATP', 'In fed state, glucose from carbohydrates enters glycolysis, producing pyruvate → acetyl-CoA → Krebs cycle → 36 ATP per glucose. Most efficient energy pathway.', '36–38 ATP per glucose', 'Anaerobic: 2 ATP (fast)', 'Aerobic: 36 ATP (slow)'],
+    fast: ['Gluconeogenesis', 'During fasting, liver synthesizes glucose from amino acids (alanine, glutamine) and glycerol. Also mobilizes fatty acids for beta-oxidation → ketone production begins.', 'Liver glycogen: ~12h supply', 'Gluconeogenesis kicks in after', 'Muscle protein spared first 24h'],
+    keto: ['Ketosis (Fat Burning)', 'After 2–3 days low carb, liver produces ketone bodies (BHB, AcAc, acetone) from fatty acids. Brain can use BHB as fuel. Fat cells release FFA continuously.', '5–10% carbs to enter ketosis', 'Brain adapts in 3–4 weeks', 'Reduces insulin, increases lipolysis'],
+  };
+  const e = explains[p];
+  document.getElementById('metab-explain').innerHTML = `<h3>${e[0]}</h3><p>${e[1]}</p><div>${e.slice(2).map(t => `<span class="badge">${t}</span>`).join('')}</div>`;
+  if (metabCtx) drawMetabolism();
+}
+
+function initMetabolism() {
+  metabCtx = document.getElementById('metab-canvas').getContext('2d');
+  metabStep();
+}
+
+const METAB_NODES = {
+  food:    { x:80,  y:190, label:'Food',        color:'#22c55e' },
+  glucose: { x:230, y:120, label:'Glucose',     color:'#f59e0b' },
+  aa:      { x:230, y:260, label:'Amino Acids', color:'#60a5fa' },
+  glyco:   { x:380, y:80,  label:'Glycolysis',  color:'#f59e0b' },
+  pyruv:   { x:520, y:80,  label:'Pyruvate',    color:'#a78bfa' },
+  acetyl:  { x:660, y:80,  label:'Acetyl-CoA',  color:'#8b5cf6' },
+  krebs:   { x:800, y:160, label:'Krebs Cycle', color:'#6366f1' },
+  atp:     { x:800, y:280, label:'ATP ×36',     color:'#22c55e' },
+  gluco:   { x:380, y:260, label:'Gluconeog.',  color:'#60a5fa' },
+  fat:     { x:230, y:190, label:'Fat (FFA)',   color:'#ec4899' },
+  ketones: { x:660, y:260, label:'Ketones',     color:'#ec4899' },
+};
+
+function drawMetabolism() {
+  if (!metabCtx) return;
+  const canvas = document.getElementById('metab-canvas');
+  metabCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const activeEdges = {
+    normal: [['food','glucose'],['food','aa'],['glucose','glyco'],['glyco','pyruv'],['pyruv','acetyl'],['acetyl','krebs'],['krebs','atp']],
+    fast:   [['food','aa'],['aa','gluco'],['gluco','glyco'],['glyco','pyruv'],['pyruv','acetyl'],['acetyl','krebs'],['krebs','atp'],['food','fat'],['fat','acetyl']],
+    keto:   [['food','fat'],['fat','acetyl'],['fat','ketones'],['ketones','atp'],['acetyl','krebs'],['krebs','atp']],
+  };
+
+  const edges = activeEdges[metabPath] || [];
+  edges.forEach(([a, b]) => {
+    const na = METAB_NODES[a], nb = METAB_NODES[b];
+    if (!na || !nb) return;
+    metabCtx.strokeStyle = na.color + '66'; metabCtx.lineWidth = 2;
+    metabCtx.beginPath(); metabCtx.moveTo(na.x, na.y); metabCtx.lineTo(nb.x, nb.y); metabCtx.stroke();
+    // Arrow
+    const dx = nb.x - na.x, dy = nb.y - na.y;
+    const angle = Math.atan2(dy, dx);
+    const ax = nb.x - 20 * Math.cos(angle), ay = nb.y - 20 * Math.sin(angle);
+    metabCtx.fillStyle = na.color; metabCtx.save(); metabCtx.translate(ax, ay); metabCtx.rotate(angle);
+    metabCtx.beginPath(); metabCtx.moveTo(0,-4); metabCtx.lineTo(8,0); metabCtx.lineTo(0,4); metabCtx.closePath(); metabCtx.fill();
+    metabCtx.restore();
+  });
+
+  const activeNodes = new Set(edges.flat());
+  Object.entries(METAB_NODES).forEach(([key, n]) => {
+    const isActive = activeNodes.has(key);
+    metabCtx.fillStyle = isActive ? n.color + '33' : '#07071588';
+    metabCtx.strokeStyle = isActive ? n.color : n.color + '33';
+    metabCtx.lineWidth = isActive ? 2 : 1;
+    metabCtx.beginPath(); metabCtx.roundRect(n.x - 50, n.y - 22, 100, 44, 8); metabCtx.fill(); metabCtx.stroke();
+    metabCtx.fillStyle = isActive ? '#e2e8f0' : '#475569';
+    metabCtx.font = 'bold 9px Segoe UI'; metabCtx.textAlign = 'center';
+    metabCtx.fillText(n.label, n.x, n.y + 4);
+  });
+
+  // Animate packets
+  const edges2 = activeEdges[metabPath] || [];
+  if (metabFrame % 30 === 0 && edges2.length > 0) {
+    const edge = edges2[metabFrame % edges2.length];
+    const na = METAB_NODES[edge[0]], nb = METAB_NODES[edge[1]];
+    if (na && nb) metabPackets.push({ x: na.x, y: na.y, tx: nb.x, ty: nb.y, color: na.color, t: 0 });
+  }
+
+  for (let i = metabPackets.length - 1; i >= 0; i--) {
+    const pk = metabPackets[i];
+    pk.t += 0.02;
+    if (pk.t >= 1) { metabPackets.splice(i, 1); continue; }
+    const px = pk.x + (pk.tx - pk.x) * pk.t;
+    const py = pk.y + (pk.ty - pk.y) * pk.t;
+    metabCtx.beginPath(); metabCtx.arc(px, py, 5, 0, Math.PI*2);
+    metabCtx.fillStyle = pk.color; metabCtx.shadowColor = pk.color; metabCtx.shadowBlur = 8;
+    metabCtx.fill(); metabCtx.shadowBlur = 0;
+  }
+}
+
+function metabStep() {
+  drawMetabolism();
+  metabFrame++;
+  requestAnimationFrame(metabStep);
+}
+
+// ── Tab 4: Food Comparison ────────────────────────────────────────────────────
+const FOODS = [
+  { name:'Chicken Breast',  cal:165, pro:31, carb:0,  fat:3.6,fib:0 },
+  { name:'Salmon',          cal:208, pro:20, carb:0,  fat:13, fib:0 },
+  { name:'Eggs (whole)',    cal:155, pro:13, carb:1.1,fat:11, fib:0 },
+  { name:'Greek Yogurt',   cal:97,  pro:10, carb:6,  fat:5,  fib:0 },
+  { name:'Cottage Cheese', cal:98,  pro:11, carb:3.4,fat:4.3,fib:0 },
+  { name:'Beef (lean)',    cal:250, pro:26, carb:0,  fat:15, fib:0 },
+  { name:'White Rice',     cal:130, pro:2.7,carb:28, fat:0.3,fib:0.4},
+  { name:'Brown Rice',     cal:112, pro:2.6,carb:23, fat:0.9,fib:1.8},
+  { name:'Oats',           cal:389, pro:17, carb:66, fat:7,  fib:11 },
+  { name:'Sweet Potato',   cal:86,  pro:1.6,carb:20, fat:0.1,fib:3 },
+  { name:'Broccoli',       cal:34,  pro:2.8,carb:7,  fat:0.4,fib:2.6},
+  { name:'Spinach',        cal:23,  pro:2.9,carb:3.6,fat:0.4,fib:2.2},
+  { name:'Banana',         cal:89,  pro:1.1,carb:23, fat:0.3,fib:2.6},
+  { name:'Apple',          cal:52,  pro:0.3,carb:14, fat:0.2,fib:2.4},
+  { name:'Almonds',        cal:579, pro:21, carb:22, fat:50, fib:12 },
+  { name:'Avocado',        cal:160, pro:2,  carb:9,  fat:15, fib:7 },
+  { name:'Olive Oil',      cal:884, pro:0,  carb:0,  fat:100,fib:0 },
+  { name:'Lentils (cooked)',cal:116,pro:9,  carb:20, fat:0.4,fib:8 },
+  { name:'Black Beans',    cal:132, pro:9,  carb:24, fat:0.5,fib:8.7},
+  { name:'Quinoa',         cal:120, pro:4.1,carb:22, fat:1.9,fib:2.8},
+  { name:'Whole Milk',     cal:61,  pro:3.2,carb:4.8,fat:3.3,fib:0 },
+  { name:'Cheddar Cheese', cal:403, pro:25, carb:1.3,fat:33, fib:0 },
+  { name:'Tofu (firm)',    cal:76,  pro:8,  carb:2,  fat:4,  fib:0.3},
+  { name:'Tuna (canned)',  cal:116, pro:26, carb:0,  fat:1,  fib:0 },
+  { name:'Whey Protein',   cal:400, pro:80, carb:10, fat:5,  fib:2 },
+  { name:'Pasta',          cal:131, pro:5,  carb:25, fat:1.1,fib:1.8},
+  { name:'Bread (whole)',  cal:247, pro:13, carb:41, fat:4,  fib:7 },
+  { name:'Peanut Butter',  cal:588, pro:25, carb:20, fat:50, fib:6 },
+  { name:'Blueberries',    cal:57,  pro:0.7,carb:14, fat:0.3,fib:2.4},
+  { name:'Orange',         cal:47,  pro:0.9,carb:12, fat:0.1,fib:2.4},
+];
+
+let selectedFoods = [];
+
+function initFoodTable() {
+  filterFoods('');
+}
+
+function filterFoods(query) {
+  const tbody = document.getElementById('food-tbody');
+  const filtered = FOODS.filter(f => f.name.toLowerCase().includes(query.toLowerCase()));
+  tbody.innerHTML = filtered.map((f, i) =>
+    `<tr class="food-sel ${selectedFoods.includes(f.name) ? 'selected':''}" onclick="toggleFood('${f.name}')">
+      <td>${f.name}</td><td>${f.cal}</td><td>${f.pro}</td><td>${f.carb}</td><td>${f.fat}</td><td>${f.fib}</td>
+    </tr>`
+  ).join('');
+}
+
+function toggleFood(name) {
+  const idx = selectedFoods.indexOf(name);
+  if (idx >= 0) selectedFoods.splice(idx, 1);
+  else if (selectedFoods.length < 3) selectedFoods.push(name);
+  document.getElementById('selection-count').textContent = `${selectedFoods.length} selected (max 3)`;
+  filterFoods(document.getElementById('food-search').value);
+  drawFoodComparison();
+}
+
+function clearSelection() { selectedFoods = []; filterFoods(document.getElementById('food-search').value); drawFoodComparison(); }
+
+function drawFoodComparison() {
+  const canvas = document.getElementById('food-canvas');
+  canvas.style.display = selectedFoods.length > 0 ? 'block' : 'none';
+  if (selectedFoods.length === 0) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const foods = selectedFoods.map(n => FOODS.find(f => f.name === n));
+  const metrics = ['cal','pro','carb','fat','fib'];
+  const labels = ['Calories','Protein (g)','Carbs (g)','Fat (g)','Fiber (g)'];
+  const colors = ['#22c55e','#3b82f6','#f59e0b','#ec4899','#a78bfa'];
+  const foodColors = ['#22c55e','#60a5fa','#f59e0b'];
+  const maxes = metrics.map(m => Math.max(...foods.map(f => f[m])) * 1.2 || 1);
+  const barW = 28, groupGap = 80, startX = 80;
+
+  foods.forEach((f, fi) => {
+    metrics.forEach((m, mi) => {
+      const x = startX + mi * groupGap + fi * (barW + 2);
+      const h = (f[m] / maxes[mi]) * 160;
+      const y = 220 - h;
+      ctx.fillStyle = foodColors[fi] + 'aa';
+      ctx.beginPath(); ctx.roundRect(x, y, barW, h, [3,3,0,0]); ctx.fill();
+      ctx.strokeStyle = foodColors[fi]; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(x, y, barW, h, [3,3,0,0]); ctx.stroke();
+      ctx.fillStyle = foodColors[fi]; ctx.font = '7px Segoe UI'; ctx.textAlign = 'center';
+      ctx.fillText(f[m], x + barW/2, y - 3);
+    });
+  });
+
+  // X labels
+  metrics.forEach((m, mi) => {
+    ctx.fillStyle = '#64748b'; ctx.font = '9px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText(labels[mi], startX + mi * groupGap + (foods.length * (barW+2))/2, 236);
+  });
+
+  // Legend
+  foods.forEach((f, fi) => {
+    ctx.fillStyle = foodColors[fi]; ctx.font = 'bold 9px Segoe UI'; ctx.textAlign = 'left';
+    ctx.fillText('■ ' + f.name, 20 + fi * 250, 255);
+  });
+}
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

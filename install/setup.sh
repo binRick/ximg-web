@@ -205,6 +205,8 @@ DOMAINS=(
   playground.ximg.app tokens.ximg.app temperature.ximg.app embeddings.ximg.app agents.ximg.app
   network.ximg.app request.ximg.app
   visualize.ximg.app statslab.ximg.app regression.ximg.app probability.ximg.app
+  systemdesign.ximg.app loadbalancer.ximg.app cdn.ximg.app queue.ximg.app
+  brain.ximg.app sleep.ximg.app nutrition.ximg.app training.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

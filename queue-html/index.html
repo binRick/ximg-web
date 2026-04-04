@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Message Queue &amp; Async Processing</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --blue: #3b82f6; --blue-bright: #60a5fa;
+      --white: #e2e8f0; --fg: #94a3b8; --fg-dim: #475569;
+      --green: #22c55e; --red: #ef4444; --yellow: #f59e0b; --purple: #8b5cf6;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1100px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 0.9rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover, .tab.active { color: var(--blue-bright); border-color: var(--blue); background: rgba(59,130,246,0.08); }
+    .section { display: none; padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 2rem; margin-bottom: 0.4rem; }
+    h2 { color: var(--blue-bright); font-size: 1.3rem; margin-bottom: 1rem; }
+    h3 { color: var(--white); font-size: 1rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.7; margin-bottom: 0.8rem; font-size: 0.92rem; }
+    .hero { text-align: center; padding: 2.5rem 1rem 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .badge { display: inline-block; background: rgba(59,130,246,0.12); color: var(--blue-bright); border: 1px solid rgba(59,130,246,0.25); border-radius: 12px; padding: 0.15rem 0.6rem; font-size: 0.75rem; margin: 0.15rem; }
+    .btn { background: rgba(59,130,246,0.12); border: 1px solid var(--blue); color: var(--blue-bright); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; }
+    .btn:hover { background: rgba(59,130,246,0.22); }
+    .btn.red { border-color: var(--red); color: #f87171; background: rgba(239,68,68,0.1); }
+    .btn.green { border-color: var(--green); color: #4ade80; background: rgba(34,197,94,0.1); }
+    canvas { display: block; border-radius: 8px; background: #030318; border: 1px solid var(--border); }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    .stat-row { display: flex; gap: 0.8rem; flex-wrap: wrap; margin: 0.8rem 0; }
+    .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.9rem; text-align: center; flex: 1; min-width: 90px; }
+    .stat-box .val { font-size: 1.3rem; font-weight: 700; }
+    .stat-box .lbl { color: var(--fg-dim); font-size: 0.72rem; margin-top: 0.2rem; }
+    label { color: var(--fg); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('basics', this)">Queue Basics</button>
+    <button class="tab" onclick="showTab('prodcon', this)">Producer-Consumer</button>
+    <button class="tab" onclick="showTab('dlq', this)">Dead Letter Queue</button>
+    <button class="tab" onclick="showTab('pubsub', this)">Pub/Sub</button>
+  </div>
+</div>
+
+<!-- TAB 1: Queue Basics -->
+<div id="tab-basics" class="section active">
+  <div class="hero">
+    <h1>Message Queue &amp; Async Processing</h1>
+    <p style="color:var(--fg-dim)">Decouple services, buffer load spikes, and enable async workflows</p>
+  </div>
+  <h2>Queue Basics</h2>
+  <div class="stat-row">
+    <div class="stat-box"><div class="val" id="q-depth" style="color:#f59e0b">0</div><div class="lbl">Queue Depth</div></div>
+    <div class="stat-box"><div class="val" id="q-produced" style="color:#3b82f6">0</div><div class="lbl">Produced</div></div>
+    <div class="stat-box"><div class="val" id="q-consumed" style="color:#22c55e">0</div><div class="lbl">Consumed</div></div>
+    <div class="stat-box"><div class="val" id="q-tput" style="color:#a78bfa">0</div><div class="lbl">Msg/sec</div></div>
+  </div>
+  <div class="controls">
+    <button class="btn" onclick="qProduce()">Produce Message</button>
+    <button class="btn" onclick="qProduceBurst()">Burst (10)</button>
+    <label>Workers: <input type="range" id="worker-count" min="1" max="5" value="2" style="vertical-align:middle"> <span id="wc-label">2</span></label>
+    <button class="btn red" onclick="qReset()">Reset</button>
+  </div>
+  <canvas id="basics-canvas" width="900" height="300"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>Message Queue Guarantees</h3>
+    <p>Queues act as a buffer between producers and consumers. When consumers are slower than producers, the queue absorbs the spike. This prevents cascading failures under load.</p>
+    <div><span class="badge">FIFO ordering</span><span class="badge">At-least-once delivery</span><span class="badge">Durability via persistence</span><span class="badge">Horizontal consumer scaling</span></div>
+  </div>
+</div>
+
+<!-- TAB 2: Producer-Consumer -->
+<div id="tab-prodcon" class="section">
+  <h2>Producer-Consumer Pattern</h2>
+  <div class="stat-row">
+    <div class="stat-box"><div class="val" id="pc-qd" style="color:#f59e0b">0</div><div class="lbl">Queue Depth</div></div>
+    <div class="stat-box"><div class="val" id="pc-lag" style="color:#ef4444">0</div><div class="lbl">Consumer Lag</div></div>
+  </div>
+  <div class="controls">
+    <label>Producers: <input type="range" id="pc-producers" min="1" max="5" value="2" style="vertical-align:middle" oninput="document.getElementById('pcp-l').textContent=this.value"> <span id="pcp-l">2</span></label>
+    <label>Consumers: <input type="range" id="pc-consumers" min="1" max="5" value="2" style="vertical-align:middle" oninput="document.getElementById('pcc-l').textContent=this.value"> <span id="pcc-l">2</span></label>
+    <label>Prod Rate: <input type="range" id="pc-rate" min="1" max="10" value="4" style="vertical-align:middle"></label>
+  </div>
+  <canvas id="prodcon-canvas" width="900" height="320"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <p>When producers outpace consumers, queue depth grows. Tune consumer count or processing speed. <strong>Consumer lag</strong> = number of messages waiting. High lag means consumers are falling behind — scale out or optimize processing.</p>
+    <div><span class="badge">Scale consumers independently</span><span class="badge">Backpressure signals to producers</span><span class="badge">Circuit breaker on overflow</span></div>
+  </div>
+</div>
+
+<!-- TAB 3: Dead Letter Queue -->
+<div id="tab-dlq" class="section">
+  <h2>Dead Letter Queue (DLQ)</h2>
+  <div class="stat-row">
+    <div class="stat-box"><div class="val" id="dlq-total" style="color:#3b82f6">0</div><div class="lbl">Total Processed</div></div>
+    <div class="stat-box"><div class="val" id="dlq-success" style="color:#22c55e">0</div><div class="lbl">Success</div></div>
+    <div class="stat-box"><div class="val" id="dlq-dead" style="color:#ef4444">0</div><div class="lbl">In DLQ</div></div>
+    <div class="stat-box"><div class="val" id="dlq-retries" style="color:#f59e0b">0</div><div class="lbl">Retries</div></div>
+  </div>
+  <div class="controls">
+    <button class="btn" onclick="dlqProduce()">Produce Message</button>
+    <button class="btn" onclick="dlqBurst()">Burst (10)</button>
+    <label>Failure Rate: <input type="range" id="dlq-fail-rate" min="0" max="100" value="30" style="vertical-align:middle"> <span id="dlqfr-l">30%</span></label>
+    <label>Max Retries: <input type="range" id="dlq-max-retry" min="1" max="5" value="3" style="vertical-align:middle"> <span id="dlqmr-l">3</span></label>
+  </div>
+  <canvas id="dlq-canvas" width="900" height="320"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>Why DLQ?</h3>
+    <p>When a message fails processing repeatedly (network error, bad data, bug), retrying forever blocks the queue. After max retries, move it to the DLQ for inspection and manual replay. DLQ = safety net for poison messages.</p>
+    <div><span class="badge">AWS SQS DLQ</span><span class="badge">Kafka dead-letter topics</span><span class="badge">RabbitMQ x-dead-letter</span></div>
+  </div>
+</div>
+
+<!-- TAB 4: Pub/Sub -->
+<div id="tab-pubsub" class="section">
+  <h2>Publish / Subscribe</h2>
+  <div class="controls">
+    <button class="btn" onclick="pubsubPublish()">Publish Message</button>
+    <button class="btn green" onclick="addSubscriber()">Add Subscriber</button>
+    <button class="btn red" onclick="removeSubscriber()">Remove Subscriber</button>
+  </div>
+  <canvas id="pubsub-canvas" width="900" height="340"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>Delivery Guarantees</h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:0.5rem">
+      <div><h3 style="color:#f59e0b">At-Most-Once</h3><p style="font-size:0.85rem">Send and forget. May lose messages. Fast, no overhead. Used for logs, metrics where loss is acceptable.</p></div>
+      <div><h3 style="color:#3b82f6">At-Least-Once</h3><p style="font-size:0.85rem">Retry until acknowledged. May deliver duplicates. Consumer must be idempotent. Most common guarantee.</p></div>
+      <div><h3 style="color:#22c55e">Exactly-Once</h3><p style="font-size:0.85rem">Complex — requires distributed transactions or idempotency keys. Kafka with transactions, or deduplication layer.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'prodcon') initProdCon();
+  if (name === 'dlq') initDLQ();
+  if (name === 'pubsub') initPubSub();
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+// ── Tab 1: Queue Basics ────────────────────────────────────────────────────────
+const qCanvas = document.getElementById('basics-canvas');
+const qCtx = qCanvas.getContext('2d');
+let queue = [];
+let workers = [];
+let qProduced = 0, qConsumed = 0, qTput = 0, qTputCount = 0;
+let qLastSec = Date.now();
+const MAX_QUEUE = 20;
+const MSG_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899'];
+
+function initWorkers() {
+  const wc = parseInt(document.getElementById('worker-count').value);
+  while (workers.length < wc) workers.push({ busy: false, msg: null, progress: 0, y: 200 + (workers.length * 50) });
+  while (workers.length > wc) workers.pop();
+}
+
+document.getElementById('worker-count').addEventListener('input', e => {
+  document.getElementById('wc-label').textContent = e.target.value;
+});
+
+function qProduce() {
+  if (queue.length >= MAX_QUEUE) return;
+  queue.push({ id: qProduced++, color: MSG_COLORS[qProduced % MSG_COLORS.length], age: 0 });
+}
+function qProduceBurst() { for (let i = 0; i < 10; i++) qProduce(); }
+function qReset() { queue = []; workers.forEach(w => { w.busy = false; w.msg = null; w.progress = 0; }); qConsumed = 0; qProduced = 0; }
+
+let qFrame = 0;
+function qStep() {
+  qCtx.clearRect(0, 0, qCanvas.width, qCanvas.height);
+  initWorkers();
+
+  const wc = workers.length;
+  const QUEUE_X = 200, QUEUE_Y = 150, MSG_W = 26, MSG_H = 30, QUEUE_GAP = 28;
+  const WORKER_X = 650;
+
+  // Queue label
+  qCtx.fillStyle = '#475569'; qCtx.font = '10px Segoe UI'; qCtx.textAlign = 'center';
+  qCtx.fillText('QUEUE', QUEUE_X, QUEUE_Y - 30);
+
+  // Queue box
+  qCtx.fillStyle = '#030318'; qCtx.strokeStyle = '#1e293b'; qCtx.lineWidth = 1;
+  qCtx.beginPath(); qCtx.roundRect(QUEUE_X - 15, QUEUE_Y - 20, MAX_QUEUE * QUEUE_GAP + 30, 60, 6); qCtx.fill(); qCtx.stroke();
+
+  // Messages in queue
+  queue.forEach((msg, i) => {
+    const mx = QUEUE_X + i * QUEUE_GAP;
+    qCtx.fillStyle = msg.color + 'cc';
+    qCtx.beginPath(); qCtx.roundRect(mx, QUEUE_Y - 10, MSG_W, MSG_H, 4); qCtx.fill();
+    qCtx.fillStyle = '#fff'; qCtx.font = '8px Segoe UI'; qCtx.textAlign = 'center';
+    qCtx.fillText(msg.id % 100, mx + MSG_W/2, QUEUE_Y + 9);
+  });
+
+  // Workers
+  workers.forEach((w, i) => {
+    const wy = 80 + i * (200 / Math.max(wc-1, 1));
+    w.y = wy;
+    qCtx.fillStyle = w.busy ? '#0a1a2a' : '#070720';
+    qCtx.strokeStyle = w.busy ? '#3b82f6' : '#1e293b'; qCtx.lineWidth = w.busy ? 2 : 1;
+    qCtx.beginPath(); qCtx.roundRect(WORKER_X - 50, wy - 25, 100, 50, 8); qCtx.fill(); qCtx.stroke();
+    qCtx.fillStyle = '#e2e8f0'; qCtx.font = 'bold 9px Segoe UI'; qCtx.textAlign = 'center';
+    qCtx.fillText(`Worker ${i+1}`, WORKER_X, wy - 6);
+    if (w.busy && w.msg) {
+      // progress bar
+      qCtx.fillStyle = '#1e293b'; qCtx.beginPath(); qCtx.roundRect(WORKER_X - 35, wy + 5, 70, 6, 3); qCtx.fill();
+      qCtx.fillStyle = w.msg.color; qCtx.beginPath(); qCtx.roundRect(WORKER_X - 35, wy + 5, 70 * w.progress, 6, 3); qCtx.fill();
+    } else {
+      qCtx.fillStyle = '#22c55e'; qCtx.font = '8px Segoe UI';
+      qCtx.fillText('IDLE', WORKER_X, wy + 12);
+    }
+  });
+
+  // Lines from queue to workers
+  workers.forEach(w => {
+    qCtx.strokeStyle = '#1e293b'; qCtx.lineWidth = 0.5;
+    qCtx.beginPath(); qCtx.moveTo(QUEUE_X + MAX_QUEUE * QUEUE_GAP + 15, QUEUE_Y + 10); qCtx.lineTo(WORKER_X - 50, w.y); qCtx.stroke();
+  });
+
+  // Worker logic: pull from queue if idle
+  workers.forEach(w => {
+    if (!w.busy && queue.length > 0 && qFrame % 5 === 0) {
+      w.msg = queue.shift();
+      w.busy = true;
+      w.progress = 0;
+    }
+    if (w.busy) {
+      w.progress += 0.01;
+      if (w.progress >= 1) { w.busy = false; w.msg = null; w.progress = 0; qConsumed++; qTputCount++; }
+    }
+  });
+
+  // Stats
+  document.getElementById('q-depth').textContent = queue.length;
+  document.getElementById('q-produced').textContent = qProduced;
+  document.getElementById('q-consumed').textContent = qConsumed;
+  const now = Date.now();
+  if (now - qLastSec > 1000) { document.getElementById('q-tput').textContent = qTputCount; qTputCount = 0; qLastSec = now; }
+
+  // Auto produce at low rate
+  if (qFrame % 40 === 0 && queue.length < MAX_QUEUE) qProduce();
+
+  qFrame++;
+  requestAnimationFrame(qStep);
+}
+qStep();
+
+// ── Tab 2: Producer-Consumer ──────────────────────────────────────────────────
+let pcCtx, pcQueue = [], pcFrame = 0;
+let pcMsgId = 0;
+
+function initProdCon() {
+  pcCtx = document.getElementById('prodcon-canvas').getContext('2d');
+  pcStep();
+}
+
+function pcStep() {
+  if (!pcCtx) return;
+  const canvas = document.getElementById('prodcon-canvas');
+  pcCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const nProd = parseInt(document.getElementById('pc-producers').value);
+  const nCons = parseInt(document.getElementById('pc-consumers').value);
+  const rate = parseInt(document.getElementById('pc-rate').value);
+  const QUEUE_MAX = 30;
+  const MQ_X = 420, MQ_Y = 160, MQ_W = 180, MQ_H = 60;
+
+  // Produce
+  if (pcFrame % Math.max(1, 8 - rate) === 0 && pcQueue.length < QUEUE_MAX) {
+    for (let p = 0; p < Math.min(nProd, QUEUE_MAX - pcQueue.length); p++) {
+      pcQueue.push({ id: pcMsgId++, color: MSG_COLORS[pcMsgId % MSG_COLORS.length] });
+    }
+  }
+
+  // Consume
+  if (pcFrame % 20 === 0) {
+    for (let c = 0; c < nCons && pcQueue.length > 0; c++) pcQueue.shift();
+  }
+
+  // Producers
+  for (let i = 0; i < nProd; i++) {
+    const py = 60 + i * (200 / Math.max(nProd-1,1));
+    pcCtx.fillStyle = '#070720'; pcCtx.strokeStyle = '#3b82f6'; pcCtx.lineWidth = 1.5;
+    pcCtx.beginPath(); pcCtx.roundRect(60, py-22, 90, 44, 8); pcCtx.fill(); pcCtx.stroke();
+    pcCtx.fillStyle = '#60a5fa'; pcCtx.font = 'bold 9px Segoe UI'; pcCtx.textAlign = 'center';
+    pcCtx.fillText(`Producer ${i+1}`, 105, py+4);
+    pcCtx.strokeStyle = '#3b82f622'; pcCtx.lineWidth = 0.5;
+    pcCtx.beginPath(); pcCtx.moveTo(150, py); pcCtx.lineTo(MQ_X, MQ_Y+MQ_H/2); pcCtx.stroke();
+  }
+
+  // MQ box
+  const fillPct = pcQueue.length / QUEUE_MAX;
+  const fillColor = fillPct > 0.8 ? '#ef4444' : fillPct > 0.5 ? '#f59e0b' : '#22c55e';
+  pcCtx.fillStyle = '#030318'; pcCtx.strokeStyle = '#1e293b'; pcCtx.lineWidth = 2;
+  pcCtx.beginPath(); pcCtx.roundRect(MQ_X, MQ_Y, MQ_W, MQ_H, 8); pcCtx.fill(); pcCtx.stroke();
+  // fill level
+  pcCtx.fillStyle = fillColor + '33';
+  pcCtx.beginPath(); pcCtx.roundRect(MQ_X+2, MQ_Y + MQ_H * (1-fillPct) + 2, (MQ_W-4) * fillPct, MQ_H * fillPct - 4, 6); pcCtx.fill();
+  pcCtx.fillStyle = '#e2e8f0'; pcCtx.font = 'bold 11px Segoe UI'; pcCtx.textAlign = 'center';
+  pcCtx.fillText('Message Queue', MQ_X + MQ_W/2, MQ_Y + MQ_H/2 - 4);
+  pcCtx.fillStyle = fillColor; pcCtx.font = '9px Segoe UI';
+  pcCtx.fillText(`${pcQueue.length}/${QUEUE_MAX} messages`, MQ_X + MQ_W/2, MQ_Y + MQ_H/2 + 11);
+
+  // Consumers
+  for (let i = 0; i < nCons; i++) {
+    const cy = 60 + i * (200 / Math.max(nCons-1,1));
+    pcCtx.fillStyle = '#070720'; pcCtx.strokeStyle = '#22c55e'; pcCtx.lineWidth = 1.5;
+    pcCtx.beginPath(); pcCtx.roundRect(750, cy-22, 90, 44, 8); pcCtx.fill(); pcCtx.stroke();
+    pcCtx.fillStyle = '#4ade80'; pcCtx.font = 'bold 9px Segoe UI'; pcCtx.textAlign = 'center';
+    pcCtx.fillText(`Consumer ${i+1}`, 795, cy+4);
+    pcCtx.strokeStyle = '#22c55e22'; pcCtx.lineWidth = 0.5;
+    pcCtx.beginPath(); pcCtx.moveTo(MQ_X+MQ_W, MQ_Y+MQ_H/2); pcCtx.lineTo(750, cy); pcCtx.stroke();
+  }
+
+  // Stats
+  document.getElementById('pc-qd').textContent = pcQueue.length;
+  document.getElementById('pc-lag').textContent = Math.max(0, pcQueue.length - nCons);
+
+  pcFrame++;
+  requestAnimationFrame(pcStep);
+}
+
+// ── Tab 3: DLQ ────────────────────────────────────────────────────────────────
+let dlqCtx, dlqQueue = [], dlqDead = [], dlqFrame = 0;
+let dlqTotal = 0, dlqSuccess = 0, dlqRetries = 0;
+
+document.getElementById && document.getElementById('dlq-fail-rate') && (() => {
+  document.getElementById('dlq-fail-rate').addEventListener('input', e => {
+    document.getElementById('dlqfr-l').textContent = e.target.value + '%';
+  });
+  document.getElementById('dlq-max-retry').addEventListener('input', e => {
+    document.getElementById('dlqmr-l').textContent = e.target.value;
+  });
+})();
+
+function initDLQ() {
+  dlqCtx = document.getElementById('dlq-canvas').getContext('2d');
+  dlqQueue = []; dlqDead = [];
+  dlqStep();
+}
+
+function dlqProduce() {
+  dlqQueue.push({ id: dlqTotal++, retries: 0, color: MSG_COLORS[dlqTotal % MSG_COLORS.length], processing: false, progress: 0, fail: null });
+}
+function dlqBurst() { for (let i = 0; i < 10; i++) dlqProduce(); }
+
+function dlqStep() {
+  if (!dlqCtx) return;
+  const canvas = document.getElementById('dlq-canvas');
+  dlqCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const failRate = parseInt(document.getElementById('dlq-fail-rate').value) / 100;
+  const maxRetry = parseInt(document.getElementById('dlq-max-retry').value);
+
+  // Main Queue box
+  dlqCtx.fillStyle = '#030318'; dlqCtx.strokeStyle = '#3b82f6'; dlqCtx.lineWidth = 1.5;
+  dlqCtx.beginPath(); dlqCtx.roundRect(60, 40, 300, 70, 8); dlqCtx.fill(); dlqCtx.stroke();
+  dlqCtx.fillStyle = '#60a5fa'; dlqCtx.font = 'bold 10px Segoe UI'; dlqCtx.textAlign = 'center';
+  dlqCtx.fillText('Main Queue', 210, 62);
+
+  // DLQ box
+  dlqCtx.fillStyle = '#1a0505'; dlqCtx.strokeStyle = '#ef4444'; dlqCtx.lineWidth = 1.5;
+  dlqCtx.beginPath(); dlqCtx.roundRect(60, 230, 300, 70, 8); dlqCtx.fill(); dlqCtx.stroke();
+  dlqCtx.fillStyle = '#f87171'; dlqCtx.font = 'bold 10px Segoe UI'; dlqCtx.textAlign = 'center';
+  dlqCtx.fillText('Dead Letter Queue', 210, 252);
+
+  // Worker box
+  dlqCtx.fillStyle = '#070720'; dlqCtx.strokeStyle = '#22c55e'; dlqCtx.lineWidth = 1.5;
+  dlqCtx.beginPath(); dlqCtx.roundRect(500, 120, 120, 60, 8); dlqCtx.fill(); dlqCtx.stroke();
+  dlqCtx.fillStyle = '#4ade80'; dlqCtx.font = 'bold 10px Segoe UI'; dlqCtx.textAlign = 'center';
+  dlqCtx.fillText('Worker', 560, 148);
+  dlqCtx.fillStyle = '#64748b'; dlqCtx.font = '8px Segoe UI';
+  dlqCtx.fillText('Processing...', 560, 162);
+
+  // Draw queue messages
+  const mainVisible = dlqQueue.filter(m => !m.processing).slice(0, 10);
+  mainVisible.forEach((msg, i) => {
+    const mx = 70 + i * 28;
+    dlqCtx.fillStyle = msg.color + 'cc';
+    dlqCtx.beginPath(); dlqCtx.roundRect(mx, 52, 24, 46, 3); dlqCtx.fill();
+    dlqCtx.fillStyle = '#fff'; dlqCtx.font = '7px Segoe UI'; dlqCtx.textAlign = 'center';
+    dlqCtx.fillText(msg.retries > 0 ? 'R'+msg.retries : msg.id%100, mx+12, 79);
+    if (msg.retries > 0) {
+      dlqCtx.fillStyle = '#f59e0b'; dlqCtx.font = '6px Segoe UI';
+      dlqCtx.fillText('↺', mx+12, 68);
+    }
+  });
+
+  // DLQ messages
+  dlqDead.slice(-10).forEach((msg, i) => {
+    const mx = 70 + i * 28;
+    dlqCtx.fillStyle = '#ef4444aa';
+    dlqCtx.beginPath(); dlqCtx.roundRect(mx, 242, 24, 46, 3); dlqCtx.fill();
+    dlqCtx.fillStyle = '#fff'; dlqCtx.font = '7px Segoe UI'; dlqCtx.textAlign = 'center';
+    dlqCtx.fillText(msg.id%100, mx+12, 269);
+    dlqCtx.fillStyle = '#f87171'; dlqCtx.font = '6px Segoe UI';
+    dlqCtx.fillText('✗', mx+12, 258);
+  });
+
+  // Process: pick a message
+  if (dlqFrame % 30 === 0 && dlqQueue.length > 0) {
+    const msg = dlqQueue[0];
+    if (!msg.processing) {
+      msg.processing = true;
+      const willFail = Math.random() < failRate;
+      setTimeout(() => {
+        dlqQueue.shift();
+        if (willFail) {
+          msg.processing = false;
+          msg.retries++;
+          dlqRetries++;
+          if (msg.retries >= maxRetry) {
+            dlqDead.push(msg);
+            if (dlqDead.length > 20) dlqDead.shift();
+            document.getElementById('dlq-dead').textContent = dlqDead.length;
+          } else {
+            dlqQueue.push(msg);
+          }
+        } else {
+          dlqSuccess++;
+          document.getElementById('dlq-success').textContent = dlqSuccess;
+        }
+        document.getElementById('dlq-total').textContent = dlqTotal;
+        document.getElementById('dlq-retries').textContent = dlqRetries;
+      }, 800);
+    }
+  }
+
+  // Auto produce
+  if (dlqFrame % 80 === 0 && dlqQueue.length < 15) dlqProduce();
+
+  dlqFrame++;
+  requestAnimationFrame(dlqStep);
+}
+
+// ── Tab 4: Pub/Sub ────────────────────────────────────────────────────────────
+let pubCtx, pubSubscribers = [], pubPackets = [], pubFrame = 0;
+const SUB_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#ef4444'];
+const TOPIC_NODE = { x: 350, y: 160 };
+
+function initPubSub() {
+  pubCtx = document.getElementById('pubsub-canvas').getContext('2d');
+  pubSubscribers = [
+    { id: 0, color: SUB_COLORS[0], label: 'Email Service',    delivered: 0 },
+    { id: 1, color: SUB_COLORS[1], label: 'Push Notif',       delivered: 0 },
+    { id: 2, color: SUB_COLORS[2], label: 'Analytics',        delivered: 0 },
+  ];
+  pubStep();
+}
+
+function pubsubPublish() {
+  pubSubscribers.forEach((sub, i) => {
+    pubPackets.push({ sub: i, t: 0, color: sub.color });
+  });
+}
+
+function addSubscriber() {
+  if (pubSubscribers.length >= 6) return;
+  const labels = ['SMS Service','Webhook','Audit Log','Search Index'];
+  pubSubscribers.push({ id: pubSubscribers.length, color: SUB_COLORS[pubSubscribers.length % SUB_COLORS.length], label: labels[pubSubscribers.length - 3] || 'Subscriber', delivered: 0 });
+}
+
+function removeSubscriber() {
+  if (pubSubscribers.length <= 1) return;
+  pubSubscribers.pop();
+  pubPackets = pubPackets.filter(p => p.sub < pubSubscribers.length);
+}
+
+function pubStep() {
+  if (!pubCtx) return;
+  const canvas = document.getElementById('pubsub-canvas');
+  pubCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const n = pubSubscribers.length;
+
+  // Publisher box
+  pubCtx.fillStyle = '#070720'; pubCtx.strokeStyle = '#3b82f6'; pubCtx.lineWidth = 2;
+  pubCtx.beginPath(); pubCtx.roundRect(60, TOPIC_NODE.y-28, 110, 56, 8); pubCtx.fill(); pubCtx.stroke();
+  pubCtx.fillStyle = '#e2e8f0'; pubCtx.font = 'bold 10px Segoe UI'; pubCtx.textAlign = 'center';
+  pubCtx.fillText('Publisher', 115, TOPIC_NODE.y - 6);
+  pubCtx.fillStyle = '#60a5fa'; pubCtx.font = '8px Segoe UI';
+  pubCtx.fillText('(Event Source)', 115, TOPIC_NODE.y + 9);
+
+  // Topic/broker
+  pubCtx.fillStyle = '#0a0a2a'; pubCtx.strokeStyle = '#a78bfa'; pubCtx.lineWidth = 2;
+  pubCtx.beginPath(); pubCtx.roundRect(TOPIC_NODE.x-60, TOPIC_NODE.y-30, 120, 60, 10); pubCtx.fill(); pubCtx.stroke();
+  pubCtx.fillStyle = '#e2e8f0'; pubCtx.font = 'bold 11px Segoe UI'; pubCtx.textAlign = 'center';
+  pubCtx.fillText('Topic', TOPIC_NODE.x, TOPIC_NODE.y - 6);
+  pubCtx.fillStyle = '#a78bfa'; pubCtx.font = '8px Segoe UI';
+  pubCtx.fillText('user.registered', TOPIC_NODE.x, TOPIC_NODE.y + 10);
+  // line from publisher to topic
+  pubCtx.strokeStyle = '#3b82f6aa'; pubCtx.lineWidth = 1;
+  pubCtx.beginPath(); pubCtx.moveTo(170, TOPIC_NODE.y); pubCtx.lineTo(TOPIC_NODE.x-60, TOPIC_NODE.y); pubCtx.stroke();
+
+  // Subscribers
+  pubSubscribers.forEach((sub, i) => {
+    const sy = 50 + i * (240 / Math.max(n-1,1));
+    const sx = 760;
+    pubCtx.fillStyle = '#070720'; pubCtx.strokeStyle = sub.color; pubCtx.lineWidth = 1.5;
+    pubCtx.beginPath(); pubCtx.roundRect(sx-55, sy-25, 110, 50, 8); pubCtx.fill(); pubCtx.stroke();
+    pubCtx.fillStyle = '#e2e8f0'; pubCtx.font = 'bold 9px Segoe UI'; pubCtx.textAlign = 'center';
+    pubCtx.fillText(sub.label, sx, sy - 6);
+    pubCtx.fillStyle = sub.color; pubCtx.font = '8px Segoe UI';
+    pubCtx.fillText(`${sub.delivered} received`, sx, sy + 9);
+    // line to topic
+    pubCtx.strokeStyle = sub.color + '33'; pubCtx.lineWidth = 0.5;
+    pubCtx.beginPath(); pubCtx.moveTo(TOPIC_NODE.x+60, TOPIC_NODE.y); pubCtx.lineTo(sx-55, sy); pubCtx.stroke();
+  });
+
+  // Packets
+  for (let i = pubPackets.length - 1; i >= 0; i--) {
+    const pk = pubPackets[i];
+    pk.t += 0.025;
+    if (pk.t >= 1) {
+      pubSubscribers[pk.sub].delivered++;
+      pubPackets.splice(i, 1);
+      continue;
+    }
+    const sub = pubSubscribers[pk.sub];
+    if (!sub) { pubPackets.splice(i, 1); continue; }
+    const sy = 50 + pk.sub * (240 / Math.max(n-1,1));
+    const sx = 760;
+    const px = lerp(TOPIC_NODE.x+60, sx-55, pk.t);
+    const py = lerp(TOPIC_NODE.y, sy, pk.t);
+    pubCtx.beginPath(); pubCtx.arc(px, py, 4, 0, Math.PI*2);
+    pubCtx.fillStyle = pk.color; pubCtx.shadowColor = pk.color; pubCtx.shadowBlur = 8;
+    pubCtx.fill(); pubCtx.shadowBlur = 0;
+  }
+
+  // Auto publish
+  if (pubFrame % 180 === 0) pubsubPublish();
+
+  pubFrame++;
+  requestAnimationFrame(pubStep);
+}
+
+// init fail-rate listener
+setTimeout(() => {
+  const fr = document.getElementById('dlq-fail-rate');
+  if (fr) { fr.addEventListener('input', e => { document.getElementById('dlqfr-l').textContent = e.target.value + '%'; }); }
+  const mr = document.getElementById('dlq-max-retry');
+  if (mr) { mr.addEventListener('input', e => { document.getElementById('dlqmr-l').textContent = e.target.value; }); }
+}, 100);
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

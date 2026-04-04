@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Design Explorer</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --blue: #3b82f6; --blue-dim: #1d4ed8; --blue-bright: #60a5fa;
+      --white: #e2e8f0; --fg: #94a3b8; --fg-dim: #475569;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 0.9rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover { color: var(--blue-bright); border-color: var(--blue); }
+    .tab.active { color: var(--blue-bright); border-color: var(--blue); background: rgba(59,130,246,0.1); }
+    .section { display: none; padding: 2rem 1rem; max-width: 1200px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 2rem; margin-bottom: 0.4rem; }
+    h2 { color: var(--blue-bright); font-size: 1.3rem; margin-bottom: 1rem; }
+    h3 { color: var(--white); font-size: 1rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.7; margin-bottom: 0.8rem; font-size: 0.92rem; }
+    .hero { text-align: center; padding: 2.5rem 1rem 2rem; }
+    .hero-sub { color: var(--fg-dim); font-size: 1rem; margin-bottom: 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+    .badge { display: inline-block; background: rgba(59,130,246,0.15); color: var(--blue-bright); border: 1px solid rgba(59,130,246,0.3); border-radius: 12px; padding: 0.15rem 0.6rem; font-size: 0.75rem; margin: 0.15rem; }
+    .btn { background: rgba(59,130,246,0.15); border: 1px solid var(--blue); color: var(--blue-bright); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; }
+    .btn:hover { background: rgba(59,130,246,0.25); }
+    .btn.active { background: rgba(59,130,246,0.3); }
+    canvas { display: block; border-radius: 8px; background: #030318; border: 1px solid var(--border); }
+    .canvas-wrap { position: relative; margin: 1rem 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    .stat-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.5rem 0; }
+    .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 1rem; text-align: center; flex: 1; min-width: 100px; }
+    .stat-box .val { color: var(--blue-bright); font-size: 1.4rem; font-weight: 700; }
+    .stat-box .lbl { color: var(--fg-dim); font-size: 0.75rem; margin-top: 0.2rem; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media(max-width:640px) { .grid2 { grid-template-columns: 1fr; } }
+    .info-panel { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    .cap-choice { cursor: pointer; border: 2px solid transparent; border-radius: 10px; padding: 1rem; transition: all 0.2s; text-align: center; }
+    .cap-choice:hover { border-color: var(--blue); }
+    .cap-choice.sel { border-color: var(--blue-bright); background: rgba(59,130,246,0.1); }
+    .cap-choice .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .venn-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('url')">URL Shortener</button>
+    <button class="tab" onclick="showTab('feed')">Social Feed</button>
+    <button class="tab" onclick="showTab('cache')">Distributed Cache</button>
+    <button class="tab" onclick="showTab('cap')">CAP Theorem</button>
+  </div>
+</div>
+
+<!-- TAB 1: URL Shortener -->
+<div id="tab-url" class="section active">
+  <div class="hero">
+    <h1>System Design Explorer</h1>
+    <p class="hero-sub">Interactive architecture diagrams for common distributed systems</p>
+  </div>
+  <h2>URL Shortener Architecture</h2>
+  <div class="stat-row">
+    <div class="stat-box"><div class="val" id="rps">0</div><div class="lbl">Requests/sec</div></div>
+    <div class="stat-box"><div class="val" id="cache-hit">0%</div><div class="lbl">Cache Hit Rate</div></div>
+    <div class="stat-box"><div class="val" id="db-ops">0</div><div class="lbl">DB Ops/sec</div></div>
+    <div class="stat-box"><div class="val" id="latency">0ms</div><div class="lbl">Avg Latency</div></div>
+  </div>
+  <div class="controls">
+    <button class="btn active" id="btn-animate" onclick="toggleUrlAnim()">Pause Animation</button>
+    <button class="btn" onclick="triggerRequest()">Send Request</button>
+    <label style="color:var(--fg);font-size:0.85rem">Load: <input type="range" id="load-slider" min="1" max="10" value="3" style="vertical-align:middle"></label>
+  </div>
+  <canvas id="url-canvas" width="900" height="380"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>How it works</h3>
+    <p>A URL shortener must handle <strong>10,000+ reads/sec</strong> with low latency. The key insight: reads vastly outnumber writes (100:1 ratio), so we optimize heavily for reads.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem">
+      <span class="badge">Write: hash URL → store in DB</span>
+      <span class="badge">Read: check cache → fallback to DB</span>
+      <span class="badge">Cache: 99% hit rate target</span>
+      <span class="badge">Sharding: by short URL hash</span>
+      <span class="badge">CDN: static redirect responses</span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Social Media Feed -->
+<div id="tab-feed" class="section">
+  <h2>Social Media Feed Architecture</h2>
+  <div class="controls">
+    <button class="btn active" id="fanout-mode" onclick="setFanout('write')">Fanout on Write</button>
+    <button class="btn" id="fanout-read" onclick="setFanout('read')">Fanout on Read</button>
+    <button class="btn" onclick="postTweet()">Post Tweet</button>
+  </div>
+  <canvas id="feed-canvas" width="900" height="380"></canvas>
+  <div class="grid2" style="margin-top:1rem">
+    <div class="card">
+      <h3 style="color:#60a5fa">Fanout on Write (Push)</h3>
+      <p>When a user posts, immediately write the tweet to all followers' feeds. Fast reads, slow writes. Celeb problem: 10M followers = 10M writes per tweet.</p>
+      <div><span class="badge">Write: O(followers)</span><span class="badge">Read: O(1)</span><span class="badge">Used by: Twitter timeline</span></div>
+    </div>
+    <div class="card">
+      <h3 style="color:#a78bfa">Fanout on Read (Pull)</h3>
+      <p>On read, merge feeds from all followed users. Fast writes, slow reads. Scales for celebrities but degrades for active readers following many accounts.</p>
+      <div><span class="badge">Write: O(1)</span><span class="badge">Read: O(following)</span><span class="badge">Used by: Instagram explore</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Distributed Cache -->
+<div id="tab-cache" class="section">
+  <h2>Consistent Hashing Ring</h2>
+  <div class="controls">
+    <button class="btn" onclick="addCacheNode()">Add Node</button>
+    <button class="btn" onclick="removeCacheNode()">Remove Node</button>
+    <button class="btn" onclick="lookupKey()">Lookup Key</button>
+    <label style="color:var(--fg);font-size:0.85rem">Virtual nodes: <input type="range" id="vnodes-slider" min="1" max="5" value="3" style="vertical-align:middle" oninput="updateVnodes(this.value)"> <span id="vnode-count">3</span></label>
+  </div>
+  <canvas id="cache-canvas" width="700" height="380"></canvas>
+  <div class="card" style="margin-top:1rem">
+    <h3>Why Consistent Hashing?</h3>
+    <p>Traditional modulo hashing (key % N) requires remapping nearly all keys when a node is added/removed. Consistent hashing places both nodes and keys on a ring — only K/N keys need to move when a node changes (where K=keys, N=nodes).</p>
+    <div><span class="badge">Node add: ~K/N keys move</span><span class="badge">Node remove: ~K/N keys move</span><span class="badge">Virtual nodes fix hotspots</span></div>
+    <p style="margin-top:0.8rem" id="cache-status" style="color:var(--blue-bright)">Click "Lookup Key" to trace a key lookup through the ring.</p>
+  </div>
+</div>
+
+<!-- TAB 4: CAP Theorem -->
+<div id="tab-cap" class="section">
+  <h2>CAP Theorem</h2>
+  <p>In a distributed system, you can only guarantee 2 of 3 properties when a network partition occurs.</p>
+  <canvas id="cap-canvas" width="700" height="360"></canvas>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1rem" id="cap-cards">
+    <div class="cap-choice" onclick="selectCap('cp')" id="cap-cp">
+      <div class="icon">CP</div>
+      <strong style="color:var(--white)">Consistency + Partition</strong>
+      <p style="font-size:0.8rem;margin-top:0.4rem">Returns error or waits if nodes disagree. No stale reads.</p>
+      <div style="margin-top:0.5rem"><span class="badge">HBase</span><span class="badge">MongoDB</span><span class="badge">Redis</span><span class="badge">Zookeeper</span></div>
+    </div>
+    <div class="cap-choice" onclick="selectCap('ap')" id="cap-ap">
+      <div class="icon">AP</div>
+      <strong style="color:var(--white)">Availability + Partition</strong>
+      <p style="font-size:0.8rem;margin-top:0.4rem">Always responds, may return stale data. Eventual consistency.</p>
+      <div style="margin-top:0.5rem"><span class="badge">Cassandra</span><span class="badge">DynamoDB</span><span class="badge">CouchDB</span><span class="badge">Riak</span></div>
+    </div>
+    <div class="cap-choice" onclick="selectCap('ca')" id="cap-ca">
+      <div class="icon">CA</div>
+      <strong style="color:var(--white)">Consistency + Availability</strong>
+      <p style="font-size:0.8rem;margin-top:0.4rem">Works perfectly — until a partition. Then you must choose C or A.</p>
+      <div style="margin-top:0.5rem"><span class="badge">RDBMS (single node)</span><span class="badge">PostgreSQL</span></div>
+    </div>
+  </div>
+  <div class="info-panel" id="cap-info" style="display:none">
+    <p id="cap-info-text"></p>
+  </div>
+</div>
+
+<script>
+// ── Tab navigation ────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'cache') initCacheCanvas();
+  if (name === 'cap') initCapCanvas();
+  if (name === 'feed') initFeedCanvas();
+}
+
+// ── URL Shortener Animation ───────────────────────────────────────────────────
+const urlCanvas = document.getElementById('url-canvas');
+const urlCtx = urlCanvas.getContext('2d');
+let urlAnimRunning = true;
+let urlAnimId = null;
+
+const nodes = [
+  { x: 80,  y: 190, label: 'Client',        sub: 'Browser/App',     color: '#64748b', w: 100, h: 50 },
+  { x: 250, y: 190, label: 'Load Balancer', sub: '10k RPS',          color: '#3b82f6', w: 120, h: 50 },
+  { x: 440, y: 100, label: 'App Server 1',  sub: 'Node 1',           color: '#6366f1', w: 110, h: 50 },
+  { x: 440, y: 190, label: 'App Server 2',  sub: 'Node 2',           color: '#6366f1', w: 110, h: 50 },
+  { x: 440, y: 280, label: 'App Server 3',  sub: 'Node 3',           color: '#6366f1', w: 110, h: 50 },
+  { x: 630, y: 130, label: 'Redis Cache',   sub: '~99% Hit Rate',    color: '#f59e0b', w: 110, h: 50 },
+  { x: 630, y: 250, label: 'Database',      sub: 'PostgreSQL',       color: '#10b981', w: 110, h: 50 },
+  { x: 800, y: 190, label: 'Object Store',  sub: 'Analytics',        color: '#8b5cf6', w: 90,  h: 50 },
+];
+
+const packets = [];
+let rpsCount = 0, cacheHits = 0, dbOps = 0, totalReqs = 0;
+let lastRpsTime = Date.now();
+let urlAnimFrame = 0;
+
+function spawnPacket(isWrite) {
+  const path = isWrite
+    ? [0, 1, Math.floor(Math.random() * 3) + 2, 6, 7]
+    : [0, 1, Math.floor(Math.random() * 3) + 2, Math.random() < 0.95 ? 5 : 6];
+  packets.push({ path, pos: 0, t: 0, color: isWrite ? '#f59e0b' : '#3b82f6', isCache: !isWrite && path[3] === 5 });
+  rpsCount++;
+  totalReqs++;
+  if (!isWrite) {
+    if (path[3] === 5) cacheHits++;
+    else dbOps++;
+  }
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function drawNode(ctx, n, highlight) {
+  const grd = ctx.createLinearGradient(n.x - n.w/2, n.y - n.h/2, n.x + n.w/2, n.y + n.h/2);
+  grd.addColorStop(0, highlight ? n.color + '44' : '#070720');
+  grd.addColorStop(1, highlight ? n.color + '22' : '#030318');
+  ctx.fillStyle = grd;
+  ctx.strokeStyle = highlight ? n.color : n.color + '66';
+  ctx.lineWidth = highlight ? 2 : 1;
+  ctx.beginPath();
+  ctx.roundRect(n.x - n.w/2, n.y - n.h/2, n.w, n.h, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = 'bold 11px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.fillText(n.label, n.x, n.y - 3);
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9px Segoe UI';
+  ctx.fillText(n.sub, n.x, n.y + 12);
+}
+
+function drawConnections(ctx) {
+  const conns = [[0,1],[1,2],[1,3],[1,4],[2,5],[3,5],[4,5],[2,6],[3,6],[4,6],[5,7],[6,7]];
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  conns.forEach(([a, b]) => {
+    ctx.beginPath();
+    ctx.moveTo(nodes[a].x + nodes[a].w/2 * Math.sign(nodes[b].x - nodes[a].x), nodes[a].y);
+    ctx.lineTo(nodes[b].x - nodes[b].w/2 * Math.sign(nodes[b].x - nodes[a].x), nodes[b].y);
+    ctx.stroke();
+  });
+}
+
+function urlAnimStep() {
+  urlCtx.clearRect(0, 0, urlCanvas.width, urlCanvas.height);
+  drawConnections(urlCtx);
+  nodes.forEach(n => drawNode(urlCtx, n, false));
+
+  const load = parseInt(document.getElementById('load-slider').value);
+  if (urlAnimFrame % Math.max(1, 8 - load) === 0) {
+    spawnPacket(Math.random() < 0.1);
+  }
+
+  for (let i = packets.length - 1; i >= 0; i--) {
+    const p = packets[i];
+    p.t += 0.04;
+    if (p.t >= 1) {
+      p.pos++;
+      p.t = 0;
+      if (p.pos >= p.path.length - 1) { packets.splice(i, 1); continue; }
+    }
+    const from = nodes[p.path[p.pos]];
+    const to = nodes[p.path[p.pos + 1]];
+    const px = lerp(from.x, to.x, p.t);
+    const py = lerp(from.y, to.y, p.t);
+    urlCtx.beginPath();
+    urlCtx.arc(px, py, 5, 0, Math.PI * 2);
+    urlCtx.fillStyle = p.color;
+    urlCtx.fill();
+    urlCtx.shadowColor = p.color;
+    urlCtx.shadowBlur = 8;
+    urlCtx.fill();
+    urlCtx.shadowBlur = 0;
+  }
+
+  urlAnimFrame++;
+  const now = Date.now();
+  if (now - lastRpsTime > 1000) {
+    document.getElementById('rps').textContent = rpsCount;
+    document.getElementById('cache-hit').textContent = totalReqs > 0 ? Math.round(cacheHits / totalReqs * 100) + '%' : '0%';
+    document.getElementById('db-ops').textContent = dbOps;
+    document.getElementById('latency').textContent = Math.round(5 + Math.random() * 15) + 'ms';
+    rpsCount = 0; lastRpsTime = now;
+  }
+
+  if (urlAnimRunning) urlAnimId = requestAnimationFrame(urlAnimStep);
+}
+
+function toggleUrlAnim() {
+  urlAnimRunning = !urlAnimRunning;
+  document.getElementById('btn-animate').textContent = urlAnimRunning ? 'Pause Animation' : 'Resume Animation';
+  if (urlAnimRunning) urlAnimStep();
+}
+
+function triggerRequest() { spawnPacket(Math.random() < 0.1); }
+
+urlAnimStep();
+
+// ── Feed (Tab 2) ──────────────────────────────────────────────────────────────
+let feedMode = 'write';
+let feedCanvas, feedCtx;
+let feedParticles = [];
+let feedAnimId = null;
+let feedFrame = 0;
+
+function initFeedCanvas() {
+  feedCanvas = document.getElementById('feed-canvas');
+  feedCtx = feedCanvas.getContext('2d');
+  if (feedAnimId) cancelAnimationFrame(feedAnimId);
+  feedParticles = [];
+  feedStep();
+}
+
+function setFanout(mode) {
+  feedMode = mode;
+  document.getElementById('fanout-mode').classList.toggle('active', mode === 'write');
+  document.getElementById('fanout-read').classList.toggle('active', mode === 'read');
+  feedParticles = [];
+}
+
+function postTweet() {
+  const startX = feedMode === 'write' ? 100 : 100;
+  const startY = 190;
+  feedParticles.push({ x: startX, y: startY, phase: 0, mode: feedMode, t: 0 });
+}
+
+const feedLayout = {
+  poster:    { x: 80,  y: 190, label: 'Poster',      color: '#f59e0b' },
+  lb:        { x: 220, y: 190, label: 'Write Service', color: '#3b82f6' },
+  mq:        { x: 380, y: 190, label: 'Message Queue', color: '#6366f1' },
+  fanout:    { x: 540, y: 190, label: 'Fan-out Svc',   color: '#8b5cf6' },
+  db:        { x: 700, y: 190, label: 'Timeline DB',   color: '#10b981' },
+  follower1: { x: 820, y: 100, label: 'Follower 1',    color: '#64748b' },
+  follower2: { x: 820, y: 190, label: 'Follower 2',    color: '#64748b' },
+  follower3: { x: 820, y: 280, label: 'Follower 3',    color: '#64748b' },
+};
+
+function drawFeedNode(ctx, n, alpha) {
+  ctx.globalAlpha = alpha || 1;
+  ctx.fillStyle = '#070720';
+  ctx.strokeStyle = n.color + '88';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(n.x - 55, n.y - 22, 110, 44, 8);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = 'bold 10px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.fillText(n.label, n.x, n.y + 4);
+  ctx.globalAlpha = 1;
+}
+
+function feedStep() {
+  if (!feedCtx) return;
+  feedCtx.clearRect(0, 0, feedCanvas.width, feedCanvas.height);
+
+  const nl = feedLayout;
+  // draw connections
+  feedCtx.strokeStyle = '#1e293b'; feedCtx.lineWidth = 1;
+  const pairs = [['poster','lb'],['lb','mq'],['mq','fanout'],['fanout','db'],['db','follower1'],['db','follower2'],['db','follower3']];
+  pairs.forEach(([a,b]) => {
+    feedCtx.beginPath();
+    feedCtx.moveTo(nl[a].x + 55, nl[a].y);
+    feedCtx.lineTo(nl[b].x - 55, nl[b].y);
+    feedCtx.stroke();
+  });
+
+  Object.values(nl).forEach(n => drawFeedNode(feedCtx, n, 1));
+
+  // animate particles
+  feedParticles.forEach((p, i) => {
+    const path = feedMode === 'write'
+      ? ['poster','lb','mq','fanout','db','follower1']
+      : ['poster','lb','db'];
+    p.t += 0.025;
+    if (p.t > path.length - 1) { feedParticles.splice(i, 1); return; }
+    const seg = Math.floor(p.t);
+    const frac = p.t - seg;
+    if (seg >= path.length - 1) return;
+    const from = nl[path[seg]], to = nl[path[seg + 1]];
+    if (!from || !to) return;
+    const px = lerp(from.x + 55, to.x - 55, frac);
+    const py = lerp(from.y, to.y, frac);
+    feedCtx.beginPath();
+    feedCtx.arc(px, py, 5, 0, Math.PI * 2);
+    feedCtx.fillStyle = feedMode === 'write' ? '#f59e0b' : '#3b82f6';
+    feedCtx.shadowColor = feedCtx.fillStyle;
+    feedCtx.shadowBlur = 10;
+    feedCtx.fill();
+    feedCtx.shadowBlur = 0;
+  });
+
+  if (feedFrame % 120 === 0) postTweet();
+  feedFrame++;
+  feedAnimId = requestAnimationFrame(feedStep);
+}
+
+// ── Consistent Hashing (Tab 3) ────────────────────────────────────────────────
+let cacheCtx;
+let cacheNodes = [];
+let virtualNodes = 3;
+let lookupAnim = null;
+let lookupAngle = null;
+
+function initCacheCanvas() {
+  const canvas = document.getElementById('cache-canvas');
+  cacheCtx = canvas.getContext('2d');
+  cacheNodes = [
+    { id: 'A', angle: 0,           color: '#3b82f6' },
+    { id: 'B', angle: Math.PI * 2/3, color: '#10b981' },
+    { id: 'C', angle: Math.PI * 4/3, color: '#f59e0b' },
+  ];
+  drawCacheRing();
+}
+
+function addCacheNode() {
+  const colors = ['#8b5cf6','#ec4899','#06b6d4','#ef4444'];
+  const id = String.fromCharCode(65 + cacheNodes.length);
+  const angle = Math.random() * Math.PI * 2;
+  cacheNodes.push({ id, angle, color: colors[cacheNodes.length % colors.length] });
+  cacheNodes.sort((a, b) => a.angle - b.angle);
+  document.getElementById('cache-status').textContent = `Node ${id} added — ~${Math.round(100/cacheNodes.length)}% of keys migrated`;
+  drawCacheRing();
+}
+
+function removeCacheNode() {
+  if (cacheNodes.length <= 2) return;
+  const removed = cacheNodes.pop();
+  document.getElementById('cache-status').textContent = `Node ${removed.id} removed — keys redistributed to neighbors`;
+  drawCacheRing();
+}
+
+function updateVnodes(val) {
+  virtualNodes = parseInt(val);
+  document.getElementById('vnode-count').textContent = val;
+  drawCacheRing();
+}
+
+function lookupKey() {
+  lookupAngle = Math.random() * Math.PI * 2;
+  document.getElementById('cache-status').textContent = `Key hash → angle ${Math.round(lookupAngle * 180 / Math.PI)}° → routed to next node clockwise`;
+  drawCacheRing(lookupAngle);
+}
+
+function drawCacheRing(highlight) {
+  if (!cacheCtx) return;
+  const canvas = document.getElementById('cache-canvas');
+  cacheCtx.clearRect(0, 0, canvas.width, canvas.height);
+  const cx = canvas.width / 2, cy = canvas.height / 2, r = 140;
+
+  // Draw ring
+  cacheCtx.beginPath();
+  cacheCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  cacheCtx.strokeStyle = '#1e293b';
+  cacheCtx.lineWidth = 2;
+  cacheCtx.stroke();
+
+  // Virtual node arcs
+  cacheNodes.forEach((n, ni) => {
+    for (let v = 0; v < virtualNodes; v++) {
+      const vAngle = n.angle + (v * Math.PI * 2 / (cacheNodes.length * virtualNodes));
+      const nx = cx + r * Math.cos(vAngle);
+      const ny = cy + r * Math.sin(vAngle);
+      cacheCtx.beginPath();
+      cacheCtx.arc(nx, ny, v === 0 ? 12 : 6, 0, Math.PI * 2);
+      cacheCtx.fillStyle = n.color + (v === 0 ? 'dd' : '66');
+      cacheCtx.fill();
+      cacheCtx.strokeStyle = n.color;
+      cacheCtx.lineWidth = v === 0 ? 2 : 1;
+      cacheCtx.stroke();
+      if (v === 0) {
+        cacheCtx.fillStyle = '#fff';
+        cacheCtx.font = 'bold 9px Segoe UI';
+        cacheCtx.textAlign = 'center';
+        cacheCtx.textBaseline = 'middle';
+        cacheCtx.fillText(n.id, nx, ny);
+        cacheCtx.textBaseline = 'alphabetic';
+      }
+    }
+  });
+
+  // Lookup highlight
+  if (highlight !== undefined) {
+    const kx = cx + r * Math.cos(highlight);
+    const ky = cy + r * Math.sin(highlight);
+    cacheCtx.beginPath();
+    cacheCtx.arc(kx, ky, 7, 0, Math.PI * 2);
+    cacheCtx.fillStyle = '#ef4444';
+    cacheCtx.fill();
+    cacheCtx.beginPath();
+    cacheCtx.moveTo(cx, cy);
+    cacheCtx.lineTo(kx, ky);
+    cacheCtx.strokeStyle = '#ef4444';
+    cacheCtx.lineWidth = 1;
+    cacheCtx.setLineDash([4, 3]);
+    cacheCtx.stroke();
+    cacheCtx.setLineDash([]);
+
+    // Find nearest clockwise node
+    let target = cacheNodes.reduce((best, n) => {
+      const diff = (n.angle - highlight + Math.PI * 2) % (Math.PI * 2);
+      const bdiff = (best.angle - highlight + Math.PI * 2) % (Math.PI * 2);
+      return diff < bdiff ? n : best;
+    });
+    const tx = cx + r * Math.cos(target.angle);
+    const ty = cy + r * Math.sin(target.angle);
+    cacheCtx.beginPath();
+    cacheCtx.arc(tx, ty, 16, 0, Math.PI * 2);
+    cacheCtx.strokeStyle = '#ef4444';
+    cacheCtx.lineWidth = 2;
+    cacheCtx.stroke();
+  }
+
+  // Center label
+  cacheCtx.fillStyle = '#475569';
+  cacheCtx.font = '11px Segoe UI';
+  cacheCtx.textAlign = 'center';
+  cacheCtx.fillText(`${cacheNodes.length} nodes`, cx, cy - 5);
+  cacheCtx.fillText(`${virtualNodes} vnodes each`, cx, cy + 10);
+}
+
+// ── CAP Theorem (Tab 4) ───────────────────────────────────────────────────────
+function initCapCanvas() {
+  const canvas = document.getElementById('cap-canvas');
+  const ctx = canvas.getContext('2d');
+  drawCap(ctx, canvas, null);
+}
+
+const capInfo = {
+  cp: 'CP systems choose Consistency over Availability when partitioned. During a network split, they return errors rather than potentially stale data. Used where correctness is critical: financial transactions, distributed locks, leader election.',
+  ap: 'AP systems choose Availability over Consistency when partitioned. They continue operating and return best-effort responses, even if some nodes have stale data. Eventually consistent — data converges when partition heals. Used for shopping carts, social feeds, DNS.',
+  ca: 'CA systems work perfectly on a single node or trusted network. But distributed systems ALWAYS risk partitions — when a partition occurs, you must sacrifice either C or A. "CA" is really just a single-node system or one that cannot tolerate partitions.',
+};
+
+let selectedCap = null;
+
+function selectCap(type) {
+  selectedCap = type;
+  ['cp','ap','ca'].forEach(t => document.getElementById('cap-' + t).classList.toggle('sel', t === type));
+  document.getElementById('cap-info').style.display = 'block';
+  document.getElementById('cap-info-text').textContent = capInfo[type];
+  const canvas = document.getElementById('cap-canvas');
+  const ctx = canvas.getContext('2d');
+  drawCap(ctx, canvas, type);
+}
+
+function drawCap(ctx, canvas, sel) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const circles = [
+    { x: cx,       y: cy - 90, r: 100, label: 'Consistency',      color: '#3b82f6', key: 'c' },
+    { x: cx - 90,  y: cy + 60, r: 100, label: 'Availability',     color: '#10b981', key: 'a' },
+    { x: cx + 90,  y: cy + 60, r: 100, label: 'Partition Tol.',   color: '#f59e0b', key: 'p' },
+  ];
+
+  ctx.globalAlpha = 0.15;
+  circles.forEach(c => {
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fillStyle = c.color; ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  circles.forEach(c => {
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.strokeStyle = c.color + (sel ? '55' : 'aa');
+    ctx.lineWidth = sel ? 1 : 2; ctx.stroke();
+    ctx.fillStyle = c.color;
+    ctx.font = 'bold 12px Segoe UI';
+    ctx.textAlign = 'center';
+    const lx = c.x + (c.x - cx) * 0.9;
+    const ly = c.y + (c.y - cy) * 0.9;
+    ctx.fillText(c.label, lx, ly);
+  });
+
+  // Intersection labels
+  const labels = [
+    { x: cx - 70, y: cy + 10, text: 'CA', match: 'ca', color: '#64748b' },
+    { x: cx + 70, y: cy + 10, text: 'CP', match: 'cp', color: '#64748b' },
+    { x: cx,      y: cy + 90, text: 'AP', match: 'ap', color: '#64748b' },
+  ];
+  labels.forEach(l => {
+    const active = sel === l.match;
+    ctx.fillStyle = active ? '#ffffff' : '#94a3b8';
+    ctx.font = `bold ${active ? 16 : 13}px Segoe UI`;
+    ctx.textAlign = 'center';
+    ctx.fillText(l.text, l.x, l.y);
+    if (active) {
+      ctx.beginPath(); ctx.arc(l.x, l.y - 8, 16, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  });
+}
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
