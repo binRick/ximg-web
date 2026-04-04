@@ -2,17 +2,17 @@
   var GROUPS = [
     { label: 'Tech', apps: [
       ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],
-      ['docker','docker'],['fidonet','fidonet'],['git','git'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['passwords','passwords'],['programming','programming'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['docker','docker'],['fidonet','fidonet'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
+      ['passwords','passwords'],['programming','programming'],['sql','sql'],['ssh','ssh'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
-      ['america','america'],['coldwar','coldwar'],['florida','florida'],
-      ['guns','guns'],['moto','moto'],
+      ['america','america'],['coffee','coffee'],['coldwar','coldwar'],['florida','florida'],
+      ['guns','guns'],['japan','japan'],['moto','moto'],
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
-      ['mario','mario'],['monkey','monkey'],['poker','poker'],['simcity','simcity'],['warcraft','warcraft']
+      ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],

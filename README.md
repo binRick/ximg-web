@@ -60,6 +60,15 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [mail.ximg.app](https://mail.ximg.app) | Webmail inbox for @ximg.app — live SMTP receiver with Gmail-style reader UI |
 | [unix.ximg.app](https://unix.ximg.app) | Unix history, philosophy (17 rules), commands cheatsheet, family tree from Bell Labs to Linux, and key people |
 | [bsd.ximg.app](https://bsd.ximg.app) | BSD deep-dive — FreeBSD, OpenBSD, NetBSD, DragonFly, TCP/IP history, ZFS, pf firewall, and BSD in every Mac and PlayStation |
+| [vim.ximg.app](https://vim.ximg.app) | The ubiquitous editor — modes, 50+ commands, 12 plugins, and history from vi (1976) to Vim 9 |
+| [http.ximg.app](https://http.ximg.app) | HTTP protocol reference — 9 methods, full status codes, headers, versions HTTP/0.9–HTTP/3, and security headers |
+| [ssh.ximg.app](https://ssh.ximg.app) | Secure Shell — 30+ commands, key types (Ed25519/RSA/ECDSA), config reference, and hardening guide |
+| [sql.ximg.app](https://sql.ximg.app) | SQL reference — DML/DDL/TCL, data types, aggregate/window functions, join Venn diagrams, 8 databases |
+| [space.ximg.app](https://space.ximg.app) | The final frontier — solar system, 12 missions, rocket comparison, exoplanets, black holes, animated starfield |
+| [coffee.ximg.app](https://coffee.ximg.app) | The world's favorite brew — 8 origins, 8 brewing methods, roast spectrum, varietals, café culture history |
+| [japan.ximg.app](https://japan.ximg.app) | Japan — cherry blossom animation, 6 philosophy concepts, 12 foods, 10 tech companies, timeline from 14000 BCE |
+| [quake.ximg.app](https://quake.ximg.app) | id Software's dark legend — 6 games, 10 weapons, 12 monsters, 8 maps, ember particle animation |
+| [nintendo.ximg.app](https://nintendo.ximg.app) | 135 years of play — 13 consoles, 16 iconic games, 13 characters, pixel-art Mario, company history |
 | [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
 
 ## Architecture
