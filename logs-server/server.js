@@ -134,6 +134,7 @@ const LOG_FILES = {
   ids:         'ids.access.log',
   nagios:      'nagios.access.log',
   netdata:     'netdata.access.log',
+  readme:      'readme.access.log',
   status:      'status.access.log',
   nav:         'nav.access.log',
 };
@@ -435,6 +436,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="poker">poker</button>
           <button class="site-opt" data-site="programming">programming</button>
           <button class="site-opt" data-site="quake">quake</button>
+          <button class="site-opt" data-site="readme">readme</button>
           <button class="site-opt" data-site="rx">rx</button>
           <button class="site-opt" data-site="simcity">simcity</button>
           <button class="site-opt" data-site="space">space</button>
