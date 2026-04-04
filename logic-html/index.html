@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logic Gates — logic.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem;overflow-x:auto}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
+.tab-btn.active{color:#818cf8;border-bottom-color:#818cf8}
+.tab-btn:hover:not(.active){color:#e2e8f0}
+.tab-panel{display:none;padding:1.5rem}
+.tab-panel.active{display:block}
+h2{color:#818cf8;margin-bottom:1rem;font-size:1.2rem}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-top:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+.info-box h3{color:#818cf8;margin-bottom:.5rem;font-size:1rem}
+.formula{font-family:'Courier New',monospace;color:#a78bfa;background:#0a0a25;padding:.3rem .6rem;border-radius:4px;font-size:.85rem;display:inline-block;margin:.15rem 0}
+/* Gate simulator */
+.sim-wrap{display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap}
+.gate-card{background:#070720;border:1px solid #1e293b;border-radius:10px;padding:1.25rem;min-width:200px}
+.gate-card h3{color:#818cf8;font-size:.95rem;margin-bottom:1rem;text-align:center}
+.gate-svg-wrap{display:flex;justify-content:center;margin-bottom:1rem}
+.inputs-col{display:flex;flex-direction:column;gap:.6rem;align-items:flex-start;margin-bottom:.8rem}
+.input-btn{display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none;font-size:.85rem;color:#94a3b8}
+.input-btn .bit{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;border:2px solid #334155;background:#0f172a;transition:all .2s;cursor:pointer}
+.bit.hi{background:#4ade80;border-color:#22c55e;color:#052e16}
+.bit.lo{background:#1e293b;border-color:#334155;color:#64748b}
+.output-row{display:flex;align-items:center;gap:.6rem;font-size:.88rem;color:#94a3b8}
+.out-bit{width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;border:2px solid #334155;background:#0f172a;transition:all .25s}
+.out-bit.hi{background:#818cf8;border-color:#6366f1;color:#1e1b4b;box-shadow:0 0 16px rgba(129,140,248,0.6)}
+.out-bit.lo{background:#1e293b;border-color:#334155;color:#4b5563}
+/* Truth table */
+.tt-wrap{overflow-x:auto}
+table{border-collapse:collapse;font-family:'Courier New',monospace;font-size:.88rem;width:100%}
+table.compact{width:auto;margin:0 auto}
+th{background:#1e293b;color:#818cf8;padding:.5rem .9rem;text-align:center;font-weight:600;border-bottom:2px solid #334155}
+td{padding:.42rem .9rem;text-align:center;border-bottom:1px solid #1e293b;color:#94a3b8}
+tr:last-child td{border-bottom:none}
+td.hi{color:#4ade80;font-weight:700}
+td.lo{color:#475569}
+/* Adders */
+.adder-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.adder-card{background:#070720;border:1px solid #1e293b;border-radius:10px;padding:1.25rem}
+.adder-card h3{color:#818cf8;font-size:1rem;margin-bottom:.8rem}
+.adder-io{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem}
+.adder-row{display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:#94a3b8}
+.adder-row label{width:90px;flex-shrink:0}
+.adder-row .bit{width:32px;height:32px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;border:2px solid #334155;background:#0f172a;transition:all .2s;cursor:pointer}
+/* Boolean eval */
+.bool-wrap{max-width:700px}
+.bool-input{display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.bool-input input{flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:.5rem .75rem;border-radius:6px;font-family:'Courier New',monospace;font-size:.9rem;min-width:200px}
+.bool-input input:focus{outline:none;border-color:#818cf8}
+.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:.4rem .9rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#334155}
+.bool-result{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.85rem;color:#94a3b8;min-height:60px;white-space:pre-wrap}
+.bool-result .hi{color:#4ade80;font-weight:700}
+.bool-result .lo{color:#475569}
+.bool-result .err{color:#f87171}
+.gates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem}
+</style>
+</head>
+<body>
+
+<nav class="sub-nav">
+  <button class="tab-btn active" data-tab="gates">Gate Simulator</button>
+  <button class="tab-btn" data-tab="tables">Truth Tables</button>
+  <button class="tab-btn" data-tab="adder">Half / Full Adder</button>
+  <button class="tab-btn" data-tab="bool">Boolean Evaluator</button>
+  <button class="tab-btn" data-tab="reference">Reference</button>
+</nav>
+
+<!-- GATE SIMULATOR -->
+<div id="tab-gates" class="tab-panel active">
+  <h2>Interactive Gate Simulator</h2>
+  <p style="font-size:.85rem;color:#64748b;margin-bottom:1.25rem">Click the input bits to toggle 0/1. See the output update in real time.</p>
+  <div class="sim-wrap" id="sim-wrap"></div>
+</div>
+
+<!-- TRUTH TABLES -->
+<div id="tab-tables" class="tab-panel">
+  <h2>Truth Tables</h2>
+  <div class="gates-grid" id="tt-grid"></div>
+</div>
+
+<!-- ADDER TAB -->
+<div id="tab-adder" class="tab-panel">
+  <h2>Half & Full Adder</h2>
+  <div class="adder-grid">
+    <div class="adder-card">
+      <h3>Half Adder</h3>
+      <p style="font-size:.82rem;color:#64748b;margin-bottom:.8rem">Adds two 1-bit inputs. Click bits to toggle.</p>
+      <div class="adder-io">
+        <div class="adder-row"><label>A (Input)</label><div class="bit lo" id="ha-a" onclick="toggleHA('a')">0</div></div>
+        <div class="adder-row"><label>B (Input)</label><div class="bit lo" id="ha-b" onclick="toggleHA('b')">0</div></div>
+        <div style="border-top:1px solid #1e293b;margin:.3rem 0"></div>
+        <div class="adder-row"><label>Sum (S)</label><div class="bit lo" id="ha-s">0</div><span style="font-size:.78rem;color:#475569">= A XOR B</span></div>
+        <div class="adder-row"><label>Carry (C)</label><div class="bit lo" id="ha-c">0</div><span style="font-size:.78rem;color:#475569">= A AND B</span></div>
+      </div>
+      <svg width="240" height="110" viewBox="0 0 240 110">
+        <!-- A line -->
+        <line x1="0" y1="30" x2="50" y2="30" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="5" y="25" font-size="11" fill="#94a3b8">A</text>
+        <!-- B line -->
+        <line x1="0" y1="70" x2="50" y2="70" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="5" y="65" font-size="11" fill="#94a3b8">B</text>
+        <!-- XOR gate (top) -->
+        <path d="M50,18 Q56,30 50,42 L70,42 Q86,42 85,30 Q86,18 70,18 Z" fill="none" stroke="#818cf8" stroke-width="1.5"/>
+        <path d="M44,18 Q50,30 44,42" fill="none" stroke="#818cf8" stroke-width="1.5"/>
+        <line x1="85" y1="30" x2="110" y2="30" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="114" y="34" font-size="11" fill="#4ade80">S</text>
+        <text x="62" y="34" font-size="9" fill="#818cf8">=1</text>
+        <!-- AND gate (bottom) -->
+        <path d="M50,58 L50,82 L66,82 Q85,82 85,70 Q85,58 66,58 Z" fill="none" stroke="#818cf8" stroke-width="1.5"/>
+        <line x1="85" y1="70" x2="110" y2="70" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="114" y="74" font-size="11" fill="#f59e0b">C</text>
+        <text x="62" y="74" font-size="9" fill="#818cf8">&amp;</text>
+        <!-- A branch to AND -->
+        <line x1="20" y1="30" x2="20" y2="62" stroke="#818cf8" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="20" y1="62" x2="50" y2="62" stroke="#818cf8" stroke-width="1" stroke-dasharray="3,3"/>
+        <!-- B branch to AND -->
+        <line x1="30" y1="70" x2="30" y2="78" stroke="#818cf8" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="30" y1="78" x2="50" y2="78" stroke="#818cf8" stroke-width="1" stroke-dasharray="3,3"/>
+      </svg>
+      <div class="info-box" style="margin-top:.5rem">
+        <div class="formula">S = A ⊕ B</div>&nbsp;
+        <div class="formula">C = A · B</div>
+        <p style="margin-top:.4rem">No carry-in. Useful for the least-significant bit in a multi-bit adder.</p>
+      </div>
+    </div>
+    <div class="adder-card">
+      <h3>Full Adder</h3>
+      <p style="font-size:.82rem;color:#64748b;margin-bottom:.8rem">Adds two bits plus carry-in. Click bits to toggle.</p>
+      <div class="adder-io">
+        <div class="adder-row"><label>A (Input)</label><div class="bit lo" id="fa-a" onclick="toggleFA('a')">0</div></div>
+        <div class="adder-row"><label>B (Input)</label><div class="bit lo" id="fa-b" onclick="toggleFA('b')">0</div></div>
+        <div class="adder-row"><label>Cin (Carry In)</label><div class="bit lo" id="fa-cin" onclick="toggleFA('cin')">0</div></div>
+        <div style="border-top:1px solid #1e293b;margin:.3rem 0"></div>
+        <div class="adder-row"><label>Sum (S)</label><div class="bit lo" id="fa-s">0</div></div>
+        <div class="adder-row"><label>Cout (Carry Out)</label><div class="bit lo" id="fa-cout">0</div></div>
+      </div>
+      <div class="info-box">
+        <div class="formula">S = A ⊕ B ⊕ Cin</div><br>
+        <div class="formula">Cout = (A·B) + (Cin·(A⊕B))</div>
+        <p style="margin-top:.5rem">Truth table for all 8 input combinations:</p>
+        <div style="overflow-x:auto;margin-top:.5rem">
+          <table class="compact" style="font-size:.78rem">
+            <tr><th>A</th><th>B</th><th>Cin</th><th>S</th><th>Cout</th></tr>
+            <tr><td class="lo">0</td><td class="lo">0</td><td class="lo">0</td><td class="lo">0</td><td class="lo">0</td></tr>
+            <tr><td class="lo">0</td><td class="lo">0</td><td class="hi">1</td><td class="hi">1</td><td class="lo">0</td></tr>
+            <tr><td class="lo">0</td><td class="hi">1</td><td class="lo">0</td><td class="hi">1</td><td class="lo">0</td></tr>
+            <tr><td class="lo">0</td><td class="hi">1</td><td class="hi">1</td><td class="lo">0</td><td class="hi">1</td></tr>
+            <tr><td class="hi">1</td><td class="lo">0</td><td class="lo">0</td><td class="hi">1</td><td class="lo">0</td></tr>
+            <tr><td class="hi">1</td><td class="lo">0</td><td class="hi">1</td><td class="lo">0</td><td class="hi">1</td></tr>
+            <tr><td class="hi">1</td><td class="hi">1</td><td class="lo">0</td><td class="lo">0</td><td class="hi">1</td></tr>
+            <tr><td class="hi">1</td><td class="hi">1</td><td class="hi">1</td><td class="hi">1</td><td class="hi">1</td></tr>
+          </table>
+        </div>
+        <p style="margin-top:.5rem">Chain full adders to build an N-bit ripple-carry adder.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOLEAN EVALUATOR -->
+<div id="tab-bool" class="tab-panel">
+  <h2>Boolean Expression Evaluator</h2>
+  <div class="bool-wrap">
+    <div class="info-box" style="margin-bottom:1rem">
+      <h3>Operators</h3>
+      <div class="formula">AND: A &amp; B &nbsp; or &nbsp; A AND B</div>&nbsp;
+      <div class="formula">OR: A | B &nbsp; or &nbsp; A OR B</div>&nbsp;
+      <div class="formula">NOT: !A &nbsp; or &nbsp; NOT A</div>&nbsp;
+      <div class="formula">XOR: A ^ B &nbsp; or &nbsp; A XOR B</div>&nbsp;
+      <div class="formula">NAND: A NAND B &nbsp; NOR: A NOR B</div>
+    </div>
+    <div class="bool-input">
+      <input id="bool-expr" type="text" placeholder="e.g. (A AND B) OR (NOT C)" value="(A AND B) OR (NOT C)">
+      <button class="btn" id="bool-eval">Evaluate</button>
+    </div>
+    <div class="bool-result" id="bool-result">Enter an expression with variables A, B, C, D and click Evaluate to generate the full truth table.</div>
+  </div>
+</div>
+
+<!-- REFERENCE -->
+<div id="tab-reference" class="tab-panel">
+  <h2>Logic Gate Reference</h2>
+  <div class="gates-grid">
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">AND</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = A · B. HIGH only when all inputs HIGH. Used for masking, enabling signals. NAND is universal — any logic function can be built from NAND gates alone.</p>
+      <div class="formula" style="margin-top:.5rem">A=1 B=1 → Y=1 &nbsp; (otherwise 0)</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">OR</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = A + B. HIGH when any input is HIGH. NOR is also universal. Used in flag detection, alarm systems, OR-wired buses.</p>
+      <div class="formula" style="margin-top:.5rem">A=0 B=0 → Y=0 &nbsp; (otherwise 1)</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">NOT (Inverter)</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = Ā. Single input, inverted output. Fundamental building block. CMOS inverter: a PMOS and NMOS transistor in series.</p>
+      <div class="formula" style="margin-top:.5rem">A=0 → Y=1 &nbsp; A=1 → Y=0</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">NAND</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = NOT(A · B). Universal gate. Cheaper to fabricate than AND (one fewer transistor layer). Used in SRAM cells, priority encoders.</p>
+      <div class="formula" style="margin-top:.5rem">A=1 B=1 → Y=0 &nbsp; (otherwise 1)</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">NOR</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = NOT(A + B). Also universal. Used in SR latches (cross-coupled NOR). Output HIGH only when all inputs are LOW.</p>
+      <div class="formula" style="margin-top:.5rem">A=0 B=0 → Y=1 &nbsp; (otherwise 0)</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6em">XOR</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = A ⊕ B. HIGH when inputs differ. Core of adders, checksum circuits, CRC generators. XOR with itself = 0, XOR with 1 = complement.</p>
+      <div class="formula" style="margin-top:.5rem">A≠B → Y=1 &nbsp; A=B → Y=0</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">XNOR</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Y = NOT(A ⊕ B). HIGH when inputs are equal. Equality detector. Used in comparators, error-detection circuits.</p>
+      <div class="formula" style="margin-top:.5rem">A=B → Y=1 &nbsp; A≠B → Y=0</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">De Morgan's Laws</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6">Fundamental identities for simplifying logic expressions:</p>
+      <div class="formula" style="margin-top:.5rem">NOT(A AND B) = (NOT A) OR (NOT B)</div><br>
+      <div class="formula">NOT(A OR B) = (NOT A) AND (NOT B)</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">Boolean Identities</h3>
+      <p style="font-size:.82rem;color:#94a3b8;margin-bottom:.4rem">Key rules for simplification:</p>
+      <div class="formula">A + 0 = A</div>&nbsp;<div class="formula">A · 1 = A</div><br>
+      <div class="formula">A + 1 = 1</div>&nbsp;<div class="formula">A · 0 = 0</div><br>
+      <div class="formula">A + A = A</div>&nbsp;<div class="formula">A · A = A</div><br>
+      <div class="formula">A + Ā = 1</div>&nbsp;<div class="formula">A · Ā = 0</div>
+    </div>
+    <div style="background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem">
+      <h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.6rem">Voltage Levels (TTL / CMOS)</h3>
+      <p style="font-size:.82rem;color:#94a3b8;line-height:1.6"><b>TTL (5V):</b> LOW &lt;0.8V, HIGH &gt;2.0V. Noise margin ~0.4V.<br><b>CMOS (3.3V):</b> LOW &lt;1.0V, HIGH &gt;2.3V. Near-rail-to-rail swing.<br><b>LVTTL / LVCMOS:</b> common in FPGAs and microcontrollers. Undefined region between thresholds should be avoided to prevent oscillation.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+// GATE SIMULATOR
+// ============================================================
+const GATES = [
+  {name:'AND',  fn:(a,b)=>a&b,   inputs:2, expr:'Y = A · B'},
+  {name:'OR',   fn:(a,b)=>a|b,   inputs:2, expr:'Y = A + B'},
+  {name:'NOT',  fn:(a)=>a^1,     inputs:1, expr:'Y = Ā'},
+  {name:'NAND', fn:(a,b)=>(a&b)^1, inputs:2, expr:'Y = ¬(A·B)'},
+  {name:'NOR',  fn:(a,b)=>(a|b)^1, inputs:2, expr:'Y = ¬(A+B)'},
+  {name:'XOR',  fn:(a,b)=>a^b,   inputs:2, expr:'Y = A ⊕ B'},
+  {name:'XNOR', fn:(a,b)=>(a^b)^1, inputs:2, expr:'Y = ¬(A⊕B)'},
+];
+
+const simState = {};
+GATES.forEach(g=>{
+  simState[g.name] = g.inputs===1 ? [0] : [0,0];
+});
+
+function buildSimulator(){
+  const wrap = document.getElementById('sim-wrap');
+  GATES.forEach(g=>{
+    const card = document.createElement('div');
+    card.className='gate-card';
+    const labels = g.inputs===1?['A']:['A','B'];
+    card.innerHTML=`<h3>${g.name} <span style="font-size:.75rem;color:#475569;font-weight:400">${g.expr}</span></h3>
+    <div class="inputs-col" id="sim-${g.name}-inputs">
+      ${labels.map((l,i)=>`<div class="input-btn"><span>${l}</span><div class="bit lo" id="sim-${g.name}-in${i}" onclick="toggleGateInput('${g.name}',${i})">0</div></div>`).join('')}
+    </div>
+    <div class="output-row">Output Y: <div class="out-bit lo" id="sim-${g.name}-out">0</div></div>`;
+    wrap.appendChild(card);
+    updateGate(g.name);
+  });
+}
+
+function toggleGateInput(name, idx){
+  simState[name][idx] ^= 1;
+  updateGate(name);
+}
+window.toggleGateInput = toggleGateInput;
+
+function updateGate(name){
+  const g = GATES.find(x=>x.name===name);
+  const st = simState[name];
+  const out = g.inputs===1 ? g.fn(st[0]) : g.fn(st[0],st[1]);
+  st.forEach((v,i)=>{
+    const el = document.getElementById(`sim-${name}-in${i}`);
+    if(el){ el.textContent=v; el.className='bit '+(v?'hi':'lo'); }
+  });
+  const outEl = document.getElementById(`sim-${name}-out`);
+  if(outEl){ outEl.textContent=out; outEl.className='out-bit '+(out?'hi':'lo'); }
+}
+buildSimulator();
+
+// ============================================================
+// TRUTH TABLES
+// ============================================================
+function buildTruthTables(){
+  const grid = document.getElementById('tt-grid');
+  GATES.forEach(g=>{
+    const card = document.createElement('div');
+    card.style.cssText='background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem';
+    const rows = g.inputs===1
+      ? [[0],[1]]
+      : [[0,0],[0,1],[1,0],[1,1]];
+    const hdr = g.inputs===1
+      ? '<th>A</th><th>Y</th>'
+      : '<th>A</th><th>B</th><th>Y</th>';
+    const trs = rows.map(r=>{
+      const y = g.inputs===1?g.fn(r[0]):g.fn(r[0],r[1]);
+      const cells = r.map(v=>`<td class="${v?'hi':'lo'}">${v}</td>`).join('');
+      return `<tr>${cells}<td class="${y?'hi':'lo'}">${y}</td></tr>`;
+    }).join('');
+    card.innerHTML=`<h3 style="color:#818cf8;font-size:.95rem;margin-bottom:.75rem">${g.name}</h3>
+    <div class="tt-wrap"><table class="compact"><thead><tr>${hdr}</tr></thead><tbody>${trs}</tbody></table></div>`;
+    grid.appendChild(card);
+  });
+}
+buildTruthTables();
+
+// ============================================================
+// HALF / FULL ADDER
+// ============================================================
+const haState={a:0,b:0};
+const faState={a:0,b:0,cin:0};
+
+function updateBit(id, val){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.textContent=val;
+  el.className='bit '+(val?'hi':'lo');
+}
+function updateHA(){
+  const s=haState.a^haState.b, c=haState.a&haState.b;
+  updateBit('ha-a',haState.a); updateBit('ha-b',haState.b);
+  updateBit('ha-s',s); updateBit('ha-c',c);
+}
+function updateFA(){
+  const s=faState.a^faState.b^faState.cin;
+  const cout=(faState.a&faState.b)|((faState.a^faState.b)&faState.cin);
+  updateBit('fa-a',faState.a); updateBit('fa-b',faState.b); updateBit('fa-cin',faState.cin);
+  updateBit('fa-s',s); updateBit('fa-cout',cout);
+}
+window.toggleHA=function(k){ haState[k]^=1; updateHA(); };
+window.toggleFA=function(k){ faState[k]^=1; updateFA(); };
+updateHA(); updateFA();
+
+// ============================================================
+// BOOLEAN EVALUATOR
+// ============================================================
+document.getElementById('bool-eval').addEventListener('click', evalBool);
+document.getElementById('bool-expr').addEventListener('keydown', e=>{ if(e.key==='Enter') evalBool(); });
+
+function evalBool(){
+  const expr = document.getElementById('bool-expr').value.trim();
+  const rb = document.getElementById('bool-result');
+  if(!expr){ rb.textContent='Enter an expression.'; return; }
+  // Find variables
+  const vars = [...new Set(expr.toUpperCase().match(/\b[A-Z]\b/g)||[])].sort();
+  if(!vars.length){ rb.innerHTML='<span class="err">No variables found. Use single letters: A, B, C…</span>'; return; }
+  if(vars.length>4){ rb.innerHTML='<span class="err">Maximum 4 variables (A–D) supported.</span>'; return; }
+  try{
+    const n=vars.length, rows=1<<n;
+    let hdr = vars.join(' | ') + ' | ' + expr;
+    let lines=[hdr, '─'.repeat(hdr.length+4)];
+    for(let i=0;i<rows;i++){
+      const vals={};
+      vars.forEach((v,idx)=>{ vals[v]=(i>>(n-1-idx))&1; });
+      const result = evalExpr(expr.toUpperCase(), vals);
+      const cells = vars.map(v=>String(vals[v]).padStart(1)+' '.repeat(v.length-1)).join(' | ');
+      const r = result?'1':'0';
+      lines.push(cells + ' | ' + `<span class="${result?'hi':'lo'}">${r}</span>`);
+    }
+    rb.innerHTML = lines.join('\n');
+  } catch(e){
+    rb.innerHTML=`<span class="err">Parse error: ${e.message}</span>`;
+  }
+}
+
+function evalExpr(expr, vals){
+  // Substitute variables
+  let s = expr.replace(/\b([A-Z])\b/g, (_,v)=> (vals[v]!==undefined ? vals[v] : v));
+  // Operators
+  s = s.replace(/\bNOT\s+(\d)/g, (_,a)=>a==='1'?'0':'1');
+  s = s.replace(/(\d)\s+NAND\s+(\d)/g, (_,a,b)=>((a==='1'&&b==='1')?'0':'1'));
+  s = s.replace(/(\d)\s+NOR\s+(\d)/g,  (_,a,b)=>((a==='0'&&b==='0')?'1':'0'));
+  s = s.replace(/(\d)\s+XOR\s+(\d)/g,  (_,a,b)=>(a===b?'0':'1'));
+  s = s.replace(/(\d)\s+XNOR\s+(\d)/g, (_,a,b)=>(a===b?'1':'0'));
+  s = s.replace(/(\d)\s+AND\s+(\d)/g,  (_,a,b)=>(a==='1'&&b==='1'?'1':'0'));
+  s = s.replace(/(\d)\s+OR\s+(\d)/g,   (_,a,b)=>(a==='1'||b==='1'?'1':'0'));
+  s = s.replace(/!(\d)/g, (_,a)=>(a==='1'?'0':'1'));
+  s = s.replace(/(\d)\s*&\s*(\d)/g, (_,a,b)=>(a==='1'&&b==='1'?'1':'0'));
+  s = s.replace(/(\d)\s*\^\s*(\d)/g, (_,a,b)=>(a===b?'0':'1'));
+  s = s.replace(/(\d)\s*\|\s*(\d)/g, (_,a,b)=>(a==='1'||b==='1'?'1':'0'));
+  // Strip parens and retry
+  const cleaned = s.replace(/\((\d)\)/g,'$1').trim();
+  if(cleaned==='0'||cleaned==='1') return cleaned==='1';
+  if(cleaned!==s) return evalExpr(cleaned, {});
+  // Try recursive with parens
+  const parenMatch = cleaned.match(/\(([^()]+)\)/);
+  if(parenMatch){
+    const inner = evalExpr(parenMatch[1], {});
+    return evalExpr(cleaned.replace(parenMatch[0], inner?'1':'0'), {});
+  }
+  throw new Error('Cannot evaluate: '+cleaned);
+}
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

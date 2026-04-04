@@ -20,7 +20,7 @@
     { label: 'Tech', apps: [
       ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],['crypto','crypto'],
       ['docker','docker'],['dns','dns'],['fidonet','fidonet'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['agents','agents'],['algorithms','algorithms'],['cdn','cdn'],['database','database'],['embeddings','embeddings'],['loadbalancer','loadbalancer'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['agents','agents'],['algorithms','algorithms'],['cdn','cdn'],['database','database'],['embeddings','embeddings'],['loadbalancer','loadbalancer'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['punch','punch card'],['queue','queue'],['request','request'],['security','security'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['terminal','terminal'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coffee','coffee'],['florida','florida'],
@@ -28,7 +28,7 @@
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'History', apps: [
-      ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
+      ['arpanet','arpanet'],['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
     ]},
     { label: 'Science', apps: [
       ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['chaos','chaos'],['chemistry','chemistry'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['math','math'],['nutrition','nutrition'],['physics','physics'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['training','training'],['waves','waves'],['world','world']
@@ -40,8 +40,14 @@
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
       ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
+    { label: 'Electronics', apps: [
+      ['circuit','circuit'],['logic','logic'],['mainframe','mainframe'],['protocol','protocol']
+    ]},
     { label: 'Data', apps: [
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
+    ]},
+    { label: 'Dev Tools', apps: [
+      ['regex','regex'],['jwt','JWT'],['cron','cron'],['color','color']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']

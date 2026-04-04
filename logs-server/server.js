@@ -166,6 +166,13 @@ const LOG_FILES = {
   sleep:          'sleep.access.log',
   nutrition:      'nutrition.access.log',
   training:       'training.access.log',
+  punch:          'punch.access.log',
+  terminal:       'terminal.access.log',
+  circuit:        'circuit.access.log',
+  logic:          'logic.access.log',
+  protocol:       'protocol.access.log',
+  mainframe:      'mainframe.access.log',
+  arpanet:        'arpanet.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -516,6 +523,13 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="sleep">sleep</button>
           <button class="site-opt" data-site="nutrition">nutrition</button>
           <button class="site-opt" data-site="training">training</button>
+          <button class="site-opt" data-site="terminal">terminal</button>
+          <button class="site-opt" data-site="punch">punch</button>
+          <button class="site-opt" data-site="circuit">circuit</button>
+          <button class="site-opt" data-site="logic">logic</button>
+          <button class="site-opt" data-site="protocol">protocol</button>
+          <button class="site-opt" data-site="mainframe">mainframe</button>
+          <button class="site-opt" data-site="arpanet">arpanet</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

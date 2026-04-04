@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuit Builder — circuit.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-btn:hover:not(.active){color:#e2e8f0}
+.tab-panel{display:none;padding:1.5rem}
+.tab-panel.active{display:block}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-top:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+.info-box h3{color:#22d3ee;margin-bottom:.5rem;font-size:1rem}
+.formula{font-family:'Courier New',monospace;color:#3b82f6;background:#0a0a25;padding:.3rem .6rem;border-radius:4px;font-size:.85rem;display:inline-block;margin:.2rem 0}
+.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:.4rem .9rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#334155}
+.btn.active-btn{background:#0e4a5e;border-color:#22d3ee;color:#22d3ee}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+/* Builder layout */
+#builder-wrap{display:flex;gap:1rem;height:calc(100vh - 140px)}
+#palette{width:160px;flex-shrink:0;background:#070720;border:1px solid #1e293b;border-radius:8px;padding:.75rem;overflow-y:auto}
+#palette h3{color:#22d3ee;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+.pal-section{margin-bottom:.75rem}
+.pal-section h4{color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+.pal-item{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border-radius:5px;cursor:grab;font-size:.8rem;color:#94a3b8;border:1px solid transparent;transition:all .15s;user-select:none;margin-bottom:.2rem}
+.pal-item:hover{background:#0f172a;border-color:#334155;color:#e2e8f0}
+.pal-item svg{flex-shrink:0}
+#canvas-wrap{flex:1;position:relative;overflow:hidden}
+#circuit-canvas{width:100%;height:100%;background:#050518;border:1px solid #1e293b;border-radius:8px;cursor:crosshair}
+#toolbar{position:absolute;top:.75rem;right:.75rem;display:flex;gap:.4rem;flex-direction:column}
+#info-panel{position:absolute;bottom:.75rem;left:.75rem;background:rgba(7,7,32,.9);border:1px solid #1e293b;border-radius:6px;padding:.6rem .8rem;font-size:.78rem;color:#94a3b8;min-width:180px;max-width:260px}
+#info-panel .ip-title{color:#22d3ee;font-weight:600;margin-bottom:.3rem}
+/* Reference grid */
+.ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.ref-card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem}
+.ref-card h3{color:#22d3ee;margin-bottom:.6rem;font-size:.95rem}
+.ref-card svg{display:block;margin:.5rem auto}
+.ref-card p{font-size:.82rem;color:#94a3b8;line-height:1.6}
+/* Analysis */
+.calc-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.calc-card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem}
+.calc-card h3{color:#22d3ee;margin-bottom:1rem;font-size:1rem}
+.field-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;font-size:.85rem}
+.field-row label{width:130px;color:#94a3b8;flex-shrink:0}
+.field-row input{flex:1;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:.3rem .5rem;border-radius:4px;font-family:inherit;font-size:.85rem}
+.result-box{background:#0a0a25;border:1px solid #1e293b;border-radius:5px;padding:.6rem .8rem;margin-top:.8rem;font-size:.83rem}
+.result-row{display:flex;justify-content:space-between;margin-bottom:.3rem;color:#94a3b8}
+.result-row span{color:#22d3ee;font-weight:600}
+</style>
+</head>
+<body>
+
+<nav class="sub-nav">
+  <button class="tab-btn active" data-tab="builder">Circuit Builder</button>
+  <button class="tab-btn" data-tab="analysis">DC Analysis</button>
+  <button class="tab-btn" data-tab="reference">Component Reference</button>
+</nav>
+
+<!-- BUILDER TAB -->
+<div id="tab-builder" class="tab-panel active" style="padding:1rem">
+  <div id="builder-wrap">
+    <div id="palette">
+      <h3>Components</h3>
+      <div class="pal-section">
+        <h4>Sources</h4>
+        <div class="pal-item" data-type="battery" draggable="true">
+          <svg width="28" height="16" viewBox="0 0 28 16"><line x1="0" y1="8" x2="6" y2="8" stroke="#f59e0b" stroke-width="1.5"/><line x1="6" y1="3" x2="6" y2="13" stroke="#f59e0b" stroke-width="2"/><line x1="10" y1="5" x2="10" y2="11" stroke="#f59e0b" stroke-width="1.5"/><line x1="14" y1="3" x2="14" y2="13" stroke="#f59e0b" stroke-width="2"/><line x1="18" y1="5" x2="18" y2="11" stroke="#f59e0b" stroke-width="1.5"/><line x1="22" y1="8" x2="28" y2="8" stroke="#f59e0b" stroke-width="1.5"/></svg>
+          Battery
+        </div>
+        <div class="pal-item" data-type="vsource" draggable="true">
+          <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#f59e0b" stroke-width="1.5"/><line x1="12" y1="0" x2="12" y2="3" stroke="#f59e0b" stroke-width="1.5"/><line x1="12" y1="21" x2="12" y2="24" stroke="#f59e0b" stroke-width="1.5"/><text x="12" y="15" text-anchor="middle" font-size="9" fill="#f59e0b">V</text></svg>
+          V Source
+        </div>
+      </div>
+      <div class="pal-section">
+        <h4>Passives</h4>
+        <div class="pal-item" data-type="resistor" draggable="true">
+          <svg width="28" height="14" viewBox="0 0 28 14"><line x1="0" y1="7" x2="4" y2="7" stroke="#22d3ee" stroke-width="1.5"/><rect x="4" y="2" width="20" height="10" rx="1" fill="none" stroke="#22d3ee" stroke-width="1.5"/><line x1="24" y1="7" x2="28" y2="7" stroke="#22d3ee" stroke-width="1.5"/></svg>
+          Resistor
+        </div>
+        <div class="pal-item" data-type="capacitor" draggable="true">
+          <svg width="28" height="16" viewBox="0 0 28 16"><line x1="0" y1="8" x2="11" y2="8" stroke="#a78bfa" stroke-width="1.5"/><line x1="11" y1="1" x2="11" y2="15" stroke="#a78bfa" stroke-width="2"/><line x1="17" y1="1" x2="17" y2="15" stroke="#a78bfa" stroke-width="2"/><line x1="17" y1="8" x2="28" y2="8" stroke="#a78bfa" stroke-width="1.5"/></svg>
+          Capacitor
+        </div>
+        <div class="pal-item" data-type="inductor" draggable="true">
+          <svg width="32" height="14" viewBox="0 0 32 14"><line x1="0" y1="7" x2="3" y2="7" stroke="#34d399" stroke-width="1.5"/><path d="M3,7 Q5,1 8,7 Q10,1 13,7 Q15,1 18,7 Q20,1 23,7 Q25,1 28,7" fill="none" stroke="#34d399" stroke-width="1.5"/><line x1="28" y1="7" x2="32" y2="7" stroke="#34d399" stroke-width="1.5"/></svg>
+          Inductor
+        </div>
+      </div>
+      <div class="pal-section">
+        <h4>Semiconductors</h4>
+        <div class="pal-item" data-type="diode" draggable="true">
+          <svg width="28" height="16" viewBox="0 0 28 16"><line x1="0" y1="8" x2="8" y2="8" stroke="#f87171" stroke-width="1.5"/><polygon points="8,2 8,14 20,8" fill="none" stroke="#f87171" stroke-width="1.5"/><line x1="20" y1="2" x2="20" y2="14" stroke="#f87171" stroke-width="1.5"/><line x1="20" y1="8" x2="28" y2="8" stroke="#f87171" stroke-width="1.5"/></svg>
+          Diode
+        </div>
+        <div class="pal-item" data-type="led" draggable="true">
+          <svg width="28" height="16" viewBox="0 0 28 16"><line x1="0" y1="8" x2="8" y2="8" stroke="#fbbf24" stroke-width="1.5"/><polygon points="8,2 8,14 20,8" fill="none" stroke="#fbbf24" stroke-width="1.5"/><line x1="20" y1="2" x2="20" y2="14" stroke="#fbbf24" stroke-width="1.5"/><line x1="20" y1="8" x2="28" y2="8" stroke="#fbbf24" stroke-width="1.5"/><line x1="22" y1="4" x2="26" y2="0" stroke="#fbbf24" stroke-width="1" stroke-dasharray="1,1"/><line x1="25" y1="6" x2="29" y2="2" stroke="#fbbf24" stroke-width="1" stroke-dasharray="1,1"/></svg>
+          LED
+        </div>
+        <div class="pal-item" data-type="npn" draggable="true">
+          <svg width="24" height="24" viewBox="0 0 24 24"><line x1="10" y1="4" x2="10" y2="20" stroke="#fb923c" stroke-width="1.5"/><line x1="0" y1="12" x2="10" y2="12" stroke="#fb923c" stroke-width="1.5"/><line x1="10" y1="8" x2="22" y2="2" stroke="#fb923c" stroke-width="1.5"/><line x1="10" y1="16" x2="22" y2="22" stroke="#fb923c" stroke-width="1.5"/><polygon points="18,20 22,22 20,18" fill="#fb923c"/></svg>
+          NPN BJT
+        </div>
+      </div>
+      <div class="pal-section">
+        <h4>Logic</h4>
+        <div class="pal-item" data-type="and" draggable="true">
+          <svg width="30" height="20" viewBox="0 0 30 20"><line x1="0" y1="5" x2="6" y2="5" stroke="#818cf8" stroke-width="1.5"/><line x1="0" y1="15" x2="6" y2="15" stroke="#818cf8" stroke-width="1.5"/><line x1="24" y1="10" x2="30" y2="10" stroke="#818cf8" stroke-width="1.5"/><path d="M6,2 L6,18 L14,18 Q24,18 24,10 Q24,2 14,2 Z" fill="none" stroke="#818cf8" stroke-width="1.5"/><text x="11" y="14" font-size="7" fill="#818cf8">&amp;</text></svg>
+          AND
+        </div>
+        <div class="pal-item" data-type="or" draggable="true">
+          <svg width="30" height="20" viewBox="0 0 30 20"><line x1="0" y1="5" x2="6" y2="5" stroke="#818cf8" stroke-width="1.5"/><line x1="0" y1="15" x2="6" y2="15" stroke="#818cf8" stroke-width="1.5"/><line x1="24" y1="10" x2="30" y2="10" stroke="#818cf8" stroke-width="1.5"/><path d="M6,2 Q10,10 6,18 L14,18 Q26,18 24,10 Q26,2 14,2 Z" fill="none" stroke="#818cf8" stroke-width="1.5"/><text x="11" y="14" font-size="7" fill="#818cf8">≥1</text></svg>
+          OR
+        </div>
+        <div class="pal-item" data-type="not" draggable="true">
+          <svg width="28" height="20" viewBox="0 0 28 20"><line x1="0" y1="10" x2="4" y2="10" stroke="#818cf8" stroke-width="1.5"/><polygon points="4,2 4,18 18,10" fill="none" stroke="#818cf8" stroke-width="1.5"/><circle cx="20" cy="10" r="2.5" fill="none" stroke="#818cf8" stroke-width="1.5"/><line x1="22" y1="10" x2="28" y2="10" stroke="#818cf8" stroke-width="1.5"/></svg>
+          NOT
+        </div>
+        <div class="pal-item" data-type="xor" draggable="true">
+          <svg width="32" height="20" viewBox="0 0 32 20"><line x1="0" y1="5" x2="8" y2="5" stroke="#818cf8" stroke-width="1.5"/><line x1="0" y1="15" x2="8" y2="15" stroke="#818cf8" stroke-width="1.5"/><line x1="26" y1="10" x2="32" y2="10" stroke="#818cf8" stroke-width="1.5"/><path d="M4,2 Q8,10 4,18" fill="none" stroke="#818cf8" stroke-width="1.5"/><path d="M8,2 Q12,10 8,18 L16,18 Q28,18 26,10 Q28,2 16,2 Z" fill="none" stroke="#818cf8" stroke-width="1.5"/><text x="13" y="14" font-size="7" fill="#818cf8">=1</text></svg>
+          XOR
+        </div>
+      </div>
+      <div class="pal-section">
+        <h4>Misc</h4>
+        <div class="pal-item" data-type="ground" draggable="true">
+          <svg width="20" height="20" viewBox="0 0 20 20"><line x1="10" y1="0" x2="10" y2="8" stroke="#94a3b8" stroke-width="1.5"/><line x1="2" y1="8" x2="18" y2="8" stroke="#94a3b8" stroke-width="2"/><line x1="5" y1="12" x2="15" y2="12" stroke="#94a3b8" stroke-width="1.5"/><line x1="8" y1="16" x2="12" y2="16" stroke="#94a3b8" stroke-width="1.5"/></svg>
+          Ground
+        </div>
+        <div class="pal-item" data-type="switch" draggable="true">
+          <svg width="28" height="14" viewBox="0 0 28 14"><line x1="0" y1="7" x2="8" y2="7" stroke="#94a3b8" stroke-width="1.5"/><circle cx="8" cy="7" r="2" fill="#94a3b8"/><line x1="10" y1="7" x2="20" y2="3" stroke="#94a3b8" stroke-width="1.5"/><circle cx="20" cy="7" r="2" fill="#94a3b8"/><line x1="20" y1="7" x2="28" y2="7" stroke="#94a3b8" stroke-width="1.5"/></svg>
+          Switch
+        </div>
+        <div class="pal-item" data-type="bulb" draggable="true">
+          <svg width="24" height="24" viewBox="0 0 24 24"><line x1="12" y1="0" x2="12" y2="3" stroke="#fcd34d" stroke-width="1.5"/><circle cx="12" cy="12" r="7" fill="none" stroke="#fcd34d" stroke-width="1.5"/><path d="M9,17 L9,21 L15,21 L15,17" fill="none" stroke="#fcd34d" stroke-width="1.5"/><line x1="9" y1="21" x2="15" y2="21" stroke="#fcd34d" stroke-width="1.5"/></svg>
+          Bulb
+        </div>
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <canvas id="circuit-canvas"></canvas>
+      <div id="toolbar">
+        <button class="btn active-btn" id="tool-select">Select</button>
+        <button class="btn" id="tool-wire">Wire</button>
+        <button class="btn" id="tool-delete">Delete</button>
+        <div style="height:.5rem"></div>
+        <button class="btn" id="btn-clear">Clear</button>
+        <button class="btn" id="btn-example">Example</button>
+      </div>
+      <div id="info-panel">
+        <div class="ip-title">Circuit Builder</div>
+        <div id="info-text">Drag components from the palette onto the canvas. Use <b>Wire</b> mode to connect pins. Click a component to see its properties.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ANALYSIS TAB -->
+<div id="tab-analysis" class="tab-panel">
+  <h2>DC Circuit Analysis</h2>
+  <div class="calc-wrap">
+    <div class="calc-card">
+      <h3>Ohm's Law Calculator</h3>
+      <p style="font-size:.82rem;color:#64748b;margin-bottom:.8rem">Enter any two values — the third will be calculated.</p>
+      <div class="field-row"><label>Voltage (V)</label><input id="ohm-v" type="number" placeholder="volts" step="any"></div>
+      <div class="field-row"><label>Current (A)</label><input id="ohm-i" type="number" placeholder="amps" step="any"></div>
+      <div class="field-row"><label>Resistance (Ω)</label><input id="ohm-r" type="number" placeholder="ohms" step="any"></div>
+      <button class="btn" id="ohm-calc" style="margin-top:.5rem">Calculate</button>
+      <div class="result-box" id="ohm-result" style="display:none"></div>
+      <div class="info-box" style="margin-top:.8rem">
+        <h3>Ohm's Law</h3>
+        <div class="formula">V = I × R</div><br>
+        <div class="formula">I = V / R</div><br>
+        <div class="formula">R = V / I</div><br>
+        <p>Power: P = V × I = I² × R = V² / R</p>
+      </div>
+    </div>
+    <div class="calc-card">
+      <h3>Series & Parallel Resistors</h3>
+      <p style="font-size:.82rem;color:#64748b;margin-bottom:.8rem">Enter resistor values separated by commas.</p>
+      <div class="field-row" style="flex-direction:column;align-items:flex-start">
+        <label style="width:auto;margin-bottom:.4rem">Resistor values (Ω):</label>
+        <input id="res-vals" type="text" placeholder="e.g. 100, 220, 470" style="width:100%">
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button class="btn" id="res-series">Series</button>
+        <button class="btn" id="res-parallel">Parallel</button>
+      </div>
+      <div class="result-box" id="res-result" style="display:none"></div>
+      <div class="info-box" style="margin-top:.8rem">
+        <h3>Combination Rules</h3>
+        <div class="formula">R_series = R₁ + R₂ + ... + Rₙ</div><br>
+        <div class="formula">1/R_parallel = 1/R₁ + 1/R₂ + ...</div>
+        <p style="margin-top:.4rem">Series: same current through each. Parallel: same voltage across each.</p>
+      </div>
+    </div>
+    <div class="calc-card">
+      <h3>Voltage Divider</h3>
+      <div class="field-row"><label>Vin (V)</label><input id="vd-vin" type="number" placeholder="input voltage" step="any"></div>
+      <div class="field-row"><label>R1 (Ω)</label><input id="vd-r1" type="number" placeholder="top resistor" step="any"></div>
+      <div class="field-row"><label>R2 (Ω)</label><input id="vd-r2" type="number" placeholder="bottom resistor" step="any"></div>
+      <button class="btn" id="vd-calc" style="margin-top:.5rem">Calculate</button>
+      <div class="result-box" id="vd-result" style="display:none"></div>
+      <div class="info-box" style="margin-top:.8rem">
+        <h3>Voltage Divider</h3>
+        <div class="formula">Vout = Vin × R2 / (R1 + R2)</div>
+        <p style="margin-top:.4rem">Used to produce a lower reference voltage from a higher supply. Vout is measured at the junction of R1 and R2.</p>
+      </div>
+    </div>
+    <div class="calc-card">
+      <h3>RC Time Constant</h3>
+      <div class="field-row"><label>Resistance (Ω)</label><input id="rc-r" type="number" placeholder="ohms" step="any"></div>
+      <div class="field-row"><label>Capacitance (F)</label><input id="rc-c" type="number" placeholder="farads (e.g. 1e-6)" step="any"></div>
+      <button class="btn" id="rc-calc" style="margin-top:.5rem">Calculate</button>
+      <div class="result-box" id="rc-result" style="display:none"></div>
+      <div class="info-box" style="margin-top:.8rem">
+        <h3>RC Circuit</h3>
+        <div class="formula">τ = R × C</div><br>
+        <div class="formula">V(t) = V₀ × (1 − e^(−t/τ))</div>
+        <p style="margin-top:.4rem">After 1τ the capacitor reaches ≈63.2% of Vin. Fully charged after ≈5τ.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REFERENCE TAB -->
+<div id="tab-reference" class="tab-panel">
+  <h2>Component Reference</h2>
+  <div class="ref-grid">
+    <div class="ref-card">
+      <h3>Resistor</h3>
+      <svg width="120" height="40" viewBox="0 0 120 40"><line x1="0" y1="20" x2="20" y2="20" stroke="#22d3ee" stroke-width="2"/><rect x="20" y="8" width="80" height="24" rx="3" fill="none" stroke="#22d3ee" stroke-width="2"/><line x1="100" y1="20" x2="120" y2="20" stroke="#22d3ee" stroke-width="2"/><text x="60" y="25" text-anchor="middle" font-size="13" fill="#22d3ee">R</text></svg>
+      <p>Opposes current flow. Unit: Ohms (Ω). V = IR. Dissipates energy as heat. Colour bands encode resistance: 4-band (2 digits + multiplier + tolerance) or 5-band for precision.</p>
+    </div>
+    <div class="ref-card">
+      <h3>Capacitor</h3>
+      <svg width="120" height="40" viewBox="0 0 120 40"><line x1="0" y1="20" x2="48" y2="20" stroke="#a78bfa" stroke-width="2"/><line x1="48" y1="4" x2="48" y2="36" stroke="#a78bfa" stroke-width="3"/><line x1="72" y1="4" x2="72" y2="36" stroke="#a78bfa" stroke-width="3"/><line x1="72" y1="20" x2="120" y2="20" stroke="#a78bfa" stroke-width="2"/></svg>
+      <p>Stores charge; blocks DC, passes AC. Unit: Farads (F). Q = CV. Impedance Z = 1/(jωC). Common values: pF (RF), nF (signal), μF (power supply decoupling).</p>
+    </div>
+    <div class="ref-card">
+      <h3>Inductor</h3>
+      <svg width="120" height="40" viewBox="0 0 120 40"><line x1="0" y1="20" x2="10" y2="20" stroke="#34d399" stroke-width="2"/><path d="M10,20 Q15,4 22,20 Q27,4 34,20 Q39,4 46,20 Q51,4 58,20 Q63,4 70,20 Q75,4 82,20 Q87,4 94,20 Q99,4 106,20" fill="none" stroke="#34d399" stroke-width="2"/><line x1="106" y1="20" x2="120" y2="20" stroke="#34d399" stroke-width="2"/></svg>
+      <p>Stores energy in a magnetic field; opposes changes in current. Unit: Henries (H). Impedance Z = jωL. Passes DC, blocks high-frequency AC. Used in filters and power converters.</p>
+    </div>
+    <div class="ref-card">
+      <h3>Diode</h3>
+      <svg width="120" height="40" viewBox="0 0 120 40"><line x1="0" y1="20" x2="35" y2="20" stroke="#f87171" stroke-width="2"/><polygon points="35,5 35,35 80,20" fill="none" stroke="#f87171" stroke-width="2"/><line x1="80" y1="5" x2="80" y2="35" stroke="#f87171" stroke-width="2"/><line x1="80" y1="20" x2="120" y2="20" stroke="#f87171" stroke-width="2"/></svg>
+      <p>One-way valve for current. Forward voltage drop ~0.6–0.7V (Si). Reverse-biased: blocks current until breakdown voltage. Types: signal, Zener (voltage regulation), Schottky (fast, low Vf).</p>
+    </div>
+    <div class="ref-card">
+      <h3>LED (Light Emitting Diode)</h3>
+      <svg width="120" height="40" viewBox="0 0 120 40"><line x1="0" y1="20" x2="35" y2="20" stroke="#fbbf24" stroke-width="2"/><polygon points="35,5 35,35 80,20" fill="none" stroke="#fbbf24" stroke-width="2"/><line x1="80" y1="5" x2="80" y2="35" stroke="#fbbf24" stroke-width="2"/><line x1="80" y1="20" x2="120" y2="20" stroke="#fbbf24" stroke-width="2"/><line x1="85" y1="10" x2="100" y2="0" stroke="#fbbf24" stroke-width="1.5"/><line x1="93" y1="14" x2="108" y2="4" stroke="#fbbf24" stroke-width="1.5"/></svg>
+      <p>Emits light when forward biased. Vf: red ~1.8V, green ~2.1V, blue ~3.2V. Always use a current-limiting resistor: R = (Vs − Vf) / If. Typical If: 10–20mA.</p>
+    </div>
+    <div class="ref-card">
+      <h3>NPN Transistor (BJT)</h3>
+      <svg width="80" height="80" viewBox="0 0 80 80"><line x1="30" y1="15" x2="30" y2="65" stroke="#fb923c" stroke-width="2"/><line x1="0" y1="40" x2="30" y2="40" stroke="#fb923c" stroke-width="2"/><line x1="30" y1="25" x2="70" y2="5" stroke="#fb923c" stroke-width="2"/><line x1="30" y1="55" x2="70" y2="75" stroke="#fb923c" stroke-width="2"/><polygon points="58,69 70,75 64,62" fill="#fb923c"/><text x="0" y="38" font-size="9" fill="#94a3b8">B</text><text x="68" y="10" font-size="9" fill="#94a3b8">C</text><text x="68" y="78" font-size="9" fill="#94a3b8">E</text></svg>
+      <p>Current amplifier / switch. Ic = β × Ib. Three regions: cutoff (off), saturation (on), active (amplifier). β (hFE) typically 50–300. Base-Emitter junction ~0.6–0.7V when active.</p>
+    </div>
+    <div class="ref-card">
+      <h3>AND Gate</h3>
+      <svg width="120" height="60" viewBox="0 0 120 60"><line x1="0" y1="20" x2="25" y2="20" stroke="#818cf8" stroke-width="2"/><line x1="0" y1="40" x2="25" y2="40" stroke="#818cf8" stroke-width="2"/><line x1="90" y1="30" x2="120" y2="30" stroke="#818cf8" stroke-width="2"/><path d="M25,10 L25,50 L55,50 Q90,50 90,30 Q90,10 55,10 Z" fill="none" stroke="#818cf8" stroke-width="2"/><text x="48" y="34" text-anchor="middle" font-size="11" fill="#818cf8">AND</text></svg>
+      <p>Output is HIGH only when ALL inputs are HIGH. Boolean: Y = A · B. NAND is universal: any logic can be built from NAND gates alone. Used in masking, enable circuits.</p>
+    </div>
+    <div class="ref-card">
+      <h3>OR Gate</h3>
+      <svg width="120" height="60" viewBox="0 0 120 60"><line x1="0" y1="20" x2="25" y2="20" stroke="#818cf8" stroke-width="2"/><line x1="0" y1="40" x2="25" y2="40" stroke="#818cf8" stroke-width="2"/><line x1="90" y1="30" x2="120" y2="30" stroke="#818cf8" stroke-width="2"/><path d="M25,10 Q32,30 25,50 L55,50 Q92,50 90,30 Q92,10 55,10 Z" fill="none" stroke="#818cf8" stroke-width="2"/><text x="55" y="34" text-anchor="middle" font-size="11" fill="#818cf8">OR</text></svg>
+      <p>Output is HIGH when ANY input is HIGH. Boolean: Y = A + B. NOR is also universal. Used in flag detection, priority circuits, alarm systems.</p>
+    </div>
+    <div class="ref-card">
+      <h3>NOT Gate (Inverter)</h3>
+      <svg width="100" height="60" viewBox="0 0 100 60"><line x1="0" y1="30" x2="15" y2="30" stroke="#818cf8" stroke-width="2"/><polygon points="15,10 15,50 65,30" fill="none" stroke="#818cf8" stroke-width="2"/><circle cx="70" cy="30" r="6" fill="none" stroke="#818cf8" stroke-width="2"/><line x1="76" y1="30" x2="100" y2="30" stroke="#818cf8" stroke-width="2"/></svg>
+      <p>Inverts the input. Y = Ā. If input is 0, output is 1 and vice versa. The bubble symbol on any gate means inversion at that pin. CMOS inverter is the simplest logic circuit.</p>
+    </div>
+    <div class="ref-card">
+      <h3>XOR Gate</h3>
+      <svg width="120" height="60" viewBox="0 0 120 60"><line x1="0" y1="20" x2="28" y2="20" stroke="#818cf8" stroke-width="2"/><line x1="0" y1="40" x2="28" y2="40" stroke="#818cf8" stroke-width="2"/><line x1="92" y1="30" x2="120" y2="30" stroke="#818cf8" stroke-width="2"/><path d="M18,10 Q26,30 18,50" fill="none" stroke="#818cf8" stroke-width="2"/><path d="M28,10 Q35,30 28,50 L58,50 Q94,50 92,30 Q94,10 58,10 Z" fill="none" stroke="#818cf8" stroke-width="2"/><text x="56" y="34" text-anchor="middle" font-size="11" fill="#818cf8">XOR</text></svg>
+      <p>Output is HIGH when inputs DIFFER (odd number of HIGH inputs). Boolean: Y = A ⊕ B. Key component in adders and error-checking circuits. Y=0 when A=B (comparator use).</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'builder') setTimeout(resizeCanvas, 10);
+  });
+});
+
+// ============================================================
+// CIRCUIT BUILDER
+// ============================================================
+const canvas = document.getElementById('circuit-canvas');
+const ctx = canvas.getContext('2d');
+const infoText = document.getElementById('info-text');
+
+const GRID = 20;
+let tool = 'select';
+let components = [];
+let wires = [];
+let selectedComp = null;
+let dragging = null;
+let dragOffset = {x:0,y:0};
+let wireStart = null; // {comp, pin}
+let mousePos = {x:0,y:0};
+let nextId = 1;
+
+const COLORS = {
+  battery:'#f59e0b', vsource:'#f59e0b',
+  resistor:'#22d3ee', capacitor:'#a78bfa', inductor:'#34d399',
+  diode:'#f87171', led:'#fbbf24', npn:'#fb923c',
+  and:'#818cf8', or:'#818cf8', not:'#818cf8', xor:'#818cf8',
+  ground:'#94a3b8', switch:'#94a3b8', bulb:'#fcd34d',
+};
+
+const COMP_DEFS = {
+  resistor:  {w:60,h:24,pins:[{x:-30,y:0,name:'+'},{x:30,y:0,name:'-'}]},
+  capacitor: {w:40,h:32,pins:[{x:-20,y:0,name:'+'},{x:20,y:0,name:'-'}]},
+  inductor:  {w:70,h:24,pins:[{x:-35,y:0,name:'+'},{x:35,y:0,name:'-'}]},
+  battery:   {w:56,h:32,pins:[{x:-28,y:0,name:'+'},{x:28,y:0,name:'-'}]},
+  vsource:   {w:40,h:40,pins:[{x:0,y:-20,name:'+'},{x:0,y:20,name:'-'}]},
+  diode:     {w:60,h:28,pins:[{x:-30,y:0,name:'A'},{x:30,y:0,name:'K'}]},
+  led:       {w:60,h:28,pins:[{x:-30,y:0,name:'A'},{x:30,y:0,name:'K'}]},
+  npn:       {w:44,h:48,pins:[{x:-22,y:0,name:'B'},{x:22,y:-20,name:'C'},{x:22,y:20,name:'E'}]},
+  and:       {w:60,h:40,pins:[{x:-30,y:-12,name:'A'},{x:-30,y:12,name:'B'},{x:30,y:0,name:'Y'}]},
+  or:        {w:60,h:40,pins:[{x:-30,y:-12,name:'A'},{x:-30,y:12,name:'B'},{x:30,y:0,name:'Y'}]},
+  not:       {w:50,h:36,pins:[{x:-25,y:0,name:'A'},{x:25,y:0,name:'Y'}]},
+  xor:       {w:64,h:40,pins:[{x:-32,y:-12,name:'A'},{x:-32,y:12,name:'B'},{x:32,y:0,name:'Y'}]},
+  ground:    {w:24,h:28,pins:[{x:0,y:-14,name:'G'}]},
+  switch:    {w:56,h:24,pins:[{x:-28,y:0,name:'1'},{x:28,y:0,name:'2'}]},
+  bulb:      {w:32,h:40,pins:[{x:0,y:-20,name:'+'},{x:0,y:20,name:'-'}]},
+};
+
+function snap(v){ return Math.round(v/GRID)*GRID; }
+
+function resizeCanvas(){
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  render();
+}
+
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.04)';
+  ctx.lineWidth=1;
+  for(let x=0;x<canvas.width;x+=GRID){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
+  }
+  for(let y=0;y<canvas.height;y+=GRID){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+  }
+  // Wires
+  wires.forEach(w=>{
+    ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(w.x1,w.y1);ctx.lineTo(w.x2,w.y2);ctx.stroke();
+    ctx.fillStyle='#22d3ee';
+    ctx.beginPath();ctx.arc(w.x1,w.y1,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(w.x2,w.y2,3,0,Math.PI*2);ctx.fill();
+  });
+  // In-progress wire
+  if(tool==='wire' && wireStart){
+    ctx.strokeStyle='rgba(34,211,238,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(wireStart.x,wireStart.y);ctx.lineTo(mousePos.x,mousePos.y);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Components
+  components.forEach(c=>{
+    drawComp(c, c===selectedComp);
+  });
+}
+
+function pinWorld(c, pin){
+  return {x: c.x + pin.x, y: c.y + pin.y};
+}
+
+function drawComp(c, selected){
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  const col = COLORS[c.type] || '#94a3b8';
+  if(selected){
+    ctx.shadowColor=col;ctx.shadowBlur=12;
+  }
+  ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=2;
+  drawShape(c.type, col);
+  // Pin dots
+  const def = COMP_DEFS[c.type];
+  if(def){
+    def.pins.forEach(p=>{
+      ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();
+    });
+  }
+  // Label
+  ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='10px Courier New';ctx.textAlign='center';
+  ctx.fillText(c.label||c.type, 0, (def?def.h/2:20)+14);
+  ctx.restore();
+}
+
+function drawShape(type, col){
+  ctx.strokeStyle=col;ctx.fillStyle=col;
+  switch(type){
+    case 'resistor':
+      ctx.beginPath();ctx.moveTo(-30,0);ctx.lineTo(-22,0);ctx.stroke();
+      ctx.strokeRect(-22,-10,44,20);
+      ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(30,0);ctx.stroke();
+      break;
+    case 'capacitor':
+      ctx.beginPath();ctx.moveTo(-20,0);ctx.lineTo(-6,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-6,-14);ctx.lineTo(-6,14);ctx.lineWidth=3;ctx.stroke();
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(6,-14);ctx.lineTo(6,14);ctx.lineWidth=3;ctx.stroke();
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(20,0);ctx.stroke();
+      break;
+    case 'inductor':
+      ctx.beginPath();ctx.moveTo(-35,0);ctx.lineTo(-28,0);ctx.stroke();
+      ctx.beginPath();
+      for(let i=0;i<6;i++){
+        let sx=-28+i*11, ex=-28+(i+1)*11, mx=sx+5.5, my=-10;
+        ctx.moveTo(sx,0);ctx.quadraticCurveTo(mx,my,ex,0);
+      }
+      ctx.stroke();
+      ctx.beginPath();ctx.moveTo(38,0);ctx.lineTo(35,0);ctx.stroke();
+      break;
+    case 'battery':
+      ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(-16,0);ctx.stroke();
+      [-16,-10,-4].forEach((x,i)=>{
+        const tall = i%2===0;
+        ctx.lineWidth=tall?2.5:1.5;
+        ctx.beginPath();ctx.moveTo(x,tall?-12:-8);ctx.lineTo(x,tall?12:8);ctx.stroke();
+      });
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(28,0);ctx.stroke();
+      // +/-
+      ctx.font='10px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';
+      ctx.fillText('+', -24, -14); ctx.fillText('−', 24, -14);
+      break;
+    case 'vsource':
+      ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(0,-18);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,20);ctx.stroke();
+      ctx.font='11px Courier New';ctx.textAlign='center';ctx.fillText('V',0,4);
+      ctx.font='9px sans-serif';ctx.fillText('+',0,-9);ctx.fillText('−',0,14);
+      break;
+    case 'diode':
+    case 'led':
+      ctx.beginPath();ctx.moveTo(-30,0);ctx.lineTo(-15,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-15,-12);ctx.lineTo(-15,12);ctx.lineTo(15,0);ctx.closePath();ctx.stroke();
+      ctx.beginPath();ctx.moveTo(15,-12);ctx.lineTo(15,12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(15,0);ctx.lineTo(30,0);ctx.stroke();
+      if(type==='led'){
+        ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(18,-8);ctx.lineTo(26,-18);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(23,-4);ctx.lineTo(31,-14);ctx.stroke();
+      }
+      break;
+    case 'npn':
+      ctx.beginPath();ctx.moveTo(-6,-22);ctx.lineTo(-6,22);ctx.lineWidth=3;ctx.stroke();ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(-22,0);ctx.lineTo(-6,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-6,-10);ctx.lineTo(22,-24);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-6,10);ctx.lineTo(22,24);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(14,21);ctx.lineTo(22,24);ctx.lineTo(19,16);ctx.closePath();ctx.fill();
+      break;
+    case 'and':
+      ctx.beginPath();ctx.moveTo(-30,-12);ctx.lineTo(-28,-12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-30,12);ctx.lineTo(-28,12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(28,0);ctx.lineTo(30,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-28,-18);ctx.lineTo(-28,18);ctx.lineTo(4,18);ctx.quadraticCurveTo(28,18,28,0);ctx.quadraticCurveTo(28,-18,4,-18);ctx.lineTo(-28,-18);ctx.stroke();
+      ctx.font='9px Courier New';ctx.textAlign='center';ctx.fillText('&',0,4);
+      break;
+    case 'or':
+      ctx.beginPath();ctx.moveTo(-30,-12);ctx.lineTo(-28,-12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-30,12);ctx.lineTo(-28,12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(28,0);ctx.lineTo(30,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-28,-18);ctx.quadraticCurveTo(-18,0,-28,18);ctx.lineTo(4,18);ctx.quadraticCurveTo(30,18,28,0);ctx.quadraticCurveTo(30,-18,4,-18);ctx.closePath();ctx.stroke();
+      ctx.font='9px Courier New';ctx.textAlign='center';ctx.fillText('≥1',0,4);
+      break;
+    case 'not':
+      ctx.beginPath();ctx.moveTo(-25,0);ctx.lineTo(-18,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-18,-14);ctx.lineTo(-18,14);ctx.lineTo(14,0);ctx.closePath();ctx.stroke();
+      ctx.beginPath();ctx.arc(18,0,4,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(25,0);ctx.stroke();
+      break;
+    case 'xor':
+      ctx.beginPath();ctx.moveTo(-32,-12);ctx.lineTo(-28,-12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-32,12);ctx.lineTo(-28,12);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(30,0);ctx.lineTo(32,0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-34,-18);ctx.quadraticCurveTo(-24,0,-34,18);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-28,-18);ctx.quadraticCurveTo(-18,0,-28,18);ctx.lineTo(4,18);ctx.quadraticCurveTo(32,18,30,0);ctx.quadraticCurveTo(32,-18,4,-18);ctx.closePath();ctx.stroke();
+      ctx.font='9px Courier New';ctx.textAlign='center';ctx.fillText('=1',0,4);
+      break;
+    case 'ground':
+      ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(0,-2);ctx.stroke();
+      ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-12,-2);ctx.lineTo(12,-2);ctx.stroke();
+      ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-8,4);ctx.lineTo(8,4);ctx.stroke();
+      ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-4,10);ctx.lineTo(4,10);ctx.stroke();
+      break;
+    case 'switch':
+      ctx.beginPath();ctx.moveTo(-28,0);ctx.lineTo(-14,0);ctx.stroke();
+      ctx.beginPath();ctx.arc(-14,0,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(-14,0);ctx.lineTo(14,-10);ctx.stroke();
+      ctx.beginPath();ctx.arc(14,0,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(28,0);ctx.stroke();
+      break;
+    case 'bulb':
+      ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(0,-14);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.stroke();
+      ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-6,-6);ctx.lineTo(6,6);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(6,-6);ctx.lineTo(-6,6);ctx.stroke();
+      ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,14);ctx.lineTo(0,20);ctx.stroke();
+      break;
+  }
+}
+
+// Palette drag
+document.querySelectorAll('.pal-item').forEach(item=>{
+  item.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('type', item.dataset.type);
+  });
+});
+canvas.addEventListener('dragover', e=>{ e.preventDefault(); });
+canvas.addEventListener('drop', e=>{
+  e.preventDefault();
+  const type = e.dataTransfer.getData('type');
+  if(!type) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = snap(e.clientX - rect.left);
+  const y = snap(e.clientY - rect.top);
+  addComp(type, x, y);
+});
+
+function addComp(type, x, y){
+  components.push({id:nextId++, type, x, y, label:type, props:{}});
+  render();
+}
+
+// Mouse events
+function getCanvasMouse(e){
+  const r = canvas.getBoundingClientRect();
+  return {x:e.clientX-r.left, y:e.clientY-r.top};
+}
+
+function hitComp(mx, my){
+  for(let i=components.length-1;i>=0;i--){
+    const c = components[i];
+    const def = COMP_DEFS[c.type];
+    if(!def) continue;
+    const hw = def.w/2+6, hh = def.h/2+6;
+    if(mx>=c.x-hw && mx<=c.x+hw && my>=c.y-hh && my<=c.y+hh) return c;
+  }
+  return null;
+}
+
+function hitPin(mx, my){
+  for(const c of components){
+    const def = COMP_DEFS[c.type];
+    if(!def) continue;
+    for(const p of def.pins){
+      const px=c.x+p.x, py=c.y+p.y;
+      if(Math.hypot(mx-px,my-py)<8) return {comp:c,pin:p,x:px,y:py};
+    }
+  }
+  return null;
+}
+
+canvas.addEventListener('mousemove', e=>{
+  const m = getCanvasMouse(e);
+  mousePos = {x:snap(m.x),y:snap(m.y)};
+  if(dragging){
+    dragging.x = snap(m.x - dragOffset.x);
+    dragging.y = snap(m.y - dragOffset.y);
+    render();
+    return;
+  }
+  if(tool==='wire' && wireStart) render();
+});
+
+canvas.addEventListener('mousedown', e=>{
+  const m = getCanvasMouse(e);
+  if(tool==='select'){
+    const c = hitComp(m.x, m.y);
+    selectedComp = c;
+    if(c){ dragging=c; dragOffset={x:m.x-c.x, y:m.y-c.y}; showCompInfo(c); }
+    else { infoText.innerHTML='Click a component to inspect it. Drag to move. Use Wire mode to connect.'; }
+    render();
+  } else if(tool==='wire'){
+    const pin = hitPin(m.x, m.y);
+    if(!wireStart){
+      if(pin){ wireStart={...pin}; infoText.innerHTML=`Wire started at ${pin.comp.type} pin ${pin.pin.name}. Click another pin to connect.`; }
+    } else {
+      if(pin && !(pin.comp===wireStart.comp)){
+        wires.push({x1:wireStart.x,y1:wireStart.y,x2:pin.x,y2:pin.y});
+        infoText.innerHTML=`Wire connected: ${wireStart.comp.type}[${wireStart.pin.name}] → ${pin.comp.type}[${pin.pin.name}]`;
+      } else {
+        // free wire to snapped position
+        wires.push({x1:wireStart.x,y1:wireStart.y,x2:snap(m.x),y2:snap(m.y)});
+      }
+      wireStart=null;
+      render();
+    }
+  } else if(tool==='delete'){
+    const c = hitComp(m.x, m.y);
+    if(c){
+      components=components.filter(x=>x!==c);
+      wires=wires.filter(w=>!(hitPinOfComp(w.x1,w.y1,c)||hitPinOfComp(w.x2,w.y2,c)));
+      if(selectedComp===c) selectedComp=null;
+      render();
+    }
+  }
+});
+
+function hitPinOfComp(wx,wy,c){
+  const def=COMP_DEFS[c.type];
+  if(!def) return false;
+  return def.pins.some(p=>Math.hypot(wx-(c.x+p.x),wy-(c.y+p.y))<4);
+}
+
+canvas.addEventListener('mouseup', ()=>{ dragging=null; });
+
+function showCompInfo(c){
+  const defs = {
+    resistor:'Resistor — opposes current (Ohms). V=IR.',
+    capacitor:'Capacitor — stores charge (Farads). Blocks DC.',
+    inductor:'Inductor — stores magnetic energy (Henries). Blocks AC.',
+    battery:'Battery — DC voltage source with internal cells.',
+    vsource:'Voltage Source — ideal constant voltage supply.',
+    diode:'Diode — one-way current; Vf≈0.7V (Si).',
+    led:'LED — emits light when forward biased. Needs current-limiting resistor.',
+    npn:'NPN BJT — current-controlled switch/amplifier. Ic=β×Ib.',
+    and:'AND Gate — output HIGH only when ALL inputs HIGH.',
+    or:'OR Gate — output HIGH when ANY input HIGH.',
+    not:'NOT Gate / Inverter — Y = NOT A.',
+    xor:'XOR Gate — HIGH when inputs differ.',
+    ground:'Ground — reference potential (0V).',
+    switch:'Switch — opens/closes the circuit path.',
+    bulb:'Bulb (lamp) — converts current to light.',
+  };
+  infoText.innerHTML = `<b>${c.type.toUpperCase()}</b> — ${defs[c.type]||''}`;
+}
+
+// Tool buttons
+document.getElementById('tool-select').addEventListener('click', ()=>{ setTool('select'); });
+document.getElementById('tool-wire').addEventListener('click', ()=>{ setTool('wire'); });
+document.getElementById('tool-delete').addEventListener('click', ()=>{ setTool('delete'); });
+function setTool(t){
+  tool=t; wireStart=null;
+  ['tool-select','tool-wire','tool-delete'].forEach(id=>{
+    document.getElementById(id).classList.remove('active-btn');
+  });
+  document.getElementById('tool-'+t).classList.add('active-btn');
+  canvas.style.cursor = t==='delete'?'not-allowed':t==='wire'?'crosshair':'default';
+}
+
+document.getElementById('btn-clear').addEventListener('click', ()=>{
+  components=[]; wires=[]; selectedComp=null; wireStart=null; render();
+  infoText.innerHTML='Canvas cleared. Drag components from the palette to start.';
+});
+
+document.getElementById('btn-example').addEventListener('click', ()=>{
+  components=[]; wires=[]; nextId=1;
+  // Simple LED circuit: Battery -- Resistor -- LED -- Ground
+  components=[
+    {id:1,type:'battery',x:100,y:200,label:'9V',props:{}},
+    {id:2,type:'resistor',x:240,y:200,label:'330Ω',props:{}},
+    {id:3,type:'led',x:380,y:200,label:'LED',props:{}},
+    {id:4,type:'ground',x:460,y:280,label:'GND',props:{}},
+  ];
+  wires=[
+    {x1:128,y1:200,x2:210,y2:200},
+    {x1:270,y1:200,x2:350,y2:200},
+    {x1:410,y1:200,x2:460,y2:200},
+    {x1:460,y1:200,x2:460,y2:266},
+    {x1:72,y1:200,x2:72,y2:300},
+    {x1:72,y1:300,x2:460,y2:300},
+    {x1:460,y1:300,x2:460,y2:294},
+  ];
+  render();
+  infoText.innerHTML='<b>Example: LED circuit</b> — Battery (9V) → 330Ω resistor → LED → Ground. Resistor limits current to ~25mA.';
+});
+
+// ============================================================
+// ANALYSIS CALCULATORS
+// ============================================================
+function fmt(n){
+  if(Math.abs(n)>=1e6) return (n/1e6).toPrecision(4)+'M';
+  if(Math.abs(n)>=1e3) return (n/1e3).toPrecision(4)+'k';
+  if(Math.abs(n)<0.001&&n!==0) return (n*1e6).toPrecision(4)+'μ';
+  return n.toPrecision(4);
+}
+
+document.getElementById('ohm-calc').addEventListener('click', ()=>{
+  const v=parseFloat(document.getElementById('ohm-v').value);
+  const i=parseFloat(document.getElementById('ohm-i').value);
+  const r=parseFloat(document.getElementById('ohm-r').value);
+  let html='';
+  const has = x=>!isNaN(x);
+  if(has(v)&&has(i)&&!has(r)) html=`<div class="result-row">Resistance <span>${fmt(v/i)} Ω</span></div><div class="result-row">Power <span>${fmt(v*i)} W</span></div>`;
+  else if(has(v)&&!has(i)&&has(r)) html=`<div class="result-row">Current <span>${fmt(v/r)} A</span></div><div class="result-row">Power <span>${fmt(v*v/r)} W</span></div>`;
+  else if(!has(v)&&has(i)&&has(r)) html=`<div class="result-row">Voltage <span>${fmt(i*r)} V</span></div><div class="result-row">Power <span>${fmt(i*i*r)} W</span></div>`;
+  else if(has(v)&&has(i)&&has(r)) html=`<div class="result-row">Power P=VI <span>${fmt(v*i)} W</span></div><div class="result-row">Check R=V/I <span>${fmt(v/i)} Ω</span></div>`;
+  else html='Enter exactly two values.';
+  const rb=document.getElementById('ohm-result');
+  rb.innerHTML=html; rb.style.display='block';
+});
+
+document.getElementById('res-series').addEventListener('click', ()=>{
+  const vals = document.getElementById('res-vals').value.split(',').map(Number).filter(x=>!isNaN(x)&&x>0);
+  if(!vals.length){document.getElementById('res-result').innerHTML='Enter comma-separated values.';document.getElementById('res-result').style.display='block';return;}
+  const total=vals.reduce((a,b)=>a+b,0);
+  const rb=document.getElementById('res-result');
+  rb.innerHTML=`<div class="result-row">Total (series) <span>${fmt(total)} Ω</span></div>`;
+  rb.style.display='block';
+});
+document.getElementById('res-parallel').addEventListener('click', ()=>{
+  const vals = document.getElementById('res-vals').value.split(',').map(Number).filter(x=>!isNaN(x)&&x>0);
+  if(!vals.length){document.getElementById('res-result').innerHTML='Enter comma-separated values.';document.getElementById('res-result').style.display='block';return;}
+  const total=1/vals.reduce((a,b)=>a+1/b,0);
+  const rb=document.getElementById('res-result');
+  rb.innerHTML=`<div class="result-row">Total (parallel) <span>${fmt(total)} Ω</span></div>`;
+  rb.style.display='block';
+});
+
+document.getElementById('vd-calc').addEventListener('click', ()=>{
+  const vin=parseFloat(document.getElementById('vd-vin').value);
+  const r1=parseFloat(document.getElementById('vd-r1').value);
+  const r2=parseFloat(document.getElementById('vd-r2').value);
+  const rb=document.getElementById('vd-result');
+  if(isNaN(vin)||isNaN(r1)||isNaN(r2)||r1+r2===0){rb.innerHTML='Enter all three values.';rb.style.display='block';return;}
+  const vout=vin*r2/(r1+r2);
+  const i=vin/(r1+r2);
+  rb.innerHTML=`<div class="result-row">Vout <span>${fmt(vout)} V</span></div><div class="result-row">Current <span>${fmt(i)} A</span></div><div class="result-row">Ratio <span>${(r2/(r1+r2)*100).toFixed(1)}%</span></div>`;
+  rb.style.display='block';
+});
+
+document.getElementById('rc-calc').addEventListener('click', ()=>{
+  const r=parseFloat(document.getElementById('rc-r').value);
+  const c=parseFloat(document.getElementById('rc-c').value);
+  const rb=document.getElementById('rc-result');
+  if(isNaN(r)||isNaN(c)){rb.innerHTML='Enter R and C values.';rb.style.display='block';return;}
+  const tau=r*c;
+  const f3db=1/(2*Math.PI*tau);
+  rb.innerHTML=`<div class="result-row">Time constant τ <span>${fmt(tau)} s</span></div><div class="result-row">63.2% at t= <span>${fmt(tau)} s</span></div><div class="result-row">Fully charged at ~5τ= <span>${fmt(5*tau)} s</span></div><div class="result-row">-3dB cutoff freq <span>${fmt(f3db)} Hz</span></div>`;
+  rb.style.display='block';
+});
+
+// Init
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

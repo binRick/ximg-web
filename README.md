@@ -117,6 +117,12 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [sleep.ximg.app](https://sleep.ximg.app) | Sleep Science — hypnogram animation, circadian rhythm curves, sleep debt calculator, EEG wave patterns |
 | [nutrition.ximg.app](https://nutrition.ximg.app) | Nutrition & Metabolism — TDEE/macro calculator, macronutrient guide, metabolism pathways, food comparison table |
 | [training.ximg.app](https://training.ximg.app) | Strength & Fitness — progressive overload chart, muscle group diagram, recovery curve, program templates |
+| [terminal.ximg.app](https://terminal.ximg.app) | Retro Terminal — interactive VAX-11/780 BSD simulation, CRT phosphor green scanlines, classic Unix commands, cowsay, fortune, banner, and boot sequence |
+| [punch.ximg.app](https://punch.ximg.app) | Punch Card — IBM 80-column Hollerith encoder/decoder, interactive Canvas card, click-to-toggle holes, FORTRAN/COBOL samples, computing history from 1890 |
+| [circuit.ximg.app](https://circuit.ximg.app) | Circuit Builder — drag-and-drop circuit canvas (resistors, caps, inductors, LEDs, logic gates), DC analysis calculators, component reference |
+| [logic.ximg.app](https://logic.ximg.app) | Logic Gates — interactive gate simulator (AND/OR/NOT/XOR/NAND/NOR/XNOR), truth tables, half & full adder, boolean expression evaluator |
+| [protocol.ximg.app](https://protocol.ximg.app) | Protocol Visualizer — animated UART, SPI, and I²C waveform diagrams with configurable baud rates, modes, and data bytes |
+| [mainframe.ximg.app](https://mainframe.ximg.app) | IBM Mainframe history — interactive timeline (701 to z16), JCL syntax explorer, batch processing lifecycle, MIPS performance table, and COBOL reference |
 
 ## Architecture
 
