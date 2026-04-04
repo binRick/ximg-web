@@ -133,7 +133,6 @@ const LOG_FILES = {
   stats:       'stats.access.log',
   ids:         'ids.access.log',
   nagios:      'nagios.access.log',
-  netdata:     'netdata.access.log',
   readme:      'readme.access.log',
   status:      'status.access.log',
   nav:         'nav.access.log',
@@ -427,7 +426,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="moto">moto</button>
           <button class="site-opt" data-site="nagios">nagios</button>
           <button class="site-opt" data-site="nav">nav</button>
-          <button class="site-opt" data-site="netdata">netdata</button>
           <button class="site-opt" data-site="nintendo">nintendo</button>
           <button class="site-opt" data-site="passwords">passwords</button>
           <button class="site-opt" data-site="physics">physics</button>
@@ -730,6 +728,12 @@ const HTML = `<!DOCTYPE html>
 // ── HTTP + WebSocket server ───────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
+
+  if (req.url === '/robots.txt') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('User-agent: *\nDisallow: /\n');
+    return;
+  }
 
   if (req.url === '/ssh-sessions') {
     try {
