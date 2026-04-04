@@ -183,6 +183,7 @@ DOMAINS=(
   physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
   dns.ximg.app suricata.ximg.app crypto.ximg.app
   readme.ximg.app
+  claudemd.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

@@ -86,6 +86,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [dns.ximg.app](https://dns.ximg.app) | Domain Name System reference — record types, resolution flow, dig/nslookup commands, DNSSEC chain of trust, DoH/DoT |
 | [suricata.ximg.app](https://suricata.ximg.app) | Suricata IDS/IPS reference — rule syntax, sticky buffers, protocol parsers, EVE JSON output, JA3 fingerprinting, CLI commands |
 | [readme.ximg.app](https://readme.ximg.app) | The ximg-web project README rendered as a styled web page — architecture overview, subdomain directory, and stack docs |
+| [claudemd.ximg.app](https://claudemd.ximg.app) | The ximg-web CLAUDE.md rendered as a styled web page — AI assistant instructions, architecture notes, and project conventions |
 
 ## Architecture
 
