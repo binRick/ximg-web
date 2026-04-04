@@ -25,6 +25,27 @@ COPY check_suricata.sh /opt/nagios/libexec/check_suricata.sh
 RUN chmod +x /opt/nagios/libexec/check_docker.py \
              /opt/nagios/libexec/check_suricata.sh
 
+# Hide Nagios branding (version string, homepage link, "Logged in as ?", notifications disabled)
+RUN cat >> /opt/nagios/share/stylesheets/common.css <<'EOF'
+
+/* ximg.app: hide branding */
+a.homepageURL, .infoBoxBadProcStatus { display: none !important; }
+EOF
+
+RUN cat >> /opt/nagios/share/js/nag_funcs.js <<'EOF'
+
+// ximg.app: remove version/login/notifications text nodes from infoBox
+$(document).ready(function(){
+    var t=$('td.infoBox');
+    t.contents().filter(function(){
+        return this.nodeType===3&&/^(Nagios|Logged in)/.test(this.nodeValue.trim());
+    }).remove();
+    t.find('a.homepageURL,i').remove();
+    $('.infoBoxBadProcStatus').remove();
+    t.find('br').slice(2).remove();
+});
+EOF
+
 # Add ximg.app host and service monitoring definitions.
 # Copy to both the live path and /orig/etc (startup fallback) so they survive
 # volume re-initialization on fresh deploys.
