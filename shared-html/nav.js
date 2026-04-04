@@ -27,7 +27,7 @@
 
   var s = document.createElement('style');
   s.textContent =
-    'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;' +
+    'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
     'gap:.35rem;padding:.4rem .75rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
     'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;}' +
 
