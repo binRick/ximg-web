@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Punch Card — punch.ximg.app</title>
+  <meta name="description" content="IBM punch card encoder and decoder — Hollerith encoding, visual 80-column card, FORTRAN/COBOL examples, computing history">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d14;
+      --surface: #13131f;
+      --surface2: #1a1a2e;
+      --border: rgba(255,255,255,.08);
+      --accent: #e8b84b;
+      --accent2: #c0a46a;
+      --text: #f0ece0;
+      --muted: #8a8070;
+      --card-bg: #f5f0e0;
+      --card-stripe: #e8e2cc;
+      --hole: #1a1a2e;
+      --hole-punched: #0a0a12;
+      --green: #00e676;
+      --red: #ff5252;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 5rem;
+      flex: 1;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: .85rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 1.2rem;
+      align-items: flex-end;
+    }
+
+    .input-group {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    label {
+      display: block;
+      font-size: .75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .4rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      font-size: 1rem;
+      padding: .6rem .8rem;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+
+    button {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      padding: .55rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      transition: background .15s, border-color .15s;
+    }
+    button:hover {
+      background: rgba(232,184,75,.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    button.primary {
+      background: var(--accent);
+      color: #0d0d14;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    button.primary:hover {
+      background: #f0c96a;
+      border-color: #f0c96a;
+    }
+    button.danger {
+      border-color: rgba(255,82,82,.3);
+    }
+    button.danger:hover {
+      background: rgba(255,82,82,.15);
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .samples-label {
+      font-size: .75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .4rem;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: .6rem;
+      padding: .4rem .6rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .status-bar .decoded-char {
+      color: var(--accent);
+      font-size: .95rem;
+      font-weight: 700;
+    }
+    .status-bar .punch-list {
+      color: var(--green);
+    }
+
+    /* ── Card Wrapper ── */
+    .card-wrapper {
+      overflow-x: auto;
+      padding-bottom: .5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    canvas#punchCard {
+      display: block;
+      cursor: crosshair;
+      border-radius: 4px;
+      /* shadow for depth */
+      box-shadow: 0 8px 32px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.5);
+    }
+
+    /* ── Decoded output ── */
+    .decoded-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .decoded-section h3 {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+    .decoded-text {
+      font-size: 1.3rem;
+      color: var(--green);
+      min-height: 2rem;
+      letter-spacing: .05em;
+      word-break: break-all;
+    }
+
+    /* ── Info sections ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .info-card h2 {
+      font-size: 1rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 1rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .info-card p {
+      font-size: .85rem;
+      line-height: 1.7;
+      color: #c8c0b0;
+      margin-bottom: .8rem;
+    }
+    .info-card p:last-child { margin-bottom: 0; }
+
+    /* ── Encoding table ── */
+    .enc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+    }
+    .enc-table th {
+      text-align: left;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: .7rem;
+      padding: .3rem .5rem .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .enc-table td {
+      padding: .25rem .5rem;
+      border-bottom: 1px solid rgba(255,255,255,.03);
+      color: #c8c0b0;
+    }
+    .enc-table tr:hover td {
+      background: rgba(232,184,75,.05);
+    }
+    .enc-table td:first-child {
+      color: var(--accent);
+      font-weight: 700;
+      width: 40px;
+    }
+    .enc-table td:nth-child(2) {
+      color: var(--green);
+      font-family: 'Courier New', monospace;
+      letter-spacing: .05em;
+    }
+
+    .zone-badge {
+      display: inline-block;
+      padding: .1rem .4rem;
+      border-radius: 3px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .zone-12 { background: rgba(232,75,75,.2); color: #ff8a80; }
+    .zone-11 { background: rgba(75,175,232,.2); color: #80d8ff; }
+    .zone-0  { background: rgba(75,232,150,.2); color: #80ffb0; }
+    .zone-d  { background: rgba(232,184,75,.2); color: var(--accent); }
+
+    /* ── History section ── */
+    .history-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .history-section h2 {
+      font-size: 1rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 1.2rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .timeline {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: .5rem 1rem;
+      font-size: .82rem;
+    }
+    .tl-year {
+      color: var(--accent);
+      font-weight: 700;
+      text-align: right;
+      padding-top: .15rem;
+    }
+    .tl-event {
+      color: #c8c0b0;
+      line-height: 1.6;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: .4rem .7rem;
+      font-size: .75rem;
+      color: var(--text);
+      pointer-events: none;
+      display: none;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <h1>Punch Card</h1>
+  <p class="subtitle">IBM 80-column Hollerith encoder &amp; decoder — interactive visual card · punch.ximg.app</p>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="input-group">
+      <label for="textInput">Text to encode (up to 80 characters)</label>
+      <input type="text" id="textInput" maxlength="80" value="HELLO WORLD" spellcheck="false" autocomplete="off">
+    </div>
+    <div>
+      <div class="btn-row">
+        <button class="primary" onclick="encodeText()">Encode</button>
+        <button onclick="decodeCard()">Decode Holes</button>
+        <button class="danger" onclick="clearCard()">Clear Card</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sample cards -->
+  <div style="margin-bottom:1.2rem;">
+    <div class="samples-label">Sample Programs</div>
+    <div class="btn-row">
+      <button onclick="loadSample('HELLO WORLD')">HELLO WORLD</button>
+      <button onclick="loadSample('DO 10 I=1,10')">DO 10 I=1,10</button>
+      <button onclick="loadSample('MOVE SPACES TO WS-NAME')">MOVE SPACES TO WS-NAME</button>
+      <button onclick="loadSample('PROGRAM HELLO')">PROGRAM HELLO</button>
+      <button onclick="loadSample('DATA DIVISION')">DATA DIVISION</button>
+      <button onclick="loadSample('GOTO 100')">GOTO 100</button>
+      <button onclick="loadSample('READ INPUT TAPE 5')">READ INPUT TAPE 5</button>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar" id="statusBar">
+    <span>Hover over a column to see its encoding &mdash; click holes to toggle punches manually</span>
+    <span></span>
+  </div>
+
+  <!-- Canvas -->
+  <div class="card-wrapper">
+    <canvas id="punchCard"></canvas>
+  </div>
+
+  <!-- Decoded output -->
+  <div class="decoded-section">
+    <h3>Decoded text (from hole pattern)</h3>
+    <div class="decoded-text" id="decodedText">&nbsp;</div>
+  </div>
+
+  <!-- Info grid: encoding guide + reference -->
+  <div class="info-grid">
+    <div class="info-card">
+      <h2>How to Read a Punch Card</h2>
+      <p>An IBM 80-column punch card has <strong>80 columns</strong> (left to right) and <strong>12 rows</strong>. Columns are numbered 1–80; rows are numbered from top: <strong>12, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9</strong>. Each column encodes one character.</p>
+      <p>The top three rows (12, 11, 0) are called <strong>zone rows</strong>. The bottom nine rows (1–9) are called <strong>digit rows</strong>. Characters are encoded by punching specific combinations:</p>
+      <table class="enc-table">
+        <thead>
+          <tr><th>Char</th><th>Punches</th><th>Zone</th></tr>
+        </thead>
+        <tbody id="encTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="info-card">
+      <h2>Hollerith Encoding Zones</h2>
+      <p>Herman Hollerith's original code was extended by IBM into a 12-row system. The scheme uses three zones:</p>
+      <p>
+        <span class="zone-badge zone-12">Row 12</span> &nbsp;Letters A–I (12 + digit 1–9)<br><br>
+        <span class="zone-badge zone-11">Row 11</span> &nbsp;Letters J–R (11 + digit 1–9)<br><br>
+        <span class="zone-badge zone-0">Row 0</span> &nbsp;Letters S–Z (0 + digit 2–9)<br><br>
+        <span class="zone-badge zone-d">No zone</span> Digits 0–9 (single punch in that row)
+      </p>
+      <p style="margin-top:1rem;">A <strong>space</strong> character has no punches at all — an entirely unpunched column. The card reader distinguished characters by which rows were punched as each column passed the read station's wire brushes.</p>
+      <p>This app uses a simplified Hollerith/EBCDIC-compatible subset covering A–Z, 0–9, and space — the core characters of 1960s FORTRAN and COBOL programs.</p>
+    </div>
+  </div>
+
+  <!-- History section -->
+  <div class="history-section">
+    <h2>A Brief History of Punch Cards in Computing</h2>
+    <div class="timeline">
+      <div class="tl-year">1801</div>
+      <div class="tl-event">Joseph-Marie Jacquard patents a loom controlled by punched cards strung together — the first programmable machine. Holes in the cards determine the weaving pattern, an idea that would echo through computing history.</div>
+
+      <div class="tl-year">1890</div>
+      <div class="tl-event">Herman Hollerith wins the U.S. Census Bureau contract and uses his tabulating machine — powered by 45-column punch cards — to process the 1890 census in under a year. It would have taken 13 years by hand. Hollerith's company later becomes IBM.</div>
+
+      <div class="tl-year">1928</div>
+      <div class="tl-event">IBM introduces the 80-column card, 7⅜" × 3¼", with rectangular holes — the format that dominates computing for the next four decades. The physical dimensions were chosen to fit inside a standard dollar-bill envelope.</div>
+
+      <div class="tl-year">1950s</div>
+      <div class="tl-event">UNIVAC, IBM 701, and the first commercial computers run almost entirely on punch card input. FORTRAN (1957) was designed around batch-processing decks of cards. Programmers submit jobs by walking a deck of cards to a computer operator and waiting hours for output.</div>
+
+      <div class="tl-year">1960s</div>
+      <div class="tl-event">COBOL becomes the dominant business language; programs arrive as carefully organized card decks. Developers keep rubber bands around their decks — dropping a deck out of order is catastrophic. A common sign in computing centers: "Do not spindle, fold, or mutilate."</div>
+
+      <div class="tl-year">1964</div>
+      <div class="tl-event">IBM System/360 launches, cementing 80-column cards as the universal standard. EBCDIC encoding replaces older schemes. The 80-character terminal line width — still the default for many terminals today — is a direct legacy of the punch card column count.</div>
+
+      <div class="tl-year">1970s</div>
+      <div class="tl-event">Timesharing systems and video display terminals begin displacing punch cards. Card readers still process billions of cards per year, but interactive computing is replacing the batch job. Some universities process payroll on cards until the early 1980s.</div>
+
+      <div class="tl-year">1980s</div>
+      <div class="tl-event">Punch cards become obsolete as personal computers proliferate. The last IBM card punch machines are retired. Hollerith's 90-year-old physical medium finally yields entirely to magnetic storage — though its ghost persists in the 80-column default of every terminal emulator ever built.</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Hollerith encoding table ─────────────────────────────────────────────
+  // Maps character → array of row indices punched (rows: 12,11,0,1,2,3,4,5,6,7,8,9)
+  // Row index 0 = row 12 (top), 1 = row 11, 2 = row 0, 3 = row 1 ... 11 = row 9
+  const ROWS = ['12','11','0','1','2','3','4','5','6','7','8','9'];
+
+  function rowLabel(idx) { return ROWS[idx]; }
+
+  // Build encode map
+  const ENCODE = {};
+
+  // Digits 0–9: single punch
+  ENCODE['0'] = [2];   // row 0
+  for (let d = 1; d <= 9; d++) {
+    ENCODE[String(d)] = [2 + d]; // rows 1–9 → indices 3–11
+  }
+
+  // A–I: zone 12 (idx 0) + 1–9 (indices 3–11)
+  const aCode = 'A'.charCodeAt(0);
+  for (let i = 0; i < 9; i++) {
+    ENCODE[String.fromCharCode(aCode + i)] = [0, 3 + i];
+  }
+
+  // J–R: zone 11 (idx 1) + 1–9
+  for (let i = 0; i < 9; i++) {
+    ENCODE[String.fromCharCode('J'.charCodeAt(0) + i)] = [1, 3 + i];
+  }
+
+  // S–Z: zone 0 (idx 2) + 2–9
+  for (let i = 0; i < 8; i++) {
+    ENCODE[String.fromCharCode('S'.charCodeAt(0) + i)] = [2, 4 + i];
+  }
+
+  // Space = no punches
+  ENCODE[' '] = [];
+
+  // Build reverse decode map
+  function punchKey(punches) {
+    return punches.slice().sort((a,b)=>a-b).join(',');
+  }
+  const DECODE = {};
+  for (const ch in ENCODE) {
+    const k = punchKey(ENCODE[ch]);
+    DECODE[k] = ch;
+  }
+
+  // ── Card state ────────────────────────────────────────────────────────────
+  const COLS = 80;
+  const NUM_ROWS = 12;
+  // holes[col][row] = true/false
+  const holes = Array.from({length: COLS}, () => new Array(NUM_ROWS).fill(false));
+
+  // ── Canvas setup ─────────────────────────────────────────────────────────
+  const canvas = document.getElementById('punchCard');
+  const ctx = canvas.getContext('2d');
+
+  // Card proportions: IBM card is 7.375" × 3.25" → ratio ≈ 2.269
+  // We scale to fit nicely
+  const CARD_W = 1100;
+  const CARD_H = Math.round(CARD_W / (7.375 / 3.25));  // ≈ 484
+  const MARGIN_L = 40;  // left margin (row labels)
+  const MARGIN_T = 36;  // top margin (col numbers + decoded chars)
+  const MARGIN_B = 18;
+  const MARGIN_R = 14;
+  const CARD_INNER_W = CARD_W - MARGIN_L - MARGIN_R;
+  const CARD_INNER_H = CARD_H - MARGIN_T - MARGIN_B;
+  const COL_W = CARD_INNER_W / COLS;
+  const ROW_H = CARD_INNER_H / NUM_ROWS;
+  const HOLE_W = COL_W * 0.55;
+  const HOLE_H = ROW_H * 0.62;
+
+  canvas.width = CARD_W;
+  canvas.height = CARD_H;
+
+  let hoveredCol = -1;
+  let dpr = window.devicePixelRatio || 1;
+
+  // Scale canvas for retina
+  function setupCanvas() {
+    const logicalW = CARD_W;
+    const logicalH = CARD_H;
+    canvas.style.width = logicalW + 'px';
+    canvas.style.height = logicalH + 'px';
+    canvas.width = logicalW * dpr;
+    canvas.height = logicalH * dpr;
+    ctx.scale(dpr, dpr);
+  }
+  setupCanvas();
+
+  // ── Drawing ───────────────────────────────────────────────────────────────
+  function colX(c) { return MARGIN_L + c * COL_W; }
+  function rowY(r) { return MARGIN_T + r * ROW_H; }
+  function holeX(c) { return colX(c) + (COL_W - HOLE_W) / 2; }
+  function holeY(r) { return rowY(r) + (ROW_H - HOLE_H) / 2; }
+
+  function getColPunches(col) {
+    const punched = [];
+    for (let r = 0; r < NUM_ROWS; r++) {
+      if (holes[col][r]) punched.push(r);
+    }
+    return punched;
+  }
+
+  function drawCard() {
+    const W = CARD_W, H = CARD_H;
+    ctx.clearRect(0, 0, W, H);
+
+    // Card body
+    const rx = 6;
+    ctx.beginPath();
+    // IBM card has cut corner top-left
+    ctx.moveTo(MARGIN_L - 12 + rx, 0);
+    ctx.lineTo(W - rx, 0);
+    ctx.quadraticCurveTo(W, 0, W, rx);
+    ctx.lineTo(W, H - rx);
+    ctx.quadraticCurveTo(W, H, W - rx, H);
+    ctx.lineTo(rx, H);
+    ctx.quadraticCurveTo(0, H, 0, H - rx);
+    ctx.lineTo(0, MARGIN_T - 6 + rx);
+    ctx.quadraticCurveTo(0, MARGIN_T - 6, MARGIN_L - 12, MARGIN_T - 6);
+    ctx.closePath();
+
+    // Card gradient (slight texture)
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#f8f3e3');
+    grad.addColorStop(0.5, '#f5f0dc');
+    grad.addColorStop(1, '#ede8d5');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Subtle horizontal stripes
+    for (let r = 0; r < NUM_ROWS; r++) {
+      if (r % 2 === 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.025)';
+        ctx.fillRect(MARGIN_L, rowY(r), CARD_INNER_W, ROW_H);
+      }
+    }
+
+    // Card edge lines
+    ctx.strokeStyle = '#c8b88a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // ── Highlight hovered column ──
+    if (hoveredCol >= 0 && hoveredCol < COLS) {
+      ctx.fillStyle = 'rgba(232,184,75,0.12)';
+      ctx.fillRect(colX(hoveredCol), MARGIN_T, COL_W, CARD_INNER_H);
+    }
+
+    // ── Column numbers (every 5th) ──
+    ctx.fillStyle = '#7a6a48';
+    ctx.font = `bold ${Math.max(7, Math.round(COL_W * 0.85))}px 'Courier New', monospace`;
+    ctx.textAlign = 'center';
+    for (let c = 0; c < COLS; c++) {
+      if ((c + 1) % 5 === 0) {
+        ctx.fillText(String(c + 1), colX(c) + COL_W / 2, MARGIN_T - 4);
+      }
+    }
+
+    // ── Row labels (left side) ──
+    ctx.fillStyle = '#7a6a48';
+    ctx.font = `bold ${Math.round(ROW_H * 0.52)}px 'Courier New', monospace`;
+    ctx.textAlign = 'right';
+    for (let r = 0; r < NUM_ROWS; r++) {
+      ctx.fillText(ROWS[r], MARGIN_L - 6, rowY(r) + ROW_H * 0.67);
+    }
+
+    // ── Decoded characters above each column ──
+    const charFontSize = Math.max(6, Math.round(COL_W * 0.72));
+    ctx.font = `bold ${charFontSize}px 'Courier New', monospace`;
+    ctx.textAlign = 'center';
+    for (let c = 0; c < COLS; c++) {
+      const punches = getColPunches(c);
+      const ch = DECODE[punchKey(punches)];
+      if (ch && ch !== ' ') {
+        const isHovered = (c === hoveredCol);
+        ctx.fillStyle = isHovered ? '#c05000' : '#8a6a30';
+        ctx.fillText(ch, colX(c) + COL_W / 2, MARGIN_T - 4 - (charFontSize + 2));
+      }
+    }
+
+    // ── Holes ──
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < NUM_ROWS; r++) {
+        const x = holeX(c);
+        const y = holeY(r);
+        const w = HOLE_W;
+        const h = HOLE_H;
+        const rr = Math.min(w, h) * 0.3;
+
+        if (holes[c][r]) {
+          // Punched hole — dark rectangle with inner shadow
+          ctx.fillStyle = '#1a1628';
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, rr);
+          ctx.fill();
+
+          // Inner glow (subtle)
+          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        } else {
+          // Unpunched — faint ghost outline
+          const isHover = (c === hoveredCol);
+          ctx.strokeStyle = isHover ? 'rgba(180,140,80,0.6)' : 'rgba(150,120,70,0.18)';
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, rr);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // ── Interaction ───────────────────────────────────────────────────────────
+  function getColFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const col = Math.floor((x - MARGIN_L) / COL_W);
+    return (col >= 0 && col < COLS) ? col : -1;
+  }
+
+  function getRowFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const row = Math.floor((y - MARGIN_T) / ROW_H);
+    return (row >= 0 && row < NUM_ROWS) ? row : -1;
+  }
+
+  canvas.addEventListener('mousemove', function(e) {
+    const col = getColFromEvent(e);
+    if (col !== hoveredCol) {
+      hoveredCol = col;
+      drawCard();
+      updateStatusBar(col);
+    }
+
+    // Tooltip position
+    if (col >= 0) {
+      const tt = document.getElementById('tooltip');
+      tt.style.left = (e.clientX + 14) + 'px';
+      tt.style.top  = (e.clientY - 10) + 'px';
+    }
+  });
+
+  canvas.addEventListener('mouseleave', function() {
+    hoveredCol = -1;
+    drawCard();
+    document.getElementById('statusBar').innerHTML =
+      '<span>Hover over a column to see its encoding &mdash; click holes to toggle punches manually</span><span></span>';
+    document.getElementById('tooltip').style.display = 'none';
+  });
+
+  canvas.addEventListener('click', function(e) {
+    const col = getColFromEvent(e);
+    const row = getRowFromEvent(e);
+    if (col >= 0 && row >= 0) {
+      holes[col][row] = !holes[col][row];
+      drawCard();
+      updateDecodedText();
+      updateStatusBar(col);
+    }
+  });
+
+  function updateStatusBar(col) {
+    const bar = document.getElementById('statusBar');
+    if (col < 0) return;
+    const punches = getColPunches(col);
+    const ch = DECODE[punchKey(punches)];
+    const punchLabels = punches.map(r => 'Row ' + ROWS[r]).join(', ');
+
+    let left = `<span>Col ${col + 1} &mdash; `;
+    if (punches.length === 0) {
+      left += 'No punches (space or blank)';
+    } else {
+      left += `<span class="punch-list">${punchLabels}</span>`;
+    }
+    left += '</span>';
+
+    let right = '';
+    if (ch) {
+      right = `<span>Decoded: <span class="decoded-char">${ch === ' ' ? '(space)' : ch}</span></span>`;
+    } else if (punches.length > 0) {
+      right = `<span style="color:#ff8a80">Unknown pattern</span>`;
+    }
+    bar.innerHTML = left + right;
+  }
+
+  // ── Encode / Decode ───────────────────────────────────────────────────────
+  function encodeText() {
+    const raw = document.getElementById('textInput').value.toUpperCase();
+    const text = raw.slice(0, COLS);
+
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < NUM_ROWS; r++) holes[c][r] = false;
+      if (c < text.length) {
+        const ch = text[c];
+        const punches = ENCODE[ch];
+        if (punches) {
+          for (const r of punches) holes[c][r] = true;
+        }
+      }
+    }
+    drawCard();
+    updateDecodedText();
+  }
+
+  function decodeCard() {
+    updateDecodedText();
+  }
+
+  function updateDecodedText() {
+    let result = '';
+    for (let c = 0; c < COLS; c++) {
+      const punches = getColPunches(c);
+      const ch = DECODE[punchKey(punches)];
+      if (ch !== undefined) {
+        result += ch;
+      } else if (punches.length > 0) {
+        result += '?';
+      } else {
+        result += ' ';
+      }
+    }
+    // Trim trailing spaces
+    result = result.replace(/\s+$/, '');
+    const el = document.getElementById('decodedText');
+    el.textContent = result || '\u00a0';
+  }
+
+  function clearCard() {
+    for (let c = 0; c < COLS; c++)
+      for (let r = 0; r < NUM_ROWS; r++)
+        holes[c][r] = false;
+    document.getElementById('textInput').value = '';
+    drawCard();
+    document.getElementById('decodedText').innerHTML = '&nbsp;';
+  }
+
+  function loadSample(text) {
+    document.getElementById('textInput').value = text;
+    encodeText();
+  }
+
+  // ── Populate encoding table ───────────────────────────────────────────────
+  function buildEncTable() {
+    const tbody = document.getElementById('encTableBody');
+    const chars = [];
+    // Digits
+    for (let d = 0; d <= 9; d++) chars.push(String(d));
+    // Letters
+    for (let i = 0; i < 26; i++) chars.push(String.fromCharCode(65 + i));
+    // Space
+    chars.push(' ');
+
+    for (const ch of chars) {
+      const punches = ENCODE[ch];
+      if (!punches) continue;
+      const tr = document.createElement('tr');
+
+      const tdChar = document.createElement('td');
+      tdChar.textContent = ch === ' ' ? 'SPC' : ch;
+      tr.appendChild(tdChar);
+
+      const tdPunch = document.createElement('td');
+      tdPunch.textContent = punches.length === 0 ? '(none)' : punches.map(r => ROWS[r]).join(', ');
+      tr.appendChild(tdPunch);
+
+      const tdZone = document.createElement('td');
+      let zoneText = '', zoneClass = '';
+      if (punches.length === 0) {
+        zoneText = 'blank';
+      } else if (punches[0] === 0) {
+        zoneText = 'zone 12'; zoneClass = 'zone-12';
+      } else if (punches[0] === 1) {
+        zoneText = 'zone 11'; zoneClass = 'zone-11';
+      } else if (punches[0] === 2 && punches.length > 1) {
+        zoneText = 'zone 0'; zoneClass = 'zone-0';
+      } else {
+        zoneText = 'digit'; zoneClass = 'zone-d';
+      }
+      if (zoneClass) {
+        tdZone.innerHTML = `<span class="zone-badge ${zoneClass}">${zoneText}</span>`;
+      } else {
+        tdZone.textContent = zoneText;
+      }
+      tr.appendChild(tdZone);
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  buildEncTable();
+  encodeText();
+
+})();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
