@@ -133,6 +133,7 @@ const LOG_FILES = {
   stats:       'stats.access.log',
   ids:         'ids.access.log',
   nagios:      'nagios.access.log',
+  status:      'status.access.log',
   nav:         'nav.access.log',
 };
 
@@ -347,81 +348,83 @@ const HTML = `<!DOCTYPE html>
 
   <div class="toolbar">
     <button class="tab active" data-site="all">[all]</button>
-    <button class="tab"        data-site="ximg">ximg</button>
-    <button class="tab"        data-site="linux">linux</button>
-    <button class="tab"        data-site="mac">mac</button>
-    <button class="tab"        data-site="butterfly">butterfly</button>
-    <button class="tab"        data-site="ascii">ascii</button>
-    <button class="tab"        data-site="json">json</button>
-    <button class="tab"        data-site="poker">poker</button>
-    <button class="tab"        data-site="mario">mario</button>
-    <button class="tab"        data-site="monkey">monkey</button>
-    <button class="tab"        data-site="doom">doom</button>
-    <button class="tab"        data-site="grilling">grilling</button>
-    <button class="tab"        data-site="pizza">pizza</button>
-    <button class="tab"        data-site="docker">docker</button>
-    <button class="tab"        data-site="yaml">yaml</button>
-    <button class="tab"        data-site="kart">kart</button>
-    <button class="tab"        data-site="kombat">kombat</button>
-    <button class="tab"        data-site="wargames">wargames</button>
-    <button class="tab"        data-site="warcraft">warcraft</button>
-    <button class="tab"        data-site="moto">moto</button>
-    <button class="tab"        data-site="india">india</button>
-    <button class="tab"        data-site="chinese">chinese</button>
-    <button class="tab"        data-site="wood">wood</button>
-    <button class="tab"        data-site="guns">guns</button>
-    <button class="tab"        data-site="america">america</button>
-    <button class="tab"        data-site="florida">florida</button>
-    <button class="tab"        data-site="tampa">tampa</button>
-    <button class="tab"        data-site="computers">computers</button>
-    <button class="tab"        data-site="trump">trump</button>
-    <button class="tab"        data-site="cnc">cnc</button>
-    <button class="tab"        data-site="simcity">simcity</button>
-    <button class="tab"        data-site="rx">rx</button>
-    <button class="tab"        data-site="mail">mail</button>
-    <button class="tab"        data-site="fidonet">fidonet</button>
-    <button class="tab"        data-site="coldwar">coldwar</button>
-    <button class="tab"        data-site="passwords">passwords</button>
-    <button class="tab"        data-site="change">change</button>
-    <button class="tab"        data-site="ansible">ansible</button>
-    <button class="tab"        data-site="chess">chess</button>
-    <button class="tab"        data-site="programming">programming</button>
-    <button class="tab"        data-site="systemd">systemd</button>
-    <button class="tab"        data-site="unix">unix</button>
-    <button class="tab"        data-site="bsd">bsd</button>
     <button class="tab"        data-site="ai">ai</button>
+    <button class="tab"        data-site="america">america</button>
+    <button class="tab"        data-site="ansible">ansible</button>
+    <button class="tab"        data-site="apps">apps</button>
+    <button class="tab"        data-site="ascii">ascii</button>
     <button class="tab"        data-site="bash">bash</button>
+    <button class="tab"        data-site="biology">biology</button>
+    <button class="tab"        data-site="bsd">bsd</button>
+    <button class="tab"        data-site="butterfly">butterfly</button>
+    <button class="tab"        data-site="change">change</button>
+    <button class="tab"        data-site="chemistry">chemistry</button>
+    <button class="tab"        data-site="chess">chess</button>
+    <button class="tab"        data-site="chinese">chinese</button>
     <button class="tab"        data-site="claude">claude</button>
+    <button class="tab"        data-site="cnc">cnc</button>
     <button class="tab"        data-site="coffee">coffee</button>
+    <button class="tab"        data-site="coldwar">coldwar</button>
+    <button class="tab"        data-site="computers">computers</button>
     <button class="tab"        data-site="crypto">crypto</button>
+    <button class="tab"        data-site="dns">dns</button>
+    <button class="tab"        data-site="docker">docker</button>
+    <button class="tab"        data-site="doom">doom</button>
+    <button class="tab"        data-site="evolution">evolution</button>
+    <button class="tab"        data-site="fidonet">fidonet</button>
+    <button class="tab"        data-site="florida">florida</button>
     <button class="tab"        data-site="git">git</button>
+    <button class="tab"        data-site="grilling">grilling</button>
+    <button class="tab"        data-site="guns">guns</button>
     <button class="tab"        data-site="http">http</button>
     <button class="tab"        data-site="ids">ids</button>
+    <button class="tab"        data-site="india">india</button>
     <button class="tab"        data-site="internet">internet</button>
     <button class="tab"        data-site="japan">japan</button>
-    <button class="tab"        data-site="nagios">nagios</button>
-    <button class="tab"        data-site="biology">biology</button>
-    <button class="tab"        data-site="chemistry">chemistry</button>
-    <button class="tab"        data-site="evolution">evolution</button>
+    <button class="tab"        data-site="json">json</button>
+    <button class="tab"        data-site="kart">kart</button>
+    <button class="tab"        data-site="kombat">kombat</button>
+    <button class="tab"        data-site="linux">linux</button>
+    <button class="tab"        data-site="logs">logs</button>
+    <button class="tab"        data-site="mac">mac</button>
+    <button class="tab"        data-site="mail">mail</button>
+    <button class="tab"        data-site="mario">mario</button>
     <button class="tab"        data-site="math">math</button>
     <button class="tab"        data-site="medieval">medieval</button>
+    <button class="tab"        data-site="monkey">monkey</button>
+    <button class="tab"        data-site="moto">moto</button>
+    <button class="tab"        data-site="nagios">nagios</button>
+    <button class="tab"        data-site="nav">nav</button>
     <button class="tab"        data-site="nintendo">nintendo</button>
-    <button class="tab"        data-site="pirates">pirates</button>
+    <button class="tab"        data-site="passwords">passwords</button>
     <button class="tab"        data-site="physics">physics</button>
+    <button class="tab"        data-site="pirates">pirates</button>
+    <button class="tab"        data-site="pizza">pizza</button>
+    <button class="tab"        data-site="poker">poker</button>
+    <button class="tab"        data-site="programming">programming</button>
     <button class="tab"        data-site="quake">quake</button>
+    <button class="tab"        data-site="rx">rx</button>
+    <button class="tab"        data-site="simcity">simcity</button>
     <button class="tab"        data-site="space">space</button>
     <button class="tab"        data-site="sql">sql</button>
     <button class="tab"        data-site="ssh">ssh</button>
     <button class="tab"        data-site="stats">stats</button>
+    <button class="tab"        data-site="suricata">suricata</button>
+    <button class="tab"        data-site="systemd">systemd</button>
+    <button class="tab"        data-site="tampa">tampa</button>
     <button class="tab"        data-site="tmux">tmux</button>
+    <button class="tab"        data-site="trump">trump</button>
+    <button class="tab"        data-site="unix">unix</button>
     <button class="tab"        data-site="vim">vim</button>
     <button class="tab"        data-site="vr">vr</button>
     <button class="tab"        data-site="vt101">vt101</button>
-    <button class="tab"        data-site="zsh">zsh</button>
-    <button class="tab"        data-site="apps">apps</button>
-    <button class="tab"        data-site="nav">nav</button>
+    <button class="tab"        data-site="warcraft">warcraft</button>
+    <button class="tab"        data-site="wargames">wargames</button>
+    <button class="tab"        data-site="wood">wood</button>
+    <button class="tab"        data-site="ximg">ximg</button>
     <button class="tab"        data-site="ximg-app">ximg-app</button>
-    <button class="tab"        data-site="logs">logs</button>
+    <button class="tab"        data-site="yaml">yaml</button>
+    <button class="tab"        data-site="zsh">zsh</button>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
