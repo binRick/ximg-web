@@ -69,6 +69,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [japan.ximg.app](https://japan.ximg.app) | Japan — cherry blossom animation, 6 philosophy concepts, 12 foods, 10 tech companies, timeline from 14000 BCE |
 | [quake.ximg.app](https://quake.ximg.app) | id Software's dark legend — 6 games, 10 weapons, 12 monsters, 8 maps, ember particle animation |
 | [nintendo.ximg.app](https://nintendo.ximg.app) | 135 years of play — 13 consoles, 16 iconic games, 13 characters, pixel-art Mario, company history |
+| [pirates.ximg.app](https://pirates.ximg.app) | The Golden Age of Piracy — 8 infamous pirates, ships, the Pirate Code, havens, tactics, timeline |
+| [medieval.ximg.app](https://medieval.ximg.app) | The Middle Ages — feudal system, famous battles, knights, castles, siege weapons, military orders |
 | [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
 | [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns |
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash |

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pirates — The Golden Age of Piracy</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #050a10;
+      --panel:  #080f18;
+      --ocean:  #0a2a4a;
+      --gold:   #c8941a;
+      --amber:  #e8b030;
+      --red:    #8b1a1a;
+      --dkred:  #6b1010;
+      --rope:   #8b6914;
+      --text:   #d8cdb0;
+      --muted:  #5a5040;
+      --card:   rgba(5,10,16,.92);
+      --border: rgba(200,148,26,.2);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% 0%, rgba(10,42,74,.4) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 40% at 80% 80%, rgba(139,26,26,.2) 0%, transparent 60%),
+        linear-gradient(180deg, #050a10 0%, #020508 100%);
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(10,42,74,.012) 0, rgba(10,42,74,.012) 1px, transparent 1px, transparent 72px),
+        repeating-linear-gradient(90deg, rgba(200,148,26,.008) 0, rgba(200,148,26,.008) 1px, transparent 1px, transparent 90px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Canvas ── */
+    #ocean-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; opacity: 0.18; pointer-events: none;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+    }
+    .hero-skull { font-size: 4rem; line-height: 1; margin-bottom: .75rem; filter: drop-shadow(0 0 16px rgba(200,148,26,.5)); }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--amber);
+      text-shadow: 0 0 30px rgba(232,176,48,.35);
+    }
+    .hero-sub {
+      font-size: 1rem; color: var(--muted); margin-top: .5rem; font-style: italic;
+    }
+    .hero-dates {
+      display: inline-block; margin-top: .75rem;
+      background: rgba(200,148,26,.1); border: 1px solid var(--border);
+      border-radius: 6px; padding: .35rem 1rem;
+      font-size: .85rem; color: var(--gold); letter-spacing: .08em; font-style: normal;
+    }
+
+    /* ── Section ── */
+    .section-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: .12em;
+      color: var(--gold); text-transform: uppercase;
+      border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.25rem;
+    }
+
+    /* ── Pirates Grid ── */
+    .pirates-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;
+    }
+    .pirate-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.1rem 1.2rem; transition: border-color .2s, transform .2s;
+    }
+    .pirate-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+    .pirate-name { font-size: 1rem; font-weight: 700; color: var(--amber); margin-bottom: .2rem; }
+    .pirate-real { font-size: .78rem; color: var(--muted); font-style: italic; margin-bottom: .5rem; }
+    .pirate-dates { font-size: .78rem; color: var(--gold); margin-bottom: .5rem; }
+    .pirate-desc { font-size: .82rem; color: var(--text); line-height: 1.5; }
+    .pirate-flag { font-size: 1.5rem; float: right; margin-left: .5rem; }
+
+    /* ── Ships ── */
+    .ships-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;
+    }
+    .ship-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.2rem;
+    }
+    .ship-name { font-size: 1rem; font-weight: 700; color: var(--amber); }
+    .ship-type { font-size: .78rem; color: var(--gold); margin-bottom: .4rem; }
+    .ship-desc { font-size: .82rem; color: var(--text); line-height: 1.5; }
+    .ship-stats { display: flex; gap: .75rem; margin-top: .6rem; flex-wrap: wrap; }
+    .ship-stat { font-size: .75rem; color: var(--muted); }
+    .ship-stat span { color: var(--text); }
+
+    /* ── Code ── */
+    .code-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: .75rem;
+    }
+    .code-item {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: .85rem 1rem; display: flex; gap: .75rem; align-items: flex-start;
+    }
+    .code-num {
+      font-size: 1.1rem; font-weight: 700; color: var(--gold);
+      min-width: 2rem; flex-shrink: 0;
+    }
+    .code-text { font-size: .83rem; color: var(--text); line-height: 1.5; }
+
+    /* ── Ports ── */
+    .ports-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;
+    }
+    .port-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.2rem;
+    }
+    .port-name { font-size: 1rem; font-weight: 700; color: var(--amber); }
+    .port-loc { font-size: .78rem; color: var(--gold); margin-bottom: .4rem; }
+    .port-desc { font-size: .82rem; color: var(--text); line-height: 1.5; }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: .75rem; }
+    .tl-item {
+      display: grid; grid-template-columns: 90px 1fr;
+      gap: .75rem; align-items: start;
+    }
+    .tl-year {
+      font-size: .85rem; font-weight: 700; color: var(--gold);
+      padding-top: .15rem; text-align: right;
+    }
+    .tl-body {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0;
+      padding: .6rem .85rem;
+    }
+    .tl-title { font-size: .88rem; font-weight: 700; color: var(--amber); margin-bottom: .2rem; }
+    .tl-desc  { font-size: .81rem; color: var(--text); line-height: 1.45; }
+
+    /* ── Loot bar ── */
+    .loot-list { display: flex; flex-direction: column; gap: .6rem; }
+    .loot-item { display: flex; flex-direction: column; gap: .25rem; }
+    .loot-label { font-size: .82rem; color: var(--text); display: flex; justify-content: space-between; }
+    .loot-val { font-size: .78rem; color: var(--gold); }
+    .loot-bar-bg { height: 6px; border-radius: 3px; background: rgba(200,148,26,.12); }
+    .loot-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--gold), var(--amber)); transition: width .8s ease; }
+
+    /* ── Tactics ── */
+    .tactic-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem;
+    }
+    .tactic-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.1rem; text-align: center;
+    }
+    .tactic-icon { font-size: 1.8rem; margin-bottom: .5rem; }
+    .tactic-name { font-size: .9rem; font-weight: 700; color: var(--amber); margin-bottom: .4rem; }
+    .tactic-desc { font-size: .8rem; color: var(--text); line-height: 1.5; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .tl-item { grid-template-columns: 60px 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="ocean-canvas"></canvas>
+
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-skull">☠️</div>
+    <h1>The Golden Age of Piracy</h1>
+    <div class="hero-sub">Rum, plunder, and the Jolly Roger across the Atlantic</div>
+    <div class="hero-dates">1650 – 1730 AD</div>
+  </div>
+
+  <!-- Famous Pirates -->
+  <div>
+    <div class="section-title">Infamous Pirates</div>
+    <div class="pirates-grid">
+      <div class="pirate-card">
+        <span class="pirate-flag">🏴</span>
+        <div class="pirate-name">Blackbeard</div>
+        <div class="pirate-real">Edward Teach (Thatch)</div>
+        <div class="pirate-dates">c. 1680 – 1718</div>
+        <div class="pirate-desc">The most feared pirate of his era. Commanded the Queen Anne's Revenge with 40 guns. Famously braided slow-burning fuses into his beard to appear wreathed in smoke during battle.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">💀</span>
+        <div class="pirate-name">Bartholomew Roberts</div>
+        <div class="pirate-real">"Black Bart"</div>
+        <div class="pirate-dates">1682 – 1722</div>
+        <div class="pirate-desc">The most successful pirate of the Golden Age — captured over 400 vessels. Always dressed impeccably in red, carrying two pistols on a silk sling. Never drank rum.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">⚔️</span>
+        <div class="pirate-name">Calico Jack</div>
+        <div class="pirate-real">John Rackham</div>
+        <div class="pirate-dates">1682 – 1720</div>
+        <div class="pirate-desc">Designed the most recognizable Jolly Roger — skull with crossed swords. Crewed alongside two of the most famous female pirates. Captured and hanged in Jamaica.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">🗡️</span>
+        <div class="pirate-name">Anne Bonny</div>
+        <div class="pirate-real">née Cormac</div>
+        <div class="pirate-dates">c. 1697 – after 1721</div>
+        <div class="pirate-desc">Disguised as a man aboard Calico Jack's sloop. One of the few women to fight as a pirate. When the crew was captured drunk, she and Mary Read were the only ones who resisted.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">⚓</span>
+        <div class="pirate-name">Mary Read</div>
+        <div class="pirate-real">Mark Read (disguise)</div>
+        <div class="pirate-dates">c. 1685 – 1721</div>
+        <div class="pirate-desc">Lived as a man for much of her life, serving in the British military before turning pirate. Reportedly fought more fiercely than any man aboard when the crew was captured.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">🌊</span>
+        <div class="pirate-name">Henry Every</div>
+        <div class="pirate-real">"Long Ben"</div>
+        <div class="pirate-dates">1659 – c. 1699</div>
+        <div class="pirate-desc">Led the most profitable pirate raid in history — seized the Mughal treasure ship Ganj-i-Sawai. The resulting diplomatic crisis nearly sparked war between England and the Mughal Empire.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">🔱</span>
+        <div class="pirate-name">Samuel Bellamy</div>
+        <div class="pirate-real">"Black Sam"</div>
+        <div class="pirate-dates">1689 – 1717</div>
+        <div class="pirate-desc">Called the "Robin Hood of the Sea" for his speeches about social equality. Commanded the Whydah, the richest pirate ship ever found. Drowned at 28 in a nor'easter off Cape Cod.</div>
+      </div>
+      <div class="pirate-card">
+        <span class="pirate-flag">🏝️</span>
+        <div class="pirate-name">Henry Morgan</div>
+        <div class="pirate-real">Sir Henry Morgan</div>
+        <div class="pirate-dates">1635 – 1688</div>
+        <div class="pirate-desc">Privateer who sacked Panama City in 1671. Later knighted by King Charles II and appointed Lieutenant Governor of Jamaica — ending his career as a pirate hunter, not prey.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Famous Ships -->
+  <div>
+    <div class="section-title">Famous Ships</div>
+    <div class="ships-grid">
+      <div class="ship-card">
+        <div class="ship-name">Queen Anne's Revenge</div>
+        <div class="ship-type">Frigate — Blackbeard's flagship</div>
+        <div class="ship-desc">Originally a French slave ship (La Concorde). Blackbeard added 40 guns after capture in 1717. Ran aground off North Carolina in 1718. Wreck discovered in 1996.</div>
+        <div class="ship-stats">
+          <div class="ship-stat">Guns: <span>40</span></div>
+          <div class="ship-stat">Crew: <span>300+</span></div>
+          <div class="ship-stat">Tons: <span>200</span></div>
+        </div>
+      </div>
+      <div class="ship-card">
+        <div class="ship-name">Whydah Gally</div>
+        <div class="ship-type">Galley — "Black Sam" Bellamy</div>
+        <div class="ship-desc">Captured by Bellamy from a slave-trading voyage. Carried £20,000 in gold and ivory. Sunk 1717 off Cape Cod. First authenticated pirate shipwreck excavated (1984).</div>
+        <div class="ship-stats">
+          <div class="ship-stat">Guns: <span>28</span></div>
+          <div class="ship-stat">Crew: <span>150</span></div>
+          <div class="ship-stat">Tons: <span>300</span></div>
+        </div>
+      </div>
+      <div class="ship-card">
+        <div class="ship-name">Royal Fortune</div>
+        <div class="ship-type">Warship — Bartholomew Roberts</div>
+        <div class="ship-desc">Black Bart's final flagship — one of several ships he named Royal Fortune. Carried 40 guns. Defeated by HMS Swallow off West Africa in 1722, ending the Golden Age.</div>
+        <div class="ship-stats">
+          <div class="ship-stat">Guns: <span>40</span></div>
+          <div class="ship-stat">Crew: <span>272</span></div>
+          <div class="ship-stat">Tons: <span>400</span></div>
+        </div>
+      </div>
+      <div class="ship-card">
+        <div class="ship-name">Adventure Galley</div>
+        <div class="ship-type">Galley — Captain Kidd</div>
+        <div class="ship-desc">Commissioned by William Kidd as a privateer. Sailed to the Indian Ocean, captured the Quedagh Merchant, and returned home — only for Kidd to be hanged for piracy in 1701.</div>
+        <div class="ship-stats">
+          <div class="ship-stat">Guns: <span>34</span></div>
+          <div class="ship-stat">Crew: <span>150</span></div>
+          <div class="ship-stat">Tons: <span>284</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pirate Code -->
+  <div>
+    <div class="section-title">The Pirate Code (Articles of Agreement)</div>
+    <div class="code-grid">
+      <div class="code-item"><div class="code-num">I</div><div class="code-text">Every man shall have an equal vote in affairs of moment. Every man shall have an equal share of fresh provisions or strong liquors and shall use them at pleasure.</div></div>
+      <div class="code-item"><div class="code-num">II</div><div class="code-text">Every man shall be called fairly in turn by list on board of prizes, and keep what they get. Any man who defrauds the company to the value of even one dollar in plate, jewels or money, shall be marooned.</div></div>
+      <div class="code-item"><div class="code-num">III</div><div class="code-text">No person shall play at cards or dice for money. Lights and candles to be put out at eight o'clock at night. No striking another on board ship, but every quarrel shall be ended on shore by sword and pistol.</div></div>
+      <div class="code-item"><div class="code-num">IV</div><div class="code-text">Compensation for injury: loss of a right arm £600, left arm £500, right leg £500, left leg £400, an eye or finger £100. Pistols and cutlass shall be kept clean and fit for service.</div></div>
+      <div class="code-item"><div class="code-num">V</div><div class="code-text">No boy or woman shall be allowed amongst the company. If any man shall be found seducing the fairer sex and carrying her to sea disguised, he shall suffer death.</div></div>
+      <div class="code-item"><div class="code-num">VI</div><div class="code-text">To desert the ship or quarters in battle shall be punished with death or marooning. He that shall snap his arms or smokes tobacco in the hold without a cap to his pipe shall suffer Moses' Law — 40 stripes lacking one.</div></div>
+    </div>
+  </div>
+
+  <!-- Pirate Loot -->
+  <div>
+    <div class="section-title">Targets & Plunder</div>
+    <div class="loot-list">
+      <div class="loot-item">
+        <div class="loot-label"><span>Merchant vessels (most common)</span><span class="loot-val">~60% of attacks</span></div>
+        <div class="loot-bar-bg"><div class="loot-bar" style="width:60%"></div></div>
+      </div>
+      <div class="loot-item">
+        <div class="loot-label"><span>Slave ships (high-value cargo)</span><span class="loot-val">~15% of attacks</span></div>
+        <div class="loot-bar-bg"><div class="loot-bar" style="width:15%"></div></div>
+      </div>
+      <div class="loot-item">
+        <div class="loot-label"><span>Spanish galleons (treasure fleets)</span><span class="loot-val">~12% of attacks</span></div>
+        <div class="loot-bar-bg"><div class="loot-bar" style="width:12%"></div></div>
+      </div>
+      <div class="loot-item">
+        <div class="loot-label"><span>East India Company ships</span><span class="loot-val">~8% of attacks</span></div>
+        <div class="loot-bar-bg"><div class="loot-bar" style="width:8%"></div></div>
+      </div>
+      <div class="loot-item">
+        <div class="loot-label"><span>Naval vessels &amp; privateers</span><span class="loot-val">~5% of attacks</span></div>
+        <div class="loot-bar-bg"><div class="loot-bar" style="width:5%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pirate Havens -->
+  <div>
+    <div class="section-title">Pirate Havens & Ports</div>
+    <div class="ports-grid">
+      <div class="port-card">
+        <div class="port-name">Nassau, Bahamas</div>
+        <div class="port-loc">Caribbean — Republic of Pirates</div>
+        <div class="port-desc">The unofficial pirate capital 1706–1718. Home to Blackbeard, Calico Jack, and hundreds of pirates. Governor Woodes Rogers arrived in 1718 and ended the era with pardons and hangings.</div>
+      </div>
+      <div class="port-card">
+        <div class="port-name">Tortuga</div>
+        <div class="port-loc">Hispaniola (Haiti)</div>
+        <div class="port-desc">The original buccaneer base in the 1630s–1650s. French-controlled island where hunters turned pirates preyed on Spanish treasure fleets passing through the Windward Passage.</div>
+      </div>
+      <div class="port-card">
+        <div class="port-name">Port Royal, Jamaica</div>
+        <div class="port-loc">British Caribbean</div>
+        <div class="port-desc">Called the "wickedest city in the world." Home to Henry Morgan and licensed privateers. Devastated by earthquake in 1692, which some said was divine punishment for its debauchery.</div>
+      </div>
+      <div class="port-card">
+        <div class="port-name">Île Sainte-Marie</div>
+        <div class="port-loc">Madagascar</div>
+        <div class="port-desc">Remote Indian Ocean base from which pirates raided Mughal treasure ships. Henry Every and Thomas Tew operated from here. Some pirates created a utopian community called Libertalia.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tactics -->
+  <div>
+    <div class="section-title">Battle Tactics & Weapons</div>
+    <div class="tactic-grid">
+      <div class="tactic-card">
+        <div class="tactic-icon">🚩</div>
+        <div class="tactic-name">False Flag</div>
+        <div class="tactic-desc">Fly a friendly nation's flag to approach prey, then raise the Jolly Roger at close range when escape is impossible.</div>
+      </div>
+      <div class="tactic-card">
+        <div class="tactic-icon">⚡</div>
+        <div class="tactic-name">Boarding</div>
+        <div class="tactic-desc">Preferred over sinking — grappling hooks secured the target ship, then pirates swarmed over cutlass-first. Most crews surrendered rather than fight.</div>
+      </div>
+      <div class="tactic-card">
+        <div class="tactic-icon">💨</div>
+        <div class="tactic-name">Intimidation</div>
+        <div class="tactic-desc">A fearsome reputation was a weapon. Blackbeard's smoke and theatrics, Roberts' articles read aloud — psychological terror reduced resistance before a shot was fired.</div>
+      </div>
+      <div class="tactic-card">
+        <div class="tactic-icon">🎯</div>
+        <div class="tactic-name">Chain Shot</div>
+        <div class="tactic-desc">Two cannonballs linked by chain, fired to shred sails and rigging — disabling the target without sinking it, preserving the prize cargo.</div>
+      </div>
+      <div class="tactic-card">
+        <div class="tactic-icon">🔥</div>
+        <div class="tactic-name">Fire Ships</div>
+        <div class="tactic-desc">Unmanned burning vessels steered into enemy fleets. Rare but devastating — used more often as a threat than in actual combat by pirate captains.</div>
+      </div>
+      <div class="tactic-card">
+        <div class="tactic-icon">🗡️</div>
+        <div class="tactic-name">Cutlass & Pistol</div>
+        <div class="tactic-desc">The classic pirate armament. Pistols fired once then used as clubs. Cutlasses were short, curved, ideal for tight spaces below decks during boarding actions.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div>
+    <div class="section-title">Timeline of the Golden Age</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">1630s</div>
+        <div class="tl-body"><div class="tl-title">Buccaneers Emerge</div><div class="tl-desc">French hunters on Hispaniola begin raiding Spanish ships from Tortuga. The term "boucanier" (from smoking meat on a boucan) enters the vocabulary.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1668</div>
+        <div class="tl-body"><div class="tl-title">Morgan Sacks Portobelo</div><div class="tl-desc">Henry Morgan leads 400 buccaneers in a devastating raid on the Spanish silver port of Portobelo, Panama — netting 100,000 pieces of eight.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1695</div>
+        <div class="tl-body"><div class="tl-title">Henry Every Strikes</div><div class="tl-desc">Every captures the Ganj-i-Sawai, Mughal Emperor Aurangzeb's personal treasure ship. The haul of £600,000 triggers the first international manhunt in history.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1701</div>
+        <div class="tl-body"><div class="tl-title">Captain Kidd Hanged</div><div class="tl-desc">William Kidd, who sailed as a privateer, is hanged at Execution Dock, Wapping. His body is left in a gibbet over the Thames as a warning to pirates.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1706</div>
+        <div class="tl-body"><div class="tl-title">Nassau Becomes Pirate Haven</div><div class="tl-desc">With Britain and Spain at war, Nassau in the Bahamas becomes an ungoverned free port. Hundreds of pirates make it their base over the next decade.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1717</div>
+        <div class="tl-body"><div class="tl-title">Whydah Sinks</div><div class="tl-desc">Samuel Bellamy's prize ship, the richest pirate vessel in the Atlantic, sinks in a storm off Cape Cod. Only 2 of 144 crew survive. Bellamy dies at 28.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1718</div>
+        <div class="tl-body"><div class="tl-title">Blackbeard Killed</div><div class="tl-desc">Lieutenant Robert Maynard ambushes Blackbeard at Ocracoke Inlet, North Carolina. Blackbeard receives five bullet wounds and over twenty sword cuts before dying. His head is hung from the bowsprit.</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1718</div>
+        <div class="tl-body"><div class="tl-title">Woodes Rogers Arrives</div><div class="tl-desc">The new Governor of the Bahamas offers a royal pardon. Many accept. Those who refuse are hanged. Nassau's pirate era ends. Rogers' motto: "Expulsis Piratis — Restituta Commercia."</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1722</div>
+        <div class="tl-body"><div class="tl-title">Black Bart Killed</div><div class="tl-desc">Bartholomew Roberts is killed by grapeshot from HMS Swallow off West Africa, ending the most prolific pirate career of the era. 52 of his crew are hanged — the largest mass piracy execution in history.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Ocean wave animation
+(function() {
+  var canvas = document.getElementById('ocean-canvas');
+  var ctx = canvas.getContext('2d');
+  var t = 0;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var h = canvas.height;
+    var w = canvas.width;
+
+    // Draw multiple wave layers
+    for (var layer = 0; layer < 4; layer++) {
+      ctx.beginPath();
+      var amp   = 18 + layer * 8;
+      var freq  = 0.008 - layer * 0.001;
+      var speed = 0.6 + layer * 0.3;
+      var yBase = h * (0.5 + layer * 0.12);
+      var alpha = 0.12 - layer * 0.02;
+
+      ctx.moveTo(0, h);
+      for (var x = 0; x <= w; x += 4) {
+        var y = yBase + Math.sin(x * freq + t * speed) * amp
+                      + Math.sin(x * freq * 1.7 - t * speed * 0.8) * (amp * 0.4);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+
+      var grad = ctx.createLinearGradient(0, yBase - amp, 0, h);
+      grad.addColorStop(0, 'rgba(10,42,74,' + alpha + ')');
+      grad.addColorStop(1, 'rgba(5,10,16,0)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    t += 0.012;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

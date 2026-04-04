@@ -11,7 +11,7 @@
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'History', apps: [
-      ['coldwar','coldwar'],
+      ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
     ]},
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],

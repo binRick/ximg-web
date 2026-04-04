@@ -116,6 +116,8 @@ const LOG_FILES = {
   japan:       'japan.access.log',
   quake:       'quake.access.log',
   nintendo:    'nintendo.access.log',
+  pirates:     'pirates.access.log',
+  medieval:    'medieval.access.log',
 
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
@@ -388,7 +390,9 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="internet">internet</button>
     <button class="tab"        data-site="japan">japan</button>
     <button class="tab"        data-site="nagios">nagios</button>
+    <button class="tab"        data-site="medieval">medieval</button>
     <button class="tab"        data-site="nintendo">nintendo</button>
+    <button class="tab"        data-site="pirates">pirates</button>
     <button class="tab"        data-site="quake">quake</button>
     <button class="tab"        data-site="space">space</button>
     <button class="tab"        data-site="sql">sql</button>
