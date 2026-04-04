@@ -70,6 +70,10 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [quake.ximg.app](https://quake.ximg.app) | id Software's dark legend — 6 games, 10 weapons, 12 monsters, 8 maps, ember particle animation |
 | [nintendo.ximg.app](https://nintendo.ximg.app) | 135 years of play — 13 consoles, 16 iconic games, 13 characters, pixel-art Mario, company history |
 | [change.ximg.app](https://change.ximg.app) | Live git commit history — every change to this project, searchable |
+| [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns |
+| [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash |
+| [vt101.ximg.app](https://vt101.ximg.app) | DEC VT101 terminal history and ANSI escape code reference — SGR colors, cursor sequences, and the hardware legacy behind every modern terminal |
+| [nagios.ximg.app](https://nagios.ximg.app) | Nagios Core monitoring — live HTTPS health checks for every subdomain plus SSH honeypot port watch |
 
 ## Architecture
 

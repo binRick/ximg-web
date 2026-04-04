@@ -24,7 +24,7 @@
       ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nagios','nagios'],['stats','stats'],['ximg','ximg']
     ]},
     { label: 'More', apps: [
-      ['butterfly','butterfly'],['rx','RxFitt']
+      ['butterfly','butterfly'],['rx','RxFitt'],['space','space']
     ]},
   ];
 

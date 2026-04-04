@@ -377,6 +377,27 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="systemd">systemd</button>
     <button class="tab"        data-site="unix">unix</button>
     <button class="tab"        data-site="bsd">bsd</button>
+    <button class="tab"        data-site="ai">ai</button>
+    <button class="tab"        data-site="bash">bash</button>
+    <button class="tab"        data-site="claude">claude</button>
+    <button class="tab"        data-site="coffee">coffee</button>
+    <button class="tab"        data-site="git">git</button>
+    <button class="tab"        data-site="http">http</button>
+    <button class="tab"        data-site="ids">ids</button>
+    <button class="tab"        data-site="internet">internet</button>
+    <button class="tab"        data-site="japan">japan</button>
+    <button class="tab"        data-site="nagios">nagios</button>
+    <button class="tab"        data-site="nintendo">nintendo</button>
+    <button class="tab"        data-site="quake">quake</button>
+    <button class="tab"        data-site="space">space</button>
+    <button class="tab"        data-site="sql">sql</button>
+    <button class="tab"        data-site="ssh">ssh</button>
+    <button class="tab"        data-site="stats">stats</button>
+    <button class="tab"        data-site="tmux">tmux</button>
+    <button class="tab"        data-site="vim">vim</button>
+    <button class="tab"        data-site="vr">vr</button>
+    <button class="tab"        data-site="vt101">vt101</button>
+    <button class="tab"        data-site="zsh">zsh</button>
     <button class="tab"        data-site="nav">nav</button>
     <button class="tab"        data-site="ximg-app">ximg-app</button>
     <button class="tab"        data-site="logs">logs</button>
