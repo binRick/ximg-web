@@ -31,7 +31,7 @@
       ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
     ]},
     { label: 'Science', apps: [
-      ['biology','biology'],['chemistry','chemistry'],['evolution','evolution'],['math','math'],['physics','physics'],['space','space']
+      ['biology','biology'],['butterfly','butterfly'],['chemistry','chemistry'],['evolution','evolution'],['math','math'],['physics','physics'],['space','space']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],
@@ -41,10 +41,10 @@
       ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'More', apps: [
-      ['butterfly','butterfly'],['rx','RxFitt']
+      ['rx','RxFitt']
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','readme'],['status','status'],['stats','stats'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['status','status'],['stats','stats'],['ximg','ximg']
     ]},
   ];
 
