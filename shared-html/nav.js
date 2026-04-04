@@ -23,8 +23,11 @@
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nagios','nagios'],['stats','stats'],['ximg','ximg']
     ]},
+    { label: 'Science', apps: [
+      ['biology','biology'],['chemistry','chemistry'],['evolution','evolution'],['math','math'],['physics','physics'],['space','space']
+    ]},
     { label: 'More', apps: [
-      ['butterfly','butterfly'],['rx','RxFitt'],['space','space']
+      ['butterfly','butterfly'],['rx','RxFitt']
     ]},
   ];
 

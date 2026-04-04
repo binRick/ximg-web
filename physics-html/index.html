@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physics — The Laws of the Universe</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f;
+      --blue: #3b82f6;
+      --cyan: #22d3ee;
+      --violet: #8b5cf6;
+      --white: #e2e8f0;
+      --fg: #94a3b8;
+      --fg-dim: #475569;
+      --border: #1e293b;
+      --card: #070720;
+    }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding-top: 44px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #canvas-bg {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; opacity: 0.4;
+    }
+    .sub-nav, .section { position: relative; z-index: 1; }
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      background: rgba(2,2,15,0.95); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .sub-nav-inner {
+      display: flex; justify-content: center; gap: 0.4rem;
+      padding: 0.5rem; flex-wrap: wrap; max-width: 1100px; margin: 0 auto;
+    }
+    .tab {
+      background: none; border: 1px solid var(--border); color: var(--fg-dim);
+      padding: 0.3rem 0.9rem; cursor: pointer; font-family: inherit;
+      font-size: 0.82rem; border-radius: 4px; transition: all 0.2s;
+    }
+    .tab:hover { color: var(--cyan); border-color: var(--cyan); }
+    .tab.active { color: var(--cyan); border-color: var(--cyan); background: rgba(34,211,238,0.08); }
+    .section { display: none; padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 2rem; margin-bottom: 0.4rem; letter-spacing: -0.02em; }
+    h2 { color: var(--cyan); font-size: 1.4rem; margin-bottom: 1.2rem; letter-spacing: 0.04em; }
+    h3 { color: var(--white); font-size: 1rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.7; color: var(--fg); margin-bottom: 0.8rem; font-size: 0.92rem; }
+    .hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .hero-sub { color: var(--fg-dim); font-size: 1rem; margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.2rem; transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--blue); }
+    .card-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    .card h3 { color: var(--blue); }
+    .eq-box {
+      background: #040418; border: 1px solid #1e3a6e; border-radius: 8px;
+      padding: 0.8rem 1.2rem; margin: 0.6rem 0; font-family: 'Courier New', monospace;
+      color: var(--cyan); font-size: 1rem; text-align: center;
+    }
+    .eq-label { color: var(--fg-dim); font-size: 0.78rem; margin-top: 0.3rem; }
+    .person-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .person-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem; text-align: center;
+    }
+    .person-card:hover { border-color: var(--violet); }
+    .person-name { color: var(--white); font-weight: 700; margin-bottom: 0.3rem; }
+    .person-years { color: var(--fg-dim); font-size: 0.78rem; margin-bottom: 0.5rem; }
+    .person-desc { font-size: 0.82rem; color: var(--fg); line-height: 1.5; }
+    .branch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .tag { display: inline-block; background: rgba(59,130,246,0.12); color: var(--blue);
+      border: 1px solid rgba(59,130,246,0.25); border-radius: 4px; padding: 0.15rem 0.5rem;
+      font-size: 0.75rem; margin: 0.15rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { color: var(--cyan); text-align: left; padding: 0.6rem; border-bottom: 1px solid var(--border); }
+    td { padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(30,41,59,0.6); color: var(--fg); }
+    tr:hover td { background: rgba(59,130,246,0.04); }
+    .highlight { color: var(--blue); }
+    .unit { color: var(--fg-dim); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas-bg"></canvas>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="show('overview',this)">Overview</button>
+    <button class="tab" onclick="show('mechanics',this)">Mechanics</button>
+    <button class="tab" onclick="show('thermo',this)">Thermodynamics</button>
+    <button class="tab" onclick="show('em',this)">Electromagnetism</button>
+    <button class="tab" onclick="show('quantum',this)">Quantum</button>
+    <button class="tab" onclick="show('relativity',this)">Relativity</button>
+    <button class="tab" onclick="show('particles',this)">Particles</button>
+    <button class="tab" onclick="show('physicists',this)">Physicists</button>
+  </div>
+</div>
+
+<!-- OVERVIEW -->
+<div id="overview" class="section active">
+  <div class="hero">
+    <h1>⚛️ Physics</h1>
+    <p class="hero-sub">The fundamental science of matter, energy, space, and time</p>
+  </div>
+  <h2>Branches of Physics</h2>
+  <div class="branch-grid">
+    <div class="card">
+      <div class="card-icon">🔧</div>
+      <h3>Classical Mechanics</h3>
+      <p>Motion, forces, energy, and momentum. Newton's laws govern everyday objects at non-relativistic speeds.</p>
+      <div class="eq-box">F = ma<div class="eq-label">Newton's Second Law</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌡️</div>
+      <h3>Thermodynamics</h3>
+      <p>Heat, temperature, and energy transfer. The four laws govern all energy transformations.</p>
+      <div class="eq-box">ΔS ≥ 0<div class="eq-label">Second Law (entropy never decreases)</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>Electromagnetism</h3>
+      <p>Electric and magnetic fields unified by Maxwell. Light is an electromagnetic wave.</p>
+      <div class="eq-box">c = 1/√(ε₀μ₀)<div class="eq-label">Speed of light from Maxwell</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔬</div>
+      <h3>Quantum Mechanics</h3>
+      <p>Physics at atomic/subatomic scales. Wave-particle duality, superposition, entanglement.</p>
+      <div class="eq-box">ΔxΔp ≥ ℏ/2<div class="eq-label">Heisenberg Uncertainty Principle</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌌</div>
+      <h3>Special Relativity</h3>
+      <p>Physics at high speeds. Time dilation, length contraction, mass-energy equivalence.</p>
+      <div class="eq-box">E = mc²<div class="eq-label">Mass-energy equivalence</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌀</div>
+      <h3>General Relativity</h3>
+      <p>Gravity as spacetime curvature. Black holes, gravitational waves, the expanding universe.</p>
+      <div class="eq-box">Gμν = 8πG/c⁴ Tμν<div class="eq-label">Einstein Field Equations</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚛️</div>
+      <h3>Particle Physics</h3>
+      <p>The Standard Model of elementary particles — quarks, leptons, bosons, and the Higgs field.</p>
+      <div class="eq-box">17 fundamental particles<div class="eq-label">The Standard Model</div></div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌊</div>
+      <h3>Wave & Optics</h3>
+      <p>Light, sound, and wave behavior — reflection, refraction, diffraction, interference.</p>
+      <div class="eq-box">λf = v<div class="eq-label">Wave equation</div></div>
+    </div>
+  </div>
+
+  <br>
+  <h2>Fundamental Constants</h2>
+  <table>
+    <tr><th>Constant</th><th>Symbol</th><th>Value</th><th>Significance</th></tr>
+    <tr><td>Speed of Light</td><td class="highlight">c</td><td>2.998 × 10⁸ m/s</td><td>Maximum speed in the universe</td></tr>
+    <tr><td>Planck's Constant</td><td class="highlight">h</td><td>6.626 × 10⁻³⁴ J·s</td><td>Quantum of action</td></tr>
+    <tr><td>Gravitational Constant</td><td class="highlight">G</td><td>6.674 × 10⁻¹¹ N·m²/kg²</td><td>Strength of gravity</td></tr>
+    <tr><td>Elementary Charge</td><td class="highlight">e</td><td>1.602 × 10⁻¹⁹ C</td><td>Charge of a proton/electron</td></tr>
+    <tr><td>Boltzmann's Constant</td><td class="highlight">k_B</td><td>1.381 × 10⁻²³ J/K</td><td>Links temperature to energy</td></tr>
+    <tr><td>Avogadro's Number</td><td class="highlight">N_A</td><td>6.022 × 10²³ mol⁻¹</td><td>Particles per mole</td></tr>
+    <tr><td>Fine-Structure Constant</td><td class="highlight">α</td><td>1/137.036</td><td>Strength of electromagnetism</td></tr>
+    <tr><td>Electron Mass</td><td class="highlight">m_e</td><td>9.109 × 10⁻³¹ kg</td><td>Lightest charged lepton</td></tr>
+  </table>
+</div>
+
+<!-- MECHANICS -->
+<div id="mechanics" class="section">
+  <h2>Classical Mechanics</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Newton's Laws of Motion</h3>
+      <p><strong>1st (Inertia):</strong> An object at rest stays at rest; an object in motion stays in motion, unless acted on by a net force.</p>
+      <p><strong>2nd (F=ma):</strong> The net force on an object equals its mass times acceleration.</p>
+      <p><strong>3rd (Action-Reaction):</strong> For every action, there is an equal and opposite reaction.</p>
+    </div>
+    <div class="card">
+      <h3>Key Equations</h3>
+      <div class="eq-box">F = ma<div class="eq-label">Net force</div></div>
+      <div class="eq-box">W = Fd·cosθ<div class="eq-label">Work done</div></div>
+      <div class="eq-box">KE = ½mv²<div class="eq-label">Kinetic energy</div></div>
+      <div class="eq-box">PE = mgh<div class="eq-label">Gravitational potential energy</div></div>
+    </div>
+    <div class="card">
+      <h3>Kinematics</h3>
+      <div class="eq-box">v = u + at<div class="eq-label">Velocity (uniform acceleration)</div></div>
+      <div class="eq-box">s = ut + ½at²<div class="eq-label">Displacement</div></div>
+      <div class="eq-box">v² = u² + 2as<div class="eq-label">Velocity from displacement</div></div>
+      <p style="margin-top:0.8rem; font-size:0.85rem;">u = initial velocity, v = final velocity, a = acceleration, t = time, s = displacement</p>
+    </div>
+    <div class="card">
+      <h3>Momentum & Collisions</h3>
+      <p>Momentum <strong>p = mv</strong> is conserved in all closed systems.</p>
+      <div class="eq-box">p₁ + p₂ = p₁' + p₂'<div class="eq-label">Conservation of momentum</div></div>
+      <p>In elastic collisions, kinetic energy is also conserved. In inelastic collisions, KE is converted to heat/deformation.</p>
+    </div>
+    <div class="card">
+      <h3>Circular Motion & Gravity</h3>
+      <div class="eq-box">F_c = mv²/r<div class="eq-label">Centripetal force</div></div>
+      <div class="eq-box">F_g = Gm₁m₂/r²<div class="eq-label">Newton's Law of Gravitation</div></div>
+      <p>Orbital velocity: <strong>v = √(GM/r)</strong>. Escape velocity: <strong>v_e = √(2GM/r)</strong></p>
+    </div>
+    <div class="card">
+      <h3>Simple Harmonic Motion</h3>
+      <div class="eq-box">x(t) = A·cos(ωt + φ)<div class="eq-label">Oscillation equation</div></div>
+      <div class="eq-box">T = 2π√(m/k)<div class="eq-label">Period of spring</div></div>
+      <div class="eq-box">T = 2π√(L/g)<div class="eq-label">Period of pendulum</div></div>
+      <p style="margin-top:0.8rem; font-size:0.85rem;">k = spring constant, L = pendulum length, g = 9.81 m/s²</p>
+    </div>
+  </div>
+</div>
+
+<!-- THERMODYNAMICS -->
+<div id="thermo" class="section">
+  <h2>Thermodynamics</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>The Four Laws</h3>
+      <p><strong>Zeroth:</strong> If A is in thermal equilibrium with B, and B with C, then A is with C. (Defines temperature.)</p>
+      <p><strong>First:</strong> Energy is conserved: ΔU = Q − W. Heat added minus work done.</p>
+      <p><strong>Second:</strong> Entropy of an isolated system never decreases. ΔS ≥ 0.</p>
+      <p><strong>Third:</strong> Entropy approaches zero as temperature approaches absolute zero.</p>
+    </div>
+    <div class="card">
+      <h3>Key Equations</h3>
+      <div class="eq-box">ΔU = Q − W<div class="eq-label">First Law</div></div>
+      <div class="eq-box">S = k_B · ln(Ω)<div class="eq-label">Boltzmann entropy</div></div>
+      <div class="eq-box">PV = nRT<div class="eq-label">Ideal gas law</div></div>
+      <div class="eq-box">η = 1 − T_c/T_h<div class="eq-label">Carnot efficiency</div></div>
+    </div>
+    <div class="card">
+      <h3>Thermodynamic Processes</h3>
+      <table>
+        <tr><th>Process</th><th>Constant</th></tr>
+        <tr><td>Isothermal</td><td>Temperature (T)</td></tr>
+        <tr><td>Isobaric</td><td>Pressure (P)</td></tr>
+        <tr><td>Isochoric</td><td>Volume (V)</td></tr>
+        <tr><td>Adiabatic</td><td>No heat exchange (Q=0)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Entropy & Arrow of Time</h3>
+      <p>Entropy is a measure of disorder or the number of microstates a system can occupy. The Second Law explains why time appears to flow in one direction — systems naturally evolve from ordered to disordered states.</p>
+      <p>The heat death of the universe is a state of maximum entropy where no more work can be extracted.</p>
+    </div>
+    <div class="card">
+      <h3>Heat Transfer</h3>
+      <p><strong>Conduction:</strong> Q/t = kA(ΔT/d) — heat flows through a material.</p>
+      <p><strong>Convection:</strong> Heat transferred by fluid motion. Drives weather and ocean currents.</p>
+      <p><strong>Radiation:</strong> P = εσAT⁴ (Stefan-Boltzmann). All objects emit electromagnetic radiation.</p>
+    </div>
+    <div class="card">
+      <h3>Phase Transitions</h3>
+      <p>Matter changes state at constant temperature by absorbing or releasing latent heat.</p>
+      <table>
+        <tr><th>Transition</th><th>Energy</th></tr>
+        <tr><td>Solid → Liquid (melting)</td><td>Absorbs</td></tr>
+        <tr><td>Liquid → Gas (boiling)</td><td>Absorbs</td></tr>
+        <tr><td>Gas → Liquid (condensation)</td><td>Releases</td></tr>
+        <tr><td>Liquid → Solid (freezing)</td><td>Releases</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ELECTROMAGNETISM -->
+<div id="em" class="section">
+  <h2>Electromagnetism</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Maxwell's Equations</h3>
+      <div class="eq-box">∇·E = ρ/ε₀<div class="eq-label">Gauss's Law (electric)</div></div>
+      <div class="eq-box">∇·B = 0<div class="eq-label">Gauss's Law (magnetic — no monopoles)</div></div>
+      <div class="eq-box">∇×E = −∂B/∂t<div class="eq-label">Faraday's Law</div></div>
+      <div class="eq-box">∇×B = μ₀J + μ₀ε₀∂E/∂t<div class="eq-label">Ampère-Maxwell Law</div></div>
+    </div>
+    <div class="card">
+      <h3>Electrostatics</h3>
+      <div class="eq-box">F = kq₁q₂/r²<div class="eq-label">Coulomb's Law</div></div>
+      <div class="eq-box">E = F/q = kQ/r²<div class="eq-label">Electric field</div></div>
+      <div class="eq-box">V = kQ/r<div class="eq-label">Electric potential</div></div>
+      <p style="margin-top:0.8rem; font-size:0.85rem;">k = 8.99×10⁹ N·m²/C² (Coulomb's constant)</p>
+    </div>
+    <div class="card">
+      <h3>Circuits</h3>
+      <div class="eq-box">V = IR<div class="eq-label">Ohm's Law</div></div>
+      <div class="eq-box">P = IV = I²R = V²/R<div class="eq-label">Power dissipation</div></div>
+      <p><strong>Series:</strong> R_total = R₁ + R₂ + …</p>
+      <p><strong>Parallel:</strong> 1/R = 1/R₁ + 1/R₂ + …</p>
+      <p>Kirchhoff's Laws: current at junctions sums to zero; voltages around a loop sum to zero.</p>
+    </div>
+    <div class="card">
+      <h3>Magnetism</h3>
+      <div class="eq-box">F = qv×B<div class="eq-label">Lorentz force</div></div>
+      <div class="eq-box">B = μ₀I/2πr<div class="eq-label">Magnetic field from wire</div></div>
+      <p>Moving charges create magnetic fields. Changing magnetic fields induce electric fields (Faraday's Law). This interplay produces electromagnetic waves — light.</p>
+    </div>
+    <div class="card">
+      <h3>Electromagnetic Spectrum</h3>
+      <table>
+        <tr><th>Type</th><th>Wavelength</th></tr>
+        <tr><td>Radio</td><td>&gt; 1 mm</td></tr>
+        <tr><td>Microwave</td><td>1 mm – 1 m (approx)</td></tr>
+        <tr><td>Infrared</td><td>700 nm – 1 mm</td></tr>
+        <tr><td>Visible</td><td>400 – 700 nm</td></tr>
+        <tr><td>Ultraviolet</td><td>10 – 400 nm</td></tr>
+        <tr><td>X-ray</td><td>0.01 – 10 nm</td></tr>
+        <tr><td>Gamma</td><td>&lt; 0.01 nm</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Induction & AC</h3>
+      <div class="eq-box">EMF = −dΦ_B/dt<div class="eq-label">Faraday's Law of Induction</div></div>
+      <p>Lenz's Law: induced current opposes the change that caused it.</p>
+      <p>Transformers step voltage up or down: V₁/V₂ = N₁/N₂. AC power generation and transmission depend entirely on electromagnetic induction.</p>
+    </div>
+  </div>
+</div>
+
+<!-- QUANTUM -->
+<div id="quantum" class="section">
+  <h2>Quantum Mechanics</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Core Principles</h3>
+      <p><strong>Wave-Particle Duality:</strong> All matter and energy exhibits both wave and particle properties depending on how it is observed.</p>
+      <p><strong>Superposition:</strong> A quantum system exists in all possible states until measured.</p>
+      <p><strong>Entanglement:</strong> Two particles can be correlated such that measuring one instantly determines the state of the other, regardless of distance.</p>
+      <p><strong>Uncertainty:</strong> Certain pairs of properties (position/momentum, energy/time) cannot both be known precisely.</p>
+    </div>
+    <div class="card">
+      <h3>Key Equations</h3>
+      <div class="eq-box">E = hf = hc/λ<div class="eq-label">Photon energy (Planck)</div></div>
+      <div class="eq-box">λ = h/mv<div class="eq-label">de Broglie wavelength</div></div>
+      <div class="eq-box">iℏ ∂ψ/∂t = Ĥψ<div class="eq-label">Schrödinger Equation</div></div>
+      <div class="eq-box">ΔxΔp ≥ ℏ/2<div class="eq-label">Heisenberg Uncertainty</div></div>
+    </div>
+    <div class="card">
+      <h3>The Double-Slit Experiment</h3>
+      <p>When electrons are fired at a barrier with two slits, they create an interference pattern — behaving as waves. But when you detect which slit each electron passes through, the pattern vanishes and they behave as particles.</p>
+      <p>Observation fundamentally changes the outcome. This is the measurement problem at the heart of quantum mechanics.</p>
+    </div>
+    <div class="card">
+      <h3>Atomic Models</h3>
+      <table>
+        <tr><th>Model</th><th>Year</th><th>Description</th></tr>
+        <tr><td>Thomson</td><td>1897</td><td>Plum pudding (electrons in positive mass)</td></tr>
+        <tr><td>Rutherford</td><td>1911</td><td>Nucleus with orbiting electrons</td></tr>
+        <tr><td>Bohr</td><td>1913</td><td>Quantized electron orbits</td></tr>
+        <tr><td>Quantum</td><td>1926</td><td>Probability clouds (orbitals)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Quantum Numbers</h3>
+      <p>Each electron is described by four quantum numbers:</p>
+      <p><strong>n</strong> (principal): energy level (1, 2, 3…)</p>
+      <p><strong>l</strong> (angular momentum): orbital shape (0 to n−1)</p>
+      <p><strong>m_l</strong> (magnetic): orientation (−l to +l)</p>
+      <p><strong>m_s</strong> (spin): ±½ (up or down)</p>
+      <p>Pauli Exclusion: no two electrons in an atom share all four quantum numbers.</p>
+    </div>
+    <div class="card">
+      <h3>Quantum Technologies</h3>
+      <p><strong>Lasers:</strong> Stimulated emission of photons — light amplification by quantum transitions.</p>
+      <p><strong>Transistors:</strong> Quantum tunneling and band structure underpin all modern electronics.</p>
+      <p><strong>MRI:</strong> Nuclear spin alignment in magnetic fields.</p>
+      <p><strong>Quantum Computing:</strong> Qubits exploit superposition and entanglement for exponential parallelism.</p>
+      <p><strong>Quantum Cryptography:</strong> Eavesdropping is physically detectable via wavefunction collapse.</p>
+    </div>
+  </div>
+</div>
+
+<!-- RELATIVITY -->
+<div id="relativity" class="section">
+  <h2>Relativity</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Special Relativity (1905)</h3>
+      <p>Einstein's two postulates: the laws of physics are the same in all inertial frames, and the speed of light c is constant in all frames.</p>
+      <div class="eq-box">E² = (pc)² + (mc²)²<div class="eq-label">Energy-momentum relation</div></div>
+      <div class="eq-box">E = mc²<div class="eq-label">Rest energy (p=0)</div></div>
+      <div class="eq-box">E = γmc²<div class="eq-label">Total energy (moving)</div></div>
+    </div>
+    <div class="card">
+      <h3>Time Dilation & Length Contraction</h3>
+      <div class="eq-box">Δt' = γΔt<div class="eq-label">Time dilation (moving clocks run slow)</div></div>
+      <div class="eq-box">L' = L/γ<div class="eq-label">Length contraction</div></div>
+      <div class="eq-box">γ = 1/√(1−v²/c²)<div class="eq-label">Lorentz factor</div></div>
+      <p style="font-size:0.85rem; margin-top:0.8rem;">At v = 0.87c, γ ≈ 2 (clocks run at half speed). At v = 0.9999c, γ ≈ 70.</p>
+    </div>
+    <div class="card">
+      <h3>General Relativity (1915)</h3>
+      <p>Gravity is not a force but the curvature of spacetime caused by mass and energy. Objects follow geodesics (shortest paths) through curved spacetime.</p>
+      <div class="eq-box">Gμν + Λgμν = 8πG/c⁴ · Tμν<div class="eq-label">Einstein Field Equations</div></div>
+      <p style="font-size:0.85rem; margin-top:0.5rem;">Gμν = curvature, Tμν = mass-energy, Λ = cosmological constant</p>
+    </div>
+    <div class="card">
+      <h3>Predictions of GR</h3>
+      <p>✓ Gravitational lensing — light bends around massive objects (confirmed 1919)</p>
+      <p>✓ Gravitational time dilation — GPS must correct for it</p>
+      <p>✓ Gravitational waves — ripples in spacetime (LIGO detected 2015)</p>
+      <p>✓ Black holes — regions where spacetime curvature becomes infinite</p>
+      <p>✓ Expanding universe — GR predicts cosmic expansion (Hubble, 1929)</p>
+    </div>
+    <div class="card">
+      <h3>Black Holes</h3>
+      <div class="eq-box">r_s = 2GM/c²<div class="eq-label">Schwarzschild radius (event horizon)</div></div>
+      <p>At the event horizon, escape velocity equals c. For the Sun: r_s ≈ 3 km. For Earth: r_s ≈ 9 mm.</p>
+      <p>Hawking radiation: quantum effects cause black holes to slowly radiate. A black hole with mass M will evaporate in time t ≈ 5120πG²M³/(ℏc⁴).</p>
+    </div>
+    <div class="card">
+      <h3>Twin Paradox</h3>
+      <p>One twin travels at near-light speed to a star and returns. Due to time dilation, they age less than the stay-at-home twin. This is real — astronauts returning from the ISS are slightly younger than they would have been on Earth.</p>
+      <p>GPS satellites: time runs faster in weaker gravity (+45 μs/day) but slower due to orbital speed (−7 μs/day). Net correction: +38 μs/day, or GPS would drift by 10 km/day without it.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PARTICLES -->
+<div id="particles" class="section">
+  <h2>Particle Physics — The Standard Model</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Quarks</h3>
+      <p>Elementary particles that make up protons and neutrons. Never found in isolation (confinement). Carry fractional electric charge.</p>
+      <table>
+        <tr><th>Quark</th><th>Charge</th><th>Mass (approx)</th></tr>
+        <tr><td>Up (u)</td><td>+2/3</td><td>2.2 MeV</td></tr>
+        <tr><td>Down (d)</td><td>−1/3</td><td>4.7 MeV</td></tr>
+        <tr><td>Charm (c)</td><td>+2/3</td><td>1.28 GeV</td></tr>
+        <tr><td>Strange (s)</td><td>−1/3</td><td>96 MeV</td></tr>
+        <tr><td>Top (t)</td><td>+2/3</td><td>173 GeV</td></tr>
+        <tr><td>Bottom (b)</td><td>−1/3</td><td>4.18 GeV</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Leptons</h3>
+      <table>
+        <tr><th>Lepton</th><th>Charge</th><th>Mass</th></tr>
+        <tr><td>Electron (e⁻)</td><td>−1</td><td>0.511 MeV</td></tr>
+        <tr><td>Muon (μ)</td><td>−1</td><td>105.7 MeV</td></tr>
+        <tr><td>Tau (τ)</td><td>−1</td><td>1,777 MeV</td></tr>
+        <tr><td>Electron neutrino (νe)</td><td>0</td><td>&lt; 1.1 eV</td></tr>
+        <tr><td>Muon neutrino (νμ)</td><td>0</td><td>&lt; 0.17 MeV</td></tr>
+        <tr><td>Tau neutrino (ντ)</td><td>0</td><td>&lt; 18.2 MeV</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Bosons (Force Carriers)</h3>
+      <table>
+        <tr><th>Boson</th><th>Force</th><th>Mass</th></tr>
+        <tr><td>Photon (γ)</td><td>Electromagnetic</td><td>0</td></tr>
+        <tr><td>W⁺ / W⁻</td><td>Weak nuclear</td><td>80.4 GeV</td></tr>
+        <tr><td>Z⁰</td><td>Weak nuclear</td><td>91.2 GeV</td></tr>
+        <tr><td>Gluon (g)</td><td>Strong nuclear</td><td>0</td></tr>
+        <tr><td>Higgs (H)</td><td>Mass field</td><td>125.1 GeV</td></tr>
+        <tr><td>Graviton (?)</td><td>Gravity</td><td>0 (theoretical)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>The Four Fundamental Forces</h3>
+      <table>
+        <tr><th>Force</th><th>Range</th><th>Relative Strength</th></tr>
+        <tr><td>Strong nuclear</td><td>~10⁻¹⁵ m</td><td>1</td></tr>
+        <tr><td>Electromagnetic</td><td>Infinite</td><td>10⁻²</td></tr>
+        <tr><td>Weak nuclear</td><td>~10⁻¹⁸ m</td><td>10⁻⁶</td></tr>
+        <tr><td>Gravity</td><td>Infinite</td><td>10⁻³⁸</td></tr>
+      </table>
+      <p style="font-size:0.85rem; margin-top:0.8rem;">The Standard Model unifies electromagnetic, weak, and strong forces. Gravity remains separate — the great unresolved challenge of physics.</p>
+    </div>
+    <div class="card">
+      <h3>Antimatter</h3>
+      <p>Every particle has a corresponding antiparticle with opposite charge. When a particle meets its antiparticle, they annihilate, releasing energy as photons.</p>
+      <p>The Big Bang produced equal amounts of matter and antimatter. Why there is more matter than antimatter today — baryogenesis — is one of physics' great unsolved mysteries.</p>
+    </div>
+    <div class="card">
+      <h3>Beyond the Standard Model</h3>
+      <p><strong>Dark Matter:</strong> ~27% of the universe's energy density. Does not interact electromagnetically — invisible but gravitationally detected.</p>
+      <p><strong>Dark Energy:</strong> ~68% of energy density. Causes accelerating expansion of the universe.</p>
+      <p><strong>String Theory:</strong> Proposes fundamental strings vibrating at different frequencies instead of point particles.</p>
+      <p><strong>Supersymmetry:</strong> Predicts partner particles for all Standard Model particles (not yet observed).</p>
+    </div>
+  </div>
+</div>
+
+<!-- PHYSICISTS -->
+<div id="physicists" class="section">
+  <h2>Legendary Physicists</h2>
+  <div class="person-grid">
+    <div class="person-card">
+      <div class="person-name">Isaac Newton</div>
+      <div class="person-years">1643 – 1727</div>
+      <div class="person-desc">Laws of motion and universal gravitation. Invented calculus. Optics and the theory of light. Principia Mathematica (1687) — arguably the greatest scientific work ever written.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Albert Einstein</div>
+      <div class="person-years">1879 – 1955</div>
+      <div class="person-desc">Special and general relativity. E=mc². Photoelectric effect (Nobel 1921). Brownian motion. His 1905 "Annus Mirabilis" papers transformed physics forever.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Richard Feynman</div>
+      <div class="person-years">1918 – 1988</div>
+      <div class="person-desc">Quantum electrodynamics (Nobel 1965). Feynman diagrams. Manhattan Project. Known for brilliant teaching, deep curiosity, and making quantum physics accessible.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Niels Bohr</div>
+      <div class="person-years">1885 – 1962</div>
+      <div class="person-desc">Atomic model with quantized orbits. Copenhagen interpretation of QM. Nobel 1922. Founded the Copenhagen school of quantum physics, debated Einstein for decades.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Marie Curie</div>
+      <div class="person-years">1867 – 1934</div>
+      <div class="person-desc">Discovered polonium and radium. First person to win two Nobel Prizes (Physics 1903, Chemistry 1911). Pioneered radiation research. First woman to earn a physics doctorate in France.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Erwin Schrödinger</div>
+      <div class="person-years">1887 – 1961</div>
+      <div class="person-desc">Wave mechanics and the Schrödinger equation. Nobel 1933. His famous cat thought experiment illustrates quantum superposition and the measurement problem.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Werner Heisenberg</div>
+      <div class="person-years">1901 – 1976</div>
+      <div class="person-desc">Uncertainty principle. Matrix mechanics formulation of QM. Nobel 1932. His uncertainty relations show that nature has irreducible indeterminism at the quantum level.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Max Planck</div>
+      <div class="person-years">1858 – 1947</div>
+      <div class="person-desc">Quantum theory. Planck's constant h. Nobel 1918. Solved the ultraviolet catastrophe by proposing energy comes in discrete quanta — inadvertently launching quantum mechanics.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">James Clerk Maxwell</div>
+      <div class="person-years">1831 – 1879</div>
+      <div class="person-desc">Unified electricity and magnetism. Maxwell's equations. Predicted electromagnetic waves and the speed of light. Often ranked the third greatest physicist after Newton and Einstein.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Paul Dirac</div>
+      <div class="person-years">1902 – 1984</div>
+      <div class="person-desc">Dirac equation unifying QM and special relativity. Predicted antimatter (Nobel 1933). Quantum field theory foundations. Known for extraordinary mathematical elegance.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Stephen Hawking</div>
+      <div class="person-years">1942 – 2018</div>
+      <div class="person-desc">Hawking radiation (black holes emit radiation). Singularity theorems with Penrose. A Brief History of Time — one of the best-selling science books ever. Defied ALS for 55 years.</div>
+    </div>
+    <div class="person-card">
+      <div class="person-name">Enrico Fermi</div>
+      <div class="person-years">1901 – 1954</div>
+      <div class="person-desc">First nuclear reactor (Chicago Pile-1, 1942). Fermi-Dirac statistics. Nobel 1938. Manhattan Project. Legendary for Fermi estimation — back-of-envelope calculations with surprising accuracy.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // Animated particle/wave background
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random() * 1200,
+      y: Math.random() * 800,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 1.5 + 0.5,
+      c: Math.random() > 0.5 ? '#3b82f6' : '#22d3ee'
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.c;
+      ctx.fill();
+    });
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i+1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(59,130,246,${0.12*(1-d/120)})`;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

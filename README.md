@@ -76,6 +76,11 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash |
 | [vt101.ximg.app](https://vt101.ximg.app) | DEC VT101 terminal history and ANSI escape code reference — SGR colors, cursor sequences, and the hardware legacy behind every modern terminal |
 | [nagios.ximg.app](https://nagios.ximg.app) | Nagios Core monitoring — live HTTPS health checks for every subdomain plus SSH honeypot port watch |
+| [physics.ximg.app](https://physics.ximg.app) | The laws of the universe — mechanics, thermodynamics, electromagnetism, quantum mechanics, relativity, Standard Model, fundamental constants |
+| [chemistry.ximg.app](https://chemistry.ximg.app) | The central science — periodic table, atomic structure, bonding, reactions, organic chemistry, biomolecules, great chemists |
+| [biology.ximg.app](https://biology.ximg.app) | The science of life — cells, genetics and DNA, taxonomy, body systems, ecology, and the biologists who shaped the field |
+| [math.ximg.app](https://math.ximg.app) | The language of the universe — algebra, calculus, geometry, number theory, probability and statistics, great mathematicians |
+| [evolution.ximg.app](https://evolution.ximg.app) | 3.8 billion years of life — natural selection, Darwin's voyage, fossil record, five mass extinctions, human evolution timeline |
 
 ## Architecture
 
