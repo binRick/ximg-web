@@ -13,21 +13,21 @@
     { label: 'History', apps: [
       ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
     ]},
-    { label: 'Games', apps: [
-      ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
-      ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
+    { label: 'Science', apps: [
+      ['biology','biology'],['chemistry','chemistry'],['evolution','evolution'],['math','math'],['physics','physics'],['space','space']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],
     ]},
-    { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nagios','nagios'],['stats','stats'],['ximg','ximg']
-    ]},
-    { label: 'Science', apps: [
-      ['biology','biology'],['chemistry','chemistry'],['evolution','evolution'],['math','math'],['physics','physics'],['space','space']
+    { label: 'Games', apps: [
+      ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
+      ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'More', apps: [
       ['butterfly','butterfly'],['rx','RxFitt']
+    ]},
+    { label: 'System', apps: [
+      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nagios','nagios'],['stats','stats'],['ximg','ximg']
     ]},
   ];
 
