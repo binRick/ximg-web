@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vim — The Ubiquitous Editor</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1c1c1c;
+      --bg2: #232323;
+      --bg3: #2a2a2a;
+      --green: #98c379;
+      --blue: #61afef;
+      --yellow: #e5c07b;
+      --purple: #c678dd;
+      --red: #e06c75;
+      --fg: #abb2bf;
+      --fg-dim: #5c6370;
+      --border: #3e4451;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Courier New', Courier, monospace;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+
+    /* Sub Nav */
+    .sub-nav {
+      position: sticky;
+      top: 44px;
+      z-index: 100;
+      background: #141414;
+      border-bottom: 1px solid var(--border);
+    }
+    .sub-nav-inner {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--fg-dim);
+      padding: 0.35rem 1rem;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: var(--green); border-color: var(--green); }
+    .tab.active { color: var(--green); border-color: var(--green); background: rgba(152,195,121,0.1); }
+
+    /* Layout */
+    .section { display: none; padding: 2rem 1rem; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+
+    h2 { color: var(--blue); font-size: 1.4rem; margin-bottom: 1.5rem; }
+    h3 { color: var(--yellow); font-size: 1.1rem; margin-bottom: 0.75rem; }
+    p { line-height: 1.7; color: var(--fg); margin-bottom: 1rem; }
+
+    /* ASCII Art */
+    .ascii-art {
+      color: var(--green);
+      font-size: clamp(0.5rem, 1.2vw, 0.9rem);
+      line-height: 1.1;
+      text-align: center;
+      margin-bottom: 2rem;
+      text-shadow: 0 0 8px rgba(152,195,121,0.5);
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-value { font-size: 1.6rem; color: var(--yellow); font-weight: bold; }
+    .stat-label { font-size: 0.75rem; color: var(--fg-dim); margin-top: 0.3rem; }
+
+    /* Feature cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.4rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { border-color: var(--blue); box-shadow: 0 0 12px rgba(97,175,239,0.15); }
+    .card-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .card h3 { color: var(--blue); }
+
+    /* Typing effect container */
+    .typing-text { color: var(--green); min-height: 3rem; }
+    .cursor-blink {
+      display: inline-block;
+      width: 10px;
+      height: 1.1em;
+      background: var(--green);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Mode diagram */
+    .mode-diagram {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    .mode-box {
+      background: var(--bg2);
+      border: 2px solid;
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      min-width: 180px;
+      text-align: center;
+      position: relative;
+    }
+    .mode-box.normal { border-color: var(--green); }
+    .mode-box.insert { border-color: var(--blue); }
+    .mode-box.visual { border-color: var(--purple); }
+    .mode-box.command { border-color: var(--yellow); }
+    .mode-box.replace { border-color: var(--red); }
+
+    .mode-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .mode-box.normal .mode-name { color: var(--green); }
+    .mode-box.insert .mode-name { color: var(--blue); }
+    .mode-box.visual .mode-name { color: var(--purple); }
+    .mode-box.command .mode-name { color: var(--yellow); }
+    .mode-box.replace .mode-name { color: var(--red); }
+
+    .mode-key {
+      display: inline-block;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.8rem;
+      color: var(--fg-dim);
+      margin-top: 0.4rem;
+    }
+    .mode-desc { font-size: 0.82rem; color: var(--fg-dim); margin-top: 0.5rem; line-height: 1.4; }
+
+    .mode-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 1em;
+      background: currentColor;
+      vertical-align: middle;
+      margin-left: 4px;
+      animation: blink 1s step-end infinite;
+    }
+    .mode-box.normal .mode-cursor { color: var(--green); }
+    .mode-box.insert .mode-cursor { color: var(--blue); width: 2px; }
+    .mode-box.visual .mode-cursor { color: var(--purple); }
+    .mode-box.command .mode-cursor { color: var(--yellow); }
+    .mode-box.replace .mode-cursor { color: var(--red); }
+
+    /* Command table */
+    .cmd-search {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--green);
+      padding: 0.6rem 1rem;
+      font-family: monospace;
+      font-size: 0.95rem;
+      border-radius: 4px;
+      margin-bottom: 1.2rem;
+      outline: none;
+    }
+    .cmd-search:focus { border-color: var(--green); box-shadow: 0 0 6px rgba(152,195,121,0.2); }
+    .cmd-search::placeholder { color: var(--fg-dim); }
+
+    .cmd-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .cmd-table th {
+      background: var(--bg3);
+      color: var(--yellow);
+      padding: 0.6rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .cmd-table td {
+      padding: 0.55rem 1rem;
+      border-bottom: 1px solid rgba(62,68,81,0.5);
+      vertical-align: top;
+    }
+    .cmd-table tr:hover td { background: var(--bg2); }
+    .cmd-table tr.hidden-row { display: none; }
+
+    .key-badge {
+      display: inline-block;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--blue);
+      border-radius: 3px;
+      padding: 0.1rem 0.45rem;
+      font-size: 0.82rem;
+      font-weight: bold;
+    }
+    .cat-badge {
+      display: inline-block;
+      border-radius: 3px;
+      padding: 0.1rem 0.45rem;
+      font-size: 0.75rem;
+    }
+    .cat-motion { background: rgba(152,195,121,0.15); color: var(--green); }
+    .cat-edit { background: rgba(97,175,239,0.15); color: var(--blue); }
+    .cat-search { background: rgba(229,192,123,0.15); color: var(--yellow); }
+    .cat-visual { background: rgba(198,120,221,0.15); color: var(--purple); }
+    .cat-ex { background: rgba(224,108,117,0.15); color: var(--red); }
+
+    /* Plugin cards */
+    .plugin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .plugin-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+      transition: border-color 0.2s;
+    }
+    .plugin-card:hover { border-color: var(--purple); }
+    .plugin-name { color: var(--purple); font-size: 1rem; font-weight: bold; margin-bottom: 0.4rem; }
+    .plugin-desc { font-size: 0.82rem; color: var(--fg-dim); margin-bottom: 0.75rem; line-height: 1.5; }
+    .plugin-install {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.75rem;
+      color: var(--green);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    /* Timeline */
+    .timeline { position: relative; padding: 1rem 0; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 120px;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--green), var(--blue), var(--purple));
+    }
+    .tl-item {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    .tl-year {
+      min-width: 100px;
+      text-align: right;
+      color: var(--yellow);
+      font-weight: bold;
+      font-size: 1rem;
+      padding-top: 0.1rem;
+    }
+    .tl-dot {
+      position: relative;
+      z-index: 1;
+      width: 14px;
+      height: 14px;
+      min-width: 14px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-top: 0.3rem;
+      box-shadow: 0 0 8px var(--green);
+    }
+    .tl-content {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.8rem 1.2rem;
+      flex: 1;
+    }
+    .tl-title { color: var(--blue); font-weight: bold; margin-bottom: 0.3rem; }
+    .tl-body { font-size: 0.85rem; color: var(--fg-dim); line-height: 1.5; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 600px) {
+      .timeline::before { left: 70px; }
+      .tl-year { min-width: 55px; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="switchTab('overview')">[ Overview ]</button>
+    <button class="tab" onclick="switchTab('modes')">[ Modes ]</button>
+    <button class="tab" onclick="switchTab('commands')">[ Commands ]</button>
+    <button class="tab" onclick="switchTab('plugins')">[ Plugins ]</button>
+    <button class="tab" onclick="switchTab('history')">[ History ]</button>
+  </div>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="section active" id="overview">
+  <pre class="ascii-art">
+ ██╗   ██╗██╗███╗   ███╗
+ ██║   ██║██║████╗ ████║
+ ██║   ██║██║██╔████╔██║
+ ╚██╗ ██╔╝██║██║╚██╔╝██║
+  ╚████╔╝ ██║██║ ╚═╝ ██║
+   ╚═══╝  ╚═╝╚═╝     ╚═╝
+  </pre>
+
+  <h2>The Ubiquitous Text Editor</h2>
+  <p class="typing-text" id="typing-el"></p>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">1991</div>
+      <div class="stat-label">Year Released</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">9.x</div>
+      <div class="stat-label">Current Version</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">Bram Moolenaar</div>
+      <div class="stat-label">Creator</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">Charityware</div>
+      <div class="stat-label">License</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">100+</div>
+      <div class="stat-label">Supported Languages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">3B+</div>
+      <div class="stat-label">Installs Worldwide</div>
+    </div>
+  </div>
+
+  <h2>Why Vim?</h2>
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>Blazing Speed</h3>
+      <p>Vim's modal editing model eliminates constant mouse usage. Motion keys let your fingers stay on the home row. Complex edits that take seconds in other editors happen in milliseconds with Vim's composable commands.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔧</div>
+      <h3>Infinite Extensibility</h3>
+      <p>With a rich plugin ecosystem spanning decades, Vim can become an IDE, a note-taking system, a presentation tool, or anything you imagine. VimScript and Lua (in Neovim) give you total control over every behavior.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌍</div>
+      <h3>Universally Available</h3>
+      <p>Vim ships with nearly every Unix-like system on Earth. SSH into any Linux server, embedded device, or cloud instance and Vim is there waiting. Your muscle memory travels with you anywhere there's a terminal.</p>
+    </div>
+  </div>
+
+  <br>
+  <p style="color: var(--fg-dim); font-size: 0.85rem; border-left: 3px solid var(--green); padding-left: 1rem;">
+    "Vim is a text editor that is upwards compatible to Vi. It can be used to edit all kinds of plain text. It is especially useful for editing programs." — <span style="color: var(--green);">:help vim</span>
+  </p>
+</section>
+
+<!-- MODES -->
+<section class="section" id="modes">
+  <h2>Vim Modes</h2>
+  <p>Vim's power comes from its modal design. Unlike most editors, Vim has distinct modes for navigation, editing, selecting, and executing commands. Understanding modes is the key to Vim mastery.</p>
+
+  <div class="mode-diagram">
+    <div class="mode-box normal">
+      <div class="mode-name">NORMAL<span class="mode-cursor"></span></div>
+      <p class="mode-desc">Default mode. Every keypress is a command. Navigate, delete, copy, paste.</p>
+      <div><span class="mode-key">Esc</span> to return here from any mode</div>
+    </div>
+    <div class="mode-box insert">
+      <div class="mode-name">INSERT<span class="mode-cursor"></span></div>
+      <p class="mode-desc">Type text freely. Characters appear at cursor. Most familiar mode for newcomers.</p>
+      <div><span class="mode-key">i</span> <span class="mode-key">a</span> <span class="mode-key">o</span> <span class="mode-key">I</span> <span class="mode-key">A</span> <span class="mode-key">O</span></div>
+    </div>
+    <div class="mode-box visual">
+      <div class="mode-name">VISUAL<span class="mode-cursor"></span></div>
+      <p class="mode-desc">Select text visually. Apply commands to the selected region. Three sub-modes.</p>
+      <div><span class="mode-key">v</span> char <span class="mode-key">V</span> line <span class="mode-key">Ctrl+v</span> block</div>
+    </div>
+    <div class="mode-box command">
+      <div class="mode-name">COMMAND<span class="mode-cursor"></span></div>
+      <p class="mode-desc">Execute Ex commands: save, quit, substitute, set options, run shell commands.</p>
+      <div><span class="mode-key">:</span> from Normal mode</div>
+    </div>
+    <div class="mode-box replace">
+      <div class="mode-name">REPLACE<span class="mode-cursor"></span></div>
+      <p class="mode-desc">Overwrite existing characters. Like Insert but replaces instead of inserts.</p>
+      <div><span class="mode-key">R</span> multi-char <span class="mode-key">r</span> single-char</div>
+    </div>
+  </div>
+
+  <h2>Mode Transition Guide</h2>
+  <div class="cards-grid">
+    <div class="card">
+      <h3>Normal → Insert</h3>
+      <p>
+        <span class="key-badge">i</span> — insert before cursor<br>
+        <span class="key-badge">a</span> — append after cursor<br>
+        <span class="key-badge">o</span> — open line below<br>
+        <span class="key-badge">O</span> — open line above<br>
+        <span class="key-badge">I</span> — insert at line start<br>
+        <span class="key-badge">A</span> — append at line end<br>
+        <span class="key-badge">s</span> — substitute char<br>
+        <span class="key-badge">S</span> — substitute line<br>
+        <span class="key-badge">c{motion}</span> — change + enter insert
+      </p>
+    </div>
+    <div class="card">
+      <h3>Normal → Visual</h3>
+      <p>
+        <span class="key-badge">v</span> — character-wise visual<br>
+        <span class="key-badge">V</span> — line-wise visual<br>
+        <span class="key-badge">Ctrl+v</span> — block visual<br>
+        <span class="key-badge">gv</span> — reselect last selection<br>
+        <span class="key-badge">o</span> — move to other end of selection<br>
+        <br>
+        In visual: use motion keys to extend selection, then apply operators (d, y, c, ~, >, <)
+      </p>
+    </div>
+    <div class="card">
+      <h3>Normal → Command</h3>
+      <p>
+        <span class="key-badge">:</span> — enter command mode<br>
+        <span class="key-badge">/</span> — forward search<br>
+        <span class="key-badge">?</span> — backward search<br>
+        <span class="key-badge">!</span> — filter through shell<br>
+        <br>
+        Use <span class="key-badge">Tab</span> for completion, <span class="key-badge">↑↓</span> for history, <span class="key-badge">Ctrl+c</span> or <span class="key-badge">Esc</span> to cancel
+      </p>
+    </div>
+    <div class="card">
+      <h3>Operator-Pending Mode</h3>
+      <p>
+        A special sub-state entered after typing an operator in Normal mode. Vim waits for a motion or text object to complete the command.<br><br>
+        Examples: <span class="key-badge">d</span><em>wait</em><span class="key-badge">w</span>, <span class="key-badge">c</span><em>wait</em><span class="key-badge">i"</span>, <span class="key-badge">y</span><em>wait</em><span class="key-badge">ap</span><br><br>
+        Press <span class="key-badge">Esc</span> to cancel the pending operator.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- COMMANDS -->
+<section class="section" id="commands">
+  <h2>Command Reference</h2>
+  <input class="cmd-search" id="cmd-search" type="text" placeholder="/ search commands..." oninput="filterCommands(this.value)">
+
+  <table class="cmd-table" id="cmd-table">
+    <thead>
+      <tr>
+        <th>Key / Command</th>
+        <th>Category</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody id="cmd-tbody">
+      <tr><td><span class="key-badge">h</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Move cursor left</td></tr>
+      <tr><td><span class="key-badge">j</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Move cursor down</td></tr>
+      <tr><td><span class="key-badge">k</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Move cursor up</td></tr>
+      <tr><td><span class="key-badge">l</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Move cursor right</td></tr>
+      <tr><td><span class="key-badge">w</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Jump to start of next word</td></tr>
+      <tr><td><span class="key-badge">b</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Jump to start of previous word</td></tr>
+      <tr><td><span class="key-badge">e</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Jump to end of word</td></tr>
+      <tr><td><span class="key-badge">0</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Jump to start of line</td></tr>
+      <tr><td><span class="key-badge">$</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Jump to end of line</td></tr>
+      <tr><td><span class="key-badge">gg</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Go to first line of file</td></tr>
+      <tr><td><span class="key-badge">G</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Go to last line of file</td></tr>
+      <tr><td><span class="key-badge">Ctrl+d</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Scroll half-page down</td></tr>
+      <tr><td><span class="key-badge">Ctrl+u</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Scroll half-page up</td></tr>
+      <tr><td><span class="key-badge">%</span></td><td><span class="cat-badge cat-motion">motion</span></td><td>Jump to matching bracket/paren</td></tr>
+      <tr><td><span class="key-badge">i</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Enter Insert mode before cursor</td></tr>
+      <tr><td><span class="key-badge">a</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Enter Insert mode after cursor</td></tr>
+      <tr><td><span class="key-badge">o</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Open new line below and insert</td></tr>
+      <tr><td><span class="key-badge">x</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Delete character under cursor</td></tr>
+      <tr><td><span class="key-badge">dd</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Delete current line</td></tr>
+      <tr><td><span class="key-badge">yy</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Yank (copy) current line</td></tr>
+      <tr><td><span class="key-badge">p</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Paste after cursor</td></tr>
+      <tr><td><span class="key-badge">P</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Paste before cursor</td></tr>
+      <tr><td><span class="key-badge">u</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Undo last change</td></tr>
+      <tr><td><span class="key-badge">Ctrl+r</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Redo last undone change</td></tr>
+      <tr><td><span class="key-badge">.</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Repeat last change</td></tr>
+      <tr><td><span class="key-badge">ciw</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Change inner word (delete word + insert)</td></tr>
+      <tr><td><span class="key-badge">diw</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Delete inner word</td></tr>
+      <tr><td><span class="key-badge">yiw</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Yank inner word</td></tr>
+      <tr><td><span class="key-badge">~</span></td><td><span class="cat-badge cat-edit">edit</span></td><td>Toggle case of character</td></tr>
+      <tr><td><span class="key-badge">/pattern</span></td><td><span class="cat-badge cat-search">search</span></td><td>Search forward for pattern</td></tr>
+      <tr><td><span class="key-badge">?pattern</span></td><td><span class="cat-badge cat-search">search</span></td><td>Search backward for pattern</td></tr>
+      <tr><td><span class="key-badge">n</span></td><td><span class="cat-badge cat-search">search</span></td><td>Go to next search match</td></tr>
+      <tr><td><span class="key-badge">N</span></td><td><span class="cat-badge cat-search">search</span></td><td>Go to previous search match</td></tr>
+      <tr><td><span class="key-badge">*</span></td><td><span class="cat-badge cat-search">search</span></td><td>Search forward for word under cursor</td></tr>
+      <tr><td><span class="key-badge">#</span></td><td><span class="cat-badge cat-search">search</span></td><td>Search backward for word under cursor</td></tr>
+      <tr><td><span class="key-badge">v</span></td><td><span class="cat-badge cat-visual">visual</span></td><td>Enter character-wise Visual mode</td></tr>
+      <tr><td><span class="key-badge">V</span></td><td><span class="cat-badge cat-visual">visual</span></td><td>Enter line-wise Visual mode</td></tr>
+      <tr><td><span class="key-badge">Ctrl+v</span></td><td><span class="cat-badge cat-visual">visual</span></td><td>Enter block Visual mode</td></tr>
+      <tr><td><span class="key-badge">:w</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Write (save) file</td></tr>
+      <tr><td><span class="key-badge">:q</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Quit Vim</td></tr>
+      <tr><td><span class="key-badge">:wq</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Write and quit</td></tr>
+      <tr><td><span class="key-badge">:q!</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Quit without saving (force)</td></tr>
+      <tr><td><span class="key-badge">:s/old/new/g</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Substitute old with new on current line</td></tr>
+      <tr><td><span class="key-badge">:%s/old/new/g</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Substitute throughout entire file</td></tr>
+      <tr><td><span class="key-badge">:set nu</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Enable line numbers</td></tr>
+      <tr><td><span class="key-badge">:set hlsearch</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Highlight search matches</td></tr>
+      <tr><td><span class="key-badge">:e file</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Open file in current buffer</td></tr>
+      <tr><td><span class="key-badge">:sp file</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Split window horizontally and open file</td></tr>
+      <tr><td><span class="key-badge">:vsp file</span></td><td><span class="cat-badge cat-ex">ex</span></td><td>Split window vertically and open file</td></tr>
+      <tr><td><span class="key-badge">za</span></td><td><span class="cat-badge cat-edit">fold</span></td><td>Toggle fold at cursor</td></tr>
+      <tr><td><span class="key-badge">zM</span></td><td><span class="cat-badge cat-edit">fold</span></td><td>Close all folds</td></tr>
+      <tr><td><span class="key-badge">zR</span></td><td><span class="cat-badge cat-edit">fold</span></td><td>Open all folds</td></tr>
+      <tr><td><span class="key-badge">ma</span></td><td><span class="cat-badge cat-edit">mark</span></td><td>Set mark 'a' at cursor position</td></tr>
+      <tr><td><span class="key-badge">`a</span></td><td><span class="cat-badge cat-edit">mark</span></td><td>Jump to exact position of mark 'a'</td></tr>
+      <tr><td><span class="key-badge">"ayy</span></td><td><span class="cat-badge cat-edit">register</span></td><td>Yank line into register 'a'</td></tr>
+      <tr><td><span class="key-badge">"ap</span></td><td><span class="cat-badge cat-edit">register</span></td><td>Paste from register 'a'</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- PLUGINS -->
+<section class="section" id="plugins">
+  <h2>Essential Plugins</h2>
+  <p>The Vim plugin ecosystem spans over three decades. These twelve plugins form a solid foundation for any Vim configuration.</p>
+
+  <div class="plugin-grid">
+    <div class="plugin-card">
+      <div class="plugin-name">vim-plug</div>
+      <div class="plugin-desc">The minimalist plugin manager. Fast, parallel installation, easy rollback. De-facto standard for Vim configurations.</div>
+      <div class="plugin-install">Plug 'junegunn/vim-plug'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">NERDTree</div>
+      <div class="plugin-desc">File system explorer in a sidebar. Navigate directories, open files, create/rename/delete from within Vim.</div>
+      <div class="plugin-install">Plug 'preservim/nerdtree'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">vim-airline</div>
+      <div class="plugin-desc">Lean, mean status/tabline. Shows mode, branch, file, encoding, and more with configurable themes and powerline symbols.</div>
+      <div class="plugin-install">Plug 'vim-airline/vim-airline'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">telescope.nvim</div>
+      <div class="plugin-desc">Highly extendable fuzzy finder (Neovim). Find files, grep, browse buffers, git refs, LSP symbols and more.</div>
+      <div class="plugin-install">Plug 'nvim-telescope/telescope.nvim'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">coc.nvim</div>
+      <div class="plugin-desc">Intellisense engine for Vim/NeoVim. Full LSP support: completion, diagnostics, go-to-definition, hover docs.</div>
+      <div class="plugin-install">Plug 'neoclide/coc.nvim', {'branch': 'release'}</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">vim-fugitive</div>
+      <div class="plugin-desc">A Git wrapper so awesome it should be illegal. Stage, commit, diff, log, blame, push — all without leaving Vim.</div>
+      <div class="plugin-install">Plug 'tpope/vim-fugitive'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">vim-surround</div>
+      <div class="plugin-desc">Effortlessly add, change, or delete surrounding delimiters: parentheses, brackets, quotes, XML tags, and more.</div>
+      <div class="plugin-install">Plug 'tpope/vim-surround'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">vim-commentary</div>
+      <div class="plugin-desc">Comment out code with gc. Supports every language automatically. Simple, composable, idiomatic Vim.</div>
+      <div class="plugin-install">Plug 'tpope/vim-commentary'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">ALE</div>
+      <div class="plugin-desc">Asynchronous Lint Engine. Real-time linting and fixing for 100+ languages. Works with ESLint, Flake8, rustfmt, and more.</div>
+      <div class="plugin-install">Plug 'dense-analysis/ale'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">fzf.vim</div>
+      <div class="plugin-desc">Blazing fast fuzzy file finder integration. Pairs with the fzf binary for instant file/buffer/tag searching.</div>
+      <div class="plugin-install">Plug 'junegunn/fzf.vim'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">UltiSnips</div>
+      <div class="plugin-desc">The ultimate snippet solution. Write code snippets that expand with Tab. Supports Python interpolation and transformations.</div>
+      <div class="plugin-install">Plug 'SirVer/ultisnips'</div>
+    </div>
+    <div class="plugin-card">
+      <div class="plugin-name">vim-go</div>
+      <div class="plugin-desc">Full-featured Go development environment. Auto imports, build/test/run, code navigation, refactoring tools built in.</div>
+      <div class="plugin-install">Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }</div>
+    </div>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section class="section" id="history">
+  <h2>Vim Through the Ages</h2>
+  <p>From a simple vi clone to the most ubiquitous editor on the planet — the story of Vim spans five decades of computing history.</p>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-year">1976</div>
+      <div class="tl-dot" style="background:var(--fg-dim); box-shadow:0 0 8px var(--fg-dim)"></div>
+      <div class="tl-content">
+        <div class="tl-title">vi — Visual Editor Born</div>
+        <div class="tl-body">Bill Joy writes vi for BSD Unix at UC Berkeley. The first screen-oriented text editor, building on Ken Thompson's ed and George Coulouris's em. Modal editing is introduced to the world.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1991</div>
+      <div class="tl-dot" style="background:var(--green); box-shadow:0 0 8px var(--green)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Vim 1.0 — "Vi IMitation"</div>
+        <div class="tl-body">Bram Moolenaar releases Vim (Vi IMitation) for the Amiga computer on November 2, 1991. Originally based on Stevie (ST Editor for Vi Enthusiasts), it quickly surpasses vi with new features.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1993</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">Vim 2.0 — "Vi IMproved"</div>
+        <div class="tl-body">Renamed to "Vi IMproved" as it gains features well beyond vi compatibility. Ported to Unix, MS-DOS, and Windows. Syntax highlighting, multi-level undo, and VimScript foundations appear.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">1998</div>
+      <div class="tl-dot" style="background:var(--blue); box-shadow:0 0 8px var(--blue)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Vim 5.0 — Multiple Windows</div>
+        <div class="tl-body">Split windows, multiple buffers, and tab pages transform Vim into a full development environment. The plugin system matures, and the charityware license is established — users are encouraged to donate to Ugandan children.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2006</div>
+      <div class="tl-dot" style="background:var(--yellow); box-shadow:0 0 8px var(--yellow)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Vim 7.0 — Spell Checking & Omni-completion</div>
+        <div class="tl-body">Integrated spell checking, omni-completion (intelligent code completion), tab pages, undo branches, and the :vimdiff command. A landmark release that cemented Vim's position as a serious IDE competitor.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2014</div>
+      <div class="tl-dot" style="background:var(--purple); box-shadow:0 0 8px var(--purple)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Neovim Fork</div>
+        <div class="tl-body">Thiago de Arruda forks Vim as Neovim, a community-driven project focused on refactoring, asynchronous I/O, better plugin architecture, and embedding. The healthy competition accelerates both projects.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2016</div>
+      <div class="tl-dot" style="background:var(--blue); box-shadow:0 0 8px var(--blue)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Vim 8.0 — Asynchronous Jobs</div>
+        <div class="tl-body">After a decade, a major version release brings asynchronous job control, native package support, partial functions, lambdas, and the channel system. Plugins could now run linters and compilers without blocking the UI.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2023</div>
+      <div class="tl-dot" style="background:var(--red); box-shadow:0 0 8px var(--red)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Bram Moolenaar Passes Away</div>
+        <div class="tl-body">Bram Moolenaar, creator and benevolent dictator of Vim for over 32 years, passes away on August 3, 2023. The Vim community mourns a giant. Development continues under a new committee of maintainers.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-year">2024+</div>
+      <div class="tl-dot" style="background:var(--green); box-shadow:0 0 8px var(--green)"></div>
+      <div class="tl-content">
+        <div class="tl-title">Vim 9.x — The Living Legacy</div>
+        <div class="tl-body">Vim 9 introduces Vim9script, a completely redesigned scripting language 10–100x faster than legacy VimScript. The project lives on, maintained by the community, as the most installed text editor in Unix history.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // Typing effect
+  const lines = [
+    "Vim is a highly configurable text editor built to make creating and changing any kind of text very efficient. It is included as 'vi' with most UNIX systems.",
+    "Press :q! to quit without saving. Or just keep using it — you might never want to leave."
+  ];
+  let lineIdx = 0, charIdx = 0;
+  const el = document.getElementById('typing-el');
+  function type() {
+    if (lineIdx >= lines.length) {
+      el.innerHTML = lines.join(' ') + '<span class="cursor-blink"></span>';
+      return;
+    }
+    const current = lines.slice(0, lineIdx).join(' ') + (lineIdx > 0 ? ' ' : '') + lines[lineIdx].slice(0, charIdx);
+    el.innerHTML = current + '<span class="cursor-blink"></span>';
+    charIdx++;
+    if (charIdx > lines[lineIdx].length) { lineIdx++; charIdx = 0; setTimeout(type, 400); }
+    else { setTimeout(type, 28); }
+  }
+  type();
+
+  // Command filter
+  function filterCommands(q) {
+    q = q.toLowerCase().replace(/^\//, '');
+    document.querySelectorAll('#cmd-tbody tr').forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.classList.toggle('hidden-row', q.length > 0 && !text.includes(q));
+    });
+  }
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
