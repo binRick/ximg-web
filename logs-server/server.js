@@ -123,6 +123,7 @@ const LOG_FILES = {
   biology:     'biology.access.log',
   math:        'math.access.log',
   evolution:   'evolution.access.log',
+  dns:         'dns.access.log',
 
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Update AWStats data files from nginx logs and regenerate static HTML output
 
-SITES="ximg linux ai mac butterfly ascii json poker mario monkey doom grilling pizza docker yaml kart kombat wargames warcraft moto india chinese wood guns america florida tampa computers trump cnc simcity rx mail internet fidonet coldwar passwords change apps tmux ansible git chess programming systemd vr nav ximg-app logs stats"
+SITES="ximg linux ai mac butterfly ascii json poker mario monkey doom grilling pizza docker yaml kart kombat wargames warcraft moto india chinese wood guns america florida tampa computers trump cnc simcity rx mail internet fidonet coldwar passwords change apps tmux ansible git chess programming systemd vr nav ximg-app logs stats dns"
 
 CONFDIR=/configs
 DATADIR=/data

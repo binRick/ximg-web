@@ -181,6 +181,7 @@ DOMAINS=(
   space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
   pirates.ximg.app medieval.ximg.app
   physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
+  dns.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
