@@ -53,7 +53,6 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [america.ximg.app](https://america.ximg.app) | Why the USA is the greatest country — science, tech, military, culture |
 | [trump.ximg.app](https://trump.ximg.app) | Donald J. Trump — fun facts, life timeline, presidency achievements, photo gallery |
 | [rx.ximg.app](https://rx.ximg.app) | RxFitt health coaching — GLP-1 tracking, metabolic labs, body composition, workouts |
-| [nav.ximg.app](https://nav.ximg.app) | Navigation design showcase — five interactive demos comparing nav patterns |
 | [ximg.ximg.app](https://ximg.ximg.app) | Full technical teardown of the ximg.app infrastructure — architecture, container topology, SSL lifecycle |
 | [logs.ximg.app](https://logs.ximg.app) | Real-time nginx access log viewer over WebSocket + SSH honeypot session browser |
 | [ids.ximg.app](https://ids.ximg.app) | Live Suricata IDS feed — alerts, attacker world map, and threat statistics |
