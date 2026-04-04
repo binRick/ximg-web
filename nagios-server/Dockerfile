@@ -29,7 +29,7 @@ RUN chmod +x /opt/nagios/libexec/check_docker.py \
 RUN cat >> /opt/nagios/share/stylesheets/common.css <<'EOF'
 
 /* ximg.app: hide branding */
-a.homepageURL, .infoBoxBadProcStatus { display: none !important; }
+a.homepageURL, .infoBoxBadProcStatus, table.linkBox { display: none !important; }
 EOF
 
 RUN cat >> /opt/nagios/share/js/nag_funcs.js <<'EOF'
@@ -43,6 +43,12 @@ $(document).ready(function(){
     t.find('a.homepageURL,i').remove();
     $('.infoBoxBadProcStatus').remove();
     t.find('br').slice(2).remove();
+});
+$(document).ready(function(){
+    $('div.statusTitle').each(function(){
+        if(/Service Status Details For All Hosts/i.test($(this).text()))
+            $(this).text('Service Status');
+    });
 });
 EOF
 
