@@ -29,62 +29,81 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-Each subdomain has its own Apache container and `*-html/` directory for static files.
+Each subdomain has its own Apache container and `*-html/` directory for static files. The table below lists representative subdomains — the full list of 54+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|
 | ximg.app | public-html/ | Landing page (animated grid, floating orbs, frosted-glass card) |
-| linux.ximg.app | linux-html/ | Browser terminal (xterm.js + ~20-command mock shell, bouncing Tux) |
-| butterfly.ximg.app | butterfly-html/ | Canvas particle animation (butterfly curve math) |
-| ascii.ximg.app | ascii-html/ | ASCII art: spinning donut, matrix rain, sine plasma |
-| json.ximg.app | json-html/ | JSON type reference card (syntax-highlighted, educational) |
-| poker.ximg.app | poker-html/ | Texas Hold'em hand evaluator (card picker, probability bar chart) |
 | logs.ximg.app | logs-server/ | Live nginx log viewer (WebSocket, tabs per subdomain) + SSH session browser |
-| mario.ximg.app | mario-html/ | Mario-themed app |
-| yaml.ximg.app | yaml-html/ | YAML reference |
-| doom.ximg.app | doom-html/ | Doom-themed app |
-| monkey.ximg.app | monkey-html/ | Monkey-themed app |
-| docker.ximg.app | docker-html/ | Docker-themed app |
-| pizza.ximg.app | pizza-html/ | Pizza app |
-| kombat.ximg.app | kombat-html/ | Mortal Kombat app |
-| chinese.ximg.app | chinese-html/ | Chinese-themed app |
-| wargames.ximg.app | wargames-html/ | Wargames app |
-| moto.ximg.app | moto-html/ | Moto app |
-| india.ximg.app | india-html/ | India app |
-| wood.ximg.app | wood-html/ | Wood app |
-| guns.ximg.app | guns-html/ | Guns app |
-| tampa.ximg.app | tampa-html/ | Tampa app |
-| florida.ximg.app | florida-html/ | Florida app |
-| america.ximg.app | america-html/ | America app |
-| computers.ximg.app | computers-html/ | Computers app |
-| trump.ximg.app | trump-html/ | Trump app |
-| cnc.ximg.app | cnc-html/ | Command & Conquer app — games, vehicles, buildings, lore |
+| apps.ximg.app | apps-html/ | Searchable directory of every app in the stack |
+| readme.ximg.app | readme-html/ | README.md rendered as a styled web page |
+| claudemd.ximg.app | claudemd-html/ | CLAUDE.md rendered as a styled web page |
+| nagios.ximg.app | nagios-server/ | Nagios Core monitoring — HTTPS checks for every subdomain |
+| stats.ximg.app | awstats/ | AWStats traffic analytics per subdomain |
+| ids.ximg.app | ids-html/ | Suricata IDS live alert feed |
+| netdata.ximg.app | netdata/ | Real-time server metrics (CPU, memory, network, Docker) |
+| change.ximg.app | change-server/ | Live git commit history viewer |
+| mail.ximg.app | mail-server/ | Webmail inbox for @ximg.app |
 
 `logs.ximg.app` is special: nginx routes `/ws` to Node.js for WebSocket upgrades; all other traffic also hits Node (not Apache).
 
 ## Shared Nav
 
-`shared-html/nav.js` — shared navigation bar (IIFE), volume-mounted into all containers. Brand "ximg.app" is a clickable link.
+`shared-html/nav.js` — shared navigation bar (IIFE), volume-mounted read-only into every Apache container at `/usr/local/apache2/htdocs/shared/`.
 
-**IMPORTANT:** The nav script MUST be loaded at the end of `<body>`, NOT in `<head>`. It calls `document.body.prepend()` and will silently fail if the body doesn't exist yet. Always place it as the last `<script>` before `</body>`.
+**IMPORTANT:** The nav script MUST be loaded at the end of `<body>`, NOT in `<head>`. It calls `document.body.prepend()` and will silently fail if the body doesn't exist yet. Always place it as the last `<script>` before `</body>`:
+```html
+<script src="/shared/nav.js?v=2"></script>
+```
+
+**Version bump:** If nav.js is significantly changed (new groups, layout changes), increment the `?v=2` query string to bust browser caches across all sites.
 
 ## Images
 
 **All images must be hosted on the website — never reference images from external URLs (no CDNs, no Wikipedia, no third-party hosts).** Download images locally and serve them from the app's own directory (e.g., `cnc-html/images/`, `mario-html/images/`).
 
-## Adding a New App (Checklist)
+## Container Operations
 
-Every new app must be wired into **all of the following places** in addition to its own files:
+Use the right command for the situation:
 
-1. **Nav bar** — add an entry to `shared-html/nav.js`
-2. **Landing page** — add a card/link on `public-html/index.html` (ximg.app)
-3. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app) with name, domain, date added, and description
-4. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` so its nginx logs are streamed
-5. **Stats app** — AWStats config is auto-generated per subdomain; confirm `stats.ximg.app` shows a report for the new subdomain after the next hourly cron run
-6. **Nagios** — add an HTTP/HTTPS check for the new subdomain in `nagios-server/conf.d/` so it appears on the Nagios status board
-7. **README** — add a row for the new subdomain in the `## Live Sites` table in `README.md`
-8. **Install script** — add the new subdomain to the `DOMAINS` array in `install/setup.sh` so fresh-clone deployments include it in the SSL cert
-9. **Favicon** — add an interesting, thematically appropriate `favicon.ico` (or `.png`) to the app's directory and reference it in `<head>`. Download a real image; don't use a generic placeholder.
+| Situation | Command |
+|-----------|---------|
+| Static file change (HTML/CSS/JS in `*-html/`) | No restart needed — Apache serves files live |
+| nginx config change (`nginx/nginx.conf`) | `docker compose exec nginx nginx -s reload` |
+| Node.js server change (`logs-server/`, `change-server/`, etc.) | `docker compose restart <service>` |
+| compose.yaml change (new service, new volume mount) | `docker compose up -d` |
+| Dockerfile or build context change | `docker compose up -d --build <service>` |
+| New container added | `docker compose up -d <service>` |
+
+After any nginx config change, always test first: `docker compose exec nginx nginx -t`
+
+## Adding a New App (Canonical Checklist)
+
+This is the single authoritative checklist. Follow every step in order.
+
+### Files & Config
+
+1. **Create `*-html/` directory** with `index.html` as the entry point
+2. **Favicon** — download a thematically appropriate image, save as `favicon.ico` or `favicon.png`, reference it in `<head>`. Download a real image; don't use a generic placeholder.
+3. **Nav script** — add `<script src="/shared/nav.js?v=2"></script>` as the last `<script>` before `</body>`
+4. **compose.yaml** — add a new `httpd:2.4-alpine` service with volumes for the html dir and `shared-html`
+5. **nginx.conf (HTTP block)** — add the new subdomain to the HTTP→HTTPS redirect `server_name` list (the block at the top of the HTTPS server section that redirects port 80)
+6. **nginx.conf (HTTPS block)** — add a new `server { listen 443 ssl; server_name <subdomain>.ximg.app; ... }` block proxying to the new service
+7. **SSL cert** — expand the cert to include the new subdomain (see SSL section below — read it carefully before running certbot)
+
+### Wiring
+
+8. **Nav bar** — add an entry to `shared-html/nav.js`
+9. **Landing page** — add a card to `public-html/index.html` (ximg.app)
+10. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` with name, domain, date added, and description
+11. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` (both the log file map and the button list in the HTML)
+12. **Nagios** — add the subdomain to the `members` list in `nagios-server/ximg-hosts.cfg` and add a `define host {}` entry in the same file
+13. **README** — add a row to the `## Live Sites` table in `README.md`
+14. **Install script** — add the subdomain to the `DOMAINS` array in `install/setup.sh`
+
+### Stats
+
+15. **AWStats** — AWStats auto-generates config per subdomain from nginx logs; no manual config needed. Verify the new subdomain appears at `stats.ximg.app` after the next hourly cron run.
 
 Missing any of these means the app is invisible, unmonitored, or incomplete.
 
@@ -92,40 +111,35 @@ Missing any of these means the app is invisible, unmonitored, or incomplete.
 
 After creating a new app, always verify all of the following before considering the task done:
 
-1. **Cert acquired** — confirm the new subdomain is covered by the cert: `certbot certificates | grep <subdomain>`
-2. **Container up** — confirm the Docker container is running: `docker compose ps <service>`
-3. **Website works** — confirm the site returns HTTP 200: `curl -sk https://<subdomain>.ximg.app | head -5`
-4. **App is unique** — confirm the page HTML is NOT identical to the main landing page (`ximg.app`): compare `<title>` tags and page content to ensure the new app loaded its own page, not the default
+1. **Cert acquired** — `certbot certificates | grep <subdomain>`
+2. **Container up** — `docker compose ps <service>`
+3. **Website works** — `curl -sk https://<subdomain>.ximg.app | head -5`
+4. **App is unique** — confirm `<title>` tag is NOT `ximg.app` (which would mean nginx is routing to the wrong upstream)
 
 If any check fails, fix it before finishing.
 
 ## SSL / Adding a New Subdomain
 
-Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdomain:
-1. DNS A record → 172.238.205.61
-2. Expand the cert — **CRITICAL: you MUST list ALL existing domains plus the new one.** Never run certbot with only the new domain or it will strip the cert down to just that domain and take every other site offline. Get the full current domain list first, then add the new one:
-   ```bash
-   # Get current domains in the wargames cert:
-   certbot certificates | grep -A50 "Certificate Name: wargames" | grep "Domains:" | sed 's/.*Domains: //'
-   # Then run certbot with ALL those domains plus the new subdomain:
-   certbot certonly --webroot --expand --cert-name wargames.ximg.app \
-     -w /root/ximg-web/public-html \
-     -d ximg.app -d existing1.ximg.app ... -d newsubdomain.ximg.app \
-     --non-interactive
-   ```
-3. New `server { }` block in `nginx/nginx.conf`
-4. New Apache service in `compose.yaml`
-5. New `*-html/` directory with static files
-6. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
-7. **Favicon** — download a thematically appropriate favicon image, save it to the app's directory, and add `<link rel="icon" href="/favicon.ico">` (or `.png`) in `<head>`
-8. **Nav bar** — add an entry to `shared-html/nav.js`
-9. **Landing page** — add a card to `public-html/index.html`
-10. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app)
-11. **Logs app** — add the subdomain to the tab list in `logs-server/server.js`
-12. **Stats app** — AWStats picks it up automatically; verify after next cron run at `stats.ximg.app`
-13. **Nagios** — add an HTTP check in `nagios-server/conf.d/` so the subdomain is monitored
-14. **README** — add a row to the `## Live Sites` table in `README.md`
-15. **Install script** — add the subdomain to the `DOMAINS` array in `install/setup.sh`
+**CRITICAL — read before running certbot:** The cert is a single multi-domain cert (`wargames.ximg.app`). When you run certbot, it replaces the cert with **exactly** the domains you specify. If you omit any existing domain, that domain loses its cert and goes offline immediately.
+
+**Always get the current domain list first, then add the new subdomain:**
+```bash
+# Step 1 — get full current domain list:
+certbot certificates | grep -A50 "Certificate Name: wargames" | grep "Domains:" | sed 's/.*Domains: //'
+
+# Step 2 — expand cert with ALL existing domains plus the new one:
+certbot certonly --webroot --expand --cert-name wargames.ximg.app \
+  -w /root/ximg-web/public-html \
+  -d ximg.app -d existing1.ximg.app -d existing2.ximg.app ... -d newsubdomain.ximg.app \
+  --non-interactive
+
+# Step 3 — reload nginx to pick up the new cert:
+docker compose exec nginx nginx -s reload
+```
+
+Other SSL steps:
+- DNS A record → 172.238.205.61 (must exist before running certbot)
+- Cert path used in nginx server blocks: `/etc/letsencrypt/live/wargames.ximg.app/fullchain.pem`
 
 ## SSH Honeypot
 
@@ -138,5 +152,8 @@ Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdoma
 
 - `nginx/nginx.conf` — reverse proxy + virtual hosting config
 - `compose.yaml` — all Docker services
-- `logs/` — per-site nginx access/error logs
+- `shared-html/nav.js` — shared navigation bar
+- `nagios-server/ximg-hosts.cfg` — Nagios host definitions and hostgroup membership
+- `nagios-server/ximg-services.cfg` — Nagios service check definitions
+- `logs/` — per-site nginx access/error logs (one file per subdomain)
 - `ssh-logs/` — SSH session recordings (gitignored)
