@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wave Physics Explorer — waves.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-btn:hover:not(.active){color:#e2e8f0}
+.tab-panel{display:none;padding:1.5rem}
+.tab-panel.active{display:block}
+canvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px}
+.controls{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;align-items:center}
+.ctrl{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#94a3b8}
+.ctrl label{white-space:nowrap}
+input[type=range]{width:130px;accent-color:#22d3ee}
+.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:.4rem .9rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#334155}
+.btn.active-btn{background:#0e4a5e;border-color:#22d3ee;color:#22d3ee}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-top:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+.info-box h3{color:#22d3ee;margin-bottom:.5rem;font-size:1rem}
+.formula{font-family:'Courier New',monospace;color:#3b82f6;background:#0a0a25;padding:.3rem .6rem;border-radius:4px;font-size:.85rem}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+.stat{font-size:.82rem;color:#64748b;margin-right:1rem}
+.stat span{color:#22d3ee}
+.stats-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem}
+</style>
+</head>
+<body>
+
+<nav class="sub-nav">
+  <button class="tab-btn active" data-tab="types">Wave Types</button>
+  <button class="tab-btn" data-tab="interference">Interference</button>
+  <button class="tab-btn" data-tab="sound">Sound Waves</button>
+  <button class="tab-btn" data-tab="fourier">Fourier</button>
+</nav>
+
+<!-- TAB 1: Wave Types -->
+<div class="tab-panel active" id="tab-types">
+  <h2>Transverse &amp; Longitudinal Waves</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Frequency</label><input type="range" id="typeFreq" min="0.5" max="4" step="0.1" value="1.5"><span id="typeFreqVal" style="color:#22d3ee">1.5</span> Hz</div>
+    <div class="ctrl"><label>Amplitude</label><input type="range" id="typeAmp" min="10" max="60" step="2" value="35"><span id="typeAmpVal" style="color:#22d3ee">35</span></div>
+    <div class="ctrl"><label>Speed</label><input type="range" id="typeSpeed" min="0.2" max="3" step="0.1" value="1"></div>
+  </div>
+  <canvas id="typesCanvas"></canvas>
+  <div class="info-box">
+    <h3>Wave Properties</h3>
+    <b>Transverse</b> (top): particles move perpendicular to wave travel — light, ripples on water.<br>
+    <b>Longitudinal</b> (bottom): particles compress and rarefy along the direction of travel — sound waves.<br>
+    <span class="formula">v = f × λ</span> &nbsp;|&nbsp;
+    <span class="formula">T = 1/f</span>
+  </div>
+</div>
+
+<!-- TAB 2: Interference -->
+<div class="tab-panel" id="tab-interference">
+  <h2>Wave Interference &amp; Double Slit</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Wavelength</label><input type="range" id="intWL" min="20" max="80" step="2" value="40"><span id="intWLVal" style="color:#22d3ee">40</span> px</div>
+    <div class="ctrl"><label>Speed</label><input type="range" id="intSpeed" min="0.2" max="3" step="0.1" value="1"></div>
+    <div class="ctrl" style="color:#64748b;font-size:.8rem">Drag the sources</div>
+  </div>
+  <canvas id="intCanvas" style="cursor:grab"></canvas>
+  <div class="info-box">
+    <h3>Constructive &amp; Destructive Interference</h3>
+    Two point sources emit circular waves. Where crests meet crests: <b style="color:#22d3ee">bright (constructive)</b>. Where crests meet troughs: <b style="color:#1e3a5f">dark (destructive)</b>. This is the classic double-slit experiment — wave nature of light proven by Young in 1801.
+  </div>
+</div>
+
+<!-- TAB 3: Sound Waves -->
+<div class="tab-panel" id="tab-sound">
+  <h2>Sound Wave Visualization</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Frequency</label><input type="range" id="soundFreq" min="20" max="20000" step="10" value="440">
+      <span id="soundFreqVal" style="color:#22d3ee">440</span> Hz</div>
+    <button class="btn" id="soundPlay">▶ Play Tone</button>
+    <button class="btn" id="soundStop" style="display:none">■ Stop</button>
+  </div>
+  <div class="stats-row" id="soundStats"></div>
+  <canvas id="soundCanvas"></canvas>
+  <div class="info-box">
+    <h3>Sound Properties</h3>
+    Sound travels at ~343 m/s in air at 20°C.<br>
+    <span class="formula">λ = v / f</span> &nbsp;|&nbsp;
+    <span class="formula">T = 1 / f</span><br><br>
+    Human hearing range: 20 Hz (sub-bass) to 20,000 Hz (highest audible). The compression pattern below shows how air molecules are pushed together (compression) and pulled apart (rarefaction).
+  </div>
+</div>
+
+<!-- TAB 4: Fourier -->
+<div class="tab-panel" id="tab-fourier">
+  <h2>Fourier Decomposition</h2>
+  <div class="controls">
+    <div class="ctrl"><label>H1 (fund.)</label><input type="range" class="harmonic" id="h1" min="0" max="1" step="0.05" value="1.0"></div>
+    <div class="ctrl"><label>H2 (2nd)</label><input type="range" class="harmonic" id="h2" min="0" max="1" step="0.05" value="0.5"></div>
+    <div class="ctrl"><label>H3 (3rd)</label><input type="range" class="harmonic" id="h3" min="0" max="1" step="0.05" value="0.33"></div>
+    <div class="ctrl"><label>H4 (4th)</label><input type="range" class="harmonic" id="h4" min="0" max="1" step="0.05" value="0"></div>
+    <div class="ctrl"><label>H5 (5th)</label><input type="range" class="harmonic" id="h5" min="0" max="1" step="0.05" value="0"></div>
+    <button class="btn" id="fourierSquare">Square Wave</button>
+    <button class="btn" id="fourierSaw">Sawtooth</button>
+    <button class="btn" id="fourierReset">Reset</button>
+    <div class="ctrl"><label>Speed</label><input type="range" id="fourierSpeed" min="0.1" max="3" step="0.1" value="1"></div>
+  </div>
+  <canvas id="fourierCanvas"></canvas>
+  <div class="info-box">
+    <h3>Fourier's Theorem</h3>
+    Any periodic waveform can be built from a sum of sine waves at integer multiples of a fundamental frequency. The <b style="color:#22d3ee">thick white line</b> is the composite wave; the <b style="color:#3b82f6">thin colored lines</b> are individual harmonics.
+    <span class="formula">f(t) = Σ aₙ sin(n·ωt)</span>
+  </div>
+</div>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────────────────────────
+const tabBtns   = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+let activeTab = 'types';
+
+tabBtns.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    tabBtns.forEach(b=>b.classList.remove('active'));
+    tabPanels.forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    const id=btn.dataset.tab;
+    document.getElementById('tab-'+id).classList.add('active');
+    activeTab=id;
+    if (id==='interference') initInterference();
+  });
+});
+
+function resizeCanvas(canvas) {
+  const w = Math.min(canvas.parentElement.clientWidth, 1200);
+  canvas.width  = w;
+  canvas.height = Math.round(w * 0.42);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 1 — Wave Types
+// ─────────────────────────────────────────────────────────────────────────────
+const typesCanvas = document.getElementById('typesCanvas');
+const typesCtx    = typesCanvas.getContext('2d');
+let waveTime = 0;
+
+const HARMONIC_COLORS = ['#22d3ee','#3b82f6','#8b5cf6','#f59e0b','#10b981'];
+
+function drawTypes() {
+  resizeCanvas(typesCanvas);
+  const W=typesCanvas.width, H=typesCanvas.height;
+  const ctx=typesCtx;
+  ctx.clearRect(0,0,W,H);
+
+  const freq  = parseFloat(document.getElementById('typeFreq').value);
+  const amp   = parseFloat(document.getElementById('typeAmp').value);
+  const speed = parseFloat(document.getElementById('typeSpeed').value);
+  const k     = (freq * 2*Math.PI) / W * 3;
+  const omega = freq * 0.04 * speed;
+  waveTime += omega;
+
+  const topY = H * 0.27;
+  const botY = H * 0.72;
+
+  // ─ Transverse wave ─
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,topY); ctx.lineTo(W,topY); ctx.stroke();
+
+  ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  for (let x=0;x<=W;x++) {
+    const y = topY + amp * Math.sin(k*x - waveTime);
+    x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Labels: wavelength arrow
+  const lam = (2*Math.PI)/k;
+  const x0  = 40;
+  const y0  = topY + amp*Math.sin(k*x0-waveTime);
+  const y1  = topY + amp*Math.sin(k*(x0+lam)-waveTime);
+  ctx.strokeStyle='#f97316'; ctx.lineWidth=1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,topY+amp+18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0+lam,y1); ctx.lineTo(x0+lam,topY+amp+18); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x0,topY+amp+18); ctx.lineTo(x0+lam,topY+amp+18); ctx.stroke();
+  ctx.fillStyle='#f97316'; ctx.font='11px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText('λ', x0+lam/2, topY+amp+30);
+
+  // Amplitude arrow
+  ctx.strokeStyle='#eab308'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(W-30,topY); ctx.lineTo(W-30,topY-amp); ctx.stroke();
+  ctx.fillStyle='#eab308'; ctx.textAlign='right';
+  ctx.fillText('A', W-34, topY-amp/2+4);
+
+  ctx.fillStyle='#94a3b8'; ctx.font='bold 12px Segoe UI'; ctx.textAlign='left';
+  ctx.fillText('TRANSVERSE WAVE', 10, topY-amp-12);
+
+  // ─ Longitudinal wave ─
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,botY); ctx.lineTo(W,botY); ctx.stroke();
+
+  ctx.fillStyle='#94a3b8'; ctx.font='bold 12px Segoe UI'; ctx.textAlign='left';
+  ctx.fillText('LONGITUDINAL WAVE', 10, botY-28);
+
+  const particleCount = Math.floor(W/12);
+  const particleSpacing = W / particleCount;
+  for (let i=0;i<particleCount;i++) {
+    const baseX = i*particleSpacing + particleSpacing/2;
+    const displacement = amp * 0.55 * Math.sin(k*baseX - waveTime);
+    const px = baseX + displacement;
+    const density = 1 - displacement/(amp*0.8);
+    const r = Math.max(1, Math.min(4, 3));
+    const alpha = Math.max(0.2, Math.min(1, 0.5+density*0.5));
+    ctx.beginPath(); ctx.arc(px, botY, r, 0, Math.PI*2);
+    ctx.fillStyle=`rgba(59,130,246,${alpha})`; ctx.fill();
+  }
+
+  // Compression labels
+  const compX = 40 + (W*0.15);
+  ctx.fillStyle='#3b82f6'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText('compression', compX, botY+20);
+  ctx.fillText('rarefaction', compX+lam*0.5, botY+20);
+
+  if (activeTab==='types') requestAnimationFrame(drawTypes);
+}
+
+['typeFreq','typeAmp'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(id+'Val').textContent=this.value;
+  });
+});
+
+drawTypes();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 2 — Interference
+// ─────────────────────────────────────────────────────────────────────────────
+const intCanvas = document.getElementById('intCanvas');
+const intCtx    = intCanvas.getContext('2d');
+let intTime = 0;
+let sources = [];
+let dragging = null;
+let offscreenBuffer = null;
+
+function initInterference() {
+  resizeCanvas(intCanvas);
+  const W=intCanvas.width, H=intCanvas.height;
+  sources = [
+    {x: W*0.5 - 60, y: H*0.5, color:'#22d3ee'},
+    {x: W*0.5 + 60, y: H*0.5, color:'#3b82f6'},
+  ];
+  offscreenBuffer = null;
+}
+
+function drawInterference() {
+  if (activeTab!=='interference') return;
+  resizeCanvas(intCanvas);
+  const W=intCanvas.width, H=intCanvas.height;
+  const ctx=intCtx;
+  const wl    = parseFloat(document.getElementById('intWL').value);
+  const speed = parseFloat(document.getElementById('intSpeed').value);
+  intTime += 0.05 * speed;
+
+  // Render interference field
+  if (!offscreenBuffer || offscreenBuffer.width!==W || offscreenBuffer.height!==H) {
+    offscreenBuffer = new OffscreenCanvas(W,H);
+  }
+  const oCtx = offscreenBuffer.getContext('2d');
+  const imageData = oCtx.createImageData(W,H);
+  const data = imageData.data;
+  const k = 2*Math.PI / wl;
+
+  // Sample every 3 pixels for speed
+  for (let y=0;y<H;y+=3) {
+    for (let x=0;x<W;x+=3) {
+      let amp = 0;
+      sources.forEach(s=>{
+        const d = Math.sqrt((x-s.x)**2+(y-s.y)**2);
+        amp += Math.sin(k*d - intTime);
+      });
+      amp /= sources.length;
+      const bright = (amp + 1) / 2;
+      const r = Math.floor(bright * 34);
+      const g = Math.floor(bright * 200);
+      const b = Math.floor(bright * 220);
+      for (let dy=0;dy<3;dy++) for(let dx=0;dx<3;dx++) {
+        if (x+dx>=W||y+dy>=H) continue;
+        const idx = ((y+dy)*W+(x+dx))*4;
+        data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=255;
+      }
+    }
+  }
+  oCtx.putImageData(imageData,0,0);
+  ctx.drawImage(offscreenBuffer,0,0);
+
+  // Draw sources
+  sources.forEach((s,i)=>{
+    const phase = intTime * 0.5;
+    [24,16,8].forEach((r,ri)=>{
+      ctx.beginPath(); ctx.arc(s.x,s.y,r,0,Math.PI*2);
+      ctx.strokeStyle = s.color+'55'; ctx.lineWidth=1.5; ctx.stroke();
+    });
+    ctx.beginPath(); ctx.arc(s.x,s.y,7,0,Math.PI*2);
+    ctx.fillStyle=s.color; ctx.fill();
+    ctx.fillStyle='#e2e8f0'; ctx.font='bold 11px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText('S'+(i+1), s.x, s.y-12);
+  });
+
+  requestAnimationFrame(drawInterference);
+}
+
+// Dragging
+intCanvas.addEventListener('mousedown', e=>{
+  const r=intCanvas.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  sources.forEach((s,i)=>{ if (Math.hypot(mx-s.x,my-s.y)<16) dragging=i; });
+  intCanvas.style.cursor='grabbing';
+});
+intCanvas.addEventListener('mousemove', e=>{
+  if (dragging===null) return;
+  const r=intCanvas.getBoundingClientRect();
+  sources[dragging].x=e.clientX-r.left;
+  sources[dragging].y=e.clientY-r.top;
+  offscreenBuffer=null;
+});
+intCanvas.addEventListener('mouseup',  ()=>{ dragging=null; intCanvas.style.cursor='grab'; });
+intCanvas.addEventListener('mouseleave',()=>{ dragging=null; intCanvas.style.cursor='grab'; });
+
+document.getElementById('intWL').addEventListener('input',function(){
+  document.getElementById('intWLVal').textContent=this.value;
+  offscreenBuffer=null;
+});
+
+initInterference();
+drawInterference();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 3 — Sound Waves
+// ─────────────────────────────────────────────────────────────────────────────
+const soundCanvas = document.getElementById('soundCanvas');
+const soundCtx    = soundCanvas.getContext('2d');
+let soundTime = 0;
+let audioCtx = null;
+let oscillator = null;
+let soundPlaying = false;
+
+const PITCH_CATEGORIES = [
+  [20,60,'Sub-bass'],
+  [60,250,'Bass'],
+  [250,500,'Low mid'],
+  [500,2000,'Mid'],
+  [2000,4000,'Upper mid'],
+  [4000,8000,'Presence'],
+  [8000,20000,'Brilliance'],
+];
+
+function getPitchCategory(f) {
+  for (const [lo,hi,name] of PITCH_CATEGORIES) if (f>=lo&&f<=hi) return name;
+  return 'Inaudible';
+}
+
+function drawSound() {
+  resizeCanvas(soundCanvas);
+  const W=soundCanvas.width, H=soundCanvas.height;
+  const ctx=soundCtx;
+  ctx.clearRect(0,0,W,H);
+
+  const freq = parseFloat(document.getElementById('soundFreq').value);
+  const v    = 343; // m/s
+  const lam  = v/freq;
+  const period = 1/freq;
+  soundTime += 0.03;
+
+  // Update stats
+  const cat = getPitchCategory(freq);
+  document.getElementById('soundStats').innerHTML =
+    `<span class="stat">λ: <span>${lam.toFixed(3)} m</span></span>` +
+    `<span class="stat">Period: <span>${(period*1000).toFixed(4)} ms</span></span>` +
+    `<span class="stat">Category: <span style="color:#22d3ee">${cat}</span></span>`;
+
+  // Scale: show a few wavelengths across the canvas
+  // Map: canvas width = min(10 wavelengths, some max)
+  const pxPerMeter = Math.min(200/lam, W/2);
+  const showLams = Math.min(8, W/(pxPerMeter*lam));
+  const totalPx = showLams * lam * pxPerMeter;
+  const offsetX = (W-totalPx)/2;
+
+  const particleRows = 5;
+  const rowH = H * 0.55 / particleRows;
+  const startY = H * 0.15;
+  const k = 2*Math.PI / (lam * pxPerMeter);
+
+  for (let row=0;row<particleRows;row++) {
+    const baseY = startY + row*rowH + rowH/2;
+    const N = Math.floor(totalPx/8)+1;
+    for (let i=0;i<N;i++) {
+      const baseX = offsetX + i*8;
+      const disp = 12 * Math.sin(k*baseX - soundTime * freq*0.03*60);
+      const px = baseX + disp;
+      const density = disp/14;
+      const alpha = 0.3+Math.abs(density)*0.7;
+      ctx.beginPath(); ctx.arc(px, baseY, 2.5, 0, Math.PI*2);
+      ctx.fillStyle=`rgba(59,130,246,${alpha})`; ctx.fill();
+    }
+  }
+
+  // Waveform at bottom
+  const waveY = H*0.82;
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,waveY); ctx.lineTo(W,waveY); ctx.stroke();
+
+  ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2;
+  ctx.beginPath();
+  for (let x=0;x<W;x++) {
+    const y = waveY + 28 * Math.sin(k*x - soundTime*freq*0.03*60);
+    x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Label
+  ctx.fillStyle='#94a3b8'; ctx.font='12px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText(`${freq} Hz — wavelength: ${lam.toFixed(3)} m`, W/2, H-10);
+
+  if (activeTab==='sound') requestAnimationFrame(drawSound);
+}
+
+document.getElementById('soundFreq').addEventListener('input',function(){
+  document.getElementById('soundFreqVal').textContent=this.value;
+  if (oscillator) oscillator.frequency.setValueAtTime(parseFloat(this.value), audioCtx.currentTime);
+});
+
+document.getElementById('soundPlay').addEventListener('click',()=>{
+  if (soundPlaying) return;
+  audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+  oscillator = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  oscillator.connect(gain); gain.connect(audioCtx.destination);
+  oscillator.frequency.setValueAtTime(parseFloat(document.getElementById('soundFreq').value), audioCtx.currentTime);
+  oscillator.start();
+  soundPlaying=true;
+  document.getElementById('soundPlay').style.display='none';
+  document.getElementById('soundStop').style.display='';
+});
+document.getElementById('soundStop').addEventListener('click',()=>{
+  if (oscillator) { oscillator.stop(); oscillator=null; }
+  soundPlaying=false;
+  document.getElementById('soundPlay').style.display='';
+  document.getElementById('soundStop').style.display='none';
+});
+
+drawSound();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 4 — Fourier
+// ─────────────────────────────────────────────────────────────────────────────
+const fourierCanvas = document.getElementById('fourierCanvas');
+const fourierCtx    = fourierCanvas.getContext('2d');
+let fourierTime = 0;
+
+const HARM_COLORS = ['#22d3ee','#3b82f6','#8b5cf6','#f59e0b','#10b981'];
+
+function getHarmonics() {
+  return [1,2,3,4,5].map(n=>parseFloat(document.getElementById('h'+n).value));
+}
+
+function drawFourier() {
+  resizeCanvas(fourierCanvas);
+  const W=fourierCanvas.width, H=fourierCanvas.height;
+  const ctx=fourierCtx;
+  ctx.clearRect(0,0,W,H);
+
+  const speed = parseFloat(document.getElementById('fourierSpeed').value);
+  fourierTime += 0.02 * speed;
+  const amps = getHarmonics();
+  const midY = H*0.5;
+  const scaleA = Math.min(H*0.3, 120);
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(W,midY); ctx.stroke();
+
+  // Individual harmonics (thin)
+  amps.forEach((a,i)=>{
+    if (a===0) return;
+    const n = i+1;
+    ctx.strokeStyle = HARM_COLORS[i]+'88';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    for (let x=0;x<=W;x++) {
+      const t = (x/W)*4*Math.PI - fourierTime*n*0.5;
+      const y = midY - a*scaleA*Math.sin(n*t);
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // Legend
+    ctx.fillStyle=HARM_COLORS[i]; ctx.font='11px Segoe UI'; ctx.textAlign='left';
+    ctx.fillText(`H${n} (×${a.toFixed(2)})`, 10, 20+i*18);
+  });
+
+  // Composite (thick)
+  ctx.strokeStyle='#ffffff';
+  ctx.lineWidth=2.5;
+  ctx.beginPath();
+  for (let x=0;x<=W;x++) {
+    let y = 0;
+    amps.forEach((a,i)=>{
+      const n=i+1;
+      const t=(x/W)*4*Math.PI - fourierTime*n*0.5;
+      y += a*scaleA*Math.sin(n*t);
+    });
+    y = midY - y;
+    x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  if (activeTab==='fourier') requestAnimationFrame(drawFourier);
+}
+
+document.getElementById('fourierSquare').addEventListener('click',()=>{
+  // Square wave: 1, 0, 1/3, 0, 1/5
+  [1, 0, 0.333, 0, 0.2].forEach((v,i)=>document.getElementById('h'+(i+1)).value=v);
+});
+document.getElementById('fourierSaw').addEventListener('click',()=>{
+  // Sawtooth: 1, 0.5, 0.333, 0.25, 0.2
+  [1, 0.5, 0.333, 0.25, 0.2].forEach((v,i)=>document.getElementById('h'+(i+1)).value=v);
+});
+document.getElementById('fourierReset').addEventListener('click',()=>{
+  [1, 0.5, 0.33, 0, 0].forEach((v,i)=>document.getElementById('h'+(i+1)).value=v);
+});
+
+drawFourier();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

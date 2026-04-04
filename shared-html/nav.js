@@ -20,7 +20,7 @@
     { label: 'Tech', apps: [
       ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],['crypto','crypto'],
       ['docker','docker'],['dns','dns'],['fidonet','fidonet'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['nagios','nagios'],['passwords','passwords'],['programming','programming'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['agents','agents'],['algorithms','algorithms'],['database','database'],['embeddings','embeddings'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['request','request'],['security','security'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['temperature','temp'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coffee','coffee'],['florida','florida'],
@@ -31,7 +31,7 @@
       ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
     ]},
     { label: 'Science', apps: [
-      ['biology','biology'],['butterfly','butterfly'],['chemistry','chemistry'],['evolution','evolution'],['math','math'],['physics','physics'],['space','space']
+      ['biology','biology'],['butterfly','butterfly'],['chaos','chaos'],['chemistry','chemistry'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['math','math'],['physics','physics'],['sandbox','sandbox'],['space','space'],['waves','waves'],['world','world']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],

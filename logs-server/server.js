@@ -137,6 +137,16 @@ const LOG_FILES = {
   readme:      'readme.access.log',
   status:      'status.access.log',
   nav:         'nav.access.log',
+  world:       'world.access.log',
+  sandbox:     'sandbox.access.log',
+  gravity:     'gravity.access.log',
+  waves:       'waves.access.log',
+  chaos:       'chaos.access.log',
+  epidemic:    'epidemic.access.log',
+  algorithms:  'algorithms.access.log',
+  os:          'os.access.log',
+  security:    'security.access.log',
+  database:    'database.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -458,6 +468,16 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="wood">wood</button>
           <button class="site-opt" data-site="ximg">ximg</button>
           <button class="site-opt" data-site="ximg-app">ximg-app</button>
+          <button class="site-opt" data-site="world">world</button>
+          <button class="site-opt" data-site="sandbox">sandbox</button>
+          <button class="site-opt" data-site="gravity">gravity</button>
+          <button class="site-opt" data-site="waves">waves</button>
+          <button class="site-opt" data-site="chaos">chaos</button>
+          <button class="site-opt" data-site="epidemic">epidemic</button>
+          <button class="site-opt" data-site="algorithms">algorithms</button>
+          <button class="site-opt" data-site="os">os</button>
+          <button class="site-opt" data-site="security">security</button>
+          <button class="site-opt" data-site="database">database</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

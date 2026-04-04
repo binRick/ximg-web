@@ -84,10 +84,20 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [biology.ximg.app](https://biology.ximg.app) | The science of life — cells, genetics and DNA, taxonomy, body systems, ecology, and the biologists who shaped the field |
 | [math.ximg.app](https://math.ximg.app) | The language of the universe — algebra, calculus, geometry, number theory, probability and statistics, great mathematicians |
 | [evolution.ximg.app](https://evolution.ximg.app) | 3.8 billion years of life — natural selection, Darwin's voyage, fossil record, five mass extinctions, human evolution timeline |
+| [gravity.ximg.app](https://gravity.ximg.app) | Orbital mechanics simulator — animated solar system, N-body gravity (Newton's law), Earth-Moon Lagrange points L1–L5, escape velocity cannon |
+| [waves.ximg.app](https://waves.ximg.app) | Wave physics explorer — transverse/longitudinal wave animations, double-slit interference, sound frequency visualizer with Web Audio, Fourier decomposition |
+| [chaos.ximg.app](https://chaos.ximg.app) | Chaos theory and fractals — real-time Lorenz attractor, zoomable Mandelbrot set, morphing Julia sets, double pendulum demonstrating sensitivity to initial conditions |
+| [epidemic.ximg.app](https://epidemic.ximg.app) | SIR disease spread simulator — agent-based dot simulation, live S/I/R curves, interventions (distancing, vaccination, quarantine), R₀ and herd immunity calculator |
+| [algorithms.ximg.app](https://algorithms.ximg.app) | Interactive algorithm playground — Bubble/Quick/Merge/Insertion sort visualizer, A*/Dijkstra pathfinding on a drawable grid, BST builder with traversal, BFS/DFS graph explorer |
+| [os.ximg.app](https://os.ximg.app) | OS Simulator — animated round-robin/FIFO/priority process scheduler, visual RAM allocator with heap/stack fragmentation, virtual file system tree, live system monitor graphs |
+| [security.ximg.app](https://security.ximg.app) | Security Lab — SQL injection demo with live query highlighting, XSS safe/unsafe sandbox, password entropy and crack-time analyzer with SHA-256 hashing, JWT decoder |
+| [database.ximg.app](https://database.ximg.app) | Database Visualizer — interactive ER diagram, JOIN type animator (INNER/LEFT/RIGHT/FULL OUTER), visual SQL query builder, B-tree index vs full-table scan performance demo |
 | [dns.ximg.app](https://dns.ximg.app) | Domain Name System reference — record types, resolution flow, dig/nslookup commands, DNSSEC chain of trust, DoH/DoT |
 | [suricata.ximg.app](https://suricata.ximg.app) | Suricata IDS/IPS reference — rule syntax, sticky buffers, protocol parsers, EVE JSON output, JA3 fingerprinting, CLI commands |
 | [readme.ximg.app](https://readme.ximg.app) | The ximg-web project README rendered as a styled web page — architecture overview, subdomain directory, and stack docs |
 | [claudemd.ximg.app](https://claudemd.ximg.app) | The ximg-web CLAUDE.md rendered as a styled web page — AI assistant instructions, architecture notes, and project conventions |
+| [world.ximg.app](https://world.ximg.app) | Real-time world data dashboard — animated internet traffic map, live cyber attack feed, fake stock ticker with heat map, and live global stat counters |
+| [sandbox.ximg.app](https://sandbox.ximg.app) | Interactive physics sandbox — bouncing particles, wave interference, elastic/inelastic collisions with momentum display, and spring-mass oscillator with phase diagram |
 
 ## Architecture
 

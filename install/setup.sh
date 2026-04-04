@@ -195,6 +195,13 @@ DOMAINS=(
   dns.ximg.app suricata.ximg.app crypto.ximg.app
   readme.ximg.app
   claudemd.ximg.app
+  world.ximg.app
+  sandbox.ximg.app
+  gravity.ximg.app
+  waves.ximg.app
+  chaos.ximg.app
+  epidemic.ximg.app
+  algorithms.ximg.app os.ximg.app security.ximg.app database.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
