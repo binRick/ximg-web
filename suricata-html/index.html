@@ -155,6 +155,7 @@
     <button class="tab" onclick="show('protocols',this)">Protocols</button>
     <button class="tab" onclick="show('outputs',this)">Outputs</button>
     <button class="tab" onclick="show('cli',this)">CLI</button>
+    <button class="tab" onclick="show('snort',this)">vs Snort</button>
   </div>
 
   <!-- ── OVERVIEW ── -->
@@ -672,6 +673,173 @@
       <div class="cmd-row"><div class="cmd-code">jq <span class="arg">'select(.event_type=="fileinfo") | {file:.fileinfo.filename,sha256:.fileinfo.sha256}'</span> <span class="flag">eve.json</span></div><div class="cmd-desc">Extract filenames and SHA256 hashes of files observed transiting the network.</div></div>
     </div>
   </div>
+
+  <!-- ── VS SNORT ── -->
+  <div id="snort" class="section hidden">
+    <div class="sec-title">Suricata vs Snort — At a Glance</div>
+    <div class="card">
+      <p>Snort (1998, Sourcefire/Cisco) and Suricata (2009, OISF) share the same rule language roots but diverge significantly in architecture, performance, and capability. For most new deployments, Suricata is the default choice — but Snort 3 has closed many historical gaps.</p>
+    </div>
+
+    <div class="sec-title">Head-to-Head Comparison</div>
+    <table class="flow-table">
+      <thead>
+        <tr><th style="width:22%">Feature</th><th>Suricata</th><th>Snort 3</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>First release</td>
+          <td><span style="color:var(--dim)">2009 (OISF)</span></td>
+          <td><span style="color:var(--dim)">1998 (Sourcefire → Cisco)</span></td>
+        </tr>
+        <tr>
+          <td>Threading model</td>
+          <td><span style="color:var(--grn)">Native multi-thread — one worker per CPU core, scales linearly to 10–100 Gbps</span></td>
+          <td><span style="color:var(--yel)">Multi-thread since Snort 3 (2021); single-thread in legacy Snort 2</span></td>
+        </tr>
+        <tr>
+          <td>Rule language</td>
+          <td>Superset of Snort rules. Adds sticky buffers, <code>http.*</code> keywords, <code>tls.*</code>, <code>dns.*</code>, <code>ja3.*</code>, flowint, datasets</td>
+          <td>Snort 3 rewrote rule syntax; adds its own sticky buffers. Not fully backward-compatible with Snort 2</td>
+        </tr>
+        <tr>
+          <td>Snort rule compatibility</td>
+          <td><span style="color:var(--grn)">Runs most Snort 2 rules unmodified. ET Open rules ship for both</span></td>
+          <td><span style="color:var(--yel)">Snort 3 broke some Snort 2 syntax; migration tool available</span></td>
+        </tr>
+        <tr>
+          <td>App-layer parsers</td>
+          <td><span style="color:var(--grn)">Built-in: HTTP/2, TLS, DNS, SMB, FTP, SSH, SMTP, NFS, DCERPC, SIP, MODBUS, DNP3, and more</span></td>
+          <td>HTTP, DNS, TLS, FTP, SMB, SIP via plugins. Fewer built-in; extensible via Lua/C++ plugins</td>
+        </tr>
+        <tr>
+          <td>TLS inspection</td>
+          <td><span style="color:var(--grn)">JA3/JA3S fingerprinting, SNI, cert fields — all built-in, zero config</span></td>
+          <td>JA3 available via plugin. SNI inspection supported in Snort 3</td>
+        </tr>
+        <tr>
+          <td>Output formats</td>
+          <td><span style="color:var(--grn)">EVE JSON (rich unified log), fast.log, pcap, Redis, Kafka, Unix socket, Syslog</span></td>
+          <td>Unified2 (legacy binary), JSON alert output. EVE-style JSON not native — use Barnyard2 or plugins</td>
+        </tr>
+        <tr>
+          <td>File extraction</td>
+          <td><span style="color:var(--grn)">Native: HTTP, SMTP, FTP, SMB. MD5/SHA1/SHA256 hashing, YARA integration</span></td>
+          <td>File inspection via preprocessors. Less seamless than Suricata's built-in pipeline</td>
+        </tr>
+        <tr>
+          <td>Packet capture</td>
+          <td>AF_PACKET, DPDK, PF_RING, PCAP, NFQ (inline IPS)</td>
+          <td>PCAP, DAQ abstraction layer (AF_PACKET, NFQ, DPDK via DAQ plugins)</td>
+        </tr>
+        <tr>
+          <td>IPS inline mode</td>
+          <td><span style="color:var(--grn)">NFQ and AF_PACKET XDP inline — drop/reject/pass in production traffic</span></td>
+          <td>NFQ and DAQ-based inline. Equivalent capability, slightly more config overhead</td>
+        </tr>
+        <tr>
+          <td>Scripting</td>
+          <td>Lua scripting for custom detection logic (luajit). Datasets for bulk IP/domain lookups</td>
+          <td><span style="color:var(--grn)">Snort 3 is plugin-based (C++/Lua). More extensible at the core level</span></td>
+        </tr>
+        <tr>
+          <td>Rule sets</td>
+          <td>ET Open (free), ET Pro (commercial), Abuse.ch, PTRESEARCH, Stamus, custom — via suricata-update</td>
+          <td><span style="color:var(--grn)">Talos Intelligence (Cisco) — industry's largest commercial ruleset, included with Snort subscription</span></td>
+        </tr>
+        <tr>
+          <td>SIEM integration</td>
+          <td><span style="color:var(--grn)">EVE JSON → Elastic (native module), Splunk TA, Grafana/Loki, Kafka pipelines</span></td>
+          <td>Unified2 requires Barnyard2 bridge. Snort 3 JSON output improving but less mature ecosystem</td>
+        </tr>
+        <tr>
+          <td>Performance ceiling</td>
+          <td><span style="color:var(--grn)">100 Gbps+ with DPDK/PF_RING on multi-core hardware</span></td>
+          <td>Competitive with Snort 3 multi-thread, but DPDK support lags</td>
+        </tr>
+        <tr>
+          <td>License</td>
+          <td>GPLv2 (engine), MIT (libraries). OISF-governed, vendor-neutral</td>
+          <td><span style="color:var(--yel)">GPLv2 but commercially controlled by Cisco. Talos rules are proprietary</span></td>
+        </tr>
+        <tr>
+          <td>Governance</td>
+          <td><span style="color:var(--grn)">Open Information Security Foundation (OISF) — community + corporate members</span></td>
+          <td>Cisco/Talos. Community edition free; Pro features behind subscription</td>
+        </tr>
+        <tr>
+          <td>Maturity / community</td>
+          <td>Dominant in open-source deployments. Default in Security Onion, Elastic SIEM, Stamus</td>
+          <td><span style="color:var(--grn)">Older, larger install base historically. Talos ruleset unmatched for enterprise depth</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="sec-title">Rule Syntax Differences</div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-name">Sticky buffers — Suricata</div>
+        <div class="feat-desc" style="font-family:'Courier New',monospace;font-size:.74rem;color:var(--grn);line-height:1.8">
+          http.uri; content:"/admin";<br>
+          http.user_agent; content:"curl";<br>
+          tls.sni; content:"evil.io";<br>
+          dns.query; content:"malware";
+        </div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">Content modifiers — Snort 2</div>
+        <div class="feat-desc" style="font-family:'Courier New',monospace;font-size:.74rem;color:var(--cyan);line-height:1.8">
+          content:"/admin"; http_uri;<br>
+          content:"curl"; http_header;<br>
+          content:"evil.io"; ssl_state:client_hello;<br>
+          <span style="color:var(--dim)">&#35; modifier goes after content</span>
+        </div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">Suricata-only keywords</div>
+        <div class="feat-desc" style="font-family:'Courier New',monospace;font-size:.74rem;color:var(--org);line-height:1.8">
+          ja3.hash; ja3s.hash;<br>
+          flowint:counter,+,1;<br>
+          dataset:isset,bad-ips;<br>
+          filesha256:malware.list;
+        </div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name">Snort 3 sticky buffers</div>
+        <div class="feat-desc" style="font-family:'Courier New',monospace;font-size:.74rem;color:var(--cyan);line-height:1.8">
+          http_uri; content:"/admin";<br>
+          http_header; content:"curl";<br>
+          <span style="color:var(--dim)">&#35; Snort 3 adopted sticky buffer</span><br>
+          <span style="color:var(--dim)">&#35; style, similar to Suricata</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">When to Choose Each</div>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-name" style="color:var(--org)">Choose Suricata when…</div>
+        <div class="feat-desc">You need multi-gigabit throughput on commodity hardware. You want EVE JSON feeding into Elastic/Splunk/Kafka. You need JA3 fingerprinting, file extraction, or flow metadata without add-ons. You prefer vendor-neutral open governance. You're deploying on Security Onion, Elastic SIEM, or Stamus Networks.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-name" style="color:var(--cyan)">Choose Snort when…</div>
+        <div class="feat-desc">You have a Cisco/Talos subscription and want the deepest commercial ruleset available. You're already running Firepower/FTD (Snort is the embedded engine). Your team has deep Snort 2 expertise and an existing Snort 2 rule library. You need Cisco TAC support for your IDS.</div>
+      </div>
+    </div>
+
+    <div class="sec-title">Quick Facts</div>
+    <table class="flow-table">
+      <thead><tr><th></th><th>Suricata</th><th>Snort</th></tr></thead>
+      <tbody>
+        <tr><td>Created by</td><td>OISF (Open Information Security Foundation)</td><td>Martin Roesch at Sourcefire (now Cisco)</td></tr>
+        <tr><td>Written in</td><td>C (engine), Lua (scripting)</td><td>C (Snort 2), C++ (Snort 3)</td></tr>
+        <tr><td>Latest stable</td><td>Suricata 7.x (2024)</td><td>Snort 3.x / Snort 2.9.x (legacy)</td></tr>
+        <tr><td>Default in</td><td>Security Onion, pfSense (option), OPNsense (option)</td><td>Cisco Firepower, pfSense (option), OPNsense (option)</td></tr>
+        <tr><td>Shared rule format</td><td colspan="2" style="text-align:center;color:var(--grn)">Yes — ET Open rules published for both engines</td></tr>
+      </tbody>
+    </table>
+  </div>
+
 </div>
 
 <script>
