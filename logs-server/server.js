@@ -341,6 +341,30 @@ const HTML = `<!DOCTYPE html>
     .raw-line{color:var(--dim);font-size:.75rem;padding:.1rem .25rem}
     .connecting{color:var(--dim);padding:1rem;animation:blink2 1s step-end infinite}
     @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
+
+    .site-picker{position:relative}
+    #site-picker-btn{font-size:.75rem;padding:.25rem .65rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
+      font-family:'Courier New',monospace;transition:all .2s;white-space:nowrap}
+    #site-picker-btn:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+    #site-picker-btn.has-selection{color:var(--green);border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07)}
+    .site-dropdown{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:400;
+      background:#0d0d16;border:1px solid rgba(255,255,255,.1);border-radius:10px;
+      padding:.35rem;box-shadow:0 16px 40px rgba(0,0,0,.75);min-width:160px}
+    .site-dropdown.open{display:block}
+    .site-search{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+      border-radius:6px;color:var(--text);font-family:'Courier New',monospace;font-size:.73rem;
+      padding:.25rem .5rem;margin-bottom:.3rem;outline:none}
+    .site-search::placeholder{color:var(--dim)}
+    .site-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+    .site-list::-webkit-scrollbar{width:4px}
+    .site-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+    .site-opt{display:block;width:100%;text-align:left;background:transparent;border:none;
+      color:var(--dim);font-family:'Courier New',monospace;font-size:.73rem;font-weight:600;
+      padding:.3rem .6rem;border-radius:6px;cursor:pointer;white-space:nowrap;transition:background .1s}
+    .site-opt:hover{background:rgba(255,255,255,.08);color:#fff}
+    .site-opt.active{color:var(--green)}
+    .site-opt.hidden{display:none}
   </style>
 </head>
 <body>
@@ -348,84 +372,92 @@ const HTML = `<!DOCTYPE html>
 
   <div class="toolbar">
     <button class="tab active" data-site="all">[all]</button>
-    <button class="tab"        data-site="ai">ai</button>
-    <button class="tab"        data-site="america">america</button>
-    <button class="tab"        data-site="ansible">ansible</button>
-    <button class="tab"        data-site="apps">apps</button>
-    <button class="tab"        data-site="ascii">ascii</button>
-    <button class="tab"        data-site="bash">bash</button>
-    <button class="tab"        data-site="biology">biology</button>
-    <button class="tab"        data-site="bsd">bsd</button>
-    <button class="tab"        data-site="butterfly">butterfly</button>
-    <button class="tab"        data-site="change">change</button>
-    <button class="tab"        data-site="chemistry">chemistry</button>
-    <button class="tab"        data-site="chess">chess</button>
-    <button class="tab"        data-site="chinese">chinese</button>
-    <button class="tab"        data-site="claude">claude</button>
-    <button class="tab"        data-site="cnc">cnc</button>
-    <button class="tab"        data-site="coffee">coffee</button>
-    <button class="tab"        data-site="coldwar">coldwar</button>
-    <button class="tab"        data-site="computers">computers</button>
-    <button class="tab"        data-site="crypto">crypto</button>
-    <button class="tab"        data-site="dns">dns</button>
-    <button class="tab"        data-site="docker">docker</button>
-    <button class="tab"        data-site="doom">doom</button>
-    <button class="tab"        data-site="evolution">evolution</button>
-    <button class="tab"        data-site="fidonet">fidonet</button>
-    <button class="tab"        data-site="florida">florida</button>
-    <button class="tab"        data-site="git">git</button>
-    <button class="tab"        data-site="grilling">grilling</button>
-    <button class="tab"        data-site="guns">guns</button>
-    <button class="tab"        data-site="http">http</button>
-    <button class="tab"        data-site="ids">ids</button>
-    <button class="tab"        data-site="india">india</button>
-    <button class="tab"        data-site="internet">internet</button>
-    <button class="tab"        data-site="japan">japan</button>
-    <button class="tab"        data-site="json">json</button>
-    <button class="tab"        data-site="kart">kart</button>
-    <button class="tab"        data-site="kombat">kombat</button>
-    <button class="tab"        data-site="linux">linux</button>
-    <button class="tab"        data-site="logs">logs</button>
-    <button class="tab"        data-site="mac">mac</button>
-    <button class="tab"        data-site="mail">mail</button>
-    <button class="tab"        data-site="mario">mario</button>
-    <button class="tab"        data-site="math">math</button>
-    <button class="tab"        data-site="medieval">medieval</button>
-    <button class="tab"        data-site="monkey">monkey</button>
-    <button class="tab"        data-site="moto">moto</button>
-    <button class="tab"        data-site="nagios">nagios</button>
-    <button class="tab"        data-site="nav">nav</button>
-    <button class="tab"        data-site="nintendo">nintendo</button>
-    <button class="tab"        data-site="passwords">passwords</button>
-    <button class="tab"        data-site="physics">physics</button>
-    <button class="tab"        data-site="pirates">pirates</button>
-    <button class="tab"        data-site="pizza">pizza</button>
-    <button class="tab"        data-site="poker">poker</button>
-    <button class="tab"        data-site="programming">programming</button>
-    <button class="tab"        data-site="quake">quake</button>
-    <button class="tab"        data-site="rx">rx</button>
-    <button class="tab"        data-site="simcity">simcity</button>
-    <button class="tab"        data-site="space">space</button>
-    <button class="tab"        data-site="sql">sql</button>
-    <button class="tab"        data-site="ssh">ssh</button>
-    <button class="tab"        data-site="status">status</button>
-    <button class="tab"        data-site="stats">stats</button>
-    <button class="tab"        data-site="suricata">suricata</button>
-    <button class="tab"        data-site="systemd">systemd</button>
-    <button class="tab"        data-site="tampa">tampa</button>
-    <button class="tab"        data-site="tmux">tmux</button>
-    <button class="tab"        data-site="trump">trump</button>
-    <button class="tab"        data-site="unix">unix</button>
-    <button class="tab"        data-site="vim">vim</button>
-    <button class="tab"        data-site="vr">vr</button>
-    <button class="tab"        data-site="vt101">vt101</button>
-    <button class="tab"        data-site="warcraft">warcraft</button>
-    <button class="tab"        data-site="wargames">wargames</button>
-    <button class="tab"        data-site="wood">wood</button>
-    <button class="tab"        data-site="ximg">ximg</button>
-    <button class="tab"        data-site="ximg-app">ximg-app</button>
-    <button class="tab"        data-site="yaml">yaml</button>
-    <button class="tab"        data-site="zsh">zsh</button>
+    <div class="site-picker" id="site-picker">
+      <button class="tab" id="site-picker-btn">☰ app ▾</button>
+      <div class="site-dropdown" id="site-dropdown">
+        <input class="site-search" id="site-search" type="text" placeholder="filter…" autocomplete="off">
+        <div class="site-list" id="site-list">
+          <button class="site-opt" data-site="ai">ai</button>
+          <button class="site-opt" data-site="america">america</button>
+          <button class="site-opt" data-site="ansible">ansible</button>
+          <button class="site-opt" data-site="apps">apps</button>
+          <button class="site-opt" data-site="ascii">ascii</button>
+          <button class="site-opt" data-site="bash">bash</button>
+          <button class="site-opt" data-site="biology">biology</button>
+          <button class="site-opt" data-site="bsd">bsd</button>
+          <button class="site-opt" data-site="butterfly">butterfly</button>
+          <button class="site-opt" data-site="change">change</button>
+          <button class="site-opt" data-site="chemistry">chemistry</button>
+          <button class="site-opt" data-site="chess">chess</button>
+          <button class="site-opt" data-site="chinese">chinese</button>
+          <button class="site-opt" data-site="claude">claude</button>
+          <button class="site-opt" data-site="cnc">cnc</button>
+          <button class="site-opt" data-site="coffee">coffee</button>
+          <button class="site-opt" data-site="coldwar">coldwar</button>
+          <button class="site-opt" data-site="computers">computers</button>
+          <button class="site-opt" data-site="crypto">crypto</button>
+          <button class="site-opt" data-site="dns">dns</button>
+          <button class="site-opt" data-site="docker">docker</button>
+          <button class="site-opt" data-site="doom">doom</button>
+          <button class="site-opt" data-site="evolution">evolution</button>
+          <button class="site-opt" data-site="fidonet">fidonet</button>
+          <button class="site-opt" data-site="florida">florida</button>
+          <button class="site-opt" data-site="git">git</button>
+          <button class="site-opt" data-site="grilling">grilling</button>
+          <button class="site-opt" data-site="guns">guns</button>
+          <button class="site-opt" data-site="http">http</button>
+          <button class="site-opt" data-site="ids">ids</button>
+          <button class="site-opt" data-site="india">india</button>
+          <button class="site-opt" data-site="internet">internet</button>
+          <button class="site-opt" data-site="japan">japan</button>
+          <button class="site-opt" data-site="json">json</button>
+          <button class="site-opt" data-site="kart">kart</button>
+          <button class="site-opt" data-site="kombat">kombat</button>
+          <button class="site-opt" data-site="linux">linux</button>
+          <button class="site-opt" data-site="logs">logs</button>
+          <button class="site-opt" data-site="mac">mac</button>
+          <button class="site-opt" data-site="mail">mail</button>
+          <button class="site-opt" data-site="mario">mario</button>
+          <button class="site-opt" data-site="math">math</button>
+          <button class="site-opt" data-site="medieval">medieval</button>
+          <button class="site-opt" data-site="monkey">monkey</button>
+          <button class="site-opt" data-site="moto">moto</button>
+          <button class="site-opt" data-site="nagios">nagios</button>
+          <button class="site-opt" data-site="nav">nav</button>
+          <button class="site-opt" data-site="nintendo">nintendo</button>
+          <button class="site-opt" data-site="passwords">passwords</button>
+          <button class="site-opt" data-site="physics">physics</button>
+          <button class="site-opt" data-site="pirates">pirates</button>
+          <button class="site-opt" data-site="pizza">pizza</button>
+          <button class="site-opt" data-site="poker">poker</button>
+          <button class="site-opt" data-site="programming">programming</button>
+          <button class="site-opt" data-site="quake">quake</button>
+          <button class="site-opt" data-site="rx">rx</button>
+          <button class="site-opt" data-site="simcity">simcity</button>
+          <button class="site-opt" data-site="space">space</button>
+          <button class="site-opt" data-site="sql">sql</button>
+          <button class="site-opt" data-site="ssh">ssh</button>
+          <button class="site-opt" data-site="status">status</button>
+          <button class="site-opt" data-site="stats">stats</button>
+          <button class="site-opt" data-site="suricata">suricata</button>
+          <button class="site-opt" data-site="systemd">systemd</button>
+          <button class="site-opt" data-site="tampa">tampa</button>
+          <button class="site-opt" data-site="tmux">tmux</button>
+          <button class="site-opt" data-site="trump">trump</button>
+          <button class="site-opt" data-site="unix">unix</button>
+          <button class="site-opt" data-site="vim">vim</button>
+          <button class="site-opt" data-site="vr">vr</button>
+          <button class="site-opt" data-site="vt101">vt101</button>
+          <button class="site-opt" data-site="warcraft">warcraft</button>
+          <button class="site-opt" data-site="wargames">wargames</button>
+          <button class="site-opt" data-site="wood">wood</button>
+          <button class="site-opt" data-site="ximg">ximg</button>
+          <button class="site-opt" data-site="ximg-app">ximg-app</button>
+          <button class="site-opt" data-site="yaml">yaml</button>
+          <button class="site-opt" data-site="zsh">zsh</button>
+        </div>
+      </div>
+    </div>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
@@ -529,15 +561,53 @@ const HTML = `<!DOCTYPE html>
       ws.onerror   = ()  => { try { ws && ws.close(); } catch(_) {} };
     }
 
-    document.querySelectorAll('.tab:not(#ssh-tab)').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (sshMode) return; // leaveSshMode handles this case
-        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentSite = btn.dataset.site;
-        connect(currentSite);
-      });
+    // [all] button
+    document.querySelector('.tab[data-site="all"]').addEventListener('click', () => {
+      if (sshMode) leaveSshMode();
+      selectSite('all');
     });
+
+    // hamburger site picker
+    const pickerBtn  = document.getElementById('site-picker-btn');
+    const dropdown   = document.getElementById('site-dropdown');
+    const siteSearch = document.getElementById('site-search');
+    const siteList   = document.getElementById('site-list');
+
+    pickerBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = dropdown.classList.toggle('open');
+      if (open) { siteSearch.value = ''; filterSites(''); siteSearch.focus(); }
+    });
+
+    document.addEventListener('click', () => dropdown.classList.remove('open'));
+    dropdown.addEventListener('click', e => e.stopPropagation());
+
+    siteSearch.addEventListener('input', () => filterSites(siteSearch.value));
+
+    function filterSites(q) {
+      const lq = q.toLowerCase();
+      siteList.querySelectorAll('.site-opt').forEach(opt => {
+        opt.classList.toggle('hidden', lq && !opt.dataset.site.includes(lq));
+      });
+    }
+
+    siteList.addEventListener('click', e => {
+      const opt = e.target.closest('.site-opt');
+      if (!opt) return;
+      if (sshMode) leaveSshMode();
+      dropdown.classList.remove('open');
+      selectSite(opt.dataset.site);
+    });
+
+    function selectSite(site) {
+      currentSite = site;
+      const isAll = site === 'all';
+      document.querySelector('.tab[data-site="all"]').classList.toggle('active', isAll);
+      pickerBtn.classList.toggle('has-selection', !isAll);
+      pickerBtn.textContent = isAll ? '☰ app ▾' : '☰ ' + site + ' ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.toggle('active', o.dataset.site === site));
+      connect(site);
+    }
 
     document.getElementById('pause-btn').addEventListener('click', function() {
       paused = !paused;
@@ -558,7 +628,10 @@ const HTML = `<!DOCTYPE html>
     function enterSshMode() {
       sshMode = true;
       sshTab.classList.add('active');
-      document.querySelectorAll('.tab:not(#ssh-tab)').forEach(b => b.classList.remove('active'));
+      document.querySelector('.tab[data-site="all"]').classList.remove('active');
+      pickerBtn.classList.remove('has-selection');
+      pickerBtn.textContent = '☰ app ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
       document.getElementById('pause-btn').style.display = 'none';
       document.querySelector('.stats').style.display = 'none';
       clearTimeout(reconnectTimer);
@@ -571,14 +644,11 @@ const HTML = `<!DOCTYPE html>
     function leaveSshMode() {
       sshMode = false;
       sshTab.classList.remove('active');
-      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-      document.querySelector('.tab[data-site="all"]').classList.add('active');
-      currentSite = 'all';
       document.getElementById('pause-btn').style.display = '';
       document.querySelector('.stats').style.display = '';
       sshContainer.style.display = 'none';
       logContainer.style.display = '';
-      connect('all');
+      selectSite('all');
     }
 
     function countryFlag(code) {
