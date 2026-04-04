@@ -33,6 +33,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [computers.ximg.app](https://computers.ximg.app) | History of American computing — timeline, pioneering companies, key people |
 | [programming.ximg.app](https://programming.ximg.app) | 180 years of code — languages, paradigms, pioneers, timeline from Ada Lovelace to AI code generation |
 | [git.ximg.app](https://git.ximg.app) | Git command cheatsheet, concepts, branching strategies, config, full history from 2005 |
+| [crypto.ximg.app](https://crypto.ximg.app) | Cryptography reference — hashing, symmetric/asymmetric ciphers, key exchange, TLS 1.3, PGP, openssl/gpg tools |
 | [ansible.ximg.app](https://ansible.ximg.app) | Agentless automation — playbooks, modules, inventory, roles, Vault, history from 2012 |
 | [tmux.ximg.app](https://tmux.ximg.app) | Terminal multiplexer reference — cheatsheet, interactive pane simulator, .tmux.conf, 17-year history |
 | [systemd.ximg.app](https://systemd.ximg.app) | Linux service manager — systemctl reference, unit file anatomy, journalctl, history from 2010 |

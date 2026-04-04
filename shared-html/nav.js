@@ -1,7 +1,7 @@
 (function () {
   var GROUPS = [
     { label: 'Tech', apps: [
-      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],
+      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],['crypto','crypto'],
       ['docker','docker'],['dns','dns'],['fidonet','fidonet'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
       ['passwords','passwords'],['programming','programming'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},

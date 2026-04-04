@@ -100,6 +100,7 @@ const LOG_FILES = {
   apps:      'apps.access.log',
   tmux:      'tmux.access.log',
   ansible:   'ansible.access.log',
+  crypto:      'crypto.access.log',
   git:         'git.access.log',
   chess:       'chess.access.log',
   programming: 'programming.access.log',
@@ -392,6 +393,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="bash">bash</button>
     <button class="tab"        data-site="claude">claude</button>
     <button class="tab"        data-site="coffee">coffee</button>
+    <button class="tab"        data-site="crypto">crypto</button>
     <button class="tab"        data-site="git">git</button>
     <button class="tab"        data-site="http">http</button>
     <button class="tab"        data-site="ids">ids</button>
