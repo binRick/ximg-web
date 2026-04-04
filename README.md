@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-54 virtual hosts (root + 53 subdomains), each with its own Apache container.
+80 virtual hosts (root + 79 subdomains), each with its own Apache container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -77,6 +77,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash |
 | [vt101.ximg.app](https://vt101.ximg.app) | DEC VT101 terminal history and ANSI escape code reference — SGR colors, cursor sequences, and the hardware legacy behind every modern terminal |
 | [nagios.ximg.app](https://nagios.ximg.app) | Nagios Core monitoring — live HTTPS health checks for every subdomain plus SSH honeypot port watch |
+| [status.ximg.app](https://status.ximg.app) | Nagios host/service status board — at-a-glance green/red view of every monitored subdomain |
 | [nav.ximg.app](https://nav.ximg.app) | Navigation design showcase — five interactive demos comparing hamburger drawer, horizontal scroll, dropdown groups, hub-only, and searchable launcher patterns |
 | [physics.ximg.app](https://physics.ximg.app) | The laws of the universe — mechanics, thermodynamics, electromagnetism, quantum mechanics, relativity, Standard Model, fundamental constants |
 | [chemistry.ximg.app](https://chemistry.ximg.app) | The central science — periodic table, atomic structure, bonding, reactions, organic chemistry, biomolecules, great chemists |
@@ -155,9 +156,12 @@ Frontend features: tab per subdomain, color-coded HTTP status codes (2xx green /
 
 ## SSL
 
-Certificates issued via [Certbot](https://certbot.eff.org/) HTTP-01 webroot challenge. The cert covers all subdomains via `--expand`. Stored at `/etc/letsencrypt/live/ximg.app/`, mounted read-only into nginx. Auto-renewed by the certbot systemd timer; a deploy hook reloads nginx on renewal. TLS 1.2/1.3 only, HSTS enforced (`max-age=63072000`).
+Certificates issued via [Certbot](https://certbot.eff.org/) HTTP-01 webroot challenge. Each subdomain has its own individual cert. Certs are stored at `/etc/letsencrypt/live/<subdomain>.ximg.app/`, mounted read-only into nginx. Auto-renewed by the certbot systemd timer; a deploy hook reloads nginx on renewal. TLS 1.2/1.3 only, HSTS enforced (`max-age=63072000`).
 
 ```bash
+# Issue a new cert for a subdomain
+certbot certonly --webroot -d newsubdomain.ximg.app -w /root/ximg-web/public-html --non-interactive
+
 certbot renew --dry-run   # test renewal
 ```
 
@@ -187,13 +191,18 @@ docker compose down
 
 ## Adding a New App
 
-Every new app must be wired into six places:
+Every new app must be wired into all of the following:
 
-1. **`shared-html/nav.js`** — add nav entry
-2. **`public-html/index.html`** — add landing page card
-3. **`logs-server/server.js`** — add subdomain to the tab list
-4. **`apps-html/index.html`** — add a row to the `APPS` array
-5. **`awstats/entrypoint.sh` and `awstats/update.sh`** — add the site name to the `SITES` variable in both files, then rebuild and restart the `awstats` container (`docker compose up -d --build awstats`) so AWStats generates traffic reports for the new subdomain at `stats.ximg.app`
-6. **Favicon** — download a thematically appropriate image, save it as `favicon.ico` (or `.png`) in the app's directory, and add `<link rel="icon" href="/favicon.ico">` in `<head>`. Use a real image specific to the app's theme — not a generic placeholder.
-
-For a new subdomain also: add DNS A record → `172.238.205.61`, run `certbot --expand`, add `server {}` block in `nginx/nginx.conf`, add service in `compose.yaml`, create `*-html/` directory.
+1. **`*-html/` directory** — create with `index.html`; add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
+2. **Favicon** — download a thematically appropriate image, save as `favicon.ico` or `favicon.png`, reference it in `<head>`
+3. **`compose.yaml`** — add a new `httpd:2.4-alpine` service
+4. **`nginx/nginx.conf`** — add the subdomain to the HTTP redirect `server_name` list and add a new HTTPS `server {}` block
+5. **SSL cert** — `certbot certonly --webroot -d newsubdomain.ximg.app -w /root/ximg-web/public-html --non-interactive`; reference the new cert in the nginx server block
+6. **`shared-html/nav.js`** — add nav entry
+7. **`public-html/index.html`** — add landing page card
+8. **`apps-html/index.html`** — add a row to the `APPS` array
+9. **`logs-server/server.js`** — add subdomain to the tab list
+10. **Nagios** — add a `define host {}` entry in `nagios-server/ximg-hosts.cfg` and add the subdomain to the `members` list
+11. **`README.md`** — add a row to the Live Sites table
+12. **`install/setup.sh`** — add the subdomain to the `DOMAINS` array
+13. **DNS** — add an A record → `172.238.205.61` before running certbot

@@ -89,7 +89,7 @@ This is the single authoritative checklist. Follow every step in order.
 4. **compose.yaml** — add a new `httpd:2.4-alpine` service with volumes for the html dir and `shared-html`
 5. **nginx.conf (HTTP block)** — add the new subdomain to the HTTP→HTTPS redirect `server_name` list (the block at the top of the HTTPS server section that redirects port 80)
 6. **nginx.conf (HTTPS block)** — add a new `server { listen 443 ssl; server_name <subdomain>.ximg.app; ... }` block proxying to the new service
-7. **SSL cert** — expand the cert to include the new subdomain (see SSL section below — read it carefully before running certbot)
+7. **SSL cert** — issue an individual cert: `certbot certonly --webroot -d <subdomain>.ximg.app -w /root/ximg-web/public-html --non-interactive`; reference it in the nginx server block (see SSL section below)
 
 ### Wiring
 
@@ -120,26 +120,23 @@ If any check fails, fix it before finishing.
 
 ## SSL / Adding a New Subdomain
 
-**CRITICAL — read before running certbot:** The cert is a single multi-domain cert (`wargames.ximg.app`). When you run certbot, it replaces the cert with **exactly** the domains you specify. If you omit any existing domain, that domain loses its cert and goes offline immediately.
+Each subdomain gets its own individual cert. Issue it with:
 
-**Always get the current domain list first, then add the new subdomain:**
 ```bash
-# Step 1 — get full current domain list:
-certbot certificates | grep -A50 "Certificate Name: wargames" | grep "Domains:" | sed 's/.*Domains: //'
+# Step 1 — DNS A record must already point to 172.238.205.61
 
-# Step 2 — expand cert with ALL existing domains plus the new one:
-certbot certonly --webroot --expand --cert-name wargames.ximg.app \
+# Step 2 — issue cert for the new subdomain:
+certbot certonly --webroot -d newsubdomain.ximg.app \
   -w /root/ximg-web/public-html \
-  -d ximg.app -d existing1.ximg.app -d existing2.ximg.app ... -d newsubdomain.ximg.app \
   --non-interactive
 
-# Step 3 — reload nginx to pick up the new cert:
+# Step 3 — reference the cert in the nginx server block:
+#   ssl_certificate     /etc/letsencrypt/live/newsubdomain.ximg.app/fullchain.pem;
+#   ssl_certificate_key /etc/letsencrypt/live/newsubdomain.ximg.app/privkey.pem;
+
+# Step 4 — reload nginx:
 docker compose exec nginx nginx -s reload
 ```
-
-Other SSL steps:
-- DNS A record → 172.238.205.61 (must exist before running certbot)
-- Cert path used in nginx server blocks: `/etc/letsencrypt/live/wargames.ximg.app/fullchain.pem`
 
 ## SSH Honeypot
 
