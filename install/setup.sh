@@ -8,11 +8,12 @@
 #   1. Install Docker CE + Compose plugin
 #   2. Install EPEL, certbot, Suricata
 #   3. Create required runtime directories
-#   4. Configure Suricata and download community rules
-#   5. Install and enable the systemd unit (ximg-web.service)
-#   6. Obtain the SSL certificate for all subdomains
-#   7. Start Docker Compose stack
-#   8. Verify deployment
+#   4. Install logrotate config
+#   5. Configure Suricata and download community rules
+#   6. Install and enable the systemd unit (ximg-web.service)
+#   7. Obtain the SSL certificate for all subdomains
+#   8. Start Docker Compose stack
+#   9. Verify deployment
 
 set -euo pipefail
 
@@ -113,7 +114,17 @@ chmod 755 /var/log/suricata
 ok "/var/log/suricata writable"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "4/8  Suricata IDS"
+section "4/8  Log rotation  (logrotate)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+sed "s|__REPO__|$REPO|g" "$REPO/install/ximg-web.logrotate" \
+  > /etc/logrotate.d/ximg-web
+chmod 644 /etc/logrotate.d/ximg-web
+ok "logrotate config installed → /etc/logrotate.d/ximg-web"
+info "daily rotation, 14-day retention, compressed, nginx reopen signal"
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "5/9  Suricata IDS"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Set HOME_NET to this server's IP
@@ -144,7 +155,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "5/8  systemd unit  (ximg-web.service)"
+section "6/9  systemd unit  (ximg-web.service)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 sed "s|WorkingDirectory=.*|WorkingDirectory=$REPO|" "$REPO/ximg-web.service" \
@@ -155,7 +166,7 @@ systemctl enable ximg-web.service
 ok "ximg-web.service installed and enabled"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "6/8  SSL certificate  (Let's Encrypt)"
+section "7/9  SSL certificate  (Let's Encrypt)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # All subdomains in one cert (must all have DNS A records → this server)
@@ -221,7 +232,7 @@ printf '%s\n' "${DOMAINS[@]}" > "$REPO/install/domains.txt"
 ok "domain list written to install/domains.txt"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "7/8  Start Docker Compose stack"
+section "8/9  Start Docker Compose stack"
 # ─────────────────────────────────────────────────────────────────────────────
 
 cd "$REPO"
@@ -232,7 +243,7 @@ docker compose up -d --remove-orphans
 ok "stack started"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "8/8  Verification"
+section "9/9  Verification"
 # ─────────────────────────────────────────────────────────────────────────────
 
 sleep 4  # give containers a moment to bind
