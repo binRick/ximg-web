@@ -133,6 +133,7 @@ const LOG_FILES = {
   stats:       'stats.access.log',
   ids:         'ids.access.log',
   nagios:      'nagios.access.log',
+  netdata:     'netdata.access.log',
   status:      'status.access.log',
   nav:         'nav.access.log',
 };
@@ -326,7 +327,7 @@ const HTML = `<!DOCTYPE html>
     #ssh-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
     .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
     .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
-    .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 55px 72px 1fr;gap:.75rem;
+    .log-line{display:grid;grid-template-columns:215px 130px 160px 48px 55px 72px 1fr;gap:.75rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
     .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .log-line:hover{background:rgba(255,255,255,.03)}
@@ -425,6 +426,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="moto">moto</button>
           <button class="site-opt" data-site="nagios">nagios</button>
           <button class="site-opt" data-site="nav">nav</button>
+          <button class="site-opt" data-site="netdata">netdata</button>
           <button class="site-opt" data-site="nintendo">nintendo</button>
           <button class="site-opt" data-site="passwords">passwords</button>
           <button class="site-opt" data-site="physics">physics</button>
