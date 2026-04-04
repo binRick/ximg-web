@@ -751,12 +751,15 @@ function buildWeapons() {
 
 const RW = 640, RH = 360;
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-canvas.width = RW; canvas.height = RH;
-
-// Pixel buffer — write directly for textured rendering
-const imgData = ctx.createImageData(RW, RH);
-const buf32   = new Uint32Array(imgData.data.buffer);
+// ctx/imgData/buf32 initialized lazily in initCanvas() to avoid broken
+// context when canvas lives inside a display:none parent at page load
+let ctx, imgData, buf32;
+function initCanvas(){
+  canvas.width = RW; canvas.height = RH;
+  ctx = canvas.getContext('2d');
+  imgData = ctx.createImageData(RW, RH);
+  buf32 = new Uint32Array(imgData.data.buffer);
+}
 
 // ── Texture helpers ─────────────────────────────────────────
 const TS = 64; // texture size (power of 2)
@@ -1164,13 +1167,15 @@ function showOverlay(title,sub,btnText,cb){ovTitle.textContent=title;ovSub.textC
 function hideOverlay(){ovEl.classList.add('hidden');}
 
 function startGame(){
+  initCanvas();
   resetPlayer();resetEnemies();gstate='play';hideOverlay();
   document.getElementById('xhair').classList.remove('hidden');
+  if(!loopStarted){loopStarted=true;requestAnimationFrame(loop);}
 }
 document.getElementById('ov-btn').onclick=startGame;
 
 // ── Game loop ──────────────────────────────────────────────
-let lastT=0;
+let lastT=0,loopStarted=false;
 function loop(ts){
   const dt=Math.min(0.05,(ts-lastT)/1000);lastT=ts;animT+=dt;
   if(gstate==='play'){
@@ -1202,7 +1207,6 @@ function loop(ts){
   }
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
 </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
