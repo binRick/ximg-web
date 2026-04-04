@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chart Builder — visualize.ximg.app</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f;
+      --card: #070720;
+      --border: #1e293b;
+      --teal: #14b8a6;
+      --emerald: #10b981;
+      --fg: #cbd5e1;
+      --fg-dim: #64748b;
+      --white: #f1f5f9;
+    }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      background: rgba(2,2,15,0.97); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .sub-nav-inner {
+      display: flex; justify-content: center; gap: 0.4rem;
+      padding: 0.5rem; flex-wrap: wrap; max-width: 1200px; margin: 0 auto;
+    }
+    .tab {
+      background: none; border: 1px solid var(--border); color: var(--fg-dim);
+      padding: 0.3rem 1rem; cursor: pointer; font-family: inherit;
+      font-size: 0.82rem; border-radius: 4px; transition: all 0.2s;
+    }
+    .tab:hover { color: var(--teal); border-color: var(--teal); }
+    .tab.active { color: var(--teal); border-color: var(--teal); background: rgba(20,184,166,0.08); }
+    .section { display: none; padding: 1.5rem 1rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .hero { text-align: center; padding: 1.5rem 1rem 1rem; }
+    .hero p { color: var(--fg-dim); font-size: 0.92rem; }
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+    .controls {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .controls label { font-size: 0.8rem; color: var(--fg-dim); display: block; margin-bottom: 0.2rem; }
+    .controls textarea {
+      width: 100%; height: 180px; background: #0a0a20; border: 1px solid var(--border);
+      color: var(--fg); font-family: 'Courier New', monospace; font-size: 0.78rem;
+      padding: 0.5rem; border-radius: 4px; resize: vertical;
+    }
+    .controls textarea:focus { outline: none; border-color: var(--teal); }
+    .controls select, .controls input[type=range] {
+      width: 100%; background: #0a0a20; border: 1px solid var(--border);
+      color: var(--fg); padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.82rem;
+    }
+    .controls select:focus { outline: none; border-color: var(--teal); }
+    .ctrl-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .ctrl-row label { margin: 0; white-space: nowrap; font-size: 0.8rem; color: var(--fg-dim); }
+    .ctrl-row input[type=checkbox] { accent-color: var(--teal); }
+    .range-val { font-size: 0.78rem; color: var(--teal); min-width: 28px; }
+    .btn {
+      background: var(--teal); color: #000; border: none; padding: 0.4rem 1rem;
+      border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-family: inherit;
+      font-weight: 600; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: none; border: 1px solid var(--border); color: var(--fg-dim);
+    }
+    .btn-secondary:hover { border-color: var(--teal); color: var(--teal); }
+    .canvas-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1rem; min-height: 420px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    canvas { max-width: 100%; }
+    .stats-panel {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;
+    }
+    .stat-chip {
+      background: #0a0a20; border: 1px solid var(--border); border-radius: 4px;
+      padding: 0.25rem 0.6rem; font-size: 0.76rem;
+    }
+    .stat-chip span { color: var(--teal); font-weight: 600; }
+    .add-series-btn {
+      background: none; border: 1px dashed var(--border); color: var(--fg-dim);
+      padding: 0.3rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .add-series-btn:hover { border-color: var(--emerald); color: var(--emerald); }
+    .series-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .series-item { display: flex; gap: 0.4rem; align-items: flex-start; }
+    .series-item textarea { flex: 1; height: 70px; }
+    .series-item .swatch {
+      width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+    }
+    .del-btn {
+      background: none; border: none; color: var(--fg-dim); cursor: pointer;
+      font-size: 1rem; padding: 0; line-height: 1; margin-top: 2px;
+    }
+    .del-btn:hover { color: #ef4444; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('bar', this)">Bar Chart</button>
+    <button class="tab" onclick="showTab('line', this)">Line Chart</button>
+    <button class="tab" onclick="showTab('pie', this)">Pie / Donut</button>
+    <button class="tab" onclick="showTab('scatter', this)">Scatter Plot</button>
+  </div>
+</div>
+
+<!-- BAR CHART -->
+<div id="tab-bar" class="section active">
+  <div class="hero">
+    <h1>Bar Chart</h1>
+    <p>Enter label,value pairs — one per line. Renders instantly.</p>
+  </div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Data (label,value per line)</label>
+        <textarea id="bar-data">Tokyo,13960000
+Delhi,16787941
+Shanghai,24183300
+Dhaka,8906000
+São Paulo,12325232
+Mexico City,9209944
+Cairo,9908788
+Beijing,21540000
+Mumbai,20667656
+Osaka,2691185</textarea>
+      </div>
+      <div>
+        <label>Color Scheme</label>
+        <select id="bar-color">
+          <option value="teal">Teal Gradient</option>
+          <option value="emerald">Emerald Gradient</option>
+          <option value="rainbow">Rainbow</option>
+          <option value="mono">Monochrome</option>
+        </select>
+      </div>
+      <div>
+        <label>Orientation</label>
+        <select id="bar-orient">
+          <option value="vertical">Vertical</option>
+          <option value="horizontal">Horizontal</option>
+        </select>
+      </div>
+      <div>
+        <label>Sort</label>
+        <select id="bar-sort">
+          <option value="none">Original Order</option>
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="bar-values" checked>
+        <label for="bar-values">Show Values</label>
+      </div>
+      <button class="btn" onclick="drawBar()">Render</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="bar-canvas" width="720" height="400"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- LINE CHART -->
+<div id="tab-line" class="section">
+  <div class="hero">
+    <h1>Line Chart</h1>
+    <p>Enter comma-separated values for each series.</p>
+  </div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>X-Axis Labels (optional, comma-separated)</label>
+        <input type="text" id="line-labels" value="Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec"
+          style="width:100%;background:#0a0a20;border:1px solid var(--border);color:var(--fg);padding:0.3rem 0.5rem;border-radius:4px;font-size:0.82rem;">
+      </div>
+      <div>
+        <label>Series</label>
+        <div class="series-list" id="line-series-list"></div>
+        <button class="add-series-btn" onclick="addLineSeries()" style="margin-top:0.4rem">+ Add Series</button>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="line-grid" checked>
+        <label for="line-grid">Grid Lines</label>
+        <input type="checkbox" id="line-legend" checked style="margin-left:0.5rem">
+        <label for="line-legend">Legend</label>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="line-fill">
+        <label for="line-fill">Fill Area</label>
+        <input type="checkbox" id="line-points" checked style="margin-left:0.5rem">
+        <label for="line-points">Show Points</label>
+      </div>
+      <button class="btn" onclick="drawLine()">Render</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="line-canvas" width="720" height="400"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- PIE/DONUT -->
+<div id="tab-pie" class="section">
+  <div class="hero">
+    <h1>Pie / Donut Chart</h1>
+    <p>Click a slice to highlight. Toggle donut mode.</p>
+  </div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Data (name,value per line)</label>
+        <textarea id="pie-data">Chrome,65.4
+Safari,18.9
+Edge,4.5
+Firefox,3.2
+Samsung,3.0
+Other,5.0</textarea>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="pie-donut">
+        <label for="pie-donut">Donut Mode</label>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="pie-labels" checked>
+        <label for="pie-labels">Show Labels</label>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="pie-animate" checked>
+        <label for="pie-animate">Animate on Render</label>
+      </div>
+      <button class="btn" onclick="drawPie(true)">Render</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="pie-canvas" width="500" height="420" style="cursor:pointer"></canvas>
+      <div class="stats-panel" id="pie-stats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCATTER PLOT -->
+<div id="tab-scatter" class="section">
+  <div class="hero">
+    <h1>Scatter Plot</h1>
+    <p>Enter x,y pairs — one per line. Linear regression + R² calculated live.</p>
+  </div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Data (x,y per line)</label>
+        <textarea id="scatter-data">160,52
+165,58
+170,63
+172,68
+175,72
+178,76
+180,80
+182,84
+185,90
+188,95
+190,99
+175,65
+168,60
+183,88
+177,74</textarea>
+      </div>
+      <div>
+        <label>Point Color</label>
+        <select id="scatter-color">
+          <option value="teal">Teal</option>
+          <option value="emerald">Emerald</option>
+          <option value="purple">Purple</option>
+        </select>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="scatter-trend" checked>
+        <label for="scatter-trend">Trend Line</label>
+        <input type="checkbox" id="scatter-r2" checked style="margin-left:0.5rem">
+        <label for="scatter-r2">Show R²</label>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="scatter-grid" checked>
+        <label for="scatter-grid">Grid</label>
+      </div>
+      <button class="btn" onclick="drawScatter()">Render</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="scatter-canvas" width="720" height="400"></canvas>
+      <div class="stats-panel" id="scatter-stats"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Utility ──────────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'bar') drawBar();
+  if (id === 'line') drawLine();
+  if (id === 'pie') drawPie(true);
+  if (id === 'scatter') drawScatter();
+}
+
+function parseCSV(text) {
+  return text.trim().split('\n')
+    .map(l => l.trim()).filter(Boolean)
+    .map(l => {
+      const i = l.lastIndexOf(',');
+      return [l.slice(0, i).trim(), parseFloat(l.slice(i + 1))];
+    }).filter(r => !isNaN(r[1]));
+}
+
+function clearCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  return ctx;
+}
+
+const PALETTE_TEAL = i => `hsl(${174 + i * 8}, 70%, ${45 + i * 2}%)`;
+const PALETTE_EMERALD = i => `hsl(${152 + i * 6}, 70%, ${42 + i * 2}%)`;
+const PALETTE_RAINBOW = i => `hsl(${i * 36}, 72%, 52%)`;
+const PALETTE_MONO = i => `hsl(220, 15%, ${30 + i * 6}%)`;
+
+function getPalette(name, n) {
+  const fn = { teal: PALETTE_TEAL, emerald: PALETTE_EMERALD, rainbow: PALETTE_RAINBOW, mono: PALETTE_MONO }[name] || PALETTE_TEAL;
+  return Array.from({ length: n }, (_, i) => fn(i));
+}
+
+// ── BAR CHART ────────────────────────────────────────────────────────────────
+function drawBar() {
+  const raw = parseCSV(document.getElementById('bar-data').value);
+  if (!raw.length) return;
+  const scheme = document.getElementById('bar-color').value;
+  const orient = document.getElementById('bar-orient').value;
+  const sort = document.getElementById('bar-sort').value;
+  const showVals = document.getElementById('bar-values').checked;
+
+  let data = [...raw];
+  if (sort === 'asc') data.sort((a, b) => a[1] - b[1]);
+  if (sort === 'desc') data.sort((a, b) => b[1] - a[1]);
+
+  const canvas = document.getElementById('bar-canvas');
+  const ctx = clearCanvas(canvas);
+  const W = canvas.width, H = canvas.height;
+  const colors = getPalette(scheme, data.length);
+
+  const pad = { top: 30, right: 20, bottom: orient === 'vertical' ? 70 : 20, left: orient === 'vertical' ? 55 : 150 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  const maxVal = Math.max(...data.map(d => d[1]));
+  const tickCount = 5;
+  const niceMax = Math.ceil(maxVal / Math.pow(10, Math.floor(Math.log10(maxVal)))) * Math.pow(10, Math.floor(Math.log10(maxVal)));
+
+  ctx.fillStyle = '#070720';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid + axes
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#64748b';
+  ctx.font = '11px Segoe UI, system-ui';
+
+  if (orient === 'vertical') {
+    for (let i = 0; i <= tickCount; i++) {
+      const val = (niceMax / tickCount) * i;
+      const y = pad.top + chartH - (val / niceMax) * chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y); ctx.stroke();
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'right';
+      ctx.fillText(val >= 1e6 ? (val / 1e6).toFixed(1) + 'M' : val >= 1e3 ? (val / 1e3).toFixed(0) + 'K' : val, pad.left - 5, y + 4);
+    }
+    const barW = (chartW / data.length) * 0.7;
+    const gap = chartW / data.length;
+    data.forEach((d, i) => {
+      const x = pad.left + i * gap + (gap - barW) / 2;
+      const barH = (d[1] / niceMax) * chartH;
+      const y = pad.top + chartH - barH;
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(x, y, barW, barH);
+      // Label
+      ctx.save(); ctx.translate(x + barW / 2, pad.top + chartH + 8);
+      ctx.rotate(Math.PI / 4); ctx.textAlign = 'left'; ctx.fillStyle = '#94a3b8'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText(d[0], 0, 0); ctx.restore();
+      if (showVals) {
+        ctx.fillStyle = '#e2e8f0'; ctx.textAlign = 'center'; ctx.font = '10px Segoe UI,system-ui';
+        const label = d[1] >= 1e6 ? (d[1] / 1e6).toFixed(1) + 'M' : d[1] >= 1e3 ? (d[1] / 1e3).toFixed(0) + 'K' : d[1];
+        ctx.fillText(label, x + barW / 2, y - 4);
+      }
+    });
+  } else {
+    const barH = (chartH / data.length) * 0.7;
+    const gap = chartH / data.length;
+    for (let i = 0; i <= tickCount; i++) {
+      const val = (niceMax / tickCount) * i;
+      const x = pad.left + (val / niceMax) * chartW;
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + chartH); ctx.stroke();
+      ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText(val >= 1e6 ? (val / 1e6).toFixed(1) + 'M' : val >= 1e3 ? (val / 1e3).toFixed(0) + 'K' : val, x, pad.top + chartH + 14);
+    }
+    data.forEach((d, i) => {
+      const y = pad.top + i * gap + (gap - barH) / 2;
+      const w = (d[1] / niceMax) * chartW;
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(pad.left, y, w, barH);
+      ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'right'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText(d[0], pad.left - 5, y + barH / 2 + 4);
+      if (showVals) {
+        const label = d[1] >= 1e6 ? (d[1] / 1e6).toFixed(1) + 'M' : d[1] >= 1e3 ? (d[1] / 1e3).toFixed(0) + 'K' : d[1];
+        ctx.fillStyle = '#e2e8f0'; ctx.textAlign = 'left'; ctx.font = '10px Segoe UI,system-ui';
+        ctx.fillText(label, pad.left + w + 4, y + barH / 2 + 4);
+      }
+    });
+  }
+}
+
+// ── LINE CHART ───────────────────────────────────────────────────────────────
+const LINE_COLORS = ['#14b8a6', '#10b981', '#f59e0b', '#818cf8'];
+const LINE_DEFAULTS = [
+  '15,18,22,21,28,30,35,33,28,22,17,14',
+  '8,10,12,15,20,25,28,26,20,15,11,9',
+  '5,6,8,7,10,14,16,15,12,9,7,5'
+];
+
+function initLineSeries() {
+  const list = document.getElementById('line-series-list');
+  list.innerHTML = '';
+  LINE_DEFAULTS.slice(0, 2).forEach((d, i) => addLineSeries(d));
+}
+
+function addLineSeries(data) {
+  const list = document.getElementById('line-series-list');
+  const count = list.children.length;
+  if (count >= 4) return;
+  const div = document.createElement('div');
+  div.className = 'series-item';
+  div.innerHTML = `
+    <div class="swatch" style="background:${LINE_COLORS[count]}"></div>
+    <textarea class="series-ta" placeholder="comma-separated values">${data || ''}</textarea>
+    <button class="del-btn" onclick="removeLineSeries(this)">✕</button>
+  `;
+  list.appendChild(div);
+}
+
+function removeLineSeries(btn) {
+  const list = document.getElementById('line-series-list');
+  if (list.children.length <= 1) return;
+  btn.parentElement.remove();
+  drawLine();
+}
+
+function drawLine() {
+  const canvas = document.getElementById('line-canvas');
+  const ctx = clearCanvas(canvas);
+  const W = canvas.width, H = canvas.height;
+  const labelsRaw = document.getElementById('line-labels').value.trim();
+  const labels = labelsRaw ? labelsRaw.split(',').map(s => s.trim()) : [];
+  const showGrid = document.getElementById('line-grid').checked;
+  const showLegend = document.getElementById('line-legend').checked;
+  const fillArea = document.getElementById('line-fill').checked;
+  const showPoints = document.getElementById('line-points').checked;
+
+  const seriesEls = document.querySelectorAll('.series-ta');
+  const series = Array.from(seriesEls).map((el, i) => ({
+    color: LINE_COLORS[i],
+    values: el.value.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
+  })).filter(s => s.values.length > 0);
+  if (!series.length) return;
+
+  const allVals = series.flatMap(s => s.values);
+  const minV = Math.min(...allVals), maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+  const padded = { top: 30, right: 20, bottom: 50, left: 55 };
+  const cW = W - padded.left - padded.right;
+  const cH = H - padded.top - padded.bottom;
+  const maxLen = Math.max(...series.map(s => s.values.length));
+
+  ctx.fillStyle = '#070720'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  if (showGrid) {
+    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+    const ticks = 5;
+    for (let i = 0; i <= ticks; i++) {
+      const y = padded.top + (i / ticks) * cH;
+      ctx.beginPath(); ctx.moveTo(padded.left, y); ctx.lineTo(padded.left + cW, y); ctx.stroke();
+      const val = maxV - (i / ticks) * range;
+      ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText(val.toFixed(1), padded.left - 5, y + 4);
+    }
+    for (let i = 0; i < maxLen; i++) {
+      const x = padded.left + (i / (maxLen - 1)) * cW;
+      ctx.beginPath(); ctx.moveTo(x, padded.top); ctx.lineTo(x, padded.top + cH); ctx.stroke();
+      const lbl = labels[i] || (i + 1).toString();
+      ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText(lbl, x, padded.top + cH + 16);
+    }
+  }
+
+  const toX = i => padded.left + (i / (maxLen - 1)) * cW;
+  const toY = v => padded.top + (1 - (v - minV) / range) * cH;
+
+  series.forEach(s => {
+    if (!s.values.length) return;
+    ctx.strokeStyle = s.color; ctx.lineWidth = 2.5;
+    // Fill
+    if (fillArea) {
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(s.values[0]));
+      s.values.forEach((v, i) => { if (i > 0) ctx.lineTo(toX(i), toY(v)); });
+      ctx.lineTo(toX(s.values.length - 1), padded.top + cH);
+      ctx.lineTo(toX(0), padded.top + cH);
+      ctx.closePath();
+      ctx.fillStyle = s.color + '22'; ctx.fill();
+    }
+    // Line
+    ctx.beginPath();
+    s.values.forEach((v, i) => { i === 0 ? ctx.moveTo(toX(i), toY(v)) : ctx.lineTo(toX(i), toY(v)); });
+    ctx.stroke();
+    // Points
+    if (showPoints) {
+      s.values.forEach((v, i) => {
+        ctx.beginPath(); ctx.arc(toX(i), toY(v), 4, 0, Math.PI * 2);
+        ctx.fillStyle = s.color; ctx.fill();
+        ctx.strokeStyle = '#070720'; ctx.lineWidth = 1.5; ctx.stroke();
+      });
+    }
+  });
+
+  // Legend
+  if (showLegend && series.length > 1) {
+    series.forEach((s, i) => {
+      const lx = padded.left + i * 90;
+      const ly = padded.top + cH + 32;
+      ctx.fillStyle = s.color; ctx.fillRect(lx, ly - 7, 14, 3);
+      ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'left'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText('Series ' + (i + 1), lx + 18, ly);
+    });
+  }
+}
+
+// ── PIE / DONUT ───────────────────────────────────────────────────────────────
+let pieAnim = null, pieHighlight = -1, pieData = [], pieAngles = [];
+const PIE_COLORS = ['#14b8a6','#10b981','#f59e0b','#818cf8','#f43f5e','#06b6d4','#a3e635','#fb923c'];
+
+function drawPie(restart) {
+  const raw = parseCSV(document.getElementById('pie-data').value);
+  if (!raw.length) return;
+  const donut = document.getElementById('pie-donut').checked;
+  const showLabels = document.getElementById('pie-labels').checked;
+  const animate = document.getElementById('pie-animate').checked;
+  const canvas = document.getElementById('pie-canvas');
+  const ctx = clearCanvas(canvas);
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2 - 10;
+  const r = Math.min(W, H) * 0.36;
+  const total = raw.reduce((s, d) => s + d[1], 0);
+  pieData = raw;
+
+  let startAngle = -Math.PI / 2;
+  pieAngles = [];
+  raw.forEach(d => {
+    const sweep = (d[1] / total) * Math.PI * 2;
+    pieAngles.push({ start: startAngle, sweep, mid: startAngle + sweep / 2 });
+    startAngle += sweep;
+  });
+
+  function render(progress) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#070720'; ctx.fillRect(0, 0, W, H);
+    raw.forEach((d, i) => {
+      const a = pieAngles[i];
+      const highlight = i === pieHighlight;
+      const offset = highlight ? 14 : 0;
+      const ox = offset * Math.cos(a.mid);
+      const oy = offset * Math.sin(a.mid);
+      const sweepNow = a.sweep * progress;
+      ctx.beginPath();
+      ctx.moveTo(cx + ox, cy + oy);
+      ctx.arc(cx + ox, cy + oy, r, a.start, a.start + sweepNow);
+      ctx.closePath();
+      ctx.fillStyle = PIE_COLORS[i % PIE_COLORS.length];
+      ctx.fill();
+      ctx.strokeStyle = '#070720'; ctx.lineWidth = 2; ctx.stroke();
+      if (donut) {
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2);
+        ctx.fillStyle = '#070720'; ctx.fill();
+      }
+    });
+    if (progress >= 1 && showLabels) {
+      raw.forEach((d, i) => {
+        const a = pieAngles[i];
+        const highlight = i === pieHighlight;
+        const offset = highlight ? 14 : 0;
+        const ox = offset * Math.cos(a.mid);
+        const oy = offset * Math.sin(a.mid);
+        const lx = cx + ox + (r * 0.7) * Math.cos(a.mid);
+        const ly = cy + oy + (r * 0.7) * Math.sin(a.mid);
+        ctx.fillStyle = highlight ? '#fff' : '#fff';
+        ctx.font = `${highlight ? 'bold ' : ''}11px Segoe UI,system-ui`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(d[0], lx, ly - 6);
+        ctx.fillText((d[1] / total * 100).toFixed(1) + '%', lx, ly + 7);
+      });
+    }
+    if (donut && progress >= 1) {
+      ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = 'bold 14px Segoe UI,system-ui'; ctx.fillText('Total', cx, cy - 10);
+      ctx.font = 'bold 16px Segoe UI,system-ui'; ctx.fillStyle = '#14b8a6';
+      ctx.fillText(total.toFixed(1), cx, cy + 10);
+    }
+  }
+
+  if (animate && restart) {
+    if (pieAnim) cancelAnimationFrame(pieAnim);
+    const start = performance.now();
+    const duration = 800;
+    function frame(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+      render(ease);
+      if (p < 1) pieAnim = requestAnimationFrame(frame);
+    }
+    pieAnim = requestAnimationFrame(frame);
+  } else {
+    render(1);
+  }
+
+  // Stats
+  const statsEl = document.getElementById('pie-stats');
+  statsEl.innerHTML = raw.map((d, i) =>
+    `<div class="stat-chip" style="border-color:${PIE_COLORS[i % PIE_COLORS.length]}44">
+      <span style="color:${PIE_COLORS[i % PIE_COLORS.length]}">${d[0]}</span> ${(d[1] / total * 100).toFixed(1)}%
+    </div>`).join('');
+}
+
+document.getElementById('pie-canvas').addEventListener('click', function(e) {
+  const rect = this.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (this.width / rect.width);
+  const my = (e.clientY - rect.top) * (this.height / rect.height);
+  const W = this.width, H = this.height;
+  const cx = W / 2, cy = H / 2 - 10;
+  const r = Math.min(W, H) * 0.36;
+  const dx = mx - cx, dy = my - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > r) { pieHighlight = -1; drawPie(false); return; }
+  let angle = Math.atan2(dy, dx);
+  pieAngles.forEach((a, i) => {
+    let s = a.start, e = a.start + a.sweep;
+    // normalize
+    while (angle < s) angle += Math.PI * 2;
+    if (angle >= s && angle <= e) pieHighlight = (pieHighlight === i ? -1 : i);
+  });
+  drawPie(false);
+});
+
+// ── SCATTER PLOT ─────────────────────────────────────────────────────────────
+function drawScatter() {
+  const raw = document.getElementById('scatter-data').value.trim().split('\n')
+    .map(l => l.trim()).filter(Boolean)
+    .map(l => { const p = l.split(','); return [parseFloat(p[0]), parseFloat(p[1])]; })
+    .filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+  if (raw.length < 2) return;
+
+  const colorKey = document.getElementById('scatter-color').value;
+  const showTrend = document.getElementById('scatter-trend').checked;
+  const showR2 = document.getElementById('scatter-r2').checked;
+  const showGrid = document.getElementById('scatter-grid').checked;
+  const ptColor = { teal: '#14b8a6', emerald: '#10b981', purple: '#818cf8' }[colorKey] || '#14b8a6';
+
+  const canvas = document.getElementById('scatter-canvas');
+  const ctx = clearCanvas(canvas);
+  const W = canvas.width, H = canvas.height;
+  const pad = { top: 30, right: 30, bottom: 50, left: 60 };
+  const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+
+  const xs = raw.map(p => p[0]), ys = raw.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rangeX = maxX - minX || 1, rangeY = maxY - minY || 1;
+  const margin = 0.1;
+  const xlo = minX - rangeX * margin, xhi = maxX + rangeX * margin;
+  const ylo = minY - rangeY * margin, yhi = maxY + rangeY * margin;
+
+  ctx.fillStyle = '#070720'; ctx.fillRect(0, 0, W, H);
+
+  const toSX = v => pad.left + ((v - xlo) / (xhi - xlo)) * cW;
+  const toSY = v => pad.top + (1 - (v - ylo) / (yhi - ylo)) * cH;
+
+  if (showGrid) {
+    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 5; i++) {
+      const x = pad.left + (i / 5) * cW;
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + cH); ctx.stroke();
+      const xv = xlo + (i / 5) * (xhi - xlo);
+      ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '11px Segoe UI,system-ui';
+      ctx.fillText(xv.toFixed(1), x, pad.top + cH + 16);
+      const y = pad.top + (i / 5) * cH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+      const yv = yhi - (i / 5) * (yhi - ylo);
+      ctx.fillStyle = '#64748b'; ctx.textAlign = 'right';
+      ctx.fillText(yv.toFixed(1), pad.left - 5, y + 4);
+    }
+  }
+
+  // Regression
+  let slope, intercept, r2;
+  if (showTrend) {
+    const n = raw.length;
+    const mx = xs.reduce((a, v) => a + v, 0) / n;
+    const my = ys.reduce((a, v) => a + v, 0) / n;
+    const ssxy = raw.reduce((a, p) => a + (p[0] - mx) * (p[1] - my), 0);
+    const ssxx = xs.reduce((a, v) => a + (v - mx) ** 2, 0);
+    const ssyy = ys.reduce((a, v) => a + (v - my) ** 2, 0);
+    slope = ssxy / ssxx;
+    intercept = my - slope * mx;
+    r2 = (ssxy * ssxy) / (ssxx * ssyy);
+    // Draw trend line
+    const y1 = slope * xlo + intercept;
+    const y2 = slope * xhi + intercept;
+    ctx.beginPath();
+    ctx.moveTo(toSX(xlo), toSY(y1)); ctx.lineTo(toSX(xhi), toSY(y2));
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.setLineDash([6, 3]); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Points
+  raw.forEach(p => {
+    ctx.beginPath(); ctx.arc(toSX(p[0]), toSY(p[1]), 5, 0, Math.PI * 2);
+    ctx.fillStyle = ptColor + 'cc'; ctx.fill();
+    ctx.strokeStyle = ptColor; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+
+  // Stats
+  const statsEl = document.getElementById('scatter-stats');
+  if (showTrend && showR2) {
+    statsEl.innerHTML = `
+      <div class="stat-chip">n <span>${raw.length}</span></div>
+      <div class="stat-chip">slope <span>${slope.toFixed(4)}</span></div>
+      <div class="stat-chip">intercept <span>${intercept.toFixed(4)}</span></div>
+      <div class="stat-chip">R² <span>${r2.toFixed(4)}</span></div>
+      <div class="stat-chip">equation <span>y = ${slope.toFixed(3)}x + ${intercept.toFixed(3)}</span></div>
+    `;
+  } else {
+    statsEl.innerHTML = `<div class="stat-chip">n <span>${raw.length}</span></div>`;
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+initLineSeries();
+drawBar();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

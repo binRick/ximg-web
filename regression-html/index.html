@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regression Playground — regression.ximg.app</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --teal: #14b8a6; --emerald: #10b981;
+      --fg: #cbd5e1; --fg-dim: #64748b; --white: #f1f5f9;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.97); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 1rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover { color: var(--teal); border-color: var(--teal); }
+    .tab.active { color: var(--teal); border-color: var(--teal); background: rgba(20,184,166,0.08); }
+    .section { display: none; padding: 1.5rem 1rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .hero { text-align: center; padding: 1.5rem 1rem 1rem; }
+    .hero p { color: var(--fg-dim); font-size: 0.92rem; }
+    .layout { display: grid; grid-template-columns: 240px 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+    .controls { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .controls label { font-size: 0.8rem; color: var(--fg-dim); display: block; margin-bottom: 0.2rem; }
+    .controls select, .controls input[type=number] { width: 100%; background: #0a0a20; border: 1px solid var(--border); color: var(--fg); padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.82rem; }
+    .controls input[type=range] { width: 100%; accent-color: var(--teal); }
+    .range-row { display: flex; justify-content: space-between; }
+    .range-val { font-size: 0.78rem; color: var(--teal); font-weight: 600; }
+    .btn { background: var(--teal); color: #000; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-family: inherit; font-weight: 600; transition: opacity 0.2s; width: 100%; }
+    .btn:hover { opacity: 0.85; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-neutral { background: none; border: 1px solid var(--border); color: var(--fg-dim); }
+    .btn-neutral:hover { border-color: var(--teal); color: var(--teal); background: none; }
+    .btn-row { display: flex; gap: 0.4rem; }
+    .btn-row .btn { flex: 1; }
+    .canvas-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    canvas { max-width: 100%; display: block; cursor: crosshair; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; margin-top: 0.8rem; }
+    .stat-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.7rem; }
+    .stat-card .label { font-size: 0.7rem; color: var(--fg-dim); margin-bottom: 0.2rem; }
+    .stat-card .value { font-size: 0.95rem; color: var(--teal); font-weight: 700; }
+    .ctrl-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .ctrl-row label { margin: 0; white-space: nowrap; font-size: 0.8rem; color: var(--fg-dim); }
+    .ctrl-row input[type=checkbox] { accent-color: var(--teal); }
+    .mode-indicator { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; }
+    .mode-add { background: rgba(20,184,166,0.15); color: var(--teal); }
+    .mode-delete { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .mode-drag { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .eq-box { background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.8rem; font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--teal); margin-top: 0.6rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .inner-canvas-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('linear', this)">Linear</button>
+    <button class="tab" onclick="showTab('poly', this)">Polynomial</button>
+    <button class="tab" onclick="showTab('gd', this)">Gradient Descent</button>
+    <button class="tab" onclick="showTab('resid', this)">Residuals</button>
+  </div>
+</div>
+
+<!-- LINEAR REGRESSION -->
+<div id="tab-linear" class="section active">
+  <div class="hero"><h1>Linear Regression</h1><p>Click to add points. Drag to move. Switch modes below.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Mode <span class="mode-indicator mode-add" id="lin-mode-badge">Add</span></label>
+        <div class="btn-row" style="margin-top:0.3rem">
+          <button class="btn" style="background:rgba(20,184,166,0.2);color:var(--teal);font-size:0.75rem" onclick="setLinMode('add')">Add</button>
+          <button class="btn" style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:0.75rem" onclick="setLinMode('drag')">Drag</button>
+          <button class="btn" style="background:rgba(239,68,68,0.2);color:#ef4444;font-size:0.75rem" onclick="setLinMode('delete')">Del</button>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="lin-fit" checked>
+        <label for="lin-fit">Fit Line</label>
+        <input type="checkbox" id="lin-r2" checked style="margin-left:0.5rem">
+        <label for="lin-r2">Show R²</label>
+      </div>
+      <div class="ctrl-row">
+        <input type="checkbox" id="lin-ci">
+        <label for="lin-ci">95% CI Band</label>
+      </div>
+      <button class="btn btn-danger" onclick="linClear()">Clear All</button>
+      <button class="btn btn-neutral" onclick="linLoadSample()">Load Sample Data</button>
+      <div id="lin-stats"></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="lin-canvas" width="760" height="440"></canvas>
+      <div class="eq-box" id="lin-eq">y = mx + b</div>
+    </div>
+  </div>
+</div>
+
+<!-- POLYNOMIAL -->
+<div id="tab-poly" class="section">
+  <div class="hero"><h1>Polynomial Regression</h1><p>Click to add points. Adjust degree to see overfitting.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Mode <span class="mode-indicator mode-add" id="poly-mode-badge">Add</span></label>
+        <div class="btn-row" style="margin-top:0.3rem">
+          <button class="btn" style="background:rgba(20,184,166,0.2);color:var(--teal);font-size:0.75rem" onclick="setPolyMode('add')">Add</button>
+          <button class="btn" style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:0.75rem" onclick="setPolyMode('drag')">Drag</button>
+          <button class="btn" style="background:rgba(239,68,68,0.2);color:#ef4444;font-size:0.75rem" onclick="setPolyMode('delete')">Del</button>
+        </div>
+      </div>
+      <div>
+        <label>Degree <span class="range-val" id="poly-deg-val">2</span></label>
+        <input type="range" id="poly-deg" min="1" max="9" value="2" oninput="document.getElementById('poly-deg-val').textContent=this.value; drawPoly()">
+      </div>
+      <button class="btn btn-danger" onclick="polyClear()">Clear All</button>
+      <button class="btn btn-neutral" onclick="polyLoadSample()">Load Sample Data</button>
+      <div id="poly-stats"></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="poly-canvas" width="760" height="440"></canvas>
+      <div class="eq-box" id="poly-eq">add points to fit</div>
+    </div>
+  </div>
+</div>
+
+<!-- GRADIENT DESCENT -->
+<div id="tab-gd" class="section">
+  <div class="hero"><h1>Gradient Descent Visualization</h1><p>Watch the algorithm descend toward the optimal regression line.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Learning Rate <span class="range-val" id="gd-lr-val">0.01</span></label>
+        <input type="range" id="gd-lr" min="-3" max="-0.5" step="0.1" value="-2" oninput="
+          const v = Math.pow(10, +this.value);
+          document.getElementById('gd-lr-val').textContent = v.toFixed(4);
+          gdReset();">
+      </div>
+      <div>
+        <label>Iterations per Step <span class="range-val" id="gd-iter-val">5</span></label>
+        <input type="range" id="gd-iter" min="1" max="50" value="5" oninput="document.getElementById('gd-iter-val').textContent=this.value">
+      </div>
+      <button class="btn" id="gd-run-btn" onclick="gdToggle()">Start</button>
+      <button class="btn btn-neutral" onclick="gdReset()">Reset</button>
+      <div class="stats-grid" id="gd-stats" style="margin-top:0"></div>
+    </div>
+    <div>
+      <div class="canvas-wrap" style="margin-bottom:0.8rem">
+        <canvas id="gd-scatter" width="760" height="260"></canvas>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="gd-loss" width="760" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESIDUALS -->
+<div id="tab-resid" class="section">
+  <div class="hero"><h1>Residual Analysis</h1><p>Click to add points. Visualize residuals, histogram, Q-Q plot, and decomposition.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Mode <span class="mode-indicator mode-add" id="resid-mode-badge">Add</span></label>
+        <div class="btn-row" style="margin-top:0.3rem">
+          <button class="btn" style="background:rgba(20,184,166,0.2);color:var(--teal);font-size:0.75rem" onclick="setResidMode('add')">Add</button>
+          <button class="btn" style="background:rgba(239,68,68,0.2);color:#ef4444;font-size:0.75rem" onclick="setResidMode('delete')">Del</button>
+        </div>
+      </div>
+      <button class="btn btn-danger" onclick="residClear()">Clear All</button>
+      <button class="btn btn-neutral" onclick="residLoadSample()">Load Sample</button>
+      <div class="stats-grid" id="resid-stats" style="margin-top:0"></div>
+    </div>
+    <div>
+      <div class="canvas-wrap" style="margin-bottom:0.8rem">
+        <canvas id="resid-scatter" width="760" height="200"></canvas>
+      </div>
+      <div class="two-col">
+        <div class="inner-canvas-wrap"><canvas id="resid-hist" width="360" height="180"></canvas></div>
+        <div class="inner-canvas-wrap"><canvas id="resid-qq" width="360" height="180"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'linear') drawLinear();
+  if (id === 'poly') drawPoly();
+  if (id === 'gd') { gdReset(); }
+  if (id === 'resid') drawResid();
+}
+
+function clearCtx(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#070720'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return ctx;
+}
+
+function linReg(pts) {
+  if (pts.length < 2) return null;
+  const n = pts.length;
+  const mx = pts.reduce((a, p) => a + p[0], 0) / n;
+  const my = pts.reduce((a, p) => a + p[1], 0) / n;
+  const ssxy = pts.reduce((a, p) => a + (p[0] - mx) * (p[1] - my), 0);
+  const ssxx = pts.reduce((a, p) => a + (p[0] - mx) ** 2, 0);
+  const ssyy = pts.reduce((a, p) => a + (p[1] - my) ** 2, 0);
+  if (ssxx === 0) return null;
+  const slope = ssxy / ssxx;
+  const intercept = my - slope * mx;
+  const r2 = (ssxy * ssxy) / (ssxx * ssyy);
+  const yhat = pts.map(p => slope * p[0] + intercept);
+  const residuals = pts.map((p, i) => p[1] - yhat[i]);
+  const sse = residuals.reduce((a, r) => a + r * r, 0);
+  const sst = ssyy;
+  const ssr = sst - sse;
+  return { slope, intercept, r2, residuals, sse, ssr, sst, yhat };
+}
+
+function getCanvasXY(canvas, e) {
+  const rect = canvas.getBoundingClientRect();
+  return [
+    (e.clientX - rect.left) * (canvas.width / rect.width),
+    (e.clientY - rect.top) * (canvas.height / rect.height)
+  ];
+}
+
+function drawPointsAndAxes(ctx, pts, W, H, pad, ptColor, bgColor) {
+  bgColor = bgColor || '#070720';
+  ctx.fillStyle = bgColor; ctx.fillRect(0, 0, W, H);
+  if (!pts.length) return { toX: null, toY: null, xlo: 0, xhi: 1, ylo: 0, yhi: 1 };
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rx = maxX - minX || 10, ry = maxY - minY || 10;
+  const xlo = minX - rx * 0.15, xhi = maxX + rx * 0.15;
+  const ylo = minY - ry * 0.15, yhi = maxY + ry * 0.15;
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const toX = v => pad.l + ((v - xlo) / (xhi - xlo)) * cW;
+  const toY = v => pad.t + (1 - (v - ylo) / (yhi - ylo)) * cH;
+  // Grid
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    const v = yhi - (i / 4) * (yhi - ylo);
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText(v.toFixed(1), pad.l - 4, y + 4);
+  }
+  for (let i = 0; i <= 5; i++) {
+    const x = pad.l + (i / 5) * cW;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + cH); ctx.stroke();
+    const v = xlo + (i / 5) * (xhi - xlo);
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText(v.toFixed(1), x, pad.t + cH + 14);
+  }
+  // Points
+  pts.forEach(p => {
+    ctx.beginPath(); ctx.arc(toX(p[0]), toY(p[1]), 5, 0, Math.PI * 2);
+    ctx.fillStyle = (ptColor || '#14b8a6') + 'cc'; ctx.fill();
+    ctx.strokeStyle = ptColor || '#14b8a6'; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+  return { toX, toY, xlo, xhi, ylo, yhi, cW, cH };
+}
+
+// ── LINEAR REGRESSION ─────────────────────────────────────────────────────────
+let linPts = [], linMode = 'add', linDragIdx = -1;
+
+function setLinMode(m) {
+  linMode = m;
+  const badge = document.getElementById('lin-mode-badge');
+  badge.textContent = { add: 'Add', drag: 'Drag', delete: 'Delete' }[m];
+  badge.className = 'mode-indicator ' + { add: 'mode-add', drag: 'mode-drag', delete: 'mode-delete' }[m];
+  document.getElementById('lin-canvas').style.cursor = { add: 'crosshair', drag: 'grab', delete: 'no-drop' }[m];
+}
+
+function linClear() { linPts = []; drawLinear(); }
+
+function linLoadSample() {
+  linPts = [
+    [1,2],[2,4],[3,5],[4,4],[5,7],[6,8],[7,8],[8,10],[9,11],[10,13],
+    [3,3],[5,6],[7,9],[2,3],[8,9],[4,6],[6,7],[1,1],[9,12],[10,11]
+  ];
+  drawLinear();
+}
+
+function drawLinear() {
+  const canvas = document.getElementById('lin-canvas');
+  const ctx = clearCtx(canvas);
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 50, r: 20, t: 20, b: 40 };
+  const { toX, toY, xlo, xhi } = drawPointsAndAxes(ctx, linPts, W, H, pad, '#14b8a6');
+
+  if (linPts.length < 2 || !toX) {
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '14px Segoe UI,system-ui';
+    ctx.fillText('Click to add data points', W / 2, H / 2);
+    document.getElementById('lin-eq').textContent = 'y = mx + b';
+    document.getElementById('lin-stats').innerHTML = '';
+    return;
+  }
+
+  const reg = linReg(linPts);
+  if (!reg) return;
+  const showFit = document.getElementById('lin-fit').checked;
+  const showCI = document.getElementById('lin-ci').checked;
+
+  if (showFit) {
+    // CI band
+    if (showCI && linPts.length >= 3) {
+      const n = linPts.length;
+      const mx = linPts.reduce((a, p) => a + p[0], 0) / n;
+      const ssxx = linPts.reduce((a, p) => a + (p[0] - mx) ** 2, 0);
+      const mse = reg.sse / (n - 2);
+      const tVal = 2.0; // ~95% CI for most n
+      const N = 100;
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const x = xlo + (i / N) * (xhi - xlo);
+        const se = Math.sqrt(mse * (1 / n + (x - mx) ** 2 / ssxx));
+        const yhat = reg.slope * x + reg.intercept;
+        ctx.lineTo(toX(x), toY(yhat + tVal * se));
+      }
+      for (let i = N; i >= 0; i--) {
+        const x = xlo + (i / N) * (xhi - xlo);
+        const se = Math.sqrt(mse * (1 / n + (x - mx) ** 2 / ssxx));
+        const yhat = reg.slope * x + reg.intercept;
+        ctx.lineTo(toX(x), toY(yhat - tVal * se));
+      }
+      ctx.closePath(); ctx.fillStyle = '#14b8a615'; ctx.fill();
+    }
+    // Fit line
+    const y1 = reg.slope * xlo + reg.intercept;
+    const y2 = reg.slope * xhi + reg.intercept;
+    ctx.beginPath(); ctx.moveTo(toX(xlo), toY(y1)); ctx.lineTo(toX(xhi), toY(y2));
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+
+  const sign = reg.intercept >= 0 ? '+' : '-';
+  document.getElementById('lin-eq').textContent =
+    `y = ${reg.slope.toFixed(4)}x ${sign} ${Math.abs(reg.intercept).toFixed(4)}    (R² = ${reg.r2.toFixed(4)})`;
+  if (document.getElementById('lin-r2').checked) {
+    document.getElementById('lin-stats').innerHTML = `
+      <div class="stats-grid" style="margin-top:0.5rem">
+        <div class="stat-card"><div class="label">Slope</div><div class="value">${reg.slope.toFixed(4)}</div></div>
+        <div class="stat-card"><div class="label">Intercept</div><div class="value">${reg.intercept.toFixed(4)}</div></div>
+        <div class="stat-card"><div class="label">R²</div><div class="value">${reg.r2.toFixed(4)}</div></div>
+        <div class="stat-card"><div class="label">n</div><div class="value">${linPts.length}</div></div>
+      </div>`;
+  }
+}
+
+const linCanvas = document.getElementById('lin-canvas');
+linCanvas.addEventListener('mousedown', e => {
+  const [cx, cy] = getCanvasXY(linCanvas, e);
+  const W = linCanvas.width, H = linCanvas.height;
+  const pad = { l: 50, r: 20, t: 20, b: 40 };
+  if (!linPts.length && linMode !== 'add') return;
+  const xs = linPts.map(p => p[0]), ys = linPts.map(p => p[1]);
+  const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 10);
+  const minY = Math.min(...ys, 0), maxY = Math.max(...ys, 10);
+  const rx = maxX - minX || 10, ry = maxY - minY || 10;
+  const xlo = minX - rx * 0.15, xhi = maxX + rx * 0.15;
+  const ylo = minY - ry * 0.15, yhi = maxY + ry * 0.15;
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const toDataX = px => xlo + ((px - pad.l) / cW) * (xhi - xlo);
+  const toDataY = py => yhi - ((py - pad.t) / cH) * (yhi - ylo);
+  const dx = toDataX(cx), dy = toDataY(cy);
+
+  if (linMode === 'add') {
+    linPts.push([dx, dy]); drawLinear();
+  } else if (linMode === 'delete') {
+    const cW2 = W - pad.l - pad.r, cH2 = H - pad.t - pad.b;
+    const toX2 = v => pad.l + ((v - xlo) / (xhi - xlo)) * cW2;
+    const toY2 = v => pad.t + (1 - (v - ylo) / (yhi - ylo)) * cH2;
+    const idx = linPts.findIndex(p => {
+      const ddx = toX2(p[0]) - cx, ddy = toY2(p[1]) - cy;
+      return Math.sqrt(ddx * ddx + ddy * ddy) < 10;
+    });
+    if (idx >= 0) { linPts.splice(idx, 1); drawLinear(); }
+  } else if (linMode === 'drag') {
+    const cW2 = W - pad.l - pad.r, cH2 = H - pad.t - pad.b;
+    const toX2 = v => pad.l + ((v - xlo) / (xhi - xlo)) * cW2;
+    const toY2 = v => pad.t + (1 - (v - ylo) / (yhi - ylo)) * cH2;
+    linDragIdx = linPts.findIndex(p => {
+      const ddx = toX2(p[0]) - cx, ddy = toY2(p[1]) - cy;
+      return Math.sqrt(ddx * ddx + ddy * ddy) < 14;
+    });
+  }
+});
+linCanvas.addEventListener('mousemove', e => {
+  if (linDragIdx < 0) return;
+  const [cx, cy] = getCanvasXY(linCanvas, e);
+  const W = linCanvas.width, H = linCanvas.height;
+  const pad = { l: 50, r: 20, t: 20, b: 40 };
+  const xs = linPts.map(p => p[0]), ys = linPts.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rx = maxX - minX || 10, ry = maxY - minY || 10;
+  const xlo = minX - rx * 0.15, xhi = maxX + rx * 0.15;
+  const ylo = minY - ry * 0.15, yhi = maxY + ry * 0.15;
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  linPts[linDragIdx] = [
+    xlo + ((cx - pad.l) / cW) * (xhi - xlo),
+    yhi - ((cy - pad.t) / cH) * (yhi - ylo)
+  ];
+  drawLinear();
+});
+linCanvas.addEventListener('mouseup', () => { linDragIdx = -1; });
+
+// ── POLYNOMIAL REGRESSION ─────────────────────────────────────────────────────
+let polyPts = [], polyMode = 'add', polyDragIdx = -1;
+
+function setPolyMode(m) {
+  polyMode = m;
+  const badge = document.getElementById('poly-mode-badge');
+  badge.textContent = { add: 'Add', drag: 'Drag', delete: 'Delete' }[m];
+  badge.className = 'mode-indicator ' + { add: 'mode-add', drag: 'mode-drag', delete: 'mode-delete' }[m];
+}
+
+function polyClear() { polyPts = []; drawPoly(); }
+function polyLoadSample() {
+  polyPts = [[1,3],[2,1],[3,5],[4,2],[5,6],[6,3],[7,7],[8,4],[9,8],[10,5],
+    [3,4],[5,3],[7,6],[2,2],[8,5]];
+  drawPoly();
+}
+
+function polyFit(pts, degree) {
+  if (pts.length < degree + 1) return null;
+  const n = pts.length;
+  // Vandermonde matrix
+  const X = pts.map(p => Array.from({ length: degree + 1 }, (_, j) => Math.pow(p[0], j)));
+  const y = pts.map(p => p[1]);
+  // Normal equations: (X'X) b = X'y — solve via Gaussian elimination
+  const Xt = X[0].map((_, j) => X.map(row => row[j]));
+  const XtX = Xt.map(row => Xt.map(r2 => row.reduce((a, v, k) => a + v * r2[k], 0)));
+  const Xty = Xt.map(row => row.reduce((a, v, k) => a + v * y[k], 0));
+  const coef = gaussElim(XtX, Xty);
+  if (!coef) return null;
+  const yhat = pts.map(p => coef.reduce((a, c, j) => a + c * Math.pow(p[0], j), 0));
+  const my = y.reduce((a, v) => a + v, 0) / n;
+  const sst = y.reduce((a, v) => a + (v - my) ** 2, 0);
+  const sse = yhat.reduce((a, v, i) => a + (v - y[i]) ** 2, 0);
+  const r2 = Math.max(0, 1 - sse / sst);
+  return { coef, yhat, r2, sse };
+}
+
+function gaussElim(A, b) {
+  const n = A.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++) if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    if (Math.abs(M[col][col]) < 1e-12) return null;
+    for (let row = col + 1; row < n; row++) {
+      const f = M[row][col] / M[col][col];
+      for (let k = col; k <= n; k++) M[row][k] -= f * M[col][k];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    x[i] = M[i][n];
+    for (let j = i + 1; j < n; j++) x[i] -= M[i][j] * x[j];
+    x[i] /= M[i][i];
+  }
+  return x;
+}
+
+function drawPoly() {
+  const canvas = document.getElementById('poly-canvas');
+  const ctx = clearCtx(canvas);
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 50, r: 20, t: 20, b: 40 };
+  const degree = parseInt(document.getElementById('poly-deg').value);
+  const { toX, toY, xlo, xhi } = drawPointsAndAxes(ctx, polyPts, W, H, pad, '#14b8a6');
+  if (!polyPts.length || !toX) {
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '14px Segoe UI,system-ui';
+    ctx.fillText('Click to add data points', W / 2, H / 2);
+    return;
+  }
+  const fit = polyFit(polyPts, degree);
+  if (!fit) { document.getElementById('poly-eq').textContent = `Need ≥ ${degree + 1} points for degree ${degree}`; return; }
+  const N = 200;
+  ctx.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const x = xlo + (i / N) * (xhi - xlo);
+    const y = fit.coef.reduce((a, c, j) => a + c * Math.pow(x, j), 0);
+    i === 0 ? ctx.moveTo(toX(x), toY(y)) : ctx.lineTo(toX(x), toY(y));
+  }
+  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2.5; ctx.stroke();
+  // Equation
+  const terms = fit.coef.map((c, j) => {
+    if (Math.abs(c) < 1e-6) return '';
+    if (j === 0) return c.toFixed(3);
+    if (j === 1) return `${c.toFixed(3)}x`;
+    return `${c.toFixed(3)}x^${j}`;
+  }).filter(Boolean).reverse().join(' + ').replace(/\+ -/g, '- ');
+  document.getElementById('poly-eq').textContent = `y = ${terms}    (R² = ${fit.r2.toFixed(4)})`;
+  document.getElementById('poly-stats').innerHTML = `
+    <div class="stats-grid" style="margin-top:0.5rem">
+      <div class="stat-card"><div class="label">Degree</div><div class="value">${degree}</div></div>
+      <div class="stat-card"><div class="label">R²</div><div class="value">${fit.r2.toFixed(4)}</div></div>
+      <div class="stat-card"><div class="label">n</div><div class="value">${polyPts.length}</div></div>
+      <div class="stat-card"><div class="label">SSE</div><div class="value">${fit.sse.toFixed(3)}</div></div>
+    </div>`;
+}
+
+(function setupPolyCanvas() {
+  const canvas = document.getElementById('poly-canvas');
+  canvas.addEventListener('mousedown', e => {
+    const [cx, cy] = getCanvasXY(canvas, e);
+    const W = canvas.width, H = canvas.height;
+    const pad = { l: 50, r: 20, t: 20, b: 40 };
+    const pts = polyPts;
+    if (!pts.length && polyMode !== 'add') return;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 10);
+    const minY = Math.min(...ys, 0), maxY = Math.max(...ys, 10);
+    const rx = maxX - minX || 10, ry = maxY - minY || 10;
+    const xlo = minX - rx * 0.15, xhi = maxX + rx * 0.15;
+    const ylo = minY - ry * 0.15, yhi = maxY + ry * 0.15;
+    const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+    const toX2 = v => pad.l + ((v - xlo) / (xhi - xlo)) * cW;
+    const toY2 = v => pad.t + (1 - (v - ylo) / (yhi - ylo)) * cH;
+    const dx = xlo + ((cx - pad.l) / cW) * (xhi - xlo);
+    const dy = yhi - ((cy - pad.t) / cH) * (yhi - ylo);
+    if (polyMode === 'add') { polyPts.push([dx, dy]); drawPoly(); }
+    else if (polyMode === 'delete') {
+      const idx = polyPts.findIndex(p => { const ddx = toX2(p[0]) - cx, ddy = toY2(p[1]) - cy; return Math.sqrt(ddx*ddx+ddy*ddy) < 12; });
+      if (idx >= 0) { polyPts.splice(idx, 1); drawPoly(); }
+    } else if (polyMode === 'drag') {
+      polyDragIdx = polyPts.findIndex(p => { const ddx = toX2(p[0]) - cx, ddy = toY2(p[1]) - cy; return Math.sqrt(ddx*ddx+ddy*ddy) < 14; });
+    }
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (polyDragIdx < 0) return;
+    const [cx, cy] = getCanvasXY(canvas, e);
+    const W = canvas.width, H = canvas.height;
+    const pad = { l: 50, r: 20, t: 20, b: 40 };
+    const pts = polyPts;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const rx = maxX - minX || 10, ry = maxY - minY || 10;
+    const xlo = minX - rx * 0.15, xhi = maxX + rx * 0.15;
+    const ylo = minY - ry * 0.15, yhi = maxY + ry * 0.15;
+    const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+    polyPts[polyDragIdx] = [
+      xlo + ((cx - pad.l) / cW) * (xhi - xlo),
+      yhi - ((cy - pad.t) / cH) * (yhi - ylo)
+    ];
+    drawPoly();
+  });
+  canvas.addEventListener('mouseup', () => { polyDragIdx = -1; });
+})();
+
+// ── GRADIENT DESCENT ──────────────────────────────────────────────────────────
+const GD_DATA = [[1,2.1],[2,3.9],[3,6.1],[4,7.8],[5,10.2],[6,11.9],[7,14.1],[8,15.8],[9,18.0],[10,20.1],
+  [1.5,3.0],[3.5,7.0],[5.5,11.0],[7.5,15.0],[9.5,19.0]];
+let gdTheta0 = 0, gdTheta1 = 0, gdRunning = false, gdIter = 0, gdLosses = [], gdTimer = null;
+
+function gdLoss(t0, t1) {
+  return GD_DATA.reduce((a, [x, y]) => a + (t0 + t1 * x - y) ** 2, 0) / (2 * GD_DATA.length);
+}
+
+function gdReset() {
+  if (gdTimer) { cancelAnimationFrame(gdTimer); gdTimer = null; }
+  gdRunning = false;
+  gdTheta0 = Math.random() * 4 - 8;
+  gdTheta1 = Math.random() * 4 - 2;
+  gdIter = 0; gdLosses = [];
+  document.getElementById('gd-run-btn').textContent = 'Start';
+  drawGD();
+}
+
+function gdToggle() {
+  gdRunning = !gdRunning;
+  document.getElementById('gd-run-btn').textContent = gdRunning ? 'Pause' : 'Resume';
+  if (gdRunning) gdStep();
+}
+
+function gdStep() {
+  if (!gdRunning) return;
+  const lr = Math.pow(10, parseFloat(document.getElementById('gd-lr').value));
+  const iters = parseInt(document.getElementById('gd-iter').value);
+  const n = GD_DATA.length;
+  for (let i = 0; i < iters; i++) {
+    let dT0 = 0, dT1 = 0;
+    GD_DATA.forEach(([x, y]) => {
+      const err = gdTheta0 + gdTheta1 * x - y;
+      dT0 += err; dT1 += err * x;
+    });
+    gdTheta0 -= lr * dT0 / n;
+    gdTheta1 -= lr * dT1 / n;
+    gdIter++;
+    gdLosses.push(gdLoss(gdTheta0, gdTheta1));
+  }
+  drawGD();
+  if (gdLosses.length < 1000 && gdRunning) gdTimer = requestAnimationFrame(gdStep);
+  else { gdRunning = false; document.getElementById('gd-run-btn').textContent = 'Start'; }
+}
+
+// ── RESIDUALS ─────────────────────────────────────────────────────────────────
+let residPts = [], residMode = 'add';
+
+function setResidMode(m) {
+  residMode = m;
+  const badge = document.getElementById('resid-mode-badge');
+  badge.textContent = { add: 'Add', delete: 'Delete' }[m];
+  badge.className = 'mode-indicator ' + { add: 'mode-add', delete: 'mode-delete' }[m];
+}
+
+function residClear() { residPts = []; drawResid(); }
+function residLoadSample() {
+  residPts = [[1,2.2],[2,4.1],[3,5.9],[4,8.2],[5,9.8],[6,12.1],[7,14.0],[8,15.9],[9,17.8],[10,20.2],
+    [3,6.5],[5,11.0],[7,13.5],[2,3.5],[8,16.5],[4,7.5],[6,11.5]];
+  drawResid();
+}
+
+function drawResid() {
+  const reg = linReg(residPts);
+  if (!reg || residPts.length < 3) {
+    clearCtx(document.getElementById('resid-scatter'));
+    clearCtx(document.getElementById('resid-hist'));
+    clearCtx(document.getElementById('resid-qq'));
+    if (residPts.length < 2) {
+      const ctx = document.getElementById('resid-scatter').getContext('2d');
+      ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '14px Segoe UI,system-ui';
+      ctx.fillText('Click to add data points', 380, 100);
+    }
+    return;
+  }
+
+  // Scatter with residuals
+  const sc = document.getElementById('resid-scatter');
+  const ctx = clearCtx(sc);
+  const W = sc.width, H = sc.height;
+  const pad = { l: 45, r: 15, t: 15, b: 35 };
+  const { toX, toY, xlo, xhi } = drawPointsAndAxes(ctx, residPts, W, H, pad, '#14b8a6');
+
+  // Fit line
+  const y1 = reg.slope * xlo + reg.intercept;
+  const y2 = reg.slope * xhi + reg.intercept;
+  ctx.beginPath(); ctx.moveTo(toX(xlo), toY(y1)); ctx.lineTo(toX(xhi), toY(y2));
+  ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Residual lines
+  residPts.forEach((p, i) => {
+    const yhat = reg.yhat[i];
+    ctx.beginPath(); ctx.moveTo(toX(p[0]), toY(p[1])); ctx.lineTo(toX(p[0]), toY(yhat));
+    const color = reg.residuals[i] > 0 ? '#f59e0b' : '#818cf8';
+    ctx.strokeStyle = color + 'cc'; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+
+  // Residual histogram
+  const hist = document.getElementById('resid-hist');
+  const hctx = clearCtx(hist);
+  const HW = hist.width, HH = hist.height;
+  const hpad = { l: 40, r: 10, t: 20, b: 30 };
+  const hcW = HW - hpad.l - hpad.r, hcH = HH - hpad.t - hpad.b;
+  const resids = reg.residuals;
+  const lo = Math.min(...resids), hi = Math.max(...resids);
+  const range = hi - lo || 0.01;
+  const nBins = Math.min(10, residPts.length);
+  const bins = new Array(nBins).fill(0);
+  resids.forEach(r => {
+    const i = Math.min(nBins - 1, Math.floor((r - lo) / range * nBins));
+    bins[i]++;
+  });
+  const maxB = Math.max(...bins);
+  const toHX = v => hpad.l + ((v - lo) / range) * hcW;
+  const toHY = v => hpad.t + (1 - v / maxB) * hcH;
+  const bw = hcW / nBins;
+  bins.forEach((b, i) => {
+    const x = lo + (i / nBins) * range;
+    hctx.fillStyle = '#818cf8aa';
+    hctx.fillRect(toHX(x), toHY(b), bw - 1, toHY(0) - toHY(b));
+  });
+  hctx.fillStyle = '#94a3b8'; hctx.textAlign = 'center'; hctx.font = '11px Segoe UI,system-ui';
+  hctx.fillText('Residual Distribution', HW / 2, 13);
+
+  // Q-Q plot
+  const qq = document.getElementById('resid-qq');
+  const qctx = clearCtx(qq);
+  const QW = qq.width, QH = qq.height;
+  const qpad = { l: 35, r: 10, t: 20, b: 30 };
+  const qcW = QW - qpad.l - qpad.r, qcH = QH - qpad.t - qpad.b;
+  const sorted = [...resids].sort((a, b) => a - b);
+  const n = sorted.length;
+  const mean_r = resids.reduce((a, v) => a + v, 0) / n;
+  const std_r = Math.sqrt(resids.reduce((a, v) => a + (v - mean_r) ** 2, 0) / (n - 1));
+  // Theoretical quantiles (approximate)
+  const theor = sorted.map((_, i) => {
+    const p = (i + 0.5) / n;
+    // Probit approximation
+    return probit(p) * std_r + mean_r;
+  });
+  const qlo = Math.min(...theor, ...sorted);
+  const qhi = Math.max(...theor, ...sorted);
+  const qrange = qhi - qlo || 0.01;
+  const toQX = v => qpad.l + ((v - qlo) / qrange) * qcW;
+  const toQY = v => qpad.t + (1 - (v - qlo) / qrange) * qcH;
+  // Reference line
+  qctx.beginPath(); qctx.moveTo(toQX(qlo), toQY(qlo)); qctx.lineTo(toQX(qhi), toQY(qhi));
+  qctx.strokeStyle = '#10b981'; qctx.lineWidth = 1.5; qctx.stroke();
+  // Points
+  sorted.forEach((v, i) => {
+    qctx.beginPath(); qctx.arc(toQX(theor[i]), toQY(v), 3, 0, Math.PI * 2);
+    qctx.fillStyle = '#14b8a6'; qctx.fill();
+  });
+  qctx.fillStyle = '#94a3b8'; qctx.textAlign = 'center'; qctx.font = '11px Segoe UI,system-ui';
+  qctx.fillText('Q-Q Plot (Normality Check)', QW / 2, 13);
+
+  document.getElementById('resid-stats').innerHTML = `
+    <div class="stat-card"><div class="label">R²</div><div class="value">${reg.r2.toFixed(4)}</div></div>
+    <div class="stat-card"><div class="label">SST</div><div class="value">${reg.sst.toFixed(3)}</div></div>
+    <div class="stat-card"><div class="label">SSR</div><div class="value">${reg.ssr.toFixed(3)}</div></div>
+    <div class="stat-card"><div class="label">SSE</div><div class="value">${reg.sse.toFixed(3)}</div></div>`;
+}
+
+function probit(p) {
+  // Rational approximation for probit
+  if (p <= 0) return -6; if (p >= 1) return 6;
+  const a = [2.50662823884, -18.61500062529, 41.39119773534, -25.44106049637];
+  const b = [-8.47351093090, 23.08336743743, -21.06224101826, 3.13082909833];
+  const c = [0.3374754822726147, 0.9761690190917186, 0.1607979714918209, 0.0276438810333863, 0.0038405729373609, 0.0003951896511349, 0.0000321767881768, 0.0000002888167364, 0.0000003960315187];
+  let q = p - 0.5;
+  if (Math.abs(q) < 0.42) {
+    let r = q * q;
+    return q * (((a[3] * r + a[2]) * r + a[1]) * r + a[0]) / ((((b[3] * r + b[2]) * r + b[1]) * r + b[0]) * r + 1);
+  }
+  let r = p < 0.5 ? p : 1 - p;
+  r = Math.sqrt(-Math.log(r));
+  let x = c[0]; for (let i = 1; i < 9; i++) x = x * r + c[i];
+  return p < 0.5 ? -x : x;
+}
+
+const residCanvas = document.getElementById('resid-scatter');
+residCanvas.addEventListener('click', e => {
+  const [cx, cy] = getCanvasXY(residCanvas, e);
+  const W = residCanvas.width, H = residCanvas.height;
+  const pad = { l: 45, r: 15, t: 15, b: 35 };
+  let pts = residPts;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const minX = Math.min(...xs, 0), maxX = Math.max(...xs, 10);
+  const minY = Math.min(...ys, 0), maxY = Math.max(...ys, 10);
+  const rx = maxX - minX || 10, ry = maxY - minY || 10;
+  const xlo = minX - rx * 0.15, xhi = maxX + rx * 0.15;
+  const ylo = minY - ry * 0.15, yhi = maxY + ry * 0.15;
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const dx = xlo + ((cx - pad.l) / cW) * (xhi - xlo);
+  const dy = yhi - ((cy - pad.t) / cH) * (yhi - ylo);
+  if (residMode === 'add') { residPts.push([dx, dy]); drawResid(); }
+  else {
+    const toX2 = v => pad.l + ((v - xlo) / (xhi - xlo)) * cW;
+    const toY2 = v => pad.t + (1 - (v - ylo) / (yhi - ylo)) * cH;
+    const idx = residPts.findIndex(p => { const ddx = toX2(p[0]) - cx, ddy = toY2(p[1]) - cy; return Math.sqrt(ddx*ddx+ddy*ddy) < 12; });
+    if (idx >= 0) { residPts.splice(idx, 1); drawResid(); }
+  }
+});
+
+// Fix the gradient descent loss chart syntax error
+function drawGDLossChart(lc, gdLosses, gdIter) {
+  const lctx = clearCtx(lc);
+  const LW = lc.width, LH = lc.height;
+  const lpad = { l: 60, r: 15, t: 15, b: 30 };
+  const lcW = LW - lpad.l - lpad.r, lcH = LH - lpad.t - lpad.b;
+  if (gdLosses.length > 1) {
+    const lo = Math.min(...gdLosses), hi = Math.max(...gdLosses);
+    const range = hi - lo || 0.01;
+    const toX = i => lpad.l + (i / (gdLosses.length - 1)) * lcW;
+    const toY = v => lpad.t + (1 - (v - lo) / range) * lcH;
+    lctx.beginPath();
+    gdLosses.forEach((v, i) => i === 0 ? lctx.moveTo(toX(i), toY(v)) : lctx.lineTo(toX(i), toY(v)));
+    lctx.strokeStyle = '#14b8a6'; lctx.lineWidth = 2; lctx.stroke();
+    lctx.fillStyle = '#64748b'; lctx.textAlign = 'left'; lctx.font = '10px Segoe UI,system-ui';
+    lctx.fillText('Loss', lpad.l, lpad.t - 2);
+    lctx.fillText(lo.toFixed(4), lpad.l - 55, lpad.t + lcH);
+    lctx.fillText(hi.toFixed(4), lpad.l - 55, lpad.t + 4);
+    lctx.textAlign = 'center';
+    lctx.fillText(`Iterations: ${gdIter}`, LW / 2, LH - 5);
+  }
+}
+
+function drawGD() {
+  const sc = document.getElementById('gd-scatter');
+  const ctx = clearCtx(sc);
+  const W = sc.width, H = sc.height;
+  const pad = { l: 45, r: 15, t: 20, b: 35 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const xlo = 0, xhi = 11, ylo = 0, yhi = 22;
+  const toX = v => pad.l + ((v - xlo) / (xhi - xlo)) * cW;
+  const toY = v => pad.t + (1 - (v - ylo) / (yhi - ylo)) * cH;
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * cH; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText((yhi - (i / 4) * (yhi - ylo)).toFixed(0), pad.l - 4, y + 4);
+  }
+  for (let i = 0; i <= 5; i++) {
+    const x = pad.l + (i / 5) * cW; ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + cH); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText((xlo + (i / 5) * (xhi - xlo)).toFixed(0), x, pad.t + cH + 14);
+  }
+  GD_DATA.forEach(([x, y]) => {
+    ctx.beginPath(); ctx.arc(toX(x), toY(y), 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#14b8a6cc'; ctx.fill();
+    ctx.strokeStyle = '#14b8a6'; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+  const y1 = gdTheta0 + gdTheta1 * xlo;
+  const y2 = gdTheta0 + gdTheta1 * xhi;
+  ctx.beginPath(); ctx.moveTo(toX(xlo), toY(y1)); ctx.lineTo(toX(xhi), toY(y2));
+  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center'; ctx.font = '11px Segoe UI,system-ui';
+  ctx.fillText(`θ₀=${gdTheta0.toFixed(3)}, θ₁=${gdTheta1.toFixed(3)}, Loss=${gdLoss(gdTheta0, gdTheta1).toFixed(4)}`, W / 2, 14);
+  drawGDLossChart(document.getElementById('gd-loss'), gdLosses, gdIter);
+  document.getElementById('gd-stats').innerHTML = `
+    <div class="stat-card"><div class="label">θ₀ (intercept)</div><div class="value">${gdTheta0.toFixed(4)}</div></div>
+    <div class="stat-card"><div class="label">θ₁ (slope)</div><div class="value">${gdTheta1.toFixed(4)}</div></div>
+    <div class="stat-card"><div class="label">Loss (MSE/2)</div><div class="value">${gdLoss(gdTheta0, gdTheta1).toFixed(6)}</div></div>
+    <div class="stat-card"><div class="label">Iterations</div><div class="value">${gdIter}</div></div>`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+linLoadSample();
+drawLinear();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

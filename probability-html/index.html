@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Probability &amp; Monte Carlo — probability.ximg.app</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --teal: #14b8a6; --emerald: #10b981;
+      --fg: #cbd5e1; --fg-dim: #64748b; --white: #f1f5f9;
+    }
+    body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; padding-top: 44px; min-height: 100vh; }
+    .sub-nav { position: sticky; top: 44px; z-index: 100; background: rgba(2,2,15,0.97); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .sub-nav-inner { display: flex; justify-content: center; gap: 0.4rem; padding: 0.5rem; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
+    .tab { background: none; border: 1px solid var(--border); color: var(--fg-dim); padding: 0.3rem 1rem; cursor: pointer; font-family: inherit; font-size: 0.82rem; border-radius: 4px; transition: all 0.2s; }
+    .tab:hover { color: var(--teal); border-color: var(--teal); }
+    .tab.active { color: var(--teal); border-color: var(--teal); background: rgba(20,184,166,0.08); }
+    .section { display: none; padding: 1.5rem 1rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .section.active { display: block; }
+    h1 { color: var(--white); font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .hero { text-align: center; padding: 1.5rem 1rem 1rem; }
+    .hero p { color: var(--fg-dim); font-size: 0.92rem; }
+    .layout { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+    .controls { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .controls label { font-size: 0.8rem; color: var(--fg-dim); display: block; margin-bottom: 0.2rem; }
+    .controls select, .controls input[type=number] { width: 100%; background: #0a0a20; border: 1px solid var(--border); color: var(--fg); padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.82rem; }
+    .controls input[type=range] { width: 100%; accent-color: var(--teal); }
+    .range-row { display: flex; justify-content: space-between; }
+    .range-val { font-size: 0.78rem; color: var(--teal); font-weight: 600; }
+    .btn { background: var(--teal); color: #000; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-family: inherit; font-weight: 600; transition: opacity 0.2s; width: 100%; }
+    .btn:hover { opacity: 0.85; }
+    .btn-em { background: var(--emerald); }
+    .btn-neutral { background: none; border: 1px solid var(--border); color: var(--fg-dim); }
+    .btn-neutral:hover { border-color: var(--teal); color: var(--teal); background: none; }
+    .canvas-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    canvas { max-width: 100%; display: block; }
+    .big-num { text-align: center; font-size: 2.5rem; font-weight: 800; color: var(--teal); line-height: 1; margin: 0.5rem 0; }
+    .big-label { text-align: center; font-size: 0.75rem; color: var(--fg-dim); }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; margin-top: 0.6rem; }
+    .stat-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.7rem; }
+    .stat-card .label { font-size: 0.7rem; color: var(--fg-dim); margin-bottom: 0.2rem; }
+    .stat-card .value { font-size: 0.95rem; color: var(--teal); font-weight: 700; }
+    .door-row { display: flex; gap: 1rem; justify-content: center; margin: 0.8rem 0; flex-wrap: wrap; }
+    .door { width: 100px; height: 130px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card); transition: all 0.2s; font-size: 2rem; position: relative; }
+    .door:hover { border-color: var(--teal); }
+    .door.selected { border-color: var(--teal); background: rgba(20,184,166,0.1); }
+    .door.revealed { border-color: var(--fg-dim); background: #050515; }
+    .door.winner { border-color: var(--emerald); background: rgba(16,185,129,0.1); }
+    .door.loser { border-color: #ef4444; background: rgba(239,68,68,0.05); }
+    .door-label { font-size: 0.7rem; color: var(--fg-dim); margin-top: 0.3rem; }
+    .mh-btns { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.6rem; }
+    .mh-btns .btn { width: auto; padding: 0.4rem 1.2rem; }
+    .info-box { background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; font-size: 0.82rem; color: var(--fg); margin-top: 0.6rem; min-height: 2rem; }
+    .highlight { color: var(--teal); font-weight: 600; }
+    .progress-bar-wrap { background: #0a0a20; border: 1px solid var(--border); border-radius: 4px; height: 20px; overflow: hidden; margin: 0.3rem 0; }
+    .progress-bar { height: 100%; background: var(--teal); transition: width 0.1s; }
+    .two-bars { display: flex; flex-direction: column; gap: 0.3rem; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--fg-dim); }
+  </style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="showTab('pi', this)">Monte Carlo π</button>
+    <button class="tab" onclick="showTab('coin', this)">Coin Flip</button>
+    <button class="tab" onclick="showTab('birthday', this)">Birthday Problem</button>
+    <button class="tab" onclick="showTab('monty', this)">Monty Hall</button>
+  </div>
+</div>
+
+<!-- MONTE CARLO PI -->
+<div id="tab-pi" class="section active">
+  <div class="hero"><h1>Monte Carlo π Estimation</h1><p>Random points inside a unit square — those in the quarter circle estimate π.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Speed (pts/frame) <span class="range-val" id="pi-speed-val">100</span></label>
+        <input type="range" id="pi-speed" min="1" max="1000" step="10" value="100" oninput="document.getElementById('pi-speed-val').textContent=this.value">
+      </div>
+      <div>
+        <label>Max Points</label>
+        <select id="pi-max">
+          <option value="10000">10,000</option>
+          <option value="50000">50,000</option>
+          <option value="100000" selected>100,000</option>
+          <option value="500000">500,000</option>
+        </select>
+      </div>
+      <button class="btn" id="pi-start-btn" onclick="piToggle()">Start</button>
+      <button class="btn btn-neutral" onclick="piReset()">Reset</button>
+      <div class="big-num" id="pi-est">–</div>
+      <div class="big-label">π estimate</div>
+      <div class="stats-grid" id="pi-stats" style="margin-top:0.5rem"></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="pi-canvas" width="600" height="580"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- COIN FLIP -->
+<div id="tab-coin" class="section">
+  <div class="hero"><h1>Coin Flip Simulation</h1><p>Flip coins and watch the law of large numbers drive the proportion to p.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Bias (p of heads) <span class="range-val" id="coin-p-val">0.50</span></label>
+        <input type="range" id="coin-p" min="0.01" max="0.99" step="0.01" value="0.5" oninput="document.getElementById('coin-p-val').textContent=(+this.value).toFixed(2)">
+      </div>
+      <div>
+        <label>Flips per click</label>
+        <select id="coin-n">
+          <option value="1">1</option>
+          <option value="10">10</option>
+          <option value="100" selected>100</option>
+          <option value="1000">1,000</option>
+          <option value="10000">10,000</option>
+        </select>
+      </div>
+      <button class="btn" onclick="coinFlip()">Flip!</button>
+      <button class="btn btn-neutral" onclick="coinReset()">Reset</button>
+      <div class="ctrl-row" style="margin-top:0.2rem">
+        <input type="checkbox" id="coin-binom" checked style="accent-color:var(--teal)">
+        <label for="coin-binom" style="margin:0;font-size:0.8rem;color:var(--fg-dim)">Binomial Overlay</label>
+      </div>
+      <div class="stats-grid" id="coin-stats" style="margin-top:0"></div>
+    </div>
+    <div>
+      <div class="canvas-wrap" style="margin-bottom:0.8rem">
+        <canvas id="coin-hist" width="760" height="280"></canvas>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="coin-conv" width="760" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BIRTHDAY PROBLEM -->
+<div id="tab-birthday" class="section">
+  <div class="hero"><h1>Birthday Problem</h1><p>How many people until there's a shared birthday? The answer surprises.</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>People to add</label>
+        <select id="bday-add">
+          <option value="1">One at a time</option>
+          <option value="5">5 at a time</option>
+          <option value="10">10 at a time</option>
+        </select>
+      </div>
+      <button class="btn" id="bday-add-btn" onclick="bdayAdd()">Add Person</button>
+      <button class="btn btn-neutral" onclick="bdayReset()">Reset</button>
+      <div class="big-num" id="bday-people">0</div>
+      <div class="big-label">people in room</div>
+      <div class="info-box" id="bday-info">Add people to the room...</div>
+      <div class="stats-grid" id="bday-stats" style="margin-top:0"></div>
+    </div>
+    <div>
+      <div class="canvas-wrap" style="margin-bottom:0.8rem">
+        <canvas id="bday-circles" width="760" height="250"></canvas>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="bday-curve" width="760" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MONTY HALL -->
+<div id="tab-monty" class="section">
+  <div class="hero"><h1>Monty Hall Problem</h1><p>Pick a door, host reveals a goat, switch or stay — does switching help?</p></div>
+  <div class="layout">
+    <div class="controls">
+      <div>
+        <label>Auto-simulate games</label>
+        <select id="mh-batch">
+          <option value="10">10 games</option>
+          <option value="100">100 games</option>
+          <option value="1000">1,000 games</option>
+          <option value="10000">10,000 games</option>
+        </select>
+      </div>
+      <button class="btn" onclick="mhAutoSwitch()">Simulate Switch</button>
+      <button class="btn btn-em" style="margin-top:-0.2rem" onclick="mhAutoStay()">Simulate Stay</button>
+      <button class="btn btn-neutral" onclick="mhReset()">Reset All</button>
+      <hr style="border:none;border-top:1px solid var(--border)">
+      <div class="stat-card"><div class="label">Switch Win Rate</div><div class="value" id="mh-switch-rate">–</div></div>
+      <div class="stat-card" style="margin-top:0.3rem"><div class="label">Stay Win Rate</div><div class="value" id="mh-stay-rate">–</div></div>
+      <div class="two-bars" style="margin-top:0.5rem">
+        <div><div class="bar-label"><span>Switch</span><span id="mh-sw-pct">0%</span></div>
+          <div class="progress-bar-wrap"><div class="progress-bar" id="mh-sw-bar" style="width:0%"></div></div></div>
+        <div><div class="bar-label"><span>Stay</span><span id="mh-st-pct">0%</span></div>
+          <div class="progress-bar-wrap"><div class="progress-bar" id="mh-st-bar" style="width:0%;background:var(--emerald)"></div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="door-row" id="mh-doors"></div>
+      <div class="info-box" id="mh-info">Pick a door to start!</div>
+      <div class="mh-btns" id="mh-switch-btns" style="display:none">
+        <button class="btn" style="width:auto" onclick="mhChoice('switch')">Switch</button>
+        <button class="btn btn-neutral" style="width:auto" onclick="mhChoice('stay')">Stay</button>
+      </div>
+      <div class="canvas-wrap" style="margin-top:0.8rem">
+        <canvas id="mh-canvas" width="760" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'pi') piReset();
+  if (id === 'coin') coinReset();
+  if (id === 'birthday') bdayReset();
+  if (id === 'monty') mhReset();
+}
+
+function clearCtx(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#070720'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return ctx;
+}
+
+function normalPDF(x, mu, sigma) {
+  return Math.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
+}
+
+function binomPMF(k, n, p) {
+  if (k < 0 || k > n) return 0;
+  let log = 0;
+  for (let i = 0; i < k; i++) log += Math.log(n - i) - Math.log(i + 1);
+  log += k * Math.log(p) + (n - k) * Math.log(1 - p);
+  return Math.exp(log);
+}
+
+// ── MONTE CARLO PI ────────────────────────────────────────────────────────────
+let piRunning = false, piTimer = null, piInside = 0, piTotal = 0;
+let piOffscreen = null;
+
+function piReset() {
+  if (piTimer) { cancelAnimationFrame(piTimer); piTimer = null; }
+  piRunning = false; piInside = 0; piTotal = 0;
+  document.getElementById('pi-start-btn').textContent = 'Start';
+  document.getElementById('pi-est').textContent = '–';
+  document.getElementById('pi-stats').innerHTML = '';
+  const canvas = document.getElementById('pi-canvas');
+  const ctx = clearCtx(canvas);
+  const W = canvas.width, H = canvas.height;
+  const SZ = Math.min(W, H) - 60;
+  const ox = (W - SZ) / 2, oy = (H - SZ) / 2;
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  ctx.strokeRect(ox, oy, SZ, SZ);
+  ctx.beginPath(); ctx.arc(ox, oy + SZ, SZ, -Math.PI / 2, 0);
+  ctx.strokeStyle = '#14b8a6'; ctx.lineWidth = 2; ctx.stroke();
+  // Create offscreen for accumulation
+  piOffscreen = document.createElement('canvas');
+  piOffscreen.width = W; piOffscreen.height = H;
+  const octx = piOffscreen.getContext('2d');
+  octx.fillStyle = '#070720'; octx.fillRect(0, 0, W, H);
+  octx.strokeStyle = '#1e293b'; octx.lineWidth = 1;
+  octx.strokeRect(ox, oy, SZ, SZ);
+  octx.beginPath(); octx.arc(ox, oy + SZ, SZ, -Math.PI / 2, 0);
+  octx.strokeStyle = '#14b8a6'; octx.lineWidth = 2; octx.stroke();
+}
+
+function piToggle() {
+  piRunning = !piRunning;
+  document.getElementById('pi-start-btn').textContent = piRunning ? 'Pause' : 'Resume';
+  if (piRunning) piFrame();
+}
+
+function piFrame() {
+  if (!piRunning) return;
+  const max = parseInt(document.getElementById('pi-max').value);
+  const speed = parseInt(document.getElementById('pi-speed').value);
+  if (piTotal >= max) { piRunning = false; document.getElementById('pi-start-btn').textContent = 'Restart'; return; }
+
+  const canvas = document.getElementById('pi-canvas');
+  const W = canvas.width, H = canvas.height;
+  const SZ = Math.min(W, H) - 60;
+  const ox = (W - SZ) / 2, oy = (H - SZ) / 2;
+  const octx = piOffscreen.getContext('2d');
+
+  for (let i = 0; i < speed && piTotal < max; i++) {
+    const x = Math.random(), y = Math.random();
+    const inside = x * x + y * y <= 1;
+    if (inside) piInside++;
+    piTotal++;
+    const px = ox + x * SZ, py = oy + y * SZ;
+    octx.beginPath(); octx.arc(px, py, 1, 0, Math.PI * 2);
+    octx.fillStyle = inside ? '#14b8a6' : '#ffffff33';
+    octx.fill();
+  }
+
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(piOffscreen, 0, 0);
+  const est = 4 * piInside / piTotal;
+  document.getElementById('pi-est').textContent = est.toFixed(6);
+  document.getElementById('pi-stats').innerHTML = `
+    <div class="stat-card"><div class="label">Points</div><div class="value">${piTotal.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Inside</div><div class="value">${piInside.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Ratio</div><div class="value">${(piInside / piTotal).toFixed(4)}</div></div>
+    <div class="stat-card"><div class="label">Error</div><div class="value">${Math.abs(est - Math.PI).toFixed(6)}</div></div>`;
+
+  if (piRunning) piTimer = requestAnimationFrame(piFrame);
+}
+
+// ── COIN FLIP ─────────────────────────────────────────────────────────────────
+let coinData = { flips: [], heads: 0, total: 0, proportions: [] };
+
+function coinReset() {
+  coinData = { flips: [], heads: 0, total: 0, proportions: [] };
+  clearCtx(document.getElementById('coin-hist'));
+  clearCtx(document.getElementById('coin-conv'));
+  document.getElementById('coin-stats').innerHTML = '';
+}
+
+function coinFlip() {
+  const n = parseInt(document.getElementById('coin-n').value);
+  const p = parseFloat(document.getElementById('coin-p').value);
+  let heads = 0;
+  for (let i = 0; i < n; i++) if (Math.random() < p) heads++;
+  coinData.flips.push({ n, heads });
+  coinData.heads += heads;
+  coinData.total += n;
+  coinData.proportions.push(coinData.heads / coinData.total);
+  drawCoin();
+}
+
+function drawCoin() {
+  const p = parseFloat(document.getElementById('coin-p').value);
+  const showBinom = document.getElementById('coin-binom').checked;
+
+  // Histogram of individual flip batches — but if many small flips, show cumulative histogram
+  const hist = document.getElementById('coin-hist');
+  const ctx = clearCtx(hist);
+  const W = hist.width, H = hist.height;
+  const pad = { l: 50, r: 20, t: 30, b: 40 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  // Build cumulative counts per head count
+  const lastN = coinData.total;
+  const numBins = Math.min(Math.max(10, Math.floor(Math.sqrt(coinData.total))), 50);
+  const binSize = Math.max(1, Math.round(lastN / numBins));
+
+  // Count by number of heads in rolling windows
+  let allHeadCounts = [];
+  coinData.flips.forEach(({ n, heads }) => {
+    for (let b = 0; b < Math.ceil(n / 100); b++) {
+      const start = b * 100, end = Math.min(n, (b + 1) * 100);
+      allHeadCounts.push(heads);
+    }
+  });
+
+  // Show distribution of heads per 100 flips
+  // Get last ~500 flip sessions
+  const recent = coinData.flips.slice(-200);
+  if (!recent.length) return;
+  const totalN = recent.reduce((a, f) => a + f.n, 0);
+  const avgN = Math.round(totalN / recent.length);
+  const headCounts = recent.map(f => f.heads);
+  const lo = Math.min(...headCounts), hi = Math.max(...headCounts);
+  const range = hi - lo || 1;
+  const nBins = Math.min(20, hi - lo + 1);
+  const bins = new Array(nBins).fill(0);
+  headCounts.forEach(h => {
+    const i = Math.min(nBins - 1, Math.floor((h - lo) / (range + 0.01) * nBins));
+    bins[i]++;
+  });
+  const maxB = Math.max(...bins);
+  const toX = v => pad.l + ((v - lo) / (range + 0.01)) * cW;
+  const toY = v => pad.t + (1 - v / maxB) * cH;
+  const bw = cW / nBins;
+  bins.forEach((b, i) => {
+    const x = lo + (i / nBins) * (range + 0.01);
+    ctx.fillStyle = '#14b8a6aa';
+    ctx.fillRect(toX(x), toY(b), bw - 1, toY(0) - toY(b));
+  });
+
+  // Binomial overlay
+  if (showBinom && recent.length > 3) {
+    const sampleN = recent[recent.length - 1].n;
+    const mu = sampleN * p;
+    const sigma = Math.sqrt(sampleN * p * (1 - p));
+    const N = 200;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const x = lo + (i / N) * range;
+      const y = normalPDF(x, mu, sigma) * headCounts.length * (range / nBins + 0.01);
+      i === 0 ? ctx.moveTo(toX(x), toY(y)) : ctx.lineTo(toX(x), toY(y));
+    }
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // X axis labels
+  ctx.fillStyle = '#64748b'; ctx.font = '10px Segoe UI,system-ui';
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (i / 4) * range;
+    ctx.textAlign = 'center'; ctx.fillText(v.toFixed(0), toX(v), pad.t + cH + 14);
+  }
+  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center'; ctx.font = '11px Segoe UI,system-ui';
+  ctx.fillText(`Heads per flip session (last ${recent.length} sessions)`, W / 2, 14);
+
+  // Convergence chart
+  const conv = document.getElementById('coin-conv');
+  const cctx = clearCtx(conv);
+  const CW = conv.width, CH = conv.height;
+  const cpad = { l: 55, r: 20, t: 20, b: 30 };
+  const ccW = CW - cpad.l - cpad.r, ccH = CH - cpad.t - cpad.b;
+  const props = coinData.proportions;
+  if (props.length > 1) {
+    // True p line
+    cctx.beginPath(); cctx.moveTo(cpad.l, cpad.t + (1 - p) * ccH); cctx.lineTo(cpad.l + ccW, cpad.t + (1 - p) * ccH);
+    cctx.strokeStyle = '#f59e0b33'; cctx.lineWidth = 1; cctx.setLineDash([4, 3]); cctx.stroke(); cctx.setLineDash([]);
+    // Convergence line
+    cctx.beginPath();
+    props.forEach((v, i) => {
+      const x = cpad.l + (i / (props.length - 1)) * ccW;
+      const y = cpad.t + (1 - v) * ccH;
+      i === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y);
+    });
+    cctx.strokeStyle = '#14b8a6'; cctx.lineWidth = 2; cctx.stroke();
+    // Axis
+    [0, 0.25, 0.5, 0.75, 1].forEach(v => {
+      cctx.fillStyle = '#64748b'; cctx.textAlign = 'right'; cctx.font = '10px Segoe UI,system-ui';
+      cctx.fillText(v.toFixed(2), cpad.l - 4, cpad.t + (1 - v) * ccH + 4);
+    });
+    cctx.fillStyle = '#94a3b8'; cctx.textAlign = 'center'; cctx.font = '11px Segoe UI,system-ui';
+    cctx.fillText('Proportion of heads converging to p=' + p.toFixed(2), CW / 2, 14);
+  }
+
+  document.getElementById('coin-stats').innerHTML = `
+    <div class="stat-card"><div class="label">Total Flips</div><div class="value">${coinData.total.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Total Heads</div><div class="value">${coinData.heads.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">Proportion</div><div class="value">${(coinData.heads / coinData.total).toFixed(4)}</div></div>
+    <div class="stat-card"><div class="label">True p</div><div class="value">${p.toFixed(2)}</div></div>`;
+}
+
+// ── BIRTHDAY PROBLEM ──────────────────────────────────────────────────────────
+let bdayPeople = [], bdayMatch = false, bdayMatchAt = null;
+
+function bdayReset() {
+  bdayPeople = []; bdayMatch = false; bdayMatchAt = null;
+  document.getElementById('bday-people').textContent = '0';
+  document.getElementById('bday-info').textContent = 'Add people to the room...';
+  document.getElementById('bday-stats').innerHTML = '';
+  document.getElementById('bday-add-btn').disabled = false;
+  clearCtx(document.getElementById('bday-circles'));
+  drawBdayCurve();
+}
+
+function bdayAdd() {
+  if (bdayPeople.length >= 70) return;
+  const toAdd = parseInt(document.getElementById('bday-add').value);
+  for (let i = 0; i < toAdd && bdayPeople.length < 70; i++) {
+    const bday = Math.floor(Math.random() * 365);
+    const match = bdayPeople.includes(bday);
+    bdayPeople.push(bday);
+    if (match && !bdayMatch) { bdayMatch = true; bdayMatchAt = bdayPeople.length; }
+  }
+  document.getElementById('bday-people').textContent = bdayPeople.length;
+  const p = bdayPeople.length;
+  const prob = 1 - bdayNoMatchProb(p);
+  const infoEl = document.getElementById('bday-info');
+  if (bdayMatch) {
+    infoEl.innerHTML = `<span class="highlight">Match found!</span> With ${bdayMatchAt} people, probability was ${(1 - bdayNoMatchProb(bdayMatchAt)).toFixed(3)}. The match occurred between person #${bdayMatchAt} and an earlier person.`;
+  } else {
+    infoEl.innerHTML = `With ${p} people, probability of a shared birthday: <span class="highlight">${(prob * 100).toFixed(1)}%</span>. ${p === 23 ? '← The famous result: 23 people → >50% chance!' : ''}`;
+  }
+  document.getElementById('bday-stats').innerHTML = `
+    <div class="stat-card"><div class="label">People</div><div class="value">${p}</div></div>
+    <div class="stat-card"><div class="label">Match Prob</div><div class="value">${(prob * 100).toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="label">Match at</div><div class="value">${bdayMatchAt || '–'}</div></div>`;
+  drawBdayCircles();
+  drawBdayCurve();
+  if (bdayPeople.length >= 70) document.getElementById('bday-add-btn').disabled = true;
+}
+
+function bdayNoMatchProb(n) {
+  let p = 1;
+  for (let i = 0; i < n; i++) p *= (365 - i) / 365;
+  return p;
+}
+
+function drawBdayCircles() {
+  const canvas = document.getElementById('bday-circles');
+  const ctx = clearCtx(canvas);
+  const W = canvas.width, H = canvas.height;
+  const n = bdayPeople.length;
+  if (!n) return;
+  // Lay out as circles, color-coded by birthday
+  const R = Math.max(10, Math.min(20, Math.floor(Math.sqrt(W * H / n / 4))));
+  const cols = Math.ceil(W / (R * 2 + 4));
+  bdayPeople.forEach((bday, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const cx = R + col * (R * 2 + 4) + 4;
+    const cy = R + row * (R * 2 + 4) + 4;
+    const hue = (bday / 365) * 360;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    // Check if this birthday matches any previous one
+    const isMatch = bdayPeople.slice(0, i).includes(bday);
+    if (isMatch) {
+      ctx.fillStyle = '#ef4444';
+    } else {
+      ctx.fillStyle = `hsl(${hue}, 70%, 45%)`;
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#07072088'; ctx.lineWidth = 1; ctx.stroke();
+  });
+  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'left'; ctx.font = '10px Segoe UI,system-ui';
+  ctx.fillText('Each circle = one person. Color = birthday. Red = collision.', 4, H - 4);
+}
+
+function drawBdayCurve() {
+  const canvas = document.getElementById('bday-curve');
+  const ctx = clearCtx(canvas);
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 50, r: 20, t: 20, b: 30 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  [0, 0.25, 0.5, 0.75, 1].forEach(v => {
+    const y = pad.t + (1 - v) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText((v * 100).toFixed(0) + '%', pad.l - 4, y + 4);
+  });
+  [0, 10, 20, 23, 30, 40, 50, 60, 70].forEach(n => {
+    const x = pad.l + (n / 70) * cW;
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'center'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText(n, x, pad.t + cH + 14);
+  });
+  // Probability curve
+  ctx.beginPath();
+  for (let n = 0; n <= 70; n++) {
+    const prob = 1 - bdayNoMatchProb(n);
+    const x = pad.l + (n / 70) * cW;
+    const y = pad.t + (1 - prob) * cH;
+    n === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#14b8a6'; ctx.lineWidth = 2.5; ctx.stroke();
+  // 50% and 23 markers
+  const x23 = pad.l + (23 / 70) * cW;
+  const p23 = 1 - bdayNoMatchProb(23);
+  ctx.beginPath(); ctx.moveTo(x23, pad.t); ctx.lineTo(x23, pad.t + cH);
+  ctx.strokeStyle = '#f59e0b55'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#f59e0b'; ctx.textAlign = 'center'; ctx.font = '10px Segoe UI,system-ui';
+  ctx.fillText('n=23: ' + (p23 * 100).toFixed(1) + '%', x23, pad.t + 12);
+  // Current position
+  if (bdayPeople.length > 0) {
+    const xCur = pad.l + (bdayPeople.length / 70) * cW;
+    const pCur = 1 - bdayNoMatchProb(bdayPeople.length);
+    ctx.beginPath(); ctx.arc(xCur, pad.t + (1 - pCur) * cH, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#f59e0b'; ctx.fill();
+  }
+}
+
+// ── MONTY HALL ────────────────────────────────────────────────────────────────
+let mhState = 'pick', mhCar = -1, mhPick = -1, mhReveal = -1;
+let mhStats = { switchWins: 0, switchTotal: 0, stayWins: 0, stayTotal: 0, history: [] };
+
+function mhReset() {
+  mhState = 'pick'; mhCar = -1; mhPick = -1; mhReveal = -1;
+  mhStats = { switchWins: 0, switchTotal: 0, stayWins: 0, stayTotal: 0, history: [] };
+  renderDoors(); updateMHStats();
+  document.getElementById('mh-info').textContent = 'Pick a door to start!';
+  document.getElementById('mh-switch-btns').style.display = 'none';
+  clearCtx(document.getElementById('mh-canvas'));
+}
+
+function renderDoors(state) {
+  const row = document.getElementById('mh-doors');
+  row.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement('div');
+    d.className = 'door';
+    let icon = '🚪', sub = `Door ${i + 1}`;
+    if (mhState === 'result' || (mhState === 'choose' && i === mhReveal)) {
+      if (i === mhCar) icon = '🚗';
+      else icon = '🐐';
+    }
+    if (i === mhPick && mhState !== 'pick') d.classList.add('selected');
+    if (i === mhReveal) d.classList.add('revealed');
+    if (mhState === 'result') {
+      if (i === mhCar) d.classList.add('winner');
+      else if (i === mhPick) d.classList.add('loser');
+    }
+    d.innerHTML = `<span style="font-size:2rem">${icon}</span><span class="door-label">${sub}</span>`;
+    if (mhState === 'pick') d.addEventListener('click', () => mhPickDoor(i));
+    if (mhState === 'choose' && i !== mhReveal && i !== mhPick)
+      d.addEventListener('click', () => mhChoice('switch'));
+    row.appendChild(d);
+  }
+}
+
+function mhPickDoor(i) {
+  mhCar = Math.floor(Math.random() * 3);
+  mhPick = i;
+  mhState = 'choose';
+  // Reveal a goat door that isn't the pick or the car
+  const goats = [0, 1, 2].filter(d => d !== mhPick && d !== mhCar);
+  mhReveal = goats[Math.floor(Math.random() * goats.length)];
+  renderDoors();
+  document.getElementById('mh-info').innerHTML =
+    `You picked Door ${mhPick + 1}. Host reveals <span class="highlight">Door ${mhReveal + 1}</span> has a goat! Switch or stay?`;
+  document.getElementById('mh-switch-btns').style.display = 'flex';
+}
+
+function mhChoice(choice) {
+  document.getElementById('mh-switch-btns').style.display = 'none';
+  let finalPick = mhPick;
+  if (choice === 'switch') {
+    finalPick = [0, 1, 2].find(d => d !== mhPick && d !== mhReveal);
+    mhPick = finalPick;
+  }
+  const won = finalPick === mhCar;
+  if (choice === 'switch') { mhStats.switchTotal++; if (won) mhStats.switchWins++; }
+  else { mhStats.stayTotal++; if (won) mhStats.stayWins++; }
+  mhStats.history.push({ choice, won });
+  mhState = 'result';
+  renderDoors();
+  document.getElementById('mh-info').innerHTML =
+    `You <span class="highlight">${choice === 'switch' ? 'switched' : 'stayed'}</span>. ` +
+    `<span style="color:${won ? '#10b981' : '#ef4444'}">${won ? '🎉 You won the car!' : '🐐 You got a goat!'}</span>`;
+  setTimeout(() => { mhState = 'pick'; mhPick = -1; mhReveal = -1; renderDoors(); document.getElementById('mh-info').textContent = 'Play again — pick a door!'; }, 2000);
+  updateMHStats();
+  drawMHHistory();
+}
+
+function mhAutoSwitch() {
+  const n = parseInt(document.getElementById('mh-batch').value);
+  for (let i = 0; i < n; i++) {
+    const car = Math.floor(Math.random() * 3);
+    const pick = Math.floor(Math.random() * 3);
+    const goats = [0, 1, 2].filter(d => d !== pick && d !== car);
+    const reveal = goats[Math.floor(Math.random() * goats.length)];
+    const finalPick = [0, 1, 2].find(d => d !== pick && d !== reveal);
+    mhStats.switchTotal++;
+    if (finalPick === car) mhStats.switchWins++;
+    mhStats.history.push({ choice: 'switch', won: finalPick === car });
+  }
+  updateMHStats();
+  drawMHHistory();
+}
+
+function mhAutoStay() {
+  const n = parseInt(document.getElementById('mh-batch').value);
+  for (let i = 0; i < n; i++) {
+    const car = Math.floor(Math.random() * 3);
+    const pick = Math.floor(Math.random() * 3);
+    mhStats.stayTotal++;
+    if (pick === car) mhStats.stayWins++;
+    mhStats.history.push({ choice: 'stay', won: pick === car });
+  }
+  updateMHStats();
+  drawMHHistory();
+}
+
+function updateMHStats() {
+  const sw = mhStats.switchTotal ? (mhStats.switchWins / mhStats.switchTotal) : null;
+  const st = mhStats.stayTotal ? (mhStats.stayWins / mhStats.stayTotal) : null;
+  document.getElementById('mh-switch-rate').textContent = sw !== null ? (sw * 100).toFixed(1) + '%' : '–';
+  document.getElementById('mh-stay-rate').textContent = st !== null ? (st * 100).toFixed(1) + '%' : '–';
+  const swPct = sw !== null ? (sw * 100).toFixed(1) + '%' : '0%';
+  const stPct = st !== null ? (st * 100).toFixed(1) + '%' : '0%';
+  document.getElementById('mh-sw-pct').textContent = swPct;
+  document.getElementById('mh-st-pct').textContent = stPct;
+  document.getElementById('mh-sw-bar').style.width = sw !== null ? (sw * 100) + '%' : '0%';
+  document.getElementById('mh-st-bar').style.width = st !== null ? (st * 100) + '%' : '0%';
+}
+
+function drawMHHistory() {
+  const canvas = document.getElementById('mh-canvas');
+  const ctx = clearCtx(canvas);
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 60, r: 30, t: 30, b: 40 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  // Compute running win rates over history
+  let swWins = 0, swTotal = 0, stWins = 0, stTotal = 0;
+  const swRates = [], stRates = [];
+  const steps = Math.min(mhStats.history.length, 500);
+  const stride = Math.max(1, Math.floor(mhStats.history.length / steps));
+  mhStats.history.forEach((h, i) => {
+    if (h.choice === 'switch') { swTotal++; if (h.won) swWins++; }
+    else { stTotal++; if (h.won) stWins++; }
+    if (i % stride === 0) {
+      if (swTotal > 0) swRates.push([i, swWins / swTotal]);
+      if (stTotal > 0) stRates.push([i, stWins / stTotal]);
+    }
+  });
+
+  // Grid
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  [0, 1/3, 0.5, 2/3, 1].forEach(v => {
+    const y = pad.t + (1 - v) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.font = '10px Segoe UI,system-ui';
+    ctx.fillText((v * 100).toFixed(0) + '%', pad.l - 4, y + 4);
+  });
+
+  const total = mhStats.history.length;
+  const toX = i => total > 1 ? pad.l + (i / (total - 1)) * cW : pad.l;
+  const toY = v => pad.t + (1 - v) * cH;
+
+  // Reference lines
+  ctx.setLineDash([6, 3]);
+  ctx.strokeStyle = '#14b8a644'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, toY(2/3)); ctx.lineTo(pad.l + cW, toY(2/3)); ctx.stroke();
+  ctx.strokeStyle = '#10b98144';
+  ctx.beginPath(); ctx.moveTo(pad.l, toY(1/3)); ctx.lineTo(pad.l + cW, toY(1/3)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Switch rate
+  if (swRates.length > 1) {
+    ctx.beginPath();
+    swRates.forEach(([i, r], j) => j === 0 ? ctx.moveTo(toX(i), toY(r)) : ctx.lineTo(toX(i), toY(r)));
+    ctx.strokeStyle = '#14b8a6'; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+  // Stay rate
+  if (stRates.length > 1) {
+    ctx.beginPath();
+    stRates.forEach(([i, r], j) => j === 0 ? ctx.moveTo(toX(i), toY(r)) : ctx.lineTo(toX(i), toY(r)));
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+
+  // Legend
+  ctx.fillStyle = '#14b8a6'; ctx.fillRect(pad.l, pad.t + cH + 15, 16, 3);
+  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'left'; ctx.font = '11px Segoe UI,system-ui';
+  ctx.fillText(`Switch (→2/3)  n=${mhStats.switchTotal}`, pad.l + 20, pad.t + cH + 19);
+  ctx.fillStyle = '#10b981'; ctx.fillRect(pad.l + 200, pad.t + cH + 15, 16, 3);
+  ctx.fillStyle = '#94a3b8'; ctx.fillText(`Stay (→1/3)  n=${mhStats.stayTotal}`, pad.l + 220, pad.t + cH + 19);
+  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center'; ctx.font = 'bold 11px Segoe UI,system-ui';
+  ctx.fillText('Win Rate Convergence', W / 2, 16);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+piReset();
+renderDoors();
+drawBdayCurve();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
