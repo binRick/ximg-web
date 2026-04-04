@@ -122,6 +122,7 @@ const LOG_FILES = {
   stats:       'stats.access.log',
   ids:         'ids.access.log',
   nagios:      'nagios.access.log',
+  nav:         'nav.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -398,6 +399,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="vr">vr</button>
     <button class="tab"        data-site="vt101">vt101</button>
     <button class="tab"        data-site="zsh">zsh</button>
+    <button class="tab"        data-site="apps">apps</button>
     <button class="tab"        data-site="nav">nav</button>
     <button class="tab"        data-site="ximg-app">ximg-app</button>
     <button class="tab"        data-site="logs">logs</button>
