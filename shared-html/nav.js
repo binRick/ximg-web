@@ -6,9 +6,12 @@
       ['passwords','passwords'],['programming','programming'],['sql','sql'],['ssh','ssh'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
-      ['america','america'],['coffee','coffee'],['coldwar','coldwar'],['florida','florida'],
+      ['america','america'],['coffee','coffee'],['florida','florida'],
       ['guns','guns'],['japan','japan'],['moto','moto'],
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
+    ]},
+    { label: 'History', apps: [
+      ['coldwar','coldwar'],
     ]},
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
