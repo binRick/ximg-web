@@ -911,6 +911,7 @@ wss.on('connection', (ws, req) => {
     if (ws.readyState !== ws.OPEN) return;
     try {
       const parsed = parseLine(line);
+      if (parsed.ip === '172.18.0.1') return;
       if (siteName) parsed.site = siteName;
       if (parsed.ip) {
         const geo = await lookupGeo(parsed.ip);
