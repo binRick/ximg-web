@@ -7,157 +7,368 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #000; overflow: hidden; }
+    html { background: #080000; }
+    body { background: #080000; font-family: 'Courier New', monospace; color: #e8d0c0; min-height: 100vh; }
 
-    /* Game container — fixed below nav (nav ~44px), always visible, never display:none */
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .4rem .75rem;
+      background: rgba(12,2,2,.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(200,0,0,.2);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .sub-nav::-webkit-scrollbar { display: none; }
+    .doom-tab {
+      font-family: 'Courier New', monospace; font-size: .78rem; font-weight: 700;
+      padding: .28rem .8rem; background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.1); color: #886060;
+      cursor: pointer; border-radius: 4px; letter-spacing: .06em;
+      transition: all .2s; white-space: nowrap;
+    }
+    .doom-tab:hover { background: rgba(200,0,0,.15); border-color: rgba(200,0,0,.4); color: #ff6644; }
+    .doom-tab.active { background: rgba(200,0,0,.2); border-color: rgba(200,0,0,.6); color: #ff4422; }
+
+    /* ── Game wrap — ALWAYS position:fixed, NEVER display:none ── */
+    /* Use visibility:hidden to hide without breaking canvas context  */
     #game-wrap {
       position: fixed;
-      top: 44px; left: 0; right: 0; bottom: 0;
+      top: 88px; left: 0; right: 0; bottom: 0;
       display: flex; align-items: center; justify-content: center;
       background: #000;
+      visibility: hidden;   /* hidden by default; shown on game tab */
+      pointer-events: none;
+      z-index: 50;
     }
-
-    #c {
-      display: block;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      cursor: crosshair;
+    #game-wrap.active {
+      visibility: visible;
+      pointer-events: auto;
     }
+    #c { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; }
 
-    /* Start/end overlay — sits above canvas, but canvas is always in the DOM & visible */
-    #overlay {
+    /* Start / end overlay sits above canvas */
+    #ov {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      background: rgba(0,0,0,.88);
-      z-index: 10;
+      background: rgba(0,0,0,.88); z-index: 10;
     }
-    #overlay.gone { display: none; }
-
+    #ov.gone { display: none; }
     .ov-title {
-      font-family: 'Courier New', monospace;
-      font-size: clamp(3rem, 12vw, 7rem);
-      font-weight: 900; letter-spacing: .08em;
-      color: #cc0000;
-      text-shadow: 0 0 30px #f00, 0 0 70px #800;
-      line-height: 1; margin-bottom: .4rem;
+      font-family: 'Courier New', monospace; font-size: clamp(3rem,10vw,6rem);
+      font-weight: 900; letter-spacing: .08em; color: #cc0000;
+      text-shadow: 0 0 30px #f00, 0 0 70px #800; line-height: 1; margin-bottom: .4rem;
     }
-    .ov-sub {
-      font-family: 'Courier New', monospace;
-      font-size: .9rem; color: #666;
-      margin-bottom: 2rem; text-align: center;
-    }
-    .ov-btn {
-      font-family: 'Courier New', monospace;
-      font-size: 1.1rem; font-weight: 700;
-      padding: .7rem 2.4rem;
-      background: rgba(160,0,0,.25);
-      border: 2px solid #cc0000; color: #ff4444;
-      cursor: pointer; letter-spacing: .14em;
+    .ov-sub  { font-family: 'Courier New', monospace; font-size: .88rem; color: #666; margin-bottom: 2rem; text-align: center; }
+    .ov-btn  {
+      font-family: 'Courier New', monospace; font-size: 1.1rem; font-weight: 700;
+      padding: .7rem 2.4rem; background: rgba(160,0,0,.25);
+      border: 2px solid #cc0000; color: #ff4444; cursor: pointer; letter-spacing: .14em;
       animation: glow 1.4s ease-in-out infinite;
     }
-    @keyframes glow {
-      0%,100% { box-shadow: 0 0 8px #c00; }
-      50%      { box-shadow: 0 0 28px #f00, 0 0 55px #800; }
+    @keyframes glow { 0%,100%{box-shadow:0 0 8px #c00} 50%{box-shadow:0 0 28px #f00,0 0 55px #800} }
+    .ov-keys { font-family: 'Courier New', monospace; font-size: .72rem; color: #555; margin-top: 1.4rem; line-height: 2; text-align: center; }
+
+    /* ── Content sections ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .doom-wrap { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    .doom-hero { text-align: center; margin-bottom: 2rem; }
+    .doom-hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 18px rgba(220,0,0,.7)); margin-bottom: .5rem; }
+    .doom-hero h1 { font-size: 1.6rem; font-weight: 900; color: #dd2200; letter-spacing: .06em; margin-bottom: .4rem; }
+    .doom-hero-sub { font-size: .9rem; color: #886655; font-style: italic; }
+    .doom-divider { width: 120px; height: 2px; background: linear-gradient(90deg,transparent,#660000,transparent); margin: .8rem auto 0; }
+
+    /* Games grid */
+    .games-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 1rem; }
+    .game-card {
+      background: rgba(30,5,5,.7); border: 1px solid rgba(180,0,0,.2);
+      border-radius: 8px; overflow: hidden; transition: border-color .2s;
     }
-    .ov-keys {
-      font-family: 'Courier New', monospace;
-      font-size: .72rem; color: #555;
-      margin-top: 1.4rem; line-height: 2; text-align: center;
+    .game-card:hover { border-color: rgba(220,0,0,.5); }
+    .game-img { width: 100%; height: 140px; object-fit: cover; display: block; background: #1a0000; opacity: 0; transition: opacity .4s; }
+    .game-img.loaded { opacity: 1; }
+    .game-body { padding: .9rem 1rem 1rem; }
+    .game-title { font-size: .95rem; font-weight: 700; color: #dd4422; margin-bottom: .2rem; }
+    .game-year  { font-size: .7rem; color: #664433; margin-bottom: .5rem; }
+    .game-desc  { font-size: .75rem; color: #998877; line-height: 1.55; }
+    .game-stats { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .6rem; }
+    .stat-chip  { background: rgba(100,0,0,.3); border: 1px solid rgba(180,0,0,.2); border-radius: 4px; padding: .15rem .45rem; font-size: .65rem; color: #cc8866; }
+
+    /* Weapons */
+    .weapons-section { display: flex; flex-direction: column; gap: 1.4rem; }
+    .wpn-cat-title { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #664433; margin-bottom: .6rem; border-bottom: 1px solid rgba(180,0,0,.2); padding-bottom: .3rem; }
+    .wpn-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: .75rem; }
+    .wpn-card {
+      background: rgba(20,5,5,.8); border: 1px solid rgba(150,0,0,.2); border-radius: 6px; padding: .85rem 1rem;
+      display: flex; flex-direction: column; gap: .3rem;
     }
+    .wpn-name  { font-size: .88rem; font-weight: 700; color: #dd4422; }
+    .wpn-type  { font-size: .68rem; color: #664433; }
+    .wpn-desc  { font-size: .73rem; color: #998877; line-height: 1.5; }
+    .wpn-games { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .3rem; }
+    .wg-tag    { background: rgba(80,0,0,.35); border: 1px solid rgba(160,0,0,.25); border-radius: 3px; padding: .1rem .35rem; font-size: .6rem; color: #bb6644; }
+
+    /* History */
+    #section-history { max-width: 820px; margin: 2rem auto; padding: 0 1rem 4rem; }
+    .hist-title { font-size: 1.4rem; font-weight: 900; color: #dd2200; letter-spacing: .06em; text-align: center; margin-bottom: 2rem; }
+    .tl { position: relative; padding-left: 2.5rem; }
+    .tl::before { content:''; position:absolute; left:.9rem; top:0; bottom:0; width:2px; background:linear-gradient(180deg,#440000,#660000,#440000); }
+    .tl-item { display:flex; gap:1rem; margin-bottom:1.8rem; position:relative; }
+    .tl-year { font-size:.78rem; font-weight:700; color:#884422; min-width:36px; padding-top:.15rem; }
+    .tl-dot-wrap { position:absolute; left:-1.65rem; top:.3rem; }
+    .tl-dot { width:10px; height:10px; border-radius:50%; background:#660000; border:2px solid #aa2200; }
+    .tl-dot.minor { background:#330000; border-color:#660000; }
+    .tl-body { flex:1; }
+    .tl-title { font-size:.85rem; font-weight:700; color:#cc4422; margin-bottom:.2rem; }
+    .tl-desc  { font-size:.75rem; color:#887766; line-height:1.6; }
+    .tl-tag   { display:inline-block; font-size:.6rem; font-weight:700; padding:.1rem .4rem; border-radius:3px; margin-left:.4rem; vertical-align:middle; text-transform:uppercase; }
+    .tag-r { background:rgba(180,0,0,.25); color:#cc4422; }
+    .tag-m { background:rgba(0,120,80,.2);  color:#44aa88; }
+    .tag-c { background:rgba(80,60,0,.3);   color:#ccaa44; }
   </style>
 </head>
 <body>
 
-<div id="game-wrap">
-  <canvas id="c"></canvas>
-  <div id="overlay">
-    <div class="ov-title">DOOM</div>
-    <div class="ov-sub">Episode I: Knee-Deep in the Dead</div>
-    <button class="ov-btn" id="ov-btn">&#9654; RIP AND TEAR</button>
-    <div class="ov-keys">
-      WASD · Arrow Keys — Move &amp; Strafe<br>
-      Mouse (click to lock) — Look · Space / Click — Fire<br>
-      1 2 3 4 · E — Switch Weapon
+  <nav class="sub-nav">
+    <button class="doom-tab active" onclick="switchTab('games')">[ Games ]</button>
+    <button class="doom-tab"        onclick="switchTab('weapons')">[ Weapons ]</button>
+    <button class="doom-tab"        onclick="switchTab('game')">[ Play ]</button>
+    <button class="doom-tab"        onclick="switchTab('history')">[ History ]</button>
+  </nav>
+
+  <!-- ═══ GAME WRAP — position:fixed, visibility toggled (NEVER display:none) ═══ -->
+  <div id="game-wrap">
+    <canvas id="c"></canvas>
+    <div id="ov">
+      <div class="ov-title">DOOM</div>
+      <div class="ov-sub">Episode I: Knee-Deep in the Dead</div>
+      <button class="ov-btn" id="ov-btn">&#9654; RIP AND TEAR</button>
+      <div class="ov-keys">
+        WASD · Arrow Keys — Move &amp; Strafe<br>
+        Mouse (click to lock) — Look &nbsp;·&nbsp; Space / Click — Fire<br>
+        1 2 3 4 · E — Switch Weapon
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- ═══ CONTENT SECTIONS ═══ -->
+  <div id="section-games" class="section active">
+    <div class="doom-wrap">
+      <div class="doom-hero">
+        <div class="doom-hero-icon">☠</div>
+        <h1>The DOOM Saga</h1>
+        <p class="doom-hero-sub">Thirty years of ripping and tearing — from the halls of Phobos to the medieval hellscapes of The Dark Ages.</p>
+        <div class="doom-divider"></div>
+      </div>
+      <div class="games-grid" id="games-grid"></div>
+    </div>
+  </div>
+
+  <div id="section-weapons" class="section">
+    <div class="doom-wrap">
+      <div class="doom-hero">
+        <div class="doom-hero-icon">🔫</div>
+        <h1>Arsenal of Hell</h1>
+        <p class="doom-hero-sub">Every weapon across the DOOM franchise — from the trusty Fist to the BFG 9000.</p>
+        <div class="doom-divider"></div>
+      </div>
+      <div id="wpn-container" class="weapons-section"></div>
+    </div>
+  </div>
+
+  <div id="section-history" class="section">
+    <div class="hist-title">DOOM — A History</div>
+    <div class="tl">
+      <div class="tl-item"><div class="tl-year">1990</div><div class="tl-dot-wrap"><div class="tl-dot minor"></div></div><div class="tl-body"><div class="tl-title">id Software Founded<span class="tl-tag tag-c">company</span></div><div class="tl-desc">John Carmack, John Romero, Adrian Carmack, and Tom Hall leave Softdisk. Wolfenstein 3D ships in 1992 and proves the FPS market — but it's just the warmup act.</div></div></div>
+      <div class="tl-item"><div class="tl-year">1993</div><div class="tl-dot-wrap"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-title">Doom Released via Shareware<span class="tl-tag tag-r">release</span></div><div class="tl-desc">Doom 1.0 drops on December 10, 1993 — uploaded to an FTP server at the University of Wisconsin. The shareware model distributes Episode 1 free. FTP servers crash under demand. An estimated 10 million people download it in two months.</div></div></div>
+      <div class="tl-item"><div class="tl-year">1994</div><div class="tl-dot-wrap"><div class="tl-dot minor"></div></div><div class="tl-body"><div class="tl-title">Deathmatch &amp; Network Play<span class="tl-tag tag-m">milestone</span></div><div class="tl-desc">Doom's IPX network multiplayer and deathmatch mode ignite competitive online gaming. Office networks grind to a halt. The term "deathmatch" enters gaming vocabulary permanently.</div></div></div>
+      <div class="tl-item"><div class="tl-year">1994</div><div class="tl-dot-wrap"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-title">Doom II: Hell on Earth<span class="tl-tag tag-r">release</span></div><div class="tl-desc">Doom II ships retail-only and sells 2 million copies in its first year. It introduces the Super Shotgun, the Icon of Sin final boss, and larger open maps.</div></div></div>
+      <div class="tl-item"><div class="tl-year">1997</div><div class="tl-dot-wrap"><div class="tl-dot minor"></div></div><div class="tl-body"><div class="tl-title">Source Code Released<span class="tl-tag tag-m">milestone</span></div><div class="tl-desc">id Software releases the Doom source code under a non-commercial license (later GPL in 1999). Within days ports appear on Linux, BeOS, and dozens of platforms. ZDoom, PrBoom, GZDoom are born.</div></div></div>
+      <div class="tl-item"><div class="tl-year">2004</div><div class="tl-dot-wrap"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-title">Doom 3 — Survival Horror Reboot<span class="tl-tag tag-r">release</span></div><div class="tl-desc">Doom 3 launches with cutting-edge lighting, oppressive darkness, and scripted scares. It sells 3.5 million copies but divides fans. The id Tech 4 engine is widely licensed.</div></div></div>
+      <div class="tl-item"><div class="tl-year">2016</div><div class="tl-dot-wrap"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-title">Doom (2016) — Arena Revival<span class="tl-tag tag-r">release</span></div><div class="tl-desc">Doom 2016 resurrects arena FPS with glory kills, demon speed, and constant forward pressure. Won multiple GOTY awards and is credited with single-handedly reviving the genre.</div></div></div>
+      <div class="tl-item"><div class="tl-year">2020</div><div class="tl-dot-wrap"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-title">Doom Eternal<span class="tl-tag tag-r">release</span></div><div class="tl-desc">Doom Eternal raises mechanical complexity to its peak — resource management, platforming, and a weapon wheel that demands mastery. Sells over 3 million at launch.</div></div></div>
+      <div class="tl-item"><div class="tl-year">2023</div><div class="tl-dot-wrap"><div class="tl-dot minor"></div></div><div class="tl-body"><div class="tl-title">Doom Turns 30<span class="tl-tag tag-m">milestone</span></div><div class="tl-desc">The "It Runs Doom" meme documents the game running on pregnancy tests, ATMs, MIDI keyboards, and a John Deere tractor. The original WAD format is still actively used.</div></div></div>
+      <div class="tl-item"><div class="tl-year">2025</div><div class="tl-dot-wrap"><div class="tl-dot"></div></div><div class="tl-body"><div class="tl-title">Doom: The Dark Ages<span class="tl-tag tag-r">release</span></div><div class="tl-desc">The franchise returns to its roots with medieval hell aesthetics, a shield saw, and ground-based combat. id Tech 8 pushes visual fidelity to new heights.</div></div></div>
+    </div>
+  </div>
 
 <script>
+// ─────────────────────────────────────────────────────────────
+//  TAB SWITCHING
+// ─────────────────────────────────────────────────────────────
+const TAB_NAMES = ['games','weapons','game','history'];
+function switchTab(tab) {
+  if (tab !== 'game' && document.pointerLockElement) document.exitPointerLock();
+  document.querySelectorAll('.doom-tab').forEach((b,i) => b.classList.toggle('active', TAB_NAMES[i] === tab));
+  // Content sections: display:none / display:block  (no canvas here, safe)
+  ['games','weapons','history'].forEach(n => {
+    const el = document.getElementById('section-' + n);
+    if (el) el.classList.toggle('active', n === tab);
+  });
+  // Game wrap: visibility:hidden / visible  — NOT display:none
+  const gw = document.getElementById('game-wrap');
+  if (tab === 'game') { gw.classList.add('active'); }
+  else               { gw.classList.remove('active'); }
+  document.body.style.overflow = tab === 'game' ? 'hidden' : '';
+  if (tab === 'games'   && !window._gi) { window._gi = true; buildGames();   }
+  if (tab === 'weapons' && !window._wi) { window._wi = true; buildWeapons(); }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LOCAL IMAGE LOADER
+// ─────────────────────────────────────────────────────────────
+const IMG_MAP = {
+  'Doom_(1993)':'Doom_(1993_video_game).jpg','Doom_II':'Doom_II.png',
+  'Ultimate_Doom':'The_Ultimate_Doom.jpg','Final_Doom':'Final_Doom.png',
+  'Doom_64':'Doom_64.jpg','Doom_3':'Doom_3.jpg',
+  'Doom_2016':'Doom_(2016_video_game).jpg','Doom_Eternal':'Doom_Eternal.png',
+};
+function loadImg(img) {
+  const f = IMG_MAP[img.dataset.wiki];
+  if (f) { img.onload = () => img.classList.add('loaded'); img.onerror = () => img.style.display='none'; img.src = 'images/' + f; }
+  else img.style.display = 'none';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GAMES DATA
+// ─────────────────────────────────────────────────────────────
+const DOOM_GAMES = [
+  { title:'Doom', year:1993, wiki:'Doom_(1993)', engine:'id Tech 1',
+    platforms:['DOS','Windows','Mac','Linux','consoles'],
+    desc:'The original. Three episodes of demon-slaying across Phobos, Deimos, and Hell. Shareware distribution, deathmatch multiplayer, and WAD modding changed gaming forever.',
+    stats:[{l:'Episodes',v:'3'},{l:'Levels',v:'27'},{l:'Units Sold',v:'~4M'}] },
+  { title:'Doom II: Hell on Earth', year:1994, wiki:'Doom_II', engine:'id Tech 1',
+    platforms:['DOS','Windows','Mac','Linux','consoles'],
+    desc:'Retail-only sequel with 32 levels, the Super Shotgun, and new demons. The Icon of Sin final boss. Larger, more complex maps and the definitive classic Doom experience.',
+    stats:[{l:'Levels',v:'32'},{l:'Units Sold',v:'~2M'}] },
+  { title:'The Ultimate Doom', year:1995, wiki:'Ultimate_Doom', engine:'id Tech 1',
+    platforms:['DOS','Windows','Steam'],
+    desc:'Doom 1 expanded with a fourth episode "Thy Flesh Consumed" — the hardest official Doom 1 content. Retail re-release that brought the franchise to store shelves.',
+    stats:[{l:'Episodes',v:'4'},{l:'Levels',v:'36'}] },
+  { title:'Final Doom', year:1996, wiki:'Final_Doom', engine:'id Tech 1',
+    platforms:['DOS','Windows','PlayStation'],
+    desc:'Two full megawads: TNT: Evilution by TeamTNT and The Plutonia Experiment by the Casali brothers. 64 levels of the most punishing classic Doom ever officially released.',
+    stats:[{l:'Megawads',v:'2'},{l:'Levels',v:'64'}] },
+  { title:'Doom 64', year:1997, wiki:'Doom_64', engine:'Modified id Tech 1',
+    platforms:['Nintendo 64','PC (2020)'],
+    desc:'A console-exclusive with entirely new sprites, textures, and sound — not a port. Darker, more atmospheric, with a unique "Unmaker" weapon. Long overlooked, now appreciated as a hidden gem.',
+    stats:[{l:'Levels',v:'32'},{l:'Platform',v:'N64'}] },
+  { title:'Doom 3', year:2004, wiki:'Doom_3', engine:'id Tech 4',
+    platforms:['PC','Xbox','Mac'],
+    desc:'A survival horror reboot with cutting-edge lighting, per-pixel bump mapping, and scripted scares. The flashlight-or-gun mechanic divided fans but the atmospheric horror was undeniable.',
+    stats:[{l:'Units Sold',v:'~3.5M'},{l:'Engine',v:'id Tech 4'}] },
+  { title:'Doom (2016)', year:2016, wiki:'Doom_2016', engine:'id Tech 6',
+    platforms:['PC','PS4','Xbox One','Switch'],
+    desc:'The franchise resurrection. Glory kills, demon speed, constant forward pressure. Won multiple GOTY awards and single-handedly revived the arena FPS genre.',
+    stats:[{l:'Metacritic',v:'85'},{l:'GOTY wins',v:'20+'}] },
+  { title:'Doom Eternal', year:2020, wiki:'Doom_Eternal', engine:'id Tech 7',
+    platforms:['PC','PS4','Xbox One','Switch','PS5','Xbox Series'],
+    desc:'Peak mechanical complexity — resource management, platforming, and mastery-demanding combat. Sells over 3 million at launch. Mick Gordon\'s soundtrack a masterpiece.',
+    stats:[{l:'Units Sold',v:'3M+'},{l:'Metacritic',v:'88'}] },
+  { title:'Doom: The Dark Ages', year:2025, wiki:null, engine:'id Tech 8',
+    platforms:['PC','PS5','Xbox Series'],
+    desc:'The Slayer returns to medieval hell. Shield saw, ground-based combat, and dragons. id Tech 8 pushes visual fidelity to unprecedented heights.',
+    stats:[{l:'Year',v:'2025'},{l:'Engine',v:'id Tech 8'}] },
+];
+
+function buildGames() {
+  const grid = document.getElementById('games-grid');
+  grid.innerHTML = DOOM_GAMES.map(g => `
+    <div class="game-card">
+      <img class="game-img" data-wiki="${g.wiki||''}" alt="${g.title}" onload="this.classList.add('loaded')" onerror="this.style.display='none'">
+      <div class="game-body">
+        <div class="game-title">${g.title}</div>
+        <div class="game-year">${g.year} · ${g.engine}</div>
+        <div class="game-desc">${g.desc}</div>
+        <div class="game-stats">${g.stats.map(s=>`<span class="stat-chip">${s.l}: ${s.v}</span>`).join('')}</div>
+      </div>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.game-img[data-wiki]').forEach(img => { if(img.dataset.wiki) loadImg(img); });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  WEAPONS DATA
+// ─────────────────────────────────────────────────────────────
+const WEAPONS_DATA = [
+  { cat:'Melee', weapons:[
+    { name:'Fist',       type:'Melee',   games:['Doom','Doom II','Doom 3','Doom 2016','Eternal'], desc:'Bare-knuckle punching. Faster with Berserk powerup. The last resort that\'s surprisingly satisfying.' },
+    { name:'Chainsaw',   type:'Melee',   games:['Doom','Doom II','Doom 2016','Eternal'],          desc:'Instant gib on most enemies, unlimited ammo. The iconic demon-shredder.' },
+  ]},
+  { cat:'Ballistic', weapons:[
+    { name:'Pistol',     type:'Pistol',  games:['Doom','Doom II'],                                desc:'Starting weapon. Shares ammo with Chaingun. Respectable single-shot accuracy at range.' },
+    { name:'Shotgun',    type:'Shotgun', games:['Doom','Doom II','Doom 3','Doom 64'],             desc:'Seven pellets per shot. The workhorse of classic Doom. Devastating at close range.' },
+    { name:'Super Shotgun',type:'Shotgun',games:['Doom II','Eternal'],                            desc:'Double-barrel carnage. Two shells, 20 pellets. Introduced in Doom II, iconic ever since.' },
+    { name:'Chaingun',   type:'Auto',    games:['Doom','Doom II','Doom 64'],                      desc:'Rapid-fire hitscan. Staggers enemies. Shares ammo with pistol. DPS king for unarmoured foes.' },
+  ]},
+  { cat:'Explosive', weapons:[
+    { name:'Rocket Launcher',type:'Explosive',games:['Doom','Doom II','Doom 3','Doom 2016','Eternal'],desc:'Splash-damage rockets. Cornerstone weapon. Rocket jumping is foundational in speedruns.' },
+    { name:'Grenade Launcher',type:'Explosive',games:['Doom 3'],                                  desc:'Arc-fire grenades for around corners. Doom 3 exclusive.' },
+  ]},
+  { cat:'Energy', weapons:[
+    { name:'Plasma Rifle',type:'Energy', games:['Doom','Doom II','Doom 2016','Eternal'],          desc:'Rapid plasma bolts. 25 cells per second. Stuns enemies and melts armour.' },
+    { name:'BFG 9000',    type:'Energy', games:['Doom','Doom II','Doom 3','Doom 2016','Eternal'], desc:'Big F***ing Gun. One shot clears a room. The most iconic weapon in FPS history.' },
+    { name:'Unmaker',     type:'Energy', games:['Doom 64'],                                       desc:'Doom 64 exclusive. Powered by three Demon Keys for devastating multi-beam fire.' },
+  ]},
+];
+
+function buildWeapons() {
+  const c = document.getElementById('wpn-container');
+  c.innerHTML = WEAPONS_DATA.map(cat => `
+    <div>
+      <div class="wpn-cat-title">${cat.cat}</div>
+      <div class="wpn-grid">${cat.weapons.map(w=>`
+        <div class="wpn-card">
+          <div class="wpn-name">${w.name}</div>
+          <div class="wpn-type">${w.type}</div>
+          <div class="wpn-desc">${w.desc}</div>
+          <div class="wpn-games">${w.games.map(g=>`<span class="wg-tag">${g}</span>`).join('')}</div>
+        </div>
+      `).join('')}</div>
+    </div>
+  `).join('');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-//  DOOM — doom.ximg.app   Classic Doom 1 style raycaster
+//  DOOM RAYCASTER ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
+const GW=320,GH=200,VH=168,HH=32;
+const wrap2   = document.getElementById('game-wrap');
+const canvas  = document.getElementById('c');
 
-// Internal resolution (classic Doom 320×200)
-const GW = 320, GH = 200, VH = 168, HH = 32; // view height + hud height
-
-const wrap   = document.getElementById('game-wrap');
-const canvas = document.getElementById('c');
-
-// Size canvas to largest integer-scale that fits the container
 function sizeCanvas() {
-  const cw = wrap.clientWidth  || window.innerWidth;
-  const ch = wrap.clientHeight || (window.innerHeight - 44);
-  const s  = Math.max(1, Math.floor(Math.min(cw / GW, ch / GH)));
-  canvas.style.width  = (GW * s) + 'px';
-  canvas.style.height = (GH * s) + 'px';
+  const cw = wrap2.clientWidth  || window.innerWidth;
+  const ch = wrap2.clientHeight || Math.max(1,window.innerHeight-88);
+  const s  = Math.max(1, Math.floor(Math.min(cw/GW, ch/GH)));
+  canvas.style.width  = (GW*s)+'px';
+  canvas.style.height = (GH*s)+'px';
 }
 sizeCanvas();
 window.addEventListener('resize', sizeCanvas);
 
-// Internal pixel buffer — 320×200
-canvas.width  = GW;
-canvas.height = GH;
-const ctx     = canvas.getContext('2d');   // context obtained while canvas is VISIBLE
-const imgData = ctx.createImageData(GW, GH);
+canvas.width=GW; canvas.height=GH;
+const ctx     = canvas.getContext('2d');
+const imgData = ctx.createImageData(GW,GH);
 const buf32   = new Uint32Array(imgData.data.buffer);
+const px = (r,g,b) => 0xFF000000|(b<<16)|(g<<8)|r;
 
-// Pack RGBA (little-endian Uint32 → bytes R,G,B,A)
-const px = (r, g, b) => 0xFF000000 | (b << 16) | (g << 8) | r;
+// Textures
+const TS=64;
+const nh  = n=>{n^=n>>>13;n=Math.imul(n,n*15731+789221)+1376312589|0;return(n>>>0)&0xFF;};
+const nx2 = (x,y,s)=>nh(((x&255)|(y&255)<<8)^(s*65537));
+const mkT = fn=>{const t=new Uint32Array(TS*TS);for(let y=0;y<TS;y++)for(let x=0;x<TS;x++)t[y*TS+x]=fn(x,y);return t;};
 
-// ── TEXTURES ──────────────────────────────────────────────────────────────
-const TS = 64;
-const nh  = n => { n ^= n >>> 13; n = Math.imul(n, n * 15731 + 789221) + 1376312589 | 0; return (n >>> 0) & 0xFF; };
-const nx2 = (x, y, s) => nh(((x & 255) | (y & 255) << 8) ^ (s * 65537));
-const mkTex = fn => { const t = new Uint32Array(TS * TS); for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) t[y*TS+x] = fn(x,y); return t; };
+const T_STONE=mkT((x,y)=>{const bh=16,bw=32,m=2,row=(y/bh)|0,off=(row&1)?16:0,bx=(x+off)%bw,by=y%bh;if(bx<m||by<m){const n=nx2(x,y,0)/14|0;return px(125+n,122+n,128+n);}const n=nx2(x,y,1)/4|0;return px(200+n,192+n,180+n);});
+const T_BRICK=mkT((x,y)=>{const bh=12,bw=24,m=2,row=(y/bh)|0,off=(row&1)?12:0,bx=(x+off)%bw,by=y%bh;if(bx<m||by<m){const n=nx2(x,y,2)/18|0;return px(70+n,18,12);}const n=nx2(x,y,3)/5|0;return px(210+n,45,22);});
+const T_METAL=mkT((x,y)=>{const p2=x&15,py=y&15,b=!p2||p2===15||!py||py===15,rv=(p2===3&&(py===3||py===12))||(p2===12&&(py===3||py===12));if(rv)return px(225,230,245);if(b){const n=nx2(x,y,4)/28|0;return px(68+n,68+n,98+n);}const n=nx2(x,y,5)/9|0;return px(115+n,122+n,170+n);});
+const T_FLOOR=mkT((x,y)=>{const tx=x&15,ty=y&15;if(tx<1||ty<1)return px(52,48,40);const n=nx2(x,y,6)/6|0;return px(135+n,124+n,108+n);});
+const T_CEIL =mkT((x,y)=>{const tx=x&31,ty=y&31;if(tx<2||ty<2)return px(44,44,42);const n=nx2(x,y,7)/11|0;return px(98+n,96+n,88+n);});
+const TEXS=[T_STONE,T_BRICK,T_METAL];
 
-// STARTAN2 — grey stone bricks
-const T_STONE = mkTex((x,y) => {
-  const bh=16,bw=32,m=2,row=(y/bh)|0,off=(row&1)?16:0,bx=(x+off)%bw,by=y%bh;
-  if(bx<m||by<m){const n=nx2(x,y,0)/14|0;return px(125+n,122+n,128+n);}
-  const n=nx2(x,y,1)/4|0;return px(200+n,192+n,180+n);
-});
-// BROWNHEX — dark red/brown brick
-const T_BRICK = mkTex((x,y) => {
-  const bh=12,bw=24,m=2,row=(y/bh)|0,off=(row&1)?12:0,bx=(x+off)%bw,by=y%bh;
-  if(bx<m||by<m){const n=nx2(x,y,2)/18|0;return px(70+n,18,12);}
-  const n=nx2(x,y,3)/5|0;return px(210+n,45,22);
-});
-// TEKWALL — UAC metal
-const T_METAL = mkTex((x,y) => {
-  const px2=x&15,py=y&15,border=!px2||px2===15||!py||py===15;
-  const rivet=(px2===3&&(py===3||py===12))||(px2===12&&(py===3||py===12));
-  if(rivet) return px(225,230,245);
-  if(border){const n=nx2(x,y,4)/28|0;return px(68+n,68+n,98+n);}
-  const n=nx2(x,y,5)/9|0;return px(115+n,122+n,170+n);
-});
-// FLAT5_4 — stone floor
-const T_FLOOR = mkTex((x,y) => {
-  const tx=x&15,ty=y&15;
-  if(tx<1||ty<1) return px(52,48,40);
-  const n=nx2(x,y,6)/6|0;return px(135+n,124+n,108+n);
-});
-// CEIL5_1 — metal ceiling
-const T_CEIL = mkTex((x,y) => {
-  const tx=x&31,ty=y&31;
-  if(tx<2||ty<2) return px(44,44,42);
-  const n=nx2(x,y,7)/11|0;return px(98+n,96+n,88+n);
-});
-const TEXS = [T_STONE, T_BRICK, T_METAL];
-
-// ── MAP ───────────────────────────────────────────────────────────────────
-// 0=open  1=grey stone  2=red brick  3=metal
-const MAP = [
+const MAP=[
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
@@ -180,373 +391,173 @@ const MAP = [
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
-const MW = MAP[0].length, MH = MAP.length;
-const open = (x, y) => { const mx=x|0,my=y|0; return mx>=0&&mx<MW&&my>=0&&my<MH&&MAP[my][mx]===0; };
+const MW=MAP[0].length,MH=MAP.length;
+const open=(x,y)=>{const mx=x|0,my=y|0;return mx>=0&&mx<MW&&my>=0&&my<MH&&MAP[my][mx]===0;};
 
-// ── PLAYER ────────────────────────────────────────────────────────────────
 let pl;
-function resetPl() {
-  pl = { x:7.5,y:7.5, dx:1,dy:0, cx:0,cy:.66,
-         hp:100,armor:0,ammo:50,score:0,
-         cd:0,muzzle:0,dflash:0,wpn:1,anim:0 };
-}
+function resetPl(){pl={x:7.5,y:7.5,dx:1,dy:0,cx:0,cy:.66,hp:100,armor:0,ammo:50,score:0,cd:0,muzzle:0,dflash:0,wpn:1,anim:0};}
 
-// ── ENEMIES ───────────────────────────────────────────────────────────────
-const ET = [
-  {hr:162,hg:138,hb:118,tr:105,tg:80, tb:62, spd:1.4,hp:2,dmg:5, sc:.72},//zombie
-  {hr:158,hg:88, hb:48, tr:118,tg:52, tb:22, spd:2.0,hp:4,dmg:10,sc:.88},//imp
-  {hr:180,hg:85, hb:98, tr:138,tg:50, tb:62, spd:2.6,hp:8,dmg:18,sc:1.1},//demon
+const ET=[
+  {hr:162,hg:138,hb:118,tr:105,tg:80, tb:62, spd:1.4,hp:2,dmg:5, sc:.72},
+  {hr:158,hg:88, hb:48, tr:118,tg:52, tb:22, spd:2.0,hp:4,dmg:10,sc:.88},
+  {hr:180,hg:85, hb:98, tr:138,tg:50, tb:62, spd:2.6,hp:8,dmg:18,sc:1.1},
 ];
 let enemies;
-function resetEn() {
+function resetEn(){
   const E=(x,y,t)=>({x,y,t,hp:ET[t].hp,st:'idle',tk:0,hit:0});
-  enemies=[
-    E(10.5,10.5,1),E(18.5, 3.5,0),E( 3.5,17.5,0),E(18.5,14.5,1),
-    E( 6.5,11.5,0),E(11.5, 5.5,1),E(20.5, 9.5,2),E( 8.5,18.5,0),
-    E(16.5,17.5,1),E(16.5, 8.5,0),E( 5.5,13.5,1),E(21.5,12.5,2),
-    E(13.5,13.5,2),E( 4.5, 8.5,0),E(19.5, 7.5,1),
-  ];
+  enemies=[E(10.5,10.5,1),E(18.5,3.5,0),E(3.5,17.5,0),E(18.5,14.5,1),
+           E(6.5,11.5,0),E(11.5,5.5,1),E(20.5,9.5,2),E(8.5,18.5,0),
+           E(16.5,17.5,1),E(16.5,8.5,0),E(5.5,13.5,1),E(21.5,12.5,2),
+           E(13.5,13.5,2),E(4.5,8.5,0),E(19.5,7.5,1)];
 }
 
-const WPN = [
-  {name:'FIST',   cd:20,spread:0,   shots:1,dmg:20,melee:true },
+const WPN=[
+  {name:'FIST',   cd:20,spread:0,   shots:1,dmg:20,melee:true},
   {name:'PISTOL', cd:18,spread:.12, shots:1,dmg:12,melee:false},
   {name:'SHOTGUN',cd:32,spread:.44, shots:7,dmg:8, melee:false},
   {name:'CHAINGUN',cd:5,spread:.16, shots:1,dmg:9, melee:false},
 ];
 
-// ── INPUT ─────────────────────────────────────────────────────────────────
-const keys = {};
-let mlocked = false, gstate = 'start';
-document.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (gstate !== 'play') return;
-  if (e.code === 'Space') { e.preventDefault(); shoot(); }
-  if (e.code === 'Digit1') pl.wpn = 0;
-  if (e.code === 'Digit2') pl.wpn = 1;
-  if (e.code === 'Digit3') pl.wpn = 2;
-  if (e.code === 'Digit4') pl.wpn = 3;
-  if (e.code === 'KeyE')   pl.wpn = (pl.wpn + 1) % WPN.length;
+const keys={};let mlocked=false,gstate='start';
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(gstate!=='play')return;
+  if(e.code==='Space'){e.preventDefault();shoot();}
+  if(e.code==='Digit1')pl.wpn=0;if(e.code==='Digit2')pl.wpn=1;
+  if(e.code==='Digit3')pl.wpn=2;if(e.code==='Digit4')pl.wpn=3;
+  if(e.code==='KeyE')pl.wpn=(pl.wpn+1)%WPN.length;
 });
-document.addEventListener('keyup', e => { keys[e.code] = false; });
-canvas.addEventListener('click', () => {
-  if (gstate !== 'play') return;
-  if (!mlocked) canvas.requestPointerLock(); else shoot();
-});
-document.addEventListener('pointerlockchange', () => { mlocked = !!document.pointerLockElement; });
-document.addEventListener('mousemove', e => {
-  if (gstate === 'play' && mlocked) rot(e.movementX * .003);
-});
+document.addEventListener('keyup',e=>{keys[e.code]=false;});
+canvas.addEventListener('click',()=>{if(gstate!=='play')return;if(!mlocked)canvas.requestPointerLock();else shoot();});
+document.addEventListener('pointerlockchange',()=>{mlocked=!!document.pointerLockElement;});
+document.addEventListener('mousemove',e=>{if(gstate==='play'&&mlocked)rot(e.movementX*.003);});
 
-function rot(a) {
-  const c=Math.cos(a),s=Math.sin(a),odx=pl.dx,ocx=pl.cx;
-  pl.dx=odx*c-pl.dy*s; pl.dy=odx*s+pl.dy*c;
-  pl.cx=ocx*c-pl.cy*s; pl.cy=ocx*s+pl.cy*c;
-}
-function move(dx, dy) {
-  if (open(pl.x+dx, pl.y)) pl.x += dx;
-  if (open(pl.x,   pl.y+dy)) pl.y += dy;
-}
+function rot(a){const c=Math.cos(a),s=Math.sin(a),odx=pl.dx,ocx=pl.cx;pl.dx=odx*c-pl.dy*s;pl.dy=odx*s+pl.dy*c;pl.cx=ocx*c-pl.cy*s;pl.cy=ocx*s+pl.cy*c;}
+function move(dx,dy){if(open(pl.x+dx,pl.y))pl.x+=dx;if(open(pl.x,pl.y+dy))pl.y+=dy;}
 
-function shoot() {
-  const w = WPN[pl.wpn];
-  if (pl.cd > 0) return;
-  if (!w.melee && pl.ammo <= 0) { pl.wpn = 0; return; }
-  if (!w.melee) pl.ammo--;
-  pl.muzzle = 10; pl.cd = w.cd;
-  if (w.melee) {
-    for (const e of enemies) {
-      if (e.hp <= 0) continue;
-      const dx=e.x-pl.x,dy=e.y-pl.y;
-      if (dx*dx+dy*dy < 2.25) { hit(e, w.dmg); }
-    }
-    return;
-  }
-  const inv = 1/(pl.cx*pl.dy - pl.dx*pl.cy);
-  for (let s = 0; s < w.shots; s++) {
-    const sp = (Math.random()-.5)*w.spread;
-    let bd=Infinity,be=null;
-    for (const e of enemies) {
-      if (e.hp <= 0) continue;
-      const ex=e.x-pl.x,ey=e.y-pl.y;
-      const tx=inv*(pl.dy*ex-pl.dx*ey)+sp;
-      const ty=inv*(-pl.cy*ex+pl.cx*ey);
-      if (ty>.1 && Math.abs(tx/ty)<.32) {
-        const col=((GW/2)*(1+tx/ty))|0;
-        if (ty < zbuf[Math.max(0,Math.min(GW-1,col))] && ty < bd) { bd=ty; be=e; }
-      }
-    }
-    if (be) hit(be, w.dmg);
+function hitE(e,dmg){e.hp-=dmg;e.hit=12;e.st='chase';if(e.hp<=0){e.st='dead';pl.score+=100;}}
+function shoot(){
+  const w=WPN[pl.wpn];if(pl.cd>0)return;
+  if(!w.melee&&pl.ammo<=0){pl.wpn=0;return;}
+  if(!w.melee)pl.ammo--;pl.muzzle=10;pl.cd=w.cd;
+  if(w.melee){for(const e of enemies){if(e.hp<=0)continue;const dx=e.x-pl.x,dy=e.y-pl.y;if(dx*dx+dy*dy<2.25)hitE(e,w.dmg);}return;}
+  const inv=1/(pl.cx*pl.dy-pl.dx*pl.cy);
+  for(let s=0;s<w.shots;s++){
+    const sp=(Math.random()-.5)*w.spread;let bd=Infinity,be=null;
+    for(const e of enemies){if(e.hp<=0)continue;const ex=e.x-pl.x,ey=e.y-pl.y;const tx=inv*(pl.dy*ex-pl.dx*ey)+sp,ty=inv*(-pl.cy*ex+pl.cx*ey);if(ty>.1&&Math.abs(tx/ty)<.32){const col=((GW/2)*(1+tx/ty))|0;if(ty<zbuf[Math.max(0,Math.min(GW-1,col))]&&ty<bd){bd=ty;be=e;}}}
+    if(be)hitE(be,w.dmg);
   }
 }
-function hit(e, dmg) {
-  e.hp -= dmg; e.hit = 12; e.st = 'chase';
-  if (e.hp <= 0) { e.st = 'dead'; pl.score += 100; }
-}
-
-function los(x1,y1,x2,y2) {
-  const dx=x2-x1,dy=y2-y1,n=Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))*4);
-  for (let i=1;i<n;i++) {
-    const mx=(x1+dx*i/n)|0,my=(y1+dy*i/n)|0;
-    if (mx<0||mx>=MW||my<0||my>=MH||MAP[my][mx]>0) return false;
-  }
-  return true;
-}
-
-function updateEn(dt) {
-  for (const e of enemies) {
-    if (e.hp <= 0) continue;
-    if (e.hit > 0) e.hit--;
-    e.tk += dt;
-    const ex=pl.x-e.x, ey=pl.y-e.y, d=Math.sqrt(ex*ex+ey*ey), et=ET[e.t];
-    if (e.st==='idle' && d<16 && los(e.x,e.y,pl.x,pl.y)) e.st='chase';
-    if (e.st==='chase') {
-      if (d>.9) {
-        const spd=et.spd*dt,nx=e.x+(ex/d)*spd,ny=e.y+(ey/d)*spd;
-        if (open(nx,e.y)) e.x=nx; if (open(e.x,ny)) e.y=ny;
-      }
-      if (d<1.4) {
-        const hz=e.tk*2;
-        if ((hz|0)!==((hz-dt*2)|0)) { pl.hp-=et.dmg; pl.dflash=14; }
-      }
-    }
+function los(x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,n=Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))*4);for(let i=1;i<n;i++){const mx=(x1+dx*i/n)|0,my=(y1+dy*i/n)|0;if(mx<0||mx>=MW||my<0||my>=MH||MAP[my][mx]>0)return false;}return true;}
+function updateEn(dt){
+  for(const e of enemies){if(e.hp<=0)continue;if(e.hit>0)e.hit--;e.tk+=dt;
+    const ex=pl.x-e.x,ey=pl.y-e.y,d=Math.sqrt(ex*ex+ey*ey),et=ET[e.t];
+    if(e.st==='idle'&&d<16&&los(e.x,e.y,pl.x,pl.y))e.st='chase';
+    if(e.st==='chase'){if(d>.9){const spd=et.spd*dt,nx=e.x+(ex/d)*spd,ny=e.y+(ey/d)*spd;if(open(nx,e.y))e.x=nx;if(open(e.x,ny))e.y=ny;}
+      if(d<1.4){const hz=e.tk*2;if((hz|0)!==((hz-dt*2)|0)){pl.hp-=et.dmg;pl.dflash=14;facePain=30;}}}
   }
 }
 
-// ── RENDER ────────────────────────────────────────────────────────────────
-let zbuf = new Float32Array(GW);
+let zbuf=new Float32Array(GW);
+function fillR(x,y,w,h,r,g,b){for(let py=y;py<y+h;py++){if(py<0||py>=VH)continue;for(let qx=x;qx<x+w;qx++){if(qx<0||qx>=GW)continue;buf32[py*GW+qx]=px(r,g,b);}}}
 
-function fillR(x,y,w,h,r,g,b) {
-  for (let py=y;py<y+h;py++) {
-    if (py<0||py>=VH) continue;
-    for (let qx=x;qx<x+w;qx++) {
-      if (qx<0||qx>=GW) continue;
-      buf32[py*GW+qx]=px(r,g,b);
-    }
-  }
-}
-
-function render3D() {
-  const VH2 = VH >> 1;
-
-  // Floor & ceiling
-  for (let y=0;y<VH;y++) {
-    const isFloor = y > VH2;
-    const rowD = VH2 / Math.abs(y - VH2 || .001);
-    let fx=pl.x+rowD*(pl.dx-pl.cx), fy=pl.y+rowD*(pl.dy-pl.cy);
-    const sfx=rowD*2*pl.cx/GW, sfy=rowD*2*pl.cy/GW;
-    const fog = Math.max(.42, 1 - rowD/20) * (isFloor ? 1 : .90);
-    const tex = isFloor ? T_FLOOR : T_CEIL;
-    const base = y*GW;
-    for (let x=0;x<GW;x++,fx+=sfx,fy+=sfy) {
-      const tx=((fx*TS)|0)&(TS-1), ty=((fy*TS)|0)&(TS-1);
-      const c=tex[((ty+TS)&(TS-1))*TS+((tx+TS)&(TS-1))];
+function render3D(){
+  const VH2=VH>>1;
+  for(let y=0;y<VH;y++){
+    const isF=y>VH2,rowD=VH2/Math.abs(y-VH2||.001);
+    let fx=pl.x+rowD*(pl.dx-pl.cx),fy=pl.y+rowD*(pl.dy-pl.cy);
+    const sfx=rowD*2*pl.cx/GW,sfy=rowD*2*pl.cy/GW;
+    const fog=Math.max(.42,1-rowD/20)*(isF?1:.90),tex=isF?T_FLOOR:T_CEIL,base=y*GW;
+    for(let x=0;x<GW;x++,fx+=sfx,fy+=sfy){
+      const tx=((fx*TS)|0)&(TS-1),ty=((fy*TS)|0)&(TS-1),c=tex[((ty+TS)&(TS-1))*TS+((tx+TS)&(TS-1))];
       buf32[base+x]=px(((c&0xFF)*fog)|0,(((c>>8)&0xFF)*fog)|0,(((c>>16)&0xFF)*fog)|0);
     }
   }
-
-  // Walls (DDA)
-  for (let x=0;x<GW;x++) {
-    const camX=2*x/GW-1;
-    const rdx=pl.dx+pl.cx*camX, rdy=pl.dy+pl.cy*camX;
-    let mx=pl.x|0, my=pl.y|0;
-    const ddx=rdx===0?1e30:Math.abs(1/rdx), ddy=rdy===0?1e30:Math.abs(1/rdy);
+  for(let x=0;x<GW;x++){
+    const camX=2*x/GW-1,rdx=pl.dx+pl.cx*camX,rdy=pl.dy+pl.cy*camX;
+    let mx=pl.x|0,my=pl.y|0;
+    const ddx=rdx===0?1e30:Math.abs(1/rdx),ddy=rdy===0?1e30:Math.abs(1/rdy);
     let sx,sy,stepX,stepY;
-    if (rdx<0){stepX=-1;sx=(pl.x-mx)*ddx;}else{stepX=1;sx=(mx+1-pl.x)*ddx;}
-    if (rdy<0){stepY=-1;sy=(pl.y-my)*ddy;}else{stepY=1;sy=(my+1-pl.y)*ddy;}
+    if(rdx<0){stepX=-1;sx=(pl.x-mx)*ddx;}else{stepX=1;sx=(mx+1-pl.x)*ddx;}
+    if(rdy<0){stepY=-1;sy=(pl.y-my)*ddy;}else{stepY=1;sy=(my+1-pl.y)*ddy;}
     let hit=0,side=0,wt=0;
-    while (!hit) {
-      if (sx<sy){sx+=ddx;mx+=stepX;side=0;}else{sy+=ddy;my+=stepY;side=1;}
-      if (mx<0||mx>=MW||my<0||my>=MH){wt=1;hit=1;}
-      else if (MAP[my][mx]>0){wt=MAP[my][mx];hit=1;}
-    }
-    const dist=side===0?sx-ddx:sy-ddy;
-    zbuf[x]=dist;
-    const wallH=Math.min(VH*4,(VH/dist)|0);
-    const top=((VH-wallH)/2)|0;
-    let wallX=side===0?pl.y+dist*rdy:pl.x+dist*rdx;
-    wallX-=Math.floor(wallX);
-    let texX=(wallX*TS)|0;
-    if(side===0&&rdx>0) texX=TS-1-texX;
-    if(side===1&&rdy<0) texX=TS-1-texX;
-    const tex=TEXS[Math.min(2,wt-1)];
-    const fog=Math.max(.38,1-dist/18)*(side===1?.80:1);
-    const ts2=TS/wallH;
-    const start=Math.max(0,top), end=Math.min(VH,top+wallH);
+    while(!hit){if(sx<sy){sx+=ddx;mx+=stepX;side=0;}else{sy+=ddy;my+=stepY;side=1;}if(mx<0||mx>=MW||my<0||my>=MH){wt=1;hit=1;}else if(MAP[my][mx]>0){wt=MAP[my][mx];hit=1;}}
+    const dist=side===0?sx-ddx:sy-ddy;zbuf[x]=dist;
+    const wallH=Math.min(VH*4,(VH/dist)|0),top=((VH-wallH)/2)|0;
+    let wallX=side===0?pl.y+dist*rdy:pl.x+dist*rdx;wallX-=Math.floor(wallX);
+    let texX=(wallX*TS)|0;if(side===0&&rdx>0)texX=TS-1-texX;if(side===1&&rdy<0)texX=TS-1-texX;
+    const tex=TEXS[Math.min(2,wt-1)],fog=Math.max(.38,1-dist/18)*(side===1?.80:1);
+    const ts2=TS/wallH,start=Math.max(0,top),end=Math.min(VH,top+wallH);
     let texY=(start-top)*ts2;
-    for (let py=start;py<end;py++,texY+=ts2) {
-      const c=tex[((texY|0)&(TS-1))*TS+texX];
-      buf32[py*GW+x]=px(((c&0xFF)*fog)|0,(((c>>8)&0xFF)*fog)|0,(((c>>16)&0xFF)*fog)|0);
-    }
+    for(let py=start;py<end;py++,texY+=ts2){const c=tex[((texY|0)&(TS-1))*TS+texX];buf32[py*GW+x]=px(((c&0xFF)*fog)|0,(((c>>8)&0xFF)*fog)|0,(((c>>16)&0xFF)*fog)|0);}
   }
 }
 
-function renderSprites() {
-  const list=enemies.map(e=>{
-    const ex=e.x-pl.x,ey=e.y-pl.y;
-    return{e,d2:ex*ex+ey*ey,ex,ey};
-  }).sort((a,b)=>b.d2-a.d2);
+function renderSprites(){
+  const list=enemies.map(e=>{const ex=e.x-pl.x,ey=e.y-pl.y;return{e,d2:ex*ex+ey*ey,ex,ey};}).sort((a,b)=>b.d2-a.d2);
   const inv=1/(pl.cx*pl.dy-pl.dx*pl.cy);
-  for (const{e,ex,ey}of list) {
-    const tx=inv*(pl.dy*ex-pl.dx*ey),ty=inv*(-pl.cy*ex+pl.cx*ey);
-    if (ty<=.15) continue;
-    const et=ET[e.t];
-    const scx=((GW/2)*(1+tx/ty))|0;
-    const h=Math.abs((VH/ty*et.sc)|0),w=(h*.55)|0;
-    const x0=scx-(w/2)|0,y0=((VH-h)/2)|0;
-    const fog=Math.max(.1,1-ty/16);
-    if (e.st==='dead') {
-      const cy2=(VH/2+VH/ty*.44)|0,rx=Math.max(3,(h*.38)|0),ry=Math.max(1,(h*.1)|0);
-      for (let dy=-ry;dy<=ry;dy++) {
-        const py2=cy2+dy;if(py2<0||py2>=VH)continue;
-        const rxw=(Math.sqrt(Math.max(0,1-(dy/ry)**2))*rx)|0;
-        for (let px2=Math.max(0,scx-rxw);px2<Math.min(GW,scx+rxw);px2++)
-          buf32[py2*GW+px2]=px((et.hr*fog*.5)|0,0,0);
-      }
-      continue;
-    }
-    const bob=e.st==='chase'?Math.sin(e.tk*8)*h*.04:0;
-    const hh=(h*.26)|0,th=(h*.44)|0,lh=(h*.3)|0;
+  for(const{e,ex,ey}of list){
+    const tx=inv*(pl.dy*ex-pl.dx*ey),ty=inv*(-pl.cy*ex+pl.cx*ey);if(ty<=.15)continue;
+    const et=ET[e.t],scx=((GW/2)*(1+tx/ty))|0,h=Math.abs((VH/ty*et.sc)|0),w=(h*.55)|0;
+    const x0=scx-(w/2)|0,y0=((VH-h)/2)|0,fog=Math.max(.1,1-ty/16);
+    if(e.st==='dead'){const cy2=(VH/2+VH/ty*.44)|0,rx=Math.max(3,(h*.38)|0),ry=Math.max(1,(h*.1)|0);for(let dy=-ry;dy<=ry;dy++){const py2=cy2+dy;if(py2<0||py2>=VH)continue;const rxw=(Math.sqrt(Math.max(0,1-(dy/ry)**2))*rx)|0;for(let px2=Math.max(0,scx-rxw);px2<Math.min(GW,scx+rxw);px2++)buf32[py2*GW+px2]=px((et.hr*fog*.5)|0,0,0);}continue;}
+    const bob=e.st==='chase'?Math.sin(e.tk*8)*h*.04:0,hh=(h*.26)|0,th=(h*.44)|0,lh=(h*.3)|0;
     const hTop=(y0+bob)|0,tTop=hTop+hh,lTop=tTop+th;
-    for (let sx=Math.max(0,x0);sx<Math.min(GW,x0+w);sx++) {
-      if (ty>=zbuf[sx]) continue;
+    for(let sx=Math.max(0,x0);sx<Math.min(GW,x0+w);sx++){
+      if(ty>=zbuf[sx])continue;
       const rx=(sx-x0)/w,cx2=Math.abs(rx-.5)*2,dim=fog;
-      if (cx2<.9) {
-        const hr=e.hit>0?255:(et.hr*dim)|0,hg=e.hit>0?200:(et.hg*dim)|0,hb=e.hit>0?200:(et.hb*dim)|0;
-        for (let py=Math.max(0,hTop);py<Math.min(VH,hTop+hh);py++) {
-          const eye=py>(hTop+hh*.38)&&py<(hTop+hh*.62)&&cx2>.2&&cx2<.58&&e.st==='chase'&&e.t>0;
-          buf32[py*GW+sx]=eye?px((180*dim)|0,0,0):px(hr,hg,hb);
-        }
-      }
+      if(cx2<.9){const hr=e.hit>0?255:(et.hr*dim)|0,hg=e.hit>0?200:(et.hg*dim)|0,hb=e.hit>0?200:(et.hb*dim)|0;for(let py=Math.max(0,hTop);py<Math.min(VH,hTop+hh);py++){const eye=py>(hTop+hh*.38)&&py<(hTop+hh*.62)&&cx2>.2&&cx2<.58&&e.st==='chase'&&e.t>0;buf32[py*GW+sx]=eye?px((180*dim)|0,0,0):px(hr,hg,hb);}}
       const tr=e.hit>0?255:(et.tr*dim)|0,tg=e.hit>0?180:(et.tg*dim)|0,tb=e.hit>0?180:(et.tb*dim)|0;
-      for (let py=Math.max(0,tTop);py<Math.min(VH,tTop+th);py++) buf32[py*GW+sx]=px(tr,tg,tb);
-      if (rx<.36||rx>.64) {
-        const lb=Math.sin(e.tk*8+(rx>.5?Math.PI:0))*h*.03;
-        const lr=(et.hr*dim*.62)|0,lg=(et.hg*dim*.62)|0,lb2=(et.hb*dim*.62)|0;
-        for (let py=Math.max(0,(lTop+lb)|0);py<Math.min(VH,(lTop+lh+lb)|0);py++)
-          buf32[py*GW+sx]=px(lr,lg,lb2);
-      }
+      for(let py=Math.max(0,tTop);py<Math.min(VH,tTop+th);py++)buf32[py*GW+sx]=px(tr,tg,tb);
+      if(rx<.36||rx>.64){const lb=Math.sin(e.tk*8+(rx>.5?Math.PI:0))*h*.03,lr=(et.hr*dim*.62)|0,lg=(et.hg*dim*.62)|0,lb2=(et.hb*dim*.62)|0;for(let py=Math.max(0,(lTop+lb)|0);py<Math.min(VH,(lTop+lh+lb)|0);py++)buf32[py*GW+sx]=px(lr,lg,lb2);}
     }
   }
 }
 
-function renderWeapon() {
+function renderWeapon(){
   const bob=(keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD'])?(Math.sin(pl.anim*7)*5)|0:0;
   const kick=pl.muzzle>0?(pl.muzzle/10*14)|0:0;
-  const bx=GW>>1, by=(VH-26+bob+kick)|0;
-  if (pl.wpn===0) { // fist
-    const sw=pl.muzzle>0?(pl.muzzle/10*18)|0:0;
-    fillR(bx-18+sw,by-9,16,20,195,155,115);
-    fillR(bx-16+sw,by-7,12,16,215,175,130);
-    fillR(bx-16+sw,by-11,14,5,180,140,100);
-  } else if (pl.wpn===1) { // pistol
-    fillR(bx-48,by-5, 32,4, 55,55,58);
-    fillR(bx-48,by-3, 32,2, 35,35,37);
-    fillR(bx-22,by-10,24,13,68,68,72);
-    fillR(bx-20,by-6, 20,3, 42,42,44);
-    fillR(bx-4, by-2, 12,20,58,40,26);
-    fillR(bx-2, by-0, 7, 9, 74,52,33);
-    fillR(bx-8, by+4, 2, 9, 52,52,54);
-    fillR(bx-8, by+12,9, 2, 52,52,54);
-    fillR(bx+0, by+4, 2, 9, 52,52,54);
-  } else if (pl.wpn===2) { // shotgun
-    fillR(bx-64,by-11,48,5, 48,48,50);
-    fillR(bx-64,by-6, 48,5, 36,36,38);
-    fillR(bx-66,by-12,3, 10,62,62,64);
-    fillR(bx-42,by-2, 30,10,64,44,22);
-    fillR(bx-14,by-6, 36,16,72,50,30);
-    fillR(bx-8, by-2, 22,9, 92,62,36);
-    fillR(bx-4, by+5, 2, 8, 42,42,44);
-    fillR(bx-4, by+12,9, 2, 42,42,44);
-    fillR(bx+4, by+5, 2, 8, 42,42,44);
-  } else { // chaingun
-    const spin=pl.anim*(pl.muzzle>0?22:3);
-    for (let i=0;i<6;i++) {
-      const a=spin+i*Math.PI/3;
-      fillR((bx-56+(Math.cos(a)*7))|0,(by-7+(Math.sin(a)*7))|0,36,4,48,48,50);
-    }
-    fillR(bx-42,by-5, 24,12,58,58,62);
-    fillR(bx-18,by-8, 18,16,68,68,72);
-    fillR(bx-4, by-1, 12,18,58,40,26);
-    fillR(bx-2, by+0, 7, 9, 74,52,33);
-  }
-  // muzzle flash
-  if (pl.muzzle>0 && pl.wpn>0) {
-    const a=pl.muzzle/10,mx2=bx-56,my2=by-14;
-    for (let dy=-9;dy<=9;dy++) for (let dx=-14;dx<=4;dx++) {
-      const qx=mx2+dx,qy=my2+dy;
-      if (qx<0||qx>=GW||qy<0||qy>=VH) continue;
-      const fa=a*(1-Math.sqrt(dx*dx*.35+dy*dy)/11);
-      if (fa<=0) continue;
-      buf32[qy*GW+qx]=px(Math.min(255,(255*fa)|0),Math.min(255,(160*fa)|0),(40*fa)|0);
-    }
-  }
+  const bx=GW>>1,by=(VH-26+bob+kick)|0;
+  if(pl.wpn===0){const sw=pl.muzzle>0?(pl.muzzle/10*18)|0:0;fillR(bx-18+sw,by-9,16,20,195,155,115);fillR(bx-16+sw,by-7,12,16,215,175,130);fillR(bx-16+sw,by-11,14,5,180,140,100);}
+  else if(pl.wpn===1){fillR(bx-48,by-5,32,4,55,55,58);fillR(bx-48,by-3,32,2,35,35,37);fillR(bx-22,by-10,24,13,68,68,72);fillR(bx-20,by-6,20,3,42,42,44);fillR(bx-4,by-2,12,20,58,40,26);fillR(bx-2,by,7,9,74,52,33);fillR(bx-8,by+4,2,9,52,52,54);fillR(bx-8,by+12,9,2,52,52,54);fillR(bx,by+4,2,9,52,52,54);}
+  else if(pl.wpn===2){fillR(bx-64,by-11,48,5,48,48,50);fillR(bx-64,by-6,48,5,36,36,38);fillR(bx-66,by-12,3,10,62,62,64);fillR(bx-42,by-2,30,10,64,44,22);fillR(bx-14,by-6,36,16,72,50,30);fillR(bx-8,by-2,22,9,92,62,36);fillR(bx-4,by+5,2,8,42,42,44);fillR(bx-4,by+12,9,2,42,42,44);fillR(bx+4,by+5,2,8,42,42,44);}
+  else{const spin=pl.anim*(pl.muzzle>0?22:3);for(let i=0;i<6;i++){const a=spin+i*Math.PI/3;fillR((bx-56+(Math.cos(a)*7))|0,(by-7+(Math.sin(a)*7))|0,36,4,48,48,50);}fillR(bx-42,by-5,24,12,58,58,62);fillR(bx-18,by-8,18,16,68,68,72);fillR(bx-4,by-1,12,18,58,40,26);fillR(bx-2,by,7,9,74,52,33);}
+  if(pl.muzzle>0&&pl.wpn>0){const a=pl.muzzle/10,mx2=bx-56,my2=by-14;for(let dy=-9;dy<=9;dy++)for(let dx=-14;dx<=4;dx++){const qx=mx2+dx,qy=my2+dy;if(qx<0||qx>=GW||qy<0||qy>=VH)continue;const fa=a*(1-Math.sqrt(dx*dx*.35+dy*dy)/11);if(fa<=0)continue;buf32[qy*GW+qx]=px(Math.min(255,(255*fa)|0),Math.min(255,(160*fa)|0),(40*fa)|0);}}
 }
 
-function renderHUD() {
-  // Classic Doom brown status bar
+function renderHUD(){
   const y0=VH;
-  for (let y=y0;y<GH;y++) for (let x=0;x<GW;x++) buf32[y*GW+x]=px(70,58,46);
-  for (let x=0;x<GW;x++) {
-    buf32[y0*GW+x]    =px(108,88,70);
-    buf32[(y0+1)*GW+x]=px(40,32,24);
-  }
-  // HP bar
-  const hpF=Math.max(0,pl.hp)/100;
-  const hc=pl.hp>60?[180,0,0]:pl.hp>25?[200,55,0]:[255,0,0];
-  for (let y=y0+4;y<y0+11;y++) for (let x=6;x<86;x++)
-    buf32[y*GW+x]=x<6+hpF*80?px(hc[0],hc[1],hc[2]):px(26,6,6);
-  // Armor bar
+  for(let y=y0;y<GH;y++)for(let x=0;x<GW;x++)buf32[y*GW+x]=px(70,58,46);
+  for(let x=0;x<GW;x++){buf32[y0*GW+x]=px(108,88,70);buf32[(y0+1)*GW+x]=px(40,32,24);}
+  const hpF=Math.max(0,pl.hp)/100,hc=pl.hp>60?[180,0,0]:pl.hp>25?[200,55,0]:[255,0,0];
+  for(let y=y0+4;y<y0+11;y++)for(let x=6;x<86;x++)buf32[y*GW+x]=x<6+hpF*80?px(hc[0],hc[1],hc[2]):px(26,6,6);
   const arF=Math.max(0,pl.armor)/100;
-  for (let y=y0+13;y<y0+20;y++) for (let x=6;x<86;x++)
-    buf32[y*GW+x]=x<6+arF*80?px(48,48,205):px(6,6,30);
-  // Weapon slots (4 boxes)
-  for (let i=0;i<4;i++) {
-    const wx=238+i*18,wy=y0+7;
-    for (let y=wy;y<wy+11;y++) for (let x=wx;x<wx+14;x++)
-      buf32[y*GW+x]=i===pl.wpn?px(210,175,55):px(38,30,22);
-  }
+  for(let y=y0+13;y<y0+20;y++)for(let x=6;x<86;x++)buf32[y*GW+x]=x<6+arF*80?px(48,48,205):px(6,6,30);
+  for(let i=0;i<4;i++){const wx=238+i*18,wy=y0+7;for(let y=wy;y<wy+11;y++)for(let x=wx;x<wx+14;x++)buf32[y*GW+x]=i===pl.wpn?px(210,175,55):px(38,30,22);}
 }
 
-function renderHUDText() {
-  ctx.save();
-  const y0=VH;
-  ctx.font='bold 7px "Courier New"';
-  ctx.textBaseline='top';
-  ctx.fillStyle=pl.hp>60?'#dd0000':pl.hp>25?'#ff5500':'#ff2200';
-  ctx.fillText('HP '+Math.max(0,pl.hp)+'%',6,y0+12);
-  ctx.fillStyle='#3355dd';
-  ctx.fillText('AR '+Math.max(0,pl.armor|0)+'%',6,y0+21);
-  ctx.font='bold 13px "Courier New"';
-  ctx.fillStyle='#ffaa00';
-  ctx.fillText(pl.ammo,96,y0+7);
-  ctx.font='bold 6px "Courier New"';
-  ctx.fillStyle='#887755';
-  ctx.fillText('AMMO',96,y0+22);
-  ctx.font='bold 7px "Courier New"';
-  ctx.fillStyle='#00ccff';
-  ctx.fillText('SC '+pl.score,152,y0+7);
-  ctx.fillStyle='#ccaa44';
-  ctx.fillText(WPN[pl.wpn].name,152,y0+21);
+function renderHUDText(){
+  ctx.save();const y0=VH;
+  ctx.font='bold 7px "Courier New"';ctx.textBaseline='top';
+  ctx.fillStyle=pl.hp>60?'#dd0000':pl.hp>25?'#ff5500':'#ff2200';ctx.fillText('HP '+Math.max(0,pl.hp)+'%',6,y0+12);
+  ctx.fillStyle='#3355dd';ctx.fillText('AR '+Math.max(0,pl.armor|0)+'%',6,y0+21);
+  ctx.font='bold 13px "Courier New"';ctx.fillStyle='#ffaa00';ctx.fillText(pl.ammo,96,y0+7);
+  ctx.font='bold 6px "Courier New"';ctx.fillStyle='#887755';ctx.fillText('AMMO',96,y0+22);
+  ctx.font='bold 7px "Courier New"';ctx.fillStyle='#00ccff';ctx.fillText('SC '+pl.score,152,y0+7);
+  ctx.fillStyle='#ccaa44';ctx.fillText(WPN[pl.wpn].name,152,y0+21);
   const alive=enemies.filter(e=>e.hp>0).length;
-  ctx.fillStyle=alive>0?'#ff4444':'#44ff44';
-  ctx.fillText(alive+' LEFT',238,y0+22);
-  // Doomguy face
-  drawFace(GW/2, y0+HH/2);
-  ctx.restore();
+  ctx.fillStyle=alive>0?'#ff4444':'#44ff44';ctx.fillText(alive+' LEFT',238,y0+22);
+  drawFace(GW/2,y0+HH/2);ctx.restore();
 }
 
 let facePain=0;
-function drawFace(cx,cy) {
-  const r=8;
-  ctx.fillStyle=pl.hp>70?'#228800':pl.hp>40?'#886600':pl.hp>20?'#992200':'#cc0000';
+function drawFace(cx,cy){
+  const r=8;ctx.fillStyle=pl.hp>70?'#228800':pl.hp>40?'#886600':pl.hp>20?'#992200':'#cc0000';
   ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#fff';
-  const ew=facePain>0?3.2:2.2,eh=facePain>0?4.2:3.2;
+  ctx.fillStyle='#fff';const ew=facePain>0?3.2:2.2,eh=facePain>0?4.2:3.2;
   ctx.beginPath();ctx.ellipse(cx-3,cy-2,ew,eh,0,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.ellipse(cx+3,cy-2,ew,eh,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#000';
-  ctx.beginPath();ctx.arc(cx-3,cy-2,1.3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(cx-3,cy-2,1.3,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.arc(cx+3,cy-2,1.3,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#000';ctx.lineWidth=1.2;
   if(pl.hp>70){ctx.beginPath();ctx.arc(cx,cy+3,2.8,0,Math.PI);ctx.stroke();}
@@ -554,90 +565,45 @@ function drawFace(cx,cy) {
   else{ctx.beginPath();ctx.arc(cx,cy+5,2.8,Math.PI,Math.PI*2);ctx.stroke();}
 }
 
-function drawXhair() {
-  const cx=GW/2,cy=VH/2;
-  ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(cx,cy-5);ctx.lineTo(cx,cy+5);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx-5,cy);ctx.lineTo(cx+5,cy);ctx.stroke();
-}
+function drawXhair(){const cx=GW/2,cy=VH/2;ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx,cy-5);ctx.lineTo(cx,cy+5);ctx.stroke();ctx.beginPath();ctx.moveTo(cx-5,cy);ctx.lineTo(cx+5,cy);ctx.stroke();}
 
-// ── GAME LOOP ─────────────────────────────────────────────────────────────
+// ── Game loop ────────────────────────────────────────────────
 let lastT=0;
-function loop(ts) {
-  const dt=Math.min(.05,(ts-lastT)/1000); lastT=ts;
-
-  if (gstate==='play') {
-    pl.anim+=dt;
-    if(pl.muzzle>0)pl.muzzle--;
-    if(pl.cd>0)pl.cd--;
-    if(pl.dflash>0)pl.dflash--;
-    if(facePain>0)facePain--;
-
+function loop(ts){
+  const dt=Math.min(.05,(ts-lastT)/1000);lastT=ts;
+  if(gstate==='play'){
+    pl.anim+=dt;if(pl.muzzle>0)pl.muzzle--;if(pl.cd>0)pl.cd--;if(pl.dflash>0)pl.dflash--;if(facePain>0)facePain--;
     const SP=3.5*dt,RT=2.2*dt;
     if(keys['KeyW']||keys['ArrowUp'])   move( pl.dx*SP, pl.dy*SP);
     if(keys['KeyS']||keys['ArrowDown']) move(-pl.dx*SP,-pl.dy*SP);
     if(keys['KeyA'])                     move( pl.dy*SP,-pl.dx*SP);
     if(keys['KeyD'])                     move(-pl.dy*SP, pl.dx*SP);
-    if(keys['ArrowLeft'])  rot(-RT);
-    if(keys['ArrowRight']) rot( RT);
-
+    if(keys['ArrowLeft'])rot(-RT);if(keys['ArrowRight'])rot(RT);
     updateEn(dt);
-
-    if (enemies.every(e=>e.hp<=0)) {
-      gstate='win';
-      if(document.pointerLockElement)document.exitPointerLock();
-      showEnd('LEVEL COMPLETE','All demons slain!  Score: '+pl.score,'#44ff44');
-    } else if (pl.hp<=0) {
-      gstate='dead';
-      if(document.pointerLockElement)document.exitPointerLock();
-      showEnd('YOU DIED','Score: '+pl.score,'#ff4444');
-    }
-
-    // damage flash
-    if (pl.dflash>0) {
-      const a=pl.dflash/14*.42;
-      facePain=30;
-      for(let i=0,lim=GW*VH;i<lim;i++){
-        const c=buf32[i];
-        buf32[i]=px(Math.min(255,((c&0xFF)+(180*a))|0),(((c>>8)&0xFF)*(1-a))|0,(((c>>16)&0xFF)*(1-a))|0);
-      }
-    }
-
-    render3D();
-    renderSprites();
-    renderWeapon();
-    renderHUD();
-    ctx.putImageData(imgData,0,0);
-    renderHUDText();
-    drawXhair();
+    if(pl.dflash>0){const a=pl.dflash/14*.42;for(let i=0,lim=GW*VH;i<lim;i++){const c=buf32[i];buf32[i]=px(Math.min(255,((c&0xFF)+(180*a))|0),(((c>>8)&0xFF)*(1-a))|0,(((c>>16)&0xFF)*(1-a))|0);}}
+    if(enemies.every(e=>e.hp<=0)){gstate='win';if(document.pointerLockElement)document.exitPointerLock();showEnd('LEVEL COMPLETE','All demons slain! Score: '+pl.score,'#44ff44');}
+    else if(pl.hp<=0){gstate='dead';if(document.pointerLockElement)document.exitPointerLock();showEnd('YOU DIED','Score: '+pl.score,'#ff4444');}
+    render3D();renderSprites();renderWeapon();renderHUD();
+    ctx.putImageData(imgData,0,0);renderHUDText();drawXhair();
   }
-
   requestAnimationFrame(loop);
 }
 
-// ── START / END SCREEN ────────────────────────────────────────────────────
-const overlay = document.getElementById('overlay');
-
-function startGame() {
-  overlay.classList.add('gone');
-  resetPl(); resetEn();
-  gstate='play';
+// ── Overlay control ──────────────────────────────────────────
+const ov=document.getElementById('ov');
+function startGame(){ov.classList.add('gone');resetPl();resetEn();gstate='play';}
+document.getElementById('ov-btn').addEventListener('click',startGame);
+function showEnd(title,sub,color){
+  ov.classList.remove('gone');
+  ov.innerHTML=`<div class="ov-title" style="color:${color};text-shadow:0 0 30px ${color}">${title}</div><div class="ov-sub">${sub}</div><button class="ov-btn" id="ov-btn" style="border-color:${color};color:${color}">&#9654; PLAY AGAIN</button>`;
+  document.getElementById('ov-btn').addEventListener('click',startGame);
 }
 
-document.getElementById('ov-btn').addEventListener('click', startGame);
-
-function showEnd(title,sub,color) {
-  overlay.classList.remove('gone');
-  overlay.innerHTML=`
-    <div class="ov-title" style="color:${color};text-shadow:0 0 30px ${color}">${title}</div>
-    <div class="ov-sub">${sub}</div>
-    <button class="ov-btn" id="ov-btn" style="border-color:${color};color:${color}">&#9654; PLAY AGAIN</button>
-  `;
-  document.getElementById('ov-btn').addEventListener('click', startGame);
-}
-
-// Start the rAF loop immediately — canvas is always visible, context is valid
+// Start rAF — canvas is always visible so context is always valid
 requestAnimationFrame(loop);
+
+// Build games on first load
+buildGames();
 </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
