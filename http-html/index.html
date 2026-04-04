@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTTP — The Protocol of the Web</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #00060f;
+      --cyan: #00d4ff;
+      --green: #00ff88;
+      --pink: #ff4081;
+      --purple: #7b68ee;
+      --panel: #1a1a3e;
+      --text: #c8d8f0;
+      --dim: #5a7090;
+    }
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+      padding-top: 44px;
+    }
+
+    /* ── Canvas Background ── */
+    #bgCanvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; opacity: 0.18;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      background: rgba(0,6,15,0.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,212,255,0.25);
+    }
+    .sub-nav-inner {
+      display: flex; justify-content: center; gap: 0.5rem;
+      padding: 0.5rem; flex-wrap: wrap;
+    }
+    .tab {
+      font-family: 'Courier New', monospace; font-size: 0.8rem; font-weight: 700;
+      padding: 0.3rem 0.9rem; background: rgba(0,212,255,0.04);
+      border: 1px solid rgba(0,212,255,0.2); color: var(--dim);
+      cursor: pointer; border-radius: 3px; letter-spacing: 0.05em;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .tab:hover { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.5); color: var(--cyan); }
+    .tab.active { background: rgba(0,212,255,0.18); border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+
+    /* ── Layout ── */
+    .section { display: none; position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .section.active { display: block; }
+
+    /* ── Page header ── */
+    .page-header {
+      text-align: center; padding: 2.5rem 1rem 2rem;
+      background: linear-gradient(180deg, rgba(0,212,255,0.08) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(0,212,255,0.12);
+      position: relative; z-index: 1;
+    }
+    .page-header h1 {
+      font-size: clamp(1.8rem, 5vw, 3.2rem); font-weight: 900;
+      letter-spacing: 0.15em; color: var(--cyan);
+      text-shadow: 0 0 30px rgba(0,212,255,0.6);
+    }
+    .page-header p { color: var(--dim); margin-top: 0.5rem; font-size: 0.9rem; }
+
+    /* ── Section title ── */
+    .sec-title {
+      font-size: 1.4rem; font-weight: 700; color: var(--cyan);
+      margin-bottom: 1.5rem; padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(0,212,255,0.2);
+      letter-spacing: 0.1em;
+    }
+
+    /* ── Method Cards ── */
+    .methods-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.2rem;
+    }
+    .method-card {
+      background: var(--panel); border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .method-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+    .method-header {
+      padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .method-name { font-size: 1.5rem; font-weight: 900; letter-spacing: 0.1em; }
+    .method-name.GET { color: #00ff88; }
+    .method-name.POST { color: #00aaff; }
+    .method-name.PUT { color: #ff8c00; }
+    .method-name.PATCH { color: #ffd700; }
+    .method-name.DELETE { color: #ff4444; }
+    .method-name.HEAD { color: #00d4ff; }
+    .method-name.OPTIONS { color: #7b68ee; }
+    .method-name.CONNECT { color: #ff69b4; }
+    .method-name.TRACE { color: #20b2aa; }
+    .method-badges { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-end; }
+    .badge {
+      font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.45rem;
+      border-radius: 3px; letter-spacing: 0.08em;
+    }
+    .badge.yes { background: rgba(0,255,136,0.15); color: #00ff88; border: 1px solid rgba(0,255,136,0.3); }
+    .badge.no { background: rgba(255,68,68,0.12); color: #ff6666; border: 1px solid rgba(255,68,68,0.25); }
+    .badge.partial { background: rgba(255,215,0,0.12); color: #ffd700; border: 1px solid rgba(255,215,0,0.3); }
+    .method-body { padding: 1rem 1.2rem; border-top: 1px solid rgba(255,255,255,0.06); }
+    .method-desc { font-size: 0.82rem; color: #8aaccc; line-height: 1.6; margin-bottom: 0.8rem; }
+    .method-snippet {
+      background: rgba(0,0,0,0.4); border-radius: 5px; border: 1px solid rgba(0,212,255,0.12);
+      padding: 0.6rem 0.8rem; font-size: 0.72rem; color: #00d4ff; line-height: 1.5;
+      white-space: pre;
+    }
+    .badge-row { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
+    .badge-label { font-size: 0.65rem; color: var(--dim); }
+
+    /* ── Status Codes ── */
+    .status-search {
+      width: 100%; max-width: 500px; display: block; margin: 0 auto 2rem;
+      padding: 0.7rem 1rem; background: rgba(0,212,255,0.05);
+      border: 1px solid rgba(0,212,255,0.3); border-radius: 6px;
+      color: var(--text); font-family: 'Courier New', monospace; font-size: 0.9rem;
+      outline: none;
+    }
+    .status-search:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,212,255,0.2); }
+    .status-search::placeholder { color: var(--dim); }
+    .status-group { margin-bottom: 2.5rem; }
+    .status-group-title {
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.12em;
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .status-group-title::before { content: ''; display: block; width: 3px; height: 1.2em; border-radius: 2px; }
+    .s1xx .status-group-title { color: #7b68ee; }
+    .s1xx .status-group-title::before { background: #7b68ee; }
+    .s2xx .status-group-title { color: #00ff88; }
+    .s2xx .status-group-title::before { background: #00ff88; }
+    .s3xx .status-group-title { color: #00d4ff; }
+    .s3xx .status-group-title::before { background: #00d4ff; }
+    .s4xx .status-group-title { color: #ff8c00; }
+    .s4xx .status-group-title::before { background: #ff8c00; }
+    .s5xx .status-group-title { color: #ff4444; }
+    .s5xx .status-group-title::before { background: #ff4444; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.7rem; }
+    .status-card {
+      background: var(--panel); border-radius: 6px; padding: 0.8rem 1rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .status-card:hover { background: rgba(26,26,62,0.8); }
+    .s1xx .status-card:hover { border-color: rgba(123,104,238,0.4); }
+    .s2xx .status-card:hover { border-color: rgba(0,255,136,0.3); }
+    .s3xx .status-card:hover { border-color: rgba(0,212,255,0.3); }
+    .s4xx .status-card:hover { border-color: rgba(255,140,0,0.35); }
+    .s5xx .status-card:hover { border-color: rgba(255,68,68,0.35); }
+    .status-code { font-size: 1.2rem; font-weight: 900; letter-spacing: 0.06em; }
+    .s1xx .status-code { color: #9d8cff; }
+    .s2xx .status-code { color: #00ff88; }
+    .s3xx .status-code { color: #00d4ff; }
+    .s4xx .status-code { color: #ff8c00; }
+    .s5xx .status-code { color: #ff5555; }
+    .status-text { font-size: 0.8rem; color: var(--text); margin: 0.2rem 0; }
+    .status-desc { font-size: 0.72rem; color: var(--dim); line-height: 1.5; }
+    .status-card.hidden { display: none; }
+
+    /* ── Headers ── */
+    .headers-group { margin-bottom: 2.5rem; }
+    .headers-group-title {
+      font-size: 1rem; font-weight: 700; color: var(--purple);
+      margin-bottom: 1rem; letter-spacing: 0.1em;
+      padding: 0.5rem 1rem; background: rgba(123,104,238,0.1);
+      border-left: 3px solid var(--purple); border-radius: 0 4px 4px 0;
+    }
+    .headers-group-title.response { color: var(--cyan); background: rgba(0,212,255,0.08); border-color: var(--cyan); }
+    .headers-group-title.general { color: var(--green); background: rgba(0,255,136,0.08); border-color: var(--green); }
+    .header-table { width: 100%; border-collapse: collapse; }
+    .header-table th {
+      text-align: left; padding: 0.5rem 0.8rem; font-size: 0.72rem;
+      color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .header-table td {
+      padding: 0.55rem 0.8rem; font-size: 0.8rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .header-table tr:hover td { background: rgba(255,255,255,0.03); }
+    .header-name { color: var(--cyan); font-weight: 700; }
+    .header-example { color: var(--green); font-size: 0.72rem; }
+    .header-desc { color: #8aaccc; }
+
+    /* ── Versions Timeline ── */
+    .timeline { position: relative; padding-left: 2.5rem; }
+    .timeline::before {
+      content: ''; position: absolute; left: 0.65rem; top: 0; bottom: 0;
+      width: 2px; background: linear-gradient(180deg, var(--cyan), var(--purple));
+    }
+    .timeline-item { position: relative; margin-bottom: 2rem; }
+    .timeline-dot {
+      position: absolute; left: -1.9rem; top: 0.9rem;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--cyan); border: 2px solid var(--bg);
+      box-shadow: 0 0 12px rgba(0,212,255,0.6);
+    }
+    .version-card {
+      background: var(--panel); border-radius: 8px;
+      border: 1px solid rgba(0,212,255,0.12); padding: 1.2rem 1.5rem;
+      transition: box-shadow 0.2s;
+    }
+    .version-card:hover { box-shadow: 0 4px 20px rgba(0,212,255,0.1); }
+    .version-num { font-size: 1.4rem; font-weight: 900; color: var(--cyan); }
+    .version-year { font-size: 0.75rem; color: var(--dim); margin-left: 0.6rem; }
+    .version-desc { font-size: 0.83rem; color: #8aaccc; margin-top: 0.5rem; line-height: 1.65; }
+    .version-features { margin-top: 0.7rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .vf-badge {
+      font-size: 0.67rem; padding: 0.2rem 0.6rem;
+      background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 3px; color: var(--cyan);
+    }
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    .compare-table th, .compare-table td {
+      padding: 0.65rem 1rem; text-align: center;
+      border: 1px solid rgba(255,255,255,0.07); font-size: 0.8rem;
+    }
+    .compare-table th { background: rgba(0,212,255,0.1); color: var(--cyan); font-size: 0.75rem; letter-spacing: 0.08em; }
+    .compare-table td { color: #8aaccc; }
+    .compare-table td:first-child { text-align: left; font-weight: 700; color: var(--text); }
+    .compare-table tr:hover td { background: rgba(0,212,255,0.04); }
+    .tick { color: #00ff88; }
+    .cross { color: #ff4444; }
+
+    /* ── Security Cards ── */
+    .security-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.2rem; }
+    .sec-card {
+      background: var(--panel); border-radius: 8px; padding: 1.3rem;
+      border: 1px solid rgba(255,64,129,0.15); transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .sec-card:hover { border-color: rgba(255,64,129,0.4); box-shadow: 0 4px 20px rgba(255,64,129,0.08); }
+    .sec-card-title { font-size: 0.95rem; font-weight: 700; color: var(--pink); margin-bottom: 0.6rem; }
+    .sec-card-badge {
+      font-size: 0.65rem; padding: 0.15rem 0.5rem; margin-left: 0.5rem;
+      background: rgba(255,64,129,0.12); border: 1px solid rgba(255,64,129,0.3);
+      border-radius: 3px; color: var(--pink); vertical-align: middle;
+    }
+    .sec-card-desc { font-size: 0.8rem; color: #8aaccc; line-height: 1.65; }
+    .sec-snippet {
+      margin-top: 0.7rem; background: rgba(0,0,0,0.4); border-radius: 4px;
+      border: 1px solid rgba(255,64,129,0.15); padding: 0.6rem 0.8rem;
+      font-size: 0.7rem; color: #00d4ff; line-height: 1.5; white-space: pre-wrap;
+    }
+
+    /* ── Network animation ── */
+    .network-anim {
+      margin: 1.5rem 0; padding: 1rem; background: rgba(0,0,0,0.3);
+      border-radius: 8px; border: 1px solid rgba(0,212,255,0.12);
+      overflow: hidden; height: 80px; position: relative;
+    }
+    .packet {
+      position: absolute; width: 12px; height: 12px;
+      background: var(--cyan); border-radius: 50%;
+      top: 50%; transform: translateY(-50%);
+      animation: flow 2.5s linear infinite;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+    .packet:nth-child(2) { animation-delay: 0.6s; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .packet:nth-child(3) { animation-delay: 1.2s; background: var(--purple); box-shadow: 0 0 8px var(--purple); }
+    .packet:nth-child(4) { animation-delay: 1.8s; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
+    @keyframes flow { from { left: -20px; } to { left: calc(100% + 20px); } }
+    .node { position: absolute; top: 50%; transform: translateY(-50%); }
+    .node-left { left: 1rem; }
+    .node-right { right: 1rem; }
+    .node-box {
+      padding: 0.3rem 0.7rem; background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3); border-radius: 4px;
+      font-size: 0.7rem; color: var(--cyan);
+    }
+    .node-line {
+      position: absolute; top: 50%; left: 5.5rem; right: 5.5rem;
+      height: 2px; background: linear-gradient(90deg, rgba(0,212,255,0.3), rgba(0,212,255,0.1));
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="page-header">
+  <h1>HTTP</h1>
+  <p>HyperText Transfer Protocol — The Foundation of the Web</p>
+</div>
+
+<nav class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="switchTab('methods')">[ Methods ]</button>
+    <button class="tab" onclick="switchTab('status')">[ Status Codes ]</button>
+    <button class="tab" onclick="switchTab('headers')">[ Headers ]</button>
+    <button class="tab" onclick="switchTab('versions')">[ Versions ]</button>
+    <button class="tab" onclick="switchTab('security')">[ Security ]</button>
+  </div>
+</nav>
+
+<!-- METHODS -->
+<div id="methods" class="section active">
+  <div class="sec-title">HTTP Request Methods</div>
+  <div class="network-anim">
+    <div class="node node-left"><div class="node-box">CLIENT</div></div>
+    <div class="node-line"></div>
+    <div class="node node-right"><div class="node-box">SERVER</div></div>
+    <div class="packet"></div>
+    <div class="packet"></div>
+    <div class="packet"></div>
+    <div class="packet"></div>
+  </div>
+  <div class="methods-grid">
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name GET">GET</span>
+        <div class="method-badges">
+          <span class="badge yes">Safe ✓</span>
+          <span class="badge yes">Idempotent ✓</span>
+          <span class="badge yes">Cacheable ✓</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Retrieves a resource without modifying it. Parameters are passed in the URL query string. The most common HTTP method — used for every page load.</div>
+        <div class="method-snippet">GET /api/users?page=2 HTTP/1.1
+Host: example.com
+Accept: application/json</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name POST">POST</span>
+        <div class="method-badges">
+          <span class="badge no">Safe ✗</span>
+          <span class="badge no">Idempotent ✗</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Submits data to create a new resource. The request body contains the data. Multiple identical POST requests may create multiple resources.</div>
+        <div class="method-snippet">POST /api/users HTTP/1.1
+Content-Type: application/json
+
+{"name":"Alice","email":"a@b.com"}</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name PUT">PUT</span>
+        <div class="method-badges">
+          <span class="badge no">Safe ✗</span>
+          <span class="badge yes">Idempotent ✓</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Replaces an entire resource at a given URI. If the resource doesn't exist, it may be created. The full entity must be sent in the body.</div>
+        <div class="method-snippet">PUT /api/users/42 HTTP/1.1
+Content-Type: application/json
+
+{"name":"Bob","email":"b@c.com"}</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name PATCH">PATCH</span>
+        <div class="method-badges">
+          <span class="badge no">Safe ✗</span>
+          <span class="badge no">Idempotent ✗</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Applies a partial modification to a resource. Only the fields to be changed are included in the body — unlike PUT which replaces the entire resource.</div>
+        <div class="method-snippet">PATCH /api/users/42 HTTP/1.1
+Content-Type: application/json
+
+{"email":"newemail@example.com"}</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name DELETE">DELETE</span>
+        <div class="method-badges">
+          <span class="badge no">Safe ✗</span>
+          <span class="badge yes">Idempotent ✓</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Removes a resource. Idempotent — deleting the same resource twice produces the same outcome (resource is gone). Returns 204 on success.</div>
+        <div class="method-snippet">DELETE /api/users/42 HTTP/1.1
+Host: example.com
+Authorization: Bearer &lt;token&gt;</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name HEAD">HEAD</span>
+        <div class="method-badges">
+          <span class="badge yes">Safe ✓</span>
+          <span class="badge yes">Idempotent ✓</span>
+          <span class="badge yes">Cacheable ✓</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Like GET but returns only response headers, not the body. Used to check if a resource exists, get its size, or validate a cached copy without transferring data.</div>
+        <div class="method-snippet">HEAD /files/large-video.mp4 HTTP/1.1
+Host: cdn.example.com
+# Returns Content-Length, Last-Modified</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name OPTIONS">OPTIONS</span>
+        <div class="method-badges">
+          <span class="badge yes">Safe ✓</span>
+          <span class="badge yes">Idempotent ✓</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Describes the communication options for a resource. Used heavily by CORS preflight requests to determine which methods and headers the server permits.</div>
+        <div class="method-snippet">OPTIONS /api/data HTTP/1.1
+Origin: https://app.example.com
+Access-Control-Request-Method: POST</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name CONNECT">CONNECT</span>
+        <div class="method-badges">
+          <span class="badge no">Safe ✗</span>
+          <span class="badge no">Idempotent ✗</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Establishes a tunnel to a server via a proxy. Used for HTTPS through HTTP proxies — the proxy becomes a transparent TCP relay after the 200 tunnel response.</div>
+        <div class="method-snippet">CONNECT secure.example.com:443 HTTP/1.1
+Host: secure.example.com:443
+Proxy-Authorization: Basic &lt;creds&gt;</div>
+      </div>
+    </div>
+
+    <div class="method-card">
+      <div class="method-header">
+        <span class="method-name TRACE">TRACE</span>
+        <div class="method-badges">
+          <span class="badge yes">Safe ✓</span>
+          <span class="badge yes">Idempotent ✓</span>
+          <span class="badge no">Cacheable ✗</span>
+        </div>
+      </div>
+      <div class="method-body">
+        <div class="method-desc">Echoes the received request back so the client can see what changes were made by intermediate proxies. Disabled by most servers due to XST (cross-site tracing) vulnerability.</div>
+        <div class="method-snippet">TRACE / HTTP/1.1
+Host: example.com
+# Server returns full request as-received</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUS CODES -->
+<div id="status" class="section">
+  <div class="sec-title">HTTP Status Codes</div>
+  <input class="status-search" id="statusSearch" type="text" placeholder="Search status codes..." oninput="filterStatus(this.value)">
+
+  <div class="status-group s1xx">
+    <div class="status-group-title">1xx — Informational</div>
+    <div class="status-grid">
+      <div class="status-card" data-search="100 continue">
+        <div class="status-code">100</div>
+        <div class="status-text">Continue</div>
+        <div class="status-desc">Server received the request headers and the client should proceed to send the body. Reduces unnecessary data transfer.</div>
+      </div>
+      <div class="status-card" data-search="101 switching protocols websocket">
+        <div class="status-code">101</div>
+        <div class="status-text">Switching Protocols</div>
+        <div class="status-desc">Server agrees to switch protocols as requested (e.g., HTTP → WebSocket). Sent in response to an Upgrade header.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-group s2xx">
+    <div class="status-group-title">2xx — Success</div>
+    <div class="status-grid">
+      <div class="status-card" data-search="200 ok success">
+        <div class="status-code">200</div>
+        <div class="status-text">OK</div>
+        <div class="status-desc">The request succeeded. The response body contains the requested resource or result.</div>
+      </div>
+      <div class="status-card" data-search="201 created post resource">
+        <div class="status-code">201</div>
+        <div class="status-text">Created</div>
+        <div class="status-desc">Resource created successfully (POST). The Location header typically points to the new resource URL.</div>
+      </div>
+      <div class="status-card" data-search="202 accepted async">
+        <div class="status-code">202</div>
+        <div class="status-text">Accepted</div>
+        <div class="status-desc">Request accepted but not yet processed. Used for async operations. No guarantee of completion.</div>
+      </div>
+      <div class="status-card" data-search="204 no content delete">
+        <div class="status-code">204</div>
+        <div class="status-text">No Content</div>
+        <div class="status-desc">Success but no body to return. Typical for DELETE or PUT. The client should not update its view.</div>
+      </div>
+      <div class="status-card" data-search="206 partial content range">
+        <div class="status-code">206</div>
+        <div class="status-text">Partial Content</div>
+        <div class="status-desc">Response is a partial resource, sent in response to a Range header request. Used for resumable downloads and video streaming.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-group s3xx">
+    <div class="status-group-title">3xx — Redirection</div>
+    <div class="status-grid">
+      <div class="status-card" data-search="301 moved permanently redirect">
+        <div class="status-code">301</div>
+        <div class="status-text">Moved Permanently</div>
+        <div class="status-desc">Resource has permanently moved to a new URL. Browsers cache this; search engines transfer link equity.</div>
+      </div>
+      <div class="status-card" data-search="302 found temporary redirect">
+        <div class="status-code">302</div>
+        <div class="status-text">Found</div>
+        <div class="status-desc">Temporary redirect. Client should continue using the original URL for future requests.</div>
+      </div>
+      <div class="status-card" data-search="304 not modified cache etag">
+        <div class="status-code">304</div>
+        <div class="status-text">Not Modified</div>
+        <div class="status-desc">Resource hasn't changed since last request (ETag/If-Modified-Since validation). Use your cached copy.</div>
+      </div>
+      <div class="status-card" data-search="307 temporary redirect method">
+        <div class="status-code">307</div>
+        <div class="status-text">Temporary Redirect</div>
+        <div class="status-desc">Temporary redirect. Unlike 302, the HTTP method must NOT change (POST stays POST).</div>
+      </div>
+      <div class="status-card" data-search="308 permanent redirect method">
+        <div class="status-code">308</div>
+        <div class="status-text">Permanent Redirect</div>
+        <div class="status-desc">Permanent redirect. Like 301, but the method must not change. Strict version of 301.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-group s4xx">
+    <div class="status-group-title">4xx — Client Error</div>
+    <div class="status-grid">
+      <div class="status-card" data-search="400 bad request malformed">
+        <div class="status-code">400</div>
+        <div class="status-text">Bad Request</div>
+        <div class="status-desc">Server cannot process the request due to client error — malformed syntax, invalid parameters, or deceptive routing.</div>
+      </div>
+      <div class="status-card" data-search="401 unauthorized authentication">
+        <div class="status-code">401</div>
+        <div class="status-text">Unauthorized</div>
+        <div class="status-desc">Authentication required. The client must authenticate itself. Response includes a WWW-Authenticate header.</div>
+      </div>
+      <div class="status-card" data-search="403 forbidden authorization">
+        <div class="status-code">403</div>
+        <div class="status-text">Forbidden</div>
+        <div class="status-desc">Server understood the request but refuses to authorize it. Unlike 401, authentication won't help.</div>
+      </div>
+      <div class="status-card" data-search="404 not found missing">
+        <div class="status-code">404</div>
+        <div class="status-text">Not Found</div>
+        <div class="status-desc">The requested resource could not be found. The most famous HTTP status code on the web.</div>
+      </div>
+      <div class="status-card" data-search="405 method not allowed">
+        <div class="status-code">405</div>
+        <div class="status-text">Method Not Allowed</div>
+        <div class="status-desc">The HTTP method is not supported for this resource. The Allow header lists permitted methods.</div>
+      </div>
+      <div class="status-card" data-search="408 request timeout">
+        <div class="status-code">408</div>
+        <div class="status-text">Request Timeout</div>
+        <div class="status-desc">Server timed out waiting for the client to send a request. Connection can be reused.</div>
+      </div>
+      <div class="status-card" data-search="409 conflict state">
+        <div class="status-code">409</div>
+        <div class="status-text">Conflict</div>
+        <div class="status-desc">Request conflicts with the current state of the server — e.g., concurrent modification or duplicate entry.</div>
+      </div>
+      <div class="status-card" data-search="410 gone removed permanently">
+        <div class="status-code">410</div>
+        <div class="status-text">Gone</div>
+        <div class="status-desc">Resource was permanently removed and won't return. Unlike 404, the condition is expected to be permanent.</div>
+      </div>
+      <div class="status-card" data-search="413 payload too large content length">
+        <div class="status-code">413</div>
+        <div class="status-text">Payload Too Large</div>
+        <div class="status-desc">Request body exceeds the server's size limit. Retry-After may indicate when to try again.</div>
+      </div>
+      <div class="status-card" data-search="418 im a teapot april fools">
+        <div class="status-code">418</div>
+        <div class="status-text">I'm a Teapot ☕</div>
+        <div class="status-desc">Any attempt to brew coffee with a teapot should result in this error. RFC 2324 April Fools' joke — now an IETF standard.</div>
+      </div>
+      <div class="status-card" data-search="422 unprocessable entity validation">
+        <div class="status-code">422</div>
+        <div class="status-text">Unprocessable Entity</div>
+        <div class="status-desc">Request is well-formed but has semantic errors — e.g., validation failed. Common in REST APIs with JSON body validation.</div>
+      </div>
+      <div class="status-card" data-search="429 too many requests rate limit">
+        <div class="status-code">429</div>
+        <div class="status-text">Too Many Requests</div>
+        <div class="status-desc">Rate limit exceeded. The Retry-After header indicates when the client may try again.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-group s5xx">
+    <div class="status-group-title">5xx — Server Error</div>
+    <div class="status-grid">
+      <div class="status-card" data-search="500 internal server error">
+        <div class="status-code">500</div>
+        <div class="status-text">Internal Server Error</div>
+        <div class="status-desc">Generic server error. An unexpected condition was encountered. Check server logs for details.</div>
+      </div>
+      <div class="status-card" data-search="501 not implemented">
+        <div class="status-code">501</div>
+        <div class="status-text">Not Implemented</div>
+        <div class="status-desc">Server does not recognize or support the request method. Only GET and HEAD are required methods.</div>
+      </div>
+      <div class="status-card" data-search="502 bad gateway proxy upstream">
+        <div class="status-code">502</div>
+        <div class="status-text">Bad Gateway</div>
+        <div class="status-desc">Proxy received an invalid response from an upstream server. Common with nginx/load balancer setups.</div>
+      </div>
+      <div class="status-card" data-search="503 service unavailable maintenance">
+        <div class="status-code">503</div>
+        <div class="status-text">Service Unavailable</div>
+        <div class="status-desc">Server temporarily unable to handle requests — overloaded or under maintenance. Retry-After header may be present.</div>
+      </div>
+      <div class="status-card" data-search="504 gateway timeout proxy">
+        <div class="status-code">504</div>
+        <div class="status-text">Gateway Timeout</div>
+        <div class="status-desc">Proxy didn't receive a timely response from the upstream server. Indicates backend latency issues.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADERS -->
+<div id="headers" class="section">
+  <div class="sec-title">HTTP Headers</div>
+
+  <div class="headers-group">
+    <div class="headers-group-title">Request Headers</div>
+    <table class="header-table">
+      <thead><tr><th>Header</th><th>Example Value</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="header-name">Accept</td><td class="header-example">application/json, text/html</td><td class="header-desc">Media types the client can process</td></tr>
+        <tr><td class="header-name">Authorization</td><td class="header-example">Bearer eyJ0eXAiOiJKV1Q...</td><td class="header-desc">Credentials for authenticating the request</td></tr>
+        <tr><td class="header-name">Cache-Control</td><td class="header-example">no-cache, max-age=3600</td><td class="header-desc">Caching directives for request/response chain</td></tr>
+        <tr><td class="header-name">Content-Type</td><td class="header-example">application/json; charset=utf-8</td><td class="header-desc">Media type of the request body</td></tr>
+        <tr><td class="header-name">Host</td><td class="header-example">api.example.com</td><td class="header-desc">Domain name of the server (required in HTTP/1.1)</td></tr>
+        <tr><td class="header-name">User-Agent</td><td class="header-example">Mozilla/5.0 (X11; Linux x86_64)</td><td class="header-desc">Identifies the client software making the request</td></tr>
+        <tr><td class="header-name">Referer</td><td class="header-example">https://example.com/page</td><td class="header-desc">URL of the page that linked to this request</td></tr>
+        <tr><td class="header-name">Cookie</td><td class="header-example">session=abc123; theme=dark</td><td class="header-desc">Previously set cookies sent back to the server</td></tr>
+        <tr><td class="header-name">If-Modified-Since</td><td class="header-example">Mon, 01 Jan 2024 00:00:00 GMT</td><td class="header-desc">Conditional GET: return resource only if newer</td></tr>
+        <tr><td class="header-name">Origin</td><td class="header-example">https://app.example.com</td><td class="header-desc">Origin of the cross-site request (used in CORS)</td></tr>
+        <tr><td class="header-name">X-Forwarded-For</td><td class="header-example">203.0.113.42, 10.0.0.1</td><td class="header-desc">Original client IP behind proxies/load balancers</td></tr>
+        <tr><td class="header-name">Accept-Encoding</td><td class="header-example">gzip, deflate, br</td><td class="header-desc">Compression formats the client understands</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="headers-group">
+    <div class="headers-group-title response">Response Headers</div>
+    <table class="header-table">
+      <thead><tr><th>Header</th><th>Example Value</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="header-name">Content-Type</td><td class="header-example">text/html; charset=UTF-8</td><td class="header-desc">Media type of the response body</td></tr>
+        <tr><td class="header-name">Content-Length</td><td class="header-example">3428</td><td class="header-desc">Size of response body in bytes</td></tr>
+        <tr><td class="header-name">Content-Encoding</td><td class="header-example">gzip</td><td class="header-desc">Encoding applied to the response body</td></tr>
+        <tr><td class="header-name">Set-Cookie</td><td class="header-example">session=xyz; HttpOnly; Secure</td><td class="header-desc">Instructs client to store a cookie</td></tr>
+        <tr><td class="header-name">Cache-Control</td><td class="header-example">public, max-age=86400</td><td class="header-desc">How long and by whom the response may be cached</td></tr>
+        <tr><td class="header-name">ETag</td><td class="header-example">"33a64df551425fcc55e4d42a148795d9"</td><td class="header-desc">Identifier for a specific version of the resource</td></tr>
+        <tr><td class="header-name">Last-Modified</td><td class="header-example">Wed, 21 Oct 2024 07:28:00 GMT</td><td class="header-desc">Date the resource was last modified</td></tr>
+        <tr><td class="header-name">Location</td><td class="header-example">https://example.com/new-path</td><td class="header-desc">URL for redirect (3xx) or new resource (201)</td></tr>
+        <tr><td class="header-name">WWW-Authenticate</td><td class="header-example">Bearer realm="example"</td><td class="header-desc">Authentication scheme required (sent with 401)</td></tr>
+        <tr><td class="header-name">Access-Control-Allow-Origin</td><td class="header-example">https://app.example.com</td><td class="header-desc">Which origins are allowed to read the response (CORS)</td></tr>
+        <tr><td class="header-name">Strict-Transport-Security</td><td class="header-example">max-age=31536000; includeSubDomains</td><td class="header-desc">Force HTTPS for future requests (HSTS)</td></tr>
+        <tr><td class="header-name">X-Frame-Options</td><td class="header-example">DENY</td><td class="header-desc">Prevents the page from being embedded in iframes</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="headers-group">
+    <div class="headers-group-title general">General / Entity Headers</div>
+    <table class="header-table">
+      <thead><tr><th>Header</th><th>Example Value</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="header-name">Connection</td><td class="header-example">keep-alive</td><td class="header-desc">Controls whether the connection stays open after the current transaction</td></tr>
+        <tr><td class="header-name">Date</td><td class="header-example">Tue, 15 Nov 2024 08:12:31 GMT</td><td class="header-desc">Date and time at which the message was originated</td></tr>
+        <tr><td class="header-name">Transfer-Encoding</td><td class="header-example">chunked</td><td class="header-desc">Form of encoding used to transfer the body; chunked allows streaming</td></tr>
+        <tr><td class="header-name">Upgrade</td><td class="header-example">websocket</td><td class="header-desc">Requests the server switch to a different protocol</td></tr>
+        <tr><td class="header-name">Via</td><td class="header-example">1.1 proxy.example.com</td><td class="header-desc">Tracks the intermediaries (proxies/gateways) the message passed through</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VERSIONS -->
+<div id="versions" class="section">
+  <div class="sec-title">HTTP Version History</div>
+  <div class="timeline">
+
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="version-card">
+        <div><span class="version-num">HTTP/0.9</span><span class="version-year">1991 — Tim Berners-Lee, CERN</span></div>
+        <div class="version-desc">The "one-liner" protocol. Only GET method, only HTML responses, no headers, no status codes. A single TCP connection per request, closed after the response.</div>
+        <div class="version-features">
+          <span class="vf-badge">GET only</span><span class="vf-badge">No headers</span><span class="vf-badge">HTML only</span><span class="vf-badge">No status codes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="version-card">
+        <div><span class="version-num">HTTP/1.0</span><span class="version-year">1996 — RFC 1945</span></div>
+        <div class="version-desc">Added HTTP headers, status codes, and content type negotiation. Multiple methods (GET, POST, HEAD). Still one request per TCP connection — each request requires a new connection, causing significant overhead.</div>
+        <div class="version-features">
+          <span class="vf-badge">Headers added</span><span class="vf-badge">Status codes</span><span class="vf-badge">Content-Type</span><span class="vf-badge">POST/HEAD</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="version-card">
+        <div><span class="version-num">HTTP/1.1</span><span class="version-year">1997 — RFC 2068, updated RFC 7230–7235</span></div>
+        <div class="version-desc">The dominant protocol for over a decade. Introduced persistent connections (keep-alive), chunked transfer encoding, virtual hosting (Host header required), content negotiation, and partial content (Range). Still has head-of-line blocking.</div>
+        <div class="version-features">
+          <span class="vf-badge">Persistent connections</span><span class="vf-badge">Chunked transfer</span><span class="vf-badge">Virtual hosting</span><span class="vf-badge">Pipelining</span><span class="vf-badge">Cache control</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:var(--green);box-shadow:0 0 12px rgba(0,255,136,0.6)"></div>
+      <div class="version-card" style="border-color:rgba(0,255,136,0.2)">
+        <div><span class="version-num" style="color:var(--green)">HTTP/2</span><span class="version-year">2015 — RFC 7540 (based on SPDY)</span></div>
+        <div class="version-desc">Binary protocol (not text-based). Multiplexing solves head-of-line blocking at the application layer — multiple requests/responses over a single connection simultaneously. HPACK header compression reduces overhead. Server push allows proactively sending resources. TLS de facto required.</div>
+        <div class="version-features">
+          <span class="vf-badge" style="border-color:rgba(0,255,136,0.3);color:var(--green);background:rgba(0,255,136,0.08)">Binary frames</span>
+          <span class="vf-badge" style="border-color:rgba(0,255,136,0.3);color:var(--green);background:rgba(0,255,136,0.08)">Multiplexing</span>
+          <span class="vf-badge" style="border-color:rgba(0,255,136,0.3);color:var(--green);background:rgba(0,255,136,0.08)">HPACK compression</span>
+          <span class="vf-badge" style="border-color:rgba(0,255,136,0.3);color:var(--green);background:rgba(0,255,136,0.08)">Server Push</span>
+          <span class="vf-badge" style="border-color:rgba(0,255,136,0.3);color:var(--green);background:rgba(0,255,136,0.08)">Stream priority</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:var(--pink);box-shadow:0 0 12px rgba(255,64,129,0.6)"></div>
+      <div class="version-card" style="border-color:rgba(255,64,129,0.2)">
+        <div><span class="version-num" style="color:var(--pink)">HTTP/3</span><span class="version-year">2022 — RFC 9114 (based on QUIC)</span></div>
+        <div class="version-desc">Runs over QUIC (UDP-based) instead of TCP, eliminating TCP-level head-of-line blocking entirely. Built-in TLS 1.3, faster connection setup (0-RTT resumption), better performance on lossy networks. Connection migration handles IP address changes (e.g., switching Wi-Fi to mobile).</div>
+        <div class="version-features">
+          <span class="vf-badge" style="border-color:rgba(255,64,129,0.3);color:var(--pink);background:rgba(255,64,129,0.08)">QUIC/UDP</span>
+          <span class="vf-badge" style="border-color:rgba(255,64,129,0.3);color:var(--pink);background:rgba(255,64,129,0.08)">0-RTT resumption</span>
+          <span class="vf-badge" style="border-color:rgba(255,64,129,0.3);color:var(--pink);background:rgba(255,64,129,0.08)">No HOL blocking</span>
+          <span class="vf-badge" style="border-color:rgba(255,64,129,0.3);color:var(--pink);background:rgba(255,64,129,0.08)">TLS 1.3 built-in</span>
+          <span class="vf-badge" style="border-color:rgba(255,64,129,0.3);color:var(--pink);background:rgba(255,64,129,0.08)">Connection migration</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec-title" style="margin-top:3rem">Version Comparison</div>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>HTTP/1.0</th>
+        <th>HTTP/1.1</th>
+        <th>HTTP/2</th>
+        <th>HTTP/3</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Transport</td><td>TCP</td><td>TCP</td><td>TCP</td><td>QUIC/UDP</td></tr>
+      <tr><td>Persistent Connections</td><td class="cross">✗</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+      <tr><td>Multiplexing</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+      <tr><td>Header Compression</td><td class="cross">✗</td><td class="cross">✗</td><td>HPACK</td><td>QPACK</td></tr>
+      <tr><td>Server Push</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+      <tr><td>Binary Protocol</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+      <tr><td>Built-in Encryption</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓</td></tr>
+      <tr><td>0-RTT Resumption</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓</td></tr>
+      <tr><td>HOL Blocking</td><td>TCP</td><td>TCP</td><td>TCP only</td><td class="tick">None</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SECURITY -->
+<div id="security" class="section">
+  <div class="sec-title">HTTP Security</div>
+  <div class="security-grid">
+
+    <div class="sec-card">
+      <div class="sec-card-title">HTTPS / TLS <span class="sec-card-badge">CRITICAL</span></div>
+      <div class="sec-card-desc">Transport Layer Security (TLS) encrypts the HTTP channel. TLS 1.3 (RFC 8446, 2018) is the current standard — 1-RTT handshake, forward secrecy via ephemeral keys, removed weak cipher suites. Always prefer TLS 1.3; disable 1.0 and 1.1.</div>
+      <div class="sec-snippet">ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers on;
+ssl_session_cache shared:SSL:10m;</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">HSTS — HTTP Strict Transport Security <span class="sec-card-badge">HEADER</span></div>
+      <div class="sec-card-desc">Instructs browsers to only connect via HTTPS for a specified duration. Prevents SSL-stripping attacks. Include subdomains and preload for maximum protection.</div>
+      <div class="sec-snippet">Strict-Transport-Security:
+  max-age=31536000;
+  includeSubDomains;
+  preload</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">CSP — Content Security Policy <span class="sec-card-badge">HEADER</span></div>
+      <div class="sec-card-desc">Restricts the sources from which scripts, styles, images, and other resources can be loaded. The primary defense against XSS attacks. Violations can be reported via report-uri.</div>
+      <div class="sec-snippet">Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'nonce-{random}';
+  img-src 'self' data:;
+  report-uri /csp-report</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">CORS — Cross-Origin Resource Sharing <span class="sec-card-badge">HEADER</span></div>
+      <div class="sec-card-desc">Browser mechanism that controls which origins can access a resource. Preflight OPTIONS requests check permissions. Set Access-Control-Allow-Origin to specific domains, never * with credentials.</div>
+      <div class="sec-snippet">Access-Control-Allow-Origin: https://app.example.com
+Access-Control-Allow-Methods: GET, POST
+Access-Control-Allow-Headers: Authorization
+Access-Control-Allow-Credentials: true</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">SameSite Cookies <span class="sec-card-badge">CSRF DEFENSE</span></div>
+      <div class="sec-card-desc">Cookie attribute preventing CSRF by controlling when cookies are sent cross-site. Strict = never cross-site; Lax = safe methods only; None = always (requires Secure). Default is Lax in modern browsers.</div>
+      <div class="sec-snippet">Set-Cookie: session=abc123;
+  HttpOnly; Secure;
+  SameSite=Strict;
+  Path=/; Max-Age=86400</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">X-Frame-Options / CSP frame-ancestors <span class="sec-card-badge">CLICKJACKING</span></div>
+      <div class="sec-card-desc">Prevents your page from being embedded in an iframe on another origin — defends against clickjacking attacks. X-Frame-Options is legacy; use CSP frame-ancestors instead which supports allowlists.</div>
+      <div class="sec-snippet">X-Frame-Options: DENY
+# Modern equivalent:
+Content-Security-Policy:
+  frame-ancestors 'none';</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">X-Content-Type-Options <span class="sec-card-badge">MIME SNIFF</span></div>
+      <div class="sec-card-desc">Prevents browsers from MIME-sniffing a response away from the declared Content-Type. Stops attackers from tricking browsers into treating uploaded files as executable content.</div>
+      <div class="sec-snippet">X-Content-Type-Options: nosniff</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">Certificate Transparency &amp; OCSP Stapling <span class="sec-card-badge">PKI</span></div>
+      <div class="sec-card-desc">Certificate Transparency (CT) logs all issued certs in public, auditable logs — browsers require CT for trust. OCSP Stapling allows the server to cache and deliver the certificate revocation status, improving privacy and performance.</div>
+      <div class="sec-snippet">ssl_stapling on;
+ssl_stapling_verify on;
+resolver 8.8.8.8 valid=300s;
+# CT enforced by browsers automatically</div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-card-title">Permissions-Policy &amp; Referrer-Policy <span class="sec-card-badge">PRIVACY</span></div>
+      <div class="sec-card-desc">Permissions-Policy (formerly Feature-Policy) controls access to browser APIs like camera, microphone, geolocation. Referrer-Policy limits how much URL info is sent in the Referer header to third-party sites.</div>
+      <div class="sec-snippet">Permissions-Policy:
+  camera=(), microphone=(), geolocation=()
+Referrer-Policy:
+  strict-origin-when-cross-origin</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Tab switching
+  function switchTab(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // Status code search
+  function filterStatus(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.status-card').forEach(card => {
+      const text = (card.dataset.search || '') + card.textContent.toLowerCase();
+      card.classList.toggle('hidden', q.length > 0 && !text.includes(q));
+    });
+    document.querySelectorAll('.status-group').forEach(group => {
+      const visible = group.querySelectorAll('.status-card:not(.hidden)').length;
+      group.style.display = visible === 0 && q.length > 0 ? 'none' : '';
+    });
+  }
+
+  // Background hex rain canvas
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let cols = [], W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    const colCount = Math.floor(W / 20);
+    cols = Array.from({length: colCount}, () => Math.floor(Math.random() * H / 16));
+  }
+
+  const HEX = '0123456789ABCDEF';
+  function drawRain() {
+    ctx.fillStyle = 'rgba(0,6,15,0.05)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = '13px monospace';
+    cols.forEach((y, i) => {
+      const char = HEX[Math.floor(Math.random() * 16)];
+      const alpha = 0.4 + Math.random() * 0.5;
+      ctx.fillStyle = `rgba(0,212,255,${alpha})`;
+      ctx.fillText(char, i * 20 + 4, y * 16);
+      cols[i] = y > H / 16 + Math.random() * 20 ? 0 : y + 1;
+    });
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(drawRain, 60);
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

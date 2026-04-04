@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSH — Secure Shell Protocol</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #000a00;
+      --green: #00ff41;
+      --neon: #39ff14;
+      --panel: #0a1a0a;
+      --panel2: #0f240f;
+      --mid: #00aa00;
+      --dim: #336633;
+      --text: #b0e0b0;
+    }
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+      padding-top: 44px;
+    }
+
+    /* ── Matrix Canvas ── */
+    #matrixCanvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; opacity: 0.12;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      background: rgba(0,10,0,0.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,255,65,0.2);
+    }
+    .sub-nav-inner {
+      display: flex; justify-content: center; gap: 0.5rem;
+      padding: 0.5rem; flex-wrap: wrap;
+    }
+    .tab {
+      font-family: 'Courier New', monospace; font-size: 0.8rem; font-weight: 700;
+      padding: 0.3rem 0.9rem; background: rgba(0,255,65,0.03);
+      border: 1px solid rgba(0,255,65,0.15); color: var(--dim);
+      cursor: pointer; border-radius: 3px; letter-spacing: 0.05em;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .tab:hover { background: rgba(0,255,65,0.1); border-color: rgba(0,255,65,0.4); color: var(--green); }
+    .tab.active { background: rgba(0,255,65,0.15); border-color: var(--green); color: var(--green); box-shadow: 0 0 8px rgba(0,255,65,0.25); }
+
+    /* ── Page header ── */
+    .page-header {
+      text-align: center; padding: 2.5rem 1rem 2rem;
+      background: linear-gradient(180deg, rgba(0,255,65,0.07) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(0,255,65,0.1);
+      position: relative; z-index: 1;
+    }
+    .page-header h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 900;
+      letter-spacing: 0.2em; color: var(--green);
+      text-shadow: 0 0 30px rgba(0,255,65,0.6), 0 0 60px rgba(0,255,65,0.2);
+    }
+    .blink { animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .page-header p { color: var(--mid); margin-top: 0.5rem; font-size: 0.85rem; }
+
+    /* ── Layout ── */
+    .section { display: none; position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .section.active { display: block; }
+    .sec-title {
+      font-size: 1.2rem; font-weight: 700; color: var(--green);
+      margin-bottom: 1.5rem; padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(0,255,65,0.2);
+      letter-spacing: 0.12em;
+    }
+
+    /* ── Terminal box ── */
+    .term-box {
+      background: #000d00; border: 1px solid rgba(0,255,65,0.25);
+      border-radius: 6px; padding: 1.2rem; margin-bottom: 1.5rem;
+      font-size: 0.82rem; line-height: 1.7;
+    }
+    .term-box .prompt { color: var(--green); }
+    .term-box .cmd { color: #ffffff; }
+    .term-box .out { color: var(--mid); }
+    .term-box .comment { color: var(--dim); }
+    .term-prompt { color: var(--green); }
+    .term-cursor { display: inline-block; width: 8px; height: 1em; background: var(--green); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+
+    /* ── Info grid ── */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .info-card {
+      background: var(--panel); border: 1px solid rgba(0,255,65,0.12);
+      border-radius: 7px; padding: 1.1rem;
+    }
+    .info-card-title { color: var(--green); font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 0.08em; }
+    .info-card-body { font-size: 0.78rem; color: #88cc88; line-height: 1.65; }
+
+    /* ── ASCII diagram ── */
+    .ascii-diagram {
+      background: #000d00; border: 1px solid rgba(0,255,65,0.2);
+      border-radius: 6px; padding: 1.5rem; margin: 1.5rem 0;
+      font-size: 0.78rem; color: var(--green); line-height: 1.5;
+      overflow-x: auto; white-space: pre;
+      text-shadow: 0 0 6px rgba(0,255,65,0.4);
+    }
+
+    /* ── Command table ── */
+    .cmd-table { width: 100%; border-collapse: collapse; }
+    .cmd-table th {
+      text-align: left; padding: 0.5rem 0.8rem;
+      font-size: 0.7rem; color: var(--dim); letter-spacing: 0.1em;
+      text-transform: uppercase; border-bottom: 1px solid rgba(0,255,65,0.15);
+    }
+    .cmd-table td { padding: 0.55rem 0.8rem; font-size: 0.8rem; border-bottom: 1px solid rgba(0,255,65,0.05); vertical-align: top; }
+    .cmd-table tr:hover td { background: rgba(0,255,65,0.04); }
+    .cmd-cell { color: var(--green); font-weight: 700; white-space: nowrap; }
+    .cmd-desc { color: #88bb88; }
+    .cmd-example { color: var(--mid); font-size: 0.72rem; white-space: nowrap; }
+
+    /* ── Keys section ── */
+    .key-types-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 0.8rem; margin-bottom: 2rem; }
+    .key-card {
+      background: var(--panel); border-radius: 7px; padding: 1rem;
+      border: 1px solid rgba(0,255,65,0.1); text-align: center;
+    }
+    .key-card.preferred { border-color: rgba(57,255,20,0.4); box-shadow: 0 0 12px rgba(57,255,20,0.08); }
+    .key-name { font-size: 1.1rem; font-weight: 900; color: var(--neon); margin-bottom: 0.3rem; }
+    .key-card.deprecated .key-name { color: #664444; text-decoration: line-through; }
+    .key-size { font-size: 0.72rem; color: var(--mid); margin-bottom: 0.5rem; }
+    .key-verdict {
+      font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem;
+      border-radius: 3px; letter-spacing: 0.08em; display: inline-block;
+    }
+    .verdict-best { background: rgba(57,255,20,0.15); color: #39ff14; border: 1px solid rgba(57,255,20,0.3); }
+    .verdict-ok { background: rgba(0,170,0,0.12); color: var(--mid); border: 1px solid rgba(0,170,0,0.25); }
+    .verdict-dep { background: rgba(255,68,68,0.1); color: #ff6666; border: 1px solid rgba(255,68,68,0.25); }
+    .key-desc { font-size: 0.75rem; color: #669966; margin-top: 0.5rem; line-height: 1.5; }
+
+    /* ── Config section ── */
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .config-grid { grid-template-columns: 1fr; } }
+    .config-block {
+      background: var(--panel); border: 1px solid rgba(0,255,65,0.15);
+      border-radius: 7px; overflow: hidden;
+    }
+    .config-block-header {
+      background: rgba(0,255,65,0.08); padding: 0.6rem 1rem;
+      font-size: 0.8rem; font-weight: 700; color: var(--green);
+      letter-spacing: 0.08em; border-bottom: 1px solid rgba(0,255,65,0.12);
+    }
+    .config-table { width: 100%; border-collapse: collapse; }
+    .config-table td { padding: 0.5rem 0.8rem; font-size: 0.76rem; border-bottom: 1px solid rgba(0,255,65,0.05); }
+    .config-table td:first-child { color: var(--green); font-weight: 700; width: 45%; }
+    .config-table td:last-child { color: #88bb88; }
+    .config-example {
+      background: #000d00; padding: 0.8rem 1rem;
+      font-size: 0.72rem; color: var(--green); line-height: 1.6;
+      white-space: pre; overflow-x: auto;
+    }
+
+    /* ── Security checklist ── */
+    .checklist { list-style: none; }
+    .checklist li {
+      padding: 0.7rem 1rem; margin-bottom: 0.5rem;
+      background: var(--panel); border-radius: 6px;
+      border-left: 3px solid var(--green);
+      font-size: 0.82rem; color: var(--text);
+      display: flex; gap: 0.75rem; align-items: flex-start;
+    }
+    .checklist li.warning { border-left-color: #ffd700; }
+    .checklist li.critical { border-left-color: #ff4444; }
+    .check-icon { color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 0.05rem; }
+    .checklist li.warning .check-icon { color: #ffd700; }
+    .checklist li.critical .check-icon { color: #ff4444; }
+    .check-title { font-weight: 700; margin-bottom: 0.25rem; }
+    .check-desc { font-size: 0.75rem; color: #669966; line-height: 1.5; margin-top: 0.2rem; }
+
+    /* ── Attacks table ── */
+    .attack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; margin-top: 1.5rem; }
+    .attack-card {
+      background: rgba(20,0,0,0.5); border: 1px solid rgba(255,68,68,0.2);
+      border-radius: 7px; padding: 1rem;
+    }
+    .attack-name { color: #ff5555; font-weight: 700; font-size: 0.88rem; margin-bottom: 0.4rem; }
+    .attack-desc { font-size: 0.76rem; color: #996666; line-height: 1.6; }
+    .attack-defense { font-size: 0.72rem; color: var(--mid); margin-top: 0.4rem; }
+
+    /* ── typing animation ── */
+    @keyframes typing {
+      from { width: 0; }
+    }
+    .type-line {
+      overflow: hidden; white-space: nowrap;
+      animation: typing 1.5s steps(40, end) forwards;
+      width: 0;
+    }
+    .type-line:nth-child(2) { animation-delay: 1.5s; }
+    .type-line:nth-child(3) { animation-delay: 3s; }
+    .type-line:nth-child(4) { animation-delay: 4s; }
+
+    /* ── fingerprint display ── */
+    .fingerprint {
+      font-family: 'Courier New', monospace; font-size: 0.75rem;
+      color: var(--green); background: rgba(0,0,0,0.4);
+      padding: 0.8rem 1rem; border-radius: 5px;
+      border: 1px solid rgba(0,255,65,0.15); margin: 0.8rem 0;
+      letter-spacing: 0.05em; text-shadow: 0 0 5px rgba(0,255,65,0.3);
+      word-break: break-all;
+    }
+
+    /* ── Overview layout ── */
+    .overview-flex { display: flex; flex-direction: column; gap: 1.5rem; }
+    .history-banner {
+      background: linear-gradient(135deg, var(--panel), var(--panel2));
+      border: 1px solid rgba(0,255,65,0.15); border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .history-banner h3 { color: var(--green); margin-bottom: 0.8rem; font-size: 1rem; letter-spacing: 0.1em; }
+    .history-banner p { font-size: 0.82rem; color: #88cc88; line-height: 1.75; }
+    .stat-row { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+    .stat-pill {
+      background: rgba(0,255,65,0.08); border: 1px solid rgba(0,255,65,0.2);
+      border-radius: 4px; padding: 0.3rem 0.8rem;
+      font-size: 0.75rem; color: var(--green);
+    }
+
+    /* ── SSH versions compare ── */
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .compare-table th, .compare-table td {
+      padding: 0.6rem 0.9rem; font-size: 0.8rem;
+      border: 1px solid rgba(0,255,65,0.1);
+    }
+    .compare-table th { background: rgba(0,255,65,0.08); color: var(--green); font-size: 0.72rem; letter-spacing: 0.08em; }
+    .compare-table td { color: #88bb88; }
+    .compare-table td:first-child { color: var(--text); font-weight: 700; }
+    .tick { color: #00ff41; }
+    .cross { color: #ff4444; }
+  </style>
+</head>
+<body>
+
+<canvas id="matrixCanvas"></canvas>
+
+<div class="page-header">
+  <h1>SSH<span class="blink">_</span></h1>
+  <p>Secure Shell Protocol — Encrypted Remote Access Since 1995</p>
+</div>
+
+<nav class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="switchTab('overview')">[ Overview ]</button>
+    <button class="tab" onclick="switchTab('commands')">[ Commands ]</button>
+    <button class="tab" onclick="switchTab('keys')">[ Keys ]</button>
+    <button class="tab" onclick="switchTab('config')">[ Config ]</button>
+    <button class="tab" onclick="switchTab('security')">[ Security ]</button>
+  </div>
+</nav>
+
+<!-- OVERVIEW -->
+<div id="overview" class="section active">
+  <div class="overview-flex">
+
+    <div class="history-banner">
+      <h3>&gt; History</h3>
+      <p>SSH was created by <strong style="color:var(--green)">Tatu Ylönen</strong> at Helsinki University of Technology, Finland in <strong style="color:var(--green)">1995</strong>, after a password-sniffing attack on the university network. It was designed as a secure replacement for insecure protocols — <strong style="color:#ff6666">rsh</strong>, <strong style="color:#ff6666">rlogin</strong>, and <strong style="color:#ff6666">telnet</strong> — which transmitted all data including passwords in plaintext.</p>
+      <p style="margin-top:0.8rem">SSH-1 was released as freeware. In 2006, SSH-2 was standardized as RFC 4251–4256. <strong style="color:var(--green)">OpenSSH</strong>, the most widely deployed implementation, is maintained by the OpenBSD project and ships with virtually all Linux distributions and macOS.</p>
+      <div class="stat-row">
+        <span class="stat-pill">Port 22</span>
+        <span class="stat-pill">RFC 4251–4256</span>
+        <span class="stat-pill">OpenSSH 9.x</span>
+        <span class="stat-pill">Finland, 1995</span>
+        <span class="stat-pill">Replaces: telnet, rsh, rlogin</span>
+      </div>
+    </div>
+
+    <div class="ascii-diagram">  SSH Architecture
+  ═══════════════════════════════════════════════════════════
+
+  ┌─────────────────┐                    ┌────────────────────┐
+  │    SSH Client   │                    │    SSH Server      │
+  │  (ssh command)  │                    │    (sshd daemon)   │
+  └────────┬────────┘                    └─────────┬──────────┘
+           │                                        │
+           │  1. TCP Connection (port 22)           │
+           │ ──────────────────────────────────────▶│
+           │                                        │
+           │  2. Version Exchange                   │
+           │ ◀──────────────────────────────────────│
+           │ ──────────────────────────────────────▶│
+           │                                        │
+           │  3. Key Exchange (Diffie-Hellman)      │
+           │ ◀──────────────────────────────────────│
+           │ ──────────────────────────────────────▶│
+           │    [Encrypted channel established]      │
+           │                                        │
+           │  4. Server Authentication              │
+           │ ◀── Host key fingerprint ──────────────│
+           │                                        │
+           │  5. User Authentication                │
+           │ ──── pubkey / password ───────────────▶│
+           │                                        │
+           │  6. Session / Tunnel / Port Forward    │
+           │ ◀══════════════════════════════════════│
+           │    [Encrypted Shell / SCP / SFTP]       │
+  ═══════════════════════════════════════════════════════════</div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-title">&gt; Encryption</div>
+        <div class="info-card-body">All traffic encrypted end-to-end. Modern OpenSSH defaults: ChaCha20-Poly1305 or AES-256-GCM authenticated encryption. No plaintext ever on the wire.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">&gt; Authentication</div>
+        <div class="info-card-body">Public key (preferred), password, keyboard-interactive, GSSAPI/Kerberos, certificate-based. Supports multi-factor authentication via PAM or authenticator apps.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">&gt; Tunneling</div>
+        <div class="info-card-body">Local port forwarding (-L), remote port forwarding (-R), dynamic SOCKS5 proxy (-D). Forward any TCP service securely through an SSH connection.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">&gt; Port 22 Fun Fact</div>
+        <div class="info-card-body">Tatu Ylönen requested port 22 from IANA in July 1995. It was assigned immediately between FTP (21) and Telnet (23) — a fitting symbolic placement for SSH's purpose.</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">&gt; OpenSSH Project</div>
+        <div class="info-card-body">Fork of the original SSH by OpenBSD in 1999. Open source, audited, and maintained by OpenBSD developers. Powers SSH on Linux, macOS, BSDs, and Windows (since 2019).</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">&gt; SSH vs SFTP vs SCP</div>
+        <div class="info-card-body">SSH: remote shell. SCP: secure copy (legacy). SFTP: SSH file transfer protocol (feature-rich, preferred). All use the SSH transport layer for encryption.</div>
+      </div>
+    </div>
+
+    <div class="sec-title">SSH-1 vs SSH-2</div>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Feature</th><th>SSH-1</th><th>SSH-2</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Status</td><td class="cross">Deprecated/Insecure</td><td class="tick">Current standard</td></tr>
+        <tr><td>MAC</td><td>CRC-32 (broken)</td><td>HMAC-SHA1/SHA2/SHA3</td></tr>
+        <tr><td>Key exchange</td><td>RSA only</td><td>DH, ECDH, curve25519</td></tr>
+        <tr><td>Channels</td><td>Single channel</td><td>Multiplexed channels</td></tr>
+        <tr><td>Interoperability</td><td>Protocol incompatible</td><td>RFC standardized</td></tr>
+        <tr><td>SFTP</td><td class="cross">No</td><td class="tick">Yes</td></tr>
+        <tr><td>Port forwarding</td><td>Limited</td><td>Full support</td></tr>
+        <tr><td>Vulnerabilities</td><td>Multiple critical CVEs</td><td>No known protocol flaws</td></tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<!-- COMMANDS -->
+<div id="commands" class="section">
+  <div class="sec-title">SSH Command Reference</div>
+  <div class="term-box" style="margin-bottom:1.5rem">
+    <div class="type-line"><span class="prompt">user@host:~$ </span><span class="cmd">ssh --help</span></div>
+    <div style="color:var(--mid);font-size:0.75rem;margin-top:0.3rem">OpenSSH_9.x, LibreSSL 3.x — Man pages: ssh(1), sshd(8), ssh-keygen(1), ssh-agent(1)</div>
+    <span class="term-cursor"></span>
+  </div>
+
+  <table class="cmd-table">
+    <thead>
+      <tr><th>Command</th><th>Description</th><th>Example</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cmd-cell">ssh user@host</td>
+        <td class="cmd-desc">Connect to remote host as user</td>
+        <td class="cmd-example">ssh alice@192.168.1.10</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -p PORT</td>
+        <td class="cmd-desc">Connect on non-standard port</td>
+        <td class="cmd-example">ssh -p 2222 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -i keyfile</td>
+        <td class="cmd-desc">Use specific private key file</td>
+        <td class="cmd-example">ssh -i ~/.ssh/id_ed25519 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -L local:host:remote</td>
+        <td class="cmd-desc">Local port forwarding (tunnel remote port to local)</td>
+        <td class="cmd-example">ssh -L 8080:localhost:80 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -R remote:host:local</td>
+        <td class="cmd-desc">Remote port forwarding (expose local port on remote)</td>
+        <td class="cmd-example">ssh -R 9090:localhost:3000 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -D port</td>
+        <td class="cmd-desc">Dynamic SOCKS5 proxy on local port</td>
+        <td class="cmd-example">ssh -D 1080 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -J jump user@target</td>
+        <td class="cmd-desc">Jump through bastion/proxy host</td>
+        <td class="cmd-example">ssh -J bastion.co user@10.0.0.5</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -N</td>
+        <td class="cmd-desc">No remote command — tunnel only, no shell</td>
+        <td class="cmd-example">ssh -N -L 5432:db:5432 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -f</td>
+        <td class="cmd-desc">Go to background before command execution</td>
+        <td class="cmd-example">ssh -fN -L 8080:host:80 user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -v / -vvv</td>
+        <td class="cmd-desc">Verbose debug output (up to 3 levels)</td>
+        <td class="cmd-example">ssh -vvv user@host 2>&amp;1 | head -50</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -t cmd</td>
+        <td class="cmd-desc">Force pseudo-TTY allocation for remote command</td>
+        <td class="cmd-example">ssh -t user@host sudo bash</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-keygen -t ed25519</td>
+        <td class="cmd-desc">Generate Ed25519 keypair (recommended)</td>
+        <td class="cmd-example">ssh-keygen -t ed25519 -C "me@host"</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-keygen -t rsa -b 4096</td>
+        <td class="cmd-desc">Generate RSA-4096 keypair (legacy compat)</td>
+        <td class="cmd-example">ssh-keygen -t rsa -b 4096 -C "key"</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-keygen -p -f key</td>
+        <td class="cmd-desc">Change passphrase on existing key</td>
+        <td class="cmd-example">ssh-keygen -p -f ~/.ssh/id_ed25519</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-keygen -l -f key</td>
+        <td class="cmd-desc">Show key fingerprint</td>
+        <td class="cmd-example">ssh-keygen -l -f ~/.ssh/id_ed25519.pub</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-keygen -R host</td>
+        <td class="cmd-desc">Remove host key from known_hosts</td>
+        <td class="cmd-example">ssh-keygen -R 192.168.1.10</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-copy-id user@host</td>
+        <td class="cmd-desc">Copy public key to remote authorized_keys</td>
+        <td class="cmd-example">ssh-copy-id -i ~/.ssh/id_ed25519.pub user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-agent bash</td>
+        <td class="cmd-desc">Start ssh-agent and spawn shell</td>
+        <td class="cmd-example">eval "$(ssh-agent -s)"</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-add</td>
+        <td class="cmd-desc">Add private key to running agent</td>
+        <td class="cmd-example">ssh-add ~/.ssh/id_ed25519</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-add -l</td>
+        <td class="cmd-desc">List keys loaded in agent</td>
+        <td class="cmd-example">ssh-add -l -E sha256</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">scp src user@host:dst</td>
+        <td class="cmd-desc">Secure copy file (uses SSH transport)</td>
+        <td class="cmd-example">scp file.tar.gz user@host:/tmp/</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">scp -r dir user@host:dst</td>
+        <td class="cmd-desc">Recursively copy directory</td>
+        <td class="cmd-example">scp -r ./project user@host:~/</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">sftp user@host</td>
+        <td class="cmd-desc">Interactive SSH file transfer session</td>
+        <td class="cmd-example">sftp -i key user@host</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">rsync -e ssh</td>
+        <td class="cmd-desc">Rsync over SSH (efficient sync)</td>
+        <td class="cmd-example">rsync -avz -e ssh ./src user@host:dst/</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh-keyscan -H host</td>
+        <td class="cmd-desc">Scan and collect host public keys</td>
+        <td class="cmd-example">ssh-keyscan -H github.com >> known_hosts</td>
+      </tr>
+      <tr>
+        <td class="cmd-cell">ssh -o StrictHostKeyChecking=no</td>
+        <td class="cmd-desc">Skip host key verification (automation only)</td>
+        <td class="cmd-example">ssh -o StrictHostKeyChecking=no user@host</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- KEYS -->
+<div id="keys" class="section">
+  <div class="sec-title">SSH Key Types</div>
+  <div class="key-types-grid">
+    <div class="key-card preferred">
+      <div class="key-name">Ed25519</div>
+      <div class="key-size">256-bit (fixed)</div>
+      <div class="key-verdict verdict-best">RECOMMENDED</div>
+      <div class="key-desc">Edwards-curve DSA on Curve25519. Fastest operations, smallest keys, immune to timing side-channels. Requires OpenSSH 6.5+ (2014).</div>
+    </div>
+    <div class="key-card">
+      <div class="key-name">ECDSA</div>
+      <div class="key-size">256 / 384 / 521-bit</div>
+      <div class="key-verdict verdict-ok">ACCEPTABLE</div>
+      <div class="key-desc">Elliptic Curve DSA on NIST P-curves. Smaller than RSA. Concerns about NIST random number parameters — use Ed25519 instead if possible.</div>
+    </div>
+    <div class="key-card">
+      <div class="key-name">RSA</div>
+      <div class="key-size">2048 / 4096-bit</div>
+      <div class="key-verdict verdict-ok">LEGACY / COMPAT</div>
+      <div class="key-desc">Widely supported. Use 4096-bit minimum. Larger keys = slower operations. Needed for compatibility with older systems that don't support ed25519.</div>
+    </div>
+    <div class="key-card deprecated">
+      <div class="key-name">DSA</div>
+      <div class="key-size">1024-bit (fixed)</div>
+      <div class="key-verdict verdict-dep">DEPRECATED</div>
+      <div class="key-desc">Fixed 1024-bit key size is cryptographically weak. Disabled by default since OpenSSH 7.0 (2015). Do not use — regenerate all DSA keys immediately.</div>
+    </div>
+  </div>
+
+  <div class="sec-title">Key File Locations</div>
+  <table class="cmd-table" style="margin-bottom:2rem">
+    <thead><tr><th>File</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="cmd-cell">~/.ssh/id_ed25519</td><td class="cmd-desc">Private key — NEVER share, chmod 600</td></tr>
+      <tr><td class="cmd-cell">~/.ssh/id_ed25519.pub</td><td class="cmd-desc">Public key — safe to copy to servers</td></tr>
+      <tr><td class="cmd-cell">~/.ssh/authorized_keys</td><td class="cmd-desc">Trusted public keys on the server, chmod 600</td></tr>
+      <tr><td class="cmd-cell">~/.ssh/known_hosts</td><td class="cmd-desc">Hashed fingerprints of known servers</td></tr>
+      <tr><td class="cmd-cell">~/.ssh/config</td><td class="cmd-desc">Client-side connection aliases and settings</td></tr>
+      <tr><td class="cmd-cell">/etc/ssh/ssh_host_*_key</td><td class="cmd-desc">Server host keys (private), root-owned 600</td></tr>
+      <tr><td class="cmd-cell">/etc/ssh/sshd_config</td><td class="cmd-desc">SSH server daemon configuration</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sec-title">Key Fingerprint</div>
+  <p style="font-size:0.8rem;color:#88cc88;margin-bottom:0.5rem">A SHA256 fingerprint uniquely identifies a host key. Verify on first connection to prevent MITM attacks:</p>
+  <div class="fingerprint">SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s (Ed25519)
+SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8 (RSA-4096)</div>
+
+  <div class="sec-title" style="margin-top:2rem">Key Exchange Algorithms</div>
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-card-title">&gt; curve25519-sha256</div>
+      <div class="info-card-body">ECDH over Curve25519. OpenSSH default and recommended. Forward secrecy guaranteed — session keys discarded after use.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">&gt; diffie-hellman-group16-sha512</div>
+      <div class="info-card-body">Classic DH with 4096-bit group and SHA-512. NIST-compliant alternative to curve25519. Slower but widely supported.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">&gt; SSH Certificate Authority (CA)</div>
+      <div class="info-card-body">Sign user and host keys with a CA key. Eliminates per-server known_hosts management. Ideal for large fleets. Expiry dates enforced cryptographically.</div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG -->
+<div id="config" class="section">
+  <div class="sec-title">SSH Configuration Files</div>
+  <div class="config-grid">
+
+    <div class="config-block">
+      <div class="config-block-header">~/.ssh/config — Client Settings</div>
+      <table class="config-table">
+        <tbody>
+          <tr><td>Host</td><td>Alias for connection block</td></tr>
+          <tr><td>HostName</td><td>Actual hostname or IP</td></tr>
+          <tr><td>User</td><td>Username for connection</td></tr>
+          <tr><td>Port</td><td>Remote SSH port (default 22)</td></tr>
+          <tr><td>IdentityFile</td><td>Path to private key</td></tr>
+          <tr><td>ProxyJump</td><td>Bastion host to jump through</td></tr>
+          <tr><td>ServerAliveInterval</td><td>Keepalive interval in seconds</td></tr>
+          <tr><td>ServerAliveCountMax</td><td>Max missed keepalives before disconnect</td></tr>
+          <tr><td>Compression</td><td>Enable gzip compression</td></tr>
+          <tr><td>ForwardAgent</td><td>Forward ssh-agent to remote host</td></tr>
+          <tr><td>StrictHostKeyChecking</td><td>yes / no / accept-new</td></tr>
+          <tr><td>ControlMaster</td><td>Enable connection multiplexing</td></tr>
+          <tr><td>ControlPath</td><td>Socket path for shared connections</td></tr>
+        </tbody>
+      </table>
+      <div class="config-example"># Example ~/.ssh/config
+
+Host bastion
+    HostName bastion.example.com
+    User deploy
+    Port 22
+    IdentityFile ~/.ssh/id_ed25519
+
+Host prod-db
+    HostName 10.0.0.42
+    User postgres
+    ProxyJump bastion
+    IdentityFile ~/.ssh/id_ed25519
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+
+Host *
+    AddKeysToAgent yes
+    IdentityFile ~/.ssh/id_ed25519
+    ServerAliveInterval 30
+    Compression yes</div>
+    </div>
+
+    <div class="config-block">
+      <div class="config-block-header">/etc/ssh/sshd_config — Server Settings</div>
+      <table class="config-table">
+        <tbody>
+          <tr><td>Port</td><td>Listen port (default 22)</td></tr>
+          <tr><td>PermitRootLogin</td><td>no / prohibit-password / yes</td></tr>
+          <tr><td>PasswordAuthentication</td><td>no (disable) / yes</td></tr>
+          <tr><td>PubkeyAuthentication</td><td>yes (enable key auth)</td></tr>
+          <tr><td>AuthorizedKeysFile</td><td>Path to authorized_keys</td></tr>
+          <tr><td>AllowUsers</td><td>Whitelist specific users</td></tr>
+          <tr><td>AllowGroups</td><td>Whitelist specific groups</td></tr>
+          <tr><td>MaxAuthTries</td><td>Max auth attempts per connection</td></tr>
+          <tr><td>MaxSessions</td><td>Max open sessions per connection</td></tr>
+          <tr><td>ClientAliveInterval</td><td>Keepalive interval to client</td></tr>
+          <tr><td>ClientAliveCountMax</td><td>Max missed keepalives</td></tr>
+          <tr><td>X11Forwarding</td><td>Enable/disable X11 forwarding</td></tr>
+          <tr><td>UsePAM</td><td>Enable PAM for auth modules</td></tr>
+          <tr><td>Banner</td><td>Display file before login prompt</td></tr>
+          <tr><td>Subsystem sftp</td><td>SFTP subsystem path</td></tr>
+        </tbody>
+      </table>
+      <div class="config-example"># Hardened /etc/ssh/sshd_config
+
+Port 22
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+AllowUsers deploy alice bob
+MaxAuthTries 3
+MaxSessions 10
+LoginGraceTime 30
+
+ClientAliveInterval 120
+ClientAliveCountMax 3
+
+X11Forwarding no
+AllowTcpForwarding yes
+
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com
+KexAlgorithms curve25519-sha256</div>
+    </div>
+  </div>
+</div>
+
+<!-- SECURITY -->
+<div id="security" class="section">
+  <div class="sec-title">Security Best Practices</div>
+  <ul class="checklist">
+    <li class="critical">
+      <div class="check-icon">✗</div>
+      <div><div class="check-title">Disable password authentication</div><div class="check-desc">Set PasswordAuthentication no in sshd_config. Eliminates brute-force password attacks. Require public key auth only. This single change stops ~99% of automated attacks.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Use Ed25519 keys exclusively</div><div class="check-desc">Generate: ssh-keygen -t ed25519 -C "user@host". Strongest algorithm, fastest, smallest. No legacy RSA unless required for old system compatibility.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Protect private keys with strong passphrases</div><div class="check-desc">Passphrases encrypt the private key at rest. Use ssh-agent for convenience without compromising security — the passphrase is entered once per session.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Set PermitRootLogin no</div><div class="check-desc">Never allow direct root login via SSH. Use a normal user account and sudo/su. If absolutely necessary, use PermitRootLogin prohibit-password.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Restrict users with AllowUsers / AllowGroups</div><div class="check-desc">Explicitly whitelist which users may connect via SSH. AllowUsers deploy alice bob. All other users are denied even with valid credentials.</div></div>
+    </li>
+    <li class="warning">
+      <div class="check-icon">⚠</div>
+      <div><div class="check-title">Change default port (with caveats)</div><div class="check-desc">Moving from port 22 reduces automated scanner noise but provides no real security — security through obscurity. Still useful to reduce log spam. Must update firewalls and DNS records.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Deploy fail2ban or similar</div><div class="check-desc">Automatically ban IPs after repeated auth failures. Configure: maxretry=5, bantime=3600, findtime=600. Reduces brute force load significantly.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Set MaxAuthTries 3</div><div class="check-desc">Limit authentication attempts per connection to 3. Combined with fail2ban, this makes brute force attacks impractical.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Two-factor authentication (2FA/TOTP)</div><div class="check-desc">Add time-based one-time passwords via libpam-google-authenticator or similar. Configure PAM for keyboard-interactive auth. Even if key is compromised, attacker needs the TOTP token.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Use SSH certificate authority for fleets</div><div class="check-desc">Instead of managing per-server authorized_keys, issue signed certificates. Set expiry dates, add principals, and revoke centrally. Eliminates known_hosts maintenance at scale.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Harden cipher suites</div><div class="check-desc">Restrict to modern algorithms: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com. Remove weak MACs and old key exchange algorithms (diffie-hellman-group1-sha1).</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Use bastion/jump hosts for internal access</div><div class="check-desc">Only expose one bastion host to the internet. Internal servers only accept connections from the bastion IP. Use ProxyJump in client config for seamless access.</div></div>
+    </li>
+    <li>
+      <div class="check-icon">✓</div>
+      <div><div class="check-title">Enable audit logging</div><div class="check-desc">Configure LogLevel VERBOSE in sshd_config to log key fingerprints. Forward logs to a remote SIEM. Monitor for failed auth, unusual source IPs, and off-hours logins.</div></div>
+    </li>
+  </ul>
+
+  <div class="sec-title" style="margin-top:2.5rem">Common Attack Vectors</div>
+  <div class="attack-grid">
+    <div class="attack-card">
+      <div class="attack-name">Brute Force / Dictionary Attack</div>
+      <div class="attack-desc">Automated tools try thousands of username/password combinations per second. Bots constantly scan port 22 worldwide.</div>
+      <div class="attack-defense">Defense: Disable password auth, use fail2ban, AllowUsers restriction</div>
+    </div>
+    <div class="attack-card">
+      <div class="attack-name">Man-in-the-Middle (MITM)</div>
+      <div class="attack-desc">Attacker intercepts the connection before the encrypted channel is established, serving a fake host key to capture credentials.</div>
+      <div class="attack-defense">Defense: Verify host key fingerprints, use SSH CA certificates</div>
+    </div>
+    <div class="attack-card">
+      <div class="attack-name">Stolen Private Key</div>
+      <div class="attack-desc">If an attacker gets access to the private key file (e.g., via compromised workstation or insecure backup), they can authenticate as the key owner.</div>
+      <div class="attack-defense">Defense: Passphrase-protect keys, use ssh-agent, hardware security keys (FIDO2)</div>
+    </div>
+    <div class="attack-card">
+      <div class="attack-name">SSH Agent Hijacking</div>
+      <div class="attack-desc">On a compromised intermediate host, an attacker may use the forwarded ssh-agent socket to authenticate to other hosts as the victim.</div>
+      <div class="attack-defense">Defense: Disable ForwardAgent by default; use ProxyJump instead</div>
+    </div>
+    <div class="attack-card">
+      <div class="attack-name">Compromised known_hosts</div>
+      <div class="attack-desc">Modifying a client's known_hosts to remove legitimate host keys allows MITM attacks to succeed silently on first reconnect.</div>
+      <div class="attack-defense">Defense: Use SSH CA, protect known_hosts with file integrity monitoring</div>
+    </div>
+    <div class="attack-card">
+      <div class="attack-name">Old Protocol/Cipher Downgrade</div>
+      <div class="attack-desc">Attackers may attempt to force use of SSH-1 or weak ciphers (DES, RC4, MD5) that have known cryptographic weaknesses.</div>
+      <div class="attack-defense">Defense: Explicit Ciphers/MACs/KexAlgorithms in sshd_config, disable SSH-1</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // Matrix rain canvas
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+  let cols = [], W, H;
+  const CHARS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノABCDEF0123456789ｦｧｨｩｪ';
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    const n = Math.floor(W / 16);
+    cols = Array.from({length: n}, () => Math.random() * H / 18 | 0);
+  }
+
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(0,10,0,0.04)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = '14px monospace';
+    cols.forEach((y, i) => {
+      const ch = CHARS[Math.random() * CHARS.length | 0];
+      const bright = y < 3;
+      ctx.fillStyle = bright ? 'rgba(180,255,180,0.9)' : `rgba(0,${Math.floor(180 + Math.random()*75)},0,${0.5 + Math.random()*0.4})`;
+      ctx.fillText(ch, i * 16, y * 18);
+      cols[i] = y > H / 18 + Math.random() * 20 ? 0 : y + 1;
+    });
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(drawMatrix, 55);
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL — Structured Query Language</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #000810;
+      --blue: #0084ff;
+      --teal: #00d4aa;
+      --orange: #ffa500;
+      --purple: #7b68ee;
+      --panel: #0a1828;
+      --panel2: #0d1e32;
+      --text: #b0cce0;
+      --dim: #3a6080;
+      --code-bg: #020e1c;
+    }
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+      padding-top: 44px;
+    }
+
+    /* ── Background particles canvas ── */
+    #bgCanvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; opacity: 0.2;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      background: rgba(0,8,16,0.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,132,255,0.2);
+    }
+    .sub-nav-inner {
+      display: flex; justify-content: center; gap: 0.5rem;
+      padding: 0.5rem; flex-wrap: wrap;
+    }
+    .tab {
+      font-family: 'Courier New', monospace; font-size: 0.8rem; font-weight: 700;
+      padding: 0.3rem 0.9rem; background: rgba(0,132,255,0.04);
+      border: 1px solid rgba(0,132,255,0.18); color: var(--dim);
+      cursor: pointer; border-radius: 3px; letter-spacing: 0.05em;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .tab:hover { background: rgba(0,132,255,0.12); border-color: rgba(0,132,255,0.5); color: var(--blue); }
+    .tab.active { background: rgba(0,132,255,0.18); border-color: var(--blue); color: var(--blue); box-shadow: 0 0 8px rgba(0,132,255,0.3); }
+
+    /* ── Page header ── */
+    .page-header {
+      text-align: center; padding: 2.5rem 1rem 2rem;
+      background: linear-gradient(180deg, rgba(0,132,255,0.09) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(0,132,255,0.12);
+      position: relative; z-index: 1;
+    }
+    .page-header h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 900;
+      letter-spacing: 0.2em; color: var(--blue);
+      text-shadow: 0 0 30px rgba(0,132,255,0.6);
+    }
+    .page-header p { color: var(--dim); margin-top: 0.5rem; font-size: 0.85rem; }
+
+    /* ── Layout ── */
+    .section { display: none; position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .section.active { display: block; }
+    .sec-title {
+      font-size: 1.2rem; font-weight: 700; color: var(--blue);
+      margin: 2rem 0 1.2rem; padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(0,132,255,0.2);
+      letter-spacing: 0.1em;
+    }
+    .sec-title:first-child { margin-top: 0; }
+
+    /* ── SQL Syntax Highlighting ── */
+    .code-block {
+      background: var(--code-bg); border: 1px solid rgba(0,132,255,0.18);
+      border-radius: 7px; padding: 1.2rem; margin-bottom: 1.5rem;
+      overflow-x: auto; position: relative;
+    }
+    .code-block pre { font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.8; white-space: pre; }
+    .kw { color: #0084ff; font-weight: 700; } /* keywords */
+    .str { color: #00d4aa; } /* strings */
+    .num { color: #ffa500; } /* numbers */
+    .cmt { color: #3a6080; font-style: italic; } /* comments */
+    .fn { color: #7b68ee; } /* functions */
+    .tbl { color: #e0c8a0; } /* table names */
+    .col { color: #b0cce0; } /* column names */
+    .op { color: #ff7070; } /* operators */
+    .punc { color: #608898; } /* punctuation */
+
+    .code-label {
+      font-size: 0.65rem; font-weight: 700; color: var(--blue);
+      letter-spacing: 0.12em; margin-bottom: 0.5rem;
+      opacity: 0.7;
+    }
+    .code-group { margin-bottom: 2rem; }
+    .code-group-title {
+      font-size: 0.85rem; font-weight: 700; color: var(--teal);
+      margin-bottom: 0.8rem; padding: 0.35rem 0.8rem;
+      background: rgba(0,212,170,0.07); border-left: 3px solid var(--teal);
+      border-radius: 0 4px 4px 0; letter-spacing: 0.08em;
+    }
+
+    /* ── Data Types ── */
+    .types-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 1.2rem; }
+    .type-card {
+      background: var(--panel); border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(0,132,255,0.1); transition: border-color 0.2s;
+    }
+    .type-card:hover { border-color: rgba(0,132,255,0.35); }
+    .type-card-header {
+      padding: 0.7rem 1rem; font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+    .type-card-header.numeric { background: rgba(255,165,0,0.12); color: var(--orange); }
+    .type-card-header.string { background: rgba(0,212,170,0.1); color: var(--teal); }
+    .type-card-header.datetime { background: rgba(123,104,238,0.1); color: var(--purple); }
+    .type-card-header.json { background: rgba(0,132,255,0.1); color: var(--blue); }
+    .type-card-header.special { background: rgba(255,105,180,0.1); color: #ff69b4; }
+    .type-table { width: 100%; border-collapse: collapse; }
+    .type-table td { padding: 0.45rem 0.8rem; font-size: 0.76rem; border-bottom: 1px solid rgba(0,132,255,0.05); }
+    .type-table td:first-child { color: var(--orange); font-weight: 700; width: 35%; }
+    .type-table td:nth-child(2) { color: var(--text); width: 30%; }
+    .type-table td:nth-child(3) { color: var(--dim); font-size: 0.7rem; }
+    .type-table tr:last-child td { border-bottom: none; }
+
+    .compat-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    .compat-table th, .compat-table td {
+      padding: 0.55rem 0.8rem; text-align: center; font-size: 0.77rem;
+      border: 1px solid rgba(0,132,255,0.08);
+    }
+    .compat-table th { background: rgba(0,132,255,0.1); color: var(--blue); font-size: 0.7rem; letter-spacing: 0.08em; }
+    .compat-table td:first-child { text-align: left; color: var(--orange); font-weight: 700; }
+    .compat-table td { color: #88aacc; }
+    .tick { color: #00d4aa; }
+    .cross { color: #ff5555; }
+    .partial { color: #ffa500; }
+
+    /* ── Functions ── */
+    .func-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 1.2rem; }
+    .func-group-card { background: var(--panel); border-radius: 8px; overflow: hidden; border: 1px solid rgba(0,132,255,0.1); }
+    .func-group-header { padding: 0.65rem 1rem; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; }
+    .func-group-header.agg { background: rgba(255,165,0,0.1); color: var(--orange); }
+    .func-group-header.str { background: rgba(0,212,170,0.08); color: var(--teal); }
+    .func-group-header.dt { background: rgba(123,104,238,0.1); color: var(--purple); }
+    .func-group-header.win { background: rgba(0,132,255,0.1); color: var(--blue); }
+    .func-list { list-style: none; }
+    .func-item { border-bottom: 1px solid rgba(0,132,255,0.05); }
+    .func-item:last-child { border-bottom: none; }
+    .func-item summary {
+      padding: 0.55rem 0.9rem; cursor: pointer;
+      font-size: 0.78rem; color: var(--text);
+      list-style: none; display: flex; justify-content: space-between;
+    }
+    .func-item summary::-webkit-details-marker { display: none; }
+    .func-item summary:hover { background: rgba(0,132,255,0.06); }
+    .func-name { font-weight: 700; }
+    .func-name.agg { color: var(--orange); }
+    .func-name.str { color: var(--teal); }
+    .func-name.dt { color: var(--purple); }
+    .func-name.win { color: var(--blue); }
+    .func-detail { padding: 0.5rem 0.9rem 0.7rem; background: rgba(0,0,0,0.2); font-size: 0.74rem; }
+    .func-syntax { color: var(--blue); margin-bottom: 0.3rem; font-weight: 700; }
+    .func-ex { color: var(--teal); margin-bottom: 0.2rem; font-size: 0.7rem; }
+    .func-desc { color: #789ab0; line-height: 1.5; }
+
+    /* ── Joins ── */
+    .joins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap: 1.5rem; }
+    .join-card {
+      background: var(--panel); border-radius: 8px;
+      border: 1px solid rgba(0,132,255,0.12); padding: 1.3rem;
+      transition: box-shadow 0.2s;
+    }
+    .join-card:hover { box-shadow: 0 4px 20px rgba(0,132,255,0.1); }
+    .join-venn { display: flex; align-items: center; justify-content: center; height: 80px; margin-bottom: 1rem; position: relative; }
+    .venn-circle {
+      width: 70px; height: 70px; border-radius: 50%;
+      position: absolute; opacity: 0.4;
+    }
+    .venn-left { background: var(--blue); left: calc(50% - 48px); }
+    .venn-right { background: var(--teal); left: calc(50% - 22px); }
+    .venn-overlap {
+      position: absolute; overflow: hidden;
+      left: calc(50% - 22px); width: 26px; height: 70px;
+    }
+    .venn-label { position: absolute; font-size: 0.65rem; color: var(--dim); }
+    .venn-label.l { left: calc(50% - 58px); }
+    .venn-label.r { left: calc(50% + 18px); }
+    .join-name { font-size: 1.1rem; font-weight: 900; color: var(--blue); margin-bottom: 0.4rem; }
+    .join-desc { font-size: 0.8rem; color: #88aacc; line-height: 1.6; margin-bottom: 0.8rem; }
+    .join-code {
+      background: var(--code-bg); border-radius: 5px; padding: 0.7rem 0.9rem;
+      font-size: 0.73rem; line-height: 1.6;
+      border: 1px solid rgba(0,132,255,0.12);
+    }
+    .join-usecase { font-size: 0.73rem; color: var(--teal); margin-top: 0.5rem; }
+
+    /* ── Databases ── */
+    .db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1.2rem; }
+    .db-card {
+      background: var(--panel); border-radius: 8px;
+      border: 1px solid rgba(0,132,255,0.1); overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .db-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+    .db-header {
+      padding: 1rem; display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .db-name { font-size: 1.1rem; font-weight: 900; }
+    .db-type { font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 3px; font-weight: 700; letter-spacing: 0.08em; }
+    .db-body { padding: 0 1rem 1rem; }
+    .db-desc { font-size: 0.78rem; color: #88aacc; line-height: 1.6; margin-bottom: 0.7rem; }
+    .db-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .db-tag {
+      font-size: 0.65rem; padding: 0.15rem 0.5rem;
+      background: rgba(0,132,255,0.08); border: 1px solid rgba(0,132,255,0.2);
+      border-radius: 3px; color: var(--blue);
+    }
+    .db-users { font-size: 0.7rem; color: var(--dim); margin-top: 0.5rem; }
+    .db-license { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 3px; }
+    .license-open { background: rgba(0,212,170,0.1); color: var(--teal); border: 1px solid rgba(0,212,170,0.25); }
+    .license-commercial { background: rgba(255,165,0,0.1); color: var(--orange); border: 1px solid rgba(255,165,0,0.25); }
+
+    /* ── animate in ── */
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .animate-rows .type-table tr, .animate-rows .cmd-table tr {
+      animation: rowIn 0.3s ease forwards;
+      opacity: 0;
+    }
+    .animate-rows .type-table tr:nth-child(1), .animate-rows .cmd-table tr:nth-child(1) { animation-delay: 0.0s; }
+    .animate-rows .type-table tr:nth-child(2) { animation-delay: 0.05s; }
+    .animate-rows .type-table tr:nth-child(3) { animation-delay: 0.10s; }
+    .animate-rows .type-table tr:nth-child(4) { animation-delay: 0.15s; }
+    .animate-rows .type-table tr:nth-child(5) { animation-delay: 0.20s; }
+    .animate-rows .type-table tr:nth-child(6) { animation-delay: 0.25s; }
+
+    /* ── glow hover ── */
+    .code-block:hover { border-color: rgba(0,132,255,0.35); box-shadow: 0 0 15px rgba(0,132,255,0.06); }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="page-header">
+  <h1>SQL</h1>
+  <p>Structured Query Language — The Universal Language of Data</p>
+</div>
+
+<nav class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="switchTab('queries')">[ Queries ]</button>
+    <button class="tab" onclick="switchTab('datatypes')">[ Data Types ]</button>
+    <button class="tab" onclick="switchTab('functions')">[ Functions ]</button>
+    <button class="tab" onclick="switchTab('joins')">[ Joins ]</button>
+    <button class="tab" onclick="switchTab('databases')">[ Databases ]</button>
+  </div>
+</nav>
+
+<!-- QUERIES -->
+<div id="queries" class="section active">
+
+  <div class="code-group">
+    <div class="code-group-title">DML — Data Manipulation Language</div>
+
+    <div class="code-label">SELECT — Query with filters, sorting, grouping</div>
+    <div class="code-block"><pre><span class="kw">SELECT</span>
+    u.<span class="col">id</span>,
+    u.<span class="col">name</span>,
+    u.<span class="col">email</span>,
+    <span class="fn">COUNT</span>(o.<span class="col">id</span>)     <span class="kw">AS</span> <span class="col">order_count</span>,
+    <span class="fn">SUM</span>(o.<span class="col">total</span>)   <span class="kw">AS</span> <span class="col">total_spent</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">LEFT JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span>
+<span class="kw">WHERE</span>
+    u.<span class="col">created_at</span> <span class="op">&gt;=</span> <span class="str">'2024-01-01'</span>
+    <span class="kw">AND</span> u.<span class="col">status</span> <span class="op">=</span> <span class="str">'active'</span>
+<span class="kw">GROUP BY</span> u.<span class="col">id</span>, u.<span class="col">name</span>, u.<span class="col">email</span>
+<span class="kw">HAVING</span> <span class="fn">COUNT</span>(o.<span class="col">id</span>) <span class="op">&gt;</span> <span class="num">0</span>
+<span class="kw">ORDER BY</span> <span class="col">total_spent</span> <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">25</span> <span class="kw">OFFSET</span> <span class="num">0</span><span class="punc">;</span></pre></div>
+
+    <div class="code-label">INSERT — Add rows</div>
+    <div class="code-block"><pre><span class="cmt">-- Single row</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">products</span> <span class="punc">(</span><span class="col">name</span>, <span class="col">price</span>, <span class="col">category_id</span>, <span class="col">stock</span><span class="punc">)</span>
+<span class="kw">VALUES</span> <span class="punc">(</span><span class="str">'Mechanical Keyboard'</span>, <span class="num">89.99</span>, <span class="num">4</span>, <span class="num">150</span><span class="punc">);</span>
+
+<span class="cmt">-- Multiple rows</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">tags</span> <span class="punc">(</span><span class="col">name</span>, <span class="col">color</span><span class="punc">)</span>
+<span class="kw">VALUES</span>
+    <span class="punc">(</span><span class="str">'backend'</span>, <span class="str">'#0084ff'</span><span class="punc">),</span>
+    <span class="punc">(</span><span class="str">'frontend'</span>, <span class="str">'#00d4aa'</span><span class="punc">),</span>
+    <span class="punc">(</span><span class="str">'database'</span>, <span class="str">'#ffa500'</span><span class="punc">);</span>
+
+<span class="cmt">-- Insert from SELECT</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">archive_orders</span>
+<span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">created_at</span> <span class="op">&lt;</span> <span class="str">'2023-01-01'</span><span class="punc">;</span></pre></div>
+
+    <div class="code-label">UPDATE — Modify rows</div>
+    <div class="code-block"><pre><span class="kw">UPDATE</span> <span class="tbl">products</span>
+<span class="kw">SET</span>
+    <span class="col">price</span> <span class="op">=</span> <span class="col">price</span> <span class="op">*</span> <span class="num">0.9</span>,          <span class="cmt">-- 10% discount</span>
+    <span class="col">updated_at</span> <span class="op">=</span> <span class="fn">NOW</span><span class="punc">()</span>
+<span class="kw">WHERE</span>
+    <span class="col">category_id</span> <span class="op">=</span> <span class="num">4</span>
+    <span class="kw">AND</span> <span class="col">stock</span> <span class="op">&gt;</span> <span class="num">0</span>
+    <span class="kw">AND</span> <span class="col">sale_end</span> <span class="op">IS NULL</span><span class="punc">;</span></pre></div>
+
+    <div class="code-label">DELETE — Remove rows</div>
+    <div class="code-block"><pre><span class="cmt">-- Delete with condition</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">sessions</span>
+<span class="kw">WHERE</span> <span class="col">expires_at</span> <span class="op">&lt;</span> <span class="fn">NOW</span><span class="punc">()</span><span class="punc">;</span>
+
+<span class="cmt">-- Delete with subquery</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">users</span>
+<span class="kw">WHERE</span> <span class="col">id</span> <span class="kw">IN</span> <span class="punc">(</span>
+    <span class="kw">SELECT</span> <span class="col">user_id</span> <span class="kw">FROM</span> <span class="tbl">banned_users</span>
+    <span class="kw">WHERE</span> <span class="col">reason</span> <span class="op">=</span> <span class="str">'spam'</span>
+<span class="punc">);</span></pre></div>
+  </div>
+
+  <div class="code-group">
+    <div class="code-group-title">DDL — Data Definition Language</div>
+
+    <div class="code-label">CREATE TABLE</div>
+    <div class="code-block"><pre><span class="kw">CREATE TABLE</span> <span class="tbl">orders</span> <span class="punc">(</span>
+    <span class="col">id</span>           <span class="kw">BIGSERIAL</span>          <span class="kw">PRIMARY KEY</span>,
+    <span class="col">user_id</span>      <span class="kw">BIGINT</span>             <span class="kw">NOT NULL</span>
+                                       <span class="kw">REFERENCES</span> <span class="tbl">users</span><span class="punc">(</span><span class="col">id</span><span class="punc">)</span>,
+    <span class="col">status</span>       <span class="kw">VARCHAR</span><span class="punc">(</span><span class="num">20</span><span class="punc">)</span>        <span class="kw">NOT NULL</span>
+                                       <span class="kw">DEFAULT</span> <span class="str">'pending'</span>,
+    <span class="col">total</span>        <span class="kw">DECIMAL</span><span class="punc">(</span><span class="num">12</span>,<span class="num">2</span><span class="punc">)</span>     <span class="kw">NOT NULL</span>
+                                       <span class="kw">CHECK</span> <span class="punc">(</span><span class="col">total</span> <span class="op">&gt;=</span> <span class="num">0</span><span class="punc">),</span>
+    <span class="col">metadata</span>     <span class="kw">JSONB</span>,
+    <span class="col">created_at</span>   <span class="kw">TIMESTAMP</span>          <span class="kw">NOT NULL</span>
+                                       <span class="kw">DEFAULT</span> <span class="fn">NOW</span><span class="punc">(),</span>
+    <span class="col">updated_at</span>   <span class="kw">TIMESTAMP</span>          <span class="kw">NOT NULL</span>
+                                       <span class="kw">DEFAULT</span> <span class="fn">NOW</span><span class="punc">()</span>
+<span class="punc">);</span>
+
+<span class="kw">CREATE INDEX</span> <span class="col">idx_orders_user_status</span>
+    <span class="kw">ON</span> <span class="tbl">orders</span> <span class="punc">(</span><span class="col">user_id</span>, <span class="col">status</span><span class="punc">);</span>
+
+<span class="kw">CREATE INDEX</span> <span class="col">idx_orders_created</span>
+    <span class="kw">ON</span> <span class="tbl">orders</span> <span class="punc">(</span><span class="col">created_at</span> <span class="kw">DESC</span><span class="punc">);</span></pre></div>
+
+    <div class="code-label">ALTER TABLE — Schema modifications</div>
+    <div class="code-block"><pre><span class="kw">ALTER TABLE</span> <span class="tbl">users</span>
+    <span class="kw">ADD COLUMN</span> <span class="col">phone</span>       <span class="kw">VARCHAR</span><span class="punc">(</span><span class="num">20</span><span class="punc">),</span>
+    <span class="kw">ADD COLUMN</span> <span class="col">verified_at</span> <span class="kw">TIMESTAMP</span>,
+    <span class="kw">ALTER COLUMN</span> <span class="col">email</span>     <span class="kw">SET NOT NULL</span>,
+    <span class="kw">DROP COLUMN</span> <span class="col">legacy_id</span><span class="punc">;</span>
+
+<span class="kw">ALTER TABLE</span> <span class="tbl">users</span>
+    <span class="kw">RENAME COLUMN</span> <span class="col">username</span> <span class="kw">TO</span> <span class="col">handle</span><span class="punc">;</span></pre></div>
+
+    <div class="code-label">CREATE VIEW</div>
+    <div class="code-block"><pre><span class="kw">CREATE VIEW</span> <span class="tbl">active_user_summary</span> <span class="kw">AS</span>
+<span class="kw">SELECT</span>
+    u.<span class="col">id</span>,
+    u.<span class="col">name</span>,
+    <span class="fn">COUNT</span>(o.<span class="col">id</span>)   <span class="kw">AS</span> <span class="col">orders</span>,
+    <span class="fn">MAX</span>(o.<span class="col">created_at</span>) <span class="kw">AS</span> <span class="col">last_order</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span>
+<span class="kw">WHERE</span> u.<span class="col">status</span> <span class="op">=</span> <span class="str">'active'</span>
+<span class="kw">GROUP BY</span> u.<span class="col">id</span>, u.<span class="col">name</span><span class="punc">;</span></pre></div>
+  </div>
+
+  <div class="code-group">
+    <div class="code-group-title">CTE — Common Table Expressions &amp; Subqueries</div>
+
+    <div class="code-label">WITH — Common Table Expression (CTE)</div>
+    <div class="code-block"><pre><span class="kw">WITH</span>
+<span class="tbl">monthly_revenue</span> <span class="kw">AS</span> <span class="punc">(</span>
+    <span class="kw">SELECT</span>
+        <span class="fn">DATE_TRUNC</span><span class="punc">(</span><span class="str">'month'</span>, <span class="col">created_at</span><span class="punc">)</span> <span class="kw">AS</span> <span class="col">month</span>,
+        <span class="fn">SUM</span><span class="punc">(</span><span class="col">total</span><span class="punc">)</span>                          <span class="kw">AS</span> <span class="col">revenue</span>
+    <span class="kw">FROM</span> <span class="tbl">orders</span>
+    <span class="kw">WHERE</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'completed'</span>
+    <span class="kw">GROUP BY</span> <span class="num">1</span>
+<span class="punc">),</span>
+<span class="tbl">ranked</span> <span class="kw">AS</span> <span class="punc">(</span>
+    <span class="kw">SELECT</span>
+        <span class="col">month</span>, <span class="col">revenue</span>,
+        <span class="fn">LAG</span><span class="punc">(</span><span class="col">revenue</span><span class="punc">)</span> <span class="kw">OVER</span> <span class="punc">(</span><span class="kw">ORDER BY</span> <span class="col">month</span><span class="punc">)</span> <span class="kw">AS</span> <span class="col">prev_revenue</span>
+    <span class="kw">FROM</span> <span class="tbl">monthly_revenue</span>
+<span class="punc">)</span>
+<span class="kw">SELECT</span>
+    <span class="col">month</span>,
+    <span class="col">revenue</span>,
+    <span class="fn">ROUND</span><span class="punc">(((</span><span class="col">revenue</span> <span class="op">-</span> <span class="col">prev_revenue</span><span class="punc">)</span> <span class="op">/</span> <span class="col">prev_revenue</span><span class="punc">)</span> <span class="op">*</span> <span class="num">100</span>, <span class="num">2</span><span class="punc">)</span> <span class="kw">AS</span> <span class="col">growth_pct</span>
+<span class="kw">FROM</span> <span class="tbl">ranked</span>
+<span class="kw">ORDER BY</span> <span class="col">month</span><span class="punc">;</span></pre></div>
+
+    <div class="code-label">EXPLAIN — Query plan analysis</div>
+    <div class="code-block"><pre><span class="kw">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> u.<span class="col">name</span>, <span class="fn">COUNT</span><span class="punc">(</span>o.<span class="col">id</span><span class="punc">)</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span>
+<span class="kw">GROUP BY</span> u.<span class="col">id</span><span class="punc">;</span>
+
+<span class="cmt">-- Seq Scan vs Index Scan vs Hash Join
+-- Look for: rows estimate vs actual, loops, buffers hit
+-- Add index if seq scan on large table</span></pre></div>
+  </div>
+
+  <div class="code-group">
+    <div class="code-group-title">TCL — Transaction Control Language</div>
+    <div class="code-block"><pre><span class="kw">BEGIN</span><span class="punc">;</span>                              <span class="cmt">-- Start transaction</span>
+
+<span class="kw">UPDATE</span> <span class="tbl">accounts</span> <span class="kw">SET</span> <span class="col">balance</span> <span class="op">=</span> <span class="col">balance</span> <span class="op">-</span> <span class="num">500</span>
+<span class="kw">WHERE</span> <span class="col">id</span> <span class="op">=</span> <span class="num">1</span><span class="punc">;</span>
+
+<span class="kw">UPDATE</span> <span class="tbl">accounts</span> <span class="kw">SET</span> <span class="col">balance</span> <span class="op">=</span> <span class="col">balance</span> <span class="op">+</span> <span class="num">500</span>
+<span class="kw">WHERE</span> <span class="col">id</span> <span class="op">=</span> <span class="num">2</span><span class="punc">;</span>
+
+<span class="kw">SAVEPOINT</span> <span class="col">transfer_done</span><span class="punc">;</span>
+
+<span class="cmt">-- If something goes wrong:</span>
+<span class="kw">ROLLBACK TO</span> <span class="col">transfer_done</span><span class="punc">;</span>
+
+<span class="cmt">-- On success:</span>
+<span class="kw">COMMIT</span><span class="punc">;</span></pre></div>
+  </div>
+</div>
+
+<!-- DATA TYPES -->
+<div id="datatypes" class="section">
+  <div class="sec-title">SQL Data Types</div>
+  <div class="types-grid animate-rows">
+
+    <div class="type-card">
+      <div class="type-card-header numeric">Numeric Types</div>
+      <table class="type-table">
+        <tbody>
+          <tr><td>TINYINT</td><td>-128 to 127</td><td>1 byte</td></tr>
+          <tr><td>SMALLINT</td><td>-32K to 32K</td><td>2 bytes</td></tr>
+          <tr><td>INT / INTEGER</td><td>-2B to 2B</td><td>4 bytes</td></tr>
+          <tr><td>BIGINT</td><td>-9.2×10¹⁸</td><td>8 bytes</td></tr>
+          <tr><td>DECIMAL(p,s)</td><td>Exact decimal</td><td>Variable</td></tr>
+          <tr><td>FLOAT / REAL</td><td>~7 sig digits</td><td>4 bytes</td></tr>
+          <tr><td>DOUBLE</td><td>~15 sig digits</td><td>8 bytes</td></tr>
+          <tr><td>BOOLEAN</td><td>true / false</td><td>1 byte</td></tr>
+          <tr><td>SERIAL</td><td>Auto-increment INT</td><td>PostgreSQL</td></tr>
+          <tr><td>BIGSERIAL</td><td>Auto-increment BIGINT</td><td>PostgreSQL</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="type-card">
+      <div class="type-card-header string">String / Text Types</div>
+      <table class="type-table">
+        <tbody>
+          <tr><td>CHAR(n)</td><td>Fixed-length</td><td>Padded with spaces</td></tr>
+          <tr><td>VARCHAR(n)</td><td>Variable-length</td><td>Max n characters</td></tr>
+          <tr><td>TEXT</td><td>Unlimited string</td><td>No length limit</td></tr>
+          <tr><td>TINYTEXT</td><td>255 chars</td><td>MySQL only</td></tr>
+          <tr><td>MEDIUMTEXT</td><td>16MB</td><td>MySQL only</td></tr>
+          <tr><td>LONGTEXT</td><td>4GB</td><td>MySQL only</td></tr>
+          <tr><td>BLOB</td><td>Binary large object</td><td>Binary data</td></tr>
+          <tr><td>BYTEA</td><td>Binary data</td><td>PostgreSQL</td></tr>
+          <tr><td>ENUM('a','b')</td><td>One of defined values</td><td>MySQL/PG</td></tr>
+          <tr><td>SET</td><td>Multiple enum values</td><td>MySQL</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="type-card">
+      <div class="type-card-header datetime">Date &amp; Time Types</div>
+      <table class="type-table">
+        <tbody>
+          <tr><td>DATE</td><td>YYYY-MM-DD</td><td>3 bytes</td></tr>
+          <tr><td>TIME</td><td>HH:MM:SS</td><td>3–5 bytes</td></tr>
+          <tr><td>DATETIME</td><td>Date + Time</td><td>No timezone</td></tr>
+          <tr><td>TIMESTAMP</td><td>Unix epoch</td><td>With/without TZ</td></tr>
+          <tr><td>TIMESTAMPTZ</td><td>Timestamp + TZ</td><td>PostgreSQL</td></tr>
+          <tr><td>INTERVAL</td><td>Duration</td><td>'3 months 2 days'</td></tr>
+          <tr><td>YEAR</td><td>1901–2155</td><td>MySQL</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="type-card">
+      <div class="type-card-header json">JSON &amp; Structured Types</div>
+      <table class="type-table">
+        <tbody>
+          <tr><td>JSON</td><td>Text JSON</td><td>Validates syntax</td></tr>
+          <tr><td>JSONB</td><td>Binary JSON</td><td>Indexable, fast</td></tr>
+          <tr><td>ARRAY</td><td>Typed arrays</td><td>PostgreSQL: int[]</td></tr>
+          <tr><td>HSTORE</td><td>Key-value store</td><td>PostgreSQL ext</td></tr>
+          <tr><td>XML</td><td>XML document</td><td>With XPath support</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="type-card">
+      <div class="type-card-header special">Network &amp; Special Types</div>
+      <table class="type-table">
+        <tbody>
+          <tr><td>UUID</td><td>128-bit identifier</td><td>gen_random_uuid()</td></tr>
+          <tr><td>INET</td><td>IPv4/IPv6 address</td><td>PostgreSQL</td></tr>
+          <tr><td>CIDR</td><td>Network address block</td><td>PostgreSQL</td></tr>
+          <tr><td>MACADDR</td><td>MAC address</td><td>PostgreSQL</td></tr>
+          <tr><td>POINT</td><td>Geometric point (x,y)</td><td>PostgreSQL</td></tr>
+          <tr><td>TSRANGE</td><td>Timestamp range</td><td>PostgreSQL</td></tr>
+          <tr><td>MONEY</td><td>Currency amount</td><td>Locale-dependent</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="sec-title">Compatibility Matrix</div>
+  <table class="compat-table">
+    <thead>
+      <tr><th>Type</th><th>PostgreSQL</th><th>MySQL</th><th>SQLite</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>INT / BIGINT</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td>Universal support</td></tr>
+      <tr><td>DECIMAL / NUMERIC</td><td class="tick">✓</td><td class="tick">✓</td><td class="partial">~</td><td>SQLite uses REAL</td></tr>
+      <tr><td>TEXT / VARCHAR</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td>SQLite: TEXT for all</td></tr>
+      <tr><td>BOOLEAN</td><td class="tick">✓</td><td class="partial">TINYINT</td><td class="partial">INTEGER</td><td>PG has native bool</td></tr>
+      <tr><td>TIMESTAMPTZ</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td>PostgreSQL-specific</td></tr>
+      <tr><td>JSONB</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td>PG only; MySQL has JSON</td></tr>
+      <tr><td>ARRAY</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td>PostgreSQL-specific</td></tr>
+      <tr><td>UUID</td><td class="tick">✓</td><td class="tick">✓</td><td class="partial">TEXT</td><td>SQLite stores as text</td></tr>
+      <tr><td>ENUM</td><td class="tick">✓</td><td class="tick">✓</td><td class="cross">✗</td><td>Use CHECK in SQLite</td></tr>
+      <tr><td>INET / CIDR</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td><td>PostgreSQL network types</td></tr>
+      <tr><td>AUTO_INCREMENT</td><td>SERIAL/IDENTITY</td><td class="tick">✓</td><td>ROWID</td><td>Different syntax</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FUNCTIONS -->
+<div id="functions" class="section">
+  <div class="sec-title">SQL Functions</div>
+  <div class="func-groups">
+
+    <div class="func-group-card">
+      <div class="func-group-header agg">Aggregate Functions</div>
+      <ul class="func-list">
+        <details class="func-item"><summary><span class="func-name agg">COUNT</span><span style="color:var(--dim);font-size:0.7rem">rows</span></summary><div class="func-detail"><div class="func-syntax">COUNT(*) / COUNT(col) / COUNT(DISTINCT col)</div><div class="func-ex">SELECT COUNT(DISTINCT user_id) FROM orders;</div><div class="func-desc">Counts rows. COUNT(*) includes NULLs; COUNT(col) excludes them; DISTINCT counts unique values.</div></div></details>
+        <details class="func-item"><summary><span class="func-name agg">SUM</span><span style="color:var(--dim);font-size:0.7rem">total</span></summary><div class="func-detail"><div class="func-syntax">SUM(expression)</div><div class="func-ex">SELECT SUM(total) FROM orders WHERE status='paid';</div><div class="func-desc">Returns the sum of non-NULL values. Returns NULL if all values are NULL.</div></div></details>
+        <details class="func-item"><summary><span class="func-name agg">AVG</span><span style="color:var(--dim);font-size:0.7rem">mean</span></summary><div class="func-detail"><div class="func-syntax">AVG(expression)</div><div class="func-ex">SELECT AVG(price) FROM products WHERE active=1;</div><div class="func-desc">Returns the arithmetic mean of non-NULL values.</div></div></details>
+        <details class="func-item"><summary><span class="func-name agg">MIN / MAX</span><span style="color:var(--dim);font-size:0.7rem">extremes</span></summary><div class="func-detail"><div class="func-syntax">MIN(col), MAX(col)</div><div class="func-ex">SELECT MIN(price), MAX(price) FROM products;</div><div class="func-desc">Returns the minimum or maximum value. Works on numbers, strings, and dates.</div></div></details>
+        <details class="func-item"><summary><span class="func-name agg">GROUP_CONCAT</span><span style="color:var(--dim);font-size:0.7rem">MySQL</span></summary><div class="func-detail"><div class="func-syntax">GROUP_CONCAT(col SEPARATOR ',')</div><div class="func-ex">SELECT GROUP_CONCAT(tag ORDER BY tag) FROM post_tags GROUP BY post_id;</div><div class="func-desc">Concatenates group values into a string. PostgreSQL equivalent: STRING_AGG(col, ',').</div></div></details>
+      </ul>
+    </div>
+
+    <div class="func-group-card">
+      <div class="func-group-header str">String Functions</div>
+      <ul class="func-list">
+        <details class="func-item"><summary><span class="func-name str">UPPER / LOWER</span></summary><div class="func-detail"><div class="func-syntax">UPPER(str), LOWER(str)</div><div class="func-ex">SELECT UPPER('hello world'); → HELLO WORLD</div><div class="func-desc">Converts string to uppercase or lowercase.</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">LENGTH / CHAR_LENGTH</span></summary><div class="func-detail"><div class="func-syntax">LENGTH(str), CHAR_LENGTH(str)</div><div class="func-ex">SELECT LENGTH('café'); → 5 (bytes) vs 4 (chars)</div><div class="func-desc">Returns byte length or character count (important for multibyte encodings).</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">SUBSTR / SUBSTRING</span></summary><div class="func-detail"><div class="func-syntax">SUBSTRING(str FROM pos FOR len)</div><div class="func-ex">SELECT SUBSTRING('Hello World' FROM 7 FOR 5); → World</div><div class="func-desc">Extracts a substring. 1-indexed. Negative pos counts from end (MySQL).</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">CONCAT / ||</span></summary><div class="func-detail"><div class="func-syntax">CONCAT(s1, s2, ...) or s1 || s2</div><div class="func-ex">SELECT first_name || ' ' || last_name AS full_name;</div><div class="func-desc">Concatenates strings. CONCAT ignores NULLs; || propagates them (use COALESCE).</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">REPLACE</span></summary><div class="func-detail"><div class="func-syntax">REPLACE(str, from_str, to_str)</div><div class="func-ex">SELECT REPLACE(phone, '-', ''); → no hyphens</div><div class="func-desc">Replaces all occurrences of a substring within a string.</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">TRIM / LTRIM / RTRIM</span></summary><div class="func-detail"><div class="func-syntax">TRIM([BOTH|LEADING|TRAILING] chars FROM str)</div><div class="func-ex">SELECT TRIM('  hello  '); → 'hello'</div><div class="func-desc">Removes leading/trailing characters (default: spaces).</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">LIKE / ILIKE</span></summary><div class="func-detail"><div class="func-syntax">col LIKE 'pattern%' (ILIKE = case-insensitive)</div><div class="func-ex">WHERE email ILIKE '%@gmail.com'</div><div class="func-desc">Pattern matching. % = any chars, _ = single char. Use indexes for prefix matches only.</div></div></details>
+        <details class="func-item"><summary><span class="func-name str">REGEXP / ~</span></summary><div class="func-detail"><div class="func-syntax">col REGEXP 'pattern' or col ~ 'pattern'</div><div class="func-ex">WHERE phone ~ '^\+1[0-9]{10}$'</div><div class="func-desc">Regular expression matching. ~ in PostgreSQL; REGEXP in MySQL.</div></div></details>
+      </ul>
+    </div>
+
+    <div class="func-group-card">
+      <div class="func-group-header dt">Date &amp; Time Functions</div>
+      <ul class="func-list">
+        <details class="func-item"><summary><span class="func-name dt">NOW / CURRENT_TIMESTAMP</span></summary><div class="func-detail"><div class="func-syntax">NOW(), CURRENT_TIMESTAMP</div><div class="func-ex">INSERT INTO logs (created_at) VALUES (NOW());</div><div class="func-desc">Returns the current date and time. NOW() is transaction-stable in PostgreSQL.</div></div></details>
+        <details class="func-item"><summary><span class="func-name dt">DATE_FORMAT</span></summary><div class="func-detail"><div class="func-syntax">DATE_FORMAT(date, '%Y-%m') — MySQL</div><div class="func-ex">SELECT DATE_FORMAT(created_at, '%Y-%m') AS month;</div><div class="func-desc">Formats a date. PostgreSQL uses TO_CHAR(date, 'YYYY-MM').</div></div></details>
+        <details class="func-item"><summary><span class="func-name dt">DATE_TRUNC</span></summary><div class="func-detail"><div class="func-syntax">DATE_TRUNC('month', timestamp) — PostgreSQL</div><div class="func-ex">SELECT DATE_TRUNC('week', NOW()); → start of week</div><div class="func-desc">Truncates timestamp to specified precision. PostgreSQL-specific.</div></div></details>
+        <details class="func-item"><summary><span class="func-name dt">EXTRACT / DATE_PART</span></summary><div class="func-detail"><div class="func-syntax">EXTRACT(YEAR FROM date)</div><div class="func-ex">WHERE EXTRACT(MONTH FROM created_at) = 12</div><div class="func-desc">Extracts a specific part (year, month, day, hour, etc.) from a datetime value.</div></div></details>
+        <details class="func-item"><summary><span class="func-name dt">DATE_ADD / INTERVAL</span></summary><div class="func-detail"><div class="func-syntax">DATE_ADD(date, INTERVAL 7 DAY) or date + INTERVAL '7 days'</div><div class="func-ex">WHERE expires_at > NOW() + INTERVAL '30 days'</div><div class="func-desc">Adds an interval to a date. MySQL uses DATE_ADD(); PostgreSQL uses +INTERVAL.</div></div></details>
+        <details class="func-item"><summary><span class="func-name dt">DATEDIFF</span></summary><div class="func-detail"><div class="func-syntax">DATEDIFF(date1, date2) — MySQL</div><div class="func-ex">SELECT DATEDIFF(NOW(), created_at) AS days_old;</div><div class="func-desc">Returns number of days between two dates. PostgreSQL: (date1 - date2).</div></div></details>
+      </ul>
+    </div>
+
+    <div class="func-group-card">
+      <div class="func-group-header win">Window Functions</div>
+      <ul class="func-list">
+        <details class="func-item"><summary><span class="func-name win">ROW_NUMBER</span></summary><div class="func-detail"><div class="func-syntax">ROW_NUMBER() OVER (PARTITION BY col ORDER BY col)</div><div class="func-ex">SELECT *, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at) rn FROM orders;</div><div class="func-desc">Assigns sequential row number within each partition. No ties — each row gets unique number.</div></div></details>
+        <details class="func-item"><summary><span class="func-name win">RANK / DENSE_RANK</span></summary><div class="func-detail"><div class="func-syntax">RANK() OVER (...), DENSE_RANK() OVER (...)</div><div class="func-ex">SELECT name, score, DENSE_RANK() OVER (ORDER BY score DESC) AS rank;</div><div class="func-desc">RANK skips numbers on ties (1,2,2,4); DENSE_RANK doesn't (1,2,2,3).</div></div></details>
+        <details class="func-item"><summary><span class="func-name win">LAG / LEAD</span></summary><div class="func-detail"><div class="func-syntax">LAG(col, offset, default) OVER (ORDER BY col)</div><div class="func-ex">SELECT revenue, LAG(revenue) OVER (ORDER BY month) AS prev_month;</div><div class="func-desc">Access previous (LAG) or next (LEAD) row's value without a self-join.</div></div></details>
+        <details class="func-item"><summary><span class="func-name win">FIRST_VALUE / LAST_VALUE</span></summary><div class="func-detail"><div class="func-syntax">FIRST_VALUE(col) OVER (PARTITION BY x ORDER BY y)</div><div class="func-ex">SELECT *, FIRST_VALUE(price) OVER (PARTITION BY category ORDER BY date) AS initial_price;</div><div class="func-desc">Returns the first/last value in the window frame. Use ROWS BETWEEN for frame control.</div></div></details>
+        <details class="func-item"><summary><span class="func-name win">NTILE</span></summary><div class="func-detail"><div class="func-syntax">NTILE(n) OVER (ORDER BY col)</div><div class="func-ex">SELECT name, score, NTILE(4) OVER (ORDER BY score DESC) AS quartile;</div><div class="func-desc">Divides rows into n approximately equal buckets. NTILE(100) = percentile.</div></div></details>
+        <details class="func-item"><summary><span class="func-name win">SUM / AVG (windowed)</span></summary><div class="func-detail"><div class="func-syntax">SUM(col) OVER (PARTITION BY x ORDER BY y ROWS BETWEEN ...)</div><div class="func-ex">SELECT *, SUM(revenue) OVER (ORDER BY month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total;</div><div class="func-desc">Running totals, moving averages. Window frame: ROWS/RANGE BETWEEN.</div></div></details>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- JOINS -->
+<div id="joins" class="section">
+  <div class="sec-title">SQL Joins — Visual Reference</div>
+  <div class="joins-grid">
+
+    <div class="join-card">
+      <div class="join-venn">
+        <div class="venn-circle venn-left" style="opacity:0.7"></div>
+        <div class="venn-circle venn-right" style="opacity:0.7"></div>
+        <div style="position:absolute;left:calc(50% - 22px);width:26px;height:70px;background:rgba(0,212,170,0.9);overflow:hidden;border-radius:50% 0 0 50%;"></div>
+        <div style="position:absolute;left:calc(50% - 22px);width:26px;height:70px;background:rgba(0,212,170,0.9);overflow:hidden;"></div>
+        <span class="venn-label l">A</span><span class="venn-label r">B</span>
+      </div>
+      <div class="join-name">INNER JOIN</div>
+      <div class="join-desc">Returns only rows where there is a match in BOTH tables. The intersection. Most commonly used join type.</div>
+      <div class="join-code"><span class="kw">SELECT</span> u.<span class="col">name</span>, o.<span class="col">total</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">INNER JOIN</span> <span class="tbl">orders</span> o
+  <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span><span class="punc">;</span></div>
+      <div class="join-usecase">Use case: Get all users who have at least one order</div>
+    </div>
+
+    <div class="join-card">
+      <div class="join-venn">
+        <div class="venn-circle venn-left" style="opacity:0.7;background:var(--blue)"></div>
+        <div class="venn-circle venn-right" style="opacity:0.15;background:var(--teal)"></div>
+        <span class="venn-label l">A</span><span class="venn-label r">B</span>
+      </div>
+      <div class="join-name">LEFT JOIN</div>
+      <div class="join-desc">Returns ALL rows from the left table plus matching rows from the right. Non-matching right rows become NULL. The most common join after INNER.</div>
+      <div class="join-code"><span class="kw">SELECT</span> u.<span class="col">name</span>, o.<span class="col">total</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">LEFT JOIN</span> <span class="tbl">orders</span> o
+  <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span><span class="punc">;</span>
+<span class="cmt">-- NULL total = no orders</span></div>
+      <div class="join-usecase">Use case: Get all users, even those without orders</div>
+    </div>
+
+    <div class="join-card">
+      <div class="join-venn">
+        <div class="venn-circle venn-left" style="opacity:0.15;background:var(--blue)"></div>
+        <div class="venn-circle venn-right" style="opacity:0.7;background:var(--teal)"></div>
+        <span class="venn-label l">A</span><span class="venn-label r">B</span>
+      </div>
+      <div class="join-name">RIGHT JOIN</div>
+      <div class="join-desc">Returns ALL rows from the right table plus matching rows from the left. The mirror image of LEFT JOIN. Often rewritten as a LEFT JOIN for readability.</div>
+      <div class="join-code"><span class="kw">SELECT</span> u.<span class="col">name</span>, o.<span class="col">total</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">RIGHT JOIN</span> <span class="tbl">orders</span> o
+  <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span><span class="punc">;</span></div>
+      <div class="join-usecase">Use case: Get all orders, even orphaned ones</div>
+    </div>
+
+    <div class="join-card">
+      <div class="join-venn">
+        <div class="venn-circle venn-left" style="opacity:0.6;background:var(--blue)"></div>
+        <div class="venn-circle venn-right" style="opacity:0.6;background:var(--teal)"></div>
+        <span class="venn-label l">A</span><span class="venn-label r">B</span>
+      </div>
+      <div class="join-name">FULL OUTER JOIN</div>
+      <div class="join-desc">Returns ALL rows from both tables. Where there's no match, the other side becomes NULL. The union of LEFT and RIGHT JOINs.</div>
+      <div class="join-code"><span class="kw">SELECT</span> u.<span class="col">name</span>, o.<span class="col">total</span>
+<span class="kw">FROM</span> <span class="tbl">users</span> u
+<span class="kw">FULL OUTER JOIN</span> <span class="tbl">orders</span> o
+  <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span><span class="punc">;</span></div>
+      <div class="join-usecase">Use case: Find mismatches between two datasets</div>
+    </div>
+
+    <div class="join-card">
+      <div class="join-venn" style="height:70px">
+        <div style="display:flex;gap:4px;position:absolute">
+          <div style="width:55px;height:55px;border-radius:50%;background:var(--blue);opacity:0.6"></div>
+          <div style="width:55px;height:55px;border-radius:50%;background:var(--teal);opacity:0.6"></div>
+          <div style="width:55px;height:55px;border-radius:50%;background:var(--purple);opacity:0.6"></div>
+        </div>
+      </div>
+      <div class="join-name">CROSS JOIN</div>
+      <div class="join-desc">Cartesian product — every row from the left table combined with every row from the right. M×N rows result. Use with care; rarely intentional on large tables.</div>
+      <div class="join-code"><span class="kw">SELECT</span> sizes.<span class="col">name</span>, colors.<span class="col">name</span>
+<span class="kw">FROM</span> <span class="tbl">sizes</span>
+<span class="kw">CROSS JOIN</span> <span class="tbl">colors</span><span class="punc">;</span>
+<span class="cmt">-- 4 sizes × 6 colors = 24 rows</span></div>
+      <div class="join-usecase">Use case: Generate all size/color combinations</div>
+    </div>
+
+    <div class="join-card">
+      <div class="join-venn">
+        <div class="venn-circle" style="position:absolute;left:calc(50% - 35px);opacity:0.5;background:var(--purple)"></div>
+        <div class="venn-circle" style="position:absolute;left:calc(50% - 10px);opacity:0.5;background:var(--blue)"></div>
+        <span class="venn-label l" style="color:var(--purple)">emp</span><span class="venn-label r" style="color:var(--blue)">mgr</span>
+      </div>
+      <div class="join-name">SELF JOIN</div>
+      <div class="join-desc">A table joined to itself. Used for hierarchical data, adjacency lists, or finding relationships within the same table. Requires table aliases.</div>
+      <div class="join-code"><span class="kw">SELECT</span> e.<span class="col">name</span>, m.<span class="col">name</span> <span class="kw">AS</span> <span class="col">manager</span>
+<span class="kw">FROM</span> <span class="tbl">employees</span> e
+<span class="kw">LEFT JOIN</span> <span class="tbl">employees</span> m
+  <span class="kw">ON</span> e.<span class="col">manager_id</span> <span class="op">=</span> m.<span class="col">id</span><span class="punc">;</span></div>
+      <div class="join-usecase">Use case: Employee → Manager hierarchy</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- DATABASES -->
+<div id="databases" class="section">
+  <div class="sec-title">Major SQL Databases</div>
+  <div class="db-grid">
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(0,132,255,0.1)">
+        <div><div class="db-name" style="color:#4169e1">PostgreSQL</div><div class="db-license license-open">Open Source</div></div>
+        <div class="db-type" style="background:rgba(65,105,225,0.1);color:#4169e1;border:1px solid rgba(65,105,225,0.3)">ORDBMS</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">The world's most advanced open-source relational database. ACID compliant, extensible, supports custom types, functions, operators. Best standards compliance.</div>
+        <div class="db-tags">
+          <span class="db-tag">JSONB</span><span class="db-tag">Full-text search</span><span class="db-tag">MVCC</span>
+          <span class="db-tag">Window functions</span><span class="db-tag">Partitioning</span><span class="db-tag">Extensions</span>
+        </div>
+        <div class="db-users" style="margin-top:0.6rem">Used by: Apple, Twitch, Instagram, Spotify, Reddit</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(255,165,0,0.1)">
+        <div><div class="db-name" style="color:#ff8c00">MySQL</div><div class="db-license license-open">GPL / Commercial</div></div>
+        <div class="db-type" style="background:rgba(255,140,0,0.1);color:#ff8c00;border:1px solid rgba(255,140,0,0.3)">RDBMS</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">The world's most popular open-source database, powering most of the web's LAMP stack. Acquired by Oracle. MySQL 8.x added window functions and CTEs.</div>
+        <div class="db-tags">
+          <span class="db-tag">InnoDB engine</span><span class="db-tag">Replication</span><span class="db-tag">Cluster</span>
+          <span class="db-tag">JSON support</span><span class="db-tag">Wide tooling</span>
+        </div>
+        <div class="db-users">Used by: Facebook, Twitter, YouTube, Wikipedia, Airbnb</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(0,212,170,0.1)">
+        <div><div class="db-name" style="color:var(--teal)">SQLite</div><div class="db-license license-open">Public Domain</div></div>
+        <div class="db-type" style="background:rgba(0,212,170,0.1);color:var(--teal);border:1px solid rgba(0,212,170,0.3)">Embedded</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">Serverless, self-contained, single-file database. No configuration, no daemon. The most widely deployed database in the world — in every phone, browser, and desktop app.</div>
+        <div class="db-tags">
+          <span class="db-tag">Serverless</span><span class="db-tag">Zero-config</span><span class="db-tag">Single file</span>
+          <span class="db-tag">In-memory mode</span><span class="db-tag">Embedded</span>
+        </div>
+        <div class="db-users">Used by: Android, iOS, Firefox, Chrome, Python stdlib</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(0,100,180,0.1)">
+        <div><div class="db-name" style="color:#0095d3">MariaDB</div><div class="db-license license-open">GPL</div></div>
+        <div class="db-type" style="background:rgba(0,149,211,0.1);color:#0095d3;border:1px solid rgba(0,149,211,0.3)">RDBMS</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">Community-developed MySQL fork by MySQL's original creator (Monty Widenius), created after Oracle's acquisition. Drop-in compatible with MySQL but with extra features.</div>
+        <div class="db-tags">
+          <span class="db-tag">MySQL compat</span><span class="db-tag">Galera cluster</span><span class="db-tag">Aria engine</span>
+          <span class="db-tag">Columnstore</span>
+        </div>
+        <div class="db-users">Used by: Wikipedia, Google, ServiceNow, Wikimedia</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(200,20,20,0.1)">
+        <div><div class="db-name" style="color:#cc1f1f">MS SQL Server</div><div class="db-license license-commercial">Commercial</div></div>
+        <div class="db-type" style="background:rgba(200,20,20,0.1);color:#cc1f1f;border:1px solid rgba(200,20,20,0.3)">Enterprise</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">Microsoft's flagship enterprise RDBMS. Deep Windows/Azure integration. T-SQL dialect. Excellent tooling (SSMS). Industry standard for .NET applications.</div>
+        <div class="db-tags">
+          <span class="db-tag">T-SQL</span><span class="db-tag">Azure integration</span><span class="db-tag">SSRS/SSIS</span>
+          <span class="db-tag">Always On AG</span><span class="db-tag">In-memory OLTP</span>
+        </div>
+        <div class="db-users">Used by: Stack Overflow, Dell, Siemens, eBay</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(200,100,0,0.1)">
+        <div><div class="db-name" style="color:#f80000">Oracle DB</div><div class="db-license license-commercial">Commercial</div></div>
+        <div class="db-type" style="background:rgba(248,0,0,0.08);color:#f80000;border:1px solid rgba(248,0,0,0.25)">Enterprise</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">The dominant enterprise database for decades. PL/SQL procedural extensions, unmatched scalability, and features for large organizations. Extremely expensive licensing.</div>
+        <div class="db-tags">
+          <span class="db-tag">PL/SQL</span><span class="db-tag">RAC clustering</span><span class="db-tag">Data Guard</span>
+          <span class="db-tag">Partitioning</span><span class="db-tag">Exadata</span>
+        </div>
+        <div class="db-users">Used by: Banks, governments, SAP, telcos worldwide</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(0,180,0,0.1)">
+        <div><div class="db-name" style="color:#00a65a">MongoDB</div><div class="db-license license-open">SSPL</div></div>
+        <div class="db-type" style="background:rgba(0,166,90,0.1);color:#00a65a;border:1px solid rgba(0,166,90,0.3)">Document</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">Document-oriented NoSQL database. JSON-like BSON documents instead of rows/columns. Flexible schema, horizontal scaling via sharding. Aggregation pipeline for complex queries.</div>
+        <div class="db-tags">
+          <span class="db-tag">Schemaless</span><span class="db-tag">Sharding</span><span class="db-tag">Aggregation</span>
+          <span class="db-tag">Atlas cloud</span><span class="db-tag">ACID (4.0+)</span>
+        </div>
+        <div class="db-users">Used by: Adobe, Expedia, Forbes, Verizon, Bosch</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-header" style="border-bottom:1px solid rgba(255,50,50,0.1)">
+        <div><div class="db-name" style="color:#ff4444">Redis</div><div class="db-license license-open">BSD / RSALv2</div></div>
+        <div class="db-type" style="background:rgba(255,68,68,0.1);color:#ff4444;border:1px solid rgba(255,68,68,0.25)">Key-Value</div>
+      </div>
+      <div class="db-body" style="padding-top:0.8rem">
+        <div class="db-desc">In-memory data structure store. Sub-millisecond latency. Supports strings, hashes, lists, sets, sorted sets, streams. Used for caching, sessions, pub/sub, leaderboards.</div>
+        <div class="db-tags">
+          <span class="db-tag">In-memory</span><span class="db-tag">Pub/Sub</span><span class="db-tag">Sorted sets</span>
+          <span class="db-tag">Streams</span><span class="db-tag">Lua scripting</span><span class="db-tag">Cluster</span>
+        </div>
+        <div class="db-users">Used by: Twitter, GitHub, Snapchat, Craigslist, Digg</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // Particle / data grid background
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [], W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    particles = Array.from({length: 60}, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+      r: 1 + Math.random() * 2,
+      hue: [0,132,255]
+    }));
+  }
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, W, H);
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 120) {
+          ctx.strokeStyle = `rgba(0,132,255,${0.4 * (1 - dist/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    // Draw particles
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,132,255,0.7)`;
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+    });
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(drawParticles, 40);
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
