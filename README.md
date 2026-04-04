@@ -187,12 +187,13 @@ docker compose down
 
 ## Adding a New App
 
-Every new app must be wired into five places:
+Every new app must be wired into six places:
 
 1. **`shared-html/nav.js`** — add nav entry
 2. **`public-html/index.html`** — add landing page card
 3. **`logs-server/server.js`** — add subdomain to the tab list
 4. **`apps-html/index.html`** — add a row to the `APPS` array
 5. **`awstats/entrypoint.sh` and `awstats/update.sh`** — add the site name to the `SITES` variable in both files, then rebuild and restart the `awstats` container (`docker compose up -d --build awstats`) so AWStats generates traffic reports for the new subdomain at `stats.ximg.app`
+6. **Favicon** — download a thematically appropriate image, save it as `favicon.ico` (or `.png`) in the app's directory, and add `<link rel="icon" href="/favicon.ico">` in `<head>`. Use a real image specific to the app's theme — not a generic placeholder.
 
 For a new subdomain also: add DNS A record → `172.238.205.61`, run `certbot --expand`, add `server {}` block in `nginx/nginx.conf`, add service in `compose.yaml`, create `*-html/` directory.
