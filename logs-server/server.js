@@ -177,6 +177,9 @@ const LOG_FILES = {
   jwt:            'jwt.access.log',
   cron:           'cron.access.log',
   color:          'color.access.log',
+  dna:            'dna.access.log',
+  cell:           'cell.access.log',
+  immune:         'immune.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -538,6 +541,9 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="jwt">jwt</button>
           <button class="site-opt" data-site="cron">cron</button>
           <button class="site-opt" data-site="color">color</button>
+          <button class="site-opt" data-site="dna">dna</button>
+          <button class="site-opt" data-site="cell">cell</button>
+          <button class="site-opt" data-site="immune">immune</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>
