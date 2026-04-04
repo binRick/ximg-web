@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quake — id Software's Dark Legend</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050200;
+      --orange: #ff4500;
+      --rust: #8b1a00;
+      --gold: #ffd700;
+      --dark-red: #1a0500;
+      --bright-orange: #ff8c00;
+      --text: #e8d4b0;
+      --card-bg: #0e0500;
+      --dim: rgba(232,212,176,.5);
+    }
+
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+      padding-top: 44px;
+    }
+
+    /* ── Scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,.07) 0px,
+        rgba(0,0,0,.07) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative; overflow: hidden;
+      padding: 3.5rem 1.5rem 2rem;
+      text-align: center;
+      background: linear-gradient(160deg, #1a0300 0%, #050200 50%, #120100 100%);
+      border-bottom: 1px solid rgba(255,69,0,.3);
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 100%, rgba(139,26,0,.35) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255,69,0,.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero-title {
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 900; letter-spacing: .12em;
+      background: linear-gradient(180deg, var(--gold) 0%, var(--bright-orange) 40%, var(--orange) 70%, #a00 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      line-height: 1;
+    }
+    .hero-sub {
+      font-size: .85rem; letter-spacing: .2em; color: var(--orange);
+      margin: .6rem 0 .4rem; text-transform: uppercase;
+    }
+    .hero p { color: var(--dim); font-size: .88rem; max-width: 560px; margin: .5rem auto 0; line-height: 1.6; }
+    #ember-canvas {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky; top: 44px; z-index: 100;
+      background: rgba(5,2,0,.97);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,69,0,.25);
+    }
+    .sub-nav-inner {
+      display: flex; justify-content: center; gap: .5rem;
+      padding: .5rem .75rem; flex-wrap: wrap;
+    }
+    .tab {
+      font-family: 'Courier New', monospace; font-size: .78rem; font-weight: 700;
+      padding: .3rem .85rem;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,69,0,.2);
+      color: rgba(232,212,176,.45);
+      cursor: pointer; letter-spacing: .08em;
+      transition: all .2s; white-space: nowrap;
+      clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    }
+    .tab:hover { background: rgba(255,69,0,.12); border-color: rgba(255,69,0,.5); color: var(--bright-orange); }
+    .tab.active { background: rgba(255,69,0,.2); border-color: var(--orange); color: var(--gold); }
+
+    /* ── Sections ── */
+    .section { display: none; padding: 2.5rem 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 1.5rem; font-weight: 900; letter-spacing: .15em;
+      color: var(--orange); margin-bottom: .2rem; text-transform: uppercase;
+    }
+    .section-title span { color: var(--gold); font-size: .85rem; font-weight: 400; margin-left: .5rem; letter-spacing: .05em; }
+    .section-subtitle { color: var(--dim); font-size: .8rem; margin-bottom: 2rem; letter-spacing: .03em; }
+
+    /* ── Grid ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.2rem; }
+    .cards-2 { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+
+    /* ── Card ── */
+    .card {
+      background: linear-gradient(145deg, var(--card-bg), #150400);
+      border: 1px solid rgba(255,69,0,.18);
+      padding: 1.3rem;
+      position: relative; overflow: hidden;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--orange), var(--gold), var(--orange), transparent);
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,69,0,.45);
+      box-shadow: 0 6px 25px rgba(255,69,0,.2), inset 0 0 30px rgba(255,69,0,.03);
+    }
+
+    .card-label {
+      font-size: .65rem; letter-spacing: .15em; color: var(--orange);
+      text-transform: uppercase; margin-bottom: .3rem;
+      border-left: 2px solid var(--orange); padding-left: .4rem;
+    }
+    .card-name { font-size: 1.05rem; font-weight: 700; color: var(--gold); margin-bottom: .4rem; letter-spacing: .05em; }
+    .card-desc { font-size: .8rem; color: var(--dim); line-height: 1.65; }
+    .card-year { font-size: .7rem; color: rgba(255,140,0,.6); margin-bottom: .3rem; }
+
+    /* ── Game cover art (CSS) ── */
+    .cover-art {
+      height: 90px; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; font-weight: 900;
+      letter-spacing: .08em;
+      position: relative; overflow: hidden;
+      border: 1px solid rgba(255,69,0,.2);
+    }
+    .cover-art span { position: relative; z-index: 1; text-shadow: 0 0 20px currentColor; }
+
+    /* ── Stats bar ── */
+    .stat-row { margin-top: .6rem; }
+    .stat-label { font-size: .65rem; color: rgba(255,140,0,.6); letter-spacing: .1em; margin-bottom: .15rem; }
+    .stat-bar { height: 4px; background: rgba(255,255,255,.07); position: relative; overflow: hidden; }
+    .stat-fill {
+      height: 100%; background: linear-gradient(90deg, var(--rust), var(--orange));
+      transition: width .5s;
+      box-shadow: 0 0 6px var(--orange);
+    }
+
+    /* ── Monster pulse ── */
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 5px rgba(255,69,0,.3); }
+      50% { box-shadow: 0 0 20px rgba(255,69,0,.6), 0 0 40px rgba(255,140,0,.2); }
+    }
+    .monster-card { animation: pulse-glow 3s ease-in-out infinite; }
+
+    /* ── Tag ── */
+    .tag {
+      display: inline-block; font-size: .65rem; padding: .1rem .45rem;
+      background: rgba(255,69,0,.1); border: 1px solid rgba(255,69,0,.25);
+      color: var(--bright-orange); letter-spacing: .05em; margin: .15rem .1rem 0;
+    }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; padding-left: 1.8rem; }
+    .timeline::before {
+      content: ''; position: absolute; left: .4rem; top: 0; bottom: 0; width: 2px;
+      background: linear-gradient(to bottom, var(--orange), var(--rust), transparent);
+    }
+    .tl-item { position: relative; margin-bottom: 1.6rem; padding-left: .8rem; }
+    .tl-dot {
+      position: absolute; left: -1.5rem; top: .3rem;
+      width: 10px; height: 10px;
+      background: var(--orange); border: 2px solid var(--gold);
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    }
+    .tl-year { font-size: .7rem; color: var(--gold); letter-spacing: .12em; margin-bottom: .15rem; font-weight: 700; }
+    .tl-title { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; letter-spacing: .05em; }
+    .tl-desc { font-size: .8rem; color: var(--dim); line-height: 1.65; }
+
+    /* ── Map cards ── */
+    .map-preview {
+      height: 70px; margin-bottom: .8rem;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 2px; padding: 4px;
+      background: rgba(255,69,0,.05);
+      border: 1px solid rgba(255,69,0,.12);
+    }
+    .map-cell { background: rgba(255,69,0,.08); }
+    .map-cell.wall { background: rgba(139,26,0,.6); }
+    .map-cell.floor { background: rgba(255,140,0,.15); }
+    .map-cell.bright { background: rgba(255,69,0,.4); }
+
+    @media (max-width: 600px) {
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="ember-canvas"></canvas>
+  <div class="hero-title">QUAKE</div>
+  <div class="hero-sub">id Software · Dark Legend · 1996–2017</div>
+  <p>Born from the hellish imagination of id Software, Quake redefined 3D gaming, invented online deathmatch culture, and forged the modern FPS genre in fire and brown polygons.</p>
+</header>
+
+<nav class="sub-nav">
+  <div class="sub-nav-inner">
+    <button class="tab active" onclick="switchTab('games')">[ Games ]</button>
+    <button class="tab" onclick="switchTab('weapons')">[ Weapons ]</button>
+    <button class="tab" onclick="switchTab('monsters')">[ Monsters ]</button>
+    <button class="tab" onclick="switchTab('maps')">[ Maps ]</button>
+    <button class="tab" onclick="switchTab('history')">[ History ]</button>
+  </div>
+</nav>
+
+<!-- ══════════════ GAMES ══════════════ -->
+<section id="games" class="section active">
+  <div class="section-title">Games <span>The Series</span></div>
+  <div class="section-subtitle">Six entries across three decades — from gothic horror to arena shooters to reboots</div>
+
+  <div class="cards cards-2">
+    <div class="card">
+      <div class="cover-art" style="background:linear-gradient(145deg,#1a0300,#0a0100);color:var(--gold);">
+        <span>QUAKE</span>
+      </div>
+      <div class="card-label">id Software</div>
+      <div class="card-name">Quake (1996)</div>
+      <div class="card-year">▸ Engine: id Tech 2 (Quake Engine) — first true real-time 3D polygonal FPS</div>
+      <div class="card-desc">The game that ended Doom's reign and invented the modern FPS. Designed by John Romero and John Carmack, it married Cthulhu-esque gothic horror (Lovecraft's influence on Sandy Petersen) with pure twitch-based shooting. The Quake Engine introduced true 3D environments with height variation, colored lighting, and network code that spawned online multiplayer. Nine Inch Nails composed the soundtrack. Quakeworld (1996) patched latency compensation, creating competitive online gaming.</div>
+      <div style="margin-top:.6rem;"><span class="tag">Gothic Horror</span><span class="tag">True 3D</span><span class="tag">NIN Soundtrack</span><span class="tag">Deathmatch</span></div>
+    </div>
+    <div class="card">
+      <div class="cover-art" style="background:linear-gradient(145deg,#0a0f1a,#050a10);color:#4af;">
+        <span style="color:#4499ff;">QUAKE II</span>
+      </div>
+      <div class="card-label">id Software</div>
+      <div class="card-name">Quake II (1997)</div>
+      <div class="card-year">▸ Engine: id Tech 2 (revised) — 16-bit color, hardware OpenGL acceleration</div>
+      <div class="card-desc">A dramatic tonal shift from Quake's gothic horror to industrial sci-fi. The Strogg — cybernetic alien monsters harvesting humans for biomechanical conversion — are a genuinely disturbing concept. Quake II was the first major game to require a hardware 3D accelerator (Voodoo card) for best visuals. The multiplayer code influenced Counter-Strike. The Big Gun level remains a masterwork of industrial environment design. Became the base for many commercial engine licenses.</div>
+      <div style="margin-top:.6rem;"><span class="tag">Sci-Fi</span><span class="tag">Strogg</span><span class="tag">OpenGL</span><span class="tag">Voodoo GPU</span></div>
+    </div>
+    <div class="card">
+      <div class="cover-art" style="background:linear-gradient(145deg,#1a1000,#0a0800);color:var(--gold);">
+        <span>Q3A</span>
+      </div>
+      <div class="card-label">id Software</div>
+      <div class="card-name">Quake III Arena (1999)</div>
+      <div class="card-year">▸ Engine: id Tech 3 — curved surfaces, per-vertex lighting, shader system</div>
+      <div class="card-desc">The purest expression of arena FPS: no campaign, no story — just you, a dozen weapons, and increasingly lethal bot opponents named after id developers. The Quake III engine became the most licensed engine in history (Call of Duty, Medal of Honor, Jedi Knight II all derived from it). The game defined the eSports era's pre-Counter-Strike competitive FPS scene. Tricks: rocket jumping, strafe jumping, plasma climbing — all emergent from physics, none designed.</div>
+      <div style="margin-top:.6rem;"><span class="tag">Pure Arena</span><span class="tag">eSports</span><span class="tag">Most Licensed Engine</span></div>
+    </div>
+    <div class="card">
+      <div class="cover-art" style="background:linear-gradient(145deg,#0d0a1a,#080610);color:#a07cff;">
+        <span style="color:#a07cff;">QUAKE 4</span>
+      </div>
+      <div class="card-label">Raven Software / id Software</div>
+      <div class="card-name">Quake 4 (2005)</div>
+      <div class="card-year">▸ Engine: id Tech 4 (Doom 3 engine) — unified lighting model, megatextures</div>
+      <div class="card-desc">A direct sequel to Quake II's story, developed by Raven Software using id's Doom 3 engine. The game's most memorable sequence: the player is captured by Strogg and partially "Stroggified" — implanted with cybernetics while conscious. Dark, cinematic, and technically impressive for 2005. Multiplayer shipped with the game on Xbox 360 launch day, making it one of the first next-gen launch titles. Raven's gunplay refinement over Doom 3 was widely praised.</div>
+      <div style="margin-top:.6rem;"><span class="tag">Story</span><span class="tag">Raven Software</span><span class="tag">Xbox 360 Launch</span></div>
+    </div>
+    <div class="card">
+      <div class="cover-art" style="background:linear-gradient(145deg,#051005,#020802);color:#0f0;">
+        <span style="color:#44ff44;font-size:1rem;">ET:QUAKE WARS</span>
+      </div>
+      <div class="card-label">Splash Damage / id Software</div>
+      <div class="card-name">Enemy Territory: Quake Wars (2007)</div>
+      <div class="card-year">▸ Engine: id Tech 4 modified with MegaTexture — vast outdoor terrain</div>
+      <div class="card-desc">A team-based objective game pitting GDF (Global Defense Force) humans against the Strogg invasion. Splash Damage (creators of Wolfenstein: Enemy Territory) built a class-based shooter with persistent stats, awards, and 64-player servers. MegaTexture technology allowed seamless outdoor terrain without obvious tiling — revolutionary for outdoor FPS environments at the time. Arguably a more innovative design than Quake 4 despite lesser commercial success.</div>
+      <div style="margin-top:.6rem;"><span class="tag">Team-Based</span><span class="tag">64 Players</span><span class="tag">MegaTexture</span></div>
+    </div>
+    <div class="card">
+      <div class="cover-art" style="background:linear-gradient(145deg,#1a0a00,#100600);color:var(--bright-orange);">
+        <span>CHAMPIONS</span>
+      </div>
+      <div class="card-label">id Software / Saber Interactive</div>
+      <div class="card-name">Quake Champions (2017)</div>
+      <div class="card-year">▸ Engine: id Tech 6 modified — 120Hz tick rate, champion abilities</div>
+      <div class="card-desc">id Software's attempt to reboot the arena FPS genre for the hero-shooter era of Overwatch and Paladins. Champions have unique active abilities (Ranger's orb, Nyx's phase shift, Slash's plasma trail) while retaining CPMA-style strafe jumping and classic Quake weapons. The game remained in Early Access for years and attracted a small but devoted competitive community. QuakeCon 2022 saw the final major tournament. Still updated and played by hardcore arena FPS fans.</div>
+      <div style="margin-top:.6rem;"><span class="tag">Champion Abilities</span><span class="tag">Free-to-Play</span><span class="tag">QuakeCon</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ WEAPONS ══════════════ -->
+<section id="weapons" class="section">
+  <div class="section-title">Weapons <span>Arsenal</span></div>
+  <div class="section-subtitle">Quake's weapons are a masterclass in distinct mechanical identity — every gun has a role, a feel, and a cult following</div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Melee · Quake 1</div>
+      <div class="card-name">⚒ Axe</div>
+      <div class="card-desc">The starting melee weapon — humiliating to die by and legendary to kill with. In competitive Quake, axe-killing an opponent is the ultimate sign of dominance. Deals 20 damage per swing. The only weapon that requires no ammo. Famous in speedrunning where axe-only runs (called "axe only" challenges) are a popular challenge category.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:15%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:55%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Shotgun · Quake 1</div>
+      <div class="card-name">🔫 Shotgun</div>
+      <div class="card-desc">The starting firearm. Fires a spread of 6 pellets dealing 4 damage each (24 total). At close range it's a reliable finisher; at distance it's barely an annoyance. In Quake, the starting shotgun is almost immediately discarded for the Super Shotgun. Ammo: shells. Rate: moderate. Best range: close to medium.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:30%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:60%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Double-barrel · Quake 1</div>
+      <div class="card-name">💥 Super Shotgun</div>
+      <div class="card-desc">The double-barreled shotgun — Quake's best close-range weapon and arguably the most satisfying gun in FPS history. Fires 14 pellets dealing 4 damage each (56 total) but with a huge spread. At point-blank range it erases opponents instantly. The pump animation is iconic. Ammo: shells (2 per shot). Competitive players master the distance sweet spot between maximum damage and acceptable spread.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:65%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:40%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Projectile · Quake 1</div>
+      <div class="card-name">🔩 Nailgun</div>
+      <div class="card-desc">Fires metal spikes (nails) in a straight line at medium rate. Each nail deals 9 damage. Good at medium range where hitscan weapons struggle. The nailgun is the only weapon in the original Quake not derived from id's DOOM-era designs. The firing sound — a rapid mechanical chugging — is one of the most recognizable sounds in gaming. Ammo: nails.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:40%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:70%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Rapid-fire · Quake 1</div>
+      <div class="card-name">⚡ Super Nailgun</div>
+      <div class="card-desc">The Perforator — fires nails at twice the rate of the Nailgun (same 9 damage per nail). At full speed it pumps out an almost continuous stream of projectiles that can track moving targets with skill. Consumes ammo rapidly. In competitive Quake, the SNG is used to suppress choke points and for rapid rail-switching combos. Ammo: nails (2 per shot).</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:55%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:85%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Explosive · Quake 1</div>
+      <div class="card-name">💣 Grenade Launcher</div>
+      <div class="card-desc">Fires bouncing grenades that explode on contact with enemies or after 2.5 seconds. Each grenade deals up to 120 damage at ground zero with a splash radius. Used for area denial, trapping rooms, and lobbing over obstacles. The grenade bounce physics — affected by surface angle and velocity — reward players who understand Quake's geometry. Rocket jumping's predecessor. Ammo: rockets.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:78%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:35%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Explosive · Quake 1</div>
+      <div class="card-name">🚀 Rocket Launcher</div>
+      <div class="card-desc">The king of Quake weapons. Fires fast-moving rockets that deal up to 120 damage on direct hit plus splash damage. Rocket jumping — firing at the floor while jumping to gain massive height and distance — is one of gaming's great emergent mechanics, discovered accidentally and now a fundamental skill. Most Quake deathmatches are decided by RL control. The weapon that defined arena FPS combat. Ammo: rockets.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:90%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:45%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Hitscan · Quake 1</div>
+      <div class="card-name">⚡ Thunderbolt (LG)</div>
+      <div class="card-desc">The Lightning Gun — fires a continuous beam of electricity dealing 30 damage per hit. Instantaneous hitscan with no travel time. Devastating at close range; the beam diminishes over distance. The sound — a crackling electrical roar — is perhaps the most iconic in Quake. Notorious for the "LG bug" that caused damage underwater to chain to the shooter. Elite players use LG shaft as a primary tracking weapon. Ammo: cells.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:82%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:95%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Hitscan · Quake II+</div>
+      <div class="card-name">🎯 Railgun</div>
+      <div class="card-desc">Quake II introduced the railgun — a single-shot, instant-hit weapon dealing 100 damage. The blue-white tracer beam and the characteristic CRACK sound are iconic. In competitive play, rail aim is the primary skill separator — landing rails consistently against moving targets is the purest test of FPS ability. Quake III's Rail deal only 80 damage but fires faster. The word "railed" entered gamer vocabulary from this weapon. Ammo: slugs.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:95%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:20%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Experimental · Quake II</div>
+      <div class="card-name">☢ BFG-10K</div>
+      <div class="card-desc">The BFG returned from DOOM, now in Quake II. The BFG-10K fires a massive energy ball that explodes for 1000 damage within a huge radius. Requires 50 cells and a long wind-up time. Widely considered overpowered for multiplayer — banned in most competitive formats. In single-player, it's the definitive "oh no" button for hordes of Strogg. Its firing sound is a bass-heavy thud that vibrates through the chest.</div>
+      <div class="stat-row"><div class="stat-label">DAMAGE</div><div class="stat-bar"><div class="stat-fill" style="width:100%"></div></div></div>
+      <div class="stat-row"><div class="stat-label">FIRE RATE</div><div class="stat-bar"><div class="stat-fill" style="width:8%"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ MONSTERS ══════════════ -->
+<section id="monsters" class="section">
+  <div class="section-title">Monsters <span>Bestiary</span></div>
+  <div class="section-subtitle">Sandy Petersen's Lovecraftian monster roster remains one of gaming's most distinctive enemy galleries</div>
+
+  <div class="cards">
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Infantry</div>
+      <div class="card-name">Grunt</div>
+      <div class="card-desc">Human soldiers enslaved by Quake's dark forces. Low HP (30), armed with a shotgun. They patrol predictably and are easily dispatched. The Grunt's design — a soldier in a jumpsuit and helmet — grounds Quake's surreal world in familiar military imagery before things get Lovecraftian. Voice: a wounded grunt on death.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 30</span><span class="tag">Shotgun</span><span class="tag">Slow</span><span class="tag">Easy</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Infantry</div>
+      <div class="card-name">Enforcer</div>
+      <div class="card-desc">More dangerous soldiers carrying laser guns. HP: 80. They fire rapid laser blasts that deal consistent damage and can track the player effectively. Groups of Enforcers are genuinely dangerous — their rapid fire overwhelms armor quickly. The classic "enforcer dance" involves circle-strafing while staying out of their line of sight.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 80</span><span class="tag">Laser Burst</span><span class="tag">Medium</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Ogre</div>
+      <div class="card-name">Ogre</div>
+      <div class="card-desc">A chainsaw-wielding, grenade-launching brute — one of Quake's most iconic enemies. HP: 200. The Ogre alternates between chucking grenades (which bounce and linger) and chainsaw attacks at close range. Grenades from multiple Ogres can quickly fill a room with explosions. Their death animation — spinning and falling — is satisfying. Weakness: rockets to the back while they face away.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 200</span><span class="tag">Grenades + Chainsaw</span><span class="tag">Dangerous</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Demon</div>
+      <div class="card-name">Fiend</div>
+      <div class="card-desc">A fast, leaping demon that closes distance with terrifying speed. HP: 300. The Fiend's signature move is a massive pounce that deals 40 damage — multiple Fiends leaping simultaneously can kill a fully armed player in seconds. Feared in enclosed spaces where their speed negates rockets. The Fiend grunt on landing is the stuff of nightmares. Weakness: shotgun at range, RL when cornered.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 300</span><span class="tag">Claw + Leap</span><span class="tag">Very Fast</span><span class="tag">Dangerous</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Undead</div>
+      <div class="card-name">Zombie</div>
+      <div class="card-desc">Undead monsters that throw chunks of their own rotting flesh. HP: 60, but cannot be killed by conventional weapons — only explosive damage destroys them permanently. Otherwise they fall and regenerate to full health. The Zombie forces players to use rockets or grenades, creating resource management tension. Classic Quake encounter: a room full of zombies with limited rocket ammo.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 60</span><span class="tag">Flesh Chunks</span><span class="tag">Unkillable (no explosives)</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Boss-tier · Demon</div>
+      <div class="card-name">Shambler</div>
+      <div class="card-desc">The most feared standard enemy in Quake. HP: 600. The Shambler is a massive, shaggy white beast that shoots lightning bolts dealing up to 30 damage per bolt, and crushes with melee for 80–120 damage. Immune to explosive splash damage — rockets must directly hit. A single Shambler demands respect; multiple Shamblers require route planning, item stacking, and possible save-scumming. The Shambler roar is pure dread.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 600</span><span class="tag">Lightning</span><span class="tag">Explosive Immune</span><span class="tag">Elite</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Floating</div>
+      <div class="card-name">Vore (Shalrath)</div>
+      <div class="card-desc">Floating biomechanical orb-creatures that fire homing spikes. HP: 400. The Vore's projectile homes on the player and can be dodged by ducking around corners — the spike pursues endlessly until obstructed. Fighting Vores requires constant movement and using geometry to break line-of-sight. The most unique enemy mechanic in the original Quake.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 400</span><span class="tag">Homing Spike</span><span class="tag">Floating</span><span class="tag">Tactical</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Knight</div>
+      <div class="card-name">Death Knight</div>
+      <div class="card-desc">Armored undead knights that fire a burst of three flaming axes and attack with a sword at close range. HP: 250. The flaming axe spread is difficult to dodge en masse; Death Knights often accompany other enemies to create cross-fire situations. They teleport and may appear from unexpected angles. The Death Knight visual design — an undead medieval warrior — epitomizes Quake's medieval-hellish aesthetic.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 250</span><span class="tag">Axe Burst + Sword</span><span class="tag">Medium-Hard</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Boss · Episode 1</div>
+      <div class="card-name">Chthon</div>
+      <div class="card-desc">The boss of Episode 1 (The Dimension of the Doomed). HP: effectively invulnerable to weapons — defeated by activating two electrical pylons that lower bolts onto it. Chthon is a lava-dwelling Lovecraftian horror — a massive tentacled entity of molten rock. The fight is a puzzle disguised as a boss encounter, unique in Quake. The name derives from Greek "chthonic" (of the earth/underworld).</div>
+      <div style="margin-top:.5rem;"><span class="tag">Boss</span><span class="tag">Invulnerable</span><span class="tag">Puzzle Kill</span><span class="tag">Episode 1</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Final Boss</div>
+      <div class="card-name">Shub-Niggurath</div>
+      <div class="card-desc">The final boss and ultimate evil of Quake — a Lovecraftian Outer God, "The Black Goat of the Woods with a Thousand Young." HP: cannot be damaged by weapons. Defeated by telefragging — luring her into a teleporter and telefragging (teleporting into) her. The name is taken directly from H.P. Lovecraft's Cthulhu Mythos. The final cinematic features one of gaming's earliest victory sequences.</div>
+      <div style="margin-top:.5rem;"><span class="tag">Final Boss</span><span class="tag">Telefrag Kill</span><span class="tag">Lovecraft</span><span class="tag">Invulnerable</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Floating</div>
+      <div class="card-name">Scrag (Wizard)</div>
+      <div class="card-desc">Pale flying serpentine creatures that spit acid balls. HP: 80. Scrags float at varying heights and fire in volleys of two acid projectiles. Found in outdoor areas and vertical rooms. Their mobility makes them annoying despite low HP. Effective against players who don't look up. Historically called "Wizards" in early Quake development. Weakness: nailgun tracking and RL at close range.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 80</span><span class="tag">Acid Balls</span><span class="tag">Flying</span><span class="tag">Annoying</span></div>
+    </div>
+    <div class="card monster-card">
+      <div class="card-label">Enemy · Explosive</div>
+      <div class="card-name">Spawn</div>
+      <div class="card-desc">Slithering, pulsating blobs that bounce toward the player and explode on contact for massive damage. HP: 60. The Spawn is almost exclusively found in water or slime, thriving in an environment that limits player movement. They bounce unpredictably, making them hard to hit with explosives. Their explosive death also damages the player if too close. Widely considered the most annoying enemy in Quake. Weakness: shotgun at maximum safe range.</div>
+      <div style="margin-top:.5rem;"><span class="tag">HP: 60</span><span class="tag">Explodes on Contact</span><span class="tag">Water</span><span class="tag">Most Hated</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ MAPS ══════════════ -->
+<section id="maps" class="section">
+  <div class="section-title">Maps <span>Arenas</span></div>
+  <div class="section-subtitle">The stages where legends were made — from gothic dungeons to the most competitive arenas in FPS history</div>
+
+  <div class="cards cards-2">
+    <div class="card">
+      <div class="card-label">Quake 1 · E1M1</div>
+      <div class="card-name">The Slipgate Complex</div>
+      <div class="card-desc">The iconic first level of Quake — the complex from which player Ranger enters the dark dimension. This map introduced millions of players to true 3D FPS: the outdoor courtyard with Ogres on ledges, the slipgates (portals), the water hazard, the secret rooms. Designed by American McGee and Sandy Petersen. Every design principle of Quake — height variation, secrets, enemy placement that punishes carelessness — is present in this one map.</div>
+      <div style="margin-top:.5rem;"><span class="tag">Single Player</span><span class="tag">Gothic</span><span class="tag">Iconic Start</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake 1 · E1M5</div>
+      <div class="card-name">Gloom Keep</div>
+      <div class="card-desc">A medieval castle map of the first episode, representing Quake's aesthetic at its purest: grey stone walls, lava pits, gargoyle carvings, and brutal ambushes. The Gloom Keep's multi-story layout and interconnected routes made it a benchmark for level design elegance. The secret room with a Quad Damage requires precise navigation. A formative map for the Quake mapping community that followed.</div>
+      <div style="margin-top:.5rem;"><span class="tag">Single Player</span><span class="tag">Castle</span><span class="tag">Vertical Combat</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake III Arena</div>
+      <div class="card-name">The Longest Yard (Q3DM17)</div>
+      <div class="card-desc">The most famous deathmatch map in FPS history. A collection of floating platforms connected by jump pads over a void. No corridors, no cover — pure vertical movement skill. The Railgun, Rocket Launcher, and Red Armor spawn at specific points, creating a constant battle for control. Falling off the edge is instant death. Every top Quake III player learned this map by heart. Still used in competitive Quake Champions events.</div>
+      <div style="margin-top:.5rem;"><span class="tag">Deathmatch</span><span class="tag">Jump Pads</span><span class="tag">Void</span><span class="tag">Competitive Standard</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake III Arena</div>
+      <div class="card-name">Aerowalk (by Preacher)</div>
+      <div class="card-desc">The most celebrated community-made Quake map ever created — designed by Finnish mapper Preacher (Iikka Keranen) in 1998 for Quake, then ported to Q3. A compact, two-floor industrial map with precisely engineered flow. Every jump pad, teleporter, and weapon spawn is placed after extensive playtesting. Aerowalk became the definitive 1v1 map for the highest-level Quake competition globally and is still played in Quake Live and Champions events today.</div>
+      <div style="margin-top:.5rem;"><span class="tag">1v1</span><span class="tag">Community Map</span><span class="tag">Tournament Standard</span><span class="tag">Industrial</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake Champions</div>
+      <div class="card-name">Blood Covenant</div>
+      <div class="card-desc">A new map for Quake Champions that pays homage to Quake 1's gothic aesthetic while adding the vertical complexity of modern arena design. Two floors connected by ramps, jump pads, and a central lava area. The Quad Damage spawns at the center platform, creating high-stakes fights. The map's dark red stone aesthetic and torch lighting are deliberate callbacks to Q1's E1 episode design philosophy.</div>
+      <div style="margin-top:.5rem;"><span class="tag">Quake Champions</span><span class="tag">Gothic</span><span class="tag">1v1 / TDM</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake III Arena</div>
+      <div class="card-name">Thunderstruck (Q3DM7)</div>
+      <div class="card-desc">A fan-favorite medium-sized deathmatch map with an outdoor lightning-storm aesthetic. Rock ledges, open sky, pools of water below. The Thunderbolt / Lightning Gun spawns here, which thematically echoes the map's stormy environment. The map's asymmetric layout creates interesting routes and item control battles. Popular for Free-For-All and team death match with 4–8 players.</div>
+      <div style="margin-top:.5rem;"><span class="tag">FFA</span><span class="tag">Outdoor</span><span class="tag">4-8 Players</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake II</div>
+      <div class="card-name">The Big Gun (SP)</div>
+      <div class="card-desc">The most critically acclaimed level in Quake II's single-player campaign. A massive industrial Strogg facility centered around a giant rail cannon aimed at Earth. The level design uses scale masterfully — the player is made to feel tiny against the industrial machinery. The final reveal of the cannon stretching up through the ceiling is a cinematic moment rare for 1997. Often cited in game design education as an example of environmental storytelling.</div>
+      <div style="margin-top:.5rem;"><span class="tag">Single Player</span><span class="tag">Industrial</span><span class="tag">Cinematic Scale</span></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Quake III Arena</div>
+      <div class="card-name">DM17 — The Camping Grounds</div>
+      <div class="card-desc">A gothic-themed Q3 map with tight corridors, a central atrium, and multiple levels connected by teleporters. DM17 is beloved for its competitive balance in 4-player free-for-all and 2v2 Team Deathmatch. The Rail Sniper position at the upper balcony creates a classic power-position battle. The dark red stone aesthetic connects Q3 Arena back to Quake 1's original palette even as the futuristic elements intrude.</div>
+      <div style="margin-top:.5rem;"><span class="tag">FFA / TDM</span><span class="tag">Gothic-Futuristic</span><span class="tag">2v2</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ HISTORY ══════════════ -->
+<section id="history" class="section">
+  <div class="section-title">History <span>id Software</span></div>
+  <div class="section-subtitle">From a Shreveport shareware startup to the architects of modern gaming — the turbulent, brilliant story of id Software</div>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1990 — Shreveport, Louisiana</div>
+      <div class="tl-title">Softdisk &amp; The Formation of id</div>
+      <div class="tl-desc">John Carmack, John Romero, Adrian Carmack, and Tom Hall work at Softdisk producing monthly game disks. Their moonlighting project — Commander Keen — is published by Apogee Software (1990). It is the first console-quality game on PC, featuring smooth side-scrolling via Carmack's adaptive tile refresh technique. The group leaves Softdisk to formally found id Software in February 1991 in Mesquite, Texas.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1992 — Mesquite, Texas</div>
+      <div class="tl-title">Wolfenstein 3D</div>
+      <div class="tl-desc">Wolfenstein 3D launches May 5, 1992, as shareware. The first-person shooter genre is born. Carmack's raycasting engine produces pseudo-3D environments from flat maps. The game's Nazi-shooting content generates controversy; in Germany, the game is seized by authorities. Within months, id earns more from shareware registrations than Softdisk paid them in years. Tom Hall designs the levels; Romero leads design; Carmack writes all the code.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1993 — December 10</div>
+      <div class="tl-title">DOOM Changes Everything</div>
+      <div class="tl-desc">DOOM releases on December 10, 1993 at midnight. Within 48 hours, university network administrators worldwide report more DOOM traffic than FTP traffic — a usage spike that essentially breaks the early internet. Sandy Petersen joins id to build 27 levels in 6 weeks. DOOM becomes the most-installed software on PCs globally. The id Tech 1 engine introduces height variation, variable-height floors, non-orthogonal walls, and atmospheric lighting — none of which were in Wolfenstein.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1994–1995</div>
+      <div class="tl-title">Romero Departs — Quake Development Chaos</div>
+      <div class="tl-desc">Quake's development is legendarily troubled. Tom Hall is fired during DOOM development; Romero's creative vision for Quake (a true 3D RPG-shooter hybrid) clashes with Carmack's technical focus. Quake's theme shifts from medieval-fantasy to Lovecraftian horror. The game industry watches through previews that show true 3D environments — something no one had seen before. The soundtrack is assigned to a then-unknown band: Nine Inch Nails. Romero and American McGee are crucial to the final product.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1996 — June 22</div>
+      <div class="tl-title">Quake Releases — and Invents Online Gaming</div>
+      <div class="tl-desc">Quake ships June 22, 1996. The id Tech 2 (Quake Engine) is the first commercial engine to render fully polygonal, real-time 3D environments. QuakeCon 1996 — a grassroots LAN party in Dallas — draws 100 players who haul computers to a hotel to play together. id releases QuakeWorld in December 1996, implementing client-side prediction and lag compensation that make online play viable. The competitive Quake scene launches. Clans form. Trickjumping begins.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1996 — Post Launch</div>
+      <div class="tl-title">John Romero Leaves id</div>
+      <div class="tl-desc">Tensions between Romero's celebrity game-designer persona (he famously said he'd "make you his bitch") and Carmack's monastery-like work culture reach breaking point. Romero leaves id to found Ion Storm with Tom Hall, beginning work on Daikatana — a project that would become a cautionary tale about hubris. id continues under Carmack's technical leadership with no co-founder level designer. The creative split shapes the rest of id's history.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1997–2004</div>
+      <div class="tl-title">Engine Licensing Empire</div>
+      <div class="tl-desc">id becomes the most influential technology licensor in gaming. Quake II engine (id Tech 2): licenses to Half-Life (Valve, 1998). Quake III engine (id Tech 3): licenses to Medal of Honor, Call of Duty 1 & 2, Jedi Knight II, Star Trek Elite Force, and dozens more. The royalty income funds id's independence. Carmack continues to push graphics limits; id Tech 4 (Doom 3 engine, 2004) introduces unified lighting via shadow volumes — visually stunning but controversial for its darkness.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2009</div>
+      <div class="tl-title">ZeniMax Media Acquisition</div>
+      <div class="tl-desc">ZeniMax Media (parent of Bethesda Softworks) acquires id Software for a reported $105–150 million. The founders receive large payouts; development continues. The arrangement gives id financial security but introduces corporate oversight. id Tech 5 (Rage, 2011) with MegaTexture is completed, then id begins id Tech 6 (Doom 2016). The studio transitions from an owner-operated creative hotshop to a corporate subsidiary — a transformation with both benefits and cultural costs.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2013 — November</div>
+      <div class="tl-title">John Carmack Departs id Software</div>
+      <div class="tl-desc">Carmack resigns from id Software to work full-time as CTO of Oculus VR (acquired by Facebook in 2014 for $2B). Legal disputes follow over VR IP. His departure marks the end of an era: the man who wrote the code for Commander Keen, Wolfenstein 3D, DOOM, Quake, and every id engine through id Tech 5 is gone. The remaining team produces Doom (2016) under Hugo Martin's creative direction — widely hailed as a triumphant return to form.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">1996–Present</div>
+      <div class="tl-title">QuakeCon — The Community</div>
+      <div class="tl-desc">QuakeCon began as 100 fans in a Dallas hotel in 1996. By 2000, it had moved to a convention center. At its peak (2008–2012), QuakeCon attracted 10,000+ attendees for the world's largest BYOC (bring-your-own-computer) LAN party, featuring Quake Live and Enemy Territory tournaments, Carmack's legendary keynote presentations, and a community that maintained the Quake spirit through the Call of Duty era. QuakeCon moved fully online in 2020 and has since been a streaming event.</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // ── Ember/fire particle canvas ──
+  (function() {
+    const canvas = document.getElementById('ember-canvas');
+    const ctx = canvas.getContext('2d');
+    const hero = canvas.parentElement;
+    let particles = [];
+    const N = 60;
+
+    function resize() {
+      canvas.width = hero.offsetWidth;
+      canvas.height = hero.offsetHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const colors = ['#ff4500','#ff6600','#ff8c00','#ffd700','#ff2200','#ff3300'];
+
+    function mkParticle() {
+      return {
+        x: Math.random() * canvas.width,
+        y: canvas.height + 5,
+        r: .8 + Math.random() * 2.5,
+        vx: (Math.random() - .5) * 1.5,
+        vy: -(1 + Math.random() * 2.5),
+        life: 1,
+        decay: .008 + Math.random() * .015,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      };
+    }
+
+    for (let i = 0; i < N; i++) {
+      const p = mkParticle();
+      p.y = Math.random() * canvas.height;
+      p.life = Math.random();
+      particles.push(p);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of particles) {
+        ctx.save();
+        ctx.globalAlpha = p.life * .7;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        p.x += p.vx + Math.sin(p.y * .05) * .3;
+        p.y += p.vy;
+        p.life -= p.decay;
+        p.r *= .995;
+        if (p.life <= 0) Object.assign(p, mkParticle());
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
