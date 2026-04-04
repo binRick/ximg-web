@@ -55,6 +55,7 @@
     'transition:opacity .16s,transform .16s;}' +
     '.nav-dropdown.open{opacity:1;transform:none;pointer-events:all;}' +
     '.nav-dropdown.wide{display:grid;grid-template-columns:1fr 1fr;gap:.05rem .2rem;min-width:220px;}' +
+    '.nav-dropdown.wider{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.05rem .2rem;min-width:320px;}' +
     '.nav-dropdown.active-only .nav-dd-item:not(.active){display:none;}' +
     '.nav-dropdown.active-only{display:block;min-width:0;width:auto;}' +
 
@@ -88,7 +89,7 @@
     trigger.innerHTML = g.label + ' <span class="nav-caret">▾</span>';
 
     var dd = document.createElement('div');
-    dd.className = 'nav-dropdown' + (g.apps.length >= 9 ? ' wide' : '');
+    dd.className = 'nav-dropdown' + (g.apps.length >= 18 ? ' wider' : g.apps.length >= 9 ? ' wide' : '');
 
     g.apps.forEach(function (a) {
       var subdomain = a[0], label = a[1];
