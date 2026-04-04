@@ -114,6 +114,23 @@
       padding:.9rem 1rem;text-align:center}
     .fact-val{font-size:1.3rem;font-weight:800;color:var(--cyan);font-family:'Courier New',monospace}
     .fact-lbl{font-size:.72rem;color:var(--dim);margin-top:.25rem}
+
+    /* ── SRV warning styles ── */
+    .warn-card{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.25);
+      border-radius:14px;padding:1.25rem 1.5rem}
+    .warn-card p{font-size:.84rem;line-height:1.75;color:#94a3b8}
+    .warn-card p+p{margin-top:.6rem}
+    .warn-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--red);margin-bottom:-.2rem}
+    .srv-field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.7rem}
+    .srv-field{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:.9rem 1rem}
+    .srv-field-name{font-family:'Courier New',monospace;font-size:.85rem;font-weight:700;color:var(--yel);margin-bottom:.3rem}
+    .srv-field-desc{font-size:.78rem;color:#94a3b8;line-height:1.6}
+    .opinion-list{display:flex;flex-direction:column;gap:.5rem}
+    .opinion-item{display:grid;grid-template-columns:1.5rem 1fr;gap:.6rem;align-items:start;
+      font-size:.83rem;line-height:1.7;color:#94a3b8}
+    .opinion-item strong{color:var(--text)}
+    .opinion-x{color:var(--red);font-weight:800;font-size:.9rem;margin-top:.15rem}
   </style>
 </head>
 <body>
@@ -133,6 +150,7 @@
     <button class="dns-tab" data-tab="resolution">Resolution</button>
     <button class="dns-tab" data-tab="tools">dig / nslookup</button>
     <button class="dns-tab" data-tab="dnssec">DNSSEC</button>
+    <button class="dns-tab" data-tab="srv">SRV Records</button>
   </div>
 
   <!-- ── Overview ── -->
@@ -456,6 +474,96 @@
         <div class="rec-name" style="color:var(--blue)">DoT — port 853</div>
         <div class="rec-desc">DNS queries sent over a dedicated TLS connection. Encrypts the query/response but is identifiable as DNS traffic by the port number. Easier for network operators to inspect or block. Resolver: <code style="color:var(--cyan)">1.1.1.1:853</code></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── SRV Records ── -->
+  <div class="dns-section hidden" id="tab-srv">
+    <p class="warn-title">Verdict</p>
+    <div class="warn-card">
+      <p><strong style="color:var(--red)">SRV records are a solution to problems most systems don't have.</strong> In theory they let you advertise service endpoints — host, port, priority, weight — directly in DNS. In practice they are almost never what you actually need, they are poorly supported across tooling, and every system that adopts them ends up building a second discovery layer alongside them anyway.</p>
+      <p>The record type has existed since 2000 (RFC 2782). In that time the only places it achieved meaningful adoption are Kerberos/Active Directory (where you have no choice), XMPP (a protocol the internet mostly abandoned), SIP telephony (a stack that everyone working in it hates), and a handful of other niche protocols. That is not a track record — that is a warning.</p>
+    </div>
+
+    <p class="sec-title">What an SRV record looks like</p>
+    <div class="cmd-card">
+      <div class="cmd-row">
+        <div class="cmd-code" style="font-size:.75rem">_service._proto.name. TTL IN SRV <span class="arg">priority weight port target</span></div>
+        <div class="cmd-desc">The full format — five fields, all mandatory, two of which (priority and weight) are almost always set to the same value and ignored</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code" style="font-size:.75rem">_http._tcp.ximg.app. 300 IN SRV <span class="arg">10 20 80 web.ximg.app.</span></div>
+        <div class="cmd-desc">A concrete example — and every HTTP client on earth will ignore this entirely and use the A record instead</div>
+      </div>
+    </div>
+
+    <p class="sec-title">The five fields</p>
+    <div class="srv-field-grid">
+      <div class="srv-field">
+        <div class="srv-field-name">_service</div>
+        <div class="srv-field-desc">Underscore-prefixed service name. <code style="color:var(--cyan)">_http</code>, <code style="color:var(--cyan)">_xmpp</code>, <code style="color:var(--cyan)">_sip</code>. Must be registered with IANA or you are just making things up.</div>
+      </div>
+      <div class="srv-field">
+        <div class="srv-field-name">_proto</div>
+        <div class="srv-field-desc"><code style="color:var(--cyan)">_tcp</code> or <code style="color:var(--cyan)">_udp</code>. That is the entire range of options. No TLS, no QUIC, no SCTP unless you feel like it.</div>
+      </div>
+      <div class="srv-field">
+        <div class="srv-field-name">priority</div>
+        <div class="srv-field-desc">Lower number = higher preference. Identical to MX priority. Clients are supposed to try lower-priority targets first. Most don't.</div>
+      </div>
+      <div class="srv-field">
+        <div class="srv-field-name">weight</div>
+        <div class="srv-field-desc">Weighted random selection among equal-priority targets. Load balancing in DNS. In practice: everyone sets it to 0 or 100 and ignores it.</div>
+      </div>
+      <div class="srv-field">
+        <div class="srv-field-name">port</div>
+        <div class="srv-field-desc">The TCP/UDP port. The one genuinely useful piece of information in the record. The entire rest of the format exists to carry this one number.</div>
+      </div>
+    </div>
+
+    <p class="warn-title">Why they cause more problems than they solve</p>
+    <div class="warn-card">
+      <div class="opinion-list">
+        <div class="opinion-item">
+          <div class="opinion-x">✗</div>
+          <div><strong>Clients don't support them.</strong> curl, wget, browsers, most HTTP libraries, most database drivers — none of them look up SRV records. You add the record to DNS, nothing uses it, and you still have to configure every client with a hardcoded host and port anyway. The record is decorative.</div>
+        </div>
+        <div class="opinion-item">
+          <div class="opinion-x">✗</div>
+          <div><strong>You are reimplementing a load balancer in DNS.</strong> Priority and weight are a bad approximation of what HAProxy, nginx upstream, or any modern load balancer does natively — with health checks, circuit breakers, connection pooling, and observability. DNS has none of that. The record goes stale and you have no idea.</div>
+        </div>
+        <div class="opinion-item">
+          <div class="opinion-x">✗</div>
+          <div><strong>TTLs make failover slow.</strong> DNS caches the record for its TTL. If you set a long TTL, failover is slow. If you set a short TTL, you hammer your nameservers and fight negative caching everywhere. A proper load balancer fails over in milliseconds. SRV-based failover is best-effort and opaque.</div>
+        </div>
+        <div class="opinion-item">
+          <div class="opinion-x">✗</div>
+          <div><strong>The naming convention is a bureaucratic tax.</strong> You cannot just use <code style="color:var(--cyan)">_myservice._tcp.example.com</code> — you are supposed to register the service name with IANA. Nobody does this. Everyone invents names and then wonders why nothing interoperates.</div>
+        </div>
+        <div class="opinion-item">
+          <div class="opinion-x">✗</div>
+          <div><strong>Debugging is painful.</strong> Most monitoring tools, dashboards, and on-call engineers do not think in terms of SRV records. When something breaks at 3am, "check the SRV record" is not in anyone's runbook. It is one more thing to rule out before you find the real problem.</div>
+        </div>
+        <div class="opinion-item">
+          <div class="opinion-x">✗</div>
+          <div><strong>Service discovery is a solved problem.</strong> Consul, Kubernetes DNS (which does use SRV internally, invisibly), Eureka, AWS Cloud Map — these systems build proper service registries with health checks, metadata, and APIs. If you need service discovery, use one of them. If you don't need service discovery, you don't need SRV records either.</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sec-title">Who actually uses them</p>
+    <div class="card">
+      <p><strong style="color:var(--text)">Active Directory / Kerberos</strong> — The one legitimate large-scale use case. AD publishes SRV records for domain controllers, Kerberos KDCs, and LDAP servers because the protocol spec requires it and Windows clients are built to look them up. If you are not running AD, this does not apply to you.</p>
+      <p><strong style="color:var(--text)">SIP / VoIP</strong> — Telephony vendors use SRV for SIP trunk discovery. SIP is also a protocol famous for being painful to operate, and SRV is one of many reasons why.</p>
+      <p><strong style="color:var(--text)">XMPP</strong> — Federated chat servers discover each other via SRV. XMPP federation is one of the few things in tech that works exactly as designed and that almost no one uses.</p>
+      <p><strong style="color:var(--text)">Kubernetes kube-dns</strong> — Generates SRV records for named service ports. You never write these by hand; the control plane manages them. The fact that k8s uses SRV internally and hides it from you entirely is the correct approach.</p>
+      <p>Notice the pattern: every use case is either a legacy enterprise protocol from the early 2000s, a system you have no choice about, or an abstraction layer that hides the SRV record from the operator. That is the clearest possible signal.</p>
+    </div>
+
+    <p class="warn-title">Bottom line</p>
+    <div class="warn-card">
+      <p>If a colleague proposes adding SRV records to solve a service-discovery or load-balancing problem, ask two questions: <em>which clients will actually look up this record?</em> and <em>what does this give us that a proper load balancer or service registry does not?</em> If there are no good answers, the SRV record is infrastructure theater — complexity added to look thorough, not because it helps anything.</p>
+      <p>The record type is not wrong. It is simply almost never the right tool, and the engineers who reach for it first are usually the same ones who will want to implement a full internal PKI next week.</p>
     </div>
   </div>
 
