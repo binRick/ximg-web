@@ -125,6 +125,7 @@ const LOG_FILES = {
   evolution:   'evolution.access.log',
   dns:         'dns.access.log',
   suricata:    'suricata.access.log',
+  crypto:      'crypto.access.log',
 
   'ximg-app':  'ximg-app.access.log',
   logs:        'logs.access.log',
