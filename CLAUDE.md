@@ -74,17 +74,19 @@ Each subdomain has its own Apache container and `*-html/` directory for static f
 
 ## Adding a New App (Checklist)
 
-Every new app must be wired into **five places** in addition to its own files:
+Every new app must be wired into **all of the following places** in addition to its own files:
 
 1. **Nav bar** — add an entry to `shared-html/nav.js`
 2. **Landing page** — add a card/link on `public-html/index.html` (ximg.app)
-3. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` so its nginx logs are streamed
-4. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app) with name, domain, date added, and description
-5. **Install script** — add the new subdomain to the `DOMAINS` array in `install/setup.sh` so fresh-clone deployments include it in the SSL cert
+3. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app) with name, domain, date added, and description
+4. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` so its nginx logs are streamed
+5. **Stats app** — AWStats config is auto-generated per subdomain; confirm `stats.ximg.app` shows a report for the new subdomain after the next hourly cron run
+6. **Nagios** — add an HTTP/HTTPS check for the new subdomain in `nagios-server/conf.d/` so it appears on the Nagios status board
+7. **README** — add a row for the new subdomain in the `## Live Sites` table in `README.md`
+8. **Install script** — add the new subdomain to the `DOMAINS` array in `install/setup.sh` so fresh-clone deployments include it in the SSL cert
+9. **Favicon** — add an interesting, thematically appropriate `favicon.ico` (or `.png`) to the app's directory and reference it in `<head>`. Download a real image; don't use a generic placeholder.
 
-6. **Favicon** — add an interesting, thematically appropriate `favicon.ico` (or `.png`) to the app's directory and reference it in `<head>`. Download a real image; don't use a generic placeholder.
-
-Missing any of these means the app is invisible, incomplete, or won't be covered by SSL on a fresh install.
+Missing any of these means the app is invisible, unmonitored, or incomplete.
 
 ## New App Verification
 
@@ -105,13 +107,16 @@ Cert covers all subdomains via Let's Encrypt HTTP-01. Steps to add a new subdoma
 3. New `server { }` block in `nginx/nginx.conf`
 4. New Apache service in `compose.yaml`
 5. New `*-html/` directory with static files
-6. **Add entry to `shared-html/nav.js`** (don't forget this — every app needs a nav entry)
-7. **Add a card to `public-html/index.html`** (landing page)
-8. **Add subdomain to `logs-server/server.js`** tab list
-9. **Add a row to the `APPS` array in `apps-html/index.html`** (apps.ximg.app directory)
-10. **Add the subdomain to the `DOMAINS` array in `install/setup.sh`** so it's included in SSL cert on fresh installs
-11. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
-12. **Favicon** — download a thematically appropriate favicon image, save it to the app's directory, and add `<link rel="icon" href="/favicon.ico">` (or `.png`) in `<head>`
+6. In the new app's `index.html`, add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
+7. **Favicon** — download a thematically appropriate favicon image, save it to the app's directory, and add `<link rel="icon" href="/favicon.ico">` (or `.png`) in `<head>`
+8. **Nav bar** — add an entry to `shared-html/nav.js`
+9. **Landing page** — add a card to `public-html/index.html`
+10. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` (apps.ximg.app)
+11. **Logs app** — add the subdomain to the tab list in `logs-server/server.js`
+12. **Stats app** — AWStats picks it up automatically; verify after next cron run at `stats.ximg.app`
+13. **Nagios** — add an HTTP check in `nagios-server/conf.d/` so the subdomain is monitored
+14. **README** — add a row to the `## Live Sites` table in `README.md`
+15. **Install script** — add the subdomain to the `DOMAINS` array in `install/setup.sh`
 
 ## SSH Honeypot
 
