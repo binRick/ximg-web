@@ -27,7 +27,7 @@
       ['butterfly','butterfly'],['rx','RxFitt']
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['status','status'],['stats','stats'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['status','status'],['stats','stats'],['ximg','ximg']
     ]},
   ];
 

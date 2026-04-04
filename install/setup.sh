@@ -169,7 +169,7 @@ DOMAINS=(
   guns.ximg.app ids.ximg.app india.ximg.app internet.ximg.app
   json.ximg.app kart.ximg.app kombat.ximg.app linux.ximg.app
   logs.ximg.app mac.ximg.app mail.ximg.app mario.ximg.app
-  monkey.ximg.app moto.ximg.app passwords.ximg.app
+  monkey.ximg.app moto.ximg.app nav.ximg.app passwords.ximg.app
   pizza.ximg.app poker.ximg.app programming.ximg.app rx.ximg.app
   simcity.ximg.app stats.ximg.app systemd.ximg.app tampa.ximg.app
   tmux.ximg.app trump.ximg.app vr.ximg.app vt101.ximg.app
