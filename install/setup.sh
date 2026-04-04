@@ -210,6 +210,8 @@ DOMAINS=(
   terminal.ximg.app
   circuit.ximg.app logic.ximg.app protocol.ximg.app
   punch.ximg.app mainframe.ximg.app
+  arpanet.ximg.app
+  regex.ximg.app jwt.ximg.app cron.ximg.app color.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

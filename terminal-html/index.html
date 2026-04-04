@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal — terminal.ximg.app</title>
+  <meta name="description" content="Interactive retro Unix terminal — classic commands, VAX-11/780 BSD simulation, cowsay, fortune, and more">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #00ff41;
+      --green-dim: #00cc33;
+      --green-dark: #003d10;
+      --bg: #050a05;
+      --scanline: rgba(0, 0, 0, 0.25);
+    }
+
+    html, body {
+      height: 100%;
+      background: #000;
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--green);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      /* CRT outer glow */
+      background: radial-gradient(ellipse at center, #0a1a0a 0%, #020602 60%, #000 100%);
+    }
+
+    /* CRT screen container */
+    #screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      /* phosphor green inner glow */
+      box-shadow: inset 0 0 80px rgba(0, 255, 65, 0.04);
+      /* nav pushdown */
+      padding-top: 38px;
+    }
+
+    /* Scanline overlay */
+    #screen::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        var(--scanline) 2px,
+        var(--scanline) 4px
+      );
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* CRT flicker */
+    #screen::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 255, 65, 0.015);
+      pointer-events: none;
+      z-index: 99;
+      animation: flicker 8s infinite;
+    }
+
+    @keyframes flicker {
+      0%   { opacity: 1; }
+      92%  { opacity: 1; }
+      93%  { opacity: 0.85; }
+      94%  { opacity: 1; }
+      96%  { opacity: 0.9; }
+      97%  { opacity: 1; }
+      100% { opacity: 1; }
+    }
+
+    /* Terminal output area */
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem 1rem 0.5rem;
+      line-height: 1.45;
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--green);
+      text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
+      scroll-behavior: smooth;
+    }
+
+    #output::-webkit-scrollbar { width: 6px; }
+    #output::-webkit-scrollbar-track { background: #000; }
+    #output::-webkit-scrollbar-thumb { background: var(--green-dark); border-radius: 3px; }
+
+    /* Input row */
+    #input-row {
+      display: flex;
+      align-items: center;
+      padding: 0.4rem 1rem 0.6rem;
+      border-top: 1px solid rgba(0, 255, 65, 0.15);
+      background: rgba(0, 5, 0, 0.6);
+      gap: 0;
+    }
+
+    #prompt-label {
+      color: var(--green);
+      text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
+      font-size: 0.875rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #cmd-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--green);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.875rem;
+      caret-color: var(--green);
+      text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
+      padding: 0 0 0 2px;
+    }
+
+    /* Blinking cursor on the input */
+    #cursor-block {
+      width: 0.55em;
+      height: 1.1em;
+      background: var(--green);
+      display: inline-block;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+      margin-left: 1px;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Output line colors */
+    .line-cmd   { color: #00ff41; }
+    .line-out   { color: #00dd38; }
+    .line-err   { color: #ff4422; text-shadow: 0 0 6px rgba(255,68,34,0.5); }
+    .line-dim   { color: #009922; }
+    .line-bold  { color: #44ff77; font-weight: bold; }
+    .line-head  { color: #00ff41; text-decoration: underline; text-underline-offset: 3px; }
+    .line-boot  { color: #007722; animation: bootfade 0.6s ease-in; }
+
+    @keyframes bootfade {
+      from { opacity: 0; transform: translateX(-4px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Mobile tap target */
+    @media (max-width: 600px) {
+      #output { font-size: 0.78rem; padding: 0.5rem 0.6rem 0.3rem; }
+      #input-row { padding: 0.3rem 0.6rem 0.5rem; }
+      #cmd-input, #prompt-label { font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="screen">
+  <div id="output"></div>
+  <div id="input-row">
+    <span id="prompt-label">user@vax11780:~$ </span>
+    <input id="cmd-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="terminal input">
+    <span id="cursor-block"></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const output   = document.getElementById('output');
+  const input    = document.getElementById('cmd-input');
+  const screen   = document.getElementById('screen');
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let cmdHistory   = [];
+  let historyIdx   = -1;
+  let typedHistory = []; // commands the user actually typed this session (for `history`)
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  function addLine(text, cls) {
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.innerHTML = esc(text);
+    output.appendChild(div);
+  }
+
+  function addHTML(html, cls) {
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.innerHTML = html;
+    output.appendChild(div);
+  }
+
+  function blank() { addLine(''); }
+
+  function scrollBottom() {
+    output.scrollTop = output.scrollHeight;
+  }
+
+  // ── Date helpers ──────────────────────────────────────────────────────────
+  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // ── ASCII calendar ────────────────────────────────────────────────────────
+  function buildCal(year, month) { // month 0-based
+    const today  = new Date();
+    const isThisMonth = (today.getFullYear() === year && today.getMonth() === month);
+    const first  = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysIn = new Date(year, month + 1, 0).getDate();
+    const header = `   ${MONTHS[month]} ${year}`;
+    let lines = [header, 'Su Mo Tu We Th Fr Sa'];
+    let row = '   '.repeat(first);
+    for (let d = 1; d <= daysIn; d++) {
+      const pad = d < 10 ? ' ' + d : String(d);
+      const hi  = isThisMonth && d === today.getDate();
+      row += (hi ? '[' + pad + ']' : ' ' + pad + ' ').slice(0,3);
+      if ((first + d) % 7 === 0 || d === daysIn) {
+        lines.push(row.trimEnd());
+        row = '';
+      }
+    }
+    return lines.join('\n');
+  }
+
+  // ── Banner / block letters ────────────────────────────────────────────────
+  const BANNER_CHARS = {
+    'A': ['  #  ','#####','#   #','#   #','#   #'],
+    'B': ['#### ','#   #','#### ','#   #','#### '],
+    'C': [' ####','#    ','#    ','#    ',' ####'],
+    'D': ['#### ','#   #','#   #','#   #','#### '],
+    'E': ['#####','#    ','#### ','#    ','#####'],
+    'F': ['#####','#    ','#### ','#    ','#    '],
+    'G': [' ####','#    ','# ###','#   #',' ####'],
+    'H': ['#   #','#   #','#####','#   #','#   #'],
+    'I': ['#####','  #  ','  #  ','  #  ','#####'],
+    'J': ['#####','    #','    #','#   #',' ### '],
+    'K': ['#   #','#  # ','###  ','#  # ','#   #'],
+    'L': ['#    ','#    ','#    ','#    ','#####'],
+    'M': ['#   #','## ##','# # #','#   #','#   #'],
+    'N': ['#   #','##  #','# # #','#  ##','#   #'],
+    'O': [' ### ','#   #','#   #','#   #',' ### '],
+    'P': ['#### ','#   #','#### ','#    ','#    '],
+    'Q': [' ### ','#   #','# # #','#  ##',' ####'],
+    'R': ['#### ','#   #','#### ','#  # ','#   #'],
+    'S': [' ####','#    ',' ### ','    #','#### '],
+    'T': ['#####','  #  ','  #  ','  #  ','  #  '],
+    'U': ['#   #','#   #','#   #','#   #',' ### '],
+    'V': ['#   #','#   #','#   #',' # # ','  #  '],
+    'W': ['#   #','#   #','# # #','## ##','#   #'],
+    'X': ['#   #',' # # ','  #  ',' # # ','#   #'],
+    'Y': ['#   #',' # # ','  #  ','  #  ','  #  '],
+    'Z': ['#####','   # ','  #  ',' #   ','#####'],
+    '0': [' ### ','#  ##','# # #','##  #',' ### '],
+    '1': ['  #  ',' ##  ','  #  ','  #  ','#####'],
+    '2': [' ### ','#   #','  ## ',' #   ','#####'],
+    '3': ['#### ','    #',' ### ','    #','#### '],
+    '4': ['#  # ','#  # ','#####','   # ','   # '],
+    '5': ['#####','#    ','#### ','    #','#### '],
+    '6': [' ### ','#    ','#### ','#   #',' ### '],
+    '7': ['#####','   # ','  #  ',' #   ','#    '],
+    '8': [' ### ','#   #',' ### ','#   #',' ### '],
+    '9': [' ### ','#   #',' ####','    #',' ### '],
+    ' ': ['     ','     ','     ','     ','     '],
+    '!': ['  #  ','  #  ','  #  ','     ','  #  '],
+    '?': [' ### ','#   #','   # ','     ','  #  '],
+    '.': ['     ','     ','     ','     ','  #  '],
+  };
+
+  function buildBanner(text) {
+    const chars = text.toUpperCase().split('').slice(0, 16); // limit length
+    const rows = ['','','','',''];
+    chars.forEach(ch => {
+      const g = BANNER_CHARS[ch] || BANNER_CHARS[' '];
+      for (let r = 0; r < 5; r++) rows[r] += g[r] + ' ';
+    });
+    return rows.join('\n');
+  }
+
+  // ── Fortunes ──────────────────────────────────────────────────────────────
+  const FORTUNES = [
+    '"Any sufficiently advanced technology is indistinguishable from magic."\n   — Arthur C. Clarke',
+    '"The best way to predict the future is to invent it."\n   — Alan Kay',
+    '"Programs must be written for people to read, and only incidentally for machines to execute."\n   — Harold Abelson',
+    '"There are only two hard things in Computer Science: cache invalidation and naming things."\n   — Phil Karlton',
+    '"Walking on water and developing software from a specification are easy if both are frozen."\n   — Edward V. Berard',
+    '"The first 90 percent of the code accounts for the first 90 percent of the development time.\n The remaining 10 percent of the code accounts for the other 90 percent."\n   — Tom Cargill',
+    '"If debugging is the process of removing software bugs, then programming must be the process\n of putting them in."\n   — Edsger W. Dijkstra',
+    '"Controlling complexity is the essence of computer programming."\n   — Brian Kernighan',
+    '"UNIX is very simple, it just needs a genius to understand its simplicity."\n   — Dennis Ritchie',
+    '"The most dangerous thought you can have as a creative person is to think you know\n what you\'re doing."\n   — Bret Victor',
+    '"C is quirky, flawed, and an enormous success."\n   — Dennis Ritchie',
+    '"Those who don\'t understand UNIX are condemned to reinvent it, poorly."\n   — Henry Spencer',
+    '"Real programmers don\'t comment their code. If it was hard to write,\n it should be hard to understand."\n   — Anonymous',
+    '"The computer was born to solve problems that did not exist before."\n   — Bill Gates',
+    '"It\'s not a bug — it\'s an undocumented feature."\n   — Anonymous sysadmin, circa 1978',
+  ];
+
+  // ── Fake process list ─────────────────────────────────────────────────────
+  const FAKE_PS =
+`  PID TTY          TIME CMD
+    1 ?        00:00:02 init
+  134 ?        00:00:00 syslogd
+  138 ?        00:00:00 klogd
+  210 ?        00:00:01 cron
+  314 ?        00:00:00 inetd
+  401 ttyp0    00:00:00 bash
+  402 ttyp1    00:00:00 sendmail
+  419 ttyp2    00:00:00 more
+  512 ttyp0    00:00:00 ps`;
+
+  const FAKE_TOP =
+`top - 23:59:47 up 42 days, 11:07,  3 users,  load average: 0.12, 0.08, 0.05
+Tasks:  38 total,   1 running,  37 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  1.2 us,  0.4 sy,  0.0 ni, 98.2 id,  0.1 wa
+MiB Mem:    2048.0 total,   1456.3 free,    312.5 used,    279.2 buff/cache
+MiB Swap:   1024.0 total,   1024.0 free,      0.0 used.   1612.4 avail Mem
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+    1 root      20   0    1552    512    448 S   0.0   0.0   0:02.11 init
+  134 root      20   0    4312   1024    896 S   0.0   0.0   0:00.44 syslogd
+  210 root      20   0    6144   1536   1024 S   0.0   0.0   0:01.22 cron
+  314 root      20   0    3108    768    512 S   0.0   0.0   0:00.08 inetd
+  401 user      20   0   12288   3072   2048 S   0.3   0.1   0:00.33 bash
+  512 user      20   0    8196   1280    896 R   0.3   0.1   0:00.01 top`;
+
+  const FAKE_WHO =
+`user     ttyp0        Apr  4 23:44  (192.168.1.42)
+root     ttyp1        Apr  4 22:01  (localhost)
+daemon   ttyp2        Apr  4 18:30  (:0)`;
+
+  const FAKE_LAST =
+`user     ttyp0        192.168.1.42     Fri Apr  4 23:44   still logged in
+root     ttyp1        localhost        Fri Apr  4 22:01   still logged in
+user     ttyp0        192.168.1.42     Fri Apr  4 14:12 - 18:55  (04:43)
+user     ttyp0        10.0.0.7         Thu Apr  3 09:22 - 17:45  (08:23)
+root     console      local            Wed Apr  2 02:00 - 02:01  (00:00)
+reboot   system boot  2.11BSD          Mon Mar 24 12:52
+user     ttyp0        192.168.1.42     Mon Mar 24 08:30 - 10:11  (01:41)
+
+wtmp begins Mon Mar 24 08:30`;
+
+  const FAKE_FINGER =
+`Login: user                             Name: V. A. Xeris
+Directory: /home/user                   Shell: /bin/csh
+On since Fri Apr  4 23:44 (PDT) on ttyp0 from 192.168.1.42
+Mail last read Fri Apr  4 14:22 1982 (PDT)
+No Plan.`;
+
+  const MOTD =
+`BSD UNIX Version 4.2
+Digital Equipment Corporation VAX-11/780
+University of California, Berkeley
+
+                   *** NOTICE TO ALL USERS ***
+
+Welcome to the VAX-11/780 timesharing system.  This machine
+is running 4.2BSD UNIX, released September 1983.
+
+System maintenance is scheduled Sunday mornings, 02:00-06:00 PDT.
+Please log off before that time to avoid losing your work.
+
+New this week:
+  - sendmail(8) updated to version 5.55
+  - vi(1) bugfix: ctrl-L redraws correctly on VT100
+  - Disk quotas enforced on /usr/users starting Monday
+
+Questions? Contact the system administrator: root@ucbvax.ARPA
+
+"Share and enjoy." — The HHGTTG, 1979
+
+`;
+
+  const HISTORY_TXT =
+`unix_history.txt — A Brief History of Computing Terminals
+----------------------------------------------------------
+1. 1964: IBM System/360 introduces the concept of the batch-processing
+   mainframe. Users submit punched-card decks and wait hours for output.
+
+2. 1969: UNIX is born at Bell Labs on a PDP-7. Ken Thompson writes the
+   first version in three weeks while his wife is on vacation. Dennis
+   Ritchie invents the C language to port it.
+
+3. 1971: The first email is sent by Ray Tomlinson on ARPANET. He chooses
+   the @ symbol to separate user from machine — "it was the only character
+   that wasn't already used in a name."
+
+4. 1973: The DEC VT05 is among the first widely used video display terminals,
+   replacing the noisy teletype. Green phosphor glows for the first time.
+
+5. 1975: The Altair 8800 ignites the microcomputer revolution. Bill Gates
+   and Paul Allen write BASIC for it in a hotel room, having never touched
+   the actual hardware.
+
+6. 1978: The VAX-11/780 — this very machine — ships. At 1 MIPS, DEC
+   advertises it as a "MicroVAX." Unix 3BSD is ported to it by Berkeley.
+
+7. 1982: BSD 4.2 introduces TCP/IP sockets. The internet as we know it
+   becomes possible. One VAX-11/780 at BBN serves as an early ARPANET node.
+
+8. 1983: The GNU Project is announced by Richard Stallman on this very
+   system's successor. "Free as in freedom," he writes on net.unix-wizards.
+
+9. 1984: The Macintosh ships. Steve Jobs borrows the GUI from Xerox PARC.
+   The terminal era is not over — it just goes underground.
+
+10. Today, millions of developers work in terminal emulators faithfully
+    reproducing the look and feel of hardware that costs $150,000 in 1978.
+`;
+
+  const MAN_LS =
+`LS(1)                      BSD Reference Manual                      LS(1)
+
+NAME
+     ls -- list directory contents
+
+SYNOPSIS
+     ls [-1ACFRacdfilqrstu] [file ...]
+
+DESCRIPTION
+     For each operand that names a file of a type other than directory, ls
+     displays its name as well as any requested, associated information.
+     For each operand that names a file of type directory, ls displays the
+     names of files contained within that directory.
+
+     The following options are available:
+
+     -a      List all entries; do not hide entries starting with a dot (.).
+
+     -l      List in long format.  (See below.)  If the output is to a
+             terminal, a total sum for all the file sizes is output on a
+             line before the long listing.
+
+     -F      Display a slash (/) immediately after each pathname that is a
+             directory, an asterisk (*) after each that is executable, an
+             at sign (@) after each symbolic link, and a percent sign (%)
+             after each whiteout.
+
+     -r      Reverse the order of the sort to get reverse lexicographical
+             order or the oldest entries first.
+
+     -t      Sort by time modified (most recently modified first) before
+             sorting the operands by lexicographical order.
+
+     -R      Recursively list subdirectories encountered.
+
+LONG FORMAT
+     If the -l option is given, the following information is displayed for
+     each file: file mode, number of links, owner name, group name, number
+     of bytes in the file, abbreviated month, day-of-month file was last
+     modified, hour file last modified, minute file last modified, and the
+     pathname.
+
+SEE ALSO
+     chmod(1), chown(8), find(1), stat(2)
+
+HISTORY
+     An ls command appeared in Version 1 AT&T UNIX (1969).
+
+BSD                           September 21, 1982`;
+
+  const LS_OUTPUT =
+`total 128
+drwxr-xr-x  8 user  users   512 Apr  4 23:44 .
+drwxr-xr-x 24 root  wheel  1024 Apr  4 12:00 ..
+-rw-------  1 user  users   342 Apr  4 23:41 .cshrc
+-rw-------  1 user  users    89 Mar 24 08:30 .login
+-rw-------  1 user  users   214 Mar 24 08:30 .profile
+-rw-r--r--  1 user  users  4096 Apr  4 14:22 history.txt
+-rw-r--r--  1 user  users   512 Apr  2 09:15 motd
+-rw-r--r--  1 user  users  8192 Apr  3 16:44 notes.txt
+-rwxr-xr-x  1 user  users  2048 Mar 31 10:02 backup.sh
+drwxr-xr-x  2 user  users   512 Apr  1 11:00 mail
+drwxr-xr-x  3 user  users   512 Apr  3 14:18 src
+drwx------  2 user  users   512 Apr  4 22:00 tmp`;
+
+  // ── Cowsay ────────────────────────────────────────────────────────────────
+  function cowsay(text) {
+    const words = text.trim() || 'Moo!';
+    const maxW = 36;
+    // word-wrap
+    const lines = [];
+    let cur = '';
+    words.split(' ').forEach(w => {
+      if ((cur + (cur ? ' ' : '') + w).length > maxW) {
+        if (cur) lines.push(cur);
+        cur = w.slice(0, maxW);
+      } else {
+        cur = cur ? cur + ' ' + w : w;
+      }
+    });
+    if (cur) lines.push(cur);
+    const width = Math.max(...lines.map(l => l.length));
+    const top    = ' ' + '_'.repeat(width + 2);
+    const bottom = ' ' + '-'.repeat(width + 2);
+    const body = lines.map((l, i) => {
+      const pad = ' '.repeat(width - l.length);
+      if (lines.length === 1) return `< ${l}${pad} >`;
+      if (i === 0)            return `/ ${l}${pad} \\`;
+      if (i === lines.length - 1) return `\\ ${l}${pad} /`;
+      return `| ${l}${pad} |`;
+    });
+    return [top, ...body, bottom,
+      '        \\   ^__^',
+      '         \\  (oo)\\_______',
+      '            (__)\\       )\\/\\',
+      '                ||----w |',
+      '                ||     ||'
+    ].join('\n');
+  }
+
+  // ── Uptime ────────────────────────────────────────────────────────────────
+  function fakeUptime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2,'0');
+    const m = now.getMinutes().toString().padStart(2,'0');
+    return ` ${h}:${m}  up 42 days, 11:07,  3 users,  load average: 0.12, 0.08, 0.05`;
+  }
+
+  // ── Date ──────────────────────────────────────────────────────────────────
+  function fakeDate() {
+    const d = new Date();
+    const dow = DAYS[d.getDay()];
+    const mon = MONTHS_SHORT[d.getMonth()];
+    const day = String(d.getDate()).padStart(2,' ');
+    const hh  = String(d.getHours()).padStart(2,'0');
+    const mm  = String(d.getMinutes()).padStart(2,'0');
+    const ss  = String(d.getSeconds()).padStart(2,'0');
+    const yr  = d.getFullYear();
+    return `${dow} ${mon} ${day} ${hh}:${mm}:${ss} PDT ${yr}`;
+  }
+
+  // ── Command dispatch ──────────────────────────────────────────────────────
+  function runCommand(raw) {
+    const line = raw.trim();
+    if (!line) return;
+
+    typedHistory.push(line);
+
+    // echo command prompt
+    addLine('user@vax11780:~$ ' + line, 'line-cmd');
+
+    const parts  = line.split(/\s+/);
+    const cmd    = parts[0].toLowerCase();
+    const args   = parts.slice(1).join(' ');
+    const args1  = parts[1] || '';
+
+    switch (cmd) {
+
+      case 'help': {
+        addLine('');
+        addLine('Available commands:', 'line-bold');
+        addLine('');
+        const cmds = [
+          ['help',         'Show this help message'],
+          ['ls',           'List directory contents'],
+          ['ls -la',       'List with details and hidden files'],
+          ['pwd',          'Print working directory'],
+          ['date',         'Display current date and time'],
+          ['whoami',       'Print current user'],
+          ['uname -a',     'Print system information'],
+          ['uptime',       'Show system uptime'],
+          ['cal',          'Display calendar for current month'],
+          ['clear',        'Clear the terminal'],
+          ['echo [text]',  'Echo text to terminal'],
+          ['cat motd',     'Display message of the day'],
+          ['cat history.txt', 'Brief history of Unix/computing'],
+          ['man ls',       'Manual page for ls'],
+          ['fortune',      'Print a computing fortune or quote'],
+          ['cowsay [text]','ASCII cow saying your text'],
+          ['banner [text]','Large ASCII text banner'],
+          ['ps',           'List running processes'],
+          ['top',          'Dynamic process viewer (static snapshot)'],
+          ['history',      'Show command history'],
+          ['finger',       'User information lookup'],
+          ['write',        'Send message to another user'],
+          ['talk',         'Two-way communication with another user'],
+          ['ping arpanet', 'Send ICMP echo to ARPANET'],
+          ['telnet',       'Connect to remote host'],
+          ['rlogin',       'Remote login'],
+          ['who',          'Show who is logged in'],
+          ['last',         'Show login history'],
+        ];
+        cmds.forEach(([c, d]) => {
+          addLine(`  ${c.padEnd(22)} ${d}`, 'line-out');
+        });
+        addLine('');
+        break;
+      }
+
+      case 'ls': {
+        if (args === '-la' || args === '-al' || args === '-a') {
+          addLine(LS_OUTPUT, 'line-out');
+        } else {
+          addLine('backup.sh   history.txt   mail/   motd   notes.txt   src/   tmp/', 'line-out');
+        }
+        break;
+      }
+
+      case 'pwd': {
+        addLine('/home/user', 'line-out');
+        break;
+      }
+
+      case 'date': {
+        addLine(fakeDate(), 'line-out');
+        break;
+      }
+
+      case 'whoami': {
+        addLine('user', 'line-out');
+        break;
+      }
+
+      case 'uname': {
+        addLine('VAX-11/780 UNIX 4.2BSD #1: Tue Sep 21 23:59:59 PDT 1982', 'line-out');
+        break;
+      }
+
+      case 'uptime': {
+        addLine(fakeUptime(), 'line-out');
+        break;
+      }
+
+      case 'cal': {
+        const d = new Date();
+        addLine(buildCal(d.getFullYear(), d.getMonth()), 'line-out');
+        break;
+      }
+
+      case 'clear': {
+        output.innerHTML = '';
+        break;
+      }
+
+      case 'echo': {
+        addLine(args || '', 'line-out');
+        break;
+      }
+
+      case 'cat': {
+        if (args1 === 'motd' || args === 'motd') {
+          addLine(MOTD, 'line-out');
+        } else if (args1 === 'history.txt' || args === 'history.txt') {
+          addLine(HISTORY_TXT, 'line-out');
+        } else if (args1 === '.cshrc' || args1 === '.login' || args1 === '.profile') {
+          addLine(`cat: ${args1}: Permission denied`, 'line-err');
+        } else if (!args1) {
+          // wait for input — simplified: just say so
+          addLine('(cat: reading from stdin — use Ctrl-D to end)', 'line-dim');
+        } else {
+          addLine(`cat: ${args}: No such file or directory`, 'line-err');
+        }
+        break;
+      }
+
+      case 'man': {
+        if (args1 === 'ls' || args === 'ls') {
+          addLine(MAN_LS, 'line-out');
+        } else if (!args1) {
+          addLine('What manual page do you want?', 'line-err');
+        } else {
+          addLine(`No manual entry for ${args1}`, 'line-err');
+        }
+        break;
+      }
+
+      case 'fortune': {
+        const f = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
+        addLine('');
+        addLine(f, 'line-out');
+        addLine('');
+        break;
+      }
+
+      case 'cowsay': {
+        addLine(cowsay(args || 'Moo!'), 'line-out');
+        break;
+      }
+
+      case 'banner': {
+        if (!args) {
+          addLine('Usage: banner <text>', 'line-err');
+        } else {
+          addLine(buildBanner(args), 'line-out');
+        }
+        break;
+      }
+
+      case 'ps': {
+        addLine(FAKE_PS, 'line-out');
+        break;
+      }
+
+      case 'top': {
+        addLine(FAKE_TOP, 'line-out');
+        break;
+      }
+
+      case 'history': {
+        if (typedHistory.length === 0) {
+          addLine('(no commands in history)', 'line-dim');
+        } else {
+          const recent = typedHistory.slice(-20);
+          recent.forEach((c, i) => {
+            const n = (typedHistory.length - recent.length + i + 1).toString().padStart(4,' ');
+            addLine(`  ${n}  ${c}`, 'line-out');
+          });
+        }
+        break;
+      }
+
+      case 'finger': {
+        addLine(FAKE_FINGER, 'line-out');
+        break;
+      }
+
+      case 'write': {
+        addLine('write: ' + (args || 'user') + ' not logged in', 'line-err');
+        break;
+      }
+
+      case 'talk': {
+        addLine('talk: connection refused', 'line-err');
+        break;
+      }
+
+      case 'ping': {
+        const host = args || 'localhost';
+        if (host === 'arpanet' || host === 'arpanet.ximg.app') {
+          addLine(`PING arpanet.ximg.app (1969.10.29): 56 data bytes`, 'line-out');
+          addLine(`64 bytes from 1969-10-29 (ARPANET node 1): icmp_seq=0 ttl=64 time=13.7 ms`, 'line-out');
+          addLine(`64 bytes from 1969-10-29 (ARPANET node 1): icmp_seq=1 ttl=64 time=14.1 ms`, 'line-out');
+          addLine(`64 bytes from 1969-10-29 (ARPANET node 1): icmp_seq=2 ttl=64 time=13.9 ms`, 'line-out');
+          addLine(``, 'line-out');
+          addLine(`--- arpanet.ximg.app ping statistics ---`, 'line-out');
+          addLine(`3 packets transmitted, 3 received, 0% packet loss, time 2002ms`, 'line-out');
+          addLine(`rtt min/avg/max = 13.7/13.9/14.1 ms`, 'line-out');
+        } else {
+          addLine(`PING ${host}: 56 data bytes`, 'line-out');
+          addLine(`Request timeout for icmp_seq 0`, 'line-dim');
+          addLine(`Request timeout for icmp_seq 1`, 'line-dim');
+        }
+        break;
+      }
+
+      case 'telnet': {
+        const dest = args || '192.168.1.1';
+        addLine(`Trying ${dest}...`, 'line-dim');
+        addLine(`telnet: Unable to connect to remote host: Connection refused`, 'line-err');
+        break;
+      }
+
+      case 'rlogin': {
+        addLine('rlogin: Permission denied', 'line-err');
+        break;
+      }
+
+      case 'who': {
+        addLine(FAKE_WHO, 'line-out');
+        break;
+      }
+
+      case 'last': {
+        addLine(FAKE_LAST, 'line-out');
+        break;
+      }
+
+      case 'exit':
+      case 'logout': {
+        addLine('');
+        addLine('logout', 'line-dim');
+        addLine('');
+        addLine('Connection to vax11780 closed.', 'line-dim');
+        addLine('');
+        addLine('[Session terminated. Refresh to reconnect.]', 'line-dim');
+        input.disabled = true;
+        document.getElementById('prompt-label').style.opacity = '0.3';
+        document.getElementById('cursor-block').style.display = 'none';
+        break;
+      }
+
+      case 'ssh':
+      case 'ftp': {
+        addLine(`${cmd}: command not found`, 'line-err');
+        addLine(`(Hint: try telnet or rlogin — it\'s 1982)`, 'line-dim');
+        break;
+      }
+
+      case 'sudo': {
+        addLine('sudo: command not found', 'line-err');
+        addLine('(This is BSD Unix. We use su here.)', 'line-dim');
+        break;
+      }
+
+      case 'su': {
+        addLine('Password:', 'line-dim');
+        setTimeout(() => {
+          addLine('su: Sorry', 'line-err');
+          scrollBottom();
+        }, 800);
+        break;
+      }
+
+      default: {
+        // alternate between two bash-style not-found messages for variety
+        if (Math.random() > 0.5) {
+          addLine(`bash: ${esc(cmd)}: command not found`, 'line-err');
+        } else {
+          addLine(`-bash: ${esc(cmd)}: command not found`, 'line-err');
+        }
+        break;
+      }
+    }
+
+    scrollBottom();
+  }
+
+  // ── Boot sequence ─────────────────────────────────────────────────────────
+  const BOOT_LINES = [
+    { text: '', delay: 0 },
+    { text: 'KA780 V1.3, VMB V2.2', delay: 80 },
+    { text: '' , delay: 120 },
+    { text: '?BIOS-I-COLDSTART', delay: 160 },
+    { text: 'Total Memory: 8 Megabytes', delay: 220 },
+    { text: 'Testing memory ... Done.', delay: 350 },
+    { text: '' , delay: 400 },
+    { text: 'Bootstrapping from DU0: (RA81 disk)...', delay: 480 },
+    { text: 'BSD UNIX -- Copyright (c) 1982 Regents of the University of California', delay: 700 },
+    { text: '                   All rights reserved.', delay: 800 },
+    { text: '' , delay: 850 },
+    { text: 'vax11780 boot, auto-config', delay: 950 },
+    { text: 'uba0 at nexus0', delay: 1050 },
+    { text: 'uda0 at uba0 csr 172150 vec 774 ipl 15', delay: 1150 },
+    { text: 'ra0 at uda0 drive 0: RA81', delay: 1250 },
+    { text: 'ra1 at uda0 drive 1: RA81', delay: 1350 },
+    { text: 'le0 at uba0 csr 174510: address 08:00:2b:xx:xx:xx', delay: 1450 },
+    { text: '' , delay: 1500 },
+    { text: '/dev/ra0b: 131072 sectors', delay: 1600 },
+    { text: 'Checking file systems:', delay: 1700 },
+    { text: '/dev/ra0a: 8192 files, 74210 blocks, 12438 free', delay: 1820 },
+    { text: '/dev/ra1g: 41002 files, 286440 blocks, 195210 free', delay: 1950 },
+    { text: '' , delay: 2000 },
+    { text: 'Starting services: syslogd inetd cron sendmail lpd ...', delay: 2100 },
+    { text: '' , delay: 2200 },
+    { text: 'VAX/VMS V4.2 (VAX-11/780)  System uptime: 42 days', delay: 2300 },
+    { text: '' , delay: 2500 },
+    { text: 'login: user', delay: 2700 },
+    { text: 'Password:', delay: 3000 },
+    { text: '' , delay: 3400 },
+  ];
+
+  const WELCOME_LINES = [
+    { text: 'Last login: Fri Apr  4 14:12:44 from 192.168.1.42', delay: 3500 },
+    { text: '' , delay: 3560 },
+    { text: 'BSD UNIX (vax11780)', delay: 3620 },
+    { text: '' , delay: 3680 },
+    { text: 'Type "help" to see available commands.', delay: 3740 },
+    { text: '' , delay: 3800 },
+  ];
+
+  const ALL_BOOT = [...BOOT_LINES, ...WELCOME_LINES];
+
+  function doBootSequence() {
+    input.disabled = true;
+    ALL_BOOT.forEach(({ text, delay }) => {
+      setTimeout(() => {
+        addLine(text, 'line-boot');
+        scrollBottom();
+      }, delay);
+    });
+    const totalDelay = ALL_BOOT[ALL_BOOT.length - 1].delay + 200;
+    setTimeout(() => {
+      input.disabled = false;
+      input.focus();
+      scrollBottom();
+    }, totalDelay);
+  }
+
+  // ── Input / keyboard ──────────────────────────────────────────────────────
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      const val = input.value;
+      input.value = '';
+      historyIdx = -1;
+      if (val.trim()) {
+        cmdHistory.unshift(val);
+        if (cmdHistory.length > 100) cmdHistory.length = 100;
+      }
+      runCommand(val);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (historyIdx < cmdHistory.length - 1) {
+        historyIdx++;
+        input.value = cmdHistory[historyIdx];
+        // move cursor to end
+        setTimeout(() => input.setSelectionRange(input.value.length, input.value.length), 0);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIdx > 0) {
+        historyIdx--;
+        input.value = cmdHistory[historyIdx];
+      } else {
+        historyIdx = -1;
+        input.value = '';
+      }
+    } else if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      output.innerHTML = '';
+    } else if (e.key === 'c' && e.ctrlKey) {
+      e.preventDefault();
+      addLine('user@vax11780:~$ ' + input.value + '^C', 'line-cmd');
+      input.value = '';
+      historyIdx = -1;
+      scrollBottom();
+    }
+  });
+
+  // Tap anywhere to focus input (mobile)
+  screen.addEventListener('click', function (e) {
+    if (!window.getSelection().toString()) {
+      input.focus();
+    }
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  doBootSequence();
+
+})();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

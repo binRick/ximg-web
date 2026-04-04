@@ -31,7 +31,7 @@
       ['arpanet','arpanet'],['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
     ]},
     { label: 'Science', apps: [
-      ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['chaos','chaos'],['chemistry','chemistry'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['math','math'],['nutrition','nutrition'],['physics','physics'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['training','training'],['waves','waves'],['world','world']
+      ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['training','training'],['waves','waves'],['world','world']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],

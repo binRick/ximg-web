@@ -40,6 +40,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [vr.ximg.app](https://vr.ximg.app) | Virtual reality — headsets, landmark games, how VR works, 60-year history to Apple Vision Pro |
 | [passwords.ximg.app](https://passwords.ximg.app) | Password generator, strength tester, crack-time estimator, and best-practice guide |
 | [fidonet.ximg.app](https://fidonet.ximg.app) | FidoNet BBS history — how it worked, culture, the 40,000-node volunteer network |
+| [arpanet.ximg.app](https://arpanet.ximg.app) | Animated ARPANET history — network grows from 4 nodes (1969) to 213 nodes, packet routing demo, first "LO" message, TCP/IP origins |
 | [coldwar.ximg.app](https://coldwar.ximg.app) | The 45-year standoff — nuclear arms race, proxy wars, space race, CIA vs KGB, Soviet collapse |
 | [pizza.ximg.app](https://pizza.ximg.app) | Top pizza chains and regional styles across America |
 | [chinese.ximg.app](https://chinese.ximg.app) | Eight regional Chinese cuisines and their iconic dishes |
@@ -123,6 +124,10 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [logic.ximg.app](https://logic.ximg.app) | Logic Gates — interactive gate simulator (AND/OR/NOT/XOR/NAND/NOR/XNOR), truth tables, half & full adder, boolean expression evaluator |
 | [protocol.ximg.app](https://protocol.ximg.app) | Protocol Visualizer — animated UART, SPI, and I²C waveform diagrams with configurable baud rates, modes, and data bytes |
 | [mainframe.ximg.app](https://mainframe.ximg.app) | IBM Mainframe history — interactive timeline (701 to z16), JCL syntax explorer, batch processing lifecycle, MIPS performance table, and COBOL reference |
+| [regex.ximg.app](https://regex.ximg.app) | Live regex tester — real-time match highlighting, group extraction, flag toggles (g/i/m/s/u), 14 quick patterns, full cheatsheet |
+| [jwt.ximg.app](https://jwt.ximg.app) | JWT decoder & encoder — decode any token, HMAC sign (HS256/384/512), expiry/nbf/iat validation, claims reference, algorithm comparison |
+| [cron.ximg.app](https://cron.ximg.app) | Cron expression builder — human-readable output, next 10 scheduled runs, 16 presets, field breakdown, special character reference |
+| [color.ximg.app](https://color.ximg.app) | Color tools — picker (HEX/RGB/HSL/CMYK), palette generator (7 harmony types), WCAG AA/AAA contrast checker, CSS variable export |
 
 ## Architecture
 
