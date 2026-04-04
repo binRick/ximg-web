@@ -134,6 +134,8 @@ const LOG_FILES = {
   ids:         'ids.access.log',
   nagios:      'nagios.access.log',
   claudemd:    'claudemd.access.log',
+  network:     'network.access.log',
+  request:     'request.access.log',
   readme:      'readme.access.log',
   status:      'status.access.log',
   nav:         'nav.access.log',
@@ -147,6 +149,11 @@ const LOG_FILES = {
   os:          'os.access.log',
   security:    'security.access.log',
   database:    'database.access.log',
+  playground:  'playground.access.log',
+  tokens:      'tokens.access.log',
+  temperature: 'temperature.access.log',
+  embeddings:  'embeddings.access.log',
+  agents:      'agents.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -446,6 +453,8 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="programming">programming</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
+          <button class="site-opt" data-site="network">network</button>
+          <button class="site-opt" data-site="request">request</button>
           <button class="site-opt" data-site="readme">readme</button>
           <button class="site-opt" data-site="rx">rx</button>
           <button class="site-opt" data-site="simcity">simcity</button>
@@ -478,6 +487,11 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="os">os</button>
           <button class="site-opt" data-site="security">security</button>
           <button class="site-opt" data-site="database">database</button>
+          <button class="site-opt" data-site="playground">playground</button>
+          <button class="site-opt" data-site="tokens">tokens</button>
+          <button class="site-opt" data-site="temperature">temperature</button>
+          <button class="site-opt" data-site="embeddings">embeddings</button>
+          <button class="site-opt" data-site="agents">agents</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

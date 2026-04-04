@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explorable Algorithms — algorithms.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+  .subnav{position:sticky;top:44px;z-index:90;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;overflow-x:auto}
+  .subnav button{background:none;border:none;color:#94a3b8;padding:12px 22px;cursor:pointer;font-size:.9rem;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+  .subnav button:hover{color:#e2e8f0;background:#0f172a}
+  .subnav button.active{color:#f97316;border-bottom-color:#f97316}
+  .tab-content{display:none;padding:24px}
+  .tab-content.active{display:block}
+  h2{font-size:1.4rem;margin-bottom:6px;color:#f1f5f9}
+  .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px;align-items:center}
+  .controls label{font-size:.82rem;color:#94a3b8}
+  .controls select,.controls input[type=range]{background:#070720;border:1px solid #1e293b;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.85rem}
+  .controls input[type=range]{width:120px;accent-color:#f97316}
+  .btn{background:#f97316;border:none;color:#fff;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:600;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn.secondary{background:#1e293b;color:#94a3b8}
+  .btn.secondary:hover{background:#334155;color:#e2e8f0}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  canvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px}
+  .speed-val{font-size:.8rem;color:#f97316;min-width:30px}
+  /* sorting */
+  #sortCanvas{width:100%;max-width:800px}
+  .sort-info{margin-top:12px;font-size:.82rem;color:#64748b;display:flex;gap:24px}
+  .sort-info span{display:flex;align-items:center;gap:6px}
+  .sort-info .dot{width:10px;height:10px;border-radius:50%}
+  /* pathfinding */
+  #pathWrap{display:flex;gap:20px;flex-wrap:wrap}
+  #pathCanvas{cursor:crosshair}
+  .path-legend{display:flex;flex-direction:column;gap:8px;font-size:.8rem;color:#94a3b8}
+  .path-legend span{display:flex;align-items:center;gap:8px}
+  .path-legend .swatch{width:16px;height:16px;border-radius:3px;flex-shrink:0}
+  #pathStats{margin-top:10px;font-size:.82rem;color:#64748b}
+  /* BST */
+  #bstWrap{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+  #bstCanvas{background:#070720;border:1px solid #1e293b;border-radius:8px}
+  .bst-controls{display:flex;flex-direction:column;gap:10px}
+  .bst-controls input{background:#070720;border:1px solid #1e293b;color:#e2e8f0;padding:7px 10px;border-radius:6px;width:80px;font-size:.85rem}
+  .traversal-seq{margin-top:10px;font-size:.8rem;color:#64748b;max-width:400px;line-height:1.6}
+  /* graph */
+  #graphCanvas{cursor:crosshair;width:100%;max-width:800px}
+  .graph-info{margin-top:10px;font-size:.82rem;color:#64748b}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="active" data-tab="sorting">Sorting</button>
+  <button data-tab="pathfinding">Pathfinding</button>
+  <button data-tab="bst">Binary Trees</button>
+  <button data-tab="graph">Graph</button>
+</nav>
+
+<!-- ── TAB 1: SORTING ─────────────────────────────────────────────────────── -->
+<div class="tab-content active" id="tab-sorting">
+  <h2>Sorting Algorithms</h2>
+  <p class="subtitle">Watch classic sorting algorithms visualized step by step</p>
+  <div class="controls">
+    <label>Algorithm
+      <select id="sortAlgo">
+        <option value="bubble">Bubble Sort</option>
+        <option value="insertion">Insertion Sort</option>
+        <option value="quick">Quick Sort</option>
+        <option value="merge">Merge Sort</option>
+      </select>
+    </label>
+    <label>Size <input type="range" id="sortSize" min="10" max="120" value="50"> <span class="speed-val" id="sortSizeVal">50</span></label>
+    <label>Speed <input type="range" id="sortSpeed" min="1" max="10" value="5"> <span class="speed-val" id="sortSpeedVal">5</span></label>
+    <button class="btn" id="sortStart">Sort</button>
+    <button class="btn secondary" id="sortReset">Reset</button>
+  </div>
+  <canvas id="sortCanvas" height="320"></canvas>
+  <div class="sort-info">
+    <span><span class="dot" style="background:#94a3b8"></span>Unsorted</span>
+    <span><span class="dot" style="background:#eab308"></span>Comparing</span>
+    <span><span class="dot" style="background:#ef4444"></span>Swapping</span>
+    <span><span class="dot" style="background:#22c55e"></span>Sorted</span>
+  </div>
+  <div id="sortStats" style="margin-top:10px;font-size:.82rem;color:#64748b"></div>
+</div>
+
+<!-- ── TAB 2: PATHFINDING ─────────────────────────────────────────────────── -->
+<div class="tab-content" id="tab-pathfinding">
+  <h2>Pathfinding Algorithms</h2>
+  <p class="subtitle">Draw walls, set start/end, run A* or Dijkstra</p>
+  <div class="controls">
+    <label>Algorithm
+      <select id="pathAlgo">
+        <option value="astar">A* Search</option>
+        <option value="dijkstra">Dijkstra</option>
+      </select>
+    </label>
+    <label>Mode
+      <select id="pathMode">
+        <option value="wall">Draw Walls</option>
+        <option value="start">Set Start</option>
+        <option value="end">Set End</option>
+      </select>
+    </label>
+    <button class="btn" id="pathRun">Find Path</button>
+    <button class="btn secondary" id="pathClear">Clear</button>
+    <button class="btn secondary" id="pathClearWalls">Clear Walls</button>
+  </div>
+  <div id="pathWrap">
+    <canvas id="pathCanvas" width="560" height="420"></canvas>
+    <div>
+      <div class="path-legend">
+        <span><span class="swatch" style="background:#22c55e"></span>Start</span>
+        <span><span class="swatch" style="background:#ef4444"></span>End</span>
+        <span><span class="swatch" style="background:#1e293b"></span>Wall</span>
+        <span><span class="swatch" style="background:#3b82f6"></span>Explored</span>
+        <span><span class="swatch" style="background:#f97316"></span>Path</span>
+      </div>
+      <div id="pathStats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 3: BST ─────────────────────────────────────────────────────────── -->
+<div class="tab-content" id="tab-bst">
+  <h2>Binary Search Tree</h2>
+  <p class="subtitle">Insert values to build a BST, then visualize traversal order</p>
+  <div id="bstWrap">
+    <canvas id="bstCanvas" width="700" height="400"></canvas>
+    <div class="bst-controls">
+      <label style="font-size:.82rem;color:#94a3b8">Insert Value
+        <br><input type="number" id="bstInput" placeholder="1–99" min="1" max="99">
+      </label>
+      <button class="btn" id="bstInsert">Insert</button>
+      <button class="btn secondary" id="bstClear">Clear Tree</button>
+      <button class="btn secondary" id="bstSample">Load Sample</button>
+      <hr style="border-color:#1e293b">
+      <label style="font-size:.82rem;color:#94a3b8">Traversal
+        <select id="bstTraversal" style="background:#070720;border:1px solid #1e293b;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.85rem;display:block;margin-top:4px">
+          <option value="inorder">In-Order</option>
+          <option value="preorder">Pre-Order</option>
+          <option value="postorder">Post-Order</option>
+        </select>
+      </label>
+      <button class="btn" id="bstTraverse">Traverse</button>
+    </div>
+  </div>
+  <div class="traversal-seq" id="traversalSeq"></div>
+</div>
+
+<!-- ── TAB 4: GRAPH ───────────────────────────────────────────────────────── -->
+<div class="tab-content" id="tab-graph">
+  <h2>Graph Traversal</h2>
+  <p class="subtitle">Click canvas to add nodes · Drag from node to node to create edges · Run BFS or DFS</p>
+  <div class="controls">
+    <label>Algorithm
+      <select id="graphAlgo">
+        <option value="bfs">BFS (Breadth-First)</option>
+        <option value="dfs">DFS (Depth-First)</option>
+      </select>
+    </label>
+    <button class="btn" id="graphRun">Run</button>
+    <button class="btn secondary" id="graphClear">Clear</button>
+    <button class="btn secondary" id="graphSample">Load Sample</button>
+  </div>
+  <canvas id="graphCanvas" height="460"></canvas>
+  <div class="graph-info" id="graphInfo">Click canvas to add nodes. Drag between nodes to add edges. Select a start node (click while holding Shift) then run.</div>
+</div>
+
+<script>
+// ── Utility ───────────────────────────────────────────────────────────────────
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.subnav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.subnav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 1 – SORTING
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const canvas = document.getElementById('sortCanvas');
+  const ctx = canvas.getContext('2d');
+  let arr=[], states=[], running=false, stopFlag=false;
+  let comparisons=0, swaps=0;
+
+  function resizeCanvas(){
+    canvas.width = canvas.parentElement.clientWidth * 0.9 || 760;
+    if(canvas.width>800) canvas.width=800;
+    draw();
+  }
+
+  document.getElementById('sortSize').addEventListener('input', function(){
+    document.getElementById('sortSizeVal').textContent=this.value;
+    if(!running) reset();
+  });
+  document.getElementById('sortSpeed').addEventListener('input', function(){
+    document.getElementById('sortSpeedVal').textContent=this.value;
+  });
+
+  function reset(){
+    stopFlag=false; running=false;
+    comparisons=0; swaps=0;
+    const n = parseInt(document.getElementById('sortSize').value);
+    arr = Array.from({length:n},(_,i)=>Math.floor(Math.random()*280)+20);
+    states = new Array(n).fill(0); // 0=unsorted,1=comparing,2=swapping,3=sorted
+    document.getElementById('sortStart').disabled=false;
+    draw();
+    document.getElementById('sortStats').textContent='';
+  }
+
+  function draw(){
+    resizeCanvas();
+    const w=canvas.width, h=canvas.height, n=arr.length;
+    ctx.clearRect(0,0,w,h);
+    const bw = Math.max(1, (w-20)/n - 1);
+    const maxVal = Math.max(...arr,1);
+    const colors=['#475569','#eab308','#ef4444','#22c55e'];
+    arr.forEach((v,i)=>{
+      const x = 10 + i*(bw+1);
+      const bh = (v/maxVal)*(h-10);
+      ctx.fillStyle = colors[states[i]||0];
+      ctx.fillRect(x, h-bh, bw, bh);
+    });
+  }
+
+  function delay(){
+    const spd = parseInt(document.getElementById('sortSpeed').value);
+    return Math.max(5, 200 - spd*18);
+  }
+
+  async function bubbleSort(){
+    const n=arr.length;
+    for(let i=0;i<n&&!stopFlag;i++){
+      for(let j=0;j<n-i-1&&!stopFlag;j++){
+        states[j]=1; states[j+1]=1; draw();
+        await sleep(delay());
+        comparisons++;
+        if(arr[j]>arr[j+1]){
+          states[j]=2; states[j+1]=2; draw();
+          await sleep(delay()*0.5);
+          [arr[j],arr[j+1]]=[arr[j+1],arr[j]]; swaps++;
+        }
+        states[j]=0; states[j+1]=0;
+      }
+      states[n-i-1]=3;
+    }
+    if(!stopFlag) states.fill(3);
+  }
+
+  async function insertionSort(){
+    const n=arr.length;
+    states[0]=3; draw();
+    for(let i=1;i<n&&!stopFlag;i++){
+      let key=arr[i], j=i-1;
+      states[i]=1; draw(); await sleep(delay());
+      while(j>=0&&arr[j]>key&&!stopFlag){
+        comparisons++;
+        states[j]=2; draw(); await sleep(delay()*0.5);
+        arr[j+1]=arr[j]; swaps++;
+        states[j+1]=0; states[j]=0;
+        j--;
+      }
+      arr[j+1]=key;
+      for(let k=0;k<=i;k++) states[k]=3;
+      draw();
+    }
+    if(!stopFlag) states.fill(3);
+  }
+
+  async function quickSort(lo,hi){
+    if(lo>=hi||stopFlag) return;
+    let pivot=arr[hi], pi=lo;
+    states[hi]=2; draw(); await sleep(delay());
+    for(let i=lo;i<hi&&!stopFlag;i++){
+      states[i]=1; comparisons++;
+      if(arr[i]<=pivot){
+        [arr[i],arr[pi]]=[arr[pi],arr[i]]; swaps++;
+        states[pi]=0; states[i]=0;
+        pi++;
+      } else { states[i]=0; }
+      draw(); await sleep(delay()*0.3);
+    }
+    [arr[pi],arr[hi]]=[arr[hi],arr[pi]]; swaps++;
+    states[hi]=3; states[pi]=3; draw(); await sleep(delay());
+    await quickSort(lo,pi-1);
+    await quickSort(pi+1,hi);
+  }
+
+  async function mergeSort(lo,hi){
+    if(lo>=hi||stopFlag) return;
+    const mid=Math.floor((lo+hi)/2);
+    await mergeSort(lo,mid);
+    await mergeSort(mid+1,hi);
+    const left=arr.slice(lo,mid+1), right=arr.slice(mid+1,hi+1);
+    let i=0,j=0,k=lo;
+    while(i<left.length&&j<right.length&&!stopFlag){
+      states[k]=1; comparisons++;
+      if(left[i]<=right[j]) { arr[k]=left[i++]; }
+      else { arr[k]=right[j++]; swaps++; }
+      states[k]=2; draw(); await sleep(delay()*0.3);
+      states[k]=0; k++;
+    }
+    while(i<left.length) { arr[k]=left[i++]; states[k]=0; k++; }
+    while(j<right.length) { arr[k]=right[j++]; states[k]=0; k++; }
+    for(let x=lo;x<=hi;x++) states[x]=3;
+    draw(); await sleep(delay()*0.3);
+  }
+
+  document.getElementById('sortStart').addEventListener('click', async ()=>{
+    if(running){ stopFlag=true; return; }
+    running=true; stopFlag=false;
+    comparisons=0; swaps=0;
+    document.getElementById('sortStart').textContent='Stop';
+    const algo = document.getElementById('sortAlgo').value;
+    const n=arr.length;
+    if(algo==='bubble') await bubbleSort();
+    else if(algo==='insertion') await insertionSort();
+    else if(algo==='quick'){ states.fill(0); await quickSort(0,n-1); }
+    else if(algo==='merge'){ states.fill(0); await mergeSort(0,n-1); }
+    if(!stopFlag) states.fill(3);
+    draw();
+    running=false;
+    document.getElementById('sortStart').textContent='Sort';
+    document.getElementById('sortStats').textContent=`Comparisons: ${comparisons}  |  Swaps: ${swaps}`;
+  });
+  document.getElementById('sortReset').addEventListener('click', reset);
+
+  window.addEventListener('resize', resizeCanvas);
+  reset();
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 2 – PATHFINDING
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const canvas = document.getElementById('pathCanvas');
+  const ctx = canvas.getContext('2d');
+  const COLS=28, ROWS=21, CW=canvas.width/COLS, CH=canvas.height/ROWS;
+  // 0=empty,1=wall,2=start,3=end,4=explored,5=path
+  let grid=[], startCell={r:5,c:3}, endCell={r:15,c:24};
+  let drawing=false, running=false;
+
+  function initGrid(){
+    grid=[];
+    for(let r=0;r<ROWS;r++){ grid[r]=[]; for(let c=0;c<COLS;c++) grid[r][c]=0; }
+    grid[startCell.r][startCell.c]=2;
+    grid[endCell.r][endCell.c]=3;
+  }
+
+  function drawGrid(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const colors=['#0f172a','#1e293b','#22c55e','#ef4444','#1d4ed8','#f97316'];
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        ctx.fillStyle=colors[grid[r][c]];
+        ctx.fillRect(c*CW+1,r*CH+1,CW-1,CH-1);
+      }
+    }
+    // grid lines
+    ctx.strokeStyle='#070720'; ctx.lineWidth=1;
+    for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CH);ctx.lineTo(canvas.width,r*CH);ctx.stroke();}
+    for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CW,0);ctx.lineTo(c*CW,canvas.height);ctx.stroke();}
+  }
+
+  function getCell(e){
+    const rect=canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left, y=e.clientY-rect.top;
+    return {r:Math.floor(y/CH),c:Math.floor(x/CW)};
+  }
+
+  canvas.addEventListener('mousedown',e=>{
+    if(running) return;
+    drawing=true;
+    const {r,c}=getCell(e);
+    if(r<0||r>=ROWS||c<0||c>=COLS) return;
+    const mode=document.getElementById('pathMode').value;
+    if(mode==='wall'){
+      if(grid[r][c]===0||grid[r][c]===4||grid[r][c]===5) grid[r][c]=1;
+      else if(grid[r][c]===1) grid[r][c]=0;
+    } else if(mode==='start'){
+      grid[startCell.r][startCell.c]=0;
+      startCell={r,c}; grid[r][c]=2;
+    } else if(mode==='end'){
+      grid[endCell.r][endCell.c]=0;
+      endCell={r,c}; grid[r][c]=3;
+    }
+    drawGrid();
+  });
+  canvas.addEventListener('mousemove',e=>{
+    if(!drawing||running) return;
+    const {r,c}=getCell(e);
+    if(r<0||r>=ROWS||c<0||c>=COLS) return;
+    if(document.getElementById('pathMode').value==='wall'){
+      if(grid[r][c]===0||grid[r][c]===4||grid[r][c]===5) grid[r][c]=1;
+      drawGrid();
+    }
+  });
+  canvas.addEventListener('mouseup',()=>{ drawing=false; });
+
+  function heuristic(a,b){ return Math.abs(a.r-b.r)+Math.abs(a.c-b.c); }
+
+  async function runAStar(){
+    const open=[], closed=new Set();
+    const gScore={}, fScore={}, parent={};
+    const key=({r,c})=>`${r},${c}`;
+    gScore[key(startCell)]=0;
+    fScore[key(startCell)]=heuristic(startCell,endCell);
+    open.push({...startCell, f:fScore[key(startCell)]});
+    let explored=0;
+    while(open.length>0){
+      open.sort((a,b)=>a.f-b.f);
+      const cur=open.shift();
+      const ck=key(cur);
+      if(closed.has(ck)) continue;
+      closed.add(ck);
+      if(cur.r===endCell.r&&cur.c===endCell.c){
+        // reconstruct
+        let n=ck, path=[];
+        while(parent[n]){ path.push(n); n=parent[n]; }
+        for(const k of path){
+          const [pr,pc]=k.split(',').map(Number);
+          if(grid[pr][pc]!==2&&grid[pr][pc]!==3) grid[pr][pc]=5;
+          drawGrid(); await sleep(20);
+        }
+        return {found:true, explored, pathLen:path.length};
+      }
+      const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+      for(const [dr,dc] of dirs){
+        const nr=cur.r+dr, nc=cur.c+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS||grid[nr][nc]===1) continue;
+        const nk=`${nr},${nc}`;
+        if(closed.has(nk)) continue;
+        const g=(gScore[ck]||0)+1;
+        if(g<(gScore[nk]??Infinity)){
+          parent[nk]=ck; gScore[nk]=g;
+          fScore[nk]=g+heuristic({r:nr,c:nc},endCell);
+          open.push({r:nr,c:nc,f:fScore[nk]});
+          if(grid[nr][nc]!==3){ grid[nr][nc]=4; explored++; }
+          drawGrid(); await sleep(12);
+        }
+      }
+    }
+    return {found:false, explored, pathLen:0};
+  }
+
+  async function runDijkstra(){
+    const dist={}, prev={}, visited=new Set();
+    const key=({r,c})=>`${r},${c}`;
+    const sk=key(startCell);
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) dist[`${r},${c}`]=Infinity;
+    dist[sk]=0;
+    const pq=[{r:startCell.r,c:startCell.c,d:0}];
+    let explored=0;
+    while(pq.length>0){
+      pq.sort((a,b)=>a.d-b.d);
+      const cur=pq.shift();
+      const ck=key(cur);
+      if(visited.has(ck)) continue;
+      visited.add(ck);
+      if(cur.r===endCell.r&&cur.c===endCell.c){
+        let n=ck, path=[];
+        while(prev[n]){ path.push(n); n=prev[n]; }
+        for(const k of path){
+          const [pr,pc]=k.split(',').map(Number);
+          if(grid[pr][pc]!==2&&grid[pr][pc]!==3) grid[pr][pc]=5;
+          drawGrid(); await sleep(20);
+        }
+        return {found:true,explored,pathLen:path.length};
+      }
+      const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+      for(const [dr,dc] of dirs){
+        const nr=cur.r+dr, nc=cur.c+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS||grid[nr][nc]===1) continue;
+        const nk=`${nr},${nc}`;
+        if(visited.has(nk)) continue;
+        const nd=dist[ck]+1;
+        if(nd<dist[nk]){
+          dist[nk]=nd; prev[nk]=ck;
+          pq.push({r:nr,c:nc,d:nd});
+          if(grid[nr][nc]!==3){ grid[nr][nc]=4; explored++; }
+          drawGrid(); await sleep(12);
+        }
+      }
+    }
+    return {found:false,explored,pathLen:0};
+  }
+
+  document.getElementById('pathRun').addEventListener('click', async ()=>{
+    if(running) return;
+    running=true;
+    // clear explored/path but keep walls/start/end
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===4||grid[r][c]===5) grid[r][c]=0;
+    drawGrid();
+    const algo=document.getElementById('pathAlgo').value;
+    const result = algo==='astar' ? await runAStar() : await runDijkstra();
+    running=false;
+    const statsEl=document.getElementById('pathStats');
+    if(result.found) statsEl.innerHTML=`<span style="color:#22c55e">Path found!</span> Length: ${result.pathLen} steps | Explored: ${result.explored} nodes`;
+    else statsEl.innerHTML=`<span style="color:#ef4444">No path found</span> | Explored: ${result.explored} nodes`;
+  });
+
+  document.getElementById('pathClear').addEventListener('click', ()=>{ if(!running){ initGrid(); drawGrid(); document.getElementById('pathStats').textContent=''; }});
+  document.getElementById('pathClearWalls').addEventListener('click', ()=>{
+    if(running) return;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===1) grid[r][c]=0;
+    drawGrid();
+  });
+
+  initGrid(); drawGrid();
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 3 – BST
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const canvas=document.getElementById('bstCanvas');
+  const ctx=canvas.getContext('2d');
+  let root=null, highlighted=new Set(), traversalRunning=false;
+
+  class Node{ constructor(v){ this.val=v; this.left=null; this.right=null; this.x=0; this.y=0; } }
+
+  function insert(node,val){
+    if(!node) return new Node(val);
+    if(val<node.val) node.left=insert(node.left,val);
+    else if(val>node.val) node.right=insert(node.right,val);
+    return node;
+  }
+
+  function assignPositions(node,depth,lo,hi){
+    if(!node) return;
+    node.x=Math.floor((lo+hi)/2);
+    node.y=depth*70+50;
+    assignPositions(node.left,depth+1,lo,Math.floor((lo+hi)/2)-1);
+    assignPositions(node.right,depth+1,Math.floor((lo+hi)/2)+1,hi);
+  }
+
+  function drawTree(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(!root){ ctx.fillStyle='#475569'; ctx.font='14px Segoe UI'; ctx.textAlign='center'; ctx.fillText('Insert values to build the tree',canvas.width/2,canvas.height/2); return; }
+    assignPositions(root,0,0,canvas.width);
+    drawEdges(root);
+    drawNodes(root);
+  }
+
+  function drawEdges(node){
+    if(!node) return;
+    if(node.left){ ctx.strokeStyle='#334155'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(node.x,node.y); ctx.lineTo(node.left.x,node.left.y); ctx.stroke(); drawEdges(node.left); }
+    if(node.right){ ctx.strokeStyle='#334155'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(node.x,node.y); ctx.lineTo(node.right.x,node.right.y); ctx.stroke(); drawEdges(node.right); }
+  }
+
+  function drawNodes(node){
+    if(!node) return;
+    const hl=highlighted.has(node.val);
+    ctx.beginPath(); ctx.arc(node.x,node.y,20,0,Math.PI*2);
+    ctx.fillStyle=hl?'#f97316':'#070720';
+    ctx.strokeStyle=hl?'#eab308':'#1e293b';
+    ctx.lineWidth=hl?3:2;
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle=hl?'#fff':'#e2e8f0'; ctx.font='bold 13px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(node.val,node.x,node.y);
+    drawNodes(node.left); drawNodes(node.right);
+  }
+
+  function getInOrder(node,res=[]){ if(!node) return res; getInOrder(node.left,res); res.push(node.val); getInOrder(node.right,res); return res; }
+  function getPreOrder(node,res=[]){ if(!node) return res; res.push(node.val); getPreOrder(node.left,res); getPreOrder(node.right,res); return res; }
+  function getPostOrder(node,res=[]){ if(!node) return res; getPostOrder(node.left,res); getPostOrder(node.right,res); res.push(node.val); return res; }
+
+  document.getElementById('bstInsert').addEventListener('click', ()=>{
+    const v=parseInt(document.getElementById('bstInput').value);
+    if(isNaN(v)||v<1||v>99){ alert('Enter a number 1-99'); return; }
+    root=insert(root,v);
+    document.getElementById('bstInput').value='';
+    drawTree();
+  });
+  document.getElementById('bstInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('bstInsert').click(); });
+  document.getElementById('bstClear').addEventListener('click', ()=>{ root=null; highlighted.clear(); drawTree(); document.getElementById('traversalSeq').textContent=''; });
+  document.getElementById('bstSample').addEventListener('click', ()=>{
+    root=null; [50,30,70,20,40,60,80,10,35,45].forEach(v=>root=insert(root,v));
+    drawTree();
+  });
+
+  document.getElementById('bstTraverse').addEventListener('click', async ()=>{
+    if(!root||traversalRunning) return;
+    traversalRunning=true; highlighted.clear(); drawTree();
+    const type=document.getElementById('bstTraversal').value;
+    let seq=[];
+    if(type==='inorder') seq=getInOrder(root);
+    else if(type==='preorder') seq=getPreOrder(root);
+    else seq=getPostOrder(root);
+    const seqEl=document.getElementById('traversalSeq');
+    seqEl.innerHTML=`<strong style="color:#94a3b8">${type} traversal:</strong> `;
+    for(const v of seq){
+      highlighted.add(v); drawTree(); await sleep(500);
+      seqEl.innerHTML+=`<span style="color:#f97316;font-weight:700">${v}</span> → `;
+      await sleep(100);
+    }
+    seqEl.innerHTML=seqEl.innerHTML.slice(0,-4);
+    traversalRunning=false;
+  });
+
+  drawTree();
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 4 – GRAPH
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const canvas=document.getElementById('graphCanvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.parentElement.clientWidth*0.95||760;
+  if(canvas.width>800) canvas.width=800;
+
+  let nodes=[], edges=[], startNode=null, dragging=null, dragTarget=null, traversalRunning=false;
+
+  function drawGraph(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // edges
+    for(const [a,b] of edges){
+      ctx.strokeStyle='#334155'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(nodes[a].x,nodes[a].y); ctx.lineTo(nodes[b].x,nodes[b].y); ctx.stroke();
+    }
+    // drag line
+    if(dragging!==null&&dragTarget){
+      ctx.strokeStyle='#f97316'; ctx.lineWidth=2; ctx.setLineDash([5,5]);
+      ctx.beginPath(); ctx.moveTo(nodes[dragging].x,nodes[dragging].y); ctx.lineTo(dragTarget.x,dragTarget.y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // nodes
+    for(let i=0;i<nodes.length;i++){
+      const n=nodes[i];
+      ctx.beginPath(); ctx.arc(n.x,n.y,20,0,Math.PI*2);
+      let fill='#0f172a', stroke='#1e293b';
+      if(i===startNode){ fill='#22c55e'; stroke='#16a34a'; }
+      if(n.state===1){ fill='#3b82f6'; stroke='#2563eb'; }   // explored
+      if(n.state===2){ fill='#f97316'; stroke='#ea580c'; }   // current
+      if(n.state===3){ fill='#eab308'; stroke='#ca8a04'; }   // done
+      ctx.fillStyle=fill; ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#e2e8f0'; ctx.font='bold 13px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String.fromCharCode(65+i), n.x, n.y);
+    }
+  }
+
+  function nodeAt(x,y){ return nodes.findIndex(n=>Math.hypot(n.x-x,n.y-y)<22); }
+
+  canvas.addEventListener('mousedown',e=>{
+    if(traversalRunning) return;
+    const rect=canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left, y=e.clientY-rect.top;
+    const idx=nodeAt(x,y);
+    if(e.shiftKey){
+      if(idx>=0){ startNode=idx; drawGraph(); document.getElementById('graphInfo').textContent=`Start node: ${String.fromCharCode(65+idx)}`; }
+      return;
+    }
+    if(idx>=0){ dragging=idx; dragTarget=null; }
+    else{
+      if(nodes.length<26){ nodes.push({x,y,state:0}); drawGraph(); }
+    }
+  });
+  canvas.addEventListener('mousemove',e=>{
+    if(dragging===null||traversalRunning) return;
+    const rect=canvas.getBoundingClientRect();
+    dragTarget={x:e.clientX-rect.left,y:e.clientY-rect.top};
+    drawGraph();
+  });
+  canvas.addEventListener('mouseup',e=>{
+    if(dragging===null) return;
+    const rect=canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left, y=e.clientY-rect.top;
+    const idx=nodeAt(x,y);
+    if(idx>=0&&idx!==dragging){
+      const key=`${Math.min(dragging,idx)}-${Math.max(dragging,idx)}`;
+      const exists=edges.some(([a,b])=>Math.min(a,b)===Math.min(dragging,idx)&&Math.max(a,b)===Math.max(dragging,idx));
+      if(!exists) edges.push([dragging,idx]);
+    }
+    dragging=null; dragTarget=null; drawGraph();
+  });
+
+  function buildAdj(){
+    const adj=nodes.map(()=>[]);
+    for(const [a,b] of edges){ adj[a].push(b); adj[b].push(a); }
+    return adj;
+  }
+
+  document.getElementById('graphRun').addEventListener('click', async ()=>{
+    if(traversalRunning||nodes.length===0) return;
+    if(startNode===null){ document.getElementById('graphInfo').textContent='Shift+click a node to set the start node first.'; return; }
+    traversalRunning=true;
+    nodes.forEach(n=>n.state=0); drawGraph();
+    const adj=buildAdj();
+    const order=[];
+    if(document.getElementById('graphAlgo').value==='bfs'){
+      const visited=new Set([startNode]), queue=[startNode];
+      while(queue.length>0){
+        const cur=queue.shift(); order.push(cur);
+        nodes[cur].state=2; drawGraph(); await sleep(500);
+        for(const nb of adj[cur]){ if(!visited.has(nb)){ visited.add(nb); queue.push(nb); nodes[nb].state=1; } }
+        nodes[cur].state=3; drawGraph(); await sleep(200);
+      }
+    } else {
+      const visited=new Set();
+      async function dfs(v){ if(visited.has(v)) return; visited.add(v); order.push(v); nodes[v].state=2; drawGraph(); await sleep(500); for(const nb of adj[v]){ if(!visited.has(nb)){ nodes[nb].state=1; await dfs(nb); } } nodes[v].state=3; drawGraph(); await sleep(200); }
+      await dfs(startNode);
+    }
+    document.getElementById('graphInfo').textContent=`Traversal order: ${order.map(i=>String.fromCharCode(65+i)).join(' → ')}`;
+    traversalRunning=false;
+  });
+
+  document.getElementById('graphClear').addEventListener('click', ()=>{ if(!traversalRunning){ nodes=[]; edges=[]; startNode=null; drawGraph(); document.getElementById('graphInfo').textContent='Click canvas to add nodes. Drag between nodes to add edges. Shift+click to set start node.'; }});
+
+  document.getElementById('graphSample').addEventListener('click', ()=>{
+    if(traversalRunning) return;
+    nodes=[
+      {x:200,y:100,state:0},{x:120,y:220,state:0},{x:280,y:220,state:0},
+      {x:80,y:340,state:0},{x:160,y:340,state:0},{x:240,y:340,state:0},{x:320,y:340,state:0}
+    ];
+    edges=[[0,1],[0,2],[1,3],[1,4],[2,5],[2,6]];
+    startNode=0; drawGraph();
+    document.getElementById('graphInfo').textContent='Sample binary tree graph loaded. Press Run to traverse.';
+  });
+
+  drawGraph();
+})();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

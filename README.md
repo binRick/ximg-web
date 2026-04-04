@@ -98,6 +98,11 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [claudemd.ximg.app](https://claudemd.ximg.app) | The ximg-web CLAUDE.md rendered as a styled web page — AI assistant instructions, architecture notes, and project conventions |
 | [world.ximg.app](https://world.ximg.app) | Real-time world data dashboard — animated internet traffic map, live cyber attack feed, fake stock ticker with heat map, and live global stat counters |
 | [sandbox.ximg.app](https://sandbox.ximg.app) | Interactive physics sandbox — bouncing particles, wave interference, elastic/inelastic collisions with momentum display, and spring-mass oscillator with phase diagram |
+| [playground.ximg.app](https://playground.ximg.app) | LLM concepts explorer — tokenizer, temperature probability charts, top-k/top-p sampling, and low vs high temperature comparison |
+| [tokens.ximg.app](https://tokens.ximg.app) | Token Visualizer — live BPE tokenizer, token type reference, context window grid, and BPE vocabulary browser |
+| [temperature.ximg.app](https://temperature.ximg.app) | LLM Temperature Explorer — interactive temperature slider with softmax probability charts and sample text outputs per zone |
+| [embeddings.ximg.app](https://embeddings.ximg.app) | Vector Embeddings Explorer — 2D semantic space, cosine similarity calculator, word analogies, and 8-dim radar chart |
+| [agents.ximg.app](https://agents.ximg.app) | AI Agent Loops — animated agent loop, tool use simulation, memory type diagram, and multi-agent orchestration canvas |
 
 ## Architecture
 
