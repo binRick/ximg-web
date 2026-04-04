@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Temperature Explorer — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f;
+      --card: #070720;
+      --border: #1e293b;
+      --accent: #8b5cf6;
+      --pink: #ec4899;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding-top: 44px; }
+    .page { max-width: 1000px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: .3rem; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+    .section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .75rem; }
+
+    /* Main slider */
+    .temp-slider-wrapper { position: relative; padding: 0 .5rem; }
+    .zone-labels { display: flex; justify-content: space-between; margin-bottom: .4rem; font-size: .72rem; font-weight: 700; }
+    .temp-mega-slider {
+      width: 100%; height: 12px; appearance: none; -webkit-appearance: none;
+      border-radius: 6px; cursor: pointer; outline: none;
+      background: linear-gradient(90deg, #10b981 0%, #3b82f6 20%, #8b5cf6 40%, #f59e0b 70%, #ef4444 100%);
+    }
+    .temp-mega-slider::-webkit-slider-thumb { appearance: none; width: 26px; height: 26px; border-radius: 50%; background: white; border: 3px solid var(--accent); cursor: pointer; box-shadow: 0 0 0 4px rgba(139,92,246,.3); transition: box-shadow .15s; }
+    .temp-mega-slider::-webkit-slider-thumb:hover { box-shadow: 0 0 0 8px rgba(139,92,246,.25); }
+    .temp-display { text-align: center; margin-top: 1rem; }
+    .temp-number { font-size: 3.5rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+    .zone-badge { display: inline-block; padding: .3rem .9rem; border-radius: 20px; font-size: .8rem; font-weight: 700; margin-top: .5rem; }
+    .zone-desc { font-size: .87rem; color: var(--muted); margin-top: .5rem; line-height: 1.6; max-width: 600px; margin-left: auto; margin-right: auto; text-align: center; }
+
+    /* Bar chart */
+    .bar-chart { margin-top: .5rem; }
+    .bar-row { display: flex; align-items: center; gap: .6rem; margin: .4rem 0; }
+    .bar-label { min-width: 90px; font-size: .83rem; font-family: 'Courier New', monospace; color: var(--muted); text-align: right; }
+    .bar-track { flex: 1; height: 22px; background: #0d0d20; border-radius: 5px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 5px; transition: width .2s ease, background .2s; display: flex; align-items: center; padding: 0 .4rem; font-size: .75rem; font-weight: 600; color: rgba(255,255,255,.8); min-width: 3px; }
+    .bar-pct { min-width: 55px; text-align: right; font-size: .82rem; font-family: 'Courier New', monospace; }
+
+    /* Text samples */
+    .sample-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .sample-card {
+      background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: 1rem;
+      transition: border-color .3s, box-shadow .3s; cursor: default;
+    }
+    .sample-card.active {
+      border-color: var(--accent); box-shadow: 0 0 20px rgba(139,92,246,.2);
+    }
+    .sample-card .zone-tag { font-size: .7rem; font-weight: 700; text-transform: uppercase; margin-bottom: .4rem; display: block; }
+    .sample-card .temp-tag { font-size: .75rem; color: var(--muted); margin-bottom: .5rem; }
+    .sample-card p { font-size: .85rem; line-height: 1.7; color: var(--text); font-style: italic; }
+
+    /* Math */
+    .math-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .formula { font-family: 'Courier New', monospace; font-size: .88rem; line-height: 2; color: var(--text); }
+    .formula .hl { color: var(--pink); font-weight: 700; }
+    .formula .hl2 { color: var(--accent); font-weight: 700; }
+    .formula .hl3 { color: var(--green); font-weight: 700; }
+    .step { margin: .4rem 0; padding: .4rem .6rem; background: #0d0d28; border-radius: 5px; border-left: 3px solid var(--accent); }
+
+    /* Info cards */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .info-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    .info-card h3 { font-size: .88rem; font-weight: 700; margin-bottom: .4rem; }
+    .info-card p { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+    .info-card .use-badge { display: inline-block; padding: .15rem .5rem; border-radius: 4px; font-size: .72rem; font-weight: 700; margin-top: .5rem; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1><span>Temperature Explorer</span></h1>
+  <p class="subtitle">Understand how temperature controls randomness in LLM outputs — the most important sampling parameter.</p>
+
+  <!-- MAIN SLIDER CARD -->
+  <div class="card">
+    <div class="temp-slider-wrapper">
+      <div class="zone-labels">
+        <span style="color:var(--green)">Deterministic</span>
+        <span style="color:var(--blue)">Focused</span>
+        <span style="color:var(--accent)">Balanced</span>
+        <span style="color:var(--yellow)">Creative</span>
+        <span style="color:var(--red)">Chaotic</span>
+      </div>
+      <input type="range" class="temp-mega-slider" id="main-temp" min="0" max="200" value="100" step="5">
+    </div>
+    <div class="temp-display">
+      <div class="temp-number" id="main-temp-num" style="color:var(--accent)">1.00</div>
+      <div><span class="zone-badge" id="main-zone-badge">Balanced</span></div>
+      <div class="zone-desc" id="main-zone-desc"></div>
+    </div>
+  </div>
+
+  <!-- PROBABILITY CHART -->
+  <div class="card">
+    <div class="section-title">Next-token probability distribution — Prompt: "The neural network learned to"</div>
+    <div class="bar-chart" id="main-bars"></div>
+    <div style="margin-top:.75rem;font-size:.8rem;color:var(--muted)">
+      At temperature 0, the model always picks "<strong id="top-token" style="color:var(--accent)">recognize</strong>" (highest logit).
+      As temperature rises, other tokens become viable.
+    </div>
+  </div>
+
+  <!-- TEXT SAMPLES -->
+  <div class="card">
+    <div class="section-title">Sample outputs — Prompt: "Describe the night sky"</div>
+    <div class="sample-grid" id="sample-grid"></div>
+  </div>
+
+  <!-- MATH -->
+  <div class="card">
+    <div class="section-title">The Math: Softmax with Temperature</div>
+    <div class="math-card">
+      <div class="formula" id="math-formula"></div>
+    </div>
+  </div>
+
+  <!-- INFO CARDS -->
+  <div class="card">
+    <div class="section-title">When to use each temperature range</div>
+    <div class="info-grid" id="info-grid"></div>
+  </div>
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+const TOKENS = [
+  { word: 'recognize', logit: 4.2 },
+  { word: 'process',   logit: 3.8 },
+  { word: 'predict',   logit: 3.4 },
+  { word: 'classify',  logit: 2.6 },
+  { word: 'generate',  logit: 2.1 },
+  { word: 'transform', logit: 1.4 },
+  { word: 'dream',     logit: 0.1 },
+  { word: 'forget',    logit: -0.5 },
+];
+
+const ZONES = [
+  { label: 'Deterministic', color: '#10b981', bg: 'rgba(16,185,129,.15)', min: 0, max: 19,
+    desc: 'Temperature near 0: the model always picks the highest-probability token. Identical outputs every time. Best for code generation, structured data extraction, and factual Q&A where you need consistency.' },
+  { label: 'Focused', color: '#3b82f6', bg: 'rgba(59,130,246,.15)', min: 20, max: 59,
+    desc: 'Temperature 0.2–0.6: top tokens dominate but slight variation exists. Very reliable with minimal creative flair. Ideal for summarization, translation, and professional writing assistance.' },
+  { label: 'Balanced', color: '#8b5cf6', bg: 'rgba(139,92,246,.15)', min: 60, max: 110,
+    desc: 'Temperature 0.6–1.1: the model\'s "natural" zone. Good balance of coherence and variation. Suitable for general conversation, explanations, and most everyday tasks.' },
+  { label: 'Creative', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', min: 111, max: 159,
+    desc: 'Temperature 1.1–1.6: lower-probability tokens become viable. Outputs become surprising and varied. Great for creative writing, brainstorming, poetry, and character roleplay.' },
+  { label: 'Chaotic', color: '#ef4444', bg: 'rgba(239,68,68,.15)', min: 160, max: 200,
+    desc: 'Temperature 1.6–2.0: distribution nearly flat. Almost any token is possible. Outputs may be incoherent, hallucinatory, or unexpectedly brilliant. Use with extreme caution.' },
+];
+
+const SAMPLES = [
+  { zone: 'Deterministic', color: '#10b981', tempRange: 'T = 0.0–0.2',
+    text: 'The night sky consists of stars, planets, and other celestial bodies visible after sunset. The Moon is the brightest object, followed by Venus. Stars appear as points of light due to their extreme distance from Earth.' },
+  { zone: 'Focused', color: '#3b82f6', tempRange: 'T = 0.3–0.5',
+    text: 'The night sky stretches above us, a vast canvas of twinkling stars and distant galaxies. On clear nights away from city lights, the Milky Way becomes visible — a soft band of densely packed stars arcing across the heavens.' },
+  { zone: 'Balanced', color: '#8b5cf6', tempRange: 'T = 0.7–1.0',
+    text: 'The night sky is a reminder of our small place in the cosmos. From my backyard, I can trace Orion\'s belt, find the North Star, and watch satellites drift silently overhead — each one a tiny human achievement crawling across eternity.' },
+  { zone: 'Creative', color: '#f59e0b', tempRange: 'T = 1.2–1.5',
+    text: 'The night sky breathes. Ancient light from stars that died before Earth existed reaches your retina tonight — a delayed love letter from nuclear furnaces, their photons traveling 10,000 years just to find your pupil dilated in the dark.' },
+  { zone: 'Chaotic', color: '#ef4444', tempRange: 'T = 1.7–2.0',
+    text: 'Nightward! The blinking ancestors shout phosphenes at your dreaming skull — each star a syllable in the cosmos\'s grammar of forgetting. Venus smells like probability. The moon is jealous of oceans it hasn\'t visited yet.' },
+];
+
+const INFO_CARDS = [
+  { title: 'T = 0.0', color: '#10b981', use: 'Code / Math', desc: 'Fully deterministic. Same input always gives same output. Essential for code generation where syntax must be exact.' },
+  { title: 'T = 0.2–0.4', color: '#3b82f6', use: 'Factual Q&A', desc: 'Highly accurate. Minimal hallucination. Ideal for question answering, extraction, summarization.' },
+  { title: 'T = 0.6–0.8', color: '#8b5cf6', use: 'Chat / Writing', desc: 'Natural conversation. Varies enough to feel human but stays on-topic. Default for most chat applications.' },
+  { title: 'T = 1.0–1.2', color: '#a855f7', use: 'Creative Writing', desc: 'Unexpected word choices, richer vocabulary. Good for stories, marketing copy, and ideation.' },
+  { title: 'T = 1.4–1.6', color: '#f59e0b', use: 'Brainstorming', desc: 'Very diverse outputs. Run multiple samples to get varied ideas. Great for poetry, creative prompts.' },
+  { title: 'T ≥ 1.8', color: '#ef4444', use: 'Experimental', desc: 'High risk of incoherence. Use only when you want truly random, unusual outputs. Not for production.' },
+];
+
+function softmax(logits, temp) {
+  const t = Math.max(temp, 0.001);
+  const scaled = logits.map(l => l / t);
+  const maxV = Math.max(...scaled);
+  const exps = scaled.map(l => Math.exp(l - maxV));
+  const sum = exps.reduce((a,b) => a+b, 0);
+  return exps.map(e => e/sum);
+}
+
+function getZone(val) {
+  return ZONES.find(z => val >= z.min && val <= z.max) || ZONES[2];
+}
+
+function barColor(i, zone) {
+  if (i === 0) return `linear-gradient(90deg, ${zone.color}cc, ${zone.color})`;
+  return `${zone.color}55`;
+}
+
+function render() {
+  const val = parseInt(document.getElementById('main-temp').value);
+  const temp = val / 100;
+  const zone = getZone(val);
+
+  document.getElementById('main-temp-num').textContent = temp.toFixed(2);
+  document.getElementById('main-temp-num').style.color = zone.color;
+
+  const badge = document.getElementById('main-zone-badge');
+  badge.textContent = zone.label;
+  badge.style.background = zone.bg;
+  badge.style.color = zone.color;
+
+  document.getElementById('main-zone-desc').textContent = zone.desc;
+
+  // Bars
+  const logits = TOKENS.map(t => t.logit);
+  const probs = softmax(logits, temp);
+  const maxProb = Math.max(...probs);
+  const topIdx = probs.indexOf(maxProb);
+  document.getElementById('top-token').textContent = TOKENS[topIdx].word;
+
+  const bars = document.getElementById('main-bars');
+  bars.innerHTML = TOKENS.map((tok, i) => {
+    const pct = probs[i] * 100;
+    const widthPct = (probs[i] / maxProb) * 100;
+    return `<div class="bar-row">
+      <span class="bar-label">"${tok.word}"</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${widthPct}%;background:${i===0?`linear-gradient(90deg,${zone.color}aa,${zone.color})`:`${zone.color}44`}">
+          ${pct > 4 ? pct.toFixed(1)+'%' : ''}
+        </div>
+      </div>
+      <span class="bar-pct" style="color:${i===0?zone.color:'var(--muted)'}">${pct.toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+
+  // Text samples — highlight active zone
+  const sampleCards = document.querySelectorAll('.sample-card');
+  sampleCards.forEach((card, i) => {
+    const matches = SAMPLES[i].zone === zone.label;
+    card.classList.toggle('active', matches);
+    if (matches) card.style.borderColor = zone.color;
+    else card.style.borderColor = '';
+  });
+
+  // Math formula
+  const t2 = temp.toFixed(2);
+  const topLogit = TOKENS[topIdx].logit;
+  const scaledTop = (topLogit / Math.max(temp, 0.001)).toFixed(3);
+  const expTop = Math.exp(parseFloat(scaledTop) - Math.max(...logits.map(l=>l/Math.max(temp,0.001)))).toFixed(4);
+  document.getElementById('math-formula').innerHTML = `
+    <div><span class="hl">softmax</span>(z<sub>i</sub> / T) where T = <span class="hl2">${t2}</span></div>
+    <div class="step">P(token<sub>i</sub>) = exp(z<sub>i</sub> / <span class="hl2">T</span>) / Σ<sub>j</sub> exp(z<sub>j</sub> / <span class="hl2">T</span>)</div>
+    <div class="step">Top token: "<span class="hl3">${TOKENS[topIdx].word}</span>"  →  logit = ${topLogit}  →  scaled = ${topLogit} / ${t2} = <span class="hl2">${scaledTop}</span></div>
+    <div class="step">P("<span class="hl3">${TOKENS[topIdx].word}</span>") = exp(${scaledTop} - max) / Σ exp(…) = <span class="hl">${(probs[topIdx]*100).toFixed(2)}%</span></div>
+    <div style="margin-top:.5rem;font-size:.8rem;color:var(--muted)">
+      ${temp < 0.1 ? '⚠ Near-zero temperature: numerically equivalent to argmax — always picks the top token.' :
+        temp < 0.5 ? 'Low T: top token has overwhelming probability. Very predictable outputs.' :
+        temp < 1.2 ? 'Moderate T: probability spread across several plausible tokens. Natural-feeling outputs.' :
+        'High T: probability flattens across many tokens. Diverse, unpredictable outputs.'}
+    </div>
+  `;
+}
+
+document.getElementById('main-temp').addEventListener('input', render);
+
+// Render samples once (static)
+document.getElementById('sample-grid').innerHTML = SAMPLES.map(s => `
+  <div class="sample-card">
+    <span class="zone-tag" style="color:${s.color}">${s.zone}</span>
+    <div class="temp-tag">${s.tempRange}</div>
+    <p>${s.text}</p>
+  </div>
+`).join('');
+
+// Render info cards once (static)
+document.getElementById('info-grid').innerHTML = INFO_CARDS.map(c => `
+  <div class="info-card" style="border-color:${c.color}33">
+    <h3 style="color:${c.color}">${c.title}</h3>
+    <div><span class="use-badge" style="background:${c.color}22;color:${c.color}">${c.use}</span></div>
+    <p style="margin-top:.5rem">${c.desc}</p>
+  </div>
+`).join('');
+
+render();
+</script>
+</body>
+</html>
