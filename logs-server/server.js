@@ -326,7 +326,7 @@ const HTML = `<!DOCTYPE html>
     #ssh-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
     .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
     .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
-    .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 1fr;gap:.75rem;
+    .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 55px 1fr;gap:.75rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
     .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .log-line:hover{background:rgba(255,255,255,.03)}
@@ -335,6 +335,7 @@ const HTML = `<!DOCTYPE html>
     .col-ts{color:var(--dim)}
     .col-ip{color:#79c0ff}
     .col-geo{color:#a5b4fc;font-size:.75rem}
+    .col-bytes{color:#94a3b8;text-align:right;font-size:.74rem}
     .col-path{color:var(--text)}
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
     .col-site{color:var(--dim);font-size:.72rem;margin-right:.25rem}
@@ -495,6 +496,13 @@ const HTML = `<!DOCTYPE html>
     const st4xx     = document.getElementById('st-4xx');
     const st5xx     = document.getElementById('st-5xx');
 
+    function fmtBytes(b) {
+      if (!b && b !== 0) return '-';
+      if (b < 1024) return b + 'B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + 'K';
+      return (b / 1048576).toFixed(1) + 'M';
+    }
+
     function esc(s) {
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
@@ -531,6 +539,7 @@ const HTML = `<!DOCTYPE html>
           '<span class="col-ip">'  + esc(data.ip)                             + '</span>' +
           '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
           '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
+          '<span class="col-bytes">' + fmtBytes(data.bytes)                   + '</span>' +
           '<span class="col-path">' + (data.site ? '<span class="col-site">[' + esc(data.site) + ']</span> ' : '') + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
         stats.total++;
         const key = Math.floor(data.status / 100) + 'xx';
