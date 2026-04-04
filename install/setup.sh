@@ -176,7 +176,7 @@ DOMAINS=(
   warcraft.ximg.app wargames.ximg.app wood.ximg.app
   unix.ximg.app bsd.ximg.app
   ximg.ximg.app yaml.ximg.app zsh.ximg.app
-  nagios.ximg.app
+  nagios.ximg.app status.ximg.app
   vim.ximg.app http.ximg.app ssh.ximg.app sql.ximg.app
   space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
   pirates.ximg.app medieval.ximg.app

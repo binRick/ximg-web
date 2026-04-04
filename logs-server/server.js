@@ -408,6 +408,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab"        data-site="space">space</button>
     <button class="tab"        data-site="sql">sql</button>
     <button class="tab"        data-site="ssh">ssh</button>
+    <button class="tab"        data-site="status">status</button>
     <button class="tab"        data-site="stats">stats</button>
     <button class="tab"        data-site="suricata">suricata</button>
     <button class="tab"        data-site="systemd">systemd</button>
