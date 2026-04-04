@@ -326,7 +326,7 @@ const HTML = `<!DOCTYPE html>
     #ssh-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
     .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
     .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
-    .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 55px 1fr;gap:.75rem;
+    .log-line{display:grid;grid-template-columns:180px 130px 160px 48px 55px 72px 1fr;gap:.75rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
     .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     .log-line:hover{background:rgba(255,255,255,.03)}
@@ -338,7 +338,7 @@ const HTML = `<!DOCTYPE html>
     .col-bytes{color:#94a3b8;text-align:right;font-size:.74rem}
     .col-path{color:var(--text)}
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
-    .col-site{color:var(--dim);font-size:.72rem;margin-right:.25rem}
+    .col-app{color:var(--dim);font-size:.72rem}
     .raw-line{color:var(--dim);font-size:.75rem;padding:.1rem .25rem}
     .connecting{color:var(--dim);padding:1rem;animation:blink2 1s step-end infinite}
     @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
@@ -540,7 +540,8 @@ const HTML = `<!DOCTYPE html>
           '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
           '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
           '<span class="col-bytes">' + fmtBytes(data.bytes)                   + '</span>' +
-          '<span class="col-path">' + (data.site ? '<span class="col-site">[' + esc(data.site) + ']</span> ' : '') + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
+          '<span class="col-app">'  + esc(data.site || '')                    + '</span>' +
+          '<span class="col-path">' + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
         stats.total++;
         const key = Math.floor(data.status / 100) + 'xx';
         if (stats[key] !== undefined) stats[key]++;
