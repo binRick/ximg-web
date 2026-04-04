@@ -41,7 +41,7 @@ DirCgi=/usr/lib/awstats/cgi-bin
 DirIcons=/icons
 AllowToUpdateStatsFromBrowser=0
 DNSLookup=0
-SkipHosts="127.0.0.1 ::1"
+SkipHosts="127.0.0.1 ::1 172.238.205.61 172.17.0.1 172.18.0.1 172.19.0.1 2a01:7e04::2000:30ff:fed5:d413"
 DefaultFile="index.html"
 ${GEOIP_PLUGIN}
 EOF
@@ -70,7 +70,7 @@ DirCgi=/usr/lib/awstats/cgi-bin
 DirIcons=/icons
 AllowToUpdateStatsFromBrowser=0
 DNSLookup=0
-SkipHosts="127.0.0.1 ::1"
+SkipHosts="127.0.0.1 ::1 172.238.205.61 172.17.0.1 172.18.0.1 172.19.0.1 2a01:7e04::2000:30ff:fed5:d413"
 DefaultFile="index.html"
 ${GEOIP_PLUGIN}
 EOF
