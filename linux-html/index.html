@@ -99,7 +99,7 @@
     /* Info tab sections — center their .info-section child */
     #section-kernel, #section-subsystems, #section-concepts,
     #section-selinux, #section-virtualization,
-    #section-containerization, #section-networking {
+    #section-containerization, #section-networking, #section-tunnels {
       display: flex;
       justify-content: center;
     }
@@ -696,6 +696,7 @@
     <button class="linux-tab"        data-tab="virtualization">Virtualization</button>
     <button class="linux-tab"        data-tab="containerization">Containerization</button>
     <button class="linux-tab"        data-tab="networking">Networking</button>
+    <button class="linux-tab"        data-tab="tunnels">Tunnels</button>
   </div>
 
   <!-- ── Terminal section ── -->
@@ -1522,6 +1523,111 @@
     </div>
   </div>
 
+  <!-- ── Tunnels section ── -->
+  <div id="section-tunnels" class="section hidden">
+    <div class="info-section">
+      <div class="info-hero">
+        <div class="hero-icon">🔒</div>
+        <h1>SSH Tunnels</h1>
+        <p>Forward ports securely through an encrypted SSH channel — local, remote, and dynamic modes.</p>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-title">Local Tunnel (-L)</div>
+          <p>Binds a port on your <em>local</em> machine and forwards connections through the SSH server to a destination. Traffic originates from the SSH server's perspective.</p>
+          <ul class="info-list">
+            <li><code class="il">ssh -L 8080:localhost:80 user@remote</code> — local :8080 → remote :80</li>
+            <li><code class="il">ssh -L 5432:db.internal:5432 user@bastion</code> — reach internal DB via bastion</li>
+            <li><code class="il">ssh -L 0.0.0.0:8080:target:80 user@remote</code> — bind all interfaces locally</li>
+            <li><code class="il">-N</code> — no remote command, tunnel only</li>
+            <li><code class="il">-f</code> — go to background after authenticating</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">Remote Tunnel (-R)</div>
+          <p>Binds a port on the <em>remote</em> SSH server and forwards connections back to your local machine (or any host reachable from it). Useful for exposing a local service through a public server.</p>
+          <ul class="info-list">
+            <li><code class="il">ssh -R 9090:localhost:3000 user@remote</code> — remote :9090 → local :3000</li>
+            <li><code class="il">ssh -R 0.0.0.0:80:localhost:8080 user@remote</code> — publicly expose local :8080</li>
+            <li>Requires <code class="il">GatewayPorts yes</code> in <code class="il">sshd_config</code> to bind non-loopback on remote</li>
+            <li>Common use: demo a dev server behind NAT/firewall to the public internet</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">Dynamic / SOCKS Tunnel (-D)</div>
+          <p>Creates a local SOCKS4/5 proxy. Your SSH client acts as a dynamic port forwarder — any application that supports a SOCKS proxy can route traffic through the SSH server.</p>
+          <ul class="info-list">
+            <li><code class="il">ssh -D 1080 user@remote</code> — SOCKS proxy on localhost:1080</li>
+            <li>Configure browser proxy settings to <code class="il">socks5://127.0.0.1:1080</code></li>
+            <li><code class="il">curl --socks5 127.0.0.1:1080 http://target</code></li>
+            <li>All traffic exits from the SSH server's IP — effective for browsing or testing geo-restricted content</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">Local vs Remote — Key Difference</div>
+          <p><strong>Local (-L):</strong> <em>you</em> open a local port → traffic goes out through the remote.<br><br>
+          <strong>Remote (-R):</strong> the <em>remote</em> opens a port → traffic comes back to you.<br><br>
+          Think of it as which side initiates the listening socket.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">Persistent Tunnels with autossh</div>
+          <p><code class="il">autossh</code> monitors the tunnel and restarts it if the connection drops. Ideal for long-lived remote tunnels on servers.</p>
+          <ul class="info-list">
+            <li><code class="il">autossh -M 0 -N -R 9090:localhost:3000 user@remote</code></li>
+            <li><code class="il">-M 0</code> — disable autossh echo port, rely on SSH keepalives instead</li>
+            <li>Add <code class="il">ServerAliveInterval 30</code> and <code class="il">ServerAliveCountMax 3</code> to <code class="il">~/.ssh/config</code></li>
+            <li>Run as a systemd service for boot-time persistence</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">~/.ssh/config Shortcuts</div>
+          <p>Define tunnels in your SSH config so you don't have to type them every time.</p>
+          <ul class="info-list">
+            <li><code class="il">LocalForward 8080 localhost:80</code></li>
+            <li><code class="il">RemoteForward 9090 localhost:3000</code></li>
+            <li><code class="il">DynamicForward 1080</code></li>
+            <li><code class="il">ExitOnForwardFailure yes</code> — fail if port can't be bound</li>
+            <li>Combine with <code class="il">ControlMaster auto</code> for connection reuse</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">Jump Hosts (-J)</div>
+          <p>SSH through one or more intermediate hosts to reach a target that isn't directly reachable. Replaces the older <code class="il">ProxyCommand</code> pattern.</p>
+          <ul class="info-list">
+            <li><code class="il">ssh -J bastion user@internal-host</code></li>
+            <li><code class="il">ssh -J hop1,hop2 user@target</code> — chain multiple hops</li>
+            <li>In config: <code class="il">ProxyJump bastion.example.com</code></li>
+            <li>Combine with <code class="il">-L</code> or <code class="il">-R</code> to tunnel through the jump chain</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="info-card-title">Security Considerations</div>
+          <ul class="info-list">
+            <li>Tunnels bypass firewalls — only permit on trusted hosts</li>
+            <li><code class="il">AllowTcpForwarding no</code> in <code class="il">sshd_config</code> disables all forwarding</li>
+            <li><code class="il">PermitOpen host:port</code> restricts which destinations are allowed</li>
+            <li>Use dedicated low-privilege accounts for tunnel-only access</li>
+            <li>Combine with <code class="il">ForceCommand /bin/false</code> to disallow shell access on tunnel accounts</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2 class="info-section-title">Tunnel Quick Reference</h2>
+      <div class="info-table-wrap">
+        <table class="info-table">
+          <thead><tr><th>Flag</th><th>Who Listens</th><th>Traffic Direction</th><th>Common Use</th></tr></thead>
+          <tbody>
+            <tr><td><code class="il">-L local:host:remote</code></td><td>Local machine</td><td>Local → Remote destination</td><td>Access internal services from your laptop</td></tr>
+            <tr><td><code class="il">-R remote:host:local</code></td><td>Remote server</td><td>Remote → Local destination</td><td>Expose local dev server to the internet</td></tr>
+            <tr><td><code class="il">-D port</code></td><td>Local machine (SOCKS)</td><td>Dynamic — any destination</td><td>Ad-hoc proxy / bypass restrictions</td></tr>
+            <tr><td><code class="il">-J jumphost</code></td><td>N/A (proxy hop)</td><td>Through bastion to target</td><td>Reach hosts in private networks</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <script src="/shared/nav.js?v=2"></script>
   <script>
   (function () {
@@ -2049,7 +2155,7 @@
     bounceTux();
 
     // ── Tab switching ───────────────────────────────────────────────────────────
-    const TABS = ['terminal', 'distros', 'history', 'kernel', 'subsystems', 'concepts', 'gnu', 'selinux', 'virtualization', 'containerization', 'networking'];
+    const TABS = ['terminal', 'distros', 'history', 'kernel', 'subsystems', 'concepts', 'gnu', 'selinux', 'virtualization', 'containerization', 'networking', 'tunnels'];
 
     function switchTab(name) {
       if (!TABS.includes(name)) name = 'terminal';
