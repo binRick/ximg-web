@@ -118,6 +118,9 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [sleep.ximg.app](https://sleep.ximg.app) | Sleep Science — hypnogram animation, circadian rhythm curves, sleep debt calculator, EEG wave patterns |
 | [nutrition.ximg.app](https://nutrition.ximg.app) | Nutrition & Metabolism — TDEE/macro calculator, macronutrient guide, metabolism pathways, food comparison table |
 | [training.ximg.app](https://training.ximg.app) | Strength & Fitness — progressive overload chart, muscle group diagram, recovery curve, program templates |
+| [dna.ximg.app](https://dna.ximg.app) | DNA — animated rotating double helix (A-T/G-C base pairs), DNA replication fork animation, transcription (RNAP on template strand), translation (ribosome codon-by-codon) with codon table |
+| [cell.ximg.app](https://cell.ximg.app) | The Cell — interactive animal cell explorer (clickable organelles), animated mitosis phases, membrane transport (passive/facilitated/active/osmosis), organelle reference cards |
+| [immune.ximg.app](https://immune.ximg.app) | The Immune System — animated immune response timeline (innate vs adaptive), immune cell type reference, antibody Y-diagram with binding animation, vaccine types and mechanism |
 | [terminal.ximg.app](https://terminal.ximg.app) | Retro Terminal — interactive VAX-11/780 BSD simulation, CRT phosphor green scanlines, classic Unix commands, cowsay, fortune, banner, and boot sequence |
 | [punch.ximg.app](https://punch.ximg.app) | Punch Card — IBM 80-column Hollerith encoder/decoder, interactive Canvas card, click-to-toggle holes, FORTRAN/COBOL samples, computing history from 1890 |
 | [circuit.ximg.app](https://circuit.ximg.app) | Circuit Builder — drag-and-drop circuit canvas (resistors, caps, inductors, LEDs, logic gates), DC analysis calculators, component reference |
