@@ -82,6 +82,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [math.ximg.app](https://math.ximg.app) | The language of the universe — algebra, calculus, geometry, number theory, probability and statistics, great mathematicians |
 | [evolution.ximg.app](https://evolution.ximg.app) | 3.8 billion years of life — natural selection, Darwin's voyage, fossil record, five mass extinctions, human evolution timeline |
 | [dns.ximg.app](https://dns.ximg.app) | Domain Name System reference — record types, resolution flow, dig/nslookup commands, DNSSEC chain of trust, DoH/DoT |
+| [suricata.ximg.app](https://suricata.ximg.app) | Suricata IDS/IPS reference — rule syntax, sticky buffers, protocol parsers, EVE JSON output, JA3 fingerprinting, CLI commands |
 
 ## Architecture
 

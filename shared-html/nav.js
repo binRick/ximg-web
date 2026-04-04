@@ -3,7 +3,7 @@
     { label: 'Tech', apps: [
       ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],
       ['docker','docker'],['dns','dns'],['fidonet','fidonet'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['passwords','passwords'],['programming','programming'],['sql','sql'],['ssh','ssh'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['passwords','passwords'],['programming','programming'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coffee','coffee'],['florida','florida'],
