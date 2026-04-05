@@ -184,6 +184,7 @@ const LOG_FILES = {
   immune:         'immune.access.log',
   quantum:        'quantum.access.log',
   synth:          'synth.access.log',
+  compound:       'compound.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────

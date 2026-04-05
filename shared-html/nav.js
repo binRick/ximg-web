@@ -52,6 +52,9 @@
     { label: 'Dev Tools', apps: [
       ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color']
     ]},
+    { label: 'Finance', apps: [
+      ['compound','compound']
+    ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
     ]},

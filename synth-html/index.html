@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Audio Synthesizer — synth.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #02020f;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 1.5rem 1rem .5rem;
+      font-size: 1.6rem;
+      background: linear-gradient(90deg, #ec4899, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: .85rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .tab-nav {
+      position: sticky;
+      top: 44px;
+      z-index: 100;
+      display: flex;
+      gap: .3rem;
+      padding: .5rem 1rem;
+      background: rgba(2,2,15,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #1e293b;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: .45rem 1rem;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: #070720;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .tab-btn:hover { border-color: #ec4899; color: #f9a8d4; }
+    .tab-btn.active { background: #2d0a1f; border-color: #ec4899; color: #f472b6; }
+
+    .tab-panel { display: none; padding: 1.2rem 1rem 3rem; max-width: 1000px; margin: 0 auto; }
+    .tab-panel.active { display: block; }
+
+    canvas {
+      border-radius: 10px;
+      background: #070720;
+      border: 1px solid #1e293b;
+      display: block;
+      width: 100%;
+    }
+
+    .ctrl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+      margin: .8rem 0;
+      align-items: center;
+    }
+
+    .btn {
+      padding: .4rem .9rem;
+      border-radius: 7px;
+      border: 1px solid #ec4899;
+      background: #2d0a1f;
+      color: #f472b6;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      transition: all .18s;
+    }
+    .btn:hover { background: #4a0f32; }
+    .btn.active-btn { background: #be185d; color: #fff; border-color: #f472b6; }
+    .btn-purple { border-color: #8b5cf6; background: #1e1040; color: #a78bfa; }
+    .btn-purple:hover { background: #2d1b69; }
+    .btn-purple.active-btn { background: #7c3aed; color: #fff; }
+
+    label { font-size: .83rem; color: #94a3b8; }
+    input[type=range] { accent-color: #ec4899; cursor: pointer; }
+    select {
+      background: #0f0f2a;
+      border: 1px solid #1e293b;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: .35rem .6rem;
+      font-size: .82rem;
+      cursor: pointer;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin: .4rem 0;
+    }
+    .slider-label { font-size: .8rem; color: #94a3b8; width: 90px; flex-shrink: 0; }
+    .slider-val { font-size: .82rem; color: #ec4899; min-width: 48px; font-family: monospace; }
+
+    /* ── Piano keyboard ── */
+    #piano-wrap {
+      overflow-x: auto;
+      margin: .8rem 0;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
+      background: #040414;
+      padding: .6rem .6rem 0;
+    }
+    #piano-canvas {
+      display: block;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .info-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin: .8rem 0;
+      font-size: .88rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+    .info-card h3 { color: #f472b6; font-size: .95rem; margin-bottom: .4rem; }
+    .info-card .label {
+      color: #ec4899;
+      font-weight: 700;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .25rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .8rem;
+      margin: .8rem 0;
+    }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* Effects chain */
+    .effect-block {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 1rem;
+      margin: .6rem 0;
+    }
+    .effect-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .6rem;
+    }
+    .effect-name { font-weight: 700; color: #f472b6; font-size: .92rem; }
+    .bypass-btn {
+      padding: .25rem .6rem;
+      border-radius: 5px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #64748b;
+      cursor: pointer;
+      font-size: .75rem;
+    }
+    .bypass-btn.active { border-color: #ec4899; color: #f472b6; background: #2d0a1f; }
+
+    .flow-arrow {
+      text-align: center;
+      color: #334155;
+      font-size: 1.2rem;
+      margin: .2rem 0;
+    }
+
+    /* Spectrum */
+    #spectrum-canvas, #oscilloscope-canvas {
+      border-radius: 10px;
+      background: #000d00;
+      border: 1px solid #0d2b0d;
+      display: block;
+      width: 100%;
+    }
+
+    /* Presets */
+    .preset-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: .8rem 0;
+    }
+    .preset-btn {
+      padding: .5rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f0f2a;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      transition: all .18s;
+    }
+    .preset-btn:hover { border-color: #ec4899; color: #f472b6; background: #2d0a1f; }
+
+    /* Chord theory */
+    .chord-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: .6rem;
+      margin: .8rem 0;
+    }
+    .chord-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: .7rem;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .chord-card:hover { border-color: #8b5cf6; }
+    .chord-name { font-weight: 700; color: #a78bfa; font-size: .9rem; }
+    .chord-notes { font-size: .8rem; color: #64748b; font-family: monospace; margin-top: .2rem; }
+    .chord-formula { font-size: .75rem; color: #475569; margin-top: .15rem; }
+
+    .status-bar {
+      background: #0f0f2a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: .5rem 1rem;
+      font-size: .82rem;
+      font-family: monospace;
+      color: #64748b;
+      margin: .5rem 0;
+    }
+    .status-bar span { color: #ec4899; }
+  </style>
+</head>
+<body>
+
+<h1>Web Audio Synthesizer</h1>
+<p class="subtitle">Fully functional browser synth — Web Audio API, ADSR, effects chain, spectrum analyzer</p>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="synth">Synthesizer</button>
+  <button class="tab-btn" data-tab="effects">Effects</button>
+  <button class="tab-btn" data-tab="spectrum">Spectrum</button>
+  <button class="tab-btn" data-tab="theory">Presets &amp; Theory</button>
+</div>
+
+<!-- ─── Audio engine (shared) ─── -->
+<div style="display:none" id="audio-status"></div>
+
+<!-- ─── Tab 1: Synthesizer ─── -->
+<div class="tab-panel active" id="tab-synth">
+  <div id="piano-wrap">
+    <canvas id="piano-canvas" height="130"></canvas>
+  </div>
+  <div class="status-bar" id="key-hint">
+    Click keys or press keyboard: <span>A S D F G H J K</span> = white keys &nbsp;|&nbsp; <span>W E T Y U</span> = black keys &nbsp;|&nbsp; <span>Z/X</span> = octave down/up
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="info-card">
+        <div class="label">Oscillator</div>
+        <div class="ctrl-row">
+          <label>Type:</label>
+          <button class="btn active-btn" data-osc="sine">sine</button>
+          <button class="btn" data-osc="square">square</button>
+          <button class="btn" data-osc="sawtooth">saw</button>
+          <button class="btn" data-osc="triangle">tri</button>
+        </div>
+        <canvas id="waveform-canvas" height="60" style="margin-top:.5rem;border-radius:6px;background:#0a0a2a;border:1px solid #1e293b;"></canvas>
+        <div class="slider-row" style="margin-top:.6rem">
+          <span class="slider-label">Octave</span>
+          <button class="btn" id="oct-down" style="padding:.25rem .6rem">−</button>
+          <span id="oct-display" style="font-family:monospace;color:#ec4899;min-width:28px;text-align:center">4</span>
+          <button class="btn" id="oct-up" style="padding:.25rem .6rem">+</button>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Volume</span>
+          <input type="range" id="master-vol" min="0" max="1" step=".01" value=".6" style="flex:1">
+          <span class="slider-val" id="vol-val">60%</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="info-card">
+        <div class="label">ADSR Envelope</div>
+        <canvas id="adsr-canvas" height="80" style="border-radius:6px;background:#0a0a2a;border:1px solid #1e293b;"></canvas>
+        <div class="slider-row">
+          <span class="slider-label">Attack</span>
+          <input type="range" id="sl-attack" min="1" max="500" step="1" value="10" style="flex:1">
+          <span class="slider-val" id="val-attack">10ms</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Decay</span>
+          <input type="range" id="sl-decay" min="10" max="1000" step="5" value="150" style="flex:1">
+          <span class="slider-val" id="val-decay">150ms</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Sustain</span>
+          <input type="range" id="sl-sustain" min="0" max="1" step=".01" value=".7" style="flex:1">
+          <span class="slider-val" id="val-sustain">0.70</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Release</span>
+          <input type="range" id="sl-release" min="10" max="3000" step="10" value="300" style="flex:1">
+          <span class="slider-val" id="val-release">300ms</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Tab 2: Effects ─── -->
+<div class="tab-panel" id="tab-effects">
+  <div class="info-card" style="text-align:center;padding:.5rem;color:#64748b;font-size:.82rem">
+    Signal flow: Oscillator → Distortion → Filter → Delay → Reverb → Output &nbsp;|&nbsp; Play notes in the Synth tab to hear effects
+  </div>
+
+  <div class="effect-block" id="fx-distortion">
+    <div class="effect-header">
+      <span class="effect-name">Distortion / Overdrive</span>
+      <button class="bypass-btn active" data-fx="dist">Active</button>
+    </div>
+    <canvas id="dist-canvas" height="60" style="border-radius:6px;background:#0a0a2a;border:1px solid #1e293b;margin-bottom:.5rem;"></canvas>
+    <div class="slider-row">
+      <span class="slider-label">Drive</span>
+      <input type="range" id="sl-drive" min="0" max="400" step="1" value="0">
+      <span class="slider-val" id="val-drive">0</span>
+    </div>
+  </div>
+  <div class="flow-arrow">▼</div>
+
+  <div class="effect-block" id="fx-filter">
+    <div class="effect-header">
+      <span class="effect-name">Filter</span>
+      <button class="bypass-btn active" data-fx="filter">Active</button>
+    </div>
+    <canvas id="filter-canvas" height="70" style="border-radius:6px;background:#0a0a2a;border:1px solid #1e293b;margin-bottom:.5rem;"></canvas>
+    <div class="ctrl-row">
+      <button class="btn active-btn btn-purple" data-ftype="lowpass">lowpass</button>
+      <button class="btn btn-purple" data-ftype="highpass">highpass</button>
+      <button class="btn btn-purple" data-ftype="bandpass">bandpass</button>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Cutoff</span>
+      <input type="range" id="sl-cutoff" min="80" max="18000" step="10" value="18000">
+      <span class="slider-val" id="val-cutoff">18000 Hz</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Resonance</span>
+      <input type="range" id="sl-resonance" min="0.1" max="20" step=".1" value="1">
+      <span class="slider-val" id="val-resonance">1.0</span>
+    </div>
+  </div>
+  <div class="flow-arrow">▼</div>
+
+  <div class="effect-block" id="fx-delay">
+    <div class="effect-header">
+      <span class="effect-name">Delay</span>
+      <button class="bypass-btn" data-fx="delay">Bypassed</button>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Time</span>
+      <input type="range" id="sl-delay" min="10" max="1000" step="10" value="300">
+      <span class="slider-val" id="val-delay">300ms</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Feedback</span>
+      <input type="range" id="sl-feedback" min="0" max=".9" step=".01" value=".35">
+      <span class="slider-val" id="val-feedback">0.35</span>
+    </div>
+  </div>
+  <div class="flow-arrow">▼</div>
+
+  <div class="effect-block" id="fx-reverb">
+    <div class="effect-header">
+      <span class="effect-name">Reverb</span>
+      <button class="bypass-btn" data-fx="reverb">Bypassed</button>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Dry/Wet</span>
+      <input type="range" id="sl-reverb" min="0" max="1" step=".01" value="0">
+      <span class="slider-val" id="val-reverb">0%</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Tab 3: Spectrum ─── -->
+<div class="tab-panel" id="tab-spectrum">
+  <div class="ctrl-row">
+    <button class="btn active-btn" id="btn-spec-bars">Spectrum Bars</button>
+    <button class="btn" id="btn-spec-scope">Oscilloscope</button>
+    <span id="note-detect" style="font-family:monospace;font-size:.85rem;color:#ec4899;margin-left:auto"></span>
+  </div>
+  <canvas id="spectrum-canvas" height="280"></canvas>
+  <canvas id="oscilloscope-canvas" height="200" style="display:none;margin-top:.6rem"></canvas>
+  <div class="status-bar" id="spec-info">
+    Play a note in the Synth tab — spectrum updates in real time at 60 fps &nbsp;|&nbsp; Bars = log-frequency FFT &nbsp;|&nbsp; Scope = raw waveform
+  </div>
+  <div class="info-card" style="margin-top:.8rem">
+    <div class="label">Reading the spectrum</div>
+    <p>The x-axis is frequency (logarithmic scale, ~20 Hz left to 20 kHz right). Bar height = amplitude at that frequency. The fundamental is the tallest bar; harmonics appear at integer multiples. A sine wave shows only one bar; a sawtooth has all harmonics (1/n roll-off); a square has odd harmonics only.</p>
+  </div>
+</div>
+
+<!-- ─── Tab 4: Presets & Theory ─── -->
+<div class="tab-panel" id="tab-theory">
+  <div class="info-card">
+    <div class="label">Synth Presets</div>
+    <div class="preset-grid" id="preset-grid">
+      <button class="preset-btn" data-preset="pad">Pad</button>
+      <button class="preset-btn" data-preset="bass">Bass</button>
+      <button class="preset-btn" data-preset="lead">Lead</button>
+      <button class="preset-btn" data-preset="bell">Bell</button>
+      <button class="preset-btn" data-preset="pluck">Pluck</button>
+    </div>
+    <div id="preset-desc" style="font-size:.83rem;color:#64748b;margin-top:.4rem">Click a preset to load its settings</div>
+  </div>
+
+  <div class="info-card">
+    <div class="label">Harmonic Series</div>
+    <canvas id="harmonic-canvas" height="100" style="border-radius:6px;background:#0a0a2a;border:1px solid #1e293b;"></canvas>
+    <p style="font-size:.8rem;color:#64748b;margin-top:.4rem">Harmonic content of current oscillator type. Fundamental = f, harmonics at 2f, 3f, 4f…</p>
+  </div>
+
+  <div class="info-card">
+    <div class="label">Chord Theory</div>
+    <p style="font-size:.82rem;color:#64748b;margin-bottom:.6rem">Root note: C4 &nbsp;|&nbsp; Click a chord to hear it played</p>
+    <div class="chord-grid" id="chord-grid"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Audio Engine Setup
+// ─────────────────────────────────────────────────────────────
+let audioCtx = null;
+let masterGain, distortion, filterNode, delayNode, delayFeedback, reverbNode, reverbWet, reverbDry;
+let analyserNode;
+const activeNotes = new Map(); // freq -> { osc, gainNode }
+
+const PRESETS = {
+  pad:   { osc: 'sawtooth', attack: 400, decay: 200, sustain: .8, release: 1500, drive: 0, cutoff: 3000, resonance: 2, delayTime: 300, feedback: .4, reverbWet: .6 },
+  bass:  { osc: 'sawtooth', attack: 10,  decay: 120, sustain: .5, release: 200,  drive: 80, cutoff: 600, resonance: 4, delayTime: 300, feedback: .1, reverbWet: .05 },
+  lead:  { osc: 'sawtooth', attack: 15,  decay: 100, sustain: .6, release: 300,  drive: 40, cutoff: 4000, resonance: 3, delayTime: 200, feedback: .25, reverbWet: .2 },
+  bell:  { osc: 'sine',     attack: 5,   decay: 800, sustain: .1, release: 2000, drive: 0, cutoff: 18000, resonance: 1, delayTime: 400, feedback: .2, reverbWet: .5 },
+  pluck: { osc: 'triangle', attack: 5,   decay: 250, sustain: .0, release: 400,  drive: 0, cutoff: 8000, resonance: 1, delayTime: 200, feedback: .15, reverbWet: .15 },
+};
+
+const PRESET_DESCS = {
+  pad:   'Slow attack, high sustain sawtooth with reverb — lush, evolving background texture',
+  bass:  'Tight attack, heavy low-pass filter + drive — punchy sub bass',
+  lead:  'Fast attack, moderate drive — bright synth lead sound',
+  bell:  'Instantaneous attack, very long release, pure sine — shimmering bell tones',
+  pluck: 'Zero sustain triangle wave — fast percussive pluck with slight reverb',
+};
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Build chain: osc -> gainNode -> distortion -> filter -> delay+feedback -> reverbDry/wet -> master -> analyser -> dest
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = parseFloat(document.getElementById('master-vol').value);
+
+  // Distortion
+  distortion = audioCtx.createWaveShaper();
+  distortion.oversample = '4x';
+  setDriveAmount(0);
+
+  // Filter
+  filterNode = audioCtx.createBiquadFilter();
+  filterNode.type = 'lowpass';
+  filterNode.frequency.value = 18000;
+  filterNode.Q.value = 1;
+
+  // Delay
+  delayNode = audioCtx.createDelay(2.0);
+  delayNode.delayTime.value = 0.3;
+  delayFeedback = audioCtx.createGain();
+  delayFeedback.gain.value = 0;
+  delayNode.connect(delayFeedback);
+  delayFeedback.connect(delayNode);
+
+  // Reverb via convolver
+  reverbNode = audioCtx.createConvolver();
+  makeImpulseResponse(2.5);
+  reverbWet = audioCtx.createGain();
+  reverbWet.gain.value = 0;
+  reverbDry = audioCtx.createGain();
+  reverbDry.gain.value = 1;
+
+  // Analyser
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 2048;
+  analyserNode.smoothingTimeConstant = 0.8;
+
+  // Connect chain
+  // Filter -> delay (dry out) -> reverbDry -> master
+  //                           -> reverbNode -> reverbWet -> master
+  filterNode.connect(distortion);
+  distortion.connect(delayNode);
+  distortion.connect(reverbDry);
+  distortion.connect(reverbNode);
+  delayFeedback.gain.value = 0;
+  delayNode.connect(reverbDry);
+  delayNode.connect(reverbNode);
+  reverbNode.connect(reverbWet);
+  reverbDry.connect(masterGain);
+  reverbWet.connect(masterGain);
+  masterGain.connect(analyserNode);
+  analyserNode.connect(audioCtx.destination);
+
+  startSpectrumLoop();
+}
+
+function makeImpulseResponse(duration) {
+  const sRate = audioCtx.sampleRate;
+  const length = sRate * duration;
+  const impulse = audioCtx.createBuffer(2, length, sRate);
+  for (let c = 0; c < 2; c++) {
+    const ch = impulse.getChannelData(c);
+    for (let i = 0; i < length; i++)
+      ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
+  }
+  reverbNode.buffer = impulse;
+}
+
+function makeDistortionCurve(amount) {
+  const n = 256;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    if (amount === 0) { curve[i] = x; continue; }
+    const k = amount;
+    curve[i] = (Math.PI + k) * x / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
+function setDriveAmount(v) {
+  distortion.curve = makeDistortionCurve(v);
+  drawDistCurve(v);
+}
+
+// ─────────────────────────────────────────────────────────────
+// ADSR helpers
+// ─────────────────────────────────────────────────────────────
+function getADSR() {
+  return {
+    attack:  parseFloat(document.getElementById('sl-attack').value) / 1000,
+    decay:   parseFloat(document.getElementById('sl-decay').value) / 1000,
+    sustain: parseFloat(document.getElementById('sl-sustain').value),
+    release: parseFloat(document.getElementById('sl-release').value) / 1000,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Note playing
+// ─────────────────────────────────────────────────────────────
+let oscType = 'sine';
+let octave = 4;
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function noteFreq(name, oct) {
+  // A4 = 440 Hz
+  const noteIdx = NOTE_NAMES.indexOf(name.replace(/\d/, ''));
+  const semitone = noteIdx - 9 + (oct - 4) * 12; // relative to A4
+  return 440 * Math.pow(2, semitone / 12);
+}
+
+function playNote(freq) {
+  if (!audioCtx) initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (activeNotes.has(freq)) return;
+
+  const osc = audioCtx.createOscillator();
+  osc.type = oscType;
+  osc.frequency.value = freq;
+
+  const gainNode = audioCtx.createGain();
+  const { attack, decay, sustain } = getADSR();
+  const now = audioCtx.currentTime;
+
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(0.5, now + attack);
+  gainNode.gain.linearRampToValueAtTime(sustain * 0.5, now + attack + decay);
+
+  osc.connect(gainNode);
+  gainNode.connect(filterNode);
+  osc.start();
+
+  activeNotes.set(freq, { osc, gainNode });
+}
+
+function releaseNote(freq) {
+  if (!activeNotes.has(freq)) return;
+  const { osc, gainNode } = activeNotes.get(freq);
+  const { release } = getADSR();
+  const now = audioCtx.currentTime;
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+  gainNode.gain.linearRampToValueAtTime(0, now + release);
+  osc.stop(now + release + 0.05);
+  activeNotes.delete(freq);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Piano keyboard
+// ─────────────────────────────────────────────────────────────
+const WHITE_NOTES = ['C','D','E','F','G','A','B'];
+const BLACK_NOTES_POS = { 'C#':0, 'D#':1, 'F#':3, 'G#':4, 'A#':5 }; // after which white key index
+const BLACK_OFFSETS   = [0, 1, 3, 4, 5]; // white key positions with black neighbors
+
+const KB_MAP = {
+  'a':'C','w':'C#','s':'D','e':'D#','d':'E','f':'F','t':'F#','g':'G','y':'G#','h':'A','u':'A#','j':'B','k':'C5'
+};
+
+const pianoCv = document.getElementById('piano-canvas');
+const pianoCtx = pianoCv.getContext('2d');
+const heldKeys = new Set();
+const heldFreqs = new Set();
+
+const NUM_OCTAVES = 2; // C3-B4
+const OCTAVE_START = 3;
+
+function pianoLayout(W) {
+  const totalWhite = NUM_OCTAVES * 7;
+  const ww = W / totalWhite;
+  const wh = 130;
+  const bw = ww * 0.58;
+  const bh = wh * 0.62;
+  return { ww, wh, bw, bh, totalWhite };
+}
+
+function drawPiano() {
+  const W = pianoCv.parentElement.clientWidth - 12;
+  pianoCv.width = W;
+  const { ww, wh, bw, bh, totalWhite } = pianoLayout(W);
+  pianoCv.height = wh;
+  pianoCtx.clearRect(0, 0, W, wh);
+
+  // White keys
+  for (let oct = 0; oct < NUM_OCTAVES; oct++) {
+    for (let i = 0; i < 7; i++) {
+      const ki = oct * 7 + i;
+      const x = ki * ww;
+      const note = WHITE_NOTES[i];
+      const freq = noteFreq(note, OCTAVE_START + oct);
+      const held = heldFreqs.has(freq);
+      pianoCtx.fillStyle = held ? '#7c3aed' : '#f8fafc';
+      pianoCtx.strokeStyle = '#1e293b';
+      pianoCtx.lineWidth = 1;
+      pianoCtx.fillRect(x + 1, 0, ww - 2, wh - 2);
+      pianoCtx.strokeRect(x + 1, 0, ww - 2, wh - 2);
+      // Label
+      if (i === 0) {
+        pianoCtx.fillStyle = held ? '#e2e8f0' : '#64748b';
+        pianoCtx.font = `${Math.max(9, ww * 0.3)}px monospace`;
+        pianoCtx.textAlign = 'center';
+        pianoCtx.fillText(note + (OCTAVE_START + oct), x + ww / 2, wh - 8);
+      }
+    }
+  }
+  pianoCtx.textAlign = 'left';
+
+  // Black keys
+  for (let oct = 0; oct < NUM_OCTAVES; oct++) {
+    const octOffset = oct * 7;
+    Object.entries(BLACK_NOTES_POS).forEach(([note, pos]) => {
+      const ki = octOffset + pos;
+      const x = ki * ww + ww * 0.72;
+      const freq = noteFreq(note, OCTAVE_START + oct);
+      const held = heldFreqs.has(freq);
+      pianoCtx.fillStyle = held ? '#8b5cf6' : '#0f172a';
+      pianoCtx.fillRect(x, 0, bw, bh);
+      pianoCtx.strokeStyle = '#334155';
+      pianoCtx.lineWidth = 1;
+      pianoCtx.strokeRect(x, 0, bw, bh);
+    });
+  }
+}
+
+function getPianoNote(cx, cy) {
+  const W = pianoCv.width;
+  const { ww, wh, bw, bh } = pianoLayout(W);
+
+  // Check black keys first
+  for (let oct = 0; oct < NUM_OCTAVES; oct++) {
+    const octOffset = oct * 7;
+    for (const [note, pos] of Object.entries(BLACK_NOTES_POS)) {
+      const ki = octOffset + pos;
+      const x = ki * ww + ww * 0.72;
+      if (cx >= x && cx <= x + bw && cy >= 0 && cy <= bh) {
+        return { note, octave: OCTAVE_START + oct };
+      }
+    }
+  }
+  // White key
+  const ki = Math.floor(cx / ww);
+  const oct = Math.floor(ki / 7);
+  const noteIdx = ki % 7;
+  return { note: WHITE_NOTES[noteIdx], octave: OCTAVE_START + oct };
+}
+
+let mouseHeld = false, mouseFreq = null;
+pianoCv.addEventListener('mousedown', e => {
+  if (!audioCtx) initAudio();
+  mouseHeld = true;
+  const r = pianoCv.getBoundingClientRect();
+  const { note, octave: oct } = getPianoNote(e.clientX - r.left, e.clientY - r.top);
+  const freq = noteFreq(note, oct);
+  mouseFreq = freq;
+  heldFreqs.add(freq);
+  playNote(freq);
+  drawPiano();
+});
+pianoCv.addEventListener('mousemove', e => {
+  if (!mouseHeld) return;
+  const r = pianoCv.getBoundingClientRect();
+  const { note, octave: oct } = getPianoNote(e.clientX - r.left, e.clientY - r.top);
+  const freq = noteFreq(note, oct);
+  if (freq !== mouseFreq) {
+    if (mouseFreq) { releaseNote(mouseFreq); heldFreqs.delete(mouseFreq); }
+    mouseFreq = freq;
+    heldFreqs.add(freq);
+    playNote(freq);
+    drawPiano();
+  }
+});
+window.addEventListener('mouseup', () => {
+  if (mouseFreq) { releaseNote(mouseFreq); heldFreqs.delete(mouseFreq); }
+  mouseFreq = null; mouseHeld = false;
+  drawPiano();
+});
+
+// Touch support
+pianoCv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (!audioCtx) initAudio();
+  const r = pianoCv.getBoundingClientRect();
+  for (const t of e.changedTouches) {
+    const { note, octave: oct } = getPianoNote(t.clientX - r.left, t.clientY - r.top);
+    const freq = noteFreq(note, oct);
+    heldFreqs.add(freq);
+    playNote(freq);
+  }
+  drawPiano();
+}, { passive: false });
+pianoCv.addEventListener('touchend', e => {
+  e.preventDefault();
+  const r = pianoCv.getBoundingClientRect();
+  for (const t of e.changedTouches) {
+    const { note, octave: oct } = getPianoNote(t.clientX - r.left, t.clientY - r.top);
+    const freq = noteFreq(note, oct);
+    releaseNote(freq);
+    heldFreqs.delete(freq);
+  }
+  drawPiano();
+}, { passive: false });
+
+// Keyboard
+const kbFreqs = {};
+window.addEventListener('keydown', e => {
+  if (e.repeat || e.target.tagName === 'INPUT') return;
+  const key = e.key.toLowerCase();
+  if (key === 'z') { octave = Math.max(1, octave - 1); document.getElementById('oct-display').textContent = octave; return; }
+  if (key === 'x') { octave = Math.min(7, octave + 1); document.getElementById('oct-display').textContent = octave; return; }
+  if (!KB_MAP[key] || heldKeys.has(key)) return;
+  if (!audioCtx) initAudio();
+  heldKeys.add(key);
+  let note = KB_MAP[key], oct = octave;
+  if (note === 'C5') { note = 'C'; oct = octave + 1; }
+  const freq = noteFreq(note, oct);
+  kbFreqs[key] = freq;
+  heldFreqs.add(freq);
+  playNote(freq);
+  drawPiano();
+});
+window.addEventListener('keyup', e => {
+  const key = e.key.toLowerCase();
+  if (!heldKeys.has(key)) return;
+  heldKeys.delete(key);
+  const freq = kbFreqs[key];
+  if (freq) { releaseNote(freq); heldFreqs.delete(freq); delete kbFreqs[key]; }
+  drawPiano();
+});
+
+// ─────────────────────────────────────────────────────────────
+// Waveform preview
+// ─────────────────────────────────────────────────────────────
+function drawWaveform() {
+  const cv = document.getElementById('waveform-canvas');
+  const W = cv.parentElement.clientWidth - 24;
+  cv.width = W; cv.height = 60;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, 60);
+  ctx.fillStyle = '#0a0a2a'; ctx.fillRect(0, 0, W, 60);
+
+  const pts = 200;
+  ctx.beginPath();
+  for (let i = 0; i <= pts; i++) {
+    const t = i / pts;
+    let y;
+    switch (oscType) {
+      case 'sine':     y = Math.sin(t * Math.PI * 2 * 2); break;
+      case 'square':   y = Math.sin(t * Math.PI * 2 * 2) >= 0 ? 1 : -1; break;
+      case 'sawtooth': y = 2 * (t * 2 % 1) - 1; break;
+      case 'triangle': y = 4 * Math.abs((t * 2 % 1) - 0.5) - 1; break;
+    }
+    const px = t * W;
+    const py = 30 - y * 22;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2; ctx.stroke();
+}
+
+// ADSR canvas
+function drawADSR() {
+  const cv = document.getElementById('adsr-canvas');
+  const W = cv.parentElement.clientWidth - 24;
+  cv.width = W; cv.height = 80;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, 80);
+  ctx.fillStyle = '#0a0a2a'; ctx.fillRect(0, 0, W, 80);
+
+  const A = parseFloat(document.getElementById('sl-attack').value);
+  const D = parseFloat(document.getElementById('sl-decay').value);
+  const S = parseFloat(document.getElementById('sl-sustain').value);
+  const R = parseFloat(document.getElementById('sl-release').value);
+  const total = A + D + 600 + R + 100;
+  const h = 70;
+  const bot = 75;
+
+  function tX(ms) { return (ms / total) * W; }
+
+  const p0x = tX(0), p1x = tX(A), p2x = tX(A + D), p3x = tX(A + D + 600), p4x = tX(A + D + 600 + R);
+
+  ctx.beginPath();
+  ctx.moveTo(p0x, bot);
+  ctx.lineTo(p1x, bot - h);
+  ctx.lineTo(p2x, bot - S * h);
+  ctx.lineTo(p3x, bot - S * h);
+  ctx.lineTo(p4x, bot);
+  ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2.5; ctx.stroke();
+
+  // Fill
+  ctx.lineTo(p0x, bot); ctx.closePath();
+  const g = ctx.createLinearGradient(0, bot - h, 0, bot);
+  g.addColorStop(0, 'rgba(236,72,153,.35)');
+  g.addColorStop(1, 'rgba(236,72,153,.05)');
+  ctx.fillStyle = g; ctx.fill();
+
+  // Labels
+  ctx.fillStyle = '#64748b'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('A', (p0x + p1x) / 2, bot - h - 4);
+  ctx.fillText('D', (p1x + p2x) / 2, bot - S * h - 10);
+  ctx.fillText('S', (p2x + p3x) / 2, bot - S * h - 4);
+  ctx.fillText('R', (p3x + p4x) / 2, bot - S * h * 0.5);
+  ctx.textAlign = 'left';
+}
+
+// Distortion curve
+function drawDistCurve(amount) {
+  const cv = document.getElementById('dist-canvas');
+  const W = cv.parentElement.clientWidth - 24;
+  cv.width = W; cv.height = 60;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, 60);
+  ctx.fillStyle = '#0a0a2a'; ctx.fillRect(0, 0, W, 60);
+
+  // Axes
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, 60); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(W, 30); ctx.stroke();
+
+  ctx.beginPath();
+  for (let i = 0; i <= W; i++) {
+    const x = (i / W) * 2 - 1;
+    let y;
+    if (amount === 0) { y = x; }
+    else { const k = amount; y = (Math.PI + k) * x / (Math.PI + k * Math.abs(x)); }
+    const px = i;
+    const py = 30 - y * 28;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2; ctx.stroke();
+}
+
+// Filter response curve
+function drawFilterCurve(type, cutoff, Q) {
+  const cv = document.getElementById('filter-canvas');
+  const W = cv.parentElement.clientWidth - 24;
+  cv.width = W; cv.height = 70;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, 70);
+  ctx.fillStyle = '#0a0a2a'; ctx.fillRect(0, 0, W, 70);
+
+  const minF = 20, maxF = 20000;
+  ctx.beginPath();
+  for (let i = 0; i <= W; i++) {
+    const f = minF * Math.pow(maxF / minF, i / W);
+    let gain = 1;
+    const fc = cutoff, q = Math.max(Q, 0.1);
+    const r = fc / f;
+    if (type === 'lowpass') {
+      gain = 1 / Math.sqrt(Math.pow(1 - r * r, 2) + (r / q) * (r / q));
+      if (f > fc * 2) gain = Math.min(gain, fc / f);
+    } else if (type === 'highpass') {
+      gain = (r * r) / Math.sqrt(Math.pow(1 - r * r, 2) + (r / q) * (r / q));
+    } else if (type === 'bandpass') {
+      gain = (r / q) / Math.sqrt(Math.pow(1 - r * r, 2) + (r / q) * (r / q));
+    }
+    gain = Math.min(Math.max(gain, 0), 4);
+    const py = 65 - Math.log10(Math.max(gain, 0.001) + 0.001) * 20 - 10;
+    if (i === 0) ctx.moveTo(i, Math.min(65, Math.max(5, py)));
+    else ctx.lineTo(i, Math.min(65, Math.max(5, py)));
+  }
+  ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Cutoff line
+  const cxPos = W * Math.log(cutoff / minF) / Math.log(maxF / minF);
+  ctx.beginPath(); ctx.moveTo(cxPos, 0); ctx.lineTo(cxPos, 70);
+  ctx.strokeStyle = 'rgba(236,72,153,.4)'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Spectrum analyser
+// ─────────────────────────────────────────────────────────────
+let specMode = 'bars';
+const NOTE_FREQS = [];
+for (let n = -48; n <= 36; n++) NOTE_FREQS.push({ f: 440 * Math.pow(2, n/12), name: NOTE_NAMES[((n + 9) % 12 + 12) % 12] + (Math.floor((n + 9) / 12) + 4) });
+
+function detectNote(freqData, binHz) {
+  let maxVal = -Infinity, maxBin = 0;
+  for (let i = 1; i < freqData.length / 2; i++) {
+    if (freqData[i] > maxVal) { maxVal = freqData[i]; maxBin = i; }
+  }
+  if (maxVal < -60) return '';
+  const f = maxBin * binHz;
+  let best = '', bestDiff = Infinity;
+  for (const n of NOTE_FREQS) {
+    const diff = Math.abs(Math.log2(f / n.f));
+    if (diff < bestDiff) { bestDiff = diff; best = n.name; }
+  }
+  return bestDiff < 0.05 ? best : '';
+}
+
+function startSpectrumLoop() {
+  const specCv = document.getElementById('spectrum-canvas');
+  const scopeCv = document.getElementById('oscilloscope-canvas');
+
+  function loop() {
+    if (!analyserNode) { requestAnimationFrame(loop); return; }
+
+    const fftSize = analyserNode.fftSize;
+    const binCount = analyserNode.frequencyBinCount;
+    const freqData = new Float32Array(binCount);
+    analyserNode.getFloatFrequencyData(freqData);
+    const timeData = new Uint8Array(fftSize);
+    analyserNode.getByteTimeDomainData(timeData);
+    const binHz = audioCtx.sampleRate / fftSize;
+
+    // Note detection
+    const detectedNote = detectNote(freqData, binHz);
+    document.getElementById('note-detect').textContent = detectedNote ? 'Note: ' + detectedNote : '';
+
+    if (specMode === 'bars') {
+      const W = specCv.parentElement.clientWidth;
+      specCv.width = W;
+      const H = specCv.height;
+      const ctx = specCv.getContext('2d');
+      ctx.fillStyle = '#000d00';
+      ctx.fillRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(0,40,0,.5)';
+      ctx.lineWidth = 1;
+      for (let db = -120; db <= 0; db += 20) {
+        const y = H - ((db + 120) / 120) * H;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        ctx.fillStyle = '#1a3a1a';
+        ctx.font = '9px monospace';
+        ctx.fillText(db + 'dB', 2, y - 2);
+      }
+
+      const numBars = 120;
+      const minF = 20, maxF = 20000;
+      for (let b = 0; b < numBars; b++) {
+        const f1 = minF * Math.pow(maxF / minF, b / numBars);
+        const f2 = minF * Math.pow(maxF / minF, (b + 1) / numBars);
+        const bin1 = Math.floor(f1 / binHz);
+        const bin2 = Math.ceil(f2 / binHz);
+        let maxDb = -140;
+        for (let i = bin1; i <= Math.min(bin2, freqData.length - 1); i++) maxDb = Math.max(maxDb, freqData[i]);
+        const normH = Math.max(0, (maxDb + 120) / 120) * H;
+        const x = (b / numBars) * W;
+        const bw = W / numBars - 1;
+        // Color gradient green -> yellow -> red by intensity
+        const intensity = Math.max(0, (maxDb + 60) / 60);
+        const r = Math.floor(intensity * 200);
+        const g = Math.floor(160 + (1 - intensity) * 80);
+        ctx.fillStyle = `rgb(${r},${g},0)`;
+        ctx.fillRect(x, H - normH, bw, normH);
+      }
+
+      // Frequency axis labels
+      ctx.fillStyle = '#2d4a2d';
+      ctx.font = '9px monospace';
+      [100, 500, 1000, 5000, 10000].forEach(f => {
+        const x = W * Math.log(f / minF) / Math.log(maxF / minF);
+        ctx.fillText(f >= 1000 ? (f/1000) + 'k' : f, x - 8, H - 2);
+      });
+
+    } else {
+      const W = scopeCv.parentElement.clientWidth;
+      scopeCv.width = W;
+      const H = scopeCv.height;
+      const ctx = scopeCv.getContext('2d');
+      ctx.fillStyle = '#000d00';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = 'rgba(0,40,0,.4)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y <= H; y += H/4) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      ctx.beginPath();
+      const step = Math.ceil(timeData.length / W);
+      for (let i = 0; i < W; i++) {
+        const idx = i * step;
+        const v = (timeData[idx] / 128 - 1);
+        const y = H / 2 - v * H * 0.44;
+        if (i === 0) ctx.moveTo(i, y); else ctx.lineTo(i, y);
+      }
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Harmonic series visualization
+// ─────────────────────────────────────────────────────────────
+function drawHarmonics() {
+  const cv = document.getElementById('harmonic-canvas');
+  if (!cv) return;
+  const W = cv.parentElement.clientWidth - 24;
+  cv.width = W; cv.height = 100;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#0a0a2a'; ctx.fillRect(0, 0, W, 100);
+
+  const harmonics = [];
+  switch (oscType) {
+    case 'sine':
+      harmonics.push({ n: 1, amp: 1 });
+      break;
+    case 'square':
+      for (let n = 1; n <= 12; n += 2) harmonics.push({ n, amp: 1 / n });
+      break;
+    case 'sawtooth':
+      for (let n = 1; n <= 12; n++) harmonics.push({ n, amp: 1 / n });
+      break;
+    case 'triangle':
+      for (let n = 1; n <= 12; n += 2) harmonics.push({ n, amp: 1 / (n * n) });
+      break;
+  }
+
+  const maxAmp = Math.max(...harmonics.map(h => h.amp));
+  const barW = Math.min(30, W / 14);
+  harmonics.forEach((h, i) => {
+    const x = 20 + i * (barW + 6);
+    const bh = (h.amp / maxAmp) * 70;
+    const grad = ctx.createLinearGradient(x, 90 - bh, x, 90);
+    grad.addColorStop(0, '#ec4899');
+    grad.addColorStop(1, '#8b5cf6');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, 90 - bh, barW, bh);
+    ctx.fillStyle = '#475569';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(h.n + 'f', x + barW / 2, 98);
+    ctx.textAlign = 'left';
+  });
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px "Segoe UI", sans-serif';
+  ctx.fillText(oscType.charAt(0).toUpperCase() + oscType.slice(1) + ' wave harmonics', 8, 12);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Chord Theory
+// ─────────────────────────────────────────────────────────────
+const CHORDS = [
+  { name: 'C Major',       notes: ['C','E','G'],          formula: '1-3-5' },
+  { name: 'C Minor',       notes: ['C','D#','G'],         formula: '1-♭3-5' },
+  { name: 'C7 (dom)',      notes: ['C','E','G','A#'],     formula: '1-3-5-♭7' },
+  { name: 'Cmaj7',         notes: ['C','E','G','B'],      formula: '1-3-5-7' },
+  { name: 'Cm7',           notes: ['C','D#','G','A#'],    formula: '1-♭3-5-♭7' },
+  { name: 'C sus2',        notes: ['C','D','G'],          formula: '1-2-5' },
+  { name: 'C sus4',        notes: ['C','F','G'],          formula: '1-4-5' },
+  { name: 'C dim',         notes: ['C','D#','F#'],        formula: '1-♭3-♭5' },
+  { name: 'C aug',         notes: ['C','E','G#'],         formula: '1-3-♯5' },
+  { name: 'C add9',        notes: ['C','E','G','D'],      formula: '1-3-5-9' },
+  { name: 'A Minor',       notes: ['A','C','E'],          formula: '1-♭3-5' },
+  { name: 'G Major',       notes: ['G','B','D'],          formula: '1-3-5' },
+];
+
+function buildChordGrid() {
+  const grid = document.getElementById('chord-grid');
+  CHORDS.forEach(chord => {
+    const card = document.createElement('div');
+    card.className = 'chord-card';
+    card.innerHTML = `<div class="chord-name">${chord.name}</div>
+      <div class="chord-notes">${chord.notes.join(' · ')}</div>
+      <div class="chord-formula">${chord.formula}</div>`;
+    card.addEventListener('click', () => {
+      if (!audioCtx) initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      chord.notes.forEach((note, i) => {
+        const freq = noteFreq(note, 4);
+        setTimeout(() => {
+          playNote(freq);
+          setTimeout(() => releaseNote(freq), 1200);
+        }, i * 60);
+      });
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tab switching
+// ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    setTimeout(() => {
+      drawPiano(); drawWaveform(); drawADSR(); drawHarmonics();
+      drawDistCurve(parseFloat(document.getElementById('sl-drive').value));
+      drawFilterCurve(
+        document.querySelector('[data-ftype].active-btn')?.dataset.ftype || 'lowpass',
+        parseFloat(document.getElementById('sl-cutoff').value),
+        parseFloat(document.getElementById('sl-resonance').value)
+      );
+    }, 10);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Control listeners
+// ─────────────────────────────────────────────────────────────
+// Oscillator type
+document.querySelectorAll('[data-osc]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-osc]').forEach(b => b.classList.remove('active-btn'));
+    this.classList.add('active-btn');
+    oscType = this.dataset.osc;
+    activeNotes.forEach(({ osc }) => { try { osc.type = oscType; } catch(e) {} });
+    drawWaveform();
+    drawHarmonics();
+  });
+});
+
+// Volume
+document.getElementById('master-vol').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  document.getElementById('vol-val').textContent = Math.round(v * 100) + '%';
+  if (masterGain) masterGain.gain.value = v;
+});
+
+// ADSR sliders
+['attack','decay','sustain','release'].forEach(param => {
+  document.getElementById('sl-' + param).addEventListener('input', function() {
+    let v = parseFloat(this.value);
+    let disp = param === 'sustain' ? v.toFixed(2) : Math.round(v) + 'ms';
+    document.getElementById('val-' + param).textContent = disp;
+    drawADSR();
+  });
+});
+
+// Octave
+document.getElementById('oct-down').addEventListener('click', () => {
+  octave = Math.max(1, octave - 1);
+  document.getElementById('oct-display').textContent = octave;
+});
+document.getElementById('oct-up').addEventListener('click', () => {
+  octave = Math.min(7, octave + 1);
+  document.getElementById('oct-display').textContent = octave;
+});
+
+// Drive
+document.getElementById('sl-drive').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  document.getElementById('val-drive').textContent = Math.round(v);
+  if (distortion) setDriveAmount(v);
+  else drawDistCurve(v);
+});
+
+// Filter type
+document.querySelectorAll('[data-ftype]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-ftype]').forEach(b => b.classList.remove('active-btn'));
+    this.classList.add('active-btn');
+    if (filterNode) filterNode.type = this.dataset.ftype;
+    drawFilterCurve(this.dataset.ftype, parseFloat(document.getElementById('sl-cutoff').value), parseFloat(document.getElementById('sl-resonance').value));
+  });
+});
+
+document.getElementById('sl-cutoff').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  document.getElementById('val-cutoff').textContent = Math.round(v) + ' Hz';
+  if (filterNode) filterNode.frequency.value = v;
+  const ftype = document.querySelector('[data-ftype].active-btn')?.dataset.ftype || 'lowpass';
+  drawFilterCurve(ftype, v, parseFloat(document.getElementById('sl-resonance').value));
+});
+document.getElementById('sl-resonance').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  document.getElementById('val-resonance').textContent = v.toFixed(1);
+  if (filterNode) filterNode.Q.value = v;
+  const ftype = document.querySelector('[data-ftype].active-btn')?.dataset.ftype || 'lowpass';
+  drawFilterCurve(ftype, parseFloat(document.getElementById('sl-cutoff').value), v);
+});
+
+// Bypass toggles
+document.querySelectorAll('.bypass-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const fx = this.dataset.fx;
+    const active = !this.classList.contains('active');
+    this.classList.toggle('active', active);
+    this.textContent = active ? 'Active' : 'Bypassed';
+    if (fx === 'delay') {
+      if (delayFeedback) delayFeedback.gain.value = active ? parseFloat(document.getElementById('sl-feedback').value) : 0;
+    }
+    if (fx === 'reverb') {
+      if (reverbWet) reverbWet.gain.value = active ? parseFloat(document.getElementById('sl-reverb').value) : 0;
+    }
+  });
+});
+
+// Delay
+document.getElementById('sl-delay').addEventListener('input', function() {
+  const v = parseFloat(this.value) / 1000;
+  document.getElementById('val-delay').textContent = Math.round(this.value) + 'ms';
+  if (delayNode) delayNode.delayTime.value = v;
+});
+document.getElementById('sl-feedback').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  document.getElementById('val-feedback').textContent = v.toFixed(2);
+  const bypassBtn = document.querySelector('[data-fx="delay"]');
+  if (delayFeedback && bypassBtn.classList.contains('active')) delayFeedback.gain.value = v;
+});
+
+// Reverb
+document.getElementById('sl-reverb').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  document.getElementById('val-reverb').textContent = Math.round(v * 100) + '%';
+  const bypassBtn = document.querySelector('[data-fx="reverb"]');
+  if (reverbWet && bypassBtn.classList.contains('active')) reverbWet.gain.value = v;
+  if (reverbDry) reverbDry.gain.value = 1 - v * 0.5;
+});
+
+// Spectrum mode
+document.getElementById('btn-spec-bars').addEventListener('click', function() {
+  specMode = 'bars';
+  document.getElementById('spectrum-canvas').style.display = '';
+  document.getElementById('oscilloscope-canvas').style.display = 'none';
+  this.classList.add('active-btn');
+  document.getElementById('btn-spec-scope').classList.remove('active-btn');
+});
+document.getElementById('btn-spec-scope').addEventListener('click', function() {
+  specMode = 'scope';
+  document.getElementById('spectrum-canvas').style.display = 'none';
+  document.getElementById('oscilloscope-canvas').style.display = '';
+  this.classList.add('active-btn');
+  document.getElementById('btn-spec-bars').classList.remove('active-btn');
+});
+
+// Presets
+document.querySelectorAll('[data-preset]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const p = PRESETS[this.dataset.preset];
+    if (!p) return;
+    // Apply oscillator type
+    oscType = p.osc;
+    document.querySelectorAll('[data-osc]').forEach(b => b.classList.toggle('active-btn', b.dataset.osc === p.osc));
+
+    // ADSR
+    document.getElementById('sl-attack').value = p.attack;
+    document.getElementById('sl-decay').value = p.decay;
+    document.getElementById('sl-sustain').value = p.sustain;
+    document.getElementById('sl-release').value = p.release;
+    document.getElementById('val-attack').textContent = p.attack + 'ms';
+    document.getElementById('val-decay').textContent = p.decay + 'ms';
+    document.getElementById('val-sustain').textContent = p.sustain.toFixed(2);
+    document.getElementById('val-release').textContent = p.release + 'ms';
+
+    // Effects
+    document.getElementById('sl-drive').value = p.drive;
+    document.getElementById('val-drive').textContent = p.drive;
+    if (distortion) setDriveAmount(p.drive);
+    else drawDistCurve(p.drive);
+
+    document.getElementById('sl-cutoff').value = p.cutoff;
+    document.getElementById('val-cutoff').textContent = p.cutoff + ' Hz';
+    if (filterNode) filterNode.frequency.value = p.cutoff;
+
+    document.getElementById('sl-delay').value = p.delayTime;
+    document.getElementById('val-delay').textContent = p.delayTime + 'ms';
+    if (delayNode) delayNode.delayTime.value = p.delayTime / 1000;
+
+    document.getElementById('sl-feedback').value = p.feedback;
+    document.getElementById('val-feedback').textContent = p.feedback.toFixed(2);
+
+    document.getElementById('sl-reverb').value = p.reverbWet;
+    document.getElementById('val-reverb').textContent = Math.round(p.reverbWet * 100) + '%';
+    if (reverbWet) reverbWet.gain.value = p.reverbWet;
+
+    document.getElementById('preset-desc').textContent = PRESET_DESCS[this.dataset.preset] || '';
+
+    drawWaveform(); drawADSR(); drawHarmonics();
+    drawFilterCurve('lowpass', p.cutoff, 1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Init on load
+// ─────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  drawPiano();
+  drawWaveform();
+  drawADSR();
+  drawDistCurve(0);
+  drawFilterCurve('lowpass', 18000, 1);
+  drawHarmonics();
+  buildChordGrid();
+});
+
+window.addEventListener('resize', () => {
+  drawPiano();
+  drawWaveform();
+  drawADSR();
+  drawHarmonics();
+});
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
