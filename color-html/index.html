@@ -3,497 +3,901 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>color.ximg.app</title>
-  <link rel="icon" href="favicon.png">
+  <title>Color Tools — color.ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0d0d16;color:#c9d1d9;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
-    .page{flex:1;max-width:980px;width:100%;margin:0 auto;padding:1.5rem 1rem 2rem}
-    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.25rem}
-    .subtitle{font-size:.8rem;color:#586069;margin-bottom:1.5rem}
+    :root{
+      --bg:#02020f;--card:#070720;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --pink:#ec4899;--purple:#8b5cf6;
+      --accent:var(--pink);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    a{color:var(--pink);text-decoration:none}
 
-    /* tabs */
-    .tabs{display:flex;gap:.4rem;margin-bottom:1.25rem;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:0}
-    .tab{background:none;border:none;color:#586069;font-family:'Courier New',monospace;font-size:.82rem;
-      padding:.45rem .9rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
-    .tab.active{color:#ffa657;border-bottom-color:#ffa657}
-    .tab:hover:not(.active){color:#c9d1d9}
+    /* ── sticky subnav ── */
+    .subnav{position:sticky;top:44px;z-index:100;background:rgba(2,2,15,.92);
+      backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+      display:flex;gap:.25rem;padding:.4rem .75rem;overflow-x:auto}
+    .subnav::-webkit-scrollbar{display:none}
+    .tab-btn{background:none;border:1px solid transparent;border-radius:6px;
+      color:var(--muted);font-family:inherit;font-size:.78rem;font-weight:600;
+      padding:.3rem .75rem;cursor:pointer;white-space:nowrap;transition:all .15s}
+    .tab-btn:hover{color:var(--text);border-color:var(--border)}
+    .tab-btn.active{color:var(--pink);border-color:rgba(236,72,153,.4);background:rgba(236,72,153,.07)}
+
+    /* ── layout ── */
+    .page{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+
     .section{display:none}.section.active{display:block}
 
-    .label{font-size:.7rem;color:#586069;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem}
+    /* ── card ── */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.4rem;font-weight:600}
 
-    /* ── Picker ── */
-    .picker-layout{display:grid;grid-template-columns:260px 1fr;gap:1.5rem}
-    @media(max-width:640px){.picker-layout{grid-template-columns:1fr}}
+    /* ── grid layouts ── */
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+    @media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
 
-    .swatch-big{width:100%;height:160px;border-radius:10px;border:1px solid rgba(255,255,255,.12);transition:background .15s;cursor:pointer}
-    .swatch-big:hover{border-color:rgba(255,255,255,.3)}
-
-    .native-picker{opacity:0;position:absolute;pointer-events:none}
-
-    .input-row{display:flex;gap:.4rem;margin-bottom:.5rem}
-    .fmt-input{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:5px;
-      color:#c9d1d9;font-family:'Courier New',monospace;font-size:.85rem;padding:.45rem .65rem;outline:none;
-      width:100%;transition:border-color .2s}
-    .fmt-input:focus{border-color:rgba(255,255,255,.3)}
-
-    .slider-group{margin-bottom:.6rem}
-    .slider-label{display:flex;justify-content:space-between;font-size:.72rem;color:#586069;margin-bottom:.2rem}
-    input[type=range]{width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;
-      -webkit-appearance:none;appearance:none}
+    /* ── inputs ── */
+    input[type=text],input[type=number]{
+      background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.85rem;padding:.45rem .7rem;
+      outline:none;width:100%;transition:border-color .15s}
+    input[type=text]:focus,input[type=number]:focus{border-color:var(--pink)}
+    input[type=range]{width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;
+      -webkit-appearance:none;appearance:none;background:var(--border)}
     input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
-      border-radius:50%;background:#fff;cursor:pointer;border:2px solid #0d0d16}
-    input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;cursor:pointer;border:2px solid #0d0d16}
+      border-radius:50%;background:#fff;cursor:pointer;border:2px solid var(--bg)}
+    input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+      background:#fff;cursor:pointer;border:2px solid var(--bg)}
 
-    .copy-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;
-      color:#c9d1d9;font-size:.74rem;padding:.3rem .7rem;cursor:pointer;font-family:'Courier New',monospace;transition:all .15s}
-    .copy-btn:hover{background:rgba(255,255,255,.12)}
-    .copy-btn.copied{color:#3fb950;border-color:rgba(63,185,80,.5)}
+    /* ── buttons ── */
+    .btn{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.78rem;padding:.35rem .8rem;
+      cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
+    .btn.active{background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.4);color:var(--pink)}
+    .btn.copied,.btn.success{color:#22c55e;border-color:rgba(34,197,94,.4)}
 
-    .formats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem}
-    .fmt-box{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:.45rem .65rem;
-      display:flex;justify-content:space-between;align-items:center}
-    .fmt-key{font-size:.7rem;color:#586069}
-    .fmt-val{font-size:.8rem;color:#c9d1d9}
+    /* ── picker canvas ── */
+    #picker-canvas{border-radius:8px;cursor:crosshair;display:block;border:1px solid var(--border)}
+    .hue-wrap{margin:.6rem 0}
+    .sl-label{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:.2rem}
 
-    /* ── Palette ── */
-    .harmony-btns{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
-    .h-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:5px;
-      color:#586069;font-size:.76rem;padding:.3rem .7rem;cursor:pointer;transition:all .15s;font-family:'Courier New',monospace}
-    .h-btn.active{background:rgba(255,166,87,.12);border-color:rgba(255,166,87,.4);color:#ffa657}
-    .h-btn:hover:not(.active){border-color:rgba(255,255,255,.2);color:#c9d1d9}
+    /* ── preview swatch ── */
+    .preview-swatch{width:100%;height:130px;border-radius:8px;border:1px solid var(--border);
+      margin-bottom:.75rem;transition:background .1s}
 
-    .palette-row{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
-    .swatch{border-radius:8px;flex:1;min-width:80px;height:100px;border:1px solid rgba(255,255,255,.1);
-      cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:.4rem;transition:transform .15s;position:relative}
-    .swatch:hover{transform:translateY(-3px)}
-    .swatch-label{font-size:.68rem;text-align:center;padding:.15rem .3rem;border-radius:3px;background:rgba(0,0,0,.5);color:#fff}
+    /* ── format boxes ── */
+    .fmt-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.6rem}
+    .fmt-box{background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      padding:.45rem .65rem;display:flex;justify-content:space-between;align-items:center;
+      cursor:pointer;transition:border-color .15s}
+    .fmt-box:hover{border-color:var(--pink)}
+    .fmt-key{font-size:.68rem;color:var(--muted)}
+    .fmt-val{font-size:.78rem;color:var(--text);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fmt-copied{border-color:rgba(34,197,94,.5)!important}
 
-    .css-vars{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:.75rem 1rem;
-      font-size:.78rem;color:#79c0ff;white-space:pre;overflow-x:auto;margin-top:.5rem}
+    /* ── harmony swatches (small) ── */
+    .harmony-row{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
+    .h-swatch{width:36px;height:36px;border-radius:6px;border:1px solid rgba(255,255,255,.1);
+      cursor:pointer;transition:transform .1s;flex-shrink:0}
+    .h-swatch:hover{transform:scale(1.12)}
+    .h-label{font-size:.65rem;color:var(--muted);margin-bottom:.15rem}
 
-    /* ── Contrast ── */
-    .contrast-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
-    @media(max-width:540px){.contrast-layout{grid-template-columns:1fr}}
-    .color-picker-box{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:1rem}
-    .color-picker-box .swatch-med{width:100%;height:60px;border-radius:6px;margin-bottom:.6rem;border:1px solid rgba(255,255,255,.1)}
+    /* ── Tab 2 palette ── */
+    .palette-btns{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1rem}
+    .palette-row{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+    .pal-swatch{flex:1;min-width:70px;height:90px;border-radius:8px;border:1px solid rgba(255,255,255,.1);
+      cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:.3rem;
+      transition:transform .12s;position:relative}
+    .pal-swatch:hover{transform:translateY(-3px)}
+    .pal-hex{font-size:.65rem;background:rgba(0,0,0,.6);color:#fff;padding:.1rem .3rem;
+      border-radius:3px;text-align:center}
+    .export-box{background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      padding:.75rem 1rem;font-size:.78rem;color:#7dd3fc;white-space:pre;overflow-x:auto;margin-top:.5rem}
 
-    .contrast-preview{border-radius:10px;padding:1.5rem;margin-bottom:1rem;min-height:100px;
-      display:flex;flex-direction:column;gap:.75rem;align-items:flex-start;border:1px solid rgba(255,255,255,.1)}
-    .preview-large{font-size:1.5rem;font-weight:700}
-    .preview-small{font-size:.9rem}
-    .preview-tiny{font-size:.75rem}
+    /* ── Tab 3 contrast ── */
+    .contrast-preview-box{border-radius:10px;padding:1.5rem;min-height:110px;
+      display:flex;flex-direction:column;gap:.6rem;border:1px solid var(--border);margin-bottom:1rem}
+    .prev-xl{font-size:1.6rem;font-weight:700}
+    .prev-lg{font-size:1rem}
+    .prev-sm{font-size:.8rem}
 
-    .contrast-score{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem}
-    .score-box{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.75rem 1rem;text-align:center}
-    .score-ratio{font-size:1.5rem;font-weight:700;margin-bottom:.25rem}
-    .score-level{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
-    .score-label{font-size:.7rem;color:#586069;margin-top:.2rem}
-    .pass{color:#3fb950}.fail{color:#f85149}
+    .score-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem;margin-bottom:1rem}
+    .score-box{background:var(--card);border:1px solid var(--border);border-radius:8px;
+      padding:.75rem;text-align:center}
+    .score-num{font-size:1.4rem;font-weight:700;margin-bottom:.2rem}
+    .score-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em}
+    .score-sub{font-size:.67rem;color:var(--muted);margin-top:.15rem}
+    .pass{color:#22c55e}.fail{color:#ef4444}
 
-    .checker-desc{font-size:.78rem;color:#8b949e;margin-top:.75rem;line-height:1.6}
+    .alt-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem}
+    .alt-swatch{width:32px;height:32px;border-radius:5px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.1);transition:transform .1s}
+    .alt-swatch:hover{transform:scale(1.1)}
+
+    /* ── Tab 4 gradients ── */
+    .gradient-preview{width:100%;height:110px;border-radius:10px;border:1px solid var(--border);
+      margin-bottom:.75rem;transition:background .15s}
+    .grad-stops{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;align-items:center}
+    .stop-swatch{width:38px;height:38px;border-radius:6px;border:2px solid var(--border);
+      cursor:pointer;position:relative;flex-shrink:0;transition:border-color .15s}
+    .stop-swatch.selected{border-color:var(--pink)}
+    .stop-del{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;
+      background:#ef4444;color:#fff;font-size:.6rem;display:flex;align-items:center;
+      justify-content:center;cursor:pointer;line-height:1}
+    .stop-add{background:rgba(255,255,255,.05);border:1px dashed var(--border);border-radius:6px;
+      width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      color:var(--muted);font-size:1.1rem;transition:all .15s}
+    .stop-add:hover{border-color:var(--pink);color:var(--pink)}
+
+    .grad-types{display:flex;gap:.35rem;margin-bottom:.75rem}
+    .angle-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;font-size:.8rem;color:var(--muted)}
+
+    .css-output{background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      padding:.75rem 1rem;font-size:.8rem;color:#7dd3fc;word-break:break-all;margin-bottom:.75rem}
+
+    .presets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;margin-top:1rem}
+    .preset{height:56px;border-radius:7px;cursor:pointer;border:1px solid var(--border);
+      display:flex;align-items:flex-end;padding:.3rem .5rem;font-size:.65rem;color:#fff;
+      text-shadow:0 1px 2px rgba(0,0,0,.8);transition:transform .12s}
+    .preset:hover{transform:scale(1.04)}
+
+    .color-input-row{display:grid;grid-template-columns:auto 1fr;gap:.5rem;align-items:center;margin-bottom:.5rem}
+    .color-dot{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+    .swatch-med{width:100%;height:50px;border-radius:6px;margin-bottom:.4rem;border:1px solid var(--border)}
   </style>
 </head>
 <body>
-<script src="/shared/nav.js?v=2"></script>
+
+<nav class="subnav">
+  <button class="tab-btn active" data-tab="picker">Picker</button>
+  <button class="tab-btn" data-tab="palette">Palette</button>
+  <button class="tab-btn" data-tab="contrast">Contrast</button>
+  <button class="tab-btn" data-tab="gradients">Gradients</button>
+</nav>
+
 <div class="page">
   <h1>Color Tools</h1>
-  <p class="subtitle">Color picker, palette generator &amp; contrast checker — HEX, RGB, HSL</p>
+  <p class="subtitle">Picker, palette generator, contrast checker &amp; gradient builder — HEX, RGB, HSL, HSV, OKLCH</p>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="picker">Picker</button>
-    <button class="tab" data-tab="palette">Palette</button>
-    <button class="tab" data-tab="contrast">Contrast</button>
-  </div>
-
-  <!-- PICKER -->
+  <!-- ══ TAB 1: PICKER ══════════════════════════════════════════════════════ -->
   <div class="section active" id="tab-picker">
-    <div class="picker-layout">
+    <div class="g2">
       <div>
-        <div class="swatch-big" id="swatch-big" title="Click to open native color picker"></div>
-        <input type="color" class="native-picker" id="native-picker" value="#7c3aed">
-        <div style="margin-top:.75rem;display:flex;gap:.5rem">
-          <button class="copy-btn" id="copy-hex-btn">Copy HEX</button>
-          <button class="copy-btn" id="copy-rgb-btn">Copy RGB</button>
-          <button class="copy-btn" id="copy-hsl-btn">Copy HSL</button>
+        <canvas id="picker-canvas" width="260" height="200"></canvas>
+        <div class="hue-wrap">
+          <div class="sl-label"><span>Hue</span><span id="hue-disp">0°</span></div>
+          <input type="range" id="sl-hue" min="0" max="359" value="270"
+            style="background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
+        </div>
+        <div class="hue-wrap">
+          <div class="sl-label"><span>Opacity</span><span id="opacity-disp">100%</span></div>
+          <input type="range" id="sl-opacity" min="0" max="100" value="100">
+        </div>
+        <div class="preview-swatch" id="preview-swatch"></div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="btn" id="copy-all-btn">Copy HEX</button>
+          <button class="btn" id="copy-rgb-btn">Copy RGB</button>
+          <button class="btn" id="copy-hsl-btn">Copy HSL</button>
         </div>
       </div>
       <div>
-        <div class="slider-group">
-          <div class="slider-label"><span>Hue</span><span id="hue-val">270</span></div>
-          <input type="range" id="sl-h" min="0" max="360" value="270" style="background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
+        <div class="card" style="margin-bottom:.75rem">
+          <div class="lbl">Color Formats <span style="font-size:.65rem;color:var(--muted)">(click to copy)</span></div>
+          <div class="fmt-grid" id="fmt-grid"></div>
         </div>
-        <div class="slider-group">
-          <div class="slider-label"><span>Saturation</span><span id="sat-val">68%</span></div>
-          <input type="range" id="sl-s" min="0" max="100" value="68">
+        <div class="card">
+          <div class="lbl">Harmonies</div>
+          <div style="margin-bottom:.35rem"><span class="h-label" style="font-size:.7rem;color:var(--muted)">Complementary</span></div>
+          <div class="harmony-row" id="h-complementary"></div>
+          <div style="margin:.5rem 0 .2rem"><span class="h-label" style="font-size:.7rem;color:var(--muted)">Analogous</span></div>
+          <div class="harmony-row" id="h-analogous"></div>
+          <div style="margin:.5rem 0 .2rem"><span class="h-label" style="font-size:.7rem;color:var(--muted)">Triadic</span></div>
+          <div class="harmony-row" id="h-triadic"></div>
         </div>
-        <div class="slider-group">
-          <div class="slider-label"><span>Lightness</span><span id="lit-val">57%</span></div>
-          <input type="range" id="sl-l" min="0" max="100" value="57">
-        </div>
-
-        <div class="label" style="margin-top:.75rem">HEX</div>
-        <div class="input-row">
-          <input class="fmt-input" id="hex-in" value="#7c3aed" maxlength="7" spellcheck="false" autocomplete="off">
-        </div>
-        <div class="label">RGB</div>
-        <div class="input-row">
-          <input class="fmt-input" id="rgb-in" value="124, 58, 237" spellcheck="false" autocomplete="off">
-        </div>
-        <div class="label">HSL</div>
-        <div class="input-row">
-          <input class="fmt-input" id="hsl-in" value="270, 68%, 57%" spellcheck="false" autocomplete="off">
-        </div>
-
-        <div class="label" style="margin-top:.75rem">All Formats</div>
-        <div class="formats-grid" id="formats-grid"></div>
       </div>
     </div>
   </div>
 
-  <!-- PALETTE -->
+  <!-- ══ TAB 2: PALETTE ════════════════════════════════════════════════════ -->
   <div class="section" id="tab-palette">
-    <div class="label">Base Color (from Picker)</div>
-    <div class="harmony-btns">
-      <button class="h-btn active" data-harmony="complementary">Complementary</button>
-      <button class="h-btn" data-harmony="analogous">Analogous</button>
-      <button class="h-btn" data-harmony="triadic">Triadic</button>
-      <button class="h-btn" data-harmony="split">Split-Complementary</button>
-      <button class="h-btn" data-harmony="tetradic">Tetradic</button>
-      <button class="h-btn" data-harmony="monochromatic">Monochromatic</button>
-      <button class="h-btn" data-harmony="shades">Shades</button>
+    <div class="card" style="margin-bottom:1rem">
+      <div class="lbl">Base Color</div>
+      <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:.75rem">
+        <div id="pal-base-swatch" class="color-dot"></div>
+        <input type="text" id="pal-base-hex" value="#8b5cf6" style="max-width:120px" placeholder="#hex">
+        <span style="font-size:.78rem;color:var(--muted)">or use color from Picker tab</span>
+        <button class="btn" id="pal-use-picker">Use Picker Color</button>
+      </div>
+      <div class="palette-btns" id="palette-btns">
+        <button class="btn active" data-harmony="complementary">Complementary</button>
+        <button class="btn" data-harmony="split">Split-Complementary</button>
+        <button class="btn" data-harmony="analogous">Analogous</button>
+        <button class="btn" data-harmony="triadic">Triadic</button>
+        <button class="btn" data-harmony="tetradic">Tetradic</button>
+        <button class="btn" data-harmony="monochromatic">Monochromatic</button>
+        <button class="btn" data-harmony="shades">Shades</button>
+      </div>
     </div>
     <div class="palette-row" id="palette-row"></div>
-    <div class="label">CSS Custom Properties</div>
-    <div class="css-vars" id="css-vars"></div>
-    <div style="margin-top:.5rem;display:flex;gap:.5rem">
-      <button class="copy-btn" id="copy-css-btn">Copy CSS vars</button>
+    <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+      <button class="btn" id="pal-export-btn">Export HEX codes</button>
+      <button class="btn" id="pal-css-btn">Copy CSS vars</button>
+    </div>
+    <div class="export-box" id="pal-export" style="display:none"></div>
+  </div>
+
+  <!-- ══ TAB 3: CONTRAST ═══════════════════════════════════════════════════ -->
+  <div class="section" id="tab-contrast">
+    <div class="g2" style="margin-bottom:1rem">
+      <div class="card">
+        <div class="lbl">Foreground (text)</div>
+        <div class="swatch-med" id="ct-fg-swatch"></div>
+        <div class="sl-label"><span>Hue</span><span id="ct-fg-h-disp">270°</span></div>
+        <input type="range" id="ct-fg-h" min="0" max="359" value="270"
+          style="margin-bottom:.35rem;background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
+        <div class="sl-label"><span>Saturation</span><span id="ct-fg-s-disp">68%</span></div>
+        <input type="range" id="ct-fg-s" min="0" max="100" value="68" style="margin-bottom:.35rem">
+        <div class="sl-label"><span>Lightness</span><span id="ct-fg-l-disp">57%</span></div>
+        <input type="range" id="ct-fg-l" min="0" max="100" value="57" style="margin-bottom:.5rem">
+        <input type="text" id="ct-fg-hex" value="#7c3aed" maxlength="7" placeholder="#hex">
+      </div>
+      <div class="card">
+        <div class="lbl">Background</div>
+        <div class="swatch-med" id="ct-bg-swatch"></div>
+        <div class="sl-label"><span>Hue</span><span id="ct-bg-h-disp">0°</span></div>
+        <input type="range" id="ct-bg-h" min="0" max="359" value="0"
+          style="margin-bottom:.35rem;background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
+        <div class="sl-label"><span>Saturation</span><span id="ct-bg-s-disp">0%</span></div>
+        <input type="range" id="ct-bg-s" min="0" max="100" value="0" style="margin-bottom:.35rem">
+        <div class="sl-label"><span>Lightness</span><span id="ct-bg-l-disp">100%</span></div>
+        <input type="range" id="ct-bg-l" min="0" max="100" value="100" style="margin-bottom:.5rem">
+        <input type="text" id="ct-bg-hex" value="#ffffff" maxlength="7" placeholder="#hex">
+      </div>
+    </div>
+    <div class="lbl">Preview</div>
+    <div class="contrast-preview-box" id="ct-preview">
+      <div class="prev-xl" id="ct-prev-xl">Large Text (18pt+)</div>
+      <div class="prev-lg" id="ct-prev-lg">Normal text — The quick brown fox jumps over the lazy dog.</div>
+      <div class="prev-sm" id="ct-prev-sm">Small UI text — buttons, labels, captions, tooltips</div>
+    </div>
+    <div class="lbl">WCAG Scores</div>
+    <div class="score-grid" id="ct-scores"></div>
+    <div id="ct-desc" style="font-size:.8rem;color:var(--muted);line-height:1.7;margin-bottom:1rem"></div>
+    <div id="ct-alts" style="display:none">
+      <div class="lbl">Accessible alternatives (adjust lightness)</div>
+      <div class="alt-row" id="ct-alt-swatches"></div>
     </div>
   </div>
 
-  <!-- CONTRAST -->
-  <div class="section" id="tab-contrast">
-    <div class="contrast-layout">
-      <div class="color-picker-box">
-        <div class="label">Foreground (Text)</div>
-        <div class="swatch-med" id="fg-swatch"></div>
-        <input type="range" id="fg-h" min="0" max="360" value="270" style="background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
-        <div style="margin:.35rem 0"><input type="range" id="fg-s" min="0" max="100" value="68"></div>
-        <input type="range" id="fg-l" min="0" max="100" value="57">
-        <div class="input-row" style="margin-top:.5rem">
-          <input class="fmt-input" id="fg-hex" value="#7c3aed" maxlength="7" spellcheck="false">
-        </div>
+  <!-- ══ TAB 4: GRADIENTS ══════════════════════════════════════════════════ -->
+  <div class="section" id="tab-gradients">
+    <div class="card" style="margin-bottom:1rem">
+      <div class="lbl">Gradient Preview</div>
+      <div class="gradient-preview" id="grad-preview"></div>
+      <div class="lbl">Type</div>
+      <div class="grad-types">
+        <button class="btn active" data-gtype="linear">Linear</button>
+        <button class="btn" data-gtype="radial">Radial</button>
       </div>
-      <div class="color-picker-box">
-        <div class="label">Background</div>
-        <div class="swatch-med" id="bg-swatch"></div>
-        <input type="range" id="bg-h" min="0" max="360" value="0" style="background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
-        <div style="margin:.35rem 0"><input type="range" id="bg-s" min="0" max="100" value="0"></div>
-        <input type="range" id="bg-l" min="0" max="100" value="100">
-        <div class="input-row" style="margin-top:.5rem">
-          <input class="fmt-input" id="bg-hex" value="#ffffff" maxlength="7" spellcheck="false">
-        </div>
+      <div class="angle-row" id="angle-row">
+        <span>Angle</span>
+        <input type="range" id="grad-angle" min="0" max="360" value="135" style="flex:1">
+        <span id="angle-disp" style="color:var(--text);min-width:3rem">135°</span>
+      </div>
+      <div class="lbl">Color Stops <span style="font-size:.65rem;color:var(--muted)">(click to select, then use hue/sat/lit sliders below)</span></div>
+      <div class="grad-stops" id="grad-stops"></div>
+      <div class="hue-wrap" style="margin-top:.5rem">
+        <div class="sl-label"><span>Stop Hue</span><span id="gs-h-disp">135°</span></div>
+        <input type="range" id="gs-h" min="0" max="359" value="135"
+          style="background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
+      </div>
+      <div class="hue-wrap">
+        <div class="sl-label"><span>Stop Saturation</span><span id="gs-s-disp">70%</span></div>
+        <input type="range" id="gs-s" min="0" max="100" value="70">
+      </div>
+      <div class="hue-wrap">
+        <div class="sl-label"><span>Stop Lightness</span><span id="gs-l-disp">55%</span></div>
+        <input type="range" id="gs-l" min="0" max="100" value="55">
       </div>
     </div>
-    <div class="label">Preview</div>
-    <div class="contrast-preview" id="contrast-preview">
-      <div class="preview-large" id="prev-large">Large Text (18pt / 14pt bold)</div>
-      <div class="preview-small" id="prev-small">Normal text — The quick brown fox jumps over the lazy dog.</div>
-      <div class="preview-tiny" id="prev-tiny">Small UI text — buttons, labels, captions</div>
+    <div class="lbl">CSS Output</div>
+    <div class="css-output" id="grad-css"></div>
+    <div style="display:flex;gap:.4rem;margin-bottom:1.5rem">
+      <button class="btn" id="grad-copy-btn">Copy CSS</button>
     </div>
-    <div class="contrast-score" id="contrast-score"></div>
-    <div class="checker-desc" id="checker-desc"></div>
+    <div class="lbl">Preset Galleries</div>
+    <div class="presets-grid" id="presets-grid"></div>
   </div>
 </div>
 
 <script>
-// ── color math ────────────────────────────────────────────────────────────
-function hslToRgb(h, s, l) {
-  s /= 100; l /= 100;
-  var c = (1 - Math.abs(2*l-1)) * s;
-  var x = c * (1 - Math.abs((h/60)%2 - 1));
-  var m = l - c/2;
-  var r=0,g=0,b=0;
-  if (h < 60) { r=c;g=x; }
-  else if (h < 120) { r=x;g=c; }
-  else if (h < 180) { g=c;b=x; }
-  else if (h < 240) { g=x;b=c; }
-  else if (h < 300) { r=x;b=c; }
-  else { r=c;b=x; }
-  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+// ═══════════════════════════════════════════════════════════════════════════
+// COLOR MATH
+// ═══════════════════════════════════════════════════════════════════════════
+function hslToRgb(h,s,l){
+  s/=100;l/=100;
+  var c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2,r=0,g=0,b=0;
+  if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}
+  else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}
+  return[Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)];
 }
-function rgbToHsl(r,g,b) {
+function rgbToHsl(r,g,b){
   r/=255;g/=255;b/=255;
-  var max=Math.max(r,g,b), min=Math.min(r,g,b), h,s,l=(max+min)/2;
-  if (max===min) { h=s=0; }
-  else {
-    var d=max-min; s=l>0.5?d/(2-max-min):d/(max+min);
-    if (max===r) h=((g-b)/d+(g<b?6:0))/6;
-    else if (max===g) h=((b-r)/d+2)/6;
-    else h=((r-g)/d+4)/6;
-  }
-  return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
+  var mx=Math.max(r,g,b),mn=Math.min(r,g,b),h,s,l=(mx+mn)/2;
+  if(mx===mn){h=s=0}
+  else{var d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+    if(mx===r)h=((g-b)/d+(g<b?6:0))/6;
+    else if(mx===g)h=((b-r)/d+2)/6;
+    else h=((r-g)/d+4)/6}
+  return[Math.round(h*360),Math.round(s*100),Math.round(l*100)];
 }
-function rgbToHex(r,g,b) {
-  return '#' + [r,g,b].map(function(v){return v.toString(16).padStart(2,'0')}).join('');
+function rgbToHex(r,g,b){return '#'+[r,g,b].map(function(v){return v.toString(16).padStart(2,'0')}).join('')}
+function hexToRgb(hex){
+  hex=hex.replace('#','');
+  if(hex.length===3)hex=hex.split('').map(function(c){return c+c}).join('');
+  if(hex.length!==6)return null;
+  var n=parseInt(hex,16);if(isNaN(n))return null;
+  return[(n>>16)&255,(n>>8)&255,n&255];
 }
-function hexToRgb(hex) {
-  hex = hex.replace('#','');
-  if (hex.length===3) hex=hex.split('').map(function(c){return c+c}).join('');
-  if (hex.length!==6) return null;
-  var n = parseInt(hex,16);
-  if (isNaN(n)) return null;
-  return [(n>>16)&255,(n>>8)&255,n&255];
+function hslToHex(h,s,l){return rgbToHex.apply(null,hslToRgb(h,s,l))}
+function mod360(h){return((h%360)+360)%360}
+
+function rgbToHsv(r,g,b){
+  r/=255;g/=255;b/=255;
+  var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,h,s=mx===0?0:d/mx,v=mx;
+  if(mx===mn)h=0;
+  else if(mx===r)h=((g-b)/d+(g<b?6:0))/6;
+  else if(mx===g)h=((b-r)/d+2)/6;
+  else h=((r-g)/d+4)/6;
+  return[Math.round(h*360),Math.round(s*100),Math.round(v*100)];
 }
-function luminance(r,g,b) {
-  var c = [r,g,b].map(function(v){ v/=255; return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4); });
-  return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
-}
-function contrastRatio(r1,g1,b1,r2,g2,b2) {
-  var l1=luminance(r1,g1,b1), l2=luminance(r2,g2,b2);
-  var br=Math.max(l1,l2), dr=Math.min(l1,l2);
-  return (br+0.05)/(dr+0.05);
-}
-
-// ── state ─────────────────────────────────────────────────────────────────
-var state = { h:270, s:68, l:57 };
-var harmony = 'complementary';
-
-function stateToHex() { var rgb=hslToRgb(state.h,state.s,state.l); return rgbToHex(rgb[0],rgb[1],rgb[2]); }
-function stateToRgb() { return hslToRgb(state.h,state.s,state.l); }
-
-// ── picker tab ────────────────────────────────────────────────────────────
-function updatePickerUI() {
-  var hex = stateToHex();
-  var rgb = stateToRgb();
-
-  document.getElementById('swatch-big').style.background = hex;
-  document.getElementById('native-picker').value = hex;
-  document.getElementById('sl-h').value = state.h;
-  document.getElementById('sl-s').value = state.s;
-  document.getElementById('sl-l').value = state.l;
-  document.getElementById('hue-val').textContent = state.h;
-  document.getElementById('sat-val').textContent = state.s + '%';
-  document.getElementById('lit-val').textContent = state.l + '%';
-  document.getElementById('hex-in').value = hex;
-  document.getElementById('rgb-in').value = rgb[0]+', '+rgb[1]+', '+rgb[2];
-  document.getElementById('hsl-in').value = state.h+', '+state.s+'%, '+state.l+'%';
-
-  // update saturation slider gradient
-  var satLo = rgbToHex.apply(null, hslToRgb(state.h, 0, state.l));
-  var satHi = rgbToHex.apply(null, hslToRgb(state.h, 100, state.l));
-  document.getElementById('sl-s').style.background = 'linear-gradient(to right,'+satLo+','+satHi+')';
-  document.getElementById('sl-l').style.background = 'linear-gradient(to right,#000,'+rgbToHex.apply(null,hslToRgb(state.h,state.s,50))+',#fff)';
-
-  // formats grid
-  var cmyk = rgbToCmyk(rgb[0],rgb[1],rgb[2]);
-  var fg = document.getElementById('formats-grid');
-  var fmts = [
-    ['HEX', hex],
-    ['RGB', 'rgb('+rgb[0]+','+rgb[1]+','+rgb[2]+')'],
-    ['HSL', 'hsl('+state.h+','+state.s+'%,'+state.l+'%)'],
-    ['RGBA', 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',1)'],
-    ['CMYK', 'cmyk('+cmyk[0]+'%,'+cmyk[1]+'%,'+cmyk[2]+'%,'+cmyk[3]+'%)'],
-    ['HSB/HSV', 'hsb('+state.h+','+rgbToHsb(rgb[0],rgb[1],rgb[2]).join(',')+')'],
-  ];
-  fg.innerHTML = fmts.map(function(f){
-    return '<div class="fmt-box"><span class="fmt-key">'+f[0]+'</span><span class="fmt-val">'+f[1]+'</span></div>';
-  }).join('');
-
-  updatePalette();
-}
-
-function rgbToCmyk(r,g,b) {
-  if (r===0&&g===0&&b===0) return [0,0,0,100];
+function rgbToCmyk(r,g,b){
+  if(r===0&&g===0&&b===0)return[0,0,0,100];
   r/=255;g/=255;b/=255;
   var k=1-Math.max(r,g,b);
-  return [Math.round((1-r-k)/(1-k)*100),Math.round((1-g-k)/(1-k)*100),Math.round((1-b-k)/(1-k)*100),Math.round(k*100)];
+  return[Math.round((1-r-k)/(1-k)*100),Math.round((1-g-k)/(1-k)*100),Math.round((1-b-k)/(1-k)*100),Math.round(k*100)];
 }
-function rgbToHsb(r,g,b) {
-  r/=255;g/=255;b/=255;
-  var max=Math.max(r,g,b), min=Math.min(r,g,b);
-  var br=max, sat=max===0?0:(max-min)/max;
-  return [Math.round(sat*100),Math.round(br*100)];
+function rgbToOklch(r,g,b){
+  // linearize
+  function lin(c){c/=255;return c>0.04045?Math.pow((c+0.055)/1.055,2.4):c/12.92}
+  var rl=lin(r),gl=lin(g),bl=lin(b);
+  // to XYZ D65
+  var x=0.4122214708*rl+0.5363325363*gl+0.0514459929*bl;
+  var y=0.2119034982*rl+0.6806995451*gl+0.1073969566*bl;
+  var z=0.0883024619*rl+0.2817188376*gl+0.6299787005*bl;
+  // to Oklab
+  var l_=Math.cbrt(0.8189330101*x+0.3618667424*y-0.1288597137*z);
+  var m_=Math.cbrt(0.0329845436*x+0.9293118715*y+0.0361456387*z);
+  var s_=Math.cbrt(0.0482003018*x+0.2643662691*y+0.6338517070*z);
+  var L=0.2104542553*l_+0.7936177850*m_-0.0040720468*s_;
+  var a=1.9779984951*l_-2.4285922050*m_+0.4505937099*s_;
+  var bv=0.0259040371*l_+0.7827717662*m_-0.8086757660*s_;
+  // to LCH
+  var C=Math.sqrt(a*a+bv*bv);
+  var H=Math.round(Math.atan2(bv,a)*180/Math.PI);
+  if(H<0)H+=360;
+  return[+(L*100).toFixed(1),+(C.toFixed(4)),H];
 }
 
-// sliders
-['sl-h','sl-s','sl-l'].forEach(function(id, i) {
-  document.getElementById(id).addEventListener('input', function() {
-    state.h = +document.getElementById('sl-h').value;
-    state.s = +document.getElementById('sl-s').value;
-    state.l = +document.getElementById('sl-l').value;
-    updatePickerUI();
-  });
-});
-
-document.getElementById('swatch-big').addEventListener('click', function() {
-  document.getElementById('native-picker').click();
-});
-document.getElementById('native-picker').addEventListener('input', function() {
-  var rgb = hexToRgb(this.value);
-  if (rgb) { var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]); state.h=hsl[0];state.s=hsl[1];state.l=hsl[2]; updatePickerUI(); }
-});
-
-document.getElementById('hex-in').addEventListener('change', function() {
-  var rgb = hexToRgb(this.value);
-  if (rgb) { var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]); state.h=hsl[0];state.s=hsl[1];state.l=hsl[2]; updatePickerUI(); }
-});
-document.getElementById('rgb-in').addEventListener('change', function() {
-  var parts = this.value.match(/\d+/g);
-  if (parts && parts.length >= 3) {
-    var rgb=[+parts[0],+parts[1],+parts[2]];
-    var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]); state.h=hsl[0];state.s=hsl[1];state.l=hsl[2]; updatePickerUI();
-  }
-});
-document.getElementById('hsl-in').addEventListener('change', function() {
-  var parts = this.value.match(/[\d.]+/g);
-  if (parts && parts.length >= 3) { state.h=+parts[0];state.s=+parts[1];state.l=+parts[2]; updatePickerUI(); }
-});
-
-function copyText(text, btn) {
-  navigator.clipboard.writeText(text).then(function() {
-    var orig = btn.textContent;
-    btn.textContent = 'Copied!';
-    btn.classList.add('copied');
-    setTimeout(function(){ btn.textContent=orig; btn.classList.remove('copied'); }, 1200);
-  });
+function luminance(r,g,b){
+  var c=[r,g,b].map(function(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)});
+  return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
 }
-document.getElementById('copy-hex-btn').addEventListener('click', function(){ copyText(stateToHex(), this); });
-document.getElementById('copy-rgb-btn').addEventListener('click', function(){ var r=stateToRgb(); copyText('rgb('+r[0]+','+r[1]+','+r[2]+')', this); });
-document.getElementById('copy-hsl-btn').addEventListener('click', function(){ copyText('hsl('+state.h+','+state.s+'%,'+state.l+'%)', this); });
+function contrastRatio(r1,g1,b1,r2,g2,b2){
+  var l1=luminance(r1,g1,b1),l2=luminance(r2,g2,b2);
+  return(Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+}
 
-// ── palette tab ───────────────────────────────────────────────────────────
-document.querySelectorAll('.h-btn').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.h-btn').forEach(function(b){b.classList.remove('active')});
-    btn.classList.add('active');
-    harmony = btn.getAttribute('data-harmony');
-    updatePalette();
-  });
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 1 — PICKER
+// ═══════════════════════════════════════════════════════════════════════════
+var pickerState={h:270,s:80,l:55,a:100};
+var canvasDragging=false;
+
+var canvas=document.getElementById('picker-canvas');
+var ctx=canvas.getContext('2d');
+
+function drawCanvas(){
+  var W=canvas.width,H=canvas.height;
+  // saturation-lightness gradient
+  var whiteGrad=ctx.createLinearGradient(0,0,W,0);
+  whiteGrad.addColorStop(0,'rgba(255,255,255,1)');
+  whiteGrad.addColorStop(1,'hsla('+pickerState.h+',100%,50%,1)');
+  ctx.fillStyle=whiteGrad;
+  ctx.fillRect(0,0,W,H);
+  var blackGrad=ctx.createLinearGradient(0,0,0,H);
+  blackGrad.addColorStop(0,'rgba(0,0,0,0)');
+  blackGrad.addColorStop(1,'rgba(0,0,0,1)');
+  ctx.fillStyle=blackGrad;
+  ctx.fillRect(0,0,W,H);
+  // crosshair
+  var cx=pickerState.s/100*W;
+  var cy=(1-(pickerState.l-pickerState.l*pickerState.s/200)*2/1)*H;
+  // approximate position from HSL→SV
+  var rgb=hslToRgb(pickerState.h,pickerState.s,pickerState.l);
+  var hsv=rgbToHsv(rgb[0],rgb[1],rgb[2]);
+  cx=hsv[1]/100*W;
+  cy=(1-hsv[2]/100)*H;
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.stroke();
+}
+
+function canvasToHSL(x,y){
+  var W=canvas.width,H=canvas.height;
+  var sv_s=Math.max(0,Math.min(100,x/W*100));
+  var sv_v=Math.max(0,Math.min(100,(1-y/H)*100));
+  // HSV→HSL
+  var l=(2-sv_s/100)*sv_v/200;
+  var s=l===0||l===1?0:sv_s/100*sv_v/(l<0.5?l*2:2-l*2)/100;
+  return{h:pickerState.h,s:Math.round(Math.min(s,1)*100),l:Math.round(l*100)};
+}
+
+canvas.addEventListener('mousedown',function(e){canvasDragging=true;handleCanvasDrag(e)});
+canvas.addEventListener('mousemove',function(e){if(canvasDragging)handleCanvasDrag(e)});
+document.addEventListener('mouseup',function(){canvasDragging=false});
+canvas.addEventListener('touchstart',function(e){canvasDragging=true;handleCanvasDrag(e.touches[0]);e.preventDefault()},{passive:false});
+canvas.addEventListener('touchmove',function(e){if(canvasDragging)handleCanvasDrag(e.touches[0]);e.preventDefault()},{passive:false});
+document.addEventListener('touchend',function(){canvasDragging=false});
+
+function handleCanvasDrag(e){
+  var rect=canvas.getBoundingClientRect();
+  var x=(e.clientX-rect.left)*(canvas.width/rect.width);
+  var y=(e.clientY-rect.top)*(canvas.height/rect.height);
+  var hsl=canvasToHSL(x,y);
+  pickerState.s=hsl.s;pickerState.l=hsl.l;
+  syncPickerUI();
+}
+
+document.getElementById('sl-hue').addEventListener('input',function(){
+  pickerState.h=+this.value;syncPickerUI();
+});
+document.getElementById('sl-opacity').addEventListener('input',function(){
+  pickerState.a=+this.value;syncPickerUI();
 });
 
-function getHarmonies(h, s, l) {
-  var palettes = {
-    complementary: [[h,s,l],[mod360(h+180),s,l]],
-    analogous: [[mod360(h-30),s,l],[h,s,l],[mod360(h+30),s,l],[mod360(h+60),s,Math.min(l+10,90)]],
-    triadic: [[h,s,l],[mod360(h+120),s,l],[mod360(h+240),s,l]],
-    split: [[h,s,l],[mod360(h+150),s,l],[mod360(h+210),s,l]],
-    tetradic: [[h,s,l],[mod360(h+90),s,l],[mod360(h+180),s,l],[mod360(h+270),s,l]],
-    monochromatic: [[h,s,Math.max(l-30,5)],[h,s,Math.max(l-15,10)],[h,s,l],[h,s,Math.min(l+15,90)],[h,s,Math.min(l+30,95)]],
-    shades: [[h,s,10],[h,s,25],[h,s,40],[h,s,55],[h,s,70],[h,s,85]],
-  };
-  return palettes[harmony] || palettes.complementary;
-}
-function mod360(h) { return ((h%360)+360)%360; }
+function syncPickerUI(){
+  var sl=document.getElementById('sl-hue');
+  sl.value=pickerState.h;
+  document.getElementById('hue-disp').textContent=pickerState.h+'°';
+  document.getElementById('opacity-disp').textContent=pickerState.a+'%';
+  document.getElementById('sl-opacity').value=pickerState.a;
 
-function updatePalette() {
-  var cols = getHarmonies(state.h, state.s, state.l);
-  var pr = document.getElementById('palette-row');
-  pr.innerHTML = '';
-  var cssLines = [':root {'];
-  cols.forEach(function(hsl, i) {
-    var hex = rgbToHex.apply(null, hslToRgb(hsl[0], hsl[1], hsl[2]));
-    var textColor = hsl[2] > 55 ? '#000' : '#fff';
-    var el = document.createElement('div');
-    el.className = 'swatch';
-    el.style.background = hex;
-    el.innerHTML = '<span class="swatch-label" style="color:'+textColor+'">'+hex+'</span>';
-    el.title = 'Click to copy ' + hex;
-    el.addEventListener('click', function() {
-      navigator.clipboard.writeText(hex);
+  var rgb=hslToRgb(pickerState.h,pickerState.s,pickerState.l);
+  var hex=rgbToHex(rgb[0],rgb[1],rgb[2]);
+  var alpha=pickerState.a/100;
+
+  // opacity slider bg
+  document.getElementById('sl-opacity').style.background=
+    'linear-gradient(to right,transparent,'+hex+')';
+
+  // preview swatch
+  document.getElementById('preview-swatch').style.background=
+    'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+','+alpha+')';
+
+  // formats
+  var hsv=rgbToHsv(rgb[0],rgb[1],rgb[2]);
+  var cmyk=rgbToCmyk(rgb[0],rgb[1],rgb[2]);
+  var oklch=rgbToOklch(rgb[0],rgb[1],rgb[2]);
+  var fmts=[
+    ['HEX', hex],
+    ['RGB', 'rgb('+rgb.join(',')+')'],
+    ['HSL', 'hsl('+pickerState.h+','+pickerState.s+'%,'+pickerState.l+'%)'],
+    ['HSV', 'hsv('+hsv[0]+','+hsv[1]+'%,'+hsv[2]+'%)'],
+    ['OKLCH', 'oklch('+oklch[0]+'% '+oklch[1]+' '+oklch[2]+')'],
+    ['RGBA', 'rgba('+rgb.join(',')+','+alpha.toFixed(2)+')'],
+  ];
+  var fg=document.getElementById('fmt-grid');
+  fg.innerHTML=fmts.map(function(f){
+    return '<div class="fmt-box" data-copy="'+f[1]+'"><span class="fmt-key">'+f[0]+'</span><span class="fmt-val">'+f[1]+'</span></div>';
+  }).join('');
+  fg.querySelectorAll('.fmt-box').forEach(function(box){
+    box.addEventListener('click',function(){
+      var v=this.getAttribute('data-copy');
+      navigator.clipboard.writeText(v).catch(function(){});
+      this.classList.add('fmt-copied');
+      setTimeout(function(el){el.classList.remove('fmt-copied')}.bind(null,box),900);
     });
-    pr.appendChild(el);
-    cssLines.push('  --color-'+(i+1)+': '+hex+'; /* hsl('+hsl[0]+','+hsl[1]+'%,'+hsl[2]+'%) */');
   });
-  cssLines.push('}');
-  document.getElementById('css-vars').textContent = cssLines.join('\n');
+
+  // harmonies
+  var harmonies={
+    complementary:[[pickerState.h,pickerState.s,pickerState.l],[mod360(pickerState.h+180),pickerState.s,pickerState.l]],
+    analogous:[[mod360(pickerState.h-30),pickerState.s,pickerState.l],[pickerState.h,pickerState.s,pickerState.l],[mod360(pickerState.h+30),pickerState.s,pickerState.l]],
+    triadic:[[pickerState.h,pickerState.s,pickerState.l],[mod360(pickerState.h+120),pickerState.s,pickerState.l],[mod360(pickerState.h+240),pickerState.s,pickerState.l]],
+  };
+  ['complementary','analogous','triadic'].forEach(function(key){
+    var row=document.getElementById('h-'+key);
+    row.innerHTML='';
+    harmonies[key].forEach(function(hsl){
+      var c=hslToHex(hsl[0],hsl[1],hsl[2]);
+      var el=document.createElement('div');
+      el.className='h-swatch';el.style.background=c;el.title=c;
+      el.addEventListener('click',function(){
+        var hslv=rgbToHsl.apply(null,hexToRgb(c));
+        pickerState.h=hslv[0];pickerState.s=hslv[1];pickerState.l=hslv[2];
+        syncPickerUI();
+      });
+      row.appendChild(el);
+    });
+  });
+
+  drawCanvas();
 }
 
-document.getElementById('copy-css-btn').addEventListener('click', function() {
-  copyText(document.getElementById('css-vars').textContent, this);
+// copy buttons
+document.getElementById('copy-all-btn').addEventListener('click',function(){
+  var rgb=hslToRgb(pickerState.h,pickerState.s,pickerState.l);
+  copyBtn(rgbToHex(rgb[0],rgb[1],rgb[2]),this,'HEX copied!');
+});
+document.getElementById('copy-rgb-btn').addEventListener('click',function(){
+  var rgb=hslToRgb(pickerState.h,pickerState.s,pickerState.l);
+  copyBtn('rgb('+rgb.join(',')+')',this,'Copied!');
+});
+document.getElementById('copy-hsl-btn').addEventListener('click',function(){
+  copyBtn('hsl('+pickerState.h+','+pickerState.s+'%,'+pickerState.l+'%)',this,'Copied!');
 });
 
-// ── contrast tab ──────────────────────────────────────────────────────────
-var cState = { fg:{h:270,s:68,l:57}, bg:{h:0,s:0,l:100} };
+function copyBtn(text,btn,msg){
+  navigator.clipboard.writeText(text).catch(function(){});
+  var orig=btn.textContent;btn.textContent=msg;btn.classList.add('copied');
+  setTimeout(function(){btn.textContent=orig;btn.classList.remove('copied')},1200);
+}
 
-function updateContrastUI() {
-  var fgHex = rgbToHex.apply(null, hslToRgb(cState.fg.h, cState.fg.s, cState.fg.l));
-  var bgHex = rgbToHex.apply(null, hslToRgb(cState.bg.h, cState.bg.s, cState.bg.l));
-  document.getElementById('fg-swatch').style.background = fgHex;
-  document.getElementById('bg-swatch').style.background = bgHex;
-  document.getElementById('fg-hex').value = fgHex;
-  document.getElementById('bg-hex').value = bgHex;
-  document.getElementById('fg-h').value = cState.fg.h;
-  document.getElementById('fg-s').value = cState.fg.s;
-  document.getElementById('fg-l').value = cState.fg.l;
-  document.getElementById('bg-h').value = cState.bg.h;
-  document.getElementById('bg-s').value = cState.bg.s;
-  document.getElementById('bg-l').value = cState.bg.l;
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 2 — PALETTE
+// ═══════════════════════════════════════════════════════════════════════════
+var palHarmony='complementary';
+var palBaseHex='#8b5cf6';
 
-  var prev = document.getElementById('contrast-preview');
-  prev.style.background = bgHex;
-  ['prev-large','prev-small','prev-tiny'].forEach(function(id){ document.getElementById(id).style.color = fgHex; });
+function palBaseFromHex(hex){
+  var rgb=hexToRgb(hex);if(!rgb)return;
+  palBaseHex=hex;
+  document.getElementById('pal-base-swatch').style.background=hex;
+  document.getElementById('pal-base-hex').value=hex;
+  buildPalette();
+}
 
-  var fgRgb = hslToRgb(cState.fg.h, cState.fg.s, cState.fg.l);
-  var bgRgb = hslToRgb(cState.bg.h, cState.bg.s, cState.bg.l);
-  var ratio = contrastRatio(fgRgb[0],fgRgb[1],fgRgb[2],bgRgb[0],bgRgb[1],bgRgb[2]);
-  var ratioStr = ratio.toFixed(2) + ':1';
+document.getElementById('pal-base-hex').addEventListener('input',function(){
+  var rgb=hexToRgb(this.value);
+  if(rgb)palBaseFromHex(this.value);
+});
+document.getElementById('pal-use-picker').addEventListener('click',function(){
+  var rgb=hslToRgb(pickerState.h,pickerState.s,pickerState.l);
+  palBaseFromHex(rgbToHex(rgb[0],rgb[1],rgb[2]));
+});
 
-  var passAA = ratio >= 4.5;
-  var passAAlarge = ratio >= 3;
-  var passAAA = ratio >= 7;
-  var passAAAlarge = ratio >= 4.5;
+document.getElementById('palette-btns').querySelectorAll('.btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.getElementById('palette-btns').querySelectorAll('.btn').forEach(function(b){b.classList.remove('active')});
+    btn.classList.add('active');
+    palHarmony=btn.getAttribute('data-harmony');
+    buildPalette();
+  });
+});
 
-  var sc = document.getElementById('contrast-score');
-  sc.innerHTML = [
-    ['Ratio', ratioStr, ratio >= 4.5 ? 'pass' : 'fail', ''],
-    ['WCAG AA', passAA?'Pass':'Fail', passAA?'pass':'fail', 'Normal text ≥ 4.5:1'],
-    ['WCAG AA Large', passAAlarge?'Pass':'Fail', passAAlarge?'pass':'fail', 'Large text ≥ 3:1'],
-    ['WCAG AAA', passAAA?'Pass':'Fail', passAAA?'pass':'fail', 'Normal text ≥ 7:1'],
-    ['WCAG AAA Large', passAAAlarge?'Pass':'Fail', passAAAlarge?'pass':'fail', 'Large text ≥ 4.5:1'],
-  ].map(function(r) {
-    return '<div class="score-box"><div class="score-ratio '+r[2]+'">'+r[1]+'</div><div class="score-level '+r[2]+'">'+r[0]+'</div><div class="score-label">'+r[3]+'</div></div>';
+function getPaletteColors(hex,harmony){
+  var rgb=hexToRgb(hex);if(!rgb)return[];
+  var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]);
+  var h=hsl[0],s=hsl[1],l=hsl[2];
+  var palettes={
+    complementary:[[h,s,l],[mod360(h+180),s,l]],
+    split:[[h,s,l],[mod360(h+150),s,l],[mod360(h+210),s,l]],
+    analogous:[[mod360(h-30),s,l],[mod360(h-15),s,l],[h,s,l],[mod360(h+15),s,l],[mod360(h+30),s,l]],
+    triadic:[[h,s,l],[mod360(h+120),s,l],[mod360(h+240),s,l]],
+    tetradic:[[h,s,l],[mod360(h+90),s,l],[mod360(h+180),s,l],[mod360(h+270),s,l]],
+    monochromatic:[[h,s,Math.max(l-30,5)],[h,s,Math.max(l-15,10)],[h,s,l],[h,s,Math.min(l+15,90)],[h,s,Math.min(l+30,95)]],
+    shades:[[h,s,10],[h,s,20],[h,s,35],[h,s,50],[h,s,65],[h,s,80]],
+  };
+  return(palettes[harmony]||palettes.complementary).map(function(hsl){return hslToHex(hsl[0],hsl[1],hsl[2])});
+}
+
+function buildPalette(){
+  var colors=getPaletteColors(palBaseHex,palHarmony);
+  var row=document.getElementById('palette-row');
+  row.innerHTML='';
+  colors.forEach(function(hex){
+    var el=document.createElement('div');
+    el.className='pal-swatch';
+    el.style.background=hex;
+    el.innerHTML='<span class="pal-hex">'+hex+'</span>';
+    el.title='Click to set as base';
+    el.addEventListener('click',function(){palBaseFromHex(hex)});
+    row.appendChild(el);
+  });
+  // update export if visible
+  if(document.getElementById('pal-export').style.display!=='none'){showExport()}
+}
+
+function showExport(){
+  var colors=getPaletteColors(palBaseHex,palHarmony);
+  document.getElementById('pal-export').textContent=colors.join('\n');
+}
+
+document.getElementById('pal-export-btn').addEventListener('click',function(){
+  var box=document.getElementById('pal-export');
+  if(box.style.display==='none'){box.style.display='block';showExport();this.textContent='Hide'}
+  else{box.style.display='none';this.textContent='Export HEX codes'}
+});
+document.getElementById('pal-css-btn').addEventListener('click',function(){
+  var colors=getPaletteColors(palBaseHex,palHarmony);
+  var css=':root {\n'+colors.map(function(c,i){return'  --color-'+(i+1)+': '+c+';'}).join('\n')+'\n}';
+  copyBtn(css,this,'Copied CSS!');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 3 — CONTRAST
+// ═══════════════════════════════════════════════════════════════════════════
+var ctState={fg:{h:270,s:68,l:57},bg:{h:0,s:0,l:100}};
+
+function syncContrastUI(){
+  ['fg','bg'].forEach(function(k){
+    var hsl=ctState[k];
+    var hex=hslToHex(hsl.h,hsl.s,hsl.l);
+    document.getElementById('ct-'+k+'-swatch').style.background=hex;
+    document.getElementById('ct-'+k+'-hex').value=hex;
+    document.getElementById('ct-'+k+'-h').value=hsl.h;
+    document.getElementById('ct-'+k+'-s').value=hsl.s;
+    document.getElementById('ct-'+k+'-l').value=hsl.l;
+    document.getElementById('ct-'+k+'-h-disp').textContent=hsl.h+'°';
+    document.getElementById('ct-'+k+'-s-disp').textContent=hsl.s+'%';
+    document.getElementById('ct-'+k+'-l-disp').textContent=hsl.l+'%';
+  });
+
+  var fgHex=hslToHex(ctState.fg.h,ctState.fg.s,ctState.fg.l);
+  var bgHex=hslToHex(ctState.bg.h,ctState.bg.s,ctState.bg.l);
+  var prev=document.getElementById('ct-preview');
+  prev.style.background=bgHex;
+  ['ct-prev-xl','ct-prev-lg','ct-prev-sm'].forEach(function(id){
+    document.getElementById(id).style.color=fgHex;
+  });
+
+  var fgRgb=hslToRgb(ctState.fg.h,ctState.fg.s,ctState.fg.l);
+  var bgRgb=hslToRgb(ctState.bg.h,ctState.bg.s,ctState.bg.l);
+  var ratio=contrastRatio(fgRgb[0],fgRgb[1],fgRgb[2],bgRgb[0],bgRgb[1],bgRgb[2]);
+  var ratioStr=ratio.toFixed(2)+':1';
+
+  var levels=[
+    {name:'Ratio',req:'',val:ratioStr,pass:ratio>=4.5,always:true},
+    {name:'AA Normal',req:'≥ 4.5:1',val:ratio>=4.5?'Pass':'Fail',pass:ratio>=4.5},
+    {name:'AA Large',req:'≥ 3:1',val:ratio>=3?'Pass':'Fail',pass:ratio>=3},
+    {name:'AAA Normal',req:'≥ 7:1',val:ratio>=7?'Pass':'Fail',pass:ratio>=7},
+    {name:'AAA Large',req:'≥ 4.5:1',val:ratio>=4.5?'Pass':'Fail',pass:ratio>=4.5},
+  ];
+  document.getElementById('ct-scores').innerHTML=levels.map(function(lv){
+    return'<div class="score-box"><div class="score-num '+(lv.always?'':lv.pass?'pass':'fail')+'">'+lv.val+'</div>'+
+      '<div class="score-lbl '+(lv.always?'':lv.pass?'pass':'fail')+'">'+lv.name+'</div>'+
+      '<div class="score-sub">'+lv.req+'</div></div>';
   }).join('');
 
-  document.getElementById('checker-desc').textContent =
-    'Contrast ratio: ' + ratioStr + '. ' +
-    'WCAG 2.1 requires ≥ 4.5:1 for normal text (AA) and ≥ 7:1 for enhanced (AAA). ' +
-    'Large text (18pt+) passes AA at ≥ 3:1. ' +
-    (ratio >= 7 ? 'This passes all WCAG levels.' :
-     ratio >= 4.5 ? 'This passes AA but not AAA.' :
-     ratio >= 3 ? 'This passes AA for large text only.' :
-     'This fails all WCAG contrast requirements.');
+  document.getElementById('ct-desc').textContent=
+    'Contrast ratio: '+ratioStr+'. '+
+    (ratio>=7?'Passes all WCAG 2.1 levels (AA and AAA for both normal and large text).':
+     ratio>=4.5?'Passes WCAG AA (all text) and AAA for large text. Fails AAA for normal text.':
+     ratio>=3?'Passes WCAG AA for large text only (18pt+). Fails AA for normal text.':
+     'Fails all WCAG contrast levels. Consider increasing color contrast.');
+
+  // accessible alternatives if failing
+  var altDiv=document.getElementById('ct-alts');
+  if(ratio<4.5){
+    altDiv.style.display='block';
+    var alts=document.getElementById('ct-alt-swatches');
+    alts.innerHTML='';
+    var bgRgb2=hslToRgb(ctState.bg.h,ctState.bg.s,ctState.bg.l);
+    // try different lightness values for foreground
+    for(var l2=5;l2<=95;l2+=5){
+      var testHex=hslToHex(ctState.fg.h,ctState.fg.s,l2);
+      var testRgb=hslToRgb(ctState.fg.h,ctState.fg.s,l2);
+      var r2=contrastRatio(testRgb[0],testRgb[1],testRgb[2],bgRgb2[0],bgRgb2[1],bgRgb2[2]);
+      if(r2>=4.5){
+        var el=document.createElement('div');
+        el.className='alt-swatch';el.style.background=testHex;
+        el.title=testHex+' — ratio '+r2.toFixed(1)+':1';
+        el.addEventListener('click',function(hex2){return function(){
+          var rgb2=hexToRgb(hex2);var hsl2=rgbToHsl(rgb2[0],rgb2[1],rgb2[2]);
+          ctState.fg={h:hsl2[0],s:hsl2[1],l:hsl2[2]};syncContrastUI();
+        }}(testHex));
+        alts.appendChild(el);
+      }
+    }
+  } else{altDiv.style.display='none'}
 }
 
-['fg','bg'].forEach(function(prefix) {
-  ['h','s','l'].forEach(function(ch) {
-    document.getElementById(prefix+'-'+ch).addEventListener('input', function() {
-      cState[prefix].h = +document.getElementById(prefix+'-h').value;
-      cState[prefix].s = +document.getElementById(prefix+'-s').value;
-      cState[prefix].l = +document.getElementById(prefix+'-l').value;
-      updateContrastUI();
+['fg','bg'].forEach(function(k){
+  ['h','s','l'].forEach(function(ch){
+    document.getElementById('ct-'+k+'-'+ch).addEventListener('input',function(){
+      ctState[k].h=+document.getElementById('ct-'+k+'-h').value;
+      ctState[k].s=+document.getElementById('ct-'+k+'-s').value;
+      ctState[k].l=+document.getElementById('ct-'+k+'-l').value;
+      syncContrastUI();
     });
   });
-  document.getElementById(prefix+'-hex').addEventListener('change', function() {
-    var rgb = hexToRgb(this.value);
-    if (rgb) { var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]); cState[prefix].h=hsl[0];cState[prefix].s=hsl[1];cState[prefix].l=hsl[2]; updateContrastUI(); }
+  document.getElementById('ct-'+k+'-hex').addEventListener('change',function(){
+    var rgb=hexToRgb(this.value);
+    if(rgb){var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]);ctState[k]={h:hsl[0],s:hsl[1],l:hsl[2]};syncContrastUI()}
   });
 });
 
-// ── tabs ──────────────────────────────────────────────────────────────────
-document.querySelectorAll('.tab').forEach(function(t) {
-  t.addEventListener('click', function() {
-    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
-    document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active')});
-    t.classList.add('active');
-    document.getElementById('tab-' + t.getAttribute('data-tab')).classList.add('active');
-    if (t.getAttribute('data-tab') === 'contrast') updateContrastUI();
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB 4 — GRADIENTS
+// ═══════════════════════════════════════════════════════════════════════════
+var gradStops=[
+  {h:280,s:70,l:55},
+  {h:200,s:80,l:50},
+];
+var gradType='linear';
+var gradAngle=135;
+var selectedStop=0;
+
+var PRESETS=[
+  {name:'Sunset',stops:['#f97316','#ec4899','#8b5cf6']},
+  {name:'Ocean',stops:['#0ea5e9','#06b6d4','#22d3ee']},
+  {name:'Forest',stops:['#15803d','#16a34a','#84cc16']},
+  {name:'Neon',stops:['#f0abfc','#818cf8','#38bdf8']},
+  {name:'Fire',stops:['#fef08a','#f97316','#dc2626']},
+  {name:'Aurora',stops:['#34d399','#818cf8','#f472b6']},
+  {name:'Dusk',stops:['#1e1b4b','#7c3aed','#db2777']},
+  {name:'Gold',stops:['#92400e','#d97706','#fbbf24']},
+  {name:'Vapor',stops:['#f0abfc','#c084fc','#818cf8']},
+  {name:'Mint',stops:['#d1fae5','#6ee7b7','#059669']},
+  {name:'Night',stops:['#020617','#0f172a','#1e1b4b']},
+  {name:'Candy',stops:['#fce7f3','#fbcfe8','#f9a8d4','#f472b6']},
+];
+
+function buildGradUI(){
+  var row=document.getElementById('grad-stops');
+  row.innerHTML='';
+  gradStops.forEach(function(stop,i){
+    var hex=hslToHex(stop.h,stop.s,stop.l);
+    var el=document.createElement('div');
+    el.className='stop-swatch'+(i===selectedStop?' selected':'');
+    el.style.background=hex;
+    // delete button (only if >2 stops)
+    if(gradStops.length>2){
+      var del=document.createElement('span');
+      del.className='stop-del';del.textContent='×';
+      del.addEventListener('click',function(idx){return function(e){
+        e.stopPropagation();
+        gradStops.splice(idx,1);
+        if(selectedStop>=gradStops.length)selectedStop=gradStops.length-1;
+        buildGradUI();renderGrad();
+      }}(i));
+      el.appendChild(del);
+    }
+    el.addEventListener('click',function(idx){return function(){
+      selectedStop=idx;
+      buildGradUI();updateStopSliders();
+    }}(i));
+    row.appendChild(el);
+  });
+  // add button (max 5)
+  if(gradStops.length<5){
+    var add=document.createElement('div');
+    add.className='stop-add';add.textContent='+';add.title='Add stop';
+    add.addEventListener('click',function(){
+      gradStops.push({h:mod360(gradStops[gradStops.length-1].h+60),s:70,l:55});
+      selectedStop=gradStops.length-1;
+      buildGradUI();updateStopSliders();renderGrad();
+    });
+    row.appendChild(add);
+  }
+  updateStopSliders();
+}
+
+function updateStopSliders(){
+  if(!gradStops[selectedStop])return;
+  var st=gradStops[selectedStop];
+  document.getElementById('gs-h').value=st.h;
+  document.getElementById('gs-s').value=st.s;
+  document.getElementById('gs-l').value=st.l;
+  document.getElementById('gs-h-disp').textContent=st.h+'°';
+  document.getElementById('gs-s-disp').textContent=st.s+'%';
+  document.getElementById('gs-l-disp').textContent=st.l+'%';
+}
+
+['h','s','l'].forEach(function(ch){
+  document.getElementById('gs-'+ch).addEventListener('input',function(){
+    if(!gradStops[selectedStop])return;
+    gradStops[selectedStop].h=+document.getElementById('gs-h').value;
+    gradStops[selectedStop].s=+document.getElementById('gs-s').value;
+    gradStops[selectedStop].l=+document.getElementById('gs-l').value;
+    document.getElementById('gs-h-disp').textContent=gradStops[selectedStop].h+'°';
+    document.getElementById('gs-s-disp').textContent=gradStops[selectedStop].s+'%';
+    document.getElementById('gs-l-disp').textContent=gradStops[selectedStop].l+'%';
+    // update swatch color in row
+    buildGradUI();
+    renderGrad();
   });
 });
 
-// ── init ──────────────────────────────────────────────────────────────────
-updatePickerUI();
-updateContrastUI();
+document.getElementById('grad-angle').addEventListener('input',function(){
+  gradAngle=+this.value;
+  document.getElementById('angle-disp').textContent=gradAngle+'°';
+  renderGrad();
+});
+
+document.querySelectorAll('[data-gtype]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('[data-gtype]').forEach(function(b){b.classList.remove('active')});
+    btn.classList.add('active');
+    gradType=btn.getAttribute('data-gtype');
+    document.getElementById('angle-row').style.display=gradType==='linear'?'flex':'none';
+    renderGrad();
+  });
+});
+
+function renderGrad(){
+  var hexList=gradStops.map(function(st){return hslToHex(st.h,st.s,st.l)});
+  var stops=hexList.join(', ');
+  var css;
+  if(gradType==='linear'){
+    css='background: linear-gradient('+gradAngle+'deg, '+stops+');';
+  } else {
+    css='background: radial-gradient(ellipse at center, '+stops+');';
+  }
+  document.getElementById('grad-preview').style.cssText=css;
+  document.getElementById('grad-css').textContent=css;
+}
+
+document.getElementById('grad-copy-btn').addEventListener('click',function(){
+  copyBtn(document.getElementById('grad-css').textContent,this,'Copied!');
+});
+
+// presets
+var presetsGrid=document.getElementById('presets-grid');
+PRESETS.forEach(function(p){
+  var el=document.createElement('div');
+  el.className='preset';
+  el.style.background='linear-gradient(135deg,'+p.stops.join(',')+')';
+  el.textContent=p.name;
+  el.addEventListener('click',function(){
+    gradStops=p.stops.map(function(hex){
+      var rgb=hexToRgb(hex);var hsl=rgbToHsl(rgb[0],rgb[1],rgb[2]);
+      return{h:hsl[0],s:hsl[1],l:hsl[2]};
+    });
+    selectedStop=0;gradType='linear';gradAngle=135;
+    document.querySelectorAll('[data-gtype]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-gtype')==='linear')});
+    document.getElementById('grad-angle').value=135;
+    document.getElementById('angle-disp').textContent='135°';
+    buildGradUI();renderGrad();
+  });
+  presetsGrid.appendChild(el);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active')});
+    btn.classList.add('active');
+    var tab=btn.getAttribute('data-tab');
+    document.getElementById('tab-'+tab).classList.add('active');
+    if(tab==='contrast')syncContrastUI();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+syncPickerUI();
+palBaseFromHex('#8b5cf6');
+syncContrastUI();
+buildGradUI();
+renderGrad();
 </script>
+
+<script src="/shared/nav.js?v=2"></script>
 </body>
 </html>

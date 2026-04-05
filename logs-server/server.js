@@ -553,6 +553,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="immune">immune</button>
           <button class="site-opt" data-site="quantum">quantum</button>
           <button class="site-opt" data-site="synth">synth</button>
+          <button class="site-opt" data-site="compound">compound</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

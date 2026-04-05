@@ -216,6 +216,7 @@ DOMAINS=(
   binary.ximg.app
   compiler.ximg.app
   quantum.ximg.app synth.ximg.app
+  compound.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

@@ -135,6 +135,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [color.ximg.app](https://color.ximg.app) | Color tools — picker (HEX/RGB/HSL/CMYK), palette generator (7 harmony types), WCAG AA/AAA contrast checker, CSS variable export |
 | [quantum.ximg.app](https://quantum.ximg.app) | Quantum Mechanics Explorer — wave-packet propagation with wavefunction collapse, double-slit interference vs. which-path observation, Bloch sphere qubit explorer, entangled Bell state measurement, Schrödinger's cat |
 | [synth.ximg.app](https://synth.ximg.app) | Web Audio Synthesizer — playable 2-octave piano keyboard, oscillator types with ADSR envelope, distortion/filter/delay/reverb effects chain, real-time FFT spectrum analyzer, oscilloscope, synth presets, chord theory player |
+| [compound.ximg.app](https://compound.ximg.app) | Compound Interest & Wealth Calculator — compound vs simple interest chart, retirement projections with inflation adjustment, debt payoff comparison with amortization table, FIRE number calculator |
 
 ## Architecture
 
