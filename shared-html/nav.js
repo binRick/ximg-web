@@ -28,7 +28,7 @@
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'History', apps: [
-      ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],
+      ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],['rome','rome'],
     ]},
     { label: 'Retro', apps: [
       ['arpanet','arpanet'],['mainframe','mainframe'],['punch','punch card'],['terminal','terminal'],
@@ -53,7 +53,10 @@
       ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color']
     ]},
     { label: 'Finance', apps: [
-      ['compound','compound']
+      ['compound','compound'],
+      ['mortgage','mortgage'],['retire','retire'],['inflation','inflation'],['debt','debt'],
+      ['budget','budget'],['savings','savings'],['tax','tax'],['stocks','stocks'],
+      ['options','options'],['forex','forex'],['dcf','DCF']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
@@ -118,7 +121,7 @@
   var curPath = window.location.pathname.split('/')[1] || '';
 
   // Apps served via ximg.app/<app>/ path (no individual SSL cert yet)
-  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1};
+  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1,mortgage:1,retire:1,inflation:1,debt:1,budget:1,savings:1,tax:1,stocks:1,options:1,forex:1,dcf:1,rome:1};
 
   function appHref(subdomain) {
     return PATH_APPS[subdomain]

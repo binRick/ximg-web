@@ -572,6 +572,11 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="options">options</button>
           <button class="site-opt" data-site="forex">forex</button>
           <button class="site-opt" data-site="dcf">dcf</button>
+          <button class="site-opt" data-site="mortgage">mortgage</button>
+          <button class="site-opt" data-site="retire">retire</button>
+          <button class="site-opt" data-site="inflation">inflation</button>
+          <button class="site-opt" data-site="debt">debt</button>
+          <button class="site-opt" data-site="budget">budget</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>
