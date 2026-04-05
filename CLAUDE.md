@@ -29,7 +29,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-Each subdomain has its own Apache container and `*-html/` directory for static files. The table below lists representative subdomains — the full list of 54+ is in `README.md` and `apps-html/index.html`.
+Each subdomain has its own Apache container and `*-html/` directory for static files. The table below lists representative subdomains — the full list of 193+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|
@@ -104,6 +104,14 @@ This is the single authoritative checklist. Follow every step in order.
 ### Stats
 
 15. **AWStats** — AWStats auto-generates config per subdomain from nginx logs; no manual config needed. Verify the new subdomain appears at `stats.ximg.app` after the next hourly cron run.
+
+### App Count Updates
+
+Whenever a new app is added, update the hardcoded app/site counts in all of the following locations:
+
+16. **`public-html/index.html`** — update the "N interactive apps" count in the hero tagline (search for "interactive apps")
+17. **`README.md`** — update "N virtual hosts (root + N-1 subdomains)" on the line below `## Live Sites`
+18. **`CLAUDE.md`** — update the "N+" count in the Subdomains & Containers section ("the full list of N+ is in README.md")
 
 Missing any of these means the app is invisible, unmonitored, or incomplete.
 
