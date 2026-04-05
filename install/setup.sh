@@ -213,6 +213,7 @@ DOMAINS=(
   arpanet.ximg.app
   regex.ximg.app jwt.ximg.app cron.ximg.app color.ximg.app
   dna.ximg.app cell.ximg.app immune.ximg.app
+  binary.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

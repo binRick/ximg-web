@@ -50,7 +50,7 @@
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
     ]},
     { label: 'Dev Tools', apps: [
-      ['regex','regex'],['jwt','JWT'],['cron','cron'],['color','color']
+      ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']

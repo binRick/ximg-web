@@ -127,7 +127,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [logic.ximg.app](https://logic.ximg.app) | Logic Gates — interactive gate simulator (AND/OR/NOT/XOR/NAND/NOR/XNOR), truth tables, half & full adder, boolean expression evaluator |
 | [protocol.ximg.app](https://protocol.ximg.app) | Protocol Visualizer — animated UART, SPI, and I²C waveform diagrams with configurable baud rates, modes, and data bytes |
 | [mainframe.ximg.app](https://mainframe.ximg.app) | IBM Mainframe history — interactive timeline (701 to z16), JCL syntax explorer, batch processing lifecycle, MIPS performance table, and COBOL reference |
-| [regex.ximg.app](https://regex.ximg.app) | Live regex tester — real-time match highlighting, group extraction, flag toggles (g/i/m/s/u), 14 quick patterns, full cheatsheet |
+| [regex.ximg.app](https://regex.ximg.app) | Live regex tester — 4-tab tool: Tester (live highlighting, group extraction), Groups (color-coded table), Replace (backreference preview), Reference (cheatsheet + 14 patterns) |
+| [binary.ximg.app](https://binary.ximg.app) | Binary & number systems — base converter with clickable bit grid, bitwise ops visualizer, IEEE 754 float breakdown, powers of 2, searchable ASCII table, bit tricks |
 | [jwt.ximg.app](https://jwt.ximg.app) | JWT decoder & encoder — decode any token, HMAC sign (HS256/384/512), expiry/nbf/iat validation, claims reference, algorithm comparison |
 | [cron.ximg.app](https://cron.ximg.app) | Cron expression builder — human-readable output, next 10 scheduled runs, 16 presets, field breakdown, special character reference |
 | [color.ximg.app](https://color.ximg.app) | Color tools — picker (HEX/RGB/HSL/CMYK), palette generator (7 harmony types), WCAG AA/AAA contrast checker, CSS variable export |
