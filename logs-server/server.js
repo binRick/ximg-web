@@ -72,6 +72,24 @@ const LOG_FILES = {
   doom:      'doom.access.log',
   grilling:  'grilling.access.log',
   pizza:     'pizza.access.log',
+  sushi:     'sushi.access.log',
+  tacos:     'tacos.access.log',
+  bbq:       'bbq.access.log',
+  ramen:     'ramen.access.log',
+  pasta:     'pasta.access.log',
+  thai:      'thai.access.log',
+  baking:    'baking.access.log',
+  smoker:    'smoker.access.log',
+  knife:     'knife.access.log',
+  ferment:   'ferment.access.log',
+  wine:      'wine.access.log',
+  beer:      'beer.access.log',
+  cocktails: 'cocktails.access.log',
+  tea:       'tea.access.log',
+  calories:  'calories.access.log',
+  recipe:    'recipe.access.log',
+  spice:     'spice.access.log',
+  market:    'market.access.log',
   docker:    'docker.access.log',
   yaml:      'yaml.access.log',
   kart:      'kart.access.log',
@@ -104,6 +122,7 @@ const LOG_FILES = {
   git:         'git.access.log',
   chess:       'chess.access.log',
   programming: 'programming.access.log',
+  ps1:         'ps1.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   unix:        'unix.access.log',
@@ -120,6 +139,23 @@ const LOG_FILES = {
   pirates:     'pirates.access.log',
   medieval:    'medieval.access.log',
   rome:        'rome.access.log',
+  egypt:       'egypt.access.log',
+  greece:      'greece.access.log',
+  babylon:     'babylon.access.log',
+  aztec:       'aztec.access.log',
+  mongols:     'mongols.access.log',
+  vikings:     'vikings.access.log',
+  crusades:    'crusades.access.log',
+  samurai:     'samurai.access.log',
+  ottoman:     'ottoman.access.log',
+  ww2:         'ww2.access.log',
+  ww1:         'ww1.access.log',
+  revolution:  'revolution.access.log',
+  industrial:  'industrial.access.log',
+  civilwar:    'civilwar.access.log',
+  renaissance: 'renaissance.access.log',
+  silkroad:    'silkroad.access.log',
+  colonial:    'colonial.access.log',
   bbs:         'bbs.access.log',
   dos:         'dos.access.log',
   modem:       'modem.access.log',
@@ -528,9 +564,45 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="passwords">passwords</button>
           <button class="site-opt" data-site="physics">physics</button>
           <button class="site-opt" data-site="pirates">pirates</button>
+          <button class="site-opt" data-site="egypt">egypt</button>
+          <button class="site-opt" data-site="greece">greece</button>
+          <button class="site-opt" data-site="babylon">babylon</button>
+          <button class="site-opt" data-site="aztec">aztec</button>
+          <button class="site-opt" data-site="mongols">mongols</button>
+          <button class="site-opt" data-site="vikings">vikings</button>
+          <button class="site-opt" data-site="crusades">crusades</button>
+          <button class="site-opt" data-site="samurai">samurai</button>
+          <button class="site-opt" data-site="ottoman">ottoman</button>
+          <button class="site-opt" data-site="ww2">ww2</button>
+          <button class="site-opt" data-site="ww1">ww1</button>
+          <button class="site-opt" data-site="revolution">revolution</button>
+          <button class="site-opt" data-site="industrial">industrial</button>
+          <button class="site-opt" data-site="civilwar">civilwar</button>
+          <button class="site-opt" data-site="renaissance">renaissance</button>
+          <button class="site-opt" data-site="silkroad">silkroad</button>
+          <button class="site-opt" data-site="colonial">colonial</button>
           <button class="site-opt" data-site="pizza">pizza</button>
+          <button class="site-opt" data-site="sushi">sushi</button>
+          <button class="site-opt" data-site="tacos">tacos</button>
+          <button class="site-opt" data-site="bbq">bbq</button>
+          <button class="site-opt" data-site="ramen">ramen</button>
+          <button class="site-opt" data-site="pasta">pasta</button>
+          <button class="site-opt" data-site="thai">thai</button>
+          <button class="site-opt" data-site="baking">baking</button>
+          <button class="site-opt" data-site="smoker">smoker</button>
+          <button class="site-opt" data-site="knife">knife</button>
+          <button class="site-opt" data-site="ferment">ferment</button>
+          <button class="site-opt" data-site="wine">wine</button>
+          <button class="site-opt" data-site="beer">beer</button>
+          <button class="site-opt" data-site="cocktails">cocktails</button>
+          <button class="site-opt" data-site="tea">tea</button>
+          <button class="site-opt" data-site="calories">calories</button>
+          <button class="site-opt" data-site="recipe">recipe</button>
+          <button class="site-opt" data-site="spice">spice</button>
+          <button class="site-opt" data-site="market">market</button>
           <button class="site-opt" data-site="poker">poker</button>
           <button class="site-opt" data-site="programming">programming</button>
+          <button class="site-opt" data-site="ps1">ps1</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
           <button class="site-opt" data-site="network">network</button>

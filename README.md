@@ -12,6 +12,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [linux.ximg.app](https://linux.ximg.app) | Browser terminal powered by xterm.js with ~20 mock shell commands and a DVD-bouncing Tux mascot. |
 | [ai.ximg.app](https://ai.ximg.app) | Artificial Intelligence deep dive — frontier LLMs, leading AI companies, 75-year history from Turing to ChatGPT, and core concepts explained. |
 | [claude.ximg.app](https://claude.ximg.app) | Anthropic's Claude AI assistant — model family (Haiku/Sonnet/Opus), Constitutional AI, API quick-start, and Claude Code CLI reference. |
+| [ps1.ximg.app](https://ps1.ximg.app) | Interactive bash PS1 prompt generator — 15 prebuilt themes, live terminal preview, drag-to-reorder components, color pickers, and one-click copy. |
 | [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns. |
 | [bsd.ximg.app](https://bsd.ximg.app) | Berkeley Software Distribution — the OS that gave the internet TCP/IP, OpenSSH, and ZFS. FreeBSD, OpenBSD, NetBSD, DragonFly, history, and the BSD in every Mac and PlayStation. |
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash. |
@@ -202,6 +203,23 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ximg.app/uart/](https://ximg.app/uart/) | UART frame visualizer (start/data/parity/stop bits), baud rate and timing calculator, RS-232 vs TTL vs RS-485 comparison, Arduino serial code examples, and parity explanation. |
 | [ximg.app/voltage/](https://ximg.app/voltage/) | Voltage divider calculator with find-R1/R2 solver, logic level converter reference and IC guide, standard voltage levels (TTL/LVCMOS/RS-232/LVDS), unit converter with dBV/dBu/dBm, and AC mains voltage calculator. |
 | [ximg.app/antenna/](https://ximg.app/antenna/) | Antenna design calculator for dipole, quarter-wave vertical, Yagi-Uda, and patch antennas — wavelength/frequency converter, gain reference, coax impedance guide, and antenna type comparison. |
+| [egypt.ximg.app](https://egypt.ximg.app) | Ancient Egypt — pharaohs, pyramids, hieroglyphs, Nile civilization, interactive hieroglyph canvas. |
+| [greece.ximg.app](https://greece.ximg.app) | Ancient Greece — city-states, philosophers, Olympics, democracy, interactive athlete simulation. |
+| [babylon.ximg.app](https://babylon.ximg.app) | Ancient Babylon — Hammurabi's Code, Mesopotamian kings, ziggurats, interactive ziggurat builder. |
+| [aztec.ximg.app](https://aztec.ximg.app) | Aztec Empire — Tenochtitlan, gods, Tonalpohualli calendar, interactive Sun Stone animation. |
+| [mongols.ximg.app](https://mongols.ximg.app) | Mongol Empire — Genghis Khan, conquests, Silk Road, interactive cavalry horde canvas. |
+| [vikings.ximg.app](https://vikings.ximg.app) | Viking Age — Norse explorers, longships, Northern Lights, interactive fleet canvas. |
+| [crusades.ximg.app](https://crusades.ximg.app) | The Crusades — holy wars, knightly orders, Jerusalem, interactive candlelit city visualization. |
+| [samurai.ximg.app](https://samurai.ximg.app) | Samurai Japan — bushido, shoguns, cherry blossoms, interactive sakura and Mount Fuji canvas. |
+| [ottoman.ximg.app](https://ottoman.ximg.app) | Ottoman Empire — sultans, Constantinople, crescent moon, interactive Istanbul skyline. |
+| [ww2.ximg.app](https://ww2.ximg.app) | World War II — battles, leaders, radar, interactive Chain Home radar sweep visualization. |
+| [ww1.ximg.app](https://ww1.ximg.app) | World War I — trenches, battles, causes (MAIN), interactive Western Front trench scene. |
+| [revolution.ximg.app](https://revolution.ximg.app) | American Revolution — Founding Fathers, famous quotes, interactive waving flag canvas. |
+| [industrial.ximg.app](https://industrial.ximg.app) | Industrial Revolution — inventions, innovators, steam, interactive locomotive with fuel mechanic. |
+| [civilwar.ximg.app](https://civilwar.ximg.app) | American Civil War — Union vs Confederacy, key battles, interactive battlefield canvas. |
+| [renaissance.ximg.app](https://renaissance.ximg.app) | The Renaissance — masters, masterworks, humanism, interactive Vitruvian Man canvas. |
+| [silkroad.ximg.app](https://silkroad.ximg.app) | The Silk Road — oasis cities, trade goods, caravans, interactive camel caravan canvas. |
+| [colonial.ximg.app](https://colonial.ximg.app) | Age of Exploration — navigators, colonial empires, interactive 3D spinning globe with route lines. |
 ## Architecture
 
 ```

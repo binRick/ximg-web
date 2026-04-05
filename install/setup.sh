@@ -178,10 +178,14 @@ DOMAINS=(
   coldwar.ximg.app computers.ximg.app docker.ximg.app doom.ximg.app
   fidonet.ximg.app florida.ximg.app git.ximg.app grilling.ximg.app
   guns.ximg.app ids.ximg.app india.ximg.app internet.ximg.app
+  sushi.ximg.app tacos.ximg.app bbq.ximg.app ramen.ximg.app pasta.ximg.app thai.ximg.app
+  baking.ximg.app smoker.ximg.app knife.ximg.app ferment.ximg.app
+  wine.ximg.app beer.ximg.app cocktails.ximg.app tea.ximg.app
+  calories.ximg.app recipe.ximg.app spice.ximg.app market.ximg.app
   json.ximg.app kart.ximg.app kombat.ximg.app linux.ximg.app
   logs.ximg.app mac.ximg.app mail.ximg.app mario.ximg.app
   monkey.ximg.app moto.ximg.app nav.ximg.app passwords.ximg.app
-  pizza.ximg.app poker.ximg.app programming.ximg.app rx.ximg.app
+  pizza.ximg.app poker.ximg.app programming.ximg.app ps1.ximg.app rx.ximg.app
   simcity.ximg.app stats.ximg.app systemd.ximg.app tampa.ximg.app
   tmux.ximg.app trump.ximg.app vr.ximg.app vt101.ximg.app
   warcraft.ximg.app wargames.ximg.app wood.ximg.app
@@ -191,6 +195,9 @@ DOMAINS=(
   vim.ximg.app http.ximg.app ssh.ximg.app sql.ximg.app
   space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
   pirates.ximg.app medieval.ximg.app rome.ximg.app bbs.ximg.app dos.ximg.app modem.ximg.app commodore.ximg.app
+  egypt.ximg.app greece.ximg.app babylon.ximg.app aztec.ximg.app mongols.ximg.app vikings.ximg.app crusades.ximg.app
+  samurai.ximg.app ottoman.ximg.app ww2.ximg.app ww1.ximg.app revolution.ximg.app industrial.ximg.app
+  civilwar.ximg.app renaissance.ximg.app silkroad.ximg.app colonial.ximg.app
   physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
   dns.ximg.app suricata.ximg.app crypto.ximg.app
   readme.ximg.app
