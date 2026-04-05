@@ -31,7 +31,7 @@
       ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],['rome','rome'],
     ]},
     { label: 'Retro', apps: [
-      ['arpanet','arpanet'],['mainframe','mainframe'],['punch','punch card'],['terminal','terminal'],
+      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['terminal','terminal'],
     ]},
     { label: 'Science', apps: [
       ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['quantum','quantum'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['synth','synth'],['training','training'],['waves','waves'],['world','world']
@@ -124,7 +124,7 @@
   var curPath = window.location.pathname.split('/')[1] || '';
 
   // Apps served via ximg.app/<app>/ path (no individual SSL cert yet)
-  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1,mortgage:1,retire:1,inflation:1,debt:1,budget:1,savings:1,tax:1,stocks:1,options:1,forex:1,dcf:1,rome:1,base64:1,hash:1,diff:1,url:1,curl:1,cidr:1,uuid:1,lorem:1,csv:1,markdown:1,password:1,ssl:1,epoch:1,timespan:1};
+  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1,mortgage:1,retire:1,inflation:1,debt:1,budget:1,savings:1,tax:1,stocks:1,options:1,forex:1,dcf:1,rome:1,bbs:1,dos:1,modem:1,commodore:1,base64:1,hash:1,diff:1,url:1,curl:1,cidr:1,uuid:1,lorem:1,csv:1,markdown:1,password:1,ssl:1,epoch:1,timespan:1};
 
   function appHref(subdomain) {
     return PATH_APPS[subdomain]

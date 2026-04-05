@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modem — The Dial-Up Era</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #020810;
+      --panel:  #040e1c;
+      --teal:   #00b4d8;
+      --bright: #90e0ef;
+      --blue:   #0077b6;
+      --amber:  #ffd166;
+      --text:   #cae9ff;
+      --muted:  #2a4a6a;
+      --card:   rgba(2,8,16,.93);
+      --border: rgba(0,180,216,.18);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 45% at 50% 0%, rgba(0,119,182,.3) 0%, transparent 60%),
+        linear-gradient(180deg, #020810 0%, #010508 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(0,180,216,.012) 0, rgba(0,180,216,.012) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, rgba(0,119,182,.008) 0, rgba(0,119,182,.008) 1px, transparent 1px, transparent 80px);
+    }
+    canvas#modem-canvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; opacity:.12; pointer-events:none; }
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+    /* Hero */
+    .hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .hero-icon { font-size: 4rem; line-height:1; margin-bottom:.75rem; filter:drop-shadow(0 0 20px rgba(0,180,216,.6)); }
+    .hero h1 { font-size: clamp(2rem,5vw,3.2rem); font-weight:700; color:var(--bright); text-shadow:0 0 30px rgba(144,224,239,.35); letter-spacing:-.02em; }
+    .hero-sub { font-size:1rem; color:var(--muted); margin-top:.4rem; font-style:italic; }
+    .hero-dates { display:inline-block; margin-top:.75rem; background:rgba(0,180,216,.1); border:1px solid var(--border); border-radius:6px; padding:.35rem 1rem; font-size:.85rem; color:var(--teal); letter-spacing:.08em; }
+    /* Section */
+    .section-title { font-size:1.1rem; font-weight:700; letter-spacing:.12em; color:var(--teal); text-transform:uppercase; border-bottom:1px solid var(--border); padding-bottom:.5rem; margin-bottom:1.25rem; }
+    /* AT Commands */
+    .at-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
+    .at-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1rem 1.2rem; transition:border-color .2s,transform .2s; }
+    .at-card:hover { border-color:var(--teal); transform:translateY(-2px); }
+    .at-cmd { font-size:1rem; font-weight:700; color:var(--bright); letter-spacing:.05em; }
+    .at-full { font-size:.78rem; color:var(--teal); margin-bottom:.4rem; }
+    .at-desc { font-size:.82rem; color:var(--text); line-height:1.5; }
+    .at-example { font-size:.75rem; color:var(--amber); margin-top:.4rem; font-family:'Courier New',monospace; }
+    /* Baud Timeline */
+    .baud-list { display:flex; flex-direction:column; gap:.75rem; }
+    .baud-row { display:grid; grid-template-columns:120px 1fr; gap:.75rem; align-items:start; }
+    .baud-speed { font-size:.85rem; font-weight:700; color:var(--teal); text-align:right; padding-top:.2rem; }
+    .baud-body { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--blue); border-radius:0 8px 8px 0; padding:.6rem .85rem; }
+    .baud-name { font-size:.88rem; font-weight:700; color:var(--bright); margin-bottom:.2rem; }
+    .baud-desc { font-size:.81rem; color:var(--text); line-height:1.45; }
+    /* Standards */
+    .std-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+    .std-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1rem 1.2rem; }
+    .std-name { font-size:.95rem; font-weight:700; color:var(--bright); }
+    .std-year { font-size:.78rem; color:var(--teal); margin-bottom:.35rem; }
+    .std-desc { font-size:.82rem; color:var(--text); line-height:1.5; }
+    /* ISP Era */
+    .isp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }
+    .isp-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1rem 1.2rem; text-align:center; transition:border-color .2s; }
+    .isp-card:hover { border-color:var(--amber); }
+    .isp-icon { font-size:2rem; margin-bottom:.5rem; }
+    .isp-name { font-size:.95rem; font-weight:700; color:var(--bright); margin-bottom:.3rem; }
+    .isp-desc { font-size:.8rem; color:var(--text); line-height:1.5; }
+    /* Sounds */
+    .sound-wrap { display:flex; flex-direction:column; gap:.75rem; }
+    .sound-row { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:.8rem 1.1rem; }
+    .sound-phase { font-size:.88rem; font-weight:700; color:var(--bright); margin-bottom:.25rem; }
+    .sound-vis { font-family:'Courier New',monospace; font-size:.75rem; color:var(--teal); letter-spacing:.05em; overflow:hidden; white-space:nowrap; margin-bottom:.3rem; }
+    .sound-desc { font-size:.8rem; color:var(--text); line-height:1.45; }
+    /* Timeline */
+    .timeline { display:flex; flex-direction:column; gap:.75rem; }
+    .tl-item { display:grid; grid-template-columns:90px 1fr; gap:.75rem; align-items:start; }
+    .tl-year { font-size:.85rem; font-weight:700; color:var(--teal); text-align:right; padding-top:.15rem; }
+    .tl-body { background:var(--card); border:1px solid var(--border); border-left:3px solid var(--teal); border-radius:0 8px 8px 0; padding:.6rem .85rem; }
+    .tl-title { font-size:.88rem; font-weight:700; color:var(--bright); margin-bottom:.2rem; }
+    .tl-desc { font-size:.81rem; color:var(--text); line-height:1.45; }
+    /* Sub Nav */
+    .sub-nav-wrap { position:sticky; top:0; z-index:100; background:rgba(2,8,16,.92); border-bottom:1px solid var(--border); backdrop-filter:blur(10px); }
+    .sub-nav { max-width:1100px; margin:0 auto; display:flex; flex-wrap:wrap; justify-content:center; gap:.15rem; padding:.45rem .75rem; }
+    .sub-nav a { color:var(--muted); text-decoration:none; font-size:.78rem; letter-spacing:.06em; padding:.35rem .75rem; border-radius:5px; border:1px solid transparent; transition:color .18s,border-color .18s,background .18s; white-space:nowrap; }
+    .sub-nav a:hover, .sub-nav a.active { color:var(--bright); border-color:var(--border); background:rgba(0,180,216,.07); }
+    .page-section { display:none; }
+    .page-section.visible { display:block; }
+    @media(max-width:600px) { .tl-item{grid-template-columns:60px 1fr;} .baud-row{grid-template-columns:80px 1fr;} }
+  </style>
+</head>
+<body>
+<canvas id="modem-canvas"></canvas>
+
+<nav class="sub-nav-wrap">
+  <div class="sub-nav">
+    <a href="#at">⌨ AT Commands</a>
+    <a href="#baud">📈 Baud Rates</a>
+    <a href="#standards">📋 Standards</a>
+    <a href="#isp">🌐 ISP Era</a>
+    <a href="#sounds">🔊 The Sound</a>
+    <a href="#timeline">📜 Timeline</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-icon">📡</div>
+    <h1>The Dial-Up Era</h1>
+    <div class="hero-sub">Acoustic couplers, screeching handshakes, and the world at 56,000 bits per second</div>
+    <div class="hero-dates">1958 – 2013</div>
+  </div>
+
+  <!-- AT Commands -->
+  <div id="at" class="page-section">
+    <div class="section-title">The AT Command Set</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">Hayes Microcomputer Products introduced the AT command set with the Smartmodem 300 in 1981. "AT" means "attention" — every command begins with it. The standard was so successful it became universal, used by virtually every dial-up modem ever made.</p>
+    <div class="at-grid">
+      <div class="at-card">
+        <div class="at-cmd">ATD</div>
+        <div class="at-full">Dial</div>
+        <div class="at-desc">Dial a phone number. ATDT for tone dialing, ATDP for pulse. The most-used command of the dial-up era.</div>
+        <div class="at-example">ATDT5551234  →  dials 555-1234</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATH</div>
+        <div class="at-full">Hook control</div>
+        <div class="at-desc">ATH0 hangs up the phone line. ATH1 goes off-hook (picks up). Parents used ATH0 to kick kids offline.</div>
+        <div class="at-example">ATH0  →  disconnect</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATA</div>
+        <div class="at-full">Answer</div>
+        <div class="at-desc">Manually answer an incoming call. Usually handled automatically by auto-answer register S0.</div>
+        <div class="at-example">ATA  →  answer ringing line</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATZ</div>
+        <div class="at-full">Reset</div>
+        <div class="at-desc">Reset modem to stored profile. First command in almost every init string. Clears any previous state.</div>
+        <div class="at-example">ATZ  →  OK</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">AT&amp;F</div>
+        <div class="at-full">Factory defaults</div>
+        <div class="at-desc">Load factory default settings. Used when modem is behaving strangely. Clears all custom S-register values.</div>
+        <div class="at-example">AT&amp;F  →  OK</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATI</div>
+        <div class="at-full">Identify</div>
+        <div class="at-desc">Report modem information. ATI0=product code, ATI3=firmware version, ATI4=current settings. Useful for diagnostics.</div>
+        <div class="at-example">ATI3  →  V1.6 Rockwell</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATE</div>
+        <div class="at-full">Echo</div>
+        <div class="at-desc">ATE1 echoes typed characters back (default). ATE0 disables echo. Important when terminal software handles its own display.</div>
+        <div class="at-example">ATE0  →  no local echo</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATM</div>
+        <div class="at-full">Speaker mode</div>
+        <div class="at-desc">ATM0 = speaker always off. ATM1 = on until connected (default). ATM2 = always on. M0 was used at night to avoid waking family.</div>
+        <div class="at-example">ATM0  →  silent modem</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATL</div>
+        <div class="at-full">Speaker volume</div>
+        <div class="at-desc">ATL0=low, ATL1=low, ATL2=medium, ATL3=high. Combined with ATM1 to control the infamous connection screech.</div>
+        <div class="at-example">ATL0M1  →  quiet connect</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">ATS0</div>
+        <div class="at-full">Auto-answer rings</div>
+        <div class="at-desc">S0=0 disables auto-answer. S0=1 answers on first ring. BBS sysops set ATS0=1 so the modem picked up automatically.</div>
+        <div class="at-example">ATS0=1  →  auto-answer</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">AT+MS</div>
+        <div class="at-full">Modulation select</div>
+        <div class="at-desc">Modern command to force specific modulation standard (V.34, V.90, etc.). Used to troubleshoot slow connections.</div>
+        <div class="at-example">AT+MS=V90  →  56K only</div>
+      </div>
+      <div class="at-card">
+        <div class="at-cmd">AT&amp;W</div>
+        <div class="at-full">Write profile</div>
+        <div class="at-desc">Save current settings to non-volatile RAM. Survives power off. AT&amp;W0 saves to profile 0, AT&amp;W1 to profile 1.</div>
+        <div class="at-example">AT&amp;W0  →  saved</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Baud Rates -->
+  <div id="baud" class="page-section">
+    <div class="section-title">Baud Rate History</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">"Baud" (named for Émile Baudot) measures symbols per second. At low speeds, baud = bits per second. Above 2400 baud, multiple bits per symbol made bps > baud. The race from 300 to 56,000 bps took 25 years of relentless innovation.</p>
+    <div class="baud-list">
+      <div class="baud-row">
+        <div class="baud-speed">300 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">Bell 103 / V.21 — 1962–1981</div>
+          <div class="baud-desc">The acoustic coupler era. AT&amp;T Bell 103 used frequency-shift keying (FSK). 300 bps = ~30 characters per second — you could read it as fast as it arrived. Modems fit in a desk drawer, with rubber cups for the handset.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">1,200 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">Bell 212A / V.22 — 1980</div>
+          <div class="baud-desc">First major speed jump. Phase-shift keying (PSK) encoded 2 bits per symbol. Transformed BBS usage — text scrolled faster than you could read. The Hayes Smartmodem 1200 ($699 in 1981) became the standard.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">2,400 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">V.22bis — 1984</div>
+          <div class="baud-desc">QAM encoding. Became the dominant BBS speed through the late 1980s. Most BBS software was designed around 2400 bps. A 1.44MB floppy took ~80 minutes to download. External modems blinked reassuringly.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">9,600 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">V.32 — 1984 (affordable by ~1991)</div>
+          <div class="baud-desc">Echo cancellation made full-duplex 9600 possible on ordinary phone lines. Trellis-coded modulation (TCM). Originally cost $1,000+; fell to $200 by 1991. The speed that made large file transfers actually practical.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">14,400 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">V.32bis — 1991</div>
+          <div class="baud-desc">Added higher modulation to V.32. Combined with V.42bis compression (4:1 ratio), effective throughput could reach ~57,600 bps on compressible data. The sweet spot for early internet dialup. A 1.44MB floppy: ~14 minutes.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">28,800 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">V.34 — 1994</div>
+          <div class="baud-desc">Full V.34 spec pushed to 28.8 then 33.6 kbps. Near the theoretical Shannon limit for analog phone lines (~35 kbps). Trellis coding, precoding, and line probing. The ISP era's workhorse modem speed.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">56,000 bps</div>
+        <div class="baud-body">
+          <div class="baud-name">V.90 / K56flex / X2 — 1998</div>
+          <div class="baud-desc">Exploited the digital-to-analog conversion at the ISP end. Downloads could reach ~53 kbps (FCC limited to 53 kbps); uploads still limited to 33.6 kbps. X2 (US Robotics) and K56flex (Rockwell) warred until V.90 standardized in 1998.</div>
+        </div>
+      </div>
+      <div class="baud-row">
+        <div class="baud-speed">∞ DSL / Cable</div>
+        <div class="baud-body">
+          <div class="baud-name">Broadband — 1999 onward</div>
+          <div class="baud-desc">DSL used the high-frequency range of phone lines (above voice). Cable used TV coax. Both were always-on — no dialing, no busy signals, no tying up the phone. By 2002, broadband exceeded dialup subscribers in the US. The modem era ended quietly.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Standards -->
+  <div id="standards" class="page-section">
+    <div class="section-title">ITU Modem Standards</div>
+    <div class="std-grid">
+      <div class="std-card">
+        <div class="std-name">V.21</div>
+        <div class="std-year">1964 · 300 bps · FSK</div>
+        <div class="std-desc">First international modem standard. Frequency-shift keying — two audio tones represent 0 and 1. Used by early acoustic coupler modems. Still used today for fax preambles.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">V.22 / V.22bis</div>
+        <div class="std-year">1980 · 1200 / 2400 bps · PSK / QAM</div>
+        <div class="std-desc">Phase-shift keying at 1200; V.22bis added QAM for 2400 bps. The BBS golden age standards. Backward compatible — two modems negotiated the fastest common speed.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">V.32 / V.32bis</div>
+        <div class="std-year">1984 · 9600 / 14400 bps · QAM + TCM</div>
+        <div class="std-desc">Full-duplex using echo cancellation. Trellis-coded modulation added error detection into the modulation itself. V.32bis extended to 14.4 kbps in 1991. Enabled practical internet dial-up.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">V.34</div>
+        <div class="std-year">1994 · 28800–33600 bps</div>
+        <div class="std-desc">The most sophisticated analog standard. Line probing (training sequence) at connection to measure line quality. Shaped constellation encoding adapts to line conditions. Near theoretical maximum for analog POTS.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">V.42 / V.42bis</div>
+        <div class="std-year">1989 · Error correction + Compression</div>
+        <div class="std-desc">V.42 added LAPM error correction (retransmit corrupt packets). V.42bis added LZW compression up to 4:1 ratio. Combined, a 14.4k modem could push ~57.6 kbps of compressible text. Critical for BBS file transfers.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">V.90 / V.92</div>
+        <div class="std-year">1998 / 2000 · 53 kbps down / 48 kbps up</div>
+        <div class="std-desc">V.90 exploited digital ISP connections for asymmetric speed. V.92 added Modem-on-Hold (pause dial-up for incoming calls) and faster handshake. The final chapter of analog modem evolution.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">MNP Classes</div>
+        <div class="std-year">1984 · Microcom Networking Protocol</div>
+        <div class="std-desc">Proprietary Microcom standard, later adopted widely. MNP 4 = error correction. MNP 5 = 2:1 compression. MNP 10 = adverse channel enhancements for noisy lines. Competed with V.42 until V.42 won.</div>
+      </div>
+      <div class="std-card">
+        <div class="std-name">V.8 / V.8bis</div>
+        <div class="std-year">1994 · Handshake negotiation</div>
+        <div class="std-desc">The protocol for negotiating which data standard to use during the connection handshake. The screeching tones you heard were modems exchanging V.8 capability advertisements before settling on a speed.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ISP Era -->
+  <div id="isp" class="page-section">
+    <div class="section-title">The ISP Era</div>
+    <div class="isp-grid">
+      <div class="isp-card">
+        <div class="isp-icon">📀</div>
+        <div class="isp-name">AOL</div>
+        <div class="isp-desc">America Online mailed 1 billion free trial CDs. At peak (2002), 35 million subscribers. "You've Got Mail." The training wheels of the internet. $21.95/month for unlimited access. Buying Time Warner for $164B in 2000 became history's worst acquisition.</div>
+      </div>
+      <div class="isp-card">
+        <div class="isp-icon">☎</div>
+        <div class="isp-name">CompuServe</div>
+        <div class="isp-desc">The original online service (1969). CIS addresses like 71234,567 preceded email. GIF format invented here (1987). Forums for every interest. Acquired by AOL in 1998. Beloved by technically-minded users.</div>
+      </div>
+      <div class="isp-card">
+        <div class="isp-icon">🌩</div>
+        <div class="isp-name">Prodigy</div>
+        <div class="isp-desc">IBM & Sears joint venture (1988). Graphical interface over dial-up. 2 million subscribers by 1992. Famous for family-friendly content filtering and bright, blocky graphics. Killed by the web.</div>
+      </div>
+      <div class="isp-card">
+        <div class="isp-icon">🔌</div>
+        <div class="isp-name">The World (TIAC)</div>
+        <div class="isp-desc">First commercial internet dial-up ISP in the US (1989). Based in Brookline, MA. Shell accounts with UNIX commands. Dial in at 9600 baud, use Gopher, Lynx, IRC, and early email. For the technically adventurous.</div>
+      </div>
+      <div class="isp-card">
+        <div class="isp-icon">📞</div>
+        <div class="isp-name">NetZero / Juno</div>
+        <div class="isp-desc">Free dial-up in exchange for displaying ads. Popular in late 1990s for budget internet access. NetZero boasted 10 million users in 2002. Ad-supported model eventually collapsed; pivoted to low-cost $9.95/month service.</div>
+      </div>
+      <div class="isp-card">
+        <div class="isp-icon">🏃</div>
+        <div class="isp-name">The Busy Signal</div>
+        <div class="isp-desc">The most hated sound of the 1990s. ISPs needed enough phone lines (POPs) to serve all users — miscalculate and every dial attempt hit a busy signal. "AOL busy signal" was a national meme. Drove demand for broadband.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Sound -->
+  <div id="sounds" class="page-section">
+    <div class="section-title">The Sound of Connecting</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">The handshake sequence between two modems was a precise choreography of tones, each phase serving a technical purpose. Generation X and Millennials can identify it instantly.</p>
+    <div class="sound-wrap">
+      <div class="sound-row">
+        <div class="sound-phase">Phase 1 — Dial Tone &amp; Dialing</div>
+        <div class="sound-vis">──────────────────  DTMF tones  ──────────────────</div>
+        <div class="sound-desc">Modem goes off-hook and detects dial tone. ATDT command sends dual-tone multi-frequency (DTMF) signals — the same tones as pressing digits on a touchtone phone. A phone on the same line would ring once.</div>
+      </div>
+      <div class="sound-row">
+        <div class="sound-phase">Phase 2 — Remote Ringing &amp; Answer</div>
+        <div class="sound-vis">ring... ring... BONG (answer tone 2100 Hz)</div>
+        <div class="sound-desc">The remote modem (at your ISP or BBS) detects the incoming call. It answers and sends a 2100 Hz answer tone (the distinctive single high-pitched "bong"). This tells the calling modem it's talking to another modem, not a person.</div>
+      </div>
+      <div class="sound-row">
+        <div class="sound-phase">Phase 3 — V.8 Capability Exchange</div>
+        <div class="sound-vis">~~~~~  ci tone  ~~~~~  answer sequence  ~~~~~</div>
+        <div class="sound-desc">The screech begins. Both modems broadcast their V.8 capability lists — which standards they support (V.34, V.42, MNP, etc.). This sounds like rapid alternating tones. The modems are introducing themselves and negotiating protocols.</div>
+      </div>
+      <div class="sound-row">
+        <div class="sound-phase">Phase 4 — Training &amp; Line Probing</div>
+        <div class="sound-vis">SCREEEEEEEEEEEE  ←  carrier tones  →  WHEEEEEEE</div>
+        <div class="sound-desc">The loudest phase. Modems exchange known training sequences to measure the phone line's characteristics — noise floor, signal attenuation, frequency response. The modem uses this to select optimal symbol rate, constellation size, and precoding.</div>
+      </div>
+      <div class="sound-row">
+        <div class="sound-phase">Phase 5 — Rate Negotiation &amp; Sync</div>
+        <div class="sound-vis">▓▓░░▓░▓▓░░▓░▓▓░░▓░  (bit sync pattern)</div>
+        <div class="sound-desc">Final speed negotiation. Both modems agree on the fastest mutually-supported speed the line can sustain. Bit synchronization is established. Error correction layer (V.42) performs its own handshake.</div>
+      </div>
+      <div class="sound-row">
+        <div class="sound-phase">Phase 6 — CONNECT</div>
+        <div class="sound-vis">CONNECT 33600  →  speaker off  →  silence</div>
+        <div class="sound-desc">The modem reports "CONNECT 33600" (or whatever speed was negotiated) to the terminal software. Speaker cuts out. The data session begins. That distinctive silence after the screech was the sound of the internet arriving.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div id="timeline" class="page-section">
+    <div class="section-title">Timeline of the Modem</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">1958</div>
+        <div class="tl-body">
+          <div class="tl-title">SAGE — First Modem</div>
+          <div class="tl-desc">The US Air Force Semi-Automatic Ground Environment (SAGE) air defense system uses modems to transmit radar data over phone lines. IBM builds the first commercial modem. Not intended for consumers — each unit is the size of a refrigerator.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1962</div>
+        <div class="tl-body">
+          <div class="tl-title">Bell 103 — 300 bps for the Masses</div>
+          <div class="tl-desc">AT&amp;T introduces the Bell 103 modem. 300 bps full-duplex over standard phone lines. Acoustic couplers allow any phone to be used. University researchers start connecting computers to the ARPANET. The era of personal data communication begins.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1978</div>
+        <div class="tl-body">
+          <div class="tl-title">Ward Christensen's MODEM.ASM</div>
+          <div class="tl-desc">Ward Christensen writes MODEM.ASM, the first public-domain file transfer program. Simultaneously creates CBBS, the first BBS. XMODEM protocol allows reliable file transfers. The foundation of hobbyist modem culture is laid.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1981</div>
+        <div class="tl-body">
+          <div class="tl-title">Hayes Smartmodem — AT Commands Born</div>
+          <div class="tl-desc">Hayes Microcomputer Products releases the Smartmodem 300. A microprocessor inside the modem interprets AT commands from software — no manual switches needed. Priced at $299. The AT command set becomes the universal standard for the next 30 years.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1991</div>
+        <div class="tl-body">
+          <div class="tl-title">14.4K — Internet Becomes Usable</div>
+          <div class="tl-desc">V.32bis modems at 14,400 bps become affordable (~$200). Combined with V.42bis compression, throughput reaches ~57 kbps for text. Graphical web browsers like Mosaic (1993) become practical. The ISP industry explodes. AOL begins mass-mailing floppy disks (later CDs).</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1996</div>
+        <div class="tl-body">
+          <div class="tl-title">56K Wars — X2 vs K56flex</div>
+          <div class="tl-desc">US Robotics launches X2 (57.6 kbps). Rockwell counters with K56flex. Both proprietary, incompatible. ISPs must support both. Consumers must choose sides. The FCC caps downloads at 53 kbps (to protect phone network integrity).</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1998</div>
+        <div class="tl-body">
+          <div class="tl-title">V.90 — 56K Standard Agreed</div>
+          <div class="tl-desc">ITU ratifies V.90, ending the 56K format war. Most X2 and K56flex modems receive firmware updates. 56K modems become the universal standard. ADSL DSL and cable internet exist but cost $50–80/month — still premium.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">2001</div>
+        <div class="tl-body">
+          <div class="tl-title">Broadband Crosses 10 Million US Subscribers</div>
+          <div class="tl-desc">DSL and cable internet prices drop below $30/month. Always-on connections eliminate the ritual of dialing in. "Disconnecting mom from the internet" becomes impossible. Teenage phone lines across America finally ring again.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">2013</div>
+        <div class="tl-body">
+          <div class="tl-title">Dial-Up's Last Stand</div>
+          <div class="tl-desc">AOL still reports 2.5 million dial-up subscribers in 2013. Rural areas without cable or DSL infrastructure keep dial-up alive. NetZero and AOL continue selling service. The final holdouts are in areas where broadband still hasn't arrived — some 20 million Americans as of 2020.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var SECTIONS = ['at','baud','standards','isp','sounds','timeline'];
+var navLinks = document.querySelectorAll('.sub-nav a');
+function showSection(id) {
+  SECTIONS.forEach(function(s){ var el=document.getElementById(s); if(el) el.classList.toggle('visible',s===id); });
+  navLinks.forEach(function(a){ a.classList.toggle('active',a.getAttribute('href')==='#'+id); });
+}
+navLinks.forEach(function(a){
+  a.addEventListener('click',function(e){
+    e.preventDefault();
+    var id=a.getAttribute('href').slice(1);
+    history.replaceState(null,'','#'+id);
+    showSection(id);
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+var initial=location.hash.slice(1)||'at';
+if(SECTIONS.indexOf(initial)===-1) initial='at';
+showSection(initial);
+
+// Canvas — oscilloscope-style waveform
+var canvas=document.getElementById('modem-canvas');
+var ctx=canvas.getContext('2d');
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+resize(); window.addEventListener('resize',resize);
+var t=0;
+function drawFrame(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  var lines=6;
+  for(var l=0;l<lines;l++){
+    var y=canvas.height*(l+1)/(lines+1);
+    var freq=0.02+l*0.015;
+    var amp=18+l*6;
+    ctx.beginPath();
+    ctx.strokeStyle='rgba(0,180,216,0.06)';
+    ctx.lineWidth=1.5;
+    for(var x=0;x<canvas.width;x++){
+      var vy=y+amp*Math.sin(freq*x+t+l*0.8)+amp*0.4*Math.sin(freq*2.1*x+t*1.3);
+      if(x===0) ctx.moveTo(x,vy); else ctx.lineTo(x,vy);
+    }
+    ctx.stroke();
+  }
+  t+=0.012;
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

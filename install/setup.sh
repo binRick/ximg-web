@@ -190,7 +190,7 @@ DOMAINS=(
   nagios.ximg.app status.ximg.app
   vim.ximg.app http.ximg.app ssh.ximg.app sql.ximg.app
   space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
-  pirates.ximg.app medieval.ximg.app rome.ximg.app
+  pirates.ximg.app medieval.ximg.app rome.ximg.app bbs.ximg.app dos.ximg.app modem.ximg.app commodore.ximg.app
   physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
   dns.ximg.app suricata.ximg.app crypto.ximg.app
   readme.ximg.app

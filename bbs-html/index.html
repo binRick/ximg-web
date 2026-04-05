@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BBS — Bulletin Board Systems</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #020a02;
+      --panel:  #040e04;
+      --green:  #00c853;
+      --bright: #69f0ae;
+      --amber:  #ffd740;
+      --text:   #b8d4b0;
+      --muted:  #3a5a3a;
+      --card:   rgba(2,10,2,.93);
+      --border: rgba(0,200,83,.18);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 100% 50% at 50% 0%, rgba(0,200,83,.18) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 40% at 20% 90%, rgba(0,100,40,.15) 0%, transparent 60%),
+        linear-gradient(180deg, #020a02 0%, #010601 100%);
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(0,200,83,.015) 0, rgba(0,200,83,.015) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, rgba(0,200,83,.008) 0, rgba(0,200,83,.008) 1px, transparent 1px, transparent 80px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Canvas ── */
+    #bbs-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; opacity: 0.13; pointer-events: none;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .hero-icon { font-size: 4rem; line-height: 1; margin-bottom: .75rem; filter: drop-shadow(0 0 24px rgba(0,200,83,.6)); }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
+      letter-spacing: -.01em; color: var(--bright);
+      text-shadow: 0 0 30px rgba(105,240,174,.4);
+    }
+    .hero-spqr {
+      font-size: 1rem; color: var(--green); margin-top: .35rem;
+      letter-spacing: .2em;
+    }
+    .hero-sub { font-size: 1rem; color: var(--muted); margin-top: .35rem; font-style: italic; }
+    .hero-dates {
+      display: inline-block; margin-top: .75rem;
+      background: rgba(0,200,83,.08); border: 1px solid var(--border);
+      border-radius: 6px; padding: .35rem 1rem;
+      font-size: .85rem; color: var(--green); letter-spacing: .08em; font-style: normal;
+    }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: .12em;
+      color: var(--green); text-transform: uppercase;
+      border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.25rem;
+    }
+
+    /* ── Generic card grid ── */
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.1rem 1.2rem; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: var(--green); transform: translateY(-2px); }
+    .card-name { font-size: 1rem; font-weight: 700; color: var(--bright); }
+    .card-sub  { font-size: .78rem; color: var(--green); margin-bottom: .45rem; }
+    .card-desc { font-size: .82rem; color: var(--text); line-height: 1.55; }
+    .card-tag  {
+      display: inline-block; margin-top: .55rem; padding: .2rem .55rem;
+      font-size: .72rem; border-radius: 4px; font-weight: 700;
+    }
+    .tag-hit   { background: rgba(0,200,83,.15); color: var(--bright); border: 1px solid rgba(0,200,83,.3); }
+    .tag-soft  { background: rgba(255,215,64,.1); color: var(--amber); border: 1px solid rgba(255,215,64,.25); }
+    .tag-net   { background: rgba(0,120,200,.15); color: #55cfff; border: 1px solid rgba(0,120,200,.3); }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: .75rem; }
+    .tl-item {
+      display: grid; grid-template-columns: 110px 1fr;
+      gap: .75rem; align-items: start;
+    }
+    .tl-year {
+      font-size: .85rem; font-weight: 700; color: var(--green);
+      padding-top: .15rem; text-align: right;
+    }
+    .tl-body {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;
+      padding: .6rem .85rem;
+    }
+    .tl-title { font-size: .88rem; font-weight: 700; color: var(--bright); margin-bottom: .2rem; }
+    .tl-desc  { font-size: .81rem; color: var(--text); line-height: 1.45; }
+
+    /* ── Hierarchy tiers ── */
+    .hier { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+    .hier-tier {
+      border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+      padding: .7rem 1.5rem; text-align: center; transition: border-color .2s;
+    }
+    .hier-tier:hover { border-color: var(--green); }
+    .hier-tier.h1 { width: 40%; background: rgba(0,200,83,.12); }
+    .hier-tier.h2 { width: 55%; }
+    .hier-tier.h3 { width: 68%; background: rgba(0,200,83,.06); }
+    .hier-tier.h4 { width: 80%; }
+    .hier-tier.h5 { width: 92%; background: rgba(0,50,20,.4); }
+    .hier-tier.h6 { width: 100%; background: rgba(0,30,10,.5); }
+    .ht-title { font-size: .95rem; font-weight: 700; color: var(--bright); }
+    .ht-desc  { font-size: .8rem; color: var(--text); margin-top: .2rem; }
+    .ht-arrow { text-align: center; font-size: .9rem; color: rgba(0,200,83,.4); }
+
+    /* ── ANSI art block ── */
+    .ansi-demo {
+      background: #000; border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.25rem 1.5rem; overflow-x: auto; margin-bottom: 1.25rem;
+    }
+    .ansi-demo pre {
+      font-family: 'Courier New', monospace; font-size: .78rem; line-height: 1.35;
+      white-space: pre; color: var(--green);
+    }
+    .ansi-bright { color: var(--bright); }
+    .ansi-amber  { color: var(--amber); }
+    .ansi-red    { color: #ff5555; }
+    .ansi-cyan   { color: #55ffff; }
+    .ansi-white  { color: #ffffff; }
+    .ansi-dim    { color: #336633; }
+
+    /* ── Info prose ── */
+    .prose { font-size: .88rem; line-height: 1.7; color: var(--text); }
+    .prose + .prose { margin-top: .85rem; }
+    .prose strong { color: var(--bright); }
+    .prose em { color: var(--green); font-style: normal; }
+
+    /* ── Fact row ── */
+    .fact-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .85rem;
+      margin-bottom: 1.25rem;
+    }
+    .fact-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: .85rem 1rem; text-align: center;
+    }
+    .fact-num  { font-size: 1.6rem; font-weight: 700; color: var(--bright); line-height: 1; }
+    .fact-label{ font-size: .75rem; color: var(--muted); margin-top: .3rem; letter-spacing: .05em; }
+
+    /* ── FidoNet address ── */
+    .fido-addr {
+      display: inline-block; background: #000; border: 1px solid var(--border);
+      border-radius: 5px; padding: .3rem .8rem; color: var(--amber);
+      font-size: .88rem; letter-spacing: .06em; margin: .35rem 0;
+    }
+
+    /* ── Sub Nav ── */
+    .sub-nav-wrap {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(2,10,2,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .sub-nav {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: .15rem; padding: .45rem .75rem;
+    }
+    .sub-nav a {
+      color: var(--muted); text-decoration: none;
+      font-family: 'Courier New', monospace; font-size: .78rem;
+      letter-spacing: .06em; padding: .35rem .75rem;
+      border-radius: 5px; border: 1px solid transparent;
+      transition: color .18s, border-color .18s, background .18s;
+      white-space: nowrap;
+    }
+    .sub-nav a:hover, .sub-nav a.active {
+      color: var(--bright); border-color: var(--border);
+      background: rgba(0,200,83,.07);
+    }
+
+    .page-section { display: none; }
+    .page-section.visible { display: block; }
+
+    @media (max-width: 600px) {
+      .tl-item { grid-template-columns: 70px 1fr; }
+      .hier-tier { width: 100% !important; }
+      .sub-nav a { font-size: .72rem; padding: .3rem .5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bbs-canvas"></canvas>
+
+<nav class="sub-nav-wrap">
+  <div class="sub-nav">
+    <a href="#history">💾 History</a>
+    <a href="#ansi">🎨 ANSI Art</a>
+    <a href="#doors">🚪 Door Games</a>
+    <a href="#software">🖥 Software</a>
+    <a href="#fidonet">🌐 FidoNet</a>
+    <a href="#timeline">📜 Timeline</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon">💾</div>
+    <h1>Bulletin Board Systems</h1>
+    <div class="hero-spqr">THE UNDERGROUND INTERNET BEFORE THE INTERNET</div>
+    <div class="hero-sub">Sysops, door games, ANSI art, and 2400 baud connections</div>
+    <div class="hero-dates">1978 – 1998</div>
+  </div>
+
+  <!-- History -->
+  <div id="history" class="page-section">
+    <div class="section-title">How BBSs Worked</div>
+
+    <div class="fact-row">
+      <div class="fact-box"><div class="fact-num">60,000+</div><div class="fact-label">BBSs in North America at peak (~1993)</div></div>
+      <div class="fact-box"><div class="fact-num">2,400</div><div class="fact-label">Typical baud rate (bits/sec) — early 1990s</div></div>
+      <div class="fact-box"><div class="fact-num">1978</div><div class="fact-label">Year CBBS launched — the very first BBS</div></div>
+      <div class="fact-box"><div class="fact-num">35,000</div><div class="fact-label">FidoNet nodes at peak (1996)</div></div>
+    </div>
+
+    <p class="prose">A <strong>Bulletin Board System</strong> was a computer system running specialized software that allowed users to connect via a <em>telephone line</em> and a <em>modem</em>. You dialed directly into the host PC — there was no internet, no routing, just a point-to-point call from your modem to theirs. If the line was busy you got a busy signal and had to try again. BBSs were the social networks, file-sharing platforms, news feeds, and gaming arcades of their era, all rolled into one.</p>
+
+    <p class="prose">The first BBS, <strong>CBBS</strong> (Computerized Bulletin Board System), was created by <strong>Ward Christensen</strong> and <strong>Randy Suess</strong> in <em>Chicago</em> during a blizzard in February 1978. Suess built the hardware; Christensen wrote the software in one weekend. It went live on February 16, 1978, and allowed one caller at a time to leave messages and read messages from others — exactly like a physical bulletin board.</p>
+
+    <p class="prose">By the early 1990s, BBSs had evolved far beyond simple message boards. A typical BBS offered: <strong>message bases</strong> (threaded public discussions organized by topic), <strong>file libraries</strong> (shareware, freeware, and cracked software organized by category), <strong>door games</strong> (external programs that ran off the BBS and let multiple users compete), <strong>live chat</strong> (real-time multi-user chat rooms), and <strong>networked mail</strong> via FidoNet. A well-run BBS was a genuine community — many users called every day and built lasting friendships.</p>
+
+    <p class="prose">Connection speeds evolved dramatically over the BBS era. Early systems ran at <strong>300 baud</strong> (about 30 characters per second — barely faster than a teletype). By the late 1980s, 2,400 baud was standard. By the early 1990s, 9,600 and 14,400 baud modems were common. At 2,400 baud, downloading a 360KB floppy image took about 20 minutes. At 14,400, the same file took under 4 minutes. Sysops with 28,800 baud lines were considered to be running cutting-edge systems.</p>
+
+    <p class="prose">The <strong>sysop</strong> (system operator) was the person who owned and ran the BBS — their home PC, their phone lines, their electricity bill. Running a multi-line BBS with 4–8 simultaneous callers required multiple phone lines and dedicated computers for each node. Sysops spent enormous time maintaining the system, removing pirated content, promoting the board to attract new users, and building community. Many sysops had day jobs and maintained their BBSs in the evenings and on weekends, out of pure passion for the community.</p>
+
+    <div class="section-title" style="margin-top:1.5rem">User Hierarchy</div>
+    <div class="hier">
+      <div class="hier-tier h1">
+        <div class="ht-title">👑 Sysop — System Operator</div>
+        <div class="ht-desc">Owns the system. Full access, god-mode. Manages users, uploads, message bases. Pays the phone bill.</div>
+      </div>
+      <div class="ht-arrow">▼</div>
+      <div class="hier-tier h2">
+        <div class="ht-title">⚙ Co-Sysop — Co-System Operator</div>
+        <div class="ht-desc">Trusted assistant. Can delete files, validate users, moderate messages. Often a senior friend of the sysop.</div>
+      </div>
+      <div class="ht-arrow">▼</div>
+      <div class="hier-tier h3">
+        <div class="ht-title">⭐ Elite</div>
+        <div class="ht-desc">Proven uploader with high upload/download ratio. Access to hidden file sections ("elite warez boards"). Respected in the community.</div>
+      </div>
+      <div class="ht-arrow">▼</div>
+      <div class="hier-tier h4">
+        <div class="ht-title">✅ Regular</div>
+        <div class="ht-desc">Validated user with good standing. Full access to public sections. Knows the community norms.</div>
+      </div>
+      <div class="ht-arrow">▼</div>
+      <div class="hier-tier h5">
+        <div class="ht-title">🔒 Validated User</div>
+        <div class="ht-desc">New user whose account the sysop has manually approved. Often required a phone call or registration. Gets basic access.</div>
+      </div>
+      <div class="ht-arrow">▼</div>
+      <div class="hier-tier h6">
+        <div class="ht-title">❓ Newbie / Unvalidated</div>
+        <div class="ht-desc">Just signed up. Limited or no download access until validated. Expected to read the BBS rules (BSLIST.TXT) carefully.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANSI Art -->
+  <div id="ansi" class="page-section">
+    <div class="section-title">The ANSI Artscene</div>
+
+    <p class="prose">ANSI art was the visual language of the BBS era. Using <strong>ANSI escape codes</strong> — control sequences embedded in text that instructed terminals to change color, move the cursor, and clear the screen — artists created stunning full-color images and animated welcome screens using nothing but the 256 characters of the <em>IBM CP437</em> character set (which included block characters like ▀ ▄ █ ▌ ▐ and line-drawing glyphs).</p>
+
+    <p class="prose">Every block of 16 foreground and 8 background colors (128 combinations, or 256 with the "high-intensity" bit) was specified by an escape sequence like <strong>ESC[1;32m</strong> for bright green. Artists used tools like <strong>TheDraw</strong> and <strong>ACiD Draw</strong> to compose pieces character by character. A skilled artist could spend hours on a single screen-width welcome banner.</p>
+
+    <p class="prose">The art was organized into <strong>artpacks</strong> — ZIP archives released monthly by art groups. The dominant groups were <strong>ACiD Productions</strong> (founded 1990, the premier group), <strong>iCE Animations</strong> (ACiD's main rival), and <strong>Fire</strong>. Each release was a curated collection of ANSI screens, fonts, and VGA "hi-res" art. Artpack collecting was its own subculture within the BBS world.</p>
+
+    <p class="prose">The <strong>NFO file</strong> (info file) embedded in software release ZIPs is a direct descendant of the ANSI artscene — groups still use ASCII/ANSI art headers in NFO files to identify their releases, a tradition that has continued unbroken into the 2020s. The artscene never truly died; it just moved to ANSI art preservation sites like 16colors.net.</p>
+
+    <div class="section-title" style="margin-top:1.5rem">Sample BBS Welcome Screen (ANSI Style)</div>
+    <div class="ansi-demo">
+<pre>
+<span class="ansi-bright">  ██████╗ ██████╗ ███████╗</span>
+<span class="ansi-bright">  ██╔══██╗██╔══██╗██╔════╝</span>
+<span class="ansi-bright">  ██████╔╝██████╔╝███████╗</span>
+<span class="ansi-bright">  ██╔══██╗██╔══██╗╚════██║</span>
+<span class="ansi-bright">  ██║  ██║██████╔╝███████║</span>
+<span class="ansi-bright">  ╚═╝  ╚═╝╚═════╝ ╚══════╝</span>  <span class="ansi-amber">v3.14</span>
+
+<span class="ansi-dim">╔══════════════════════════════════════════════════════╗</span>
+<span class="ansi-dim">║</span>  <span class="ansi-cyan">Welcome to THE RABBIT HOLE BBS</span>                      <span class="ansi-dim">║</span>
+<span class="ansi-dim">║</span>  <span class="ansi-amber">Running: PCBoard 15.3    Nodes: 4    Speed: 28.8k</span>   <span class="ansi-dim">║</span>
+<span class="ansi-dim">║</span>  <span class="ansi-white">SysOp: Morpheus          Co-SysOp: Trinity</span>           <span class="ansi-dim">║</span>
+<span class="ansi-dim">╠══════════════════════════════════════════════════════╣</span>
+<span class="ansi-dim">║</span>  <span class="ansi-bright">Files:  18,442    Messages: 93,217    Users: 2,891</span>   <span class="ansi-dim">║</span>
+<span class="ansi-dim">║</span>  <span class="ansi-bright">Last call: Neo          @ 2:14 AM   Node 3</span>           <span class="ansi-dim">║</span>
+<span class="ansi-dim">╠══════════════════════════════════════════════════════╣</span>
+<span class="ansi-dim">║</span>  <span class="ansi-red">!! NEW: ACiD Pack #34 uploaded — 38 new ANSI !!  </span>   <span class="ansi-dim">║</span>
+<span class="ansi-dim">║</span>  <span class="ansi-amber">!! LORD v4.07 in doors — new enchanted forest  !!  </span> <span class="ansi-dim">║</span>
+<span class="ansi-dim">╚══════════════════════════════════════════════════════╝</span>
+
+<span class="ansi-bright">  [L]ogin    [N]ew User    [?]Help</span>
+
+  <span class="ansi-amber">Enter your handle:</span> <span class="ansi-bright">_</span>
+</pre>
+    </div>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-name">TheDraw</div>
+        <div class="card-sub">Released 1986 — Ian Davis</div>
+        <div class="card-desc">The definitive ANSI art editor of the BBS era. Full-screen editor with block and line-drawing tools, color palette selection, animation playback, and font rendering. Free to use; most BBS sysops and artists used nothing else. Supported 80-column and 132-column modes.</div>
+        <span class="card-tag tag-soft">Editor</span>
+      </div>
+      <div class="card">
+        <div class="card-name">ACiD Draw (ADraw)</div>
+        <div class="card-sub">Released 1994 — ACiD Productions</div>
+        <div class="card-desc">ACiD's own art tool, released as TheDraw became outdated. Supported RIPScrip graphics as well as ANSI. Used internally by ACiD artists and eventually released publicly. Represented the artscene's effort to own its own toolchain.</div>
+        <span class="card-tag tag-soft">Editor</span>
+      </div>
+      <div class="card">
+        <div class="card-name">ACiD Productions</div>
+        <div class="card-sub">Founded 1990</div>
+        <div class="card-desc">The most prestigious ANSI art group. At peak, had dozens of artists worldwide releasing monthly artpacks. Known for technically precise, large-format art. ACiD also ran their own BBS distribution network and sponsored artists with "elite" BBS accounts.</div>
+        <span class="card-tag tag-net">Art Group</span>
+      </div>
+      <div class="card">
+        <div class="card-name">iCE Animations</div>
+        <div class="card-sub">Founded 1992</div>
+        <div class="card-desc">ACiD's main rival. Known for "iCE colors" — exploiting the high-intensity background color mode (16 background colors instead of 8, at the cost of disabling blinking). This doubled the effective palette. iCE pieces had a distinctive look that became immediately recognizable.</div>
+        <span class="card-tag tag-net">Art Group</span>
+      </div>
+      <div class="card">
+        <div class="card-name">IBM CP437</div>
+        <div class="card-sub">The standard character set</div>
+        <div class="card-desc">The original IBM PC character set, containing 256 characters: standard ASCII (0–127) plus extended characters including block elements (▀▄█▌▐), box-drawing characters (─│┼╔╗╚╝), and various symbols. Block characters were the building blocks of all ANSI art — every shade and shape was constructed from these glyphs.</div>
+        <span class="card-tag tag-soft">Standard</span>
+      </div>
+      <div class="card">
+        <div class="card-name">NFO Files</div>
+        <div class="card-sub">Living legacy of the artscene</div>
+        <div class="card-desc">Every scene release (cracked game, music, video) still includes an NFO ("info") file with an ASCII/ANSI art header identifying the release group. This convention started in the BBS era and has continued uninterrupted for over 35 years. NFO viewers like NFOViewer preserve the CP437 character set for proper display.</div>
+        <span class="card-tag tag-hit">Legacy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Door Games -->
+  <div id="doors" class="page-section">
+    <div class="section-title">Door Games</div>
+
+    <p class="prose">A <strong>door</strong> was an external program launched by the BBS software — the BBS would "open a door" to a separate executable, handing off the connection to that program. The program could then interact with the user directly over the modem connection, returning control to the BBS when finished. This allowed BBS software authors to create a game marketplace independent of the core BBS platform.</p>
+
+    <p class="prose">Most door games enforced <strong>daily play limits</strong> — you got a certain number of turns, fights, or actions per day, which reset at midnight. This created genuine daily engagement: users would log on every day to use their turns, check on enemies, and move forward in the game. The daily reset was partly practical (protecting server resources) and partly brilliant game design that created habit loops decades before mobile games "discovered" the same mechanic.</p>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-name">Trade Wars 2002</div>
+        <div class="card-sub">1986 — Gary Martin / Chris Sherrick</div>
+        <div class="card-desc">A space trading empire game set in a galaxy of numbered sectors. Players bought and sold commodities between ports, colonized planets, built fortifications, fought other players' ships, and deployed fighters to guard their territory. Games could run for months with dozens of players competing. Sectors were persistent — if an enemy destroyed your planet, it stayed destroyed until you rebuilt.</div>
+        <span class="card-tag tag-hit">Classic</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Legend of the Red Dragon</div>
+        <div class="card-sub">1989 — Seth Able Robinson</div>
+        <div class="card-desc">LORD was the most widely played door game in BBS history. A daily RPG in a medieval village: you fought random forest monsters to gain experience, visited the tavern to flirt with the innkeeper's daughter (Violet), challenged other players to combat, and eventually fought the Red Dragon. The writing was witty, the NPC interactions memorable, and the daily fight system brilliantly addictive.</div>
+        <span class="card-tag tag-hit">Most Popular Ever</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Usurper</div>
+        <div class="card-sub">1990 — Ronny Wester</div>
+        <div class="card-desc">A darker RPG than LORD, set in a grim dungeon world. Players explored dungeons, killed monsters, accumulated weapons and spells, and could attack other players' characters — full PvP. Usurper had a more complex character system than LORD and attracted players who wanted something with more depth. Often ran alongside LORD on the same BBSs, serving different tastes.</div>
+        <span class="card-tag tag-hit">LORD Rival</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Barren Realms Elite</div>
+        <div class="card-sub">1991 — Mehul Patel</div>
+        <div class="card-desc">A resource management wargame. Each player ran a post-apocalyptic nation, deciding daily how to allocate land to farms, factories, oil fields, and military bases. Production generated armies; armies could attack other nations. Diplomacy, alliances, and betrayal were central. BRE was intensely strategic — the best players did complex math to optimize their production curves.</div>
+        <span class="card-tag tag-hit">Strategy</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Global War</div>
+        <div class="card-sub">1991 — various authors</div>
+        <div class="card-desc">A Risk-like world domination game. Players controlled countries, moved armies between territories, formed alliances, and launched invasions. The world map was displayed in ASCII. Games lasted weeks with a dedicated player pool. Unlike BRE's economic depth, Global War was more about direct military strategy and the social dynamics of alliance politics.</div>
+        <span class="card-tag tag-hit">Strategy</span>
+      </div>
+      <div class="card">
+        <div class="card-name">SexTrek</div>
+        <div class="card-sub">Adults-only Star Trek parody</div>
+        <div class="card-desc">An adults-only parody door game spoofing Star Trek. Notable primarily for its shock value on systems where it appeared unannounced — new users who expected a space exploration game were immediately confronted with explicit content. Sysops who ran it on mixed-audience BBSs often regretted it. It became a byword for "things you shouldn't run without warning your users."</div>
+        <span class="card-tag tag-soft">Notorious</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Software -->
+  <div id="software" class="page-section">
+    <div class="section-title">BBS Software Platforms</div>
+
+    <p class="prose">Dozens of BBS software packages competed for sysop adoption. The choice of platform shaped everything: the look of menus, which doors were compatible, how users were validated, and how the file system was organized. Some were commercial products with commercial support; others were free and community-maintained. A few are still actively developed today for the telnet BBS revival community.</p>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-name">RBBS-PC</div>
+        <div class="card-sub">1983 — Capital PC User Group</div>
+        <div class="card-desc">The first widely-distributed BBS software for the IBM PC. Originally written in Microsoft BASIC by Tom Mack and Ken Goosens, later recompiled for speed. Distributed free through the Capitol PC User Group as a service to the hobby. Established conventions that most later BBS software followed: message bases, file sections, user levels, and door support.</div>
+        <span class="card-tag tag-soft">Pioneer</span>
+      </div>
+      <div class="card">
+        <div class="card-name">PCBoard</div>
+        <div class="card-sub">1983 — Clark Development Company</div>
+        <div class="card-desc">The commercial powerhouse. PCBoard supported multi-node operation (multiple simultaneous callers), a full conference/sub-board system, scripted questionnaires, programmable menus (PCB Language scripts), and sophisticated security levels. Clark Development charged real money for it — a multi-node license ran into hundreds of dollars — but large BBSs considered it worth the cost. Many of the largest BBSs in North America ran PCBoard.</div>
+        <span class="card-tag tag-hit">Commercial Leader</span>
+      </div>
+      <div class="card">
+        <div class="card-name">TBBS</div>
+        <div class="card-sub">1983 — eSoft, Inc.</div>
+        <div class="card-desc">The Bread Board System. Designed from the ground up for commercial, professional, and multi-line use. Used a proprietary database backend for message storage (faster than flat-file systems). TBBS sysops tended to run large, well-funded operations — ISPs, universities, and companies. eSoft's professional support and licensing made it the enterprise choice of the BBS world.</div>
+        <span class="card-tag tag-soft">Professional</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Wildcat!</div>
+        <div class="card-sub">1986 — Mustang Software</div>
+        <div class="card-desc">Started as a simpler alternative to PCBoard and grew to support 250 simultaneous nodes. Wildcat! was notable for outlasting the BBS era: Mustang Software pivoted to internet services and continued selling Wildcat! as a web-integrated platform into the 2000s. The Windows version ("WINServer") survives to this day as an email/web/BBS hybrid server product.</div>
+        <span class="card-tag tag-hit">Survivor</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Renegade</div>
+        <div class="card-sub">1990 — Cott Lang</div>
+        <div class="card-desc">The most configurable free BBS software. Derived from Telegard (which was itself a modified version of QuickBBS), Renegade allowed sysops to customize virtually every aspect: menu text, command keys, user prompts, ANSI screens, and security levels. Because it was free and highly hackable, it was enormously popular with hobbyist sysops who wanted full control without a commercial license fee.</div>
+        <span class="card-tag tag-soft">Free/Open</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Synchronet</div>
+        <div class="card-sub">1991 — Rob Swindell</div>
+        <div class="card-desc">The BBS software that refused to die. Initially a DOS/OS2 platform, Synchronet was rewritten for Windows and Linux, gained telnet and SSH support, and is today the most actively developed BBS software in existence. Hundreds of BBSs running Synchronet are accessible via telnet right now — the "BBS revival" community runs almost entirely on Synchronet. Rob Swindell has continued developing it for over 30 years.</div>
+        <span class="card-tag tag-hit">Still Active Today</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FidoNet -->
+  <div id="fidonet" class="page-section">
+    <div class="section-title">FidoNet — The BBS Internet</div>
+
+    <div class="fact-row">
+      <div class="fact-box"><div class="fact-num">1984</div><div class="fact-label">Year Tom Jennings created FidoNet</div></div>
+      <div class="fact-box"><div class="fact-num">35,000</div><div class="fact-label">Peak FidoNet nodes (~1996)</div></div>
+      <div class="fact-box"><div class="fact-num">1:1/1</div><div class="fact-label">Tom Jennings' original FidoNet address</div></div>
+      <div class="fact-box"><div class="fact-num">~2AM</div><div class="fact-label">Zone Mail Hour — cheapest long-distance rates</div></div>
+    </div>
+
+    <p class="prose">FidoNet was a worldwide store-and-forward message network built entirely on top of BBSs and phone calls. Created by <strong>Tom Jennings</strong> in 1984 when he connected his Fido BBS in San Francisco to another BBS in Baltimore, it grew to become the largest non-internet electronic mail network in history — at its peak, carrying millions of messages per day across 35,000 nodes on six continents.</p>
+
+    <p class="prose">The addressing scheme was hierarchical: <strong>Zone:Net/Node</strong> (optionally with a Point extension). Zone 1 was North America, Zone 2 was Europe, Zone 3 was Oceania. Within a zone, networks were numbered, and within each network, individual nodes (BBSs) had a node number. Tom Jennings was <span class="fido-addr">1:1/1</span>. A typical US node might be <span class="fido-addr">1:105/42</span>. International addresses looked like <span class="fido-addr">2:280/464</span> for a Swedish BBS.</p>
+
+    <p class="prose">FidoNet had two types of mail: <strong>NetMail</strong> (private, point-to-point messages between two users, similar to email) and <strong>EchoMail</strong> (public message conferences that were replicated across all subscribing nodes, similar to USENET newsgroups). An echomail message about a topic like <em>COOKING</em> or <em>MUSIC</em> or <em>AMIGA</em> would propagate from BBS to BBS until it had reached every subscribed node in the world — typically within 24–48 hours.</p>
+
+    <p class="prose">The magic that made FidoNet work was <strong>Zone Mail Hour</strong> — typically around 1–3 AM local time, when long-distance phone calls were at their cheapest rates. Every FidoNet node was expected to be available during ZMH to receive and forward mail. A BBS would call its <em>uplink</em> (a higher-level node that aggregated traffic), transfer a compressed bundle of outgoing messages, receive a bundle of incoming messages, then hang up. The whole transfer might take 2–5 minutes. The next night it happened again.</p>
+
+    <p class="prose">The <strong>Fidonews</strong> was FidoNet's weekly newsletter, distributed as a text file through the network itself. It covered technical developments, policy debates, humor, and community news. Every issue was written by volunteers and sent to every node in the world — a genuinely global publication delivered for free over phone lines.</p>
+
+    <p class="prose">FidoNet peaked around 1996 and then collapsed rapidly as the internet became accessible to ordinary people. Internet email was faster (near-real-time vs. 24-hour propagation), free (no long-distance charges), and didn't require running your own BBS. By 1998, most FidoNet traffic had migrated to internet gateways. Today a small but dedicated FidoNet community continues, with several thousand active nodes — a ghost of its former scale but a living historical artifact.</p>
+
+    <div class="cards-grid" style="margin-top:1.25rem">
+      <div class="card">
+        <div class="card-name">Zone 1 — North America</div>
+        <div class="card-sub">The largest FidoNet zone</div>
+        <div class="card-desc">Covered the USA, Canada, and Mexico. Subdivided into hundreds of regional networks. The US backbone nodes handled enormous traffic volumes, routing mail between the coasts every night. The Zone 1 backbone was a volunteer operation run by dedicated node operators who donated bandwidth and phone costs.</div>
+        <span class="card-tag tag-net">Zone</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Zone 2 — Europe</div>
+        <div class="card-sub">Second largest zone</div>
+        <div class="card-desc">Covered the entire European continent. Zone 2 had significant representation from Germany, the Netherlands, Sweden, and the UK. Cross-Atlantic mail required a "Zone Gate" — a node that bridged Zone 1 and Zone 2 via an international call. These international calls were expensive and gates were precious community resources.</div>
+        <span class="card-tag tag-net">Zone</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Nodelist</div>
+        <div class="card-sub">The FidoNet phone book</div>
+        <div class="card-desc">A plain-text file updated weekly and distributed across the entire network, listing every FidoNet node: its address, the BBS name, the sysop's name, phone number, modem speed, and connection hours. At peak, the nodelist contained 35,000+ entries and was itself a significant file to distribute — every BBS in the world needed an up-to-date copy.</div>
+        <span class="card-tag tag-soft">Infrastructure</span>
+      </div>
+      <div class="card">
+        <div class="card-name">Points</div>
+        <div class="card-sub">Personal FidoNet addresses</div>
+        <div class="card-desc">A "point" was an individual user who had their own FidoNet address (Zone:Net/Node.Point) but didn't run a full BBS. They connected to a "boss node" and received their mail. Points extended FidoNet access to ordinary users without requiring them to run a full BBS operation. The addressing looked like <span class="fido-addr" style="font-size:.75rem">1:105/42.7</span> — node 42, point 7.</div>
+        <span class="card-tag tag-net">User Access</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div id="timeline" class="page-section">
+    <div class="section-title">BBS Timeline</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">1978</div>
+        <div class="tl-body">
+          <div class="tl-title">CBBS — The First BBS</div>
+          <div class="tl-desc">Ward Christensen and Randy Suess launch CBBS in Chicago on February 16, 1978, during a historic blizzard. One caller at a time, 300 baud. The concept — a computer you call to leave and read messages — immediately resonates with the hobbyist community.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1980</div>
+        <div class="tl-body">
+          <div class="tl-title">RBBS-PC Released</div>
+          <div class="tl-desc">The first BBS software specifically for the IBM PC is released by the Capital PC User Group. Distributed free via user groups and early BBSs, RBBS-PC establishes the template that most subsequent BBS software would follow: message bases, file libraries, user levels, and door program support.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1983</div>
+        <div class="tl-body">
+          <div class="tl-title">FidoNet Created</div>
+          <div class="tl-desc">Tom Jennings connects his Fido BBS in San Francisco to a BBS in Baltimore, creating the first FidoNet link. He writes FidoNet protocol software and releases it free, seeding rapid growth. Within a year there are hundreds of FidoNet nodes; within five years, tens of thousands.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1984</div>
+        <div class="tl-body">
+          <div class="tl-title">1,000 BBSs in North America</div>
+          <div class="tl-desc">The number of BBSs in North America crosses 1,000. The 1,200 baud modem becomes the standard for hobbyists. Multi-line BBSs (multiple simultaneous callers) begin to appear, requiring dedicated hardware for each node. PCBoard and TBBS establish the commercial BBS software market.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1986</div>
+        <div class="tl-body">
+          <div class="tl-title">Trade Wars 2002 &amp; PCBoard Dominate</div>
+          <div class="tl-desc">Trade Wars 2002 launches and becomes the first massively popular door game, defining what online multiplayer gaming could be before "online" meant the internet. PCBoard solidifies its position as the most popular commercial BBS platform. Wildcat! launches as a simpler alternative.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1989</div>
+        <div class="tl-body">
+          <div class="tl-title">LORD Released — Door Gaming Peaks</div>
+          <div class="tl-desc">Seth Able Robinson releases Legend of the Red Dragon, which becomes the most-played door game in BBS history. Door gaming reaches its peak, with hundreds of door games available. The DOOR.SYS and DORINFO1.DEF drop files standardize the interface between BBS software and door programs.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1991</div>
+        <div class="tl-body">
+          <div class="tl-title">ACiD Productions Founded</div>
+          <div class="tl-desc">ACiD Productions forms and quickly becomes the premier ANSI art group, releasing monthly artpacks that define the artscene aesthetic. Synchronet BBS software is released by Rob Swindell. 14,400 baud modems become affordable, dramatically reducing file download times.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1993</div>
+        <div class="tl-body">
+          <div class="tl-title">Peak BBS Era — ~60,000 Systems</div>
+          <div class="tl-desc">An estimated 60,000 BBSs operate in the United States alone. At this peak, major metropolitan areas had hundreds of local BBSs to choose from. 28,800 baud modems become common. The artscene is at its creative height. FidoNet carries millions of messages daily.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1994</div>
+        <div class="tl-body">
+          <div class="tl-title">Internet Email Begins to Compete</div>
+          <div class="tl-desc">Affordable internet dial-up access begins to appear (Netcom, PDIAL, early ISPs). Internet email — faster, cheaper, and with no long-distance charges — starts to undercut FidoNet's core value. BBSs begin adding internet email gateways and Usenet feeds to stay competitive.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1995</div>
+        <div class="tl-body">
+          <div class="tl-title">AOL Brings Millions Online — Decline Begins</div>
+          <div class="tl-desc">America Online's aggressive CD-ROM campaign signs up millions of new internet users. The web browser (Netscape Navigator) makes the internet visual and accessible to non-technical users. BBS numbers begin declining sharply — sysops shut down or convert to ISPs. The writing is on the wall.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1996</div>
+        <div class="tl-body">
+          <div class="tl-title">FidoNet Peaks Then Collapses</div>
+          <div class="tl-desc">FidoNet reaches its all-time peak of approximately 35,000 nodes, then begins a rapid decline as sysops migrate to internet email. Internet-FidoNet gateways proliferate but accelerate the sense that FidoNet is a legacy system. Many long-running nets close as their node operators retire from BBSing.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1998</div>
+        <div class="tl-body">
+          <div class="tl-title">Era Ends — BBSs Shut Down or Convert</div>
+          <div class="tl-desc">The mainstream BBS era effectively ends. Most major BBSs close or convert to internet-based services. A few survive by adding telnet access, allowing users to connect over the internet rather than phone lines. This small survivor community grows into today's "BBS revival" scene, with hundreds of telnet BBSs still operating.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ── Sub-nav routing ──────────────────────────────────────────────────────────
+var SECTIONS = ['history','ansi','doors','software','fidonet','timeline'];
+var navLinks = document.querySelectorAll('.sub-nav a');
+
+function showSection(id) {
+  SECTIONS.forEach(function(s) {
+    var el = document.getElementById(s);
+    if (el) el.classList.toggle('visible', s === id);
+  });
+  navLinks.forEach(function(a) {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+  });
+}
+
+navLinks.forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    var id = a.getAttribute('href').slice(1);
+    history.replaceState(null, '', '#' + id);
+    showSection(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+var initial = (location.hash.slice(1) || 'history');
+if (SECTIONS.indexOf(initial) === -1) initial = 'history';
+showSection(initial);
+
+// ── Background canvas — Matrix-style falling characters ──────────────────────
+var canvas = document.getElementById('bbs-canvas');
+var ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', function() {
+  resize();
+  initCols();
+});
+
+var cols = [];
+var CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!?<>[]{}|/\\~`';
+
+function initCols() {
+  cols = [];
+  var colWidth = 16;
+  var numCols = Math.floor(canvas.width / colWidth) + 1;
+  for (var i = 0; i < numCols; i++) {
+    cols.push({
+      x: i * colWidth,
+      y: Math.random() * canvas.height,
+      speed: 0.8 + Math.random() * 2.2,
+      len: 8 + Math.floor(Math.random() * 20),
+      chars: [],
+      timer: 0,
+      changeRate: 3 + Math.floor(Math.random() * 8)
+    });
+    for (var j = 0; j < cols[i].len; j++) {
+      cols[i].chars.push(CHARS[Math.floor(Math.random() * CHARS.length)]);
+    }
+  }
+}
+initCols();
+
+var frame = 0;
+function drawFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '13px "Courier New", monospace';
+
+  cols.forEach(function(c) {
+    frame++;
+    c.timer++;
+    if (c.timer % c.changeRate === 0) {
+      var idx = Math.floor(Math.random() * c.len);
+      c.chars[idx] = CHARS[Math.floor(Math.random() * CHARS.length)];
+    }
+
+    for (var i = 0; i < c.len; i++) {
+      var cy = c.y - i * 14;
+      if (cy < -14 || cy > canvas.height + 14) continue;
+      var ratio = i / c.len;
+      var alpha;
+      if (i === 0) {
+        alpha = 0.9;
+        ctx.fillStyle = 'rgba(180,255,200,' + alpha + ')';
+      } else {
+        alpha = (1 - ratio) * 0.55;
+        ctx.fillStyle = 'rgba(0,200,83,' + alpha + ')';
+      }
+      ctx.fillText(c.chars[i], c.x, cy);
+    }
+
+    c.y += c.speed;
+    if (c.y - c.len * 14 > canvas.height) {
+      c.y = -c.len * 14;
+      c.speed = 0.8 + Math.random() * 2.2;
+    }
+  });
+
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commodore 64 &amp; Amiga</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖥</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #04060f;
+      --panel:    #080c1c;
+      --cobalt:   #4040c0;
+      --ltblue:   #8080f0;
+      --bright:   #aaaaff;
+      --silver:   #c0c0c0;
+      --amber:    #f0c020;
+      --text:     #c8c8e8;
+      --muted:    #303060;
+      --card:     rgba(4,6,15,.93);
+      --border:   rgba(64,64,192,.22);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 50% at 30% 0%, rgba(64,64,192,.28) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 40% at 80% 80%, rgba(128,128,240,.12) 0%, transparent 60%),
+        linear-gradient(180deg, #04060f 0%, #020408 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(64,64,192,.012) 0, rgba(64,64,192,.012) 1px, transparent 1px, transparent 56px);
+    }
+    canvas#c64-canvas { position:fixed; top:0;left:0;width:100%;height:100%;z-index:0;opacity:.14;pointer-events:none; }
+    .wrap { position:relative; z-index:1; max-width:1100px;margin:0 auto;width:100%;padding:2rem 1.25rem 5rem;display:flex;flex-direction:column;gap:2rem; }
+    /* Hero */
+    .hero { text-align:center; padding:2.5rem 1rem 1.5rem; }
+    .hero-icon { font-size:4rem;line-height:1;margin-bottom:.75rem;filter:drop-shadow(0 0 20px rgba(64,64,192,.7)); }
+    .hero h1 { font-size:clamp(2rem,5vw,3.2rem);font-weight:700;color:var(--bright);letter-spacing:-.02em;text-shadow:0 0 30px rgba(170,170,255,.35); }
+    .hero-sub { font-size:.95rem;color:var(--muted);margin-top:.4rem;font-style:italic; }
+    .hero-dates { display:inline-block;margin-top:.75rem;background:rgba(64,64,192,.12);border:1px solid var(--border);border-radius:6px;padding:.35rem 1rem;font-size:.85rem;color:var(--ltblue);letter-spacing:.08em; }
+    /* Section title */
+    .section-title { font-size:1.1rem;font-weight:700;letter-spacing:.12em;color:var(--ltblue);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:.5rem;margin-bottom:1.25rem; }
+    /* Specs */
+    .specs-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem; }
+    .spec-card { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;transition:border-color .2s; }
+    .spec-card:hover { border-color:var(--ltblue); }
+    .spec-label { font-size:.75rem;color:var(--ltblue);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.3rem; }
+    .spec-value { font-size:1.05rem;font-weight:700;color:var(--bright);margin-bottom:.25rem; }
+    .spec-detail { font-size:.8rem;color:var(--text);line-height:1.45; }
+    /* SID chip */
+    .sid-wrap { display:flex;flex-direction:column;gap:.75rem; }
+    .sid-row { display:grid;grid-template-columns:130px 1fr;gap:.75rem;align-items:start; }
+    .sid-label { font-size:.82rem;font-weight:700;color:var(--ltblue);text-align:right;padding-top:.3rem; }
+    .sid-body { background:var(--card);border:1px solid var(--border);border-left:3px solid var(--cobalt);border-radius:0 8px 8px 0;padding:.6rem .85rem; }
+    .sid-title { font-size:.88rem;font-weight:700;color:var(--bright);margin-bottom:.2rem; }
+    .sid-desc { font-size:.81rem;color:var(--text);line-height:1.45; }
+    /* Color palette */
+    .palette-wrap { display:grid;grid-template-columns:repeat(8,1fr);gap:.4rem; }
+    @media(max-width:500px){ .palette-wrap{grid-template-columns:repeat(4,1fr);} }
+    .color-swatch { border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.08); }
+    .color-block { height:50px; }
+    .color-name { font-size:.65rem;text-align:center;padding:.25rem .1rem;background:var(--card);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    /* Games */
+    .games-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem; }
+    .game-card { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;transition:border-color .2s,transform .2s; }
+    .game-card:hover { border-color:var(--amber);transform:translateY(-2px); }
+    .game-title { font-size:1rem;font-weight:700;color:var(--bright); }
+    .game-year { font-size:.78rem;color:var(--ltblue);margin-bottom:.35rem; }
+    .game-desc { font-size:.82rem;color:var(--text);line-height:1.5; }
+    /* Demoscene */
+    .demo-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem; }
+    .demo-card { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.2rem; }
+    .demo-name { font-size:1rem;font-weight:700;color:var(--bright); }
+    .demo-group { font-size:.78rem;color:var(--ltblue);margin-bottom:.4rem; }
+    .demo-desc { font-size:.82rem;color:var(--text);line-height:1.5; }
+    /* Amiga */
+    .amiga-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem; }
+    .amiga-card { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.2rem;transition:border-color .2s; }
+    .amiga-card:hover { border-color:var(--amber); }
+    .amiga-model { font-size:1rem;font-weight:700;color:var(--bright); }
+    .amiga-year { font-size:.78rem;color:var(--amber);margin-bottom:.35rem; }
+    .amiga-desc { font-size:.82rem;color:var(--text);line-height:1.5; }
+    /* Timeline */
+    .timeline { display:flex;flex-direction:column;gap:.75rem; }
+    .tl-item { display:grid;grid-template-columns:90px 1fr;gap:.75rem;align-items:start; }
+    .tl-year { font-size:.85rem;font-weight:700;color:var(--ltblue);text-align:right;padding-top:.15rem; }
+    .tl-body { background:var(--card);border:1px solid var(--border);border-left:3px solid var(--cobalt);border-radius:0 8px 8px 0;padding:.6rem .85rem; }
+    .tl-title { font-size:.88rem;font-weight:700;color:var(--bright);margin-bottom:.2rem; }
+    .tl-desc { font-size:.81rem;color:var(--text);line-height:1.45; }
+    /* Sub Nav */
+    .sub-nav-wrap { position:sticky;top:0;z-index:100;background:rgba(4,6,15,.92);border-bottom:1px solid var(--border);backdrop-filter:blur(10px); }
+    .sub-nav { max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:center;gap:.15rem;padding:.45rem .75rem; }
+    .sub-nav a { color:var(--muted);text-decoration:none;font-size:.78rem;letter-spacing:.06em;padding:.35rem .75rem;border-radius:5px;border:1px solid transparent;transition:color .18s,border-color .18s,background .18s;white-space:nowrap; }
+    .sub-nav a:hover,.sub-nav a.active { color:var(--bright);border-color:var(--border);background:rgba(64,64,192,.08); }
+    .page-section { display:none; }
+    .page-section.visible { display:block; }
+    @media(max-width:600px){ .tl-item{grid-template-columns:60px 1fr;} .sid-row{grid-template-columns:80px 1fr;} }
+  </style>
+</head>
+<body>
+<canvas id="c64-canvas"></canvas>
+
+<nav class="sub-nav-wrap">
+  <div class="sub-nav">
+    <a href="#hardware">🖥 Hardware</a>
+    <a href="#sid">🎵 SID Chip</a>
+    <a href="#palette">🎨 Palette</a>
+    <a href="#games">🕹 Games</a>
+    <a href="#demoscene">✨ Demoscene</a>
+    <a href="#amiga">💎 Amiga</a>
+    <a href="#timeline">📜 Timeline</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-icon">🖥</div>
+    <h1>Commodore 64 &amp; Amiga</h1>
+    <div class="hero-sub">The machine that taught a generation to code, compose, and create</div>
+    <div class="hero-dates">1982 – 1994</div>
+  </div>
+
+  <!-- Hardware -->
+  <div id="hardware" class="page-section">
+    <div class="section-title">C64 Hardware</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">The Commodore 64 launched in January 1982 at $595 and became the best-selling personal computer model of all time — an estimated 12–17 million units. Its combination of capable graphics, legendary sound, and relatively low price made it dominant through the 1980s.</p>
+    <div class="specs-grid">
+      <div class="spec-card">
+        <div class="spec-label">CPU</div>
+        <div class="spec-value">MOS 6510</div>
+        <div class="spec-detail">1 MHz. Modified 6502 with built-in 8-bit I/O port used to control memory banking, cassette, and serial bus. Little-endian byte order. 56 instructions.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">RAM</div>
+        <div class="spec-value">64 KB</div>
+        <div class="spec-detail">Hence "64." But only 38 KB available to BASIC programs — the rest used by the OS ROM, video chip, I/O, and color RAM. Programmers in machine code could access all 64 KB.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">Graphics</div>
+        <div class="spec-value">MOS VIC-II (6569)</div>
+        <div class="spec-detail">Video Interface Chip II. 320×200 hires or 160×200 multicolor. 8 hardware sprites (24×21 px each). 16 colors. Raster interrupt tricks allowed programmers to exceed official limits.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">Sound</div>
+        <div class="spec-value">MOS SID 6581/8580</div>
+        <div class="spec-detail">Sound Interface Device. 3 independent voices, each with oscillator + envelope generator. Ring modulation, sync, filter. Arguably the greatest sound chip ever made for a home computer.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">Storage</div>
+        <div class="spec-value">Datasette + 1541</div>
+        <div class="spec-detail">Datasette tape drive: cheap, slow (a game could take 10 minutes to load). 1541 floppy drive: 170 KB per disk, painfully slow via serial bus (~300 bytes/sec). Fast loaders were a cottage industry.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">OS / BASIC</div>
+        <div class="spec-value">CBM BASIC 2.0</div>
+        <div class="spec-detail">Microsoft-licensed BASIC in ROM. "READY." prompt on boot. 65,536 bytes of RAM, 38911 BASIC bytes free. Famously lacked built-in commands for sound and graphics — you had to POKE memory addresses directly.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">Keyboard</div>
+        <div class="spec-value">PETSCII keyboard</div>
+        <div class="spec-detail">66-key full-travel keyboard. Included Commodore key (modifier), RESTORE key (generates NMI), and PETSCII block graphics characters on every key — a complete character-graphics system built into the font.</div>
+      </div>
+      <div class="spec-card">
+        <div class="spec-label">Expansion</div>
+        <div class="spec-value">Cartridge port + User port</div>
+        <div class="spec-detail">Cartridge port exposed the full address bus — games cartridges loaded instantly. User port had CIA 6526 lines for RS-232, parallel, and user-built hardware. Joystick ports accepted standard Atari-compatible controllers.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SID Chip -->
+  <div id="sid" class="page-section">
+    <div class="section-title">The SID Chip — MOS 6581/8580</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">Designed by Bob Yannes in 1981. The SID (Sound Interface Device) was so far ahead of contemporary home computer audio that it spawned an entire subculture of musicians and composers. SID music is still actively composed and performed today.</p>
+    <div class="sid-wrap">
+      <div class="sid-row">
+        <div class="sid-label">3 Voices</div>
+        <div class="sid-body">
+          <div class="sid-title">Independent Oscillators</div>
+          <div class="sid-desc">Each of the 3 voices has its own oscillator, frequency register (16-bit = 0–4 kHz range), pulse width register, waveform selector, and ADSR envelope generator. All three can play simultaneously and independently — like a 3-piece band in a chip.</div>
+        </div>
+      </div>
+      <div class="sid-row">
+        <div class="sid-label">Waveforms</div>
+        <div class="sid-body">
+          <div class="sid-title">4 Waveform Types per Voice</div>
+          <div class="sid-desc">Triangle (soft, flute-like), Sawtooth (bright, string-like), Variable Pulse (controllable square wave — duty cycle from thin needle to full square produces different timbres), and Noise (white noise generator for percussion and effects). Multiple waveforms could be combined.</div>
+        </div>
+      </div>
+      <div class="sid-row">
+        <div class="sid-label">ADSR Envelope</div>
+        <div class="sid-body">
+          <div class="sid-title">Attack / Decay / Sustain / Release</div>
+          <div class="sid-desc">Each voice has a full ADSR envelope: Attack (0–8 seconds), Decay (6ms–24 seconds), Sustain (0–15 levels), Release (6ms–24 seconds). This was sophisticated synthesizer technology in 1982. Combined with waveform selection, it enabled convincing simulation of real instruments.</div>
+        </div>
+      </div>
+      <div class="sid-row">
+        <div class="sid-label">Filter</div>
+        <div class="sid-body">
+          <div class="sid-title">Multimode Analog Filter</div>
+          <div class="sid-desc">A resonant analog filter shared across all voices. Switchable between low-pass, high-pass, and band-pass modes. Resonance control. Cutoff frequency register. The filter had slight production variations between chips (6581 vs 8580) — these imperfections became part of the "SID sound" that musicians treasured.</div>
+        </div>
+      </div>
+      <div class="sid-row">
+        <div class="sid-label">Ring Mod + Sync</div>
+        <div class="sid-body">
+          <div class="sid-title">Advanced Modulation</div>
+          <div class="sid-desc">Ring Modulation between voices multiplied the frequencies for metallic, bell-like tones. Oscillator Sync hard-synced one voice's phase to another, producing characteristic sync-sweep sounds (the laser/scream effect iconic in C64 music). Voice 3 could also be used to modulate filter cutoff for LFO effects.</div>
+        </div>
+      </div>
+      <div class="sid-row">
+        <div class="sid-label">Notable Composers</div>
+        <div class="sid-body">
+          <div class="sid-title">The SID Hall of Fame</div>
+          <div class="sid-desc">Rob Hubbard (Commando, Monty on the Run, Delta — technically revolutionary), Martin Galway (Ocean games, Times of Lore), Ben Daglish (The Last Ninja 2), Chris Hülsbeck (German demoscene legend, Turrican), David Whittaker (prolific UK composer). These composers are celebrated today like rock stars by the retro community.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Palette -->
+  <div id="palette" class="page-section">
+    <div class="section-title">The C64 Color Palette — 16 Colors</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">The VIC-II chip supported exactly 16 colors. These weren't arbitrary — they were determined by the chip's internal voltage levels. Programmers and artists learned to work within these constraints, developing characteristic color combinations that define "the C64 look."</p>
+    <div class="palette-wrap">
+      <div class="color-swatch"><div class="color-block" style="background:#000000"></div><div class="color-name">Black</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#ffffff"></div><div class="color-name">White</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#68372b"></div><div class="color-name">Red</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#70a4b2"></div><div class="color-name">Cyan</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#6f3d86"></div><div class="color-name">Purple</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#588d43"></div><div class="color-name">Green</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#352879"></div><div class="color-name">Blue</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#b8c76f"></div><div class="color-name">Yellow</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#6f4f25"></div><div class="color-name">Orange</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#433900"></div><div class="color-name">Brown</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#9a6759"></div><div class="color-name">Lt Red</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#444444"></div><div class="color-name">Dk Grey</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#6c6c6c"></div><div class="color-name">Mid Grey</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#9ad284"></div><div class="color-name">Lt Green</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#6c5eb5"></div><div class="color-name">Lt Blue</div></div>
+      <div class="color-swatch"><div class="color-block" style="background:#959595"></div><div class="color-name">Lt Grey</div></div>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-top:1rem;font-style:italic;">The default C64 screen was blue (#352879) with light blue (#6c5eb5) text — burned into millions of memories. The default border color was also light blue, giving the iconic "blue frame" look.</p>
+  </div>
+
+  <!-- Games -->
+  <div id="games" class="page-section">
+    <div class="section-title">Legendary C64 Games</div>
+    <div class="games-grid">
+      <div class="game-card">
+        <div class="game-title">The Last Ninja</div>
+        <div class="game-year">System 3, 1987</div>
+        <div class="game-desc">Isometric action game with stunning graphics and an iconic soundtrack by Ben Daglish. Six levels across feudal Japan. One of the best-reviewed C64 games ever. Two sequels followed. Attempted ports to other platforms never matched the C64 version.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Paradroid</div>
+        <div class="game-year">Hewson / Andrew Braybrook, 1985</div>
+        <div class="game-desc">Andrew Braybrook's masterpiece. Robot takeover — you're a tiny droid reprogramming enemy robots via circuit transfer minigames. Procedurally generated galaxy map. Tied for #1 game in Zzap!64's all-time chart. A landmark in game design.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Impossible Mission</div>
+        <div class="game-year">Epyx, 1984</div>
+        <div class="game-desc">Search 32 rooms for puzzle pieces while avoiding robots. Famous for digitized speech: "Another visitor. Stay a while. Stay forever!" — groundbreaking in 1984. Classic time-pressure gameplay. Nearly impossible to actually complete.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Boulder Dash</div>
+        <div class="game-year">First Star Software, 1984</div>
+        <div class="game-desc">Mine for diamonds while boulders and enemies pursue. 16 caves with enemies, butterfly creatures, amoeba. Spawned dozens of clones and sequels. One of the most imitated games in microcomputer history.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Elite</div>
+        <div class="game-year">Acornsoft / Firebird, 1985</div>
+        <div class="game-desc">Space trading and combat with wireframe 3D graphics. 8 galaxies, 256 planets each. Trading commodities, bounty hunting, piracy. The original open-world space game. Traded on cassette pirated copies kept it alive. Took a year to reach Elite rank.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Turrican</div>
+        <div class="game-year">Rainbow Arts / Manfred Trenz, 1990</div>
+        <div class="game-desc">Manfred Trenz's run-and-gun masterpiece with Chris Hülsbeck's legendary music. Massive open levels, power-up wheel system, gyro weapon. Technical marvel — the C64 pushed to its absolute limits. Launched a beloved franchise.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Mayhem in Monsterland</div>
+        <div class="game-year">Apex, 1993</div>
+        <div class="game-desc">Released in 1993 — after the platform was supposedly dead — and shocked everyone with its speed and color. Smooth 50fps scrolling in full color defied what people believed the VIC-II could do. Proof that great programmers could always find more in the hardware.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-title">Maniac Mansion</div>
+        <div class="game-year">LucasArts, 1987</div>
+        <div class="game-desc">The game that invented the point-and-click adventure genre. SCUMM engine (Script Creation Utility for Maniac Mansion) debuted here. Multiple playable characters, multiple endings, deliberate humor. Every LucasArts adventure for the next decade used SCUMM.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demoscene -->
+  <div id="demoscene" class="page-section">
+    <div class="section-title">The Demoscene</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">The demoscene emerged from the cracking scene — pirates who removed copy protection added "crack intros" to show off. These evolved into standalone artistic and technical demonstrations ("demos"). C64 demo groups competed to achieve the impossible from a 1 MHz CPU and 64 KB RAM. UNESCO recognized demoscene as cultural heritage in 2020.</p>
+    <div class="demo-grid">
+      <div class="demo-card">
+        <div class="demo-name">Krestage 3</div>
+        <div class="demo-group">Crest + Oxyron, 2004</div>
+        <div class="demo-desc">A modern demo that remains a benchmark for C64 technical achievement. Full-screen rotating 3D objects, real-time raytracing effects, and SID music — all on stock 1982 hardware. Demonstrates that the C64 demoscene never died.</div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-name">Comaland</div>
+        <div class="demo-group">Censor Design + Oxyron, 2015</div>
+        <div class="demo-desc">Winner of multiple demo competitions. Smooth full-screen 3D animations with no slowdown. Exploiting every raster trick, sprite multiplexing technique, and undocumented CPU opcode. A love letter to C64 hardware 33 years after launch.</div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-name">Edge of Disgrace</div>
+        <div class="demo-group">Booze Design, 2008</div>
+        <div class="demo-desc">Widely cited as one of the best C64 demos ever made. Smooth full-screen graphics, perfect SID soundtrack, technical effects never seen before on C64. Created fresh buzz in a community that had been making demos for 25 years.</div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-name">Raster Tricks</div>
+        <div class="demo-group">Various, 1984–present</div>
+        <div class="demo-desc">The fundamental C64 technique: changing VIC-II registers mid-frame by timing code to exact raster line positions. This allowed hundreds of sprite multiplexing, split-screen effects, more than 16 colors simultaneously, and smooth parallax scrolling — all "impossible" by the chip's official spec.</div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-name">FLD / FLI Effects</div>
+        <div class="demo-group">C64 hackers, 1985–present</div>
+        <div class="demo-desc">FLD (Flexible Line Distance) and FLI (Flexible Line Interpretation) are raster tricks that manipulate VIC-II's internal state. FLI allowed 16 colors per 8×1 pixel block instead of the normal 8×8. FLD created smooth vertical scrolling. Both require cycle-exact timing.</div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-name">The Party / The Assembly</div>
+        <div class="demo-group">European demo parties, 1991–present</div>
+        <div class="demo-desc">Demo parties: weekends where thousands of coders, musicians, and artists gather to compete and release demos. The Party (Denmark) started 1991. Assembly (Finland) started 1992. Still running today, now including PC, mobile, and retro categories alongside modern platforms.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Amiga -->
+  <div id="amiga" class="page-section">
+    <div class="section-title">The Amiga Line</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">Commodore acquired Amiga Inc. in 1984. The Amiga was technically stunning — a true multimedia machine years ahead of the Mac and PC. Its custom chips (Agnus, Denise, Paula) provided hardware-accelerated graphics and sound while the Motorola 68000 CPU handled computation. "Graphics, sound, and color that the IBM world is still trying to match" — Byte Magazine, 1985.</p>
+    <div class="amiga-grid">
+      <div class="amiga-card">
+        <div class="amiga-model">Amiga 1000</div>
+        <div class="amiga-year">1985 — The Original</div>
+        <div class="amiga-desc">The first Amiga. 7.16 MHz 68000, 256 KB Chip RAM (expandable to 512 KB), OCS graphics (4096-color HAM mode), 4-channel stereo sound. Launched at a live demo in New York by Andy Warhol painting Debbie Harry. Price: $1,295 + $300 monitor.</div>
+      </div>
+      <div class="amiga-card">
+        <div class="amiga-model">Amiga 500</div>
+        <div class="amiga-year">1987 — The Mass Market Model</div>
+        <div class="amiga-desc">The best-selling Amiga. Same OCS chipset as A1000 but in an all-in-one case with keyboard. 512 KB Chip RAM standard. Priced at $699 — affordable. Dominated European gaming through the late 1980s and early 1990s. The Atari ST's greatest rival.</div>
+      </div>
+      <div class="amiga-card">
+        <div class="amiga-model">Amiga 2000</div>
+        <div class="amiga-year">1987 — The Desktop</div>
+        <div class="amiga-desc">Desktop expansion-oriented Amiga. 5 Zorro II slots, 2 PC ISA slots, internal drive bays. Bridge cards allowed running MS-DOS. Video Toaster (1990) turned it into a professional broadcast production system — used on Babylon 5, SeaQuest, and other TV productions.</div>
+      </div>
+      <div class="amiga-card">
+        <div class="amiga-model">Amiga 3000</div>
+        <div class="amiga-year">1990 — The Professional</div>
+        <div class="amiga-desc">ECS chipset (Enhanced Chip Set). 68030 CPU at 16 or 25 MHz. SCSI-2 hard drive. Flicker fixer for VGA monitor compatibility. Built-in video slot. AmigaOS 2.0 introduced a modernized Workbench GUI. Targeted professional and creative markets.</div>
+      </div>
+      <div class="amiga-card">
+        <div class="amiga-model">Amiga 1200</div>
+        <div class="amiga-year">1992 — The Last Great Amiga</div>
+        <div class="amiga-desc">AGA chipset: 16.8 million colors (24-bit palette), 256 on screen. 68EC020 at 14 MHz. PCMCIA slot. 2 MB Chip RAM standard. At £399, it was a powerful machine that arrived too late — PC prices were falling fast. Commodore declared bankruptcy 18 months later.</div>
+      </div>
+      <div class="amiga-card">
+        <div class="amiga-model">Amiga 4000</div>
+        <div class="amiga-year">1992 — The Flagship</div>
+        <div class="amiga-desc">68040 at 25 MHz, AGA chipset, 6 MB RAM standard. AmigaOS 3.0. The most powerful Amiga Commodore ever built. Beloved by video production professionals. When Commodore went bankrupt in 1994, it was the machine that the community mourned most.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div id="timeline" class="page-section">
+    <div class="section-title">Timeline</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">1977</div>
+        <div class="tl-body">
+          <div class="tl-title">Commodore PET 2001</div>
+          <div class="tl-desc">Jack Tramiel's Commodore Business Machines launches the PET — an all-in-one computer with built-in monitor, cassette, and keyboard. Alongside Apple II and TRS-80, one of the "1977 Trinity." MOS Technology 6502 CPU. Lays the foundation for Commodore's home computer dominance.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1980</div>
+        <div class="tl-body">
+          <div class="tl-title">VIC-20 — First $300 Color Computer</div>
+          <div class="tl-desc">The VIC-20 is the first color computer to sell for under $300. William Shatner pitches it on TV: "Why buy just a video game when you can have a real computer?" 5 KB RAM. 22-column display. Becomes the first computer to sell 1 million units.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1982</div>
+        <div class="tl-body">
+          <div class="tl-title">C64 Launches at CES</div>
+          <div class="tl-desc">The Commodore 64 is announced at the January Consumer Electronics Show. Initial price: $595. Jack Tramiel's goal: "Computers for the masses, not the classes." The SID and VIC-II chips are far ahead of any competitor at the price. Sales accelerate through the year.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1983</div>
+        <div class="tl-body">
+          <div class="tl-title">The Price War — $200 C64</div>
+          <div class="tl-desc">Commodore slashes the C64 price to $200, crushing Texas Instruments out of the home computer market entirely. TI writes off $330M. Atari struggles. The C64 achieves dominant market share in the US home market. Jack Tramiel leaves Commodore to buy Atari.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1985</div>
+        <div class="tl-body">
+          <div class="tl-title">Amiga 1000 and the Andy Warhol Demo</div>
+          <div class="tl-desc">The Amiga 1000 is unveiled at Lincoln Center, New York. Andy Warhol uses the Amiga's Graphicraft software to digitally paint Debbie Harry on stage. The Amiga demo shows 4,096 colors, stereo sound, and multitasking — features the Mac and PC won't match for years.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1987</div>
+        <div class="tl-body">
+          <div class="tl-title">Amiga 500 &amp; C64 Peak Sales</div>
+          <div class="tl-desc">Both the Amiga 500 and C64 sell in record numbers in Europe. The C64 is the best-selling computer in the UK, Germany, and many other markets. UK "bedroom coders" are producing commercial games from their homes — a cultural phenomenon that creates companies like Psygnosis, Ocean, and Ultimate.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1990</div>
+        <div class="tl-body">
+          <div class="tl-title">Video Toaster — Amiga Goes Hollywood</div>
+          <div class="tl-desc">NewTek's Video Toaster ($1,595) for the Amiga 2000 democratizes broadcast video production. Includes a 4-input live switcher, digital effects, titling, and LightWave 3D. Used professionally on Star Trek: Deep Space Nine, Babylon 5, and hundreds of TV commercials and news broadcasts.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1994</div>
+        <div class="tl-body">
+          <div class="tl-title">Commodore Bankruptcy</div>
+          <div class="tl-desc">Commodore International files for bankruptcy on April 29, 1994. Years of mismanagement, failure to market the technologically superior Amiga against the IBM-compatible onslaught, and the death of the home computer market all contribute. The community is devastated. Assets sold to Escom, then Gateway 2000. The Amiga name passes through many hands.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var SECTIONS=['hardware','sid','palette','games','demoscene','amiga','timeline'];
+var navLinks=document.querySelectorAll('.sub-nav a');
+function showSection(id){
+  SECTIONS.forEach(function(s){var el=document.getElementById(s);if(el)el.classList.toggle('visible',s===id);});
+  navLinks.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+id);});
+}
+navLinks.forEach(function(a){
+  a.addEventListener('click',function(e){
+    e.preventDefault();
+    var id=a.getAttribute('href').slice(1);
+    history.replaceState(null,'','#'+id);
+    showSection(id);
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+var initial=location.hash.slice(1)||'hardware';
+if(SECTIONS.indexOf(initial)===-1)initial='hardware';
+showSection(initial);
+
+// Canvas — C64 PETSCII-style character rain
+var canvas=document.getElementById('c64-canvas');
+var ctx=canvas.getContext('2d');
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+var CHARS='@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]♠♣♥♦●○□■←↑→↓';
+var cols=[];
+var colW=20;
+function initCols(){
+  cols=[];
+  var n=Math.floor(canvas.width/colW)+2;
+  for(var i=0;i<n;i++){
+    cols.push({x:i*colW,y:Math.random()*canvas.height,speed:.4+Math.random()*.5,alpha:.04+Math.random()*.04,ch:CHARS[Math.floor(Math.random()*CHARS.length)]});
+  }
+}
+initCols();
+window.addEventListener('resize',initCols);
+function drawFrame(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.font='14px "Courier New",monospace';
+  cols.forEach(function(c){
+    if(Math.random()<.04)c.ch=CHARS[Math.floor(Math.random()*CHARS.length)];
+    ctx.fillStyle='rgba(64,64,192,'+c.alpha+')';
+    ctx.fillText(c.ch,c.x,c.y);
+    c.y+=c.speed;
+    if(c.y>canvas.height+20)c.y=-20;
+  });
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
