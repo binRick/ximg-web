@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viking Age — Raiders of the North</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02040a; --ice: #0a1a2a; --fjord: #0d2a3a; --silver: #8090a8; --gold: #c8902c; --amber: #e0aa50; --steel: #a0b0c0; --text: #b8c8d8; --muted: #304050; --card: rgba(2,4,10,.94); --border: rgba(160,176,192,.18);
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif; min-height: 100vh; overflow-x: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(13,42,58,.3) 0%, transparent 60%), linear-gradient(180deg, #02040a 0%, #010204 100%); }
+    #vikings-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.2; pointer-events: none; }
+    .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem 5rem; display: flex; flex-direction: column; gap: 2rem; }
+    .hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .hero-icon { font-size: 4rem; line-height: 1; margin-bottom: .75rem; filter: drop-shadow(0 0 20px rgba(160,176,192,.4)); }
+    .hero h1 { font-size: clamp(2rem,5vw,3.2rem); font-weight: 700; color: var(--steel); text-shadow: 0 0 30px rgba(160,176,192,.3); }
+    .hero-sub { font-size: 1rem; color: var(--muted); margin-top: .35rem; font-style: italic; }
+    .hero-dates { display: inline-block; margin-top: .75rem; background: rgba(160,176,192,.1); border: 1px solid var(--border); border-radius: 6px; padding: .35rem 1rem; font-size: .85rem; color: var(--silver); letter-spacing: .08em; }
+    .section-title { font-size: 1.1rem; font-weight: 700; letter-spacing: .12em; color: var(--silver); text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.25rem; }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap: 1rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem; transition: border-color .2s, transform .2s; }
+    .card:hover { border-color: var(--steel); transform: translateY(-2px); }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--steel); margin-bottom: .3rem; }
+    .card-sub { font-size: .75rem; color: var(--silver); font-variant: small-caps; margin-bottom: .4rem; }
+    .card-desc { font-size: .82rem; color: var(--text); line-height: 1.5; }
+    .timeline { display: flex; flex-direction: column; gap: .75rem; }
+    .tl-item { display: grid; grid-template-columns: 110px 1fr; gap: .75rem; align-items: start; }
+    .tl-year { font-size: .85rem; font-weight: 700; color: var(--silver); padding-top: .15rem; text-align: right; }
+    .tl-body { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--silver); border-radius: 0 8px 8px 0; padding: .6rem .85rem; }
+    .tl-title { font-size: .88rem; font-weight: 700; color: var(--steel); margin-bottom: .2rem; }
+    .tl-desc { font-size: .81rem; color: var(--text); line-height: 1.45; }
+    #longship-canvas { width: 100%; height: 220px; border: 1px solid var(--border); border-radius: 10px; background: rgba(2,4,10,.8); cursor: pointer; }
+    .canvas-label { font-size: .8rem; color: var(--muted); text-align: center; margin-top: .5rem; }
+    .sub-nav-wrap { position: sticky; top: 0; z-index: 100; background: rgba(2,4,10,.92); border-bottom: 1px solid var(--border); backdrop-filter: blur(10px); }
+    .sub-nav { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: center; gap: .15rem; padding: .45rem .75rem; }
+    .sub-nav a { color: var(--muted); text-decoration: none; font-family: 'Georgia', serif; font-size: .78rem; letter-spacing: .06em; padding: .35rem .75rem; border-radius: 5px; border: 1px solid transparent; transition: color .18s, border-color .18s, background .18s; white-space: nowrap; }
+    .sub-nav a:hover, .sub-nav a.active { color: var(--steel); border-color: var(--border); background: rgba(160,176,192,.07); }
+    .page-section { display: none; } .page-section.visible { display: block; }
+    @media (max-width:600px) { .tl-item { grid-template-columns: 70px 1fr; } }
+  </style>
+</head>
+<body>
+<canvas id="vikings-canvas"></canvas>
+<nav class="sub-nav-wrap">
+  <div class="sub-nav">
+    <a href="#raiders">⚔️ Raiders</a>
+    <a href="#explorers">🗺️ Explorers</a>
+    <a href="#timeline">📜 Timeline</a>
+    <a href="#longship">⛵ Longship</a>
+  </div>
+</nav>
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-icon">⚔️</div>
+    <h1>The Viking Age</h1>
+    <div class="hero-sub">Norse Raiders, Traders &amp; Explorers — From Scandinavia to the New World</div>
+    <div class="hero-dates">793 AD – 1066 AD · The Age of the Northmen</div>
+  </div>
+
+  <div class="page-section visible" id="raiders">
+    <div class="section-title">Legendary Viking Leaders</div>
+    <div class="cards-grid">
+      <div class="card"><div class="card-title">Ragnar Lothbrok</div><div class="card-sub">Legendary Hero · c. 9th Century</div><div class="card-desc">Semi-legendary Norse hero and legendary king of Denmark and Sweden. Famous for raiding Paris in 845 AD. Whether historical or myth, his sons — including Ivar the Boneless and Björn Ironside — were very real and devastated Europe.</div></div>
+      <div class="card"><div class="card-title">Leif Eriksson</div><div class="card-sub">c. 970–1020 · First European in America</div><div class="card-desc">Norse explorer who sailed from Greenland to North America around 1000 AD — nearly 500 years before Columbus. Established the settlement of Vinland at L'Anse aux Meadows (Newfoundland), confirmed by archaeology in 1960.</div></div>
+      <div class="card"><div class="card-title">Harald Hardrada</div><div class="card-sub">1015–1066 · Last Great Viking King</div><div class="card-desc">King of Norway and one of history's most formidable warriors. Served in the Byzantine Varangian Guard before claiming Norway. His defeat at the Battle of Stamford Bridge (1066) marks the traditional end of the Viking Age.</div></div>
+      <div class="card"><div class="card-title">Rollo of Normandy</div><div class="card-sub">c. 860–930 · First Duke of Normandy</div><div class="card-desc">Norse chieftain who besieged Paris (885 AD). King Charles the Simple ceded Normandy to him in 911 AD to stop the raids. His descendants — the Normans — would conquer England in 1066 and Sicily in 1071.</div></div>
+      <div class="card"><div class="card-title">Erik the Red</div><div class="card-sub">c. 950–1003 · Colonizer of Greenland</div><div class="card-desc">Exiled from Iceland for manslaughter, Erik sailed west and discovered (and named) Greenland, establishing the first European settlement there in 985 AD. His son Leif would go even further west.</div></div>
+      <div class="card"><div class="card-title">Cnut the Great</div><div class="card-title">c. 990–1035 · King of England, Denmark &amp; Norway</div><div class="card-desc">One of the most powerful Viking rulers, who controlled an empire spanning the North Sea. Known for the legendary (misunderstood) tale of commanding the tide — used to demonstrate to his flatterers that only God had true power.</div></div>
+    </div>
+  </div>
+
+  <div class="page-section" id="explorers">
+    <div class="section-title">Norse Expansion &amp; Trade</div>
+    <div class="cards-grid">
+      <div class="card"><div class="card-title">The Danelaw</div><div class="card-sub">Northern England · 865–954 AD</div><div class="card-desc">The Great Heathen Army of 865 AD conquered most of England, establishing the Danelaw — Norse-controlled territory with its own laws. York (Jorvik) became a thriving Norse city; DNA traces show 6% of English men carry Scandinavian Y-chromosomes.</div></div>
+      <div class="card"><div class="card-title">Varangian Trade Routes</div><div class="card-sub">Russia · Constantinople</div><div class="card-desc">Swedish Varangians (Rus') traveled the great river systems of Eastern Europe, founding Novgorod and Kiev, trading with Byzantium and the Islamic world. They gave Russia its name — and served as elite imperial guards in Constantinople.</div></div>
+      <div class="card"><div class="card-title">Iceland &amp; the Sagas</div><div class="card-sub">Settled 874 AD · Literary Tradition</div><div class="card-desc">Norse settlers arrived in Iceland around 874 AD and created the world's oldest parliament (Althing, 930 AD). The Icelandic Sagas — written in the 12th–13th centuries — preserve history, mythology, and legal traditions in remarkable detail.</div></div>
+      <div class="card"><div class="card-title">Norse Mythology &amp; Religion</div><div class="card-sub">Asgard · Odin · Thor · Ragnarök</div><div class="card-desc">The Norse pantheon: Odin (all-father, god of wisdom and war), Thor (god of thunder), Freya (goddess of love and war), Loki (trickster). The world tree Yggdrasil connects nine realms. Ragnarök — the twilight of the gods — is history's most dramatic apocalypse myth.</div></div>
+    </div>
+  </div>
+
+  <div class="page-section" id="timeline">
+    <div class="section-title">Timeline of the Viking Age</div>
+    <div class="timeline">
+      <div class="tl-item"><div class="tl-year">793</div><div class="tl-body"><div class="tl-title">Raid on Lindisfarne</div><div class="tl-desc">Vikings attack the holy island monastery of Lindisfarne off northeastern England. The event shocked the Christian world and marks the traditional start of the Viking Age.</div></div></div>
+      <div class="tl-item"><div class="tl-year">844</div><div class="tl-body"><div class="tl-title">Vikings Raid Seville</div><div class="tl-desc">A Norse fleet enters the Guadalquivir River and attacks Seville, then part of Islamic Al-Andalus. The Moors drove them off — the Norsemen had raided as far south as Morocco.</div></div></div>
+      <div class="tl-item"><div class="tl-year">865</div><div class="tl-body"><div class="tl-title">Great Heathen Army Invades England</div><div class="tl-desc">A massive Norse army lands in East Anglia — the sons of Ragnar Lothbrok avenging their father. They conquer Northumbria, East Anglia, and much of Mercia, establishing the Danelaw.</div></div></div>
+      <div class="tl-item"><div class="tl-year">911</div><div class="tl-body"><div class="tl-title">Treaty of Saint-Clair-sur-Epte</div><div class="tl-desc">France grants Normandy to Rollo to end Viking raids. The Norse settlers rapidly adopt French language and culture, transforming into the Normans who will shape medieval Europe.</div></div></div>
+      <div class="tl-item"><div class="tl-year">1000</div><div class="tl-body"><div class="tl-title">Leif Eriksson Reaches America</div><div class="tl-desc">Leif Eriksson sails from Greenland and lands in North America, establishing a camp at Vinland. Archaeological evidence at L'Anse aux Meadows confirms Norse presence 500 years before Columbus.</div></div></div>
+      <div class="tl-item"><div class="tl-year">1066</div><div class="tl-body"><div class="tl-title">Battle of Stamford Bridge</div><div class="tl-desc">King Harold II of England defeats and kills the last great Viking king, Harald Hardrada, ending the Viking threat from Norway. Three days later, Harold faces William the Conqueror at Hastings — and loses.</div></div></div>
+    </div>
+  </div>
+
+  <div class="page-section" id="longship">
+    <div class="section-title">The Longship — Terror of the Seas</div>
+    <canvas id="longship-canvas"></canvas>
+    <div class="canvas-label">Click to summon more longships — the Norse fleet crosses the North Sea</div>
+  </div>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('vikings-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, t = 0;
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  const stars = Array.from({length:120}, () => ({ x: Math.random(), y: Math.random()*0.5, r: Math.random()*1.2+.3, a: Math.random()*Math.PI*2 }));
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.006;
+    // Northern lights
+    for(let i=0;i<3;i++){
+      ctx.beginPath();
+      ctx.moveTo(0, H*0.2+i*20);
+      for(let x=0;x<=W;x+=20) ctx.lineTo(x, H*0.2+i*20+Math.sin(x/200+t+i)*30);
+      ctx.strokeStyle = `rgba(${[0,20,40][i]},${[180,200,160][i]},${[100,180,100][i]},${0.04+0.02*Math.sin(t+i)})`; ctx.lineWidth = 15-i*3; ctx.stroke();
+    }
+    stars.forEach(s => {
+      s.a += 0.003;
+      ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(160,176,192,${0.3+0.15*Math.sin(s.a)})`; ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+(function(){
+  const c = document.getElementById('longship-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth; c.height = 220;
+  const W = c.width, H = c.height;
+  let ships = [], t = 0;
+  function addShip(){ ships.push({ x: -120, y: H*0.55+(Math.random()-.5)*40, sp: 0.8+Math.random()*0.6, scale: 0.7+Math.random()*0.5 }); }
+  for(let i=0;i<3;i++) ships.push({ x: (i+1)*W/4, y: H*0.55+(Math.random()-.5)*40, sp: 0.8+Math.random()*0.6, scale: 0.7+Math.random()*0.5 });
+  c.addEventListener('click', () => { for(let i=0;i<2;i++) addShip(); });
+  function drawShip(x, y, sc, tt){
+    ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+    // Hull
+    ctx.beginPath(); ctx.moveTo(-60,0); ctx.quadraticCurveTo(-50,20, 0, 22); ctx.quadraticCurveTo(50,20, 60,0);
+    ctx.quadraticCurveTo(50,-5, 0,-8); ctx.quadraticCurveTo(-50,-5,-60,0);
+    ctx.fillStyle = '#3a2010'; ctx.fill();
+    ctx.strokeStyle = '#6b3810'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Oar ports
+    for(let i=-3;i<=3;i++){
+      ctx.beginPath(); ctx.arc(i*15, 10, 3, 0, Math.PI*2);
+      ctx.fillStyle = '#1a0808'; ctx.fill();
+    }
+    // Mast
+    ctx.strokeStyle = '#5a3018'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-80); ctx.stroke();
+    // Sail
+    const sailWave = Math.sin(tt*2)*5;
+    ctx.beginPath(); ctx.moveTo(-5,-70); ctx.quadraticCurveTo(sailWave+30,-50, sailWave+35,-20); ctx.lineTo(-5,-20); ctx.closePath();
+    ctx.fillStyle = 'rgba(180,60,30,.85)'; ctx.fill();
+    // Dragon head (prow)
+    ctx.fillStyle = '#8b4020';
+    ctx.beginPath(); ctx.moveTo(60,0); ctx.quadraticCurveTo(75,-10,80,-5); ctx.quadraticCurveTo(75,5,60,0); ctx.fill();
+    ctx.restore();
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.02;
+    // Sea
+    const sea = ctx.createLinearGradient(0, H*0.4, 0, H);
+    sea.addColorStop(0,'rgba(10,26,42,.9)'); sea.addColorStop(1,'rgba(2,4,10,.95)');
+    ctx.fillStyle = sea; ctx.fillRect(0,0,W,H);
+    // Waves
+    for(let i=0;i<8;i++){
+      ctx.beginPath(); const wy = H*0.4+i*H*0.08;
+      ctx.moveTo(0,wy);
+      for(let x=0;x<=W;x+=6) ctx.lineTo(x, wy+Math.sin(x/60+t+i)*4);
+      ctx.strokeStyle = `rgba(100,140,180,${0.06-i*0.005})`; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ships.sort((a,b)=>a.scale-b.scale);
+    ships.forEach(s => {
+      s.x += s.sp; s.y += Math.sin(t*1.5+s.x/100)*0.3;
+      drawShip(s.x, s.y, s.scale, t);
+    });
+    for(let i=ships.length-1;i>=0;i--) if(ships[i].x > W+120) ships.splice(i,1);
+    if(ships.length < 3) addShip();
+    // Moon
+    ctx.beginPath(); ctx.arc(W*0.85, H*0.12, 20, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(200,210,220,.8)'; ctx.fill();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+document.querySelectorAll('.sub-nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault(); const id = a.getAttribute('href').slice(1);
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('visible'));
+    const tg = document.getElementById(id); if(tg) tg.classList.add('visible');
+    document.querySelectorAll('.sub-nav a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+  });
+});
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

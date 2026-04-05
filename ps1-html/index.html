@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PS1 Generator — ximg.app</title>
+  <link rel="icon" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e13;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --surface3: #222d3e;
+      --border: rgba(255,255,255,.08);
+      --border2: rgba(255,255,255,.14);
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #7c3aed;
+      --green: #22c55e;
+      --mono: 'SF Mono','Fira Code','Cascadia Code','Consolas',monospace;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding-top: 44px;
+    }
+
+    /* ── Layout ── */
+    .app {
+      display: grid;
+      grid-template-columns: 240px 1fr 260px;
+      height: calc(100vh - 44px);
+      overflow: hidden;
+    }
+    .panel {
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    .panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+    .panel-head {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      padding: 12px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      z-index: 2;
+    }
+    .main-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Themes panel ── */
+    .theme-grid {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .theme-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .theme-card:hover { border-color: var(--border2); background: var(--surface3); }
+    .theme-card.active { border-color: #7c3aed; background: rgba(124,58,237,.12); }
+    .theme-card-name {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .theme-mini {
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.5;
+      background: #0d1117;
+      border-radius: 4px;
+      padding: 5px 8px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Main panel ── */
+    .terminal-wrap {
+      flex: 1;
+      padding: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .terminal {
+      background: #0d1117;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.06);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .terminal-bar {
+      background: #1c2128;
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-shrink: 0;
+    }
+    .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #ffbd2e; }
+    .dot-g { background: #28c940; }
+    .terminal-title {
+      margin-left: 6px;
+      font-size: 11px;
+      color: #6b7280;
+      font-family: var(--mono);
+      flex: 1;
+      text-align: center;
+    }
+    .terminal-body {
+      flex: 1;
+      padding: 14px 18px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-y: auto;
+    }
+    .term-line { display: flex; flex-wrap: wrap; align-items: baseline; }
+    .term-prompt { display: inline-flex; align-items: baseline; flex-wrap: wrap; }
+    .term-cmd { color: #e2e8f0; margin-left: 2px; }
+    .term-output { color: #6b7280; padding-left: 0; display: block; }
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: #22c55e;
+      vertical-align: text-bottom;
+      animation: blink 1.1s step-end infinite;
+      margin-left: 2px;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── Options bar ── */
+    .options-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .opt-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .opt-label {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .seg-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .seg-btn:hover { background: var(--surface3); }
+    .seg-btn.active { background: rgba(124,58,237,.25); border-color: #7c3aed; color: #a78bfa; }
+    .tbg-btn {
+      width: 28px;
+      height: 20px;
+      border-radius: 3px;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: border-color .1s;
+      flex-shrink: 0;
+    }
+    .tbg-btn.active { border-color: #7c3aed; }
+
+    /* ── Output ── */
+    .output-section {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .output-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .out-tab {
+      padding: 8px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      background: none;
+      border-left: none; border-right: none; border-top: none;
+      transition: color .15s;
+    }
+    .out-tab.active { color: #a78bfa; border-bottom-color: #7c3aed; }
+    .output-code-wrap {
+      position: relative;
+      padding: 12px 16px;
+    }
+    .output-code {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #a6e22e;
+      background: #0d1117;
+      border-radius: 6px;
+      padding: 10px 42px 10px 14px;
+      border: 1px solid var(--border);
+      word-break: break-all;
+      white-space: pre-wrap;
+      min-height: 38px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .copy-btn {
+      position: absolute;
+      right: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(124,58,237,.2);
+      border: 1px solid rgba(124,58,237,.4);
+      color: #a78bfa;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: rgba(124,58,237,.35); }
+    .copy-btn.copied { background: rgba(34,197,94,.2); border-color: rgba(34,197,94,.4); color: #4ade80; }
+
+    /* ── Builder panel ── */
+    .builder-body { padding: 10px; }
+    .seg-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      margin-bottom: 5px;
+      cursor: grab;
+      user-select: none;
+      transition: background .12s, opacity .12s;
+    }
+    .seg-row:active { cursor: grabbing; }
+    .seg-row.dragging { opacity: .35; }
+    .seg-row.drag-over { border-color: #7c3aed; background: rgba(124,58,237,.1); }
+    .drag-handle { color: #374151; font-size: 14px; flex-shrink: 0; cursor: grab; line-height: 1; }
+    .seg-toggle {
+      width: 15px;
+      height: 15px;
+      border-radius: 3px;
+      border: 1.5px solid var(--muted);
+      background: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .1s, border-color .1s;
+    }
+    .seg-toggle.on { background: var(--green); border-color: var(--green); }
+    .seg-toggle.on::after { content: '✓'; font-size: 9px; color: #000; font-weight: 800; }
+    .seg-label {
+      flex: 1;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .seg-label.dim { color: var(--muted); }
+    .seg-literal-input {
+      flex: 1;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 11px;
+      width: 60px;
+    }
+    .seg-color-wrap { position: relative; flex-shrink: 0; }
+    .seg-color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      border: 1.5px solid rgba(255,255,255,.15);
+      cursor: pointer;
+      position: relative;
+    }
+    .seg-color-swatch input[type=color] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      cursor: pointer;
+    }
+    .seg-bold {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      transition: color .1s, border-color .1s;
+      background: none;
+    }
+    .seg-bold.on { color: #f8f8f2; border-color: #6b7280; }
+    .seg-del {
+      font-size: 12px;
+      color: #ef444455;
+      cursor: pointer;
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      padding: 0 2px;
+      transition: color .1s;
+      line-height: 1;
+    }
+    .seg-del:hover { color: #ef4444; }
+
+    .add-seg-wrap {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+    }
+    .add-seg-select {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+    .add-seg-btn {
+      background: rgba(124,58,237,.2);
+      border: 1px solid rgba(124,58,237,.4);
+      color: #a78bfa;
+      padding: 5px 12px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .add-seg-btn:hover { background: rgba(124,58,237,.35); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Themes panel ── -->
+  <aside class="panel" id="themePanel">
+    <div class="panel-head">Preset Themes</div>
+    <div class="theme-grid" id="themeGrid"></div>
+  </aside>
+
+  <!-- ── Main panel ── -->
+  <div class="main-panel">
+    <div class="terminal-wrap">
+      <!-- Terminal preview -->
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dot dot-r"></span>
+          <span class="dot dot-y"></span>
+          <span class="dot dot-g"></span>
+          <span class="terminal-title">bash — ps1.ximg.app</span>
+        </div>
+        <div class="terminal-body" id="terminalBody"></div>
+      </div>
+    </div>
+
+    <!-- Options bar -->
+    <div class="options-bar">
+      <div class="opt-group">
+        <span class="opt-label">Style</span>
+        <button class="seg-btn active" data-mode="plain" onclick="setMode('plain')">Plain</button>
+        <button class="seg-btn" data-mode="powerline" onclick="setMode('powerline')">Powerline ▶</button>
+        <button class="seg-btn" data-mode="twoline" onclick="setMode('twoline')">Two-line</button>
+      </div>
+      <div class="opt-group">
+        <span class="opt-label">Terminal bg</span>
+        <div id="tbgSwatches" style="display:flex;gap:4px"></div>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="output-section">
+      <div class="output-tabs">
+        <button class="out-tab active" data-tab="export" onclick="setOutTab('export')">export PS1</button>
+        <button class="out-tab" data-tab="ps1only" onclick="setOutTab('ps1only')">PS1 string</button>
+        <button class="out-tab" data-tab="full" onclick="setOutTab('full')">.bashrc block</button>
+      </div>
+      <div class="output-code-wrap">
+        <pre class="output-code" id="outputCode"></pre>
+        <button class="copy-btn" id="copyBtn" onclick="copyOutput()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Builder panel ── -->
+  <aside class="panel" id="builderPanel">
+    <div class="panel-head">Components</div>
+    <div class="builder-body">
+      <div id="segList"></div>
+      <div class="add-seg-wrap">
+        <select class="add-seg-select" id="addSegSelect">
+          <option value="user">Username (\u)</option>
+          <option value="host">Hostname (\h)</option>
+          <option value="path">Full Path (\w)</option>
+          <option value="wpath">Short Path (\W)</option>
+          <option value="git">Git Branch</option>
+          <option value="time">Time 24h (\t)</option>
+          <option value="time12">Time 12h (\@)</option>
+          <option value="date">Date (\d)</option>
+          <option value="venv">Python Venv</option>
+          <option value="jobs">Job Count (\j)</option>
+          <option value="exit">Exit Code</option>
+          <option value="prompt">Prompt ($/#)</option>
+          <option value="newline">Newline</option>
+          <option value="literal">Custom Text</option>
+        </select>
+        <button class="add-seg-btn" onclick="addSegment()">+ Add</button>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// ── Constants ──
+const GIT_CMD = '$(b=$(git branch --show-current 2>/dev/null); [ -n "$b" ] && echo " ($b)")';
+const VENV_CMD = '${VIRTUAL_ENV:+(${VIRTUAL_ENV##*/}) }';
+const EXIT_CMD = '$([ $__EXIT -eq 0 ] && echo "\\[\\033[32m\\]✓\\[\\033[0m\\]" || echo "\\[\\033[31m\\]✗$__EXIT\\[\\033[0m\\]")';
+
+const SEG_DEFS = {
+  user:    { bash: '\\u',    preview: 'alex',           label: 'Username'   },
+  host:    { bash: '\\h',    preview: 'devbox',         label: 'Hostname'   },
+  path:    { bash: '\\w',    preview: '~/code/app',     label: 'Path (full)'},
+  wpath:   { bash: '\\W',    preview: 'app',            label: 'Path (short)'},
+  git:     { bash: GIT_CMD,  preview: ' (main)',        label: 'Git Branch' },
+  time:    { bash: '\\t',    preview: '14:32',          label: 'Time 24h'   },
+  time12:  { bash: '\\@',    preview: '2:32 PM',        label: 'Time 12h'   },
+  date:    { bash: '\\d',    preview: 'Apr 05',         label: 'Date'       },
+  venv:    { bash: VENV_CMD, preview: '(env) ',         label: 'Python Venv'},
+  jobs:    { bash: '\\j',    preview: '1',              label: 'Job Count'  },
+  exit:    { bash: EXIT_CMD, preview: '✓',              label: 'Exit Code'  },
+  prompt:  { bash: ' \\$',   preview: ' $',             label: 'Prompt ($/#)'},
+  newline: { bash: '\\n',    preview: '\n',             label: 'Newline'    },
+  literal: { bash: null,     preview: null,             label: 'Custom Text'},
+};
+
+// ── Themes ──
+const THEMES = [
+  {
+    id: 'classic', name: 'Classic', termBg: '#000000',
+    segs: [
+      { t:'user',  fg:'#33dd33', bold:false },
+      { t:'literal', text:'@', fg:'#888888' },
+      { t:'host',  fg:'#33dd33', bold:false },
+      { t:'literal', text:':', fg:'#888888' },
+      { t:'path',  fg:'#4488ff', bold:true  },
+      { t:'prompt', fg:'#ffffff', bold:false },
+    ]
+  },
+  {
+    id: 'minimal', name: 'Minimal', termBg: '#0a0e13',
+    segs: [
+      { t:'path',  fg:'#64748b', bold:false },
+      { t:'literal', text:' ❯', fg:'#22c55e', bold:true },
+      { t:'literal', text:' ', fg:'#ffffff' },
+    ]
+  },
+  {
+    id: 'powerline', name: 'Powerline', termBg: '#1a1a2e', mode:'powerline',
+    segs: [
+      { t:'user',  fg:'#000000', bg:'#66d9ef', bold:true  },
+      { t:'path',  fg:'#000000', bg:'#a6e22e', bold:true  },
+      { t:'git',   fg:'#000000', bg:'#ae81ff', bold:false },
+      { t:'prompt',fg:'#f8f8f2', bold:false },
+    ]
+  },
+  {
+    id: 'hacker', name: 'Hacker', termBg: '#000000',
+    segs: [
+      { t:'literal', text:'[', fg:'#00ff41' },
+      { t:'user',  fg:'#00ff41', bold:true  },
+      { t:'literal', text:'@', fg:'#009e25' },
+      { t:'host',  fg:'#00ff41', bold:false },
+      { t:'literal', text:' ', fg:'#00ff41' },
+      { t:'wpath', fg:'#00ff41', bold:true  },
+      { t:'literal', text:']', fg:'#00ff41' },
+      { t:'prompt', fg:'#00ff41', bold:false },
+    ]
+  },
+  {
+    id: 'dracula', name: 'Dracula', termBg: '#282a36',
+    segs: [
+      { t:'user',  fg:'#ff79c6', bold:true  },
+      { t:'literal', text:'@', fg:'#6272a4' },
+      { t:'host',  fg:'#8be9fd', bold:true  },
+      { t:'literal', text:':', fg:'#6272a4' },
+      { t:'path',  fg:'#f1fa8c', bold:false },
+      { t:'git',   fg:'#bd93f9', bold:false },
+      { t:'prompt', fg:'#50fa7b', bold:true  },
+    ]
+  },
+  {
+    id: 'nord', name: 'Nord', termBg: '#2e3440',
+    segs: [
+      { t:'user',  fg:'#88c0d0', bold:true  },
+      { t:'literal', text:' ❯ ', fg:'#4c566a' },
+      { t:'path',  fg:'#81a1c1', bold:true  },
+      { t:'git',   fg:'#a3be8c', bold:false },
+      { t:'literal', text:' ❯', fg:'#5e81ac', bold:true },
+      { t:'literal', text:' ', fg:'#eceff4' },
+    ]
+  },
+  {
+    id: 'gruvbox', name: 'Gruvbox', termBg: '#282828',
+    segs: [
+      { t:'user',  fg:'#fabd2f', bold:true  },
+      { t:'literal', text:'@', fg:'#928374' },
+      { t:'host',  fg:'#8ec07c', bold:false },
+      { t:'literal', text:':', fg:'#928374' },
+      { t:'path',  fg:'#fe8019', bold:true  },
+      { t:'git',   fg:'#d3869b', bold:false },
+      { t:'prompt', fg:'#fbf1c7', bold:false },
+    ]
+  },
+  {
+    id: 'tokyonight', name: 'Tokyo Night', termBg: '#1a1b26',
+    segs: [
+      { t:'time',  fg:'#565f89', bold:false },
+      { t:'literal', text:' ', fg:'#565f89' },
+      { t:'path',  fg:'#7aa2f7', bold:true  },
+      { t:'git',   fg:'#bb9af7', bold:false },
+      { t:'literal', text:'\n❯', fg:'#7dcfff', bold:true },
+      { t:'literal', text:' ', fg:'#c0caf5' },
+    ]
+  },
+  {
+    id: 'solarized', name: 'Solarized', termBg: '#002b36',
+    segs: [
+      { t:'user',  fg:'#268bd2', bold:true  },
+      { t:'literal', text:'@', fg:'#657b83' },
+      { t:'host',  fg:'#2aa198', bold:false },
+      { t:'literal', text:':', fg:'#657b83' },
+      { t:'path',  fg:'#b58900', bold:true  },
+      { t:'git',   fg:'#6c71c4', bold:false },
+      { t:'prompt', fg:'#839496', bold:false },
+    ]
+  },
+  {
+    id: 'neon', name: 'Neon', termBg: '#0a0014',
+    segs: [
+      { t:'literal', text:'╔[', fg:'#ff0090' },
+      { t:'user',  fg:'#00ffff', bold:true  },
+      { t:'literal', text:'@', fg:'#ff0090' },
+      { t:'host',  fg:'#00ffff', bold:false },
+      { t:'literal', text:'] ', fg:'#ff0090' },
+      { t:'path',  fg:'#ff00ff', bold:true  },
+      { t:'git',   fg:'#00ffcc', bold:false },
+      { t:'literal', text:'\n╚❯', fg:'#ff0090', bold:true },
+      { t:'literal', text:' ', fg:'#ffffff' },
+    ]
+  },
+  {
+    id: 'retro', name: 'Retro CRT', termBg: '#0c0800',
+    segs: [
+      { t:'user',  fg:'#ffb300', bold:true  },
+      { t:'literal', text:'@', fg:'#cc8800' },
+      { t:'host',  fg:'#ffb300', bold:false },
+      { t:'literal', text:':', fg:'#cc8800' },
+      { t:'path',  fg:'#ffd54f', bold:false },
+      { t:'prompt', fg:'#ffb300', bold:false },
+    ]
+  },
+  {
+    id: 'gitpro', name: 'Git Pro', termBg: '#0d1117',
+    segs: [
+      { t:'path',  fg:'#58a6ff', bold:true  },
+      { t:'git',   fg:'#3fb950', bold:true  },
+      { t:'venv',  fg:'#f0883e', bold:false },
+      { t:'literal', text:'\n', fg:'#ffffff' },
+      { t:'exit',  fg:'#3fb950', bold:false },
+      { t:'literal', text:' ❯', fg:'#58a6ff', bold:true },
+      { t:'literal', text:' ', fg:'#ffffff' },
+    ]
+  },
+  {
+    id: 'devops', name: 'DevOps', termBg: '#1e1e2e',
+    segs: [
+      { t:'time',  fg:'#6272a4', bold:false },
+      { t:'literal', text:' ┃ ', fg:'#44475a' },
+      { t:'user',  fg:'#bd93f9', bold:false },
+      { t:'literal', text:':', fg:'#44475a' },
+      { t:'path',  fg:'#8be9fd', bold:true  },
+      { t:'git',   fg:'#50fa7b', bold:false },
+      { t:'literal', text:' ┃ ', fg:'#44475a' },
+      { t:'exit',  fg:'#ff5555', bold:false },
+      { t:'prompt', fg:'#f8f8f2', bold:false },
+    ]
+  },
+  {
+    id: 'stealth', name: 'Stealth', termBg: '#0a0a0a',
+    segs: [
+      { t:'path',  fg:'#444444', bold:false },
+      { t:'git',   fg:'#333333', bold:false },
+      { t:'literal', text:'\n╰─❯', fg:'#555555', bold:false },
+      { t:'literal', text:' ', fg:'#cccccc' },
+    ]
+  },
+  {
+    id: 'cyberpunk', name: 'Cyberpunk', termBg: '#0a001a',
+    segs: [
+      { t:'literal', text:'⟦', fg:'#ffd700' },
+      { t:'user',  fg:'#ff6b35', bold:true  },
+      { t:'literal', text:'⟧', fg:'#ffd700' },
+      { t:'literal', text:'⟦', fg:'#ffd700' },
+      { t:'path',  fg:'#f7ff00', bold:true  },
+      { t:'literal', text:'⟧', fg:'#ffd700' },
+      { t:'git',   fg:'#ff2079', bold:true  },
+      { t:'literal', text:' ▸', fg:'#ffd700', bold:true },
+      { t:'literal', text:' ', fg:'#f7ff00' },
+    ]
+  },
+];
+
+// ── State ──
+let state = {
+  themeId: 'dracula',
+  segments: [],
+  mode: 'plain',
+  termBg: '#282a36',
+  outTab: 'export',
+};
+
+let dragSrc = null;
+
+// ── Init ──
+function init() {
+  // Assign unique IDs to theme segments
+  loadTheme('dracula');
+  renderThemes();
+  renderBuilder();
+  renderPreview();
+  renderOutput();
+  renderTermBgSwatches();
+}
+
+function uid() { return Math.random().toString(36).slice(2, 8); }
+
+function loadTheme(id) {
+  const theme = THEMES.find(t => t.id === id);
+  if (!theme) return;
+  state.themeId = id;
+  state.termBg = theme.termBg || '#0d1117';
+  state.mode = theme.mode || 'plain';
+  state.segments = theme.segs.map(s => ({
+    uid: uid(),
+    type: s.t,
+    text: s.text || '',
+    enabled: true,
+    fg: s.fg || '#ffffff',
+    bg: s.bg || null,
+    bold: !!s.bold,
+  }));
+  updateModeButtons();
+  renderAll();
+}
+
+// ── Rendering ──
+function renderAll() {
+  renderThemes();
+  renderBuilder();
+  renderPreview();
+  renderOutput();
+}
+
+// Build prompt HTML (for preview)
+function promptHTML(segs, isPowerline) {
+  let out = '';
+  const active = segs.filter(s => s.enabled);
+  for (let i = 0; i < active.length; i++) {
+    const s = active[i];
+    const preview = s.type === 'literal' ? escHtml(s.text)
+      : s.type === 'newline' ? '<br>'
+      : escHtml(SEG_DEFS[s.type]?.preview || '');
+
+    if (s.type === 'newline') { out += '<br>'; continue; }
+
+    let style = `color:${s.fg};`;
+    if (s.bg && isPowerline) style += `background:${s.bg};padding:0 6px;`;
+    if (s.bold) style += 'font-weight:700;';
+
+    if (isPowerline && s.bg) {
+      // Add powerline separator after this segment
+      const next = active.slice(i+1).find(x => x.enabled);
+      const nextBg = next?.bg;
+      out += `<span style="${style}">${preview}</span>`;
+      if (nextBg) {
+        out += `<span style="color:${s.bg};background:${nextBg}">&#xE0B0;</span>`;
+      } else {
+        out += `<span style="color:${s.bg}">&#xE0B0;</span>`;
+      }
+    } else {
+      out += `<span style="${style}">${preview}</span>`;
+    }
+  }
+  return out;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderPreview() {
+  const body = document.getElementById('terminalBody');
+  const isPL = state.mode === 'powerline';
+  const p = promptHTML(state.segments, isPL);
+  const bg = state.termBg;
+  body.style.background = bg;
+  body.innerHTML = `
+    <span class="term-output"># type 'ls' or 'git status' to test</span>
+    <div class="term-line">
+      <span class="term-prompt">${p}</span>
+      <span class="term-cmd">ls -la</span>
+    </div>
+    <span class="term-output">drwxr-xr-x  4 alex staff  128 Apr 05 14:32 .</span>
+    <span class="term-output">drwxr-xr-x 18 alex staff  576 Apr 05 09:11 ..</span>
+    <span class="term-output">-rw-r--r--  1 alex staff  423 Apr 04 16:22 README.md</span>
+    <span class="term-output">drwxr-xr-x  6 alex staff  192 Apr 05 14:30 src/</span>
+    <div class="term-line">
+      <span class="term-prompt">${p}</span>
+      <span class="term-cmd">git status</span>
+    </div>
+    <span class="term-output">On branch main</span>
+    <span class="term-output">Changes not staged for commit:</span>
+    <span class="term-output">  modified:   src/index.js</span>
+    <div class="term-line">
+      <span class="term-prompt">${p}</span>
+      <span class="cursor"></span>
+    </div>
+  `;
+}
+
+// Build the mini theme preview HTML
+function miniPromptHTML(theme) {
+  const isPL = theme.mode === 'powerline';
+  const segs = theme.segs.map(s => ({
+    uid: uid(), type: s.t, text: s.text||'', enabled: true,
+    fg: s.fg||'#fff', bg: s.bg||null, bold: !!s.bold,
+  }));
+  return promptHTML(segs, isPL);
+}
+
+function renderThemes() {
+  const grid = document.getElementById('themeGrid');
+  grid.innerHTML = THEMES.map(t => `
+    <div class="theme-card ${state.themeId === t.id ? 'active' : ''}"
+         onclick="loadTheme('${t.id}')">
+      <div class="theme-card-name">${t.name}</div>
+      <div class="theme-mini" style="background:${t.termBg}">
+        ${miniPromptHTML(t)}<span style="color:#888"> _</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBuilder() {
+  const list = document.getElementById('segList');
+  list.innerHTML = '';
+  state.segments.forEach((seg, idx) => {
+    const row = document.createElement('div');
+    row.className = 'seg-row';
+    row.draggable = true;
+    row.dataset.idx = idx;
+
+    const def = SEG_DEFS[seg.type] || {};
+    const label = seg.type === 'literal'
+      ? `<input class="seg-literal-input" value="${escAttr(seg.text)}"
+             onchange="updateSeg(${idx},'text',this.value)" placeholder="text">`
+      : `<span class="seg-label ${seg.enabled?'':'dim'}">${def.label||seg.type}</span>`;
+
+    row.innerHTML = `
+      <span class="drag-handle">⠿</span>
+      <button class="seg-toggle ${seg.enabled?'on':''}" onclick="toggleSeg(${idx})"></button>
+      ${label}
+      <div class="seg-color-wrap">
+        <div class="seg-color-swatch" style="background:${seg.fg}">
+          <input type="color" value="${seg.fg}" onchange="updateSeg(${idx},'fg',this.value)" oninput="updateSeg(${idx},'fg',this.value)">
+        </div>
+      </div>
+      <button class="seg-bold ${seg.bold?'on':''}" onclick="toggleBold(${idx})">B</button>
+      <button class="seg-del" onclick="delSeg(${idx})" title="Remove">×</button>
+    `;
+
+    // Drag events
+    row.addEventListener('dragstart', e => { dragSrc = idx; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    row.addEventListener('dragend', () => { row.classList.remove('dragging'); document.querySelectorAll('.seg-row').forEach(r=>r.classList.remove('drag-over')); });
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrc !== null && dragSrc !== idx) {
+        const moved = state.segments.splice(dragSrc, 1)[0];
+        state.segments.splice(idx, 0, moved);
+        renderAll();
+      }
+    });
+
+    list.appendChild(row);
+  });
+}
+
+function escAttr(s) { return String(s).replace(/"/g,'&quot;'); }
+
+// ── Output generation ──
+function buildPS1() {
+  const isPL = state.mode === 'powerline';
+  let parts = [];
+  const active = state.segments.filter(s => s.enabled);
+
+  for (let i = 0; i < active.length; i++) {
+    const s = active[i];
+    const def = SEG_DEFS[s.type] || {};
+    const val = s.type === 'literal' ? s.text : def.bash || '';
+
+    if (!val && s.type !== 'exit') continue;
+
+    // Build color codes
+    const [r, g, b] = hexToRgb(s.fg);
+    let open = '', close = '';
+
+    if (s.fg || s.bold) {
+      let codes = [];
+      if (s.bold) codes.push('1');
+      codes.push(`38;2;${r};${g};${b}`);
+      if (s.bg && isPL) {
+        const [br, bg2, bb] = hexToRgb(s.bg);
+        codes.push(`48;2;${br};${bg2};${bb}`);
+      }
+      open  = `\\[\\033[${codes.join(';')}m\\]`;
+      close = `\\[\\033[0m\\]`;
+    }
+
+    // Powerline separator
+    let plSep = '';
+    if (isPL && s.bg) {
+      const next = active.slice(i+1).find(x => x.enabled && x.bg);
+      if (next) {
+        const [nr, ng2, nb] = hexToRgb(s.bg);
+        const [nbr, nbg, nbb] = hexToRgb(next.bg);
+        plSep = `\\[\\033[38;2;${nr};${ng2};${nb}m\\]\\[\\033[48;2;${nbr};${nbg};${nbb}m\\]\\ue0b0\\[\\033[0m\\]`;
+      } else {
+        const [nr, ng2, nb] = hexToRgb(s.bg);
+        plSep = `\\[\\033[38;2;${nr};${ng2};${nb}m\\]\\[\\033[0m\\]\\ue0b0`;
+      }
+    }
+
+    if (s.type === 'exit') {
+      // Exit code is handled specially — inline the color logic
+      parts.push(`$([ $__EXIT -eq 0 ] && echo "\\[\\033[32m\\]✓" || echo "\\[\\033[31m\\]✗$__EXIT")\\[\\033[0m\\]`);
+    } else {
+      parts.push(`${open}${val}${close}${plSep}`);
+    }
+  }
+
+  return parts.join('');
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3
+    ? h.split('').map(c=>c+c).join('') : h, 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+
+function renderOutput() {
+  const ps1 = buildPS1();
+  const hasExit = state.segments.some(s => s.enabled && s.type === 'exit');
+  let text = '';
+
+  if (state.outTab === 'export') {
+    if (hasExit) {
+      text = `PROMPT_COMMAND='__EXIT=$?'\nexport PS1="${ps1}"`;
+    } else {
+      text = `export PS1="${ps1}"`;
+    }
+  } else if (state.outTab === 'ps1only') {
+    text = ps1;
+  } else {
+    // Full .bashrc block
+    text = [
+      '# ── Prompt (generated by ps1.ximg.app) ──',
+      hasExit ? 'PROMPT_COMMAND=\'__EXIT=$?\'' : '',
+      '',
+      '# Git branch helper',
+      'if [ -f /usr/lib/git-core/git-sh-prompt ]; then',
+      '  source /usr/lib/git-core/git-sh-prompt',
+      'fi',
+      '',
+      `export PS1="${ps1}"`,
+      '',
+      '# Optional: save last exit code for PS1',
+      hasExit ? '# __EXIT is set via PROMPT_COMMAND above' : '# Add exit code segment to your prompt to enable',
+    ].filter(l => l !== null).join('\n');
+  }
+
+  document.getElementById('outputCode').textContent = text;
+}
+
+// ── Controls ──
+function setMode(m) {
+  state.mode = m;
+  updateModeButtons();
+  renderPreview();
+  renderOutput();
+}
+
+function updateModeButtons() {
+  document.querySelectorAll('[data-mode]').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === state.mode);
+  });
+}
+
+function setOutTab(t) {
+  state.outTab = t;
+  document.querySelectorAll('.out-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  renderOutput();
+}
+
+function toggleSeg(idx) {
+  state.segments[idx].enabled = !state.segments[idx].enabled;
+  renderAll();
+}
+
+function toggleBold(idx) {
+  state.segments[idx].bold = !state.segments[idx].bold;
+  renderAll();
+}
+
+function updateSeg(idx, key, val) {
+  state.segments[idx][key] = val;
+  renderAll();
+}
+
+function delSeg(idx) {
+  state.segments.splice(idx, 1);
+  renderAll();
+}
+
+function addSegment() {
+  const sel = document.getElementById('addSegSelect');
+  const type = sel.value;
+  const def = SEG_DEFS[type] || {};
+  state.segments.push({
+    uid: uid(),
+    type,
+    text: type === 'literal' ? 'text' : '',
+    enabled: true,
+    fg: '#cccccc',
+    bg: null,
+    bold: false,
+  });
+  renderAll();
+}
+
+// ── Terminal BG swatches ──
+const BG_COLORS = [
+  '#000000','#0d1117','#1a1b26','#282a36','#002b36',
+  '#1e1e2e','#282828','#2e3440','#0c0800','#0a001a',
+];
+
+function renderTermBgSwatches() {
+  const wrap = document.getElementById('tbgSwatches');
+  wrap.innerHTML = BG_COLORS.map(c => `
+    <div class="tbg-btn ${state.termBg === c ? 'active' : ''}"
+         style="background:${c}" title="${c}"
+         onclick="setTermBg('${c}')"></div>
+  `).join('');
+}
+
+function setTermBg(c) {
+  state.termBg = c;
+  renderTermBgSwatches();
+  renderPreview();
+}
+
+// ── Copy ──
+function copyOutput() {
+  const text = document.getElementById('outputCode').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+// ── Start ──
+init();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
