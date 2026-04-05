@@ -19,7 +19,7 @@
   var GROUPS = [
     { label: 'Tech', apps: [
       ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],['crypto','crypto'],
-      ['docker','docker'],['dns','dns'],['fidonet','fidonet'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
+      ['docker','docker'],['dns','dns'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
       ['agents','agents'],['algorithms','algorithms'],['cdn','cdn'],['database','database'],['embeddings','embeddings'],['loadbalancer','loadbalancer'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
@@ -31,7 +31,7 @@
       ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],['rome','rome'],
     ]},
     { label: 'Retro', apps: [
-      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['terminal','terminal'],
+      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['fidonet','fidonet'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['terminal','terminal'],
     ]},
     { label: 'Science', apps: [
       ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['quantum','quantum'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['synth','synth'],['training','training'],['waves','waves'],['world','world']
