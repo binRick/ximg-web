@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>US Income Tax Calculator — tax.ximg.app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#050a14;--card:#080f1e;--card2:#0b1221;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --green:#22c55e;--emerald:#10b981;--red:#ef4444;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    .page{flex:1;max-width:1080px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .g2{display:grid;grid-template-columns:300px 1fr;gap:1.25rem}
+    @media(max-width:720px){.g2{grid-template-columns:1fr}}
+    .field{margin-bottom:.85rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.25rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+    input[type=number]{background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    input[type=number]:focus{border-color:var(--green)}
+    input[type=number]::-webkit-inner-spin-button{opacity:.4}
+    select{background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;cursor:pointer}
+    select:focus{border-color:var(--green)}
+    select option{background:#060d1a}
+    .prefix-wrap{position:relative}
+    .prefix-wrap span{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+    .prefix-wrap input{padding-left:1.75rem}
+    .suffix-wrap{position:relative}
+    .suffix-wrap span{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+    .suffix-wrap input{padding-right:2rem}
+    .seg-group{display:flex;gap:.3rem;margin-bottom:.85rem}
+    .seg{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;
+      color:var(--muted);font-family:inherit;font-size:.78rem;font-weight:600;
+      padding:.4rem .5rem;cursor:pointer;transition:all .15s;text-align:center}
+    .seg:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
+    .seg.active{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4);color:var(--green)}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem}
+    .stat-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+    .stat-val{font-size:1.2rem;font-weight:700;color:var(--green);margin-bottom:.15rem;font-variant-numeric:tabular-nums}
+    .stat-val.white{color:#fff}
+    .stat-val.red{color:var(--red)}
+    .stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+    canvas{display:block;max-width:100%}
+    .chart-wrap{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem}
+    .chart-title{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+    .section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    .bracket-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.5rem}
+    .bracket-table th{color:var(--muted);text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--border);font-weight:600;font-size:.68rem;text-transform:uppercase}
+    .bracket-table td{padding:.45rem .6rem;border-bottom:1px solid rgba(30,41,59,.5);font-variant-numeric:tabular-nums}
+    .bracket-table tr:hover td{background:rgba(255,255,255,.02)}
+    .bracket-table .num{text-align:right}
+    .bracket-table .rate-cell{font-weight:700}
+    .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:.4rem;vertical-align:middle}
+    .note{font-size:.72rem;color:var(--dim);margin-top:.5rem;line-height:1.5}
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>US Income Tax Calculator</h1>
+  <p class="subtitle">2024 Federal Tax Brackets — Single &amp; Married Filing Jointly</p>
+
+  <div class="g2">
+    <!-- Inputs -->
+    <div>
+      <div class="card">
+        <div class="section-title">Income Details</div>
+        <div class="field">
+          <label>Annual Income</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="income" value="85000" min="0" step="1000"></div>
+        </div>
+        <div class="field">
+          <label>Filing Status</label>
+          <div class="seg-group">
+            <div class="seg active" data-status="single" onclick="setStatus(this)">Single</div>
+            <div class="seg" data-status="mfj" onclick="setStatus(this)">Married Jointly</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>State Tax Rate (optional)</label>
+          <div class="suffix-wrap"><span>%</span><input type="number" id="stateRate" value="0" min="0" max="15" step="0.1"></div>
+        </div>
+        <div class="field">
+          <label>Additional Deductions</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="deductions" value="0" min="0" step="500"></div>
+        </div>
+        <p class="note">Standard deduction applied automatically: $14,600 (single) / $29,200 (MFJ). Additional deductions reduce taxable income further.</p>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val white" id="s-gross">—</div>
+          <div class="stat-lbl">Gross Income</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-taxable">—</div>
+          <div class="stat-lbl">Taxable Income</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val red" id="s-fed">—</div>
+          <div class="stat-lbl">Federal Tax</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val red" id="s-state">—</div>
+          <div class="stat-lbl">State Tax</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val white" id="s-marginal">—</div>
+          <div class="stat-lbl">Marginal Rate</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-effective">—</div>
+          <div class="stat-lbl">Effective Rate</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-aftertax">—</div>
+          <div class="stat-lbl">After-Tax Income</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-monthly">—</div>
+          <div class="stat-lbl">Monthly Take-Home</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Income by Tax Bracket</div>
+        <canvas id="bracketChart" height="260"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Bracket Breakdown</div>
+        <table class="bracket-table" id="bracketTable">
+          <thead>
+            <tr>
+              <th>Bracket</th>
+              <th>Rate</th>
+              <th class="num">Income in Bracket</th>
+              <th class="num">Tax Owed</th>
+            </tr>
+          </thead>
+          <tbody id="bracketBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 2024 Federal brackets
+const BRACKETS = {
+  single: [
+    {rate:.10, min:0,       max:11600},
+    {rate:.12, min:11600,   max:47150},
+    {rate:.22, min:47150,   max:100525},
+    {rate:.24, min:100525,  max:191950},
+    {rate:.32, min:191950,  max:243725},
+    {rate:.35, min:243725,  max:609350},
+    {rate:.37, min:609350,  max:Infinity},
+  ],
+  mfj: [
+    {rate:.10, min:0,       max:23200},
+    {rate:.12, min:23200,   max:94300},
+    {rate:.22, min:94300,   max:201050},
+    {rate:.24, min:201050,  max:383900},
+    {rate:.32, min:383900,  max:487450},
+    {rate:.35, min:487450,  max:731200},
+    {rate:.37, min:731200,  max:Infinity},
+  ]
+};
+const STD_DED = {single: 14600, mfj: 29200};
+const BRACKET_COLORS = ['#1d4ed8','#2563eb','#3b82f6','#60a5fa','#7c3aed','#a855f7','#ef4444'];
+const BRACKET_NAMES = ['10%','12%','22%','24%','32%','35%','37%'];
+
+let currentStatus = 'single';
+function setStatus(el) {
+  document.querySelectorAll('.seg').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  currentStatus = el.dataset.status;
+  calc();
+}
+
+const fmt = v => '$' + Math.round(v).toLocaleString();
+const pct = v => (v*100).toFixed(1) + '%';
+
+function calc() {
+  const income = +document.getElementById('income').value || 0;
+  const stateRate = (+document.getElementById('stateRate').value || 0) / 100;
+  const extraDed = +document.getElementById('deductions').value || 0;
+  const stdDed = STD_DED[currentStatus];
+  const totalDed = stdDed + extraDed;
+  const taxable = Math.max(0, income - totalDed);
+  const brackets = BRACKETS[currentStatus];
+
+  let fedTax = 0;
+  let marginalRate = 0;
+  const bracketResults = [];
+
+  for (const b of brackets) {
+    if (taxable <= b.min) { bracketResults.push({...b, income:0, tax:0}); continue; }
+    const inBracket = Math.min(taxable, b.max === Infinity ? taxable : b.max) - b.min;
+    const inBracketActual = Math.max(0, inBracket);
+    const tax = inBracketActual * b.rate;
+    fedTax += tax;
+    if (inBracketActual > 0) marginalRate = b.rate;
+    bracketResults.push({...b, income: inBracketActual, tax});
+  }
+
+  const stateTax = income * stateRate;
+  const totalTax = fedTax + stateTax;
+  const afterTax = income - totalTax;
+  const effectiveRate = income > 0 ? fedTax / income : 0;
+
+  document.getElementById('s-gross').textContent = fmt(income);
+  document.getElementById('s-taxable').textContent = fmt(taxable);
+  document.getElementById('s-fed').textContent = fmt(fedTax);
+  document.getElementById('s-state').textContent = fmt(stateTax);
+  document.getElementById('s-marginal').textContent = pct(marginalRate);
+  document.getElementById('s-effective').textContent = pct(effectiveRate);
+  document.getElementById('s-aftertax').textContent = fmt(afterTax);
+  document.getElementById('s-monthly').textContent = fmt(afterTax / 12);
+
+  // Bracket table
+  const tbody = document.getElementById('bracketBody');
+  tbody.innerHTML = '';
+  bracketResults.forEach((b, i) => {
+    if (b.income <= 0) return;
+    const tr = document.createElement('tr');
+    const maxStr = b.max === Infinity ? '+' : fmt(b.max);
+    tr.innerHTML = `
+      <td><span class="swatch" style="background:${BRACKET_COLORS[i]}"></span>${fmt(b.min)} – ${maxStr}</td>
+      <td class="rate-cell" style="color:${BRACKET_COLORS[i]}">${BRACKET_NAMES[i]}</td>
+      <td class="num">${fmt(b.income)}</td>
+      <td class="num" style="color:var(--red)">${fmt(b.tax)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  drawBracketChart(bracketResults, taxable, income);
+}
+
+function drawBracketChart(brackets, taxable, income) {
+  const canvas = document.getElementById('bracketChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 260;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const activeBrackets = brackets.filter(b => b.income > 0);
+  if (!activeBrackets.length) return;
+
+  const pad = {top:20,right:100,bottom:10,left:10};
+  const barH = 32;
+  const gap = 10;
+  const totalH = activeBrackets.length * (barH + gap);
+  const startY = (H - totalH) / 2;
+  const maxIncome = income;
+
+  activeBrackets.forEach((b, i) => {
+    const frac = b.income / maxIncome;
+    const bW = Math.max(2, frac * (W - pad.left - pad.right));
+    const y = startY + i * (barH + gap);
+
+    // Background track
+    ctx.beginPath();
+    ctx.roundRect(pad.left, y, W - pad.left - pad.right, barH, 4);
+    ctx.fillStyle = 'rgba(255,255,255,.04)';
+    ctx.fill();
+
+    // Income bar
+    ctx.beginPath();
+    ctx.roundRect(pad.left, y, bW, barH, 4);
+    ctx.fillStyle = BRACKET_COLORS[brackets.indexOf(b)];
+    ctx.globalAlpha = .8;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Labels
+    ctx.font = '12px system-ui';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.textAlign = 'left';
+    if (bW > 60) {
+      ctx.fillText('$' + (b.income/1000).toFixed(0) + 'k', pad.left + 8, y + barH/2 + 5);
+    }
+    ctx.font = '11px system-ui';
+    ctx.fillStyle = BRACKET_COLORS[brackets.indexOf(b)];
+    ctx.textAlign = 'left';
+    ctx.fillText(BRACKET_NAMES[brackets.indexOf(b)] + ' → $' + Math.round(b.tax).toLocaleString(), W - pad.right + 6, y + barH/2 + 5);
+  });
+}
+
+document.getElementById('income').addEventListener('input', calc);
+document.getElementById('stateRate').addEventListener('input', calc);
+document.getElementById('deductions').addEventListener('input', calc);
+window.addEventListener('resize', calc);
+calc();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

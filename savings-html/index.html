@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Savings Goal Calculator — savings.ximg.app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#050a14;--card:#080f1e;--card2:#0b1221;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --green:#22c55e;--emerald:#10b981;--red:#ef4444;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    .page{flex:1;max-width:1080px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .g2{display:grid;grid-template-columns:320px 1fr;gap:1.25rem}
+    @media(max-width:720px){.g2{grid-template-columns:1fr}}
+    .field{margin-bottom:.85rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.25rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+    input[type=number],input[type=text],select{
+      background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    input[type=number]:focus,select:focus{border-color:var(--green)}
+    input[type=number]::-webkit-inner-spin-button{opacity:.4}
+    select{cursor:pointer}
+    select option{background:#060d1a}
+    .prefix-wrap{position:relative}
+    .prefix-wrap span{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+    .prefix-wrap input{padding-left:1.75rem}
+    .suffix-wrap{position:relative}
+    .suffix-wrap span{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+    .suffix-wrap input{padding-right:2rem}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem}
+    .stat-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+    .stat-val{font-size:1.3rem;font-weight:700;color:var(--green);margin-bottom:.15rem;font-variant-numeric:tabular-nums}
+    .stat-val.white{color:#fff}
+    .stat-val.emerald{color:var(--emerald)}
+    .stat-val.red{color:var(--red)}
+    .stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+    canvas{display:block;max-width:100%}
+    .chart-wrap{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem}
+    .chart-title{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+    .legend{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.6rem;font-size:.73rem;color:var(--muted)}
+    .ld{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+    .section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    .shortfall-box{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:.85rem 1rem;margin-top:.75rem}
+    .shortfall-box.ok{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.25)}
+    .shortfall-val{font-size:1.1rem;font-weight:700;color:var(--red);margin-bottom:.2rem}
+    .shortfall-box.ok .shortfall-val{color:var(--green)}
+    .shortfall-lbl{font-size:.73rem;color:var(--muted)}
+    .target-row{display:flex;gap:.5rem;align-items:flex-end;margin-top:.5rem}
+    .target-row .field{flex:1;margin-bottom:0}
+    .badge{display:inline-block;padding:.2rem .6rem;border-radius:4px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+    .badge.green{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+    .badge.red{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Savings Goal Calculator</h1>
+  <p class="subtitle">Project when you'll reach your savings target with compound interest</p>
+
+  <div class="g2">
+    <!-- Inputs -->
+    <div>
+      <div class="card">
+        <div class="section-title">Your Savings</div>
+        <div class="field">
+          <label>Goal Amount</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="goal" value="50000" min="0" step="1000"></div>
+        </div>
+        <div class="field">
+          <label>Current Savings</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="current" value="5000" min="0" step="500"></div>
+        </div>
+        <div class="field">
+          <label>Monthly Contribution</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="monthly" value="500" min="0" step="50"></div>
+        </div>
+        <div class="field">
+          <label>Annual Interest Rate</label>
+          <div class="suffix-wrap"><span>%</span><input type="number" id="rate" value="4.5" min="0" max="30" step="0.1"></div>
+        </div>
+        <div class="field">
+          <label>Compounding</label>
+          <select id="compound">
+            <option value="12">Monthly</option>
+            <option value="4">Quarterly</option>
+            <option value="1">Annually</option>
+            <option value="365">Daily</option>
+          </select>
+        </div>
+
+        <div class="section-title" style="margin-top:1rem">Target Timeline</div>
+        <div class="field">
+          <label>Reach goal within (years)</label>
+          <input type="number" id="targetYears" value="5" min="1" max="50" step="1">
+        </div>
+        <div id="shortfallBox" class="shortfall-box">
+          <div id="shortfallVal" class="shortfall-val">—</div>
+          <div id="shortfallLbl" class="shortfall-lbl">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val white" id="s-months">—</div>
+          <div class="stat-lbl">Months to Goal</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val white" id="s-years">—</div>
+          <div class="stat-lbl">Years to Goal</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-contrib">—</div>
+          <div class="stat-lbl">Total Contributed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val emerald" id="s-interest">—</div>
+          <div class="stat-lbl">Interest Earned</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val white" id="s-final">—</div>
+          <div class="stat-lbl">Final Balance</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-growth">—</div>
+          <div class="stat-lbl">Total Growth %</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Balance Growth Over Time</div>
+        <canvas id="growthChart" height="220"></canvas>
+        <div class="legend">
+          <span><span class="ld" style="background:#22c55e"></span>Balance</span>
+          <span><span class="ld" style="background:rgba(34,197,94,.25)"></span>Contributions</span>
+          <span><span class="ld" style="background:#ef4444;border:1px dashed #ef4444"></span>Goal Line</span>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Contributions vs Interest Earned</div>
+        <canvas id="breakdownChart" height="160"></canvas>
+        <div class="legend" id="breakdownLegend"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = v => '$' + Math.round(v).toLocaleString();
+const pct = v => (v*100).toFixed(1) + '%';
+
+function calc() {
+  const goal = +document.getElementById('goal').value || 0;
+  const current = +document.getElementById('current').value || 0;
+  const monthly = +document.getElementById('monthly').value || 0;
+  const rate = (+document.getElementById('rate').value || 0) / 100;
+  const n = +document.getElementById('compound').value;
+  const targetYears = +document.getElementById('targetYears').value || 5;
+
+  const rPer = rate / n;
+  const periods_per_month = n / 12;
+
+  // Simulate month by month
+  let balance = current;
+  let totalContrib = current;
+  let months = 0;
+  const maxMonths = 600;
+  const history = [{balance: current, contrib: current}];
+
+  while (balance < goal && months < maxMonths) {
+    balance = balance * Math.pow(1 + rPer, 1/periods_per_month) + monthly;
+    totalContrib += monthly;
+    months++;
+    if (months % 6 === 0 || balance >= goal) {
+      history.push({balance, contrib: totalContrib});
+    }
+  }
+
+  const reached = balance >= goal;
+  const yrs = months / 12;
+  const interestEarned = balance - totalContrib;
+  const growth = totalContrib > 0 ? ((balance - totalContrib) / totalContrib) : 0;
+
+  document.getElementById('s-months').textContent = reached ? months : '600+';
+  document.getElementById('s-years').textContent = reached ? yrs.toFixed(1) : '50+';
+  document.getElementById('s-contrib').textContent = fmt(totalContrib);
+  document.getElementById('s-interest').textContent = fmt(Math.max(0, interestEarned));
+  document.getElementById('s-final').textContent = fmt(balance);
+  document.getElementById('s-growth').textContent = pct(growth);
+
+  // Target shortfall calc
+  // Find required monthly contribution to reach goal in targetYears months
+  const tMonths = targetYears * 12;
+  // FV = PV*(1+r)^n + PMT*((1+r)^n - 1)/r
+  const rM = rate / 12;
+  let reqMonthly;
+  if (rM === 0) {
+    reqMonthly = (goal - current) / tMonths;
+  } else {
+    const factor = Math.pow(1 + rM, tMonths);
+    reqMonthly = (goal - current * factor) / ((factor - 1) / rM);
+  }
+  reqMonthly = Math.max(0, reqMonthly);
+  const diff = reqMonthly - monthly;
+  const sfBox = document.getElementById('shortfallBox');
+  const sfVal = document.getElementById('shortfallVal');
+  const sfLbl = document.getElementById('shortfallLbl');
+  if (diff <= 0) {
+    sfBox.className = 'shortfall-box ok';
+    sfVal.textContent = fmt(monthly - reqMonthly) + '/mo surplus';
+    sfLbl.textContent = `On track to reach ${fmt(goal)} in ${targetYears} yr${targetYears!==1?'s':''}`;
+  } else {
+    sfBox.className = 'shortfall-box';
+    sfVal.textContent = '+' + fmt(diff) + '/mo needed';
+    sfLbl.textContent = `Need ${fmt(reqMonthly)}/mo to reach goal in ${targetYears} yrs`;
+  }
+
+  drawGrowthChart(history, goal, current);
+  drawBreakdownChart(totalContrib, Math.max(0, interestEarned), current);
+}
+
+function drawGrowthChart(history, goal, initial) {
+  const canvas = document.getElementById('growthChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 220;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = {top:20,right:20,bottom:40,left:68};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  const maxVal = Math.max(goal * 1.05, history[history.length-1].balance * 1.05);
+  const minVal = 0;
+
+  const xS = i => pad.left + (i / (history.length-1)) * cW;
+  const yS = v => pad.top + cH - ((v - minVal) / (maxVal - minVal)) * cH;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(30,41,59,.8)';
+  ctx.lineWidth = 1;
+  for (let i=0;i<=4;i++) {
+    const y = pad.top + (i/4)*cH;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+    const v = maxVal - (i/4)*(maxVal-minVal);
+    ctx.fillStyle = '#475569';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (v>=1000 ? (v/1000).toFixed(0)+'k' : Math.round(v)), pad.left-6, y+4);
+  }
+
+  // Goal line
+  const goalY = yS(goal);
+  if (goalY >= pad.top && goalY <= H - pad.bottom) {
+    ctx.strokeStyle = 'rgba(239,68,68,.7)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, goalY); ctx.lineTo(W-pad.right, goalY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('Goal', W-pad.right+2, goalY+4);
+  }
+
+  // Contribution fill
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(history[0].contrib));
+  for (let i=1;i<history.length;i++) ctx.lineTo(xS(i), yS(history[i].contrib));
+  ctx.lineTo(xS(history.length-1), yS(0));
+  ctx.lineTo(xS(0), yS(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,197,94,.12)';
+  ctx.fill();
+
+  // Balance area fill
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(history[0].balance));
+  for (let i=1;i<history.length;i++) ctx.lineTo(xS(i), yS(history[i].balance));
+  ctx.lineTo(xS(history.length-1), yS(0));
+  ctx.lineTo(xS(0), yS(0));
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad.top, 0, H-pad.bottom);
+  grad.addColorStop(0, 'rgba(34,197,94,.35)');
+  grad.addColorStop(1, 'rgba(34,197,94,.03)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Balance line
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(history[0].balance));
+  for (let i=1;i<history.length;i++) ctx.lineTo(xS(i), yS(history[i].balance));
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // X-axis labels
+  ctx.fillStyle = '#475569';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  const step = Math.ceil(history.length / 6);
+  for (let i=0;i<history.length;i+=step) {
+    const months = i * 6;
+    const yr = (months/12).toFixed(0);
+    ctx.fillText(yr+'y', xS(i), H-pad.bottom+16);
+  }
+  ctx.fillText('Years', pad.left + cW/2, H-2);
+}
+
+function drawBreakdownChart(contrib, interest, initial) {
+  const canvas = document.getElementById('breakdownChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 160;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const total = contrib + interest;
+  const pad = {top:30,right:20,bottom:30,left:68};
+  const cW = W - pad.left - pad.right;
+  const barH = 36;
+  const barY = (H - barH)/2;
+
+  // Contributions bar
+  const cFrac = contrib / total;
+  const iFrac = interest / total;
+  const cPx = cFrac * cW;
+  const iPx = iFrac * cW;
+
+  // Draw stacked bar
+  ctx.beginPath();
+  ctx.roundRect(pad.left, barY, cPx, barH, [6,0,0,6]);
+  ctx.fillStyle = 'rgba(34,197,94,.35)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.roundRect(pad.left + cPx, barY, iPx, barH, [0,6,6,0]);
+  ctx.fillStyle = 'rgba(16,185,129,.7)';
+  ctx.fill();
+
+  // Labels
+  ctx.font = '11px system-ui';
+  ctx.fillStyle = '#94a3b8';
+  ctx.textAlign = 'right';
+  ctx.fillText('Total', pad.left - 6, barY + barH/2 + 4);
+
+  ctx.font = '12px system-ui';
+  ctx.fillStyle = '#e2e8f0';
+  if (cPx > 80) {
+    ctx.textAlign = 'center';
+    ctx.fillText('$' + (contrib/1000).toFixed(0)+'k', pad.left + cPx/2, barY + barH/2 + 5);
+  }
+  if (iPx > 80) {
+    ctx.textAlign = 'center';
+    ctx.fillText('$' + (interest/1000).toFixed(0)+'k', pad.left + cPx + iPx/2, barY + barH/2 + 5);
+  }
+
+  // Legend
+  const legend = document.getElementById('breakdownLegend');
+  legend.innerHTML = `
+    <span><span class="ld" style="background:rgba(34,197,94,.5)"></span>Contributions: ${fmt(contrib)} (${(cFrac*100).toFixed(0)}%)</span>
+    <span><span class="ld" style="background:rgba(16,185,129,.8)"></span>Interest Earned: ${fmt(interest)} (${(iFrac*100).toFixed(0)}%)</span>
+  `;
+}
+
+// Wire inputs
+['goal','current','monthly','rate','compound','targetYears'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calc);
+});
+
+window.addEventListener('resize', calc);
+calc();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

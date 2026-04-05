@@ -136,6 +136,12 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [quantum.ximg.app](https://quantum.ximg.app) | Quantum Mechanics Explorer — wave-packet propagation with wavefunction collapse, double-slit interference vs. which-path observation, Bloch sphere qubit explorer, entangled Bell state measurement, Schrödinger's cat |
 | [synth.ximg.app](https://synth.ximg.app) | Web Audio Synthesizer — playable 2-octave piano keyboard, oscillator types with ADSR envelope, distortion/filter/delay/reverb effects chain, real-time FFT spectrum analyzer, oscilloscope, synth presets, chord theory player |
 | [compound.ximg.app](https://compound.ximg.app) | Compound Interest & Wealth Calculator — compound vs simple interest chart, retirement projections with inflation adjustment, debt payoff comparison with amortization table, FIRE number calculator |
+| [savings.ximg.app](https://ximg.app/savings/) | Savings Goal Calculator — project when you reach a target with compound interest, balance growth area chart with goal line, extra-per-month shortfall calculator |
+| [tax.ximg.app](https://ximg.app/tax/) | US Income Tax Calculator — 2024 federal brackets (single & MFJ), per-bracket breakdown, marginal and effective rates, optional state tax, horizontal bar chart colored by bracket |
+| [stocks.ximg.app](https://ximg.app/stocks/) | Stock Return & CAGR Calculator — portfolio growth with annual contributions, nominal vs inflation-adjusted dual-line chart, 4%/7%/10% scenario comparison table |
+| [options.ximg.app](https://ximg.app/options/) | Options P&L Calculator — payoff diagrams for 8 strategies (Long/Short Call/Put, Covered Call, Protective Put, Bull Call Spread, Bear Put Spread), profit zone green, loss zone red |
+| [forex.ximg.app](https://ximg.app/forex/) | Forex Currency Converter — 20 major pairs vs USD, live conversion, $1,000 USD bar chart across all currencies, quick-reference rate grid |
+| [dcf.ximg.app](https://ximg.app/dcf/) | DCF Calculator — up to 10-year free cash flow projections, WACC, terminal value (Gordon Growth), waterfall chart, IRR, 3x3 sensitivity table (WACC vs TGR) |
 
 ## Architecture
 

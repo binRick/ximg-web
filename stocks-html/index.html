@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Return &amp; CAGR Calculator — stocks.ximg.app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#050a14;--card:#080f1e;--card2:#0b1221;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --green:#22c55e;--emerald:#10b981;--red:#ef4444;--blue:#3b82f6;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    .page{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .g2{display:grid;grid-template-columns:300px 1fr;gap:1.25rem}
+    @media(max-width:720px){.g2{grid-template-columns:1fr}}
+    .field{margin-bottom:.85rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.25rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+    input[type=number]{background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    input[type=number]:focus{border-color:var(--green)}
+    input[type=number]::-webkit-inner-spin-button{opacity:.4}
+    .prefix-wrap{position:relative}
+    .prefix-wrap span{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+    .prefix-wrap input{padding-left:1.75rem}
+    .suffix-wrap{position:relative}
+    .suffix-wrap span{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+    .suffix-wrap input{padding-right:2rem}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem}
+    .stat-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+    .stat-val{font-size:1.2rem;font-weight:700;color:var(--green);margin-bottom:.15rem;font-variant-numeric:tabular-nums}
+    .stat-val.white{color:#fff}
+    .stat-val.blue{color:var(--blue)}
+    .stat-val.emerald{color:var(--emerald)}
+    .stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+    canvas{display:block;max-width:100%}
+    .chart-wrap{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem}
+    .chart-title{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+    .legend{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.6rem;font-size:.73rem;color:var(--muted)}
+    .ld{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+    .section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    .cmp-table{width:100%;border-collapse:collapse;font-size:.8rem}
+    .cmp-table th{color:var(--muted);text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--border);font-weight:600;font-size:.68rem;text-transform:uppercase}
+    .cmp-table td{padding:.45rem .6rem;border-bottom:1px solid rgba(30,41,59,.5);font-variant-numeric:tabular-nums}
+    .cmp-table tr:hover td{background:rgba(255,255,255,.02)}
+    .cmp-table .num{text-align:right}
+    .cmp-table .highlight td{color:var(--green)}
+    .rate-tag{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.68rem;font-weight:700}
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Stock Return &amp; CAGR Calculator</h1>
+  <p class="subtitle">Project portfolio growth with contributions, compare return scenarios, and adjust for inflation</p>
+
+  <div class="g2">
+    <!-- Inputs -->
+    <div>
+      <div class="card">
+        <div class="section-title">Portfolio Inputs</div>
+        <div class="field">
+          <label>Initial Investment</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="initial" value="10000" min="0" step="1000"></div>
+        </div>
+        <div class="field">
+          <label>Annual Contribution</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="annual" value="6000" min="0" step="500"></div>
+        </div>
+        <div class="field">
+          <label>Expected Annual Return</label>
+          <div class="suffix-wrap"><span>%</span><input type="number" id="returnRate" value="7" min="0" max="30" step="0.1"></div>
+        </div>
+        <div class="field">
+          <label>Time Horizon (years)</label>
+          <input type="number" id="years" value="30" min="1" max="60" step="1">
+        </div>
+        <div class="field">
+          <label>Inflation Rate</label>
+          <div class="suffix-wrap"><span>%</span><input type="number" id="inflation" value="2.5" min="0" max="20" step="0.1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="s-nominal">—</div>
+          <div class="stat-lbl">Nominal Value</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val blue" id="s-real">—</div>
+          <div class="stat-lbl">Real (Inflation-Adj)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val white" id="s-cagr">—</div>
+          <div class="stat-lbl">CAGR</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-contrib">—</div>
+          <div class="stat-lbl">Total Contributed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val emerald" id="s-gains">—</div>
+          <div class="stat-lbl">Total Gains</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-mult">—</div>
+          <div class="stat-lbl">Money Multiplier</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Nominal vs Real Value Over Time</div>
+        <canvas id="growthChart" height="240"></canvas>
+        <div class="legend">
+          <span><span class="ld" style="background:#22c55e"></span>Nominal Value</span>
+          <span><span class="ld" style="background:#3b82f6"></span>Real Value (inflation-adjusted)</span>
+          <span><span class="ld" style="background:rgba(255,255,255,.2)"></span>Total Contributions</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Return Scenario Comparison</div>
+        <table class="cmp-table" id="cmpTable">
+          <thead>
+            <tr>
+              <th>Return Rate</th>
+              <th class="num">Final Value</th>
+              <th class="num">Real Value</th>
+              <th class="num">Total Gains</th>
+              <th class="num">Gain %</th>
+            </tr>
+          </thead>
+          <tbody id="cmpBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = v => '$' + Math.round(v).toLocaleString();
+const fmtM = v => v >= 1e6 ? '$' + (v/1e6).toFixed(2)+'M' : fmt(v);
+const pct = v => (v*100).toFixed(1) + '%';
+
+function simulate(initial, annual, rate, years, inflation) {
+  const data = [];
+  let balance = initial;
+  let totalContrib = initial;
+  const realRate = (1 + rate) / (1 + inflation) - 1;
+  let realBalance = initial;
+
+  data.push({year: 0, nominal: initial, real: initial, contrib: initial});
+
+  for (let y = 1; y <= years; y++) {
+    balance = balance * (1 + rate) + annual;
+    realBalance = realBalance * (1 + realRate) + annual / Math.pow(1 + inflation, y);
+    totalContrib += annual;
+    data.push({year: y, nominal: balance, real: realBalance, contrib: totalContrib});
+  }
+  return data;
+}
+
+function calc() {
+  const initial = +document.getElementById('initial').value || 0;
+  const annual = +document.getElementById('annual').value || 0;
+  const rate = (+document.getElementById('returnRate').value || 0) / 100;
+  const years = +document.getElementById('years').value || 1;
+  const inflation = (+document.getElementById('inflation').value || 0) / 100;
+
+  const data = simulate(initial, annual, rate, years, inflation);
+  const last = data[data.length - 1];
+  const totalContrib = last.contrib;
+  const gains = last.nominal - totalContrib;
+  const cagr = totalContrib > 0 ? (Math.pow(last.nominal / initial, 1/years) - 1) : 0;
+  const mult = initial > 0 ? last.nominal / totalContrib : 0;
+
+  document.getElementById('s-nominal').textContent = fmtM(last.nominal);
+  document.getElementById('s-real').textContent = fmtM(last.real);
+  document.getElementById('s-cagr').textContent = pct(cagr);
+  document.getElementById('s-contrib').textContent = fmtM(totalContrib);
+  document.getElementById('s-gains').textContent = fmtM(Math.max(0, gains));
+  document.getElementById('s-mult').textContent = mult.toFixed(1) + 'x';
+
+  drawGrowthChart(data);
+
+  // Comparison table
+  const comparisons = [
+    {rate:.04, label:'4%', color:'#60a5fa'},
+    {rate:.07, label:'7%', color:'#22c55e'},
+    {rate:.10, label:'10%', color:'#a855f7'},
+  ];
+  const tbody = document.getElementById('cmpBody');
+  tbody.innerHTML = '';
+  comparisons.forEach(c => {
+    const d = simulate(initial, annual, c.rate, years, inflation);
+    const last2 = d[d.length-1];
+    const g = last2.nominal - last2.contrib;
+    const gainPct = last2.contrib > 0 ? g / last2.contrib : 0;
+    const isActive = Math.abs(c.rate - rate) < 0.001;
+    const tr = document.createElement('tr');
+    if (isActive) tr.className = 'highlight';
+    tr.innerHTML = `
+      <td><span class="rate-tag" style="background:${c.color}22;color:${c.color};border:1px solid ${c.color}55">${c.label}</span></td>
+      <td class="num">${fmtM(last2.nominal)}</td>
+      <td class="num">${fmtM(last2.real)}</td>
+      <td class="num" style="color:${c.color}">${fmtM(Math.max(0,g))}</td>
+      <td class="num">${pct(gainPct)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function drawGrowthChart(data) {
+  const canvas = document.getElementById('growthChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 240;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = {top:20, right:20, bottom:36, left:72};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+  const maxVal = Math.max(...data.map(d => d.nominal)) * 1.05;
+
+  const xS = i => pad.left + (i / (data.length - 1)) * cW;
+  const yS = v => pad.top + cH - (v / maxVal) * cH;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(30,41,59,.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    const v = maxVal * (1 - i / 4);
+    ctx.fillStyle = '#475569';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    const label = v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'k' : Math.round(v);
+    ctx.fillText('$' + label, pad.left - 6, y + 4);
+  }
+
+  // Contributions fill
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(data[0].contrib));
+  for (let i = 1; i < data.length; i++) ctx.lineTo(xS(i), yS(data[i].contrib));
+  ctx.lineTo(xS(data.length-1), yS(0));
+  ctx.lineTo(xS(0), yS(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,.06)';
+  ctx.fill();
+
+  // Real value area
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(data[0].real));
+  for (let i = 1; i < data.length; i++) ctx.lineTo(xS(i), yS(data[i].real));
+  ctx.lineTo(xS(data.length-1), yS(0));
+  ctx.lineTo(xS(0), yS(0));
+  ctx.closePath();
+  const gradR = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+  gradR.addColorStop(0, 'rgba(59,130,246,.3)');
+  gradR.addColorStop(1, 'rgba(59,130,246,.03)');
+  ctx.fillStyle = gradR;
+  ctx.fill();
+
+  // Nominal area
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(data[0].nominal));
+  for (let i = 1; i < data.length; i++) ctx.lineTo(xS(i), yS(data[i].nominal));
+  ctx.lineTo(xS(data.length-1), yS(0));
+  ctx.lineTo(xS(0), yS(0));
+  ctx.closePath();
+  const gradN = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+  gradN.addColorStop(0, 'rgba(34,197,94,.3)');
+  gradN.addColorStop(1, 'rgba(34,197,94,.03)');
+  ctx.fillStyle = gradN;
+  ctx.fill();
+
+  // Lines
+  function drawLine(key, color, width) {
+    ctx.beginPath();
+    ctx.moveTo(xS(0), yS(data[0][key]));
+    for (let i = 1; i < data.length; i++) ctx.lineTo(xS(i), yS(data[i][key]));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+  drawLine('nominal', '#22c55e', 2);
+  drawLine('real', '#3b82f6', 2);
+
+  // X-axis
+  ctx.fillStyle = '#475569';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  const xStep = Math.max(1, Math.floor(data.length / 8));
+  for (let i = 0; i < data.length; i += xStep) {
+    ctx.fillText(data[i].year + 'y', xS(i), H - pad.bottom + 16);
+  }
+}
+
+['initial','annual','returnRate','years','inflation'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calc);
+});
+window.addEventListener('resize', calc);
+calc();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

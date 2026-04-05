@@ -190,7 +190,7 @@ DOMAINS=(
   nagios.ximg.app status.ximg.app
   vim.ximg.app http.ximg.app ssh.ximg.app sql.ximg.app
   space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
-  pirates.ximg.app medieval.ximg.app
+  pirates.ximg.app medieval.ximg.app rome.ximg.app
   physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
   dns.ximg.app suricata.ximg.app crypto.ximg.app
   readme.ximg.app
@@ -217,6 +217,8 @@ DOMAINS=(
   compiler.ximg.app
   quantum.ximg.app synth.ximg.app
   compound.ximg.app
+  savings.ximg.app tax.ximg.app stocks.ximg.app
+  options.ximg.app forex.ximg.app dcf.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

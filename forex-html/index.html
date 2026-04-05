@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forex Currency Converter — forex.ximg.app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💱</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#050a14;--card:#080f1e;--card2:#0b1221;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --green:#22c55e;--emerald:#10b981;--red:#ef4444;--blue:#3b82f6;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    .page{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .field{margin-bottom:.85rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.25rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+    input[type=number]{background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    input[type=number]:focus{border-color:var(--green)}
+    input[type=number]::-webkit-inner-spin-button{opacity:.4}
+    select{background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;cursor:pointer}
+    select:focus{border-color:var(--green)}
+    select option{background:#060d1a}
+    .converter-row{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:end;margin-bottom:1.5rem}
+    @media(max-width:600px){.converter-row{grid-template-columns:1fr;}}
+    .swap-btn{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;
+      color:var(--green);font-family:inherit;font-size:1.2rem;
+      padding:.5rem .85rem;cursor:pointer;transition:all .15s;white-space:nowrap;align-self:end}
+    .swap-btn:hover{background:rgba(34,197,94,.2)}
+    .result-display{background:var(--card2);border:1px solid rgba(34,197,94,.3);border-radius:10px;
+      padding:1.25rem;margin-bottom:1.5rem;text-align:center}
+    .result-amount{font-size:2.2rem;font-weight:700;color:var(--green);margin-bottom:.3rem;font-variant-numeric:tabular-nums}
+    .result-rate{font-size:.85rem;color:var(--muted)}
+    .result-rate span{color:var(--text)}
+    .section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    canvas{display:block;max-width:100%}
+    .chart-wrap{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1.25rem}
+    .chart-title{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+    .ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem}
+    .ref-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;
+      display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .15s}
+    .ref-item:hover{border-color:rgba(34,197,94,.3)}
+    .ref-item.active{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.05)}
+    .ref-code{font-size:.82rem;font-weight:700;color:#fff}
+    .ref-flag{font-size:1.1rem;margin-right:.3rem}
+    .ref-name{font-size:.65rem;color:var(--muted);margin-top:.1rem}
+    .ref-rate{font-size:.82rem;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums}
+    .note{font-size:.72rem;color:var(--dim);margin-top:.75rem;line-height:1.5;text-align:center}
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Forex Currency Converter</h1>
+  <p class="subtitle">Major currency pairs against USD — indicative rates</p>
+
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="section-title">Convert</div>
+    <div class="converter-row">
+      <div>
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="amount" value="1000" min="0" step="1">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>From</label>
+          <select id="fromCur"></select>
+        </div>
+      </div>
+      <button class="swap-btn" onclick="swapCurrencies()" title="Swap currencies">⇄</button>
+      <div>
+        <div class="field">
+          <label>Result</label>
+          <input type="number" id="toAmount" readonly style="color:var(--green);font-weight:700;cursor:default">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>To</label>
+          <select id="toCur"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-display">
+    <div class="result-amount" id="resultAmount">—</div>
+    <div class="result-rate" id="resultRate">—</div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">$1,000 USD Equivalent Across All Currencies</div>
+    <canvas id="barChart" height="320"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Quick Reference — 1 USD =</div>
+    <div class="ref-grid" id="refGrid"></div>
+    <p class="note">Rates are approximate and for educational purposes only. Use a live data feed for actual transactions.</p>
+  </div>
+</div>
+
+<script>
+const CURRENCIES = [
+  {code:'USD', name:'US Dollar',         flag:'🇺🇸', rate:1},
+  {code:'EUR', name:'Euro',              flag:'🇪🇺', rate:0.9215},
+  {code:'GBP', name:'British Pound',     flag:'🇬🇧', rate:0.7892},
+  {code:'JPY', name:'Japanese Yen',      flag:'🇯🇵', rate:149.82},
+  {code:'CAD', name:'Canadian Dollar',   flag:'🇨🇦', rate:1.3645},
+  {code:'AUD', name:'Australian Dollar', flag:'🇦🇺', rate:1.5312},
+  {code:'CHF', name:'Swiss Franc',       flag:'🇨🇭', rate:0.9048},
+  {code:'CNY', name:'Chinese Yuan',      flag:'🇨🇳', rate:7.2418},
+  {code:'INR', name:'Indian Rupee',      flag:'🇮🇳', rate:83.47},
+  {code:'MXN', name:'Mexican Peso',      flag:'🇲🇽', rate:17.24},
+  {code:'BRL', name:'Brazilian Real',    flag:'🇧🇷', rate:5.0712},
+  {code:'KRW', name:'South Korean Won',  flag:'🇰🇷', rate:1325.40},
+  {code:'SGD', name:'Singapore Dollar',  flag:'🇸🇬', rate:1.3452},
+  {code:'HKD', name:'Hong Kong Dollar',  flag:'🇭🇰', rate:7.8241},
+  {code:'NOK', name:'Norwegian Krone',   flag:'🇳🇴', rate:10.612},
+  {code:'SEK', name:'Swedish Krona',     flag:'🇸🇪', rate:10.438},
+  {code:'DKK', name:'Danish Krone',      flag:'🇩🇰', rate:6.8842},
+  {code:'NZD', name:'New Zealand Dollar',flag:'🇳🇿', rate:1.6308},
+  {code:'ZAR', name:'South African Rand',flag:'🇿🇦', rate:18.723},
+  {code:'RUB', name:'Russian Ruble',     flag:'🇷🇺', rate:91.25},
+  {code:'AED', name:'UAE Dirham',        flag:'🇦🇪', rate:3.6725},
+];
+
+const rateMap = {};
+CURRENCIES.forEach(c => rateMap[c.code] = c.rate);
+
+// Populate selects
+const fromSel = document.getElementById('fromCur');
+const toSel = document.getElementById('toCur');
+CURRENCIES.forEach(c => {
+  const o1 = document.createElement('option');
+  o1.value = c.code; o1.textContent = c.flag + ' ' + c.code + ' — ' + c.name;
+  fromSel.appendChild(o1);
+  const o2 = document.createElement('option');
+  o2.value = c.code; o2.textContent = c.flag + ' ' + c.code + ' — ' + c.name;
+  toSel.appendChild(o2);
+});
+fromSel.value = 'USD';
+toSel.value = 'EUR';
+
+function swapCurrencies() {
+  const tmp = fromSel.value;
+  fromSel.value = toSel.value;
+  toSel.value = tmp;
+  calc();
+}
+
+function toUSD(amount, fromCode) {
+  return amount / rateMap[fromCode];
+}
+function fromUSD(amountUSD, toCode) {
+  return amountUSD * rateMap[toCode];
+}
+
+function fmtResult(v, code) {
+  if (Math.abs(v) >= 1000000) return v.toLocaleString('en', {maximumFractionDigits:0});
+  if (Math.abs(v) >= 100) return v.toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (Math.abs(v) >= 1) return v.toLocaleString('en', {minimumFractionDigits:4, maximumFractionDigits:4});
+  return v.toFixed(6);
+}
+
+function calc() {
+  const amount = +document.getElementById('amount').value || 0;
+  const from = fromSel.value;
+  const to = toSel.value;
+  const usd = toUSD(amount, from);
+  const result = fromUSD(usd, to);
+  const rate = fromUSD(1 / rateMap[from], to);
+
+  document.getElementById('toAmount').value = fmtResult(result, to);
+  document.getElementById('resultAmount').textContent =
+    amount.toLocaleString() + ' ' + from + ' = ' + fmtResult(result, to) + ' ' + to;
+  document.getElementById('resultRate').innerHTML =
+    `<span>1 ${from} = ${fmtResult(rate, to)} ${to}</span>  ·  <span>1 ${to} = ${fmtResult(1/rate, from)} ${from}</span>`;
+
+  updateRefGrid(to);
+  drawBarChart(amount, from);
+}
+
+function updateRefGrid(activeTo) {
+  const grid = document.getElementById('refGrid');
+  grid.innerHTML = '';
+  CURRENCIES.forEach(c => {
+    const rate1usd = c.rate;
+    const item = document.createElement('div');
+    item.className = 'ref-item' + (c.code === activeTo ? ' active' : '');
+    item.innerHTML = `
+      <div>
+        <div><span class="ref-flag">${c.flag}</span><span class="ref-code">${c.code}</span></div>
+        <div class="ref-name">${c.name}</div>
+      </div>
+      <div class="ref-rate">${fmtResult(rate1usd, c.code)}</div>
+    `;
+    item.addEventListener('click', () => { toSel.value = c.code; calc(); });
+    grid.appendChild(item);
+  });
+}
+
+function drawBarChart(amount, fromCode) {
+  const canvas = document.getElementById('barChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 320;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // Show $1000 USD equivalent in each currency
+  const baseUSD = 1000;
+  const values = CURRENCIES.map(c => ({
+    code: c.code, flag: c.flag,
+    value: baseUSD * c.rate,
+    isUSD: c.code === 'USD'
+  }));
+
+  const pad = {top:10, right:20, bottom:60, left:10};
+  const n = values.length;
+  const barW = Math.floor((W - pad.left - pad.right) / n) - 2;
+  const maxVal = Math.max(...values.map(v => v.value));
+
+  const cH = H - pad.top - pad.bottom;
+
+  const COLORS = [
+    '#22c55e','#10b981','#3b82f6','#6366f1','#a855f7','#ec4899','#f43f5e',
+    '#f59e0b','#84cc16','#06b6d4','#14b8a6','#0ea5e9','#8b5cf6','#d946ef',
+    '#fb923c','#4ade80','#38bdf8','#c084fc','#f472b6','#fbbf24','#34d399'
+  ];
+
+  values.forEach((v, i) => {
+    const x = pad.left + i * (barW + 2);
+    const h = (v.value / maxVal) * cH;
+    const y = pad.top + cH - h;
+    const color = COLORS[i % COLORS.length];
+
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, h, [3, 3, 0, 0]);
+    ctx.fillStyle = color + 'aa';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Code label
+    ctx.save();
+    ctx.translate(x + barW / 2, H - pad.bottom + 8);
+    ctx.rotate(-Math.PI / 3);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText(v.code, 0, 0);
+    ctx.restore();
+
+    // Value on bar if tall enough
+    if (h > 28) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '9px system-ui';
+      ctx.textAlign = 'center';
+      const label = v.value >= 10000 ? (v.value/1000).toFixed(0)+'k' :
+                    v.value >= 1000 ? (v.value/1000).toFixed(1)+'k' :
+                    v.value.toFixed(0);
+      ctx.fillText(label, x + barW/2, y + 14);
+    }
+  });
+
+  // Y-axis label
+  ctx.fillStyle = '#475569';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('$1,000 USD equivalent in each currency', W / 2, H - 4);
+}
+
+fromSel.addEventListener('change', calc);
+toSel.addEventListener('change', calc);
+document.getElementById('amount').addEventListener('input', calc);
+window.addEventListener('resize', calc);
+calc();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

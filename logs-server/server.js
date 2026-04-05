@@ -119,6 +119,7 @@ const LOG_FILES = {
   nintendo:    'nintendo.access.log',
   pirates:     'pirates.access.log',
   medieval:    'medieval.access.log',
+  rome:        'rome.access.log',
   physics:     'physics.access.log',
   chemistry:   'chemistry.access.log',
   biology:     'biology.access.log',
@@ -185,6 +186,17 @@ const LOG_FILES = {
   quantum:        'quantum.access.log',
   synth:          'synth.access.log',
   compound:       'compound.access.log',
+  savings:        'savings.access.log',
+  tax:            'tax.access.log',
+  stocks:         'stocks.access.log',
+  options:        'options.access.log',
+  forex:          'forex.access.log',
+  dcf:            'dcf.access.log',
+  mortgage:       'mortgage.access.log',
+  retire:         'retire.access.log',
+  inflation:      'inflation.access.log',
+  debt:           'debt.access.log',
+  budget:         'budget.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -554,6 +566,12 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="quantum">quantum</button>
           <button class="site-opt" data-site="synth">synth</button>
           <button class="site-opt" data-site="compound">compound</button>
+          <button class="site-opt" data-site="savings">savings</button>
+          <button class="site-opt" data-site="tax">tax</button>
+          <button class="site-opt" data-site="stocks">stocks</button>
+          <button class="site-opt" data-site="options">options</button>
+          <button class="site-opt" data-site="forex">forex</button>
+          <button class="site-opt" data-site="dcf">dcf</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

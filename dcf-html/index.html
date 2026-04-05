@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCF — Discounted Cash Flow Calculator — dcf.ximg.app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏦</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#050a14;--card:#080f1e;--card2:#0b1221;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --green:#22c55e;--emerald:#10b981;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    .page{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .g2{display:grid;grid-template-columns:340px 1fr;gap:1.25rem}
+    @media(max-width:760px){.g2{grid-template-columns:1fr}}
+    .field{margin-bottom:.75rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.25rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+    input[type=number]{background:#060d1a;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.88rem;padding:.45rem .65rem;
+      outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    input[type=number]:focus{border-color:var(--green)}
+    input[type=number]::-webkit-inner-spin-button{opacity:.4}
+    .prefix-wrap{position:relative}
+    .prefix-wrap span{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
+    .prefix-wrap input{padding-left:1.6rem}
+    .suffix-wrap{position:relative}
+    .suffix-wrap span{position:absolute;right:.65rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
+    .suffix-wrap input{padding-right:1.8rem}
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1rem}
+    .stat-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+    .stat-val{font-size:1.15rem;font-weight:700;color:var(--green);margin-bottom:.15rem;font-variant-numeric:tabular-nums}
+    .stat-val.white{color:#fff}
+    .stat-val.purple{color:var(--purple)}
+    .stat-val.blue{color:var(--blue)}
+    .stat-val.red{color:var(--red)}
+    .stat-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+    canvas{display:block;max-width:100%}
+    .chart-wrap{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem}
+    .chart-title{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+    .section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+    .cf-list{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.75rem}
+    .cf-row{display:grid;grid-template-columns:auto 1fr auto;gap:.5rem;align-items:center}
+    .cf-label{font-size:.75rem;color:var(--muted);font-weight:600;white-space:nowrap;min-width:42px}
+    .cf-del{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:5px;
+      color:var(--red);font-family:inherit;font-size:.75rem;padding:.3rem .55rem;cursor:pointer;
+      transition:all .15s;white-space:nowrap}
+    .cf-del:hover{background:rgba(239,68,68,.2)}
+    .add-btn{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:6px;
+      color:var(--green);font-family:inherit;font-size:.78rem;font-weight:600;
+      padding:.4rem .85rem;cursor:pointer;transition:all .15s;width:100%}
+    .add-btn:hover{background:rgba(34,197,94,.15)}
+    .cf-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:1rem}
+    .cf-table th{color:var(--muted);text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--border);font-weight:600;font-size:.68rem;text-transform:uppercase}
+    .cf-table td{padding:.4rem .6rem;border-bottom:1px solid rgba(30,41,59,.5);font-variant-numeric:tabular-nums}
+    .cf-table .num{text-align:right}
+    .sens-table{width:100%;border-collapse:collapse;font-size:.78rem}
+    .sens-table th{color:var(--muted);text-align:center;padding:.45rem .6rem;border:1px solid var(--border);font-weight:600;font-size:.68rem;text-transform:uppercase;background:rgba(255,255,255,.02)}
+    .sens-table td{padding:.45rem .6rem;border:1px solid rgba(30,41,59,.7);text-align:center;font-variant-numeric:tabular-nums}
+    .sens-table .base{background:rgba(34,197,94,.08);color:var(--green);font-weight:700}
+    .sens-table .high{color:var(--green)}
+    .sens-table .low{color:var(--red)}
+    .irr-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(168,85,247,.1);
+      border:1px solid rgba(168,85,247,.3);border-radius:6px;padding:.4rem .85rem;font-size:.8rem;
+      color:var(--purple);font-weight:600;margin-top:.5rem}
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>DCF — Discounted Cash Flow Calculator</h1>
+  <p class="subtitle">Estimate intrinsic value of a business based on projected free cash flows</p>
+
+  <div class="g2">
+    <!-- Inputs -->
+    <div>
+      <div class="card">
+        <div class="section-title">Discount Rate</div>
+        <div class="field">
+          <label>WACC / Discount Rate</label>
+          <div class="suffix-wrap"><span>%</span><input type="number" id="wacc" value="10" min="0.1" max="50" step="0.1"></div>
+        </div>
+        <div class="field">
+          <label>Terminal Growth Rate</label>
+          <div class="suffix-wrap"><span>%</span><input type="number" id="tgr" value="2.5" min="0" max="10" step="0.1"></div>
+        </div>
+
+        <div class="section-title" style="margin-top:1rem">Projected Free Cash Flows</div>
+        <div class="cf-list" id="cfList"></div>
+        <button class="add-btn" id="addBtn" onclick="addCF()">+ Add Year</button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="s-npv">—</div>
+          <div class="stat-lbl">NPV of Cash Flows</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val purple" id="s-tv">—</div>
+          <div class="stat-lbl">Terminal Value (PV)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val white" id="s-total">—</div>
+          <div class="stat-lbl">Total Intrinsic Value</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val blue" id="s-irr">—</div>
+          <div class="stat-lbl">IRR</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-tvpct">—</div>
+          <div class="stat-lbl">Terminal Val % of Total</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="s-lastcf">—</div>
+          <div class="stat-lbl">Year N Cash Flow</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Discounted Cash Flow Waterfall</div>
+        <canvas id="waterfallChart" height="240"></canvas>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem">
+        <div class="section-title">Year-by-Year Discounted Cash Flows</div>
+        <table class="cf-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th class="num">Cash Flow</th>
+              <th class="num">Discount Factor</th>
+              <th class="num">Present Value</th>
+              <th class="num">Cumulative PV</th>
+            </tr>
+          </thead>
+          <tbody id="cfTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Sensitivity Analysis — Intrinsic Value</div>
+        <div style="overflow-x:auto">
+          <table class="sens-table" id="sensTable"></table>
+        </div>
+        <p style="font-size:.7rem;color:var(--dim);margin-top:.6rem">Rows: Discount Rate (WACC) | Columns: Terminal Growth Rate</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_CFS = [500, 600, 720, 864, 1037, 1244, 1493, 1791, 2149, 2579];
+let cashFlows = DEFAULT_CFS.slice(0, 5).map(v => v);
+
+function renderCFList() {
+  const list = document.getElementById('cfList');
+  list.innerHTML = '';
+  cashFlows.forEach((cf, i) => {
+    const row = document.createElement('div');
+    row.className = 'cf-row';
+    row.innerHTML = `
+      <span class="cf-label">Yr ${i+1}</span>
+      <div class="prefix-wrap" style="flex:1"><span>$</span>
+        <input type="number" value="${cf}" min="0" step="100" data-idx="${i}" oninput="updateCF(this)">
+      </div>
+      ${cashFlows.length > 1 ? `<button class="cf-del" onclick="removeCF(${i})">✕</button>` : ''}
+    `;
+    list.appendChild(row);
+  });
+  document.getElementById('addBtn').style.display = cashFlows.length >= 10 ? 'none' : '';
+}
+
+function updateCF(el) {
+  cashFlows[+el.dataset.idx] = +el.value || 0;
+  calc();
+}
+function addCF() {
+  if (cashFlows.length >= 10) return;
+  const last = cashFlows[cashFlows.length - 1] || 1000;
+  cashFlows.push(Math.round(last * 1.2));
+  renderCFList();
+  calc();
+}
+function removeCF(i) {
+  cashFlows.splice(i, 1);
+  renderCFList();
+  calc();
+}
+
+const fmt = v => {
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1000) return '$' + (v/1000).toFixed(1) + 'K';
+  return '$' + Math.round(v).toLocaleString();
+};
+const pct = v => (v*100).toFixed(1) + '%';
+
+function calcDCF(cfs, wacc, tgr) {
+  const r = wacc / 100;
+  const g = tgr / 100;
+  let npv = 0;
+  const pvs = [];
+  const dfs = [];
+  let cumPV = 0;
+  const rows = [];
+
+  cfs.forEach((cf, i) => {
+    const year = i + 1;
+    const df = 1 / Math.pow(1 + r, year);
+    const pv = cf * df;
+    npv += pv;
+    cumPV += pv;
+    pvs.push(pv);
+    dfs.push(df);
+    rows.push({year, cf, df, pv, cumPV});
+  });
+
+  const n = cfs.length;
+  const lastCF = cfs[n - 1] || 0;
+  const terminalFV = r > g ? (lastCF * (1 + g)) / (r - g) : 0;
+  const terminalPV = terminalFV / Math.pow(1 + r, n);
+  const total = npv + terminalPV;
+
+  return {npv, terminalPV, terminalFV, total, rows, lastCF, pvs};
+}
+
+function calcIRR(cfs, initial) {
+  // Newton-Raphson IRR assuming initial outflow = sum of PVs at some rate
+  // We'll solve for rate where NPV = 0 with -initial at t=0
+  let rate = 0.1;
+  for (let iter = 0; iter < 100; iter++) {
+    let npv = -initial;
+    let dnpv = 0;
+    cfs.forEach((cf, i) => {
+      const t = i + 1;
+      const disc = Math.pow(1 + rate, t);
+      npv += cf / disc;
+      dnpv -= t * cf / (disc * (1 + rate));
+    });
+    if (Math.abs(dnpv) < 1e-12) break;
+    const newRate = rate - npv / dnpv;
+    if (Math.abs(newRate - rate) < 1e-8) { rate = newRate; break; }
+    rate = newRate;
+    if (rate < -0.99) { rate = -0.5; }
+    if (rate > 100) break;
+  }
+  return rate;
+}
+
+function calc() {
+  const wacc = +document.getElementById('wacc').value || 10;
+  const tgr = +document.getElementById('tgr').value || 2.5;
+
+  const result = calcDCF(cashFlows, wacc, tgr);
+  const {npv, terminalPV, total, rows, lastCF, pvs} = result;
+  const tvPct = total > 0 ? terminalPV / total : 0;
+
+  // IRR: use total intrinsic value as initial outflow proxy
+  let irrVal = '—';
+  if (total > 0 && cashFlows.length > 0) {
+    const irr = calcIRR(cashFlows, total);
+    if (isFinite(irr) && irr > -0.99 && irr < 100) {
+      irrVal = pct(irr);
+    }
+  }
+
+  document.getElementById('s-npv').textContent = fmt(npv);
+  document.getElementById('s-tv').textContent = fmt(terminalPV);
+  document.getElementById('s-total').textContent = fmt(total);
+  document.getElementById('s-irr').textContent = irrVal;
+  document.getElementById('s-tvpct').textContent = pct(tvPct);
+  document.getElementById('s-lastcf').textContent = fmt(lastCF);
+
+  // CF Table
+  const tbody = document.getElementById('cfTableBody');
+  tbody.innerHTML = '';
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>Year ${row.year}</td>
+      <td class="num">${fmt(row.cf)}</td>
+      <td class="num" style="color:var(--muted)">${row.df.toFixed(4)}</td>
+      <td class="num" style="color:var(--green)">${fmt(row.pv)}</td>
+      <td class="num">${fmt(row.cumPV)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  // Terminal row
+  const trT = document.createElement('tr');
+  trT.innerHTML = `
+    <td style="color:var(--purple)">Terminal</td>
+    <td class="num" style="color:var(--muted)">Gordon Model</td>
+    <td class="num" style="color:var(--muted)">${(1/Math.pow(1 + wacc/100, cashFlows.length)).toFixed(4)}</td>
+    <td class="num" style="color:var(--purple)">${fmt(terminalPV)}</td>
+    <td class="num" style="font-weight:700;color:#fff">${fmt(total)}</td>
+  `;
+  tbody.appendChild(trT);
+
+  drawWaterfall(pvs, terminalPV);
+  drawSensitivity(cashFlows, wacc, tgr);
+}
+
+function drawWaterfall(pvs, terminalPV) {
+  const canvas = document.getElementById('waterfallChart');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 240;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const allVals = [...pvs, terminalPV];
+  const maxVal = Math.max(...allVals) * 1.15;
+  const n = allVals.length;
+
+  const pad = {top:20, right:20, bottom:40, left:72};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+  const barW = Math.max(8, Math.floor(cW / n) - 6);
+  const gap = Math.floor((cW - barW * n) / (n + 1));
+
+  const xBar = i => pad.left + gap + i * (barW + gap);
+  const yS = v => pad.top + cH - (v / maxVal) * cH;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(30,41,59,.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    const v = maxVal * (1 - i / 4);
+    ctx.fillStyle = '#475569';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    const label = v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : Math.round(v);
+    ctx.fillText('$'+label, pad.left - 6, y + 4);
+  }
+
+  allVals.forEach((v, i) => {
+    const isTerminal = i === allVals.length - 1;
+    const x = xBar(i);
+    const barH = (v / maxVal) * cH;
+    const y = yS(v);
+    const color = isTerminal ? '#a855f7' : '#22c55e';
+
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [3, 3, 0, 0]);
+    ctx.fillStyle = color + '55';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Value label
+    if (barH > 20) {
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'center';
+      const label2 = v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : Math.round(v);
+      ctx.fillText('$'+label2, x + barW / 2, y + 14);
+    }
+
+    // X label
+    ctx.fillStyle = isTerminal ? '#a855f7' : '#64748b';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(isTerminal ? 'TV' : 'Y' + (i+1), x + barW / 2, H - pad.bottom + 16);
+  });
+}
+
+function drawSensitivity(cfs, baseWacc, baseTgr) {
+  const waccVals = [baseWacc - 2, baseWacc, baseWacc + 2];
+  const tgrVals = [Math.max(0, baseTgr - 1), baseTgr, baseTgr + 1];
+
+  const table = document.getElementById('sensTable');
+  table.innerHTML = '';
+
+  // Header
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr');
+  const th0 = document.createElement('th');
+  th0.textContent = 'WACC \\ TGR';
+  hr.appendChild(th0);
+  tgrVals.forEach(tgr => {
+    const th = document.createElement('th');
+    th.textContent = tgr.toFixed(1) + '%';
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  const maxVal = Math.max(...waccVals.flatMap(w => tgrVals.map(g => {
+    const r = calcDCF(cfs, w, g);
+    return r.total;
+  })));
+  const minVal = Math.min(...waccVals.flatMap(w => tgrVals.map(g => {
+    const r = calcDCF(cfs, w, g);
+    return r.total;
+  })));
+
+  waccVals.forEach(wacc => {
+    const tr = document.createElement('tr');
+    const tdLabel = document.createElement('td');
+    tdLabel.textContent = wacc.toFixed(1) + '%';
+    tdLabel.style.color = '#64748b';
+    tdLabel.style.fontWeight = '600';
+    tr.appendChild(tdLabel);
+    tgrVals.forEach(tgr => {
+      const {total} = calcDCF(cfs, wacc, tgr);
+      const td = document.createElement('td');
+      td.textContent = fmt(total);
+      const isBase = Math.abs(wacc - baseWacc) < 0.05 && Math.abs(tgr - baseTgr) < 0.05;
+      if (isBase) {
+        td.className = 'base';
+      } else if (total > (maxVal + minVal) / 2) {
+        td.className = 'high';
+      } else {
+        td.className = 'low';
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+}
+
+document.getElementById('wacc').addEventListener('input', calc);
+document.getElementById('tgr').addEventListener('input', calc);
+window.addEventListener('resize', calc);
+
+renderCFList();
+calc();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
