@@ -115,9 +115,23 @@
   nav.innerHTML = '<a class="nav-brand" href="https://ximg.app">ximg.app</a>';
 
   var curHost = window.location.hostname;
+  var curPath = window.location.pathname.split('/')[1] || '';
+
+  // Apps served via ximg.app/<app>/ path (no individual SSL cert yet)
+  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1};
+
+  function appHref(subdomain) {
+    return PATH_APPS[subdomain]
+      ? 'https://ximg.app/' + subdomain + '/'
+      : 'https://' + subdomain + '.ximg.app';
+  }
 
   GROUPS.forEach(function (g) {
-    var hasActive = g.apps.some(function (a) { return a[0] + '.ximg.app' === curHost; });
+    var hasActive = g.apps.some(function (a) {
+      var sub = a[0];
+      return sub + '.ximg.app' === curHost ||
+             (PATH_APPS[sub] && curHost === 'ximg.app' && curPath === sub);
+    });
 
     var group = document.createElement('div');
     group.className = 'nav-group';
@@ -131,11 +145,12 @@
 
     g.apps.forEach(function (a) {
       var subdomain = a[0], label = a[1];
-      var isActive = subdomain + '.ximg.app' === curHost;
+      var isActive = subdomain + '.ximg.app' === curHost ||
+                     (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
       item.className = 'nav-dd-item' + (isActive ? ' active' : '');
       item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
-      if (!isActive) item.href = 'https://' + subdomain + '.ximg.app';
+      if (!isActive) item.href = appHref(subdomain);
       dd.appendChild(item);
     });
 
