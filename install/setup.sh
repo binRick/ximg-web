@@ -219,6 +219,7 @@ DOMAINS=(
   compound.ximg.app
   savings.ximg.app tax.ximg.app stocks.ximg.app
   options.ximg.app forex.ximg.app dcf.ximg.app
+  mortgage.ximg.app retire.ximg.app inflation.ximg.app debt.ximg.app budget.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

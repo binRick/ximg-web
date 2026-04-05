@@ -142,6 +142,11 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [options.ximg.app](https://ximg.app/options/) | Options P&L Calculator — payoff diagrams for 8 strategies (Long/Short Call/Put, Covered Call, Protective Put, Bull Call Spread, Bear Put Spread), profit zone green, loss zone red |
 | [forex.ximg.app](https://ximg.app/forex/) | Forex Currency Converter — 20 major pairs vs USD, live conversion, $1,000 USD bar chart across all currencies, quick-reference rate grid |
 | [dcf.ximg.app](https://ximg.app/dcf/) | DCF Calculator — up to 10-year free cash flow projections, WACC, terminal value (Gordon Growth), waterfall chart, IRR, 3x3 sensitivity table (WACC vs TGR) |
+| [mortgage.ximg.app](https://mortgage.ximg.app) | Mortgage Calculator — monthly P+I payment, total interest, total cost, stacked-area amortization chart (principal vs cumulative interest vs equity), 12-month detail table, yearly summary |
+| [retire.ximg.app](https://retire.ximg.app) | Retirement Calculator — FI number, balance at retirement, monthly income, portfolio growth curve vs FI target line, with annual return/inflation/SWR sliders |
+| [inflation.ximg.app](https://inflation.ximg.app) | Inflation Calculator — historical US CPI data 1920–2024, purchasing power erosion over time, cumulative inflation %, average rate, area chart with annual CPI bars; custom rate mode |
+| [debt.ximg.app](https://debt.ximg.app) | Debt Payoff Calculator — Avalanche vs Snowball comparison for up to 6 debts, payoff dates, total interest, payoff order per method, interest saved, dual-line remaining-debt chart |
+| [budget.ximg.app](https://budget.ximg.app) | Budget Planner 50/30/20 — categorized needs/wants/savings inputs, actual vs target donut charts, category progress bars, surplus/deficit table, over/under status chips, budget grade |
 
 ## Architecture
 

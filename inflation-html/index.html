@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inflation Calculator — inflation.ximg.app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23050a14'/><path d='M6 24 Q10 8 16 14 Q22 20 26 6' fill='none' stroke='%23ef4444' stroke-width='2' stroke-linecap='round'/><circle cx='26' cy='6' r='2.5' fill='%23ef4444'/></svg>" type="image/svg+xml">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#050a14;--card:#0a1120;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;
+      --green:#22c55e;--red:#ef4444;--blue:#3b82f6;--orange:#f97316;--yellow:#f59e0b;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+    .page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 4rem}
+    h1{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.82rem;color:var(--muted);margin-bottom:1.75rem}
+
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:1.25rem;align-items:start}
+    @media(max-width:800px){.grid{grid-template-columns:1fr}}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.4rem}
+    .card-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+      color:var(--muted);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+
+    .field{margin-bottom:.9rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.3rem;font-weight:500}
+    input[type=number]{background:#060d1a;border:1px solid var(--border);border-radius:7px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    input[type=number]:focus{border-color:rgba(34,197,94,.5)}
+    select{background:#060d1a;border:1px solid var(--border);border-radius:7px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right .75rem center}
+    select:focus{border-color:rgba(34,197,94,.5);outline:none}
+    .input-wrap{position:relative}
+    .input-prefix{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
+    .input-wrap input{padding-left:1.6rem}
+    .input-suffix{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
+    .input-wrap input.suf{padding-right:1.8rem}
+
+    /* mode toggle */
+    .toggle-row{display:flex;gap:.4rem;margin-bottom:1rem}
+    .tog-btn{flex:1;padding:.45rem;background:none;border:1px solid var(--border);border-radius:7px;
+      color:var(--muted);font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s}
+    .tog-btn.active{color:var(--green);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.07)}
+
+    /* stats */
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:1.25rem}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem}
+    .stat-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin-bottom:.3rem}
+    .stat-value{font-size:1.35rem;font-weight:700;color:#fff;line-height:1.1}
+    .stat-sub{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+    .stat.green .stat-value{color:var(--green)}
+    .stat.red .stat-value{color:var(--red)}
+    .stat.orange .stat-value{color:var(--orange)}
+
+    /* banner */
+    .banner{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);
+      border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem}
+    .banner-main{font-size:1.05rem;color:#fff;font-weight:600;line-height:1.5}
+    .banner-sub{font-size:.78rem;color:var(--muted);margin-top:.3rem}
+
+    /* chart */
+    .chart-wrap{height:260px;position:relative}
+    canvas{border-radius:8px}
+    .legend{display:flex;gap:1rem;margin-bottom:.7rem;flex-wrap:wrap}
+    .leg{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)}
+    .leg-dot{width:10px;height:10px;border-radius:2px}
+
+    /* hidden panel */
+    .custom-panel{display:none}.custom-panel.show{display:block}
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Inflation Calculator</h1>
+  <p class="subtitle">Historical CPI data 1920–2024 — see what money was really worth</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Settings</div>
+
+      <div class="field">
+        <label>Starting Amount</label>
+        <div class="input-wrap">
+          <span class="input-prefix">$</span>
+          <input type="number" id="amount" value="1000" min="1" step="100">
+        </div>
+      </div>
+
+      <div class="card-title" style="margin-top:.5rem">Mode</div>
+      <div class="toggle-row">
+        <button class="tog-btn active" id="btnHistorical" onclick="setMode('historical')">Historical CPI</button>
+        <button class="tog-btn" id="btnCustom" onclick="setMode('custom')">Custom Rate</button>
+      </div>
+
+      <div id="historicalPanel">
+        <div class="field">
+          <label>Start Year</label>
+          <select id="startYear"></select>
+        </div>
+        <div class="field">
+          <label>End Year</label>
+          <select id="endYear"></select>
+        </div>
+      </div>
+
+      <div class="custom-panel" id="customPanel">
+        <div class="field">
+          <label>Annual Inflation Rate</label>
+          <div class="input-wrap">
+            <input type="number" id="customRate" value="3.5" min="0.1" max="50" step="0.1" class="suf">
+            <span class="input-suffix">%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Number of Years</label>
+          <input type="number" id="customYears" value="30" min="1" max="100" step="1">
+        </div>
+      </div>
+
+      <div style="margin-top:.5rem;padding:.75rem;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:8px">
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">
+          <strong style="color:#a5b4fc">Data source:</strong> U.S. Bureau of Labor Statistics CPI-U, annual averages 1920–2024. Historical rates embedded directly in page.
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- banner -->
+      <div class="banner">
+        <div class="banner-main" id="bannerMain">—</div>
+        <div class="banner-sub" id="bannerSub"></div>
+      </div>
+
+      <!-- stats -->
+      <div class="stats">
+        <div class="stat orange">
+          <div class="stat-label">Equivalent Value Today</div>
+          <div class="stat-value" id="equivValue">—</div>
+          <div class="stat-sub" id="equivSub"></div>
+        </div>
+        <div class="stat red">
+          <div class="stat-label">Purchasing Power Lost</div>
+          <div class="stat-value" id="ppLost">—</div>
+          <div class="stat-sub" id="ppLostSub"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Cumulative Inflation</div>
+          <div class="stat-value" id="cumInfl">—</div>
+          <div class="stat-sub" id="cumInflSub"></div>
+        </div>
+        <div class="stat green">
+          <div class="stat-label">Avg Annual Rate</div>
+          <div class="stat-value" id="avgRate">—</div>
+          <div class="stat-sub">geometric average</div>
+        </div>
+      </div>
+
+      <!-- chart -->
+      <div class="card">
+        <div class="card-title">Purchasing Power Over Time</div>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:#f97316"></div>Purchasing Power of Original Amount</div>
+          <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div>Annual CPI Rate</div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="inflChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Historical US CPI annual % change, 1920–2024 (BLS CPI-U, approximate)
+const CPI_RATES = {
+  1920:15.6,1921:-10.5,1922:-6.1,1923:1.8,1924:0,1925:2.4,1926:1.1,1927:-1.7,1928:-1.7,1929:0,
+  1930:-2.3,1931:-9.0,1932:-9.9,1933:-5.1,1934:3.1,1935:2.2,1936:1.5,1937:3.6,1938:-2.1,1939:-1.4,
+  1940:0.7,1941:5.0,1942:10.9,1943:6.1,1944:1.7,1945:2.3,1946:8.3,1947:14.4,1948:8.1,1949:-1.2,
+  1950:1.3,1951:7.9,1952:1.9,1953:0.8,1954:0.7,1955:-0.4,1956:1.5,1957:3.3,1958:2.8,1959:0.7,
+  1960:1.7,1961:1.0,1962:1.0,1963:1.3,1964:1.3,1965:1.6,1966:2.9,1967:3.1,1968:4.2,1969:5.5,
+  1970:5.7,1971:4.4,1972:3.2,1973:6.2,1974:11.1,1975:9.1,1976:5.8,1977:6.5,1978:7.6,1979:11.3,
+  1980:13.5,1981:10.4,1982:6.1,1983:3.2,1984:4.3,1985:3.6,1986:1.9,1987:3.6,1988:4.1,1989:4.8,
+  1990:5.4,1991:4.2,1992:3.0,1993:3.0,1994:2.6,1995:2.8,1996:3.0,1997:2.3,1998:1.6,1999:2.2,
+  2000:3.4,2001:2.8,2002:1.6,2003:2.3,2004:2.7,2005:3.4,2006:3.2,2007:2.8,2008:3.8,2009:-0.4,
+  2010:1.6,2011:3.2,2012:2.1,2013:1.5,2014:1.6,2015:0.1,2016:1.3,2017:2.1,2018:2.4,2019:1.8,
+  2020:1.2,2021:4.7,2022:8.0,2023:4.1,2024:2.9
+};
+
+const $ = id => document.getElementById(id);
+let mode = 'historical';
+
+// populate dropdowns
+const years = Object.keys(CPI_RATES).map(Number).sort((a,b)=>a-b);
+const startSel = $('startYear'), endSel = $('endYear');
+years.forEach(y => {
+  const o1 = document.createElement('option'); o1.value = y; o1.textContent = y;
+  if (y === 1970) o1.selected = true;
+  startSel.appendChild(o1);
+  const o2 = document.createElement('option'); o2.value = y; o2.textContent = y;
+  if (y === 2024) o2.selected = true;
+  endSel.appendChild(o2);
+});
+
+function setMode(m) {
+  mode = m;
+  $('btnHistorical').classList.toggle('active', m==='historical');
+  $('btnCustom').classList.toggle('active', m==='custom');
+  $('historicalPanel').style.display = m==='historical' ? '' : 'none';
+  $('customPanel').classList.toggle('show', m==='custom');
+  calc();
+}
+
+['amount','startYear','endYear','customRate','customYears'].forEach(id => $(id).addEventListener('input', calc));
+
+function calc() {
+  const amount = +$('amount').value || 1000;
+
+  let yearLabels = [], rates = [], startY, endY;
+
+  if (mode === 'historical') {
+    startY = parseInt($('startYear').value);
+    endY = parseInt($('endYear').value);
+    if (endY <= startY) endY = startY + 1;
+    for (let y = startY+1; y <= endY; y++) {
+      yearLabels.push(y);
+      rates.push((CPI_RATES[y] ?? 3.0) / 100);
+    }
+  } else {
+    const customRate = (+$('customRate').value || 3) / 100;
+    const customYears = +$('customYears').value || 30;
+    startY = new Date().getFullYear();
+    endY = startY + customYears;
+    for (let i = 1; i <= customYears; i++) {
+      yearLabels.push(startY + i);
+      rates.push(customRate);
+    }
+  }
+
+  // compute purchasing power series
+  const ppSeries = [amount];
+  let val = amount;
+  for (const r of rates) {
+    val = val / (1 + r);
+    ppSeries.push(val);
+  }
+
+  const finalPP = ppSeries[ppSeries.length-1];
+  const equivFuture = amount / finalPP * amount; // how much you need in end year to match start
+  const cumulativeInfl = (amount / finalPP - 1) * 100;
+  const avgRate = (Math.pow(amount/finalPP, 1/rates.length) - 1) * 100;
+  const ppLostPct = ((amount - finalPP) / amount * 100);
+
+  const fmt = n => '$' + n.toLocaleString('en-US',{maximumFractionDigits:2,minimumFractionDigits:2});
+  const fmtK = n => n >= 1000 ? '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}) : '$'+n.toFixed(2);
+
+  if (mode === 'historical') {
+    $('bannerMain').textContent = `$${amount.toLocaleString()} in ${startY} = ${fmt(amount / finalPP * amount)} in ${endY}`;
+    $('bannerSub').textContent = `Alternatively, $${amount.toLocaleString()} in ${endY} had the same buying power as ${fmt(finalPP)} in ${startY}`;
+    $('equivSub').textContent = `equivalent in ${endY}`;
+  } else {
+    const customYrs = +$('customYears').value;
+    $('bannerMain').textContent = `$${amount.toLocaleString()} today = ${fmt(amount/finalPP*amount)} in ${customYrs} years`;
+    $('bannerSub').textContent = `At ${$('customRate').value}% annual inflation over ${customYrs} years`;
+    $('equivSub').textContent = 'equivalent in future';
+  }
+
+  $('equivValue').textContent = fmtK(amount / finalPP * amount);
+  $('ppLost').textContent = ppLostPct.toFixed(1) + '%';
+  $('ppLostSub').textContent = fmtK(amount - finalPP) + ' of purchasing power lost';
+  $('cumInfl').textContent = cumulativeInfl.toFixed(1) + '%';
+  $('cumInflSub').textContent = `over ${rates.length} years`;
+  $('avgRate').textContent = avgRate.toFixed(2) + '%';
+
+  // all year labels include start
+  const allLabels = [startY, ...yearLabels];
+  drawChart(allLabels, ppSeries, rates, amount);
+}
+
+function drawChart(labels, ppSeries, rates, origAmount) {
+  const canvas = $('inflChart');
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth || 700;
+  canvas.height = 240;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = {top:15, right:60, bottom:35, left:70};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0,0,W,H);
+
+  const n = labels.length;
+  const maxPP = origAmount;
+  const minPP = Math.min(...ppSeries) * 0.9;
+  const maxRate = Math.max(...rates.map(r=>Math.abs(r*100)), 5) * 1.1;
+
+  const xScale = i => pad.left + (i/(n-1))*cW;
+  const yScalePP = v => pad.top + cH - ((v - minPP) / (maxPP - minPP)) * cH;
+
+  // grid lines
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i/4)*cH;
+    ctx.strokeStyle = 'rgba(30,41,59,.7)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cW,y); ctx.stroke();
+    const val = maxPP - (maxPP-minPP)*(i/4);
+    ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText('$'+Math.round(val).toLocaleString(), pad.left-6, y+3);
+  }
+
+  // x labels
+  const step = Math.max(1, Math.floor(n/8));
+  ctx.textAlign = 'center'; ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif';
+  labels.forEach((lbl,i) => {
+    if (i % step === 0 || i === n-1) ctx.fillText(''+lbl, xScale(i), H-8);
+  });
+
+  // area fill under PP curve
+  ctx.beginPath();
+  ctx.moveTo(xScale(0), yScalePP(ppSeries[0]));
+  ppSeries.forEach((v,i) => ctx.lineTo(xScale(i), yScalePP(v)));
+  ctx.lineTo(xScale(n-1), pad.top+cH);
+  ctx.lineTo(xScale(0), pad.top+cH);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(249,115,22,.1)';
+  ctx.fill();
+
+  // PP line
+  ctx.beginPath();
+  ppSeries.forEach((v,i) => i===0 ? ctx.moveTo(xScale(i),yScalePP(v)) : ctx.lineTo(xScale(i),yScalePP(v)));
+  ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2.5; ctx.stroke();
+
+  // bar chart for annual CPI rates (right axis, on top using secondary scale)
+  if (rates.length > 0 && rates.length <= 105) {
+    const barW = Math.max(1.5, cW / rates.length * 0.6);
+    const zeroY = pad.top + cH; // 0% line at bottom of chart
+    const rateScale = v => cH * Math.abs(v) / maxRate;
+
+    rates.forEach((r, i) => {
+      const x = xScale(i+1) - barW/2;
+      const h = rateScale(r);
+      const isNeg = r < 0;
+      ctx.fillStyle = isNeg ? 'rgba(59,130,246,.5)' : 'rgba(59,130,246,.25)';
+      if (isNeg) {
+        ctx.fillRect(x, zeroY, barW, Math.min(h, cH*0.3)); // small downward bar
+      } else {
+        ctx.fillRect(x, zeroY - Math.min(h, cH*0.35), barW, Math.min(h, cH*0.35));
+      }
+    });
+  }
+
+  // right axis label
+  ctx.save();
+  ctx.translate(W-8, pad.top + cH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillStyle = '#3b82f6'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Annual CPI Rate', 0, 0);
+  ctx.restore();
+}
+
+window.addEventListener('resize', calc);
+calc();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
