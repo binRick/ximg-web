@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-80 virtual hosts (root + 79 subdomains), each with its own Apache container.
+176 virtual hosts (root + 175 subdomains), each with its own Apache container.
 
 | Subdomain | Description |
 |-----------|-------------|
