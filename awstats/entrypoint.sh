@@ -7,7 +7,7 @@ AWSTATS_OUTDIR=/output
 AWSTATS_LOGDIR=/logs
 
 # All sites (matches LOG_FILES in logs-server/server.js)
-SITES="ximg linux ai mac butterfly ascii json poker mario monkey doom grilling pizza docker yaml kart kombat wargames warcraft moto india chinese wood guns america florida tampa computers trump cnc simcity rx mail internet fidonet coldwar passwords change apps tmux ansible git chess programming systemd vr nav ximg-app logs stats dns"
+SITES="555timer agents ai algorithms america ansible apps arduino arpanet ascii base64 bash battery binary biology brain bsd budget butterfly capacitor cdn cell change chaos chemistry chess chinese circuit claude claudemd cnc coffee coldwar color compiler compound computers cron crypto database debt diff dna dns docker doom embeddings epidemic evolution fidonet florida fpga git gravity grilling guns hash http ids immune impedance india inflation internet japan json jwt kart kombat linux loadbalancer logic logs mac mail mainframe mario math medieval monkey mortgage moto nagios nav netdata network nintendo nutrition ohms opamp os oscilloscope passwords pcb physics pinout pirates pizza playground poker probability programming protocol psu punch pwm quake quantum queue readme regex regression request resistor retire rx sandbox security simcity sleep space spectrum spi sql ssh stats statslab status suricata synth systemd systemdesign tampa temperature terminal tmux tokens training trump uart unix url vim visualize voltage vr vt101 warcraft wargames waves wood world ximg ximg-app yaml zsh"
 
 # ── GeoIP plugin config ───────────────────────────────────────────────────────
 # Uses AWStats' built-in geoipfree plugin + Geo::IPfree bundled IP database
