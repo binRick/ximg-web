@@ -23,7 +23,7 @@
       ['agents','agents'],['algorithms','algorithms'],['cdn','cdn'],['database','database'],['embeddings','embeddings'],['loadbalancer','loadbalancer'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
-      ['america','america'],['coffee','coffee'],['florida','florida'],
+      ['america','america'],['coffee','coffee'],['florida','freedom'],
       ['guns','guns'],['japan','japan'],['moto','moto'],
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
