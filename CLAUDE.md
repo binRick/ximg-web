@@ -138,6 +138,35 @@ certbot certonly --webroot -d newsubdomain.ximg.app \
 docker compose exec nginx nginx -s reload
 ```
 
+## Certbot Rate Limit Fallback
+
+Let's Encrypt enforces a limit of **50 certificates per registered domain (`ximg.app`) per 7-day rolling window**. If certbot fails with a rate-limit error when adding a new app, do NOT leave the app broken or uncreated. Instead, host it temporarily at `https://ximg.app/<appname>/` using a path-based nginx location block under the main `ximg.app` server block.
+
+**Fallback procedure:**
+
+1. Create the `*-html/` directory and `index.html` as normal — but set all asset paths (CSS, JS, images) relative or root-relative with the `/appname/` prefix in mind. The simplest approach: use relative paths (`./style.css`) so they work under any base path.
+
+2. In `nginx/nginx.conf`, add a `location` block inside the existing `ximg.app` server block:
+```nginx
+location /appname/ {
+    proxy_pass         http://appname:80/;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+}
+```
+
+3. Start the Apache container as normal (`docker compose up -d appname`).
+
+4. Reload nginx: `docker compose exec nginx nginx -s reload`
+
+5. Verify: `curl -sk https://ximg.app/appname/ | head -5`
+
+6. Note the rate-limit retry timestamp from the certbot error message. Once the window clears, issue the individual cert and migrate the app to its proper subdomain — updating nginx.conf, nav.js, apps-html, logs-server, nagios, README, and install/setup.sh as per the normal checklist.
+
+**Do not skip creating the app just because a cert is unavailable.** The path-based fallback keeps the app live and reachable immediately.
+
 ## SSH Honeypot
 
 - Accepts any password, drops user into `/bin/bash` as non-root `user` inside isolated container
