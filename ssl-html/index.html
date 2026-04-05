@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSL / TLS Tools — ssl.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.subnav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-btn:hover:not(.active){color:#c9d1d9}
+.tab-panel{display:none;padding:1.5rem;max-width:1100px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#c9d1d9;margin-bottom:.6rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+label{font-size:.85rem;color:#94a3b8;display:block;margin-bottom:.3rem}
+textarea{width:100%;background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.75rem;border-radius:6px;font-family:monospace;font-size:.82rem;resize:vertical}
+textarea:focus{outline:none;border-color:#22d3ee}
+input[type=text]{background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.55rem .8rem;border-radius:5px;font-size:.9rem;font-family:inherit;width:100%}
+input[type=text]:focus{outline:none;border-color:#22d3ee}
+.btn{background:#0e7490;color:#fff;border:none;padding:.5rem 1.2rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#0891b2}
+/* cert result */
+.cert-status{border-radius:8px;padding:.6rem 1rem;font-weight:600;margin-bottom:1rem;font-size:.95rem}
+.cert-status.valid{background:#052e16;border:1px solid #166534;color:#86efac}
+.cert-status.expiring{background:#1c1007;border:1px solid #92400e;color:#fcd34d}
+.cert-status.expired{background:#1a0808;border:1px solid #991b1b;color:#fca5a5}
+.cert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.75rem;margin-bottom:1rem}
+.cert-field{background:#0a0a25;border:1px solid #1e293b;border-radius:6px;padding:.65rem .9rem}
+.cert-field .cf-label{font-size:.73rem;color:#64748b;margin-bottom:.2rem;text-transform:uppercase;letter-spacing:.05em}
+.cert-field .cf-val{font-size:.88rem;color:#c9d1d9;word-break:break-all;font-family:monospace}
+.cert-field .cf-val.accent{color:#22d3ee}
+.cert-field .cf-val.mono{font-size:.78rem}
+.san-list{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem}
+.san-chip{background:#0e1a2e;border:1px solid #1e293b;border-radius:4px;padding:.15rem .5rem;font-size:.8rem;font-family:monospace;color:#7dd3fc}
+.fingerprint{font-family:monospace;font-size:.78rem;word-break:break-all;color:#94a3b8}
+.countdown{font-size:1.1rem;font-weight:700}
+.countdown.valid{color:#22d3ee}
+.countdown.expiring{color:#fcd34d}
+.countdown.expired{color:#f87171}
+.ext-list{margin-top:.5rem}
+.ext-item{background:#0a0a25;border-left:3px solid #22d3ee;border-radius:0 5px 5px 0;padding:.5rem .75rem;margin-bottom:.4rem;font-size:.83rem;font-family:monospace}
+.ext-item .ext-name{color:#22d3ee;font-weight:600;margin-bottom:.15rem}
+.ext-item .ext-val{color:#94a3b8;word-break:break-all}
+/* checker */
+.code-block{background:#050515;border:1px solid #1e293b;border-radius:6px;padding:.9rem 1rem;font-family:monospace;font-size:.85rem;color:#c9d1d9;position:relative;white-space:pre-wrap;word-break:break-all;line-height:1.7}
+.code-block .hlcyan{color:#22d3ee}
+.code-block .hlgreen{color:#86efac}
+.code-block .hlyellow{color:#fcd34d}
+.copy-btn{position:absolute;top:.5rem;right:.5rem;background:#0e7490;color:#fff;border:none;padding:.3rem .7rem;border-radius:4px;cursor:pointer;font-size:.75rem}
+.copy-btn:hover{background:#0891b2}
+.copied{background:#059669!important}
+/* reference */
+.ref-section{margin-bottom:1.5rem}
+.tls-table,.cipher-table,.err-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.tls-table th,.cipher-table th,.err-table th{background:#0e1a2e;color:#22d3ee;padding:.45rem .75rem;text-align:left;border-bottom:2px solid #22d3ee}
+.tls-table td,.cipher-table td,.err-table td{padding:.4rem .75rem;border-bottom:1px solid #1e293b;vertical-align:top}
+.tls-table tr:hover td,.cipher-table tr:hover td,.err-table tr:hover td{background:#040413}
+.badge{display:inline-block;padding:.1em .5em;border-radius:3px;font-size:.75rem;font-weight:600}
+.badge-ok{background:#052e16;color:#86efac}
+.badge-warn{background:#1c1007;color:#fcd34d}
+.badge-bad{background:#1a0808;color:#fca5a5}
+.chain-steps{counter-reset:chain}
+.chain-step{position:relative;padding-left:3rem;padding-bottom:1.5rem;border-left:2px solid #1e293b;margin-left:1rem}
+.chain-step:last-child{padding-bottom:0}
+.chain-step::before{counter-increment:chain;content:counter(chain);position:absolute;left:-1.15rem;top:0;background:#0e7490;color:#fff;width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
+.chain-step h4{color:#22d3ee;margin-bottom:.3rem}
+.chain-step p{font-size:.85rem;color:#94a3b8;line-height:1.6}
+.err-code{font-family:monospace;color:#f87171;font-size:.82rem}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('decoder',this)">Cert Decoder</button>
+  <button class="tab-btn" onclick="showTab('checker',this)">Checker</button>
+  <button class="tab-btn" onclick="showTab('reference',this)">Reference</button>
+</nav>
+
+<!-- CERT DECODER -->
+<div id="decoder" class="tab-panel active">
+  <h2>X.509 Certificate Decoder</h2>
+  <div class="card">
+    <label>Paste PEM certificate (BEGIN CERTIFICATE … END CERTIFICATE):</label>
+    <textarea id="pemInput" rows="10" placeholder="-----BEGIN CERTIFICATE-----&#10;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...&#10;-----END CERTIFICATE-----" oninput="decodeCert()"></textarea>
+    <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn" onclick="decodeCert()">Decode</button>
+      <button class="btn" style="background:#334155" onclick="loadExample()">Load Example</button>
+      <button class="btn" style="background:#334155" onclick="document.getElementById('pemInput').value='';document.getElementById('certResult').innerHTML=''">Clear</button>
+    </div>
+  </div>
+  <div id="certErr"></div>
+  <div id="certResult"></div>
+</div>
+
+<!-- CHECKER -->
+<div id="checker" class="tab-panel">
+  <h2>SSL Certificate Checker</h2>
+  <div class="card">
+    <label>Hostname to check:</label>
+    <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+      <input type="text" id="checkHost" placeholder="example.com" oninput="updateCommands()">
+      <input type="text" id="checkPort" value="443" style="width:80px" oninput="updateCommands()">
+    </div>
+    <p style="font-size:.85rem;color:#64748b;margin-bottom:1rem">Note: Browser security prevents direct TLS inspection from a web page. Use these <code style="color:#22d3ee">openssl</code> commands in your terminal:</p>
+  </div>
+  <div id="checkerCommands"></div>
+</div>
+
+<!-- REFERENCE -->
+<div id="reference" class="tab-panel">
+  <h2>TLS / SSL Reference</h2>
+
+  <div class="ref-section">
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.75rem">TLS Version Comparison</h3>
+      <div style="overflow-x:auto">
+        <table class="tls-table">
+          <thead><tr><th>Version</th><th>Year</th><th>Status</th><th>Key Features</th><th>Cipher Suites</th><th>Vulnerabilities</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>TLS 1.3</strong></td><td>2018</td>
+              <td><span class="badge badge-ok">Recommended</span></td>
+              <td>1-RTT / 0-RTT handshake, forward secrecy mandatory, simplified cipher list, removed legacy features</td>
+              <td>TLS_AES_256_GCM_SHA384, TLS_CHACHA20_POLY1305_SHA256, TLS_AES_128_GCM_SHA256</td>
+              <td>None known</td>
+            </tr>
+            <tr>
+              <td><strong>TLS 1.2</strong></td><td>2008</td>
+              <td><span class="badge badge-ok">Acceptable</span></td>
+              <td>SHA-256 PRF, AEAD ciphers, explicit IV, supports ECDHE</td>
+              <td>ECDHE-RSA-AES256-GCM-SHA384, ECDHE-ECDSA-AES128-GCM-SHA256</td>
+              <td>BEAST (mitigated), LUCKY13 (patched), POODLE-TLS (config)</td>
+            </tr>
+            <tr>
+              <td><strong>TLS 1.1</strong></td><td>2006</td>
+              <td><span class="badge badge-bad">Deprecated</span></td>
+              <td>Explicit IV for CBC, protections against BEAST (partial)</td>
+              <td>RC4 removed from recommendations, CBC-based only</td>
+              <td>BEAST, POODLE, various CBC attacks</td>
+            </tr>
+            <tr>
+              <td><strong>TLS 1.0</strong></td><td>1999</td>
+              <td><span class="badge badge-bad">Prohibited (PCI DSS)</span></td>
+              <td>First TLS version (SSL 3.1), added MAC-then-encrypt</td>
+              <td>RC4, 3DES, AES-CBC, DES</td>
+              <td>BEAST, POODLE, CRIME, RC4 biases</td>
+            </tr>
+            <tr>
+              <td><strong>SSL 3.0</strong></td><td>1996</td>
+              <td><span class="badge badge-bad">Prohibited</span></td>
+              <td>Netscape-designed predecessor to TLS</td>
+              <td>RC4, 3DES, DES, RC2</td>
+              <td>POODLE (CVE-2014-3566), DROWN, Padding Oracle</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref-section">
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.75rem">Certificate Chain Explanation</h3>
+      <div class="chain-steps">
+        <div class="chain-step">
+          <h4>Root CA Certificate</h4>
+          <p>Self-signed certificate stored in the browser/OS trust store. Issued by trusted Certificate Authorities (DigiCert, Let's Encrypt ISRG Root, Comodo, GlobalSign, etc.). The chain anchors here.</p>
+        </div>
+        <div class="chain-step">
+          <h4>Intermediate CA Certificate</h4>
+          <p>Signed by the Root CA. Used to issue end-entity certs. Limits exposure — the Root CA key can be kept offline. Servers must include intermediates in the TLS handshake (browsers may not have them cached). A server missing intermediates causes "incomplete chain" errors.</p>
+        </div>
+        <div class="chain-step">
+          <h4>End-Entity (Leaf) Certificate</h4>
+          <p>Issued to your domain. Contains: subject CN/SAN, public key, validity period, key usage extensions. Signed by the Intermediate CA. Your server presents this during TLS handshakes.</p>
+        </div>
+        <div class="chain-step">
+          <h4>Chain Validation</h4>
+          <p>Client walks up the chain: leaf → intermediate → root. At each step, the issuer's public key must verify the subject's signature. If any link breaks (expired, revoked, missing), the handshake fails with a certificate error.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref-section">
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.75rem">Recommended Cipher Suites</h3>
+      <div style="overflow-x:auto">
+        <table class="cipher-table">
+          <thead><tr><th>Cipher Suite</th><th>Protocol</th><th>Key Exchange</th><th>Auth</th><th>Encryption</th><th>MAC</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><code>TLS_AES_256_GCM_SHA384</code></td><td>TLS 1.3</td><td>Built-in (ephemeral)</td><td>—</td><td>AES-256-GCM</td><td>SHA-384</td><td><span class="badge badge-ok">Best</span></td></tr>
+            <tr><td><code>TLS_CHACHA20_POLY1305_SHA256</code></td><td>TLS 1.3</td><td>Built-in</td><td>—</td><td>ChaCha20-Poly1305</td><td>SHA-256</td><td><span class="badge badge-ok">Best</span></td></tr>
+            <tr><td><code>TLS_AES_128_GCM_SHA256</code></td><td>TLS 1.3</td><td>Built-in</td><td>—</td><td>AES-128-GCM</td><td>SHA-256</td><td><span class="badge badge-ok">Best</span></td></tr>
+            <tr><td><code>ECDHE-RSA-AES256-GCM-SHA384</code></td><td>TLS 1.2</td><td>ECDHE</td><td>RSA</td><td>AES-256-GCM</td><td>SHA-384</td><td><span class="badge badge-ok">Good</span></td></tr>
+            <tr><td><code>ECDHE-ECDSA-AES256-GCM-SHA384</code></td><td>TLS 1.2</td><td>ECDHE</td><td>ECDSA</td><td>AES-256-GCM</td><td>SHA-384</td><td><span class="badge badge-ok">Good</span></td></tr>
+            <tr><td><code>ECDHE-RSA-CHACHA20-POLY1305</code></td><td>TLS 1.2</td><td>ECDHE</td><td>RSA</td><td>ChaCha20</td><td>Poly1305</td><td><span class="badge badge-ok">Good</span></td></tr>
+            <tr><td><code>DHE-RSA-AES256-GCM-SHA384</code></td><td>TLS 1.2</td><td>DHE</td><td>RSA</td><td>AES-256-GCM</td><td>SHA-384</td><td><span class="badge badge-warn">Acceptable</span></td></tr>
+            <tr><td><code>AES256-GCM-SHA384</code></td><td>TLS 1.2</td><td>RSA (static)</td><td>RSA</td><td>AES-256-GCM</td><td>SHA-384</td><td><span class="badge badge-warn">No FS</span></td></tr>
+            <tr><td><code>RC4-SHA</code></td><td>TLS 1.0–1.2</td><td>RSA</td><td>RSA</td><td>RC4</td><td>SHA-1</td><td><span class="badge badge-bad">Broken</span></td></tr>
+            <tr><td><code>DES-CBC3-SHA</code></td><td>TLS 1.0–1.2</td><td>RSA</td><td>RSA</td><td>3DES-CBC</td><td>SHA-1</td><td><span class="badge badge-bad">Weak</span></td></tr>
+            <tr><td><code>NULL-SHA256</code></td><td>Any</td><td>RSA</td><td>RSA</td><td>None</td><td>SHA-256</td><td><span class="badge badge-bad">Plaintext!</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref-section">
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.75rem">Common Certificate Errors &amp; Fixes</h3>
+      <div style="overflow-x:auto">
+        <table class="err-table">
+          <thead><tr><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="err-code">ERR_CERT_DATE_INVALID<br>CERT_HAS_EXPIRED</td>
+              <td>Certificate past its NotAfter date, or system clock wrong</td>
+              <td>Renew certificate. Check server/client system time is accurate (NTP). Let's Encrypt certs expire every 90 days — automate renewal with certbot.</td>
+            </tr>
+            <tr>
+              <td class="err-code">ERR_CERT_COMMON_NAME_INVALID<br>SSL_ERROR_BAD_CERT_DOMAIN</td>
+              <td>Certificate CN/SAN doesn't match hostname being connected to</td>
+              <td>Issue cert with correct domain in SAN. Wildcard certs (*.example.com) only cover one level. Add www. and apex separately or use SAN list.</td>
+            </tr>
+            <tr>
+              <td class="err-code">ERR_CERT_AUTHORITY_INVALID<br>SELF_SIGNED_CERT_IN_CHAIN</td>
+              <td>Cert signed by untrusted CA, or self-signed cert presented to browser</td>
+              <td>Use cert from trusted CA (Let's Encrypt is free). For internal services, install your internal CA cert in trust store.</td>
+            </tr>
+            <tr>
+              <td class="err-code">ERR_SSL_PROTOCOL_ERROR<br>SSL_ERROR_RX_RECORD_TOO_LONG</td>
+              <td>Plain HTTP served on HTTPS port, TLS version mismatch, firewall stripping data</td>
+              <td>Ensure server is configured for TLS on port 443. Check nginx/Apache SSL config. Verify no proxy strips the TLS record.</td>
+            </tr>
+            <tr>
+              <td class="err-code">UNABLE_TO_GET_ISSUER_CERT<br>UNABLE_TO_VERIFY_LEAF_SIGNATURE</td>
+              <td>Incomplete certificate chain — intermediate CA missing from server config</td>
+              <td>Configure server to serve the full chain (leaf + all intermediates). With nginx: use <code>ssl_certificate fullchain.pem</code> not just <code>cert.pem</code>.</td>
+            </tr>
+            <tr>
+              <td class="err-code">ERR_CERT_REVOKED<br>OCSP_RESPONSE_STATUS_REVOKED</td>
+              <td>Certificate was revoked by the issuing CA</td>
+              <td>Issue a new certificate. Check why the cert was revoked (key compromise? CA decision?). Rotate any potentially compromised private keys.</td>
+            </tr>
+            <tr>
+              <td class="err-code">ERR_SSL_VERSION_OR_CIPHER_MISMATCH</td>
+              <td>Server only supports deprecated TLS versions or cipher suites the client won't use</td>
+              <td>Enable TLS 1.2 and TLS 1.3 on server. Remove SSLv3, TLS 1.0, TLS 1.1 support. Enable modern ECDHE cipher suites.</td>
+            </tr>
+            <tr>
+              <td class="err-code">NET::ERR_CERT_WEAK_SIGNATURE_ALGORITHM</td>
+              <td>Certificate uses SHA-1 signature (deprecated) or MD5</td>
+              <td>Reissue cert with SHA-256 or better signature algorithm. Most modern CAs use SHA-256 by default.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── ASN.1 / PEM PARSER ────────────────────────────────────────
+// Pure JS X.509 DER parser
+
+function b64Decode(b64) {
+  const bin = atob(b64.replace(/[\s]/g,''));
+  const arr = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return arr;
+}
+
+function parseDER(data, offset) {
+  offset = offset || 0;
+  const tag = data[offset++];
+  let len = data[offset++];
+  let lenBytes = 0;
+  if (len & 0x80) {
+    lenBytes = len & 0x7f;
+    len = 0;
+    for (let i=0;i<lenBytes;i++) len = (len<<8)|data[offset++];
+  }
+  const value = data.slice(offset, offset+len);
+  return { tag, len, value, end: offset+len, tagClass: (tag>>6)&3, constructed: !!(tag&0x20), tagNum: tag&0x1f };
+}
+
+function parseSeq(data) {
+  const children = [];
+  let pos = 0;
+  while (pos < data.length) {
+    const node = parseDER(data, pos);
+    children.push(node);
+    pos = node.end;
+  }
+  return children;
+}
+
+function oidToStr(bytes) {
+  const OID_MAP = {
+    '2.5.4.3':'CN','2.5.4.6':'C','2.5.4.7':'L','2.5.4.8':'ST','2.5.4.10':'O','2.5.4.11':'OU',
+    '2.5.4.5':'serialNumber','2.5.4.12':'title','2.5.4.42':'givenName','2.5.4.4':'surname',
+    '1.2.840.113549.1.1.1':'rsaEncryption','1.2.840.113549.1.1.5':'sha1WithRSAEncryption',
+    '1.2.840.113549.1.1.11':'sha256WithRSAEncryption','1.2.840.113549.1.1.12':'sha384WithRSAEncryption',
+    '1.2.840.113549.1.1.13':'sha512WithRSAEncryption',
+    '1.2.840.10045.4.3.2':'ecdsa-with-SHA256','1.2.840.10045.4.3.3':'ecdsa-with-SHA384','1.2.840.10045.4.3.4':'ecdsa-with-SHA512',
+    '1.2.840.10045.2.1':'id-ecPublicKey',
+    '2.5.29.17':'subjectAltName','2.5.29.19':'basicConstraints','2.5.29.15':'keyUsage',
+    '2.5.29.37':'extKeyUsage','2.5.29.14':'subjectKeyIdentifier','2.5.29.35':'authorityKeyIdentifier',
+    '2.5.29.31':'cRLDistributionPoints','1.3.6.1.5.5.7.1.1':'authorityInfoAccess',
+    '1.3.6.1.5.5.7.48.1':'OCSP','1.3.6.1.5.5.7.48.2':'caIssuers',
+    '2.5.29.32':'certificatePolicies','1.3.6.1.4.1.11129.2.4.2':'SCT','2.5.29.9':'subjectDirectoryAttributes',
+    '1.2.840.113549.1.9.1':'emailAddress'
+  };
+  let first = bytes[0];
+  let oid = `${Math.floor(first/40)}.${first%40}`;
+  let cur = 0;
+  for (let i=1;i<bytes.length;i++) {
+    cur = (cur<<7)|(bytes[i]&0x7f);
+    if (!(bytes[i]&0x80)) { oid += '.'+cur; cur=0; }
+  }
+  return OID_MAP[oid] || oid;
+}
+
+function decodeUtf8(bytes) {
+  try { return new TextDecoder('utf-8').decode(bytes); } catch(e) { return Array.from(bytes).map(b=>String.fromCharCode(b)).join(''); }
+}
+
+function decodeStr(node) {
+  // tag 12=UTF8String, 19=PrintableString, 22=IA5String, 20=TeletexString, 28=UniversalString, 30=BMPString
+  if (node.tag === 30) { // BMPString (UTF-16BE)
+    let s=''; for (let i=0;i<node.value.length;i+=2) s+=String.fromCharCode((node.value[i]<<8)|node.value[i+1]); return s;
+  }
+  return decodeUtf8(node.value);
+}
+
+function parseRDN(seqBytes) {
+  const parts = [];
+  const rdns = parseSeq(seqBytes);
+  for (const rdn of rdns) {
+    if ((rdn.tag&0x1f) === 0x11) { // SET
+      const attrNodes = parseSeq(rdn.value);
+      for (const attr of attrNodes) {
+        if ((attr.tag&0x1f) !== 0x10) continue; // SEQUENCE
+        const items = parseSeq(attr.value);
+        if (items.length >= 2) {
+          const oid = oidToStr(items[0].value);
+          const val = decodeStr(items[1]);
+          parts.push(`${oid}=${val}`);
+        }
+      }
+    }
+  }
+  return parts.join(', ');
+}
+
+function parseGeneralizedTime(s) {
+  // YYYYMMDDHHMMSSZ or YYMMDDHHMMSSZ
+  s = decodeUtf8(s);
+  let y,m,d,hh,mm,ss;
+  if (s.length === 15) { y=s.slice(0,4); m=s.slice(4,6); d=s.slice(6,8); hh=s.slice(8,10); mm=s.slice(10,12); ss=s.slice(12,14); }
+  else { // UTCTime YYMMDDHHmmssZ
+    const yr=parseInt(s.slice(0,2)); y=yr>=50?'19'+s.slice(0,2):'20'+s.slice(0,2);
+    m=s.slice(2,4); d=s.slice(4,6); hh=s.slice(6,8); mm=s.slice(8,10); ss=s.slice(10,12);
+  }
+  return new Date(`${y}-${m}-${d}T${hh}:${mm}:${ss}Z`);
+}
+
+function toHex(bytes, sep) {
+  sep = sep===undefined ? ':' : sep;
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(sep);
+}
+
+async function sha1(data) { const h=await crypto.subtle.digest('SHA-1',data); return toHex(new Uint8Array(h)); }
+async function sha256(data) { const h=await crypto.subtle.digest('SHA-256',data); return toHex(new Uint8Array(h)); }
+
+function parseSAN(bytes) {
+  const names = [];
+  let pos = 0;
+  while (pos < bytes.length) {
+    const n = parseDER(bytes, pos);
+    pos = n.end;
+    const t = n.tag & 0x1f;
+    if (t === 2) names.push({type:'DNS', val:decodeUtf8(n.value)});
+    else if (t === 7) names.push({type:'IP', val:n.value.length===4?Array.from(n.value).join('.'):toHex(n.value,'')});
+    else if (t === 1) names.push({type:'Email', val:decodeUtf8(n.value)});
+    else if (t === 6) names.push({type:'URI', val:decodeUtf8(n.value)});
+    else names.push({type:`[${t}]`, val:toHex(n.value)});
+  }
+  return names;
+}
+
+function parseKeyUsageBits(bytes) {
+  const usages = ['Digital Signature','Non Repudiation','Key Encipherment','Data Encipherment','Key Agreement','Key Cert Sign','CRL Sign','Encipher Only','Decipher Only'];
+  const unusedBits = bytes[0];
+  const bits = bytes[1];
+  const used = [];
+  for (let i=0;i<8;i++) { if (bits&(0x80>>i)) used.push(usages[i]); }
+  return used.join(', ') || 'none';
+}
+
+function parseEKU(bytes) {
+  const EKU = {'1.3.6.1.5.5.7.3.1':'serverAuth','1.3.6.1.5.5.7.3.2':'clientAuth','1.3.6.1.5.5.7.3.3':'codeSigning','1.3.6.1.5.5.7.3.4':'emailProtection','1.3.6.1.5.5.7.3.8':'timeStamping','1.3.6.1.5.5.7.3.9':'OCSPSigning'};
+  const nodes = parseSeq(bytes);
+  return nodes.map(n=>{ const o=oidToStr(n.value); return EKU[o]||o; }).join(', ');
+}
+
+function parseExtensions(bytes) {
+  const exts = [];
+  const seqNodes = parseSeq(bytes);
+  for (const extNode of seqNodes) {
+    if ((extNode.tag&0x1f) !== 0x10) continue;
+    const parts = parseSeq(extNode.value);
+    if (!parts.length) continue;
+    const oidName = oidToStr(parts[0].value);
+    let critical = false, valueNode = parts[1];
+    if (parts[1] && parts[1].tag === 0x01) { critical = parts[1].value[0]===0xff; valueNode = parts[2]; }
+    if (!valueNode) continue;
+    // valueNode is OCTET STRING wrapping the extension value
+    const extValue = valueNode.value;
+    let parsed = '';
+    try {
+      if (oidName === 'subjectAltName') {
+        const inner = parseDER(extValue, 0);
+        const sans = parseSAN(inner.value);
+        parsed = sans.map(s=>`${s.type}: ${s.val}`).join('\n');
+      } else if (oidName === 'basicConstraints') {
+        const inner = parseDER(extValue, 0);
+        const seq = parseSeq(inner.value);
+        const isCA = seq[0] && seq[0].tag===1 && seq[0].value[0]===0xff;
+        const pathLen = seq[1] ? parseInt(toHex(seq[1].value,''),16) : null;
+        parsed = `CA: ${isCA}${pathLen!==null?', pathLenConstraint: '+pathLen:''}`;
+      } else if (oidName === 'keyUsage') {
+        const inner = parseDER(extValue, 0);
+        parsed = parseKeyUsageBits(inner.value);
+      } else if (oidName === 'extKeyUsage') {
+        const inner = parseDER(extValue, 0);
+        parsed = parseEKU(inner.value);
+      } else {
+        parsed = toHex(extValue.slice(0,40)) + (extValue.length>40?'…':'');
+      }
+    } catch(e) { parsed = toHex(extValue.slice(0,40)); }
+    exts.push({ name: oidName, critical, value: parsed });
+  }
+  return exts;
+}
+
+function parseX509(der) {
+  const root = parseDER(der, 0);
+  const tbsCertAndMore = parseSeq(root.value);
+  if (!tbsCertAndMore.length) throw new Error('Invalid certificate structure');
+
+  const tbs = tbsCertAndMore[0]; // TBSCertificate SEQUENCE
+  const tbsFields = parseSeq(tbs.value);
+  let idx = 0;
+
+  // Version (optional, [0] EXPLICIT)
+  let version = 1;
+  if (tbsFields[idx] && tbsFields[idx].tagClass===2 && tbsFields[idx].tagNum===0) {
+    const verNode = parseDER(tbsFields[idx].value, 0);
+    version = verNode.value[0] + 1;
+    idx++;
+  }
+
+  // Serial Number
+  const serialBytes = tbsFields[idx++];
+  const serial = toHex(serialBytes.value, '');
+
+  // Signature algorithm
+  const sigAlgNode = tbsFields[idx++];
+  const sigAlgOID = oidToStr(parseSeq(sigAlgNode.value)[0].value);
+
+  // Issuer
+  const issuerNode = tbsFields[idx++];
+  const issuer = parseRDN(issuerNode.value);
+
+  // Validity
+  const validityNode = tbsFields[idx++];
+  const valFields = parseSeq(validityNode.value);
+  const notBefore = parseGeneralizedTime(valFields[0].value);
+  const notAfter  = parseGeneralizedTime(valFields[1].value);
+
+  // Subject
+  const subjectNode = tbsFields[idx++];
+  const subject = parseRDN(subjectNode.value);
+
+  // SubjectPublicKeyInfo
+  const spki = tbsFields[idx++];
+  const spkiSeq = parseSeq(spki.value);
+  const keyAlgOID = oidToStr(parseSeq(spkiSeq[0].value)[0].value);
+  const pubKeyBitStr = spkiSeq[1]; // BIT STRING
+  // Key size (RSA: inner sequence has modulus)
+  let keyBits = (pubKeyBitStr.value.length - 1) * 8; // rough estimate
+  try {
+    const inner = parseDER(pubKeyBitStr.value, 1); // skip unused-bits byte
+    if (keyAlgOID === 'rsaEncryption') {
+      const rsaSeq = parseSeq(inner.value);
+      const modulus = rsaSeq[0].value;
+      keyBits = (modulus.length - (modulus[0]===0?1:0)) * 8;
+    }
+  } catch(e){}
+
+  // Extensions (optional, version 3 only)
+  let extensions = [];
+  let sansList = [];
+  while (idx < tbsFields.length) {
+    const f = tbsFields[idx++];
+    if (f.tagClass===2 && f.tagNum===3) {
+      // [3] EXPLICIT SEQUENCE
+      const extSeqNode = parseDER(f.value, 0);
+      extensions = parseExtensions(extSeqNode.value);
+      // find SANs
+      const sanExt = extensions.find(e=>e.name==='subjectAltName');
+      if (sanExt) sansList = sanExt.value.split('\n').map(l=>{ const [t,...v]=l.split(': '); return {type:t,val:v.join(': ')}; });
+    }
+  }
+
+  // Signature algorithm from outer SEQUENCE
+  let outerSigAlg = sigAlgOID;
+  if (tbsCertAndMore[1]) {
+    try { outerSigAlg = oidToStr(parseSeq(tbsCertAndMore[1].value)[0].value); } catch(e){}
+  }
+
+  return { version, serial, sigAlg:sigAlgOID, issuer, notBefore, notAfter, subject, keyAlg:keyAlgOID, keyBits, sansList, extensions };
+}
+
+async function decodeCert() {
+  const pem = document.getElementById('pemInput').value.trim();
+  const errEl = document.getElementById('certErr');
+  const resEl = document.getElementById('certResult');
+  errEl.innerHTML = ''; resEl.innerHTML = '';
+  if (!pem) return;
+
+  // Strip PEM headers
+  const lines = pem.split('\n').filter(l=>!l.startsWith('-----'));
+  const b64 = lines.join('');
+  if (!b64) { errEl.innerHTML='<div style="color:#f87171;padding:.5rem">No base64 data found.</div>'; return; }
+
+  let der;
+  try { der = b64Decode(b64); } catch(e) { errEl.innerHTML=`<div style="color:#f87171;padding:.5rem">Base64 decode error: ${e.message}</div>`; return; }
+
+  let cert;
+  try { cert = parseX509(der); } catch(e) { errEl.innerHTML=`<div style="color:#f87171;padding:.5rem">Parse error: ${e.message}. Ensure this is a valid DER-encoded X.509 certificate in PEM format.</div>`; return; }
+
+  // Compute fingerprints
+  const fp1 = await sha1(der);
+  const fp256 = await sha256(der);
+
+  const now = new Date();
+  const expired = now > cert.notAfter;
+  const expiringSoon = !expired && (cert.notAfter - now) < 30*24*3600*1000;
+  const daysLeft = Math.ceil((cert.notAfter - now) / (24*3600*1000));
+
+  let statusClass = expired ? 'expired' : expiringSoon ? 'expiring' : 'valid';
+  let statusText = expired
+    ? `Expired ${Math.abs(daysLeft)} day${Math.abs(daysLeft)!==1?'s':''} ago`
+    : `Valid — ${daysLeft} day${daysLeft!==1?'s':''} remaining`;
+  let countdownClass = expired ? 'expired' : expiringSoon ? 'expiring' : 'valid';
+
+  const fmt = d => d.toUTCString();
+  const escH = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const sanHTML = cert.sansList.length
+    ? `<div class="san-list">${cert.sansList.map(s=>`<span class="san-chip">${escH(s.type)}: ${escH(s.val)}</span>`).join('')}</div>`
+    : '<span style="color:#64748b">none</span>';
+
+  const extHTML = cert.extensions.length
+    ? cert.extensions.map(e=>`
+        <div class="ext-item">
+          <div class="ext-name">${escH(e.name)}${e.critical?' <span style="color:#f87171;font-size:.72rem">[CRITICAL]</span>':''}</div>
+          <div class="ext-val">${escH(e.value)}</div>
+        </div>`).join('')
+    : '<span style="color:#64748b">none</span>';
+
+  resEl.innerHTML = `
+    <div class="cert-status ${statusClass}">${statusText}</div>
+    <div class="cert-grid">
+      <div class="cert-field"><div class="cf-label">Subject</div><div class="cf-val">${escH(cert.subject)}</div></div>
+      <div class="cert-field"><div class="cf-label">Issuer</div><div class="cf-val">${escH(cert.issuer)}</div></div>
+      <div class="cert-field"><div class="cf-label">Not Before</div><div class="cf-val accent">${fmt(cert.notBefore)}</div></div>
+      <div class="cert-field"><div class="cf-label">Not After</div><div class="cf-val"><span class="countdown ${countdownClass}">${fmt(cert.notAfter)}</span></div></div>
+      <div class="cert-field"><div class="cf-label">Serial Number</div><div class="cf-val mono">${escH(cert.serial)}</div></div>
+      <div class="cert-field"><div class="cf-label">Version</div><div class="cf-val">X.509 v${cert.version}</div></div>
+      <div class="cert-field"><div class="cf-label">Signature Algorithm</div><div class="cf-val accent">${escH(cert.sigAlg)}</div></div>
+      <div class="cert-field"><div class="cf-label">Public Key</div><div class="cf-val accent">${escH(cert.keyAlg)} — ${cert.keyBits} bits</div></div>
+      <div class="cert-field"><div class="cf-label">SHA-1 Fingerprint</div><div class="cf-val mono" style="font-size:.75rem">${fp1}</div></div>
+      <div class="cert-field"><div class="cf-label">SHA-256 Fingerprint</div><div class="cf-val mono" style="font-size:.73rem">${fp256}</div></div>
+    </div>
+    <div class="card">
+      <h3>Subject Alternative Names</h3>
+      ${sanHTML}
+    </div>
+    <div class="card">
+      <h3>Extensions (${cert.extensions.length})</h3>
+      <div class="ext-list">${extHTML}</div>
+    </div>
+  `;
+}
+
+// Example cert (Let's Encrypt self-test)
+function loadExample() {
+  // A real DigiCert SHA-256 cert for example.com (truncated for demo — use a real one)
+  // We use a known Let's Encrypt cross-signed cert fragment that decodes correctly.
+  // This is the ISRG Root X1 certificate (public, from letsencrypt.org)
+  const examplePEM = `-----BEGIN CERTIFICATE-----
+MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
+TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
+cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
+WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
+ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
+MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoBggIBAK3oJHP0FDfzm54rVygc
+h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
+0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
+A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
+T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
+B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
+B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
+KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
+OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
+jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
+qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
+rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
+HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
+hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
+ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
+3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
+NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
+ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
+TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
+jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
+oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
+4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
+mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
+emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----`;
+  document.getElementById('pemInput').value = examplePEM;
+  decodeCert();
+}
+
+// ── CHECKER ────────────────────────────────────────────────────
+function updateCommands() {
+  const host = document.getElementById('checkHost').value.trim() || 'example.com';
+  const port = document.getElementById('checkPort').value.trim() || '443';
+  const safe = host.replace(/[^a-zA-Z0-9.\-]/g,'');
+  const safePort = port.replace(/[^0-9]/g,'') || '443';
+
+  const commands = [
+    {
+      title: 'View certificate details',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} </dev/null 2>/dev/null | openssl x509 -noout -text`
+    },
+    {
+      title: 'Check expiry date',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} </dev/null 2>/dev/null | openssl x509 -noout -dates`
+    },
+    {
+      title: 'Show certificate chain',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} -showcerts </dev/null 2>/dev/null`
+    },
+    {
+      title: 'Download the certificate (PEM)',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} </dev/null 2>/dev/null | openssl x509 -outform PEM -out ${safe}.crt`
+    },
+    {
+      title: 'Check TLS version and cipher',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} </dev/null 2>/dev/null | grep -E "Protocol|Cipher"`
+    },
+    {
+      title: 'Test TLS 1.3 support',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -tls1_3 -servername ${safe} </dev/null 2>/dev/null | head -5`
+    },
+    {
+      title: 'Verify against system CA store',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} -verify_return_error </dev/null 2>&1 | grep -E "Verify|OK|error"`
+    },
+    {
+      title: 'Check SHA-256 fingerprint',
+      cmd: `openssl s_client -connect ${safe}:${safePort} -servername ${safe} </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256`
+    },
+  ];
+
+  const escH = s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  document.getElementById('checkerCommands').innerHTML = commands.map(({title,cmd},i)=>`
+    <div class="card" style="margin-bottom:.75rem">
+      <h3 style="margin-bottom:.5rem">${escH(title)}</h3>
+      <div class="code-block" id="cc${i}">${escH(cmd)}<button class="copy-btn" onclick="copyCmd(${i},this)">Copy</button></div>
+    </div>`).join('');
+}
+
+function copyCmd(i, btn) {
+  const text = document.getElementById('cc'+i).textContent.trim();
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig = btn.textContent; btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); },1500);
+  });
+}
+
+// Init
+updateCommands();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

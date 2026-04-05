@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unix Epoch Converter — epoch.ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+
+    .subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+    .tab-btn{padding:.65rem 1.1rem;font-size:.82rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+    .tab-btn:hover{color:#c9d1d9}
+    .tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+
+    .page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+    .page-title{font-size:1.2rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+    .page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+
+    label.lbl{display:block;font-size:.7rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+    input[type=text],input[type=number],input[type=datetime-local],select,textarea{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-family:'Courier New',monospace;font-size:.9rem;padding:.55rem .8rem;outline:none;transition:border-color .2s}
+    input:focus,select:focus,textarea:focus{border-color:#22d3ee55}
+    select{cursor:pointer}
+    textarea{resize:vertical;min-height:80px;line-height:1.5}
+
+    .card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem 1.2rem}
+    .card-title{font-size:.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+
+    /* Now tab */
+    .now-hero{text-align:center;padding:2rem 1rem 1.5rem}
+    .now-epoch-label{font-size:.75rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+    .now-epoch{font-size:3.2rem;font-weight:700;color:#22d3ee;font-family:'Courier New',monospace;letter-spacing:-.02em;line-height:1}
+    .now-ms{font-size:1.4rem;color:#475569;font-family:'Courier New',monospace;margin-top:.4rem}
+    .now-utc{font-size:1rem;color:#94a3b8;margin-top:.6rem;font-family:'Courier New',monospace}
+    .now-copy-row{display:flex;gap:.5rem;justify-content:center;margin-top:.9rem;flex-wrap:wrap}
+    .copy-btn{background:#0f172a;border:1px solid #1e293b;border-radius:5px;color:#64748b;font-size:.72rem;padding:.28rem .7rem;cursor:pointer;transition:all .15s;font-family:'Courier New',monospace}
+    .copy-btn:hover{border-color:#22d3ee55;color:#22d3ee}
+
+    .tz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.6rem;margin-top:1.25rem}
+    .tz-card{background:#070720;border:1px solid #1e293b;border-radius:7px;padding:.75rem 1rem}
+    .tz-name{font-size:.72rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+    .tz-time{font-size:1.15rem;font-weight:600;color:#e2e8f0;font-family:'Courier New',monospace}
+    .tz-date{font-size:.78rem;color:#64748b;font-family:'Courier New',monospace;margin-top:.1rem}
+    .tz-offset{font-size:.7rem;color:#334155;margin-top:.1rem}
+
+    /* Convert tab */
+    .convert-section{margin-bottom:1.5rem}
+    .convert-section-title{font-size:.9rem;font-weight:700;color:#f1f5f9;margin-bottom:.8rem;padding-bottom:.35rem;border-bottom:1px solid #1e293b}
+    .input-row{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end;margin-bottom:1rem}
+    @media(max-width:540px){.input-row{grid-template-columns:1fr}}
+    .btn{background:#0f172a;border:1px solid #22d3ee44;border-radius:6px;color:#22d3ee;font-size:.8rem;font-weight:600;padding:.5rem 1.1rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:hover{background:#22d3ee15;border-color:#22d3ee88}
+    .btn:active{transform:scale(.97)}
+    .result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem;margin-top:.75rem}
+    .result-item{background:#040418;border:1px solid #1e293b;border-radius:6px;padding:.55rem .8rem}
+    .ri-label{font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.25rem}
+    .ri-value{font-size:.85rem;color:#22d3ee;font-family:'Courier New',monospace;word-break:break-all}
+    .ri-value.dim{color:#64748b}
+    .error-msg{font-size:.8rem;color:#f85149;margin-top:.4rem;min-height:1.2em}
+    .divider{border:none;border-top:1px solid #1e293b;margin:1.75rem 0}
+
+    .tz-result-list{margin-top:.75rem;display:flex;flex-direction:column;gap:.4rem}
+    .tzr-row{display:grid;grid-template-columns:160px 1fr;gap:.5rem;background:#040418;border:1px solid #1e293b;border-radius:6px;padding:.45rem .75rem;font-family:'Courier New',monospace;font-size:.82rem}
+    .tzr-name{color:#475569}
+    .tzr-val{color:#c9d1d9}
+
+    /* Format tab */
+    .fmt-search-wrap{margin-bottom:1.25rem}
+    .ref-table{width:100%;border-collapse:collapse;font-size:.8rem}
+    .ref-table th{text-align:left;padding:.4rem .6rem;border-bottom:1px solid #1e293b;color:#475569;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+    .ref-table td{padding:.38rem .6rem;border-bottom:1px solid #0f172a;vertical-align:top}
+    .ref-table tr:hover td{background:#070720}
+    .ref-table tr.hidden{display:none}
+    .tok{font-family:'Courier New',monospace;color:#22d3ee;font-size:.82rem}
+    .tok-desc{color:#94a3b8}
+    .tok-lang{font-size:.7rem;font-weight:700;letter-spacing:.05em;padding:.12rem .4rem;border-radius:4px;margin-right:.25rem;display:inline-block}
+    .lang-py{background:rgba(250,204,21,.1);color:#facc15;border:1px solid rgba(250,204,21,.2)}
+    .lang-js{background:rgba(251,146,60,.1);color:#fb923c;border:1px solid rgba(251,146,60,.2)}
+    .lang-go{background:rgba(99,179,237,.1);color:#63b3ed;border:1px solid rgba(99,179,237,.2)}
+    .lang-java{background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.2)}
+    .lang-sql{background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2)}
+    .section-header td{background:#0a0a20;color:#475569;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:.3rem .6rem;border-bottom:1px solid #1e293b}
+
+    .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#0f172a;border:1px solid #22d3ee44;color:#22d3ee;padding:.5rem 1rem;border-radius:6px;font-size:.8rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:999}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+
+<div class="subnav">
+  <button class="tab-btn active" data-tab="now">Now</button>
+  <button class="tab-btn" data-tab="convert">Convert</button>
+  <button class="tab-btn" data-tab="format">Format</button>
+</div>
+
+<!-- ═══════════════════════ NOW ═══════════════════════ -->
+<div class="page tab-panel active" id="tab-now">
+  <div class="now-hero">
+    <div class="now-epoch-label">Unix Timestamp (seconds)</div>
+    <div class="now-epoch" id="now-sec">—</div>
+    <div class="now-ms" id="now-ms">— ms</div>
+    <div class="now-utc" id="now-utc">—</div>
+    <div class="now-copy-row">
+      <button class="copy-btn" onclick="copyText(document.getElementById('now-sec').textContent,'Seconds copied')">Copy seconds</button>
+      <button class="copy-btn" onclick="copyText(document.getElementById('now-ms').textContent.replace(' ms',''),'Milliseconds copied')">Copy ms</button>
+      <button class="copy-btn" onclick="copyText(document.getElementById('now-utc').textContent,'UTC copied')">Copy UTC</button>
+    </div>
+  </div>
+
+  <div class="tz-grid" id="tz-grid"></div>
+</div>
+
+<!-- ═══════════════════════ CONVERT ═══════════════════════ -->
+<div class="page tab-panel" id="tab-convert">
+  <div class="page-title">Convert</div>
+  <div class="page-sub">Timestamp ↔ human-readable datetime, with multi-timezone output</div>
+
+  <div class="convert-section">
+    <div class="convert-section-title">Unix Timestamp → Datetime</div>
+    <div class="input-row">
+      <div>
+        <label class="lbl">Unix timestamp (seconds or milliseconds — auto-detected)</label>
+        <input type="text" id="ts-input" placeholder="e.g. 1700000000 or 1700000000000" oninput="convertTs()">
+      </div>
+      <button class="btn" onclick="pasteNow()">Use now</button>
+    </div>
+    <div class="error-msg" id="ts-err"></div>
+    <div class="result-grid" id="ts-result"></div>
+    <div class="tz-result-list" id="ts-tz-result"></div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="convert-section">
+    <div class="convert-section-title">Datetime → Unix Timestamp</div>
+    <div class="input-row">
+      <div>
+        <label class="lbl">Date/time string (ISO 8601, RFC 2822, or natural — treated as UTC unless offset specified)</label>
+        <input type="text" id="dt-input" placeholder="e.g. 2024-01-15T10:30:00Z  or  Jan 15, 2024 10:30 AM" oninput="convertDt()">
+      </div>
+      <button class="btn" onclick="pasteNowDt()">Use now</button>
+    </div>
+    <div class="error-msg" id="dt-err"></div>
+    <div class="result-grid" id="dt-result"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FORMAT ═══════════════════════ -->
+<div class="page tab-panel" id="tab-format">
+  <div class="page-title">Date Format Tokens</div>
+  <div class="page-sub">Reference for common date format specifiers across languages and frameworks</div>
+
+  <div class="fmt-search-wrap">
+    <label class="lbl">Search tokens or descriptions</label>
+    <input type="text" id="fmt-search" placeholder="e.g. year, month, HH, strftime…" oninput="filterFmt()">
+  </div>
+
+  <table class="ref-table" id="fmt-table">
+    <thead>
+      <tr>
+        <th style="width:90px">Token</th>
+        <th style="width:130px">Language</th>
+        <th>Description</th>
+        <th style="width:160px">Example output</th>
+      </tr>
+    </thead>
+    <tbody id="fmt-tbody"></tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Utility ──────────────────────────────────────────────────────────────────
+function copyText(text, msg) {
+  navigator.clipboard.writeText(text).then(() => showToast(msg || 'Copied!'));
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ── Timezone definitions ─────────────────────────────────────────────────────
+const TZ_LIST = [
+  { id: 'UTC',                    label: 'UTC',            abbr: 'UTC'  },
+  { id: 'America/New_York',       label: 'US Eastern',     abbr: 'ET'   },
+  { id: 'America/Los_Angeles',    label: 'US Pacific',     abbr: 'PT'   },
+  { id: 'America/Chicago',        label: 'US Central',     abbr: 'CT'   },
+  { id: 'America/Denver',         label: 'US Mountain',    abbr: 'MT'   },
+  { id: 'Europe/London',          label: 'London',         abbr: 'GMT'  },
+  { id: 'Europe/Berlin',          label: 'Berlin/Paris',   abbr: 'CET'  },
+  { id: 'Europe/Moscow',          label: 'Moscow',         abbr: 'MSK'  },
+  { id: 'Asia/Dubai',             label: 'Dubai',          abbr: 'GST'  },
+  { id: 'Asia/Kolkata',           label: 'India',          abbr: 'IST'  },
+  { id: 'Asia/Shanghai',          label: 'Shanghai/Beijing','abbr': 'CST' },
+  { id: 'Asia/Tokyo',             label: 'Tokyo',          abbr: 'JST'  },
+  { id: 'Australia/Sydney',       label: 'Sydney',         abbr: 'AEST' },
+  { id: 'Pacific/Auckland',       label: 'Auckland',       abbr: 'NZST' },
+];
+
+function formatInTz(date, tzId, opts) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: tzId, ...opts }).format(date);
+  } catch(e) { return 'N/A'; }
+}
+
+function tzDateTime(date, tzId) {
+  try {
+    const d = formatInTz(date, tzId, { weekday:'short', year:'numeric', month:'short', day:'2-digit' });
+    const t = formatInTz(date, tzId, { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+    return { date: d, time: t };
+  } catch(e) { return { date: 'N/A', time: 'N/A' }; }
+}
+
+function tzOffset(date, tzId) {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tzId, timeZoneName: 'shortOffset' });
+    const parts = fmt.formatToParts(date);
+    const off = parts.find(p => p.type === 'timeZoneName');
+    return off ? off.value : '';
+  } catch(e) { return ''; }
+}
+
+// ── NOW tab ──────────────────────────────────────────────────────────────────
+const tzGrid = document.getElementById('tz-grid');
+
+// Build TZ cards once
+const TZ_NOW_LIST = TZ_LIST.filter(t => ['UTC','America/New_York','America/Los_Angeles','Europe/London','Europe/Berlin','Asia/Tokyo','Asia/Shanghai'].includes(t.id));
+TZ_NOW_LIST.forEach(tz => {
+  const card = document.createElement('div');
+  card.className = 'tz-card';
+  card.id = 'tzcard-' + tz.id.replace(/\//g,'_');
+  card.innerHTML = `<div class="tz-name">${tz.label} <span style="color:#22d3ee;font-size:.68rem">${tz.abbr}</span></div>
+    <div class="tz-time" id="tztime-${tz.id.replace(/\//g,'_')}">—</div>
+    <div class="tz-date" id="tzdate-${tz.id.replace(/\//g,'_')}">—</div>
+    <div class="tz-offset" id="tzoff-${tz.id.replace(/\//g,'_')}">—</div>`;
+  tzGrid.appendChild(card);
+});
+
+function tickNow() {
+  const now = new Date();
+  const sec = Math.floor(now.getTime() / 1000);
+  const ms  = now.getTime();
+
+  document.getElementById('now-sec').textContent = sec;
+  document.getElementById('now-ms').textContent  = ms + ' ms';
+  document.getElementById('now-utc').textContent = now.toISOString().replace('T',' ').replace(/\.(\d{3})Z$/, '.$1 UTC');
+
+  TZ_NOW_LIST.forEach(tz => {
+    const key  = tz.id.replace(/\//g,'_');
+    const info = tzDateTime(now, tz.id);
+    const off  = tzOffset(now, tz.id);
+    const telm = document.getElementById('tztime-' + key);
+    const delm = document.getElementById('tzdate-' + key);
+    const oelm = document.getElementById('tzoff-'  + key);
+    if (telm) telm.textContent = info.time;
+    if (delm) delm.textContent = info.date;
+    if (oelm) oelm.textContent = off;
+  });
+}
+
+tickNow();
+setInterval(tickNow, 1000);
+
+// ── CONVERT tab ──────────────────────────────────────────────────────────────
+function pasteNow() {
+  document.getElementById('ts-input').value = Math.floor(Date.now() / 1000);
+  convertTs();
+}
+function pasteNowDt() {
+  document.getElementById('dt-input').value = new Date().toISOString();
+  convertDt();
+}
+
+function detectAndParse(raw) {
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^\d+$/.test(s)) {
+    const n = parseInt(s, 10);
+    // If > 13 digits it's nanoseconds, if 13 digits it's ms, else seconds
+    if (s.length >= 16) return new Date(Math.floor(n / 1000000)); // ns
+    if (s.length >= 13) return new Date(n);                       // ms
+    return new Date(n * 1000);                                     // s
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function isMsTs(raw) {
+  const s = raw.trim();
+  return /^\d{13,15}$/.test(s);
+}
+
+function convertTs() {
+  const raw = document.getElementById('ts-input').value;
+  const err = document.getElementById('ts-err');
+  const resGrid = document.getElementById('ts-result');
+  const tzRes   = document.getElementById('ts-tz-result');
+  resGrid.innerHTML = '';
+  tzRes.innerHTML   = '';
+  err.textContent   = '';
+
+  if (!raw.trim()) return;
+
+  const date = detectAndParse(raw);
+  if (!date || isNaN(date)) {
+    err.textContent = 'Could not parse timestamp';
+    return;
+  }
+
+  const rawNum = parseInt(raw.trim(), 10);
+  const isMs   = raw.trim().length >= 13;
+  const sec    = Math.floor(date.getTime() / 1000);
+  const ms     = date.getTime();
+
+  const items = [
+    { label: 'Detected as',         value: isMs ? 'Milliseconds' : 'Seconds'                   },
+    { label: 'Seconds',             value: sec.toString()                                       },
+    { label: 'Milliseconds',        value: ms.toString()                                        },
+    { label: 'ISO 8601 (UTC)',       value: date.toISOString()                                  },
+    { label: 'RFC 2822',            value: date.toUTCString()                                   },
+    { label: 'Human-readable (UTC)',value: date.toUTCString().replace('GMT','UTC')              },
+    { label: 'Local (browser)',     value: date.toLocaleString()                                },
+    { label: 'Date only (UTC)',     value: date.toISOString().slice(0,10)                       },
+    { label: 'Time only (UTC)',     value: date.toISOString().slice(11,19) + ' UTC'             },
+  ];
+
+  items.forEach(it => {
+    const el = document.createElement('div');
+    el.className = 'result-item';
+    el.innerHTML = `<div class="ri-label">${it.label}</div><div class="ri-value" style="cursor:pointer" title="Click to copy" onclick="copyText('${it.value.replace(/'/g,"\\'")}','Copied!')">${it.value}</div>`;
+    resGrid.appendChild(el);
+  });
+
+  // Timezone breakdown
+  TZ_LIST.forEach(tz => {
+    const info = tzDateTime(date, tz.id);
+    const row  = document.createElement('div');
+    row.className = 'tzr-row';
+    row.innerHTML = `<span class="tzr-name">${tz.label}</span><span class="tzr-val">${info.time}  ${info.date}</span>`;
+    tzRes.appendChild(row);
+  });
+}
+
+function convertDt() {
+  const raw = document.getElementById('dt-input').value;
+  const err = document.getElementById('dt-err');
+  const res = document.getElementById('dt-result');
+  res.innerHTML = '';
+  err.textContent = '';
+
+  if (!raw.trim()) return;
+
+  const date = new Date(raw.trim());
+  if (isNaN(date)) {
+    err.textContent = 'Could not parse date string — try ISO 8601: 2024-01-15T10:30:00Z';
+    return;
+  }
+
+  const sec = Math.floor(date.getTime() / 1000);
+  const ms  = date.getTime();
+
+  const items = [
+    { label: 'Unix (seconds)',      value: sec.toString()             },
+    { label: 'Unix (milliseconds)', value: ms.toString()              },
+    { label: 'ISO 8601',            value: date.toISOString()         },
+    { label: 'RFC 2822',            value: date.toUTCString()         },
+    { label: 'Human-readable',      value: date.toUTCString().replace('GMT','UTC') },
+  ];
+
+  items.forEach(it => {
+    const el = document.createElement('div');
+    el.className = 'result-item';
+    el.innerHTML = `<div class="ri-label">${it.label}</div><div class="ri-value" style="cursor:pointer" title="Click to copy" onclick="copyText('${it.value.replace(/'/g,"\\'")}','Copied!')">${it.value}</div>`;
+    res.appendChild(el);
+  });
+}
+
+// ── FORMAT tab ───────────────────────────────────────────────────────────────
+const FORMAT_TOKENS = [
+  // Section: Year
+  { section: 'Year' },
+  { token: '%Y',    langs: 'py',   desc: 'Year with century',                                  example: '2024'       },
+  { token: '%y',    langs: 'py',   desc: 'Year without century (00–99)',                        example: '24'         },
+  { token: 'YYYY',  langs: 'js',   desc: 'Full 4-digit year (moment.js / dayjs)',               example: '2024'       },
+  { token: 'YY',    langs: 'js',   desc: '2-digit year (moment.js / dayjs)',                    example: '24'         },
+  { token: '2006',  langs: 'go',   desc: 'Year (Go uses reference time 2006)',                  example: '2024'       },
+  { token: 'yyyy',  langs: 'java', desc: 'Year (Java DateTimeFormatter)',                        example: '2024'       },
+  { token: 'YEAR()', langs:'sql',  desc: 'Extract year from date (SQL)',                         example: '2024'       },
+  // Section: Month
+  { section: 'Month' },
+  { token: '%m',    langs: 'py',   desc: 'Month as zero-padded decimal (01–12)',                 example: '01'         },
+  { token: '%B',    langs: 'py',   desc: 'Month as full name',                                   example: 'January'    },
+  { token: '%b',    langs: 'py',   desc: 'Month as abbreviated name',                            example: 'Jan'        },
+  { token: 'MM',    langs: 'js',   desc: '2-digit month (moment.js / dayjs)',                    example: '01'         },
+  { token: 'MMMM',  langs: 'js',   desc: 'Full month name (moment.js)',                          example: 'January'    },
+  { token: 'MMM',   langs: 'js',   desc: 'Abbreviated month name (moment.js)',                   example: 'Jan'        },
+  { token: '01',    langs: 'go',   desc: 'Month zero-padded (Go reference time)',                example: '01'         },
+  { token: 'January', langs:'go',  desc: 'Full month name (Go)',                                 example: 'January'    },
+  { token: 'Jan',   langs: 'go',   desc: 'Abbreviated month name (Go)',                          example: 'Jan'        },
+  { token: 'MM',    langs: 'java', desc: 'Month (Java, zero-padded)',                            example: '01'         },
+  { token: 'MMMM',  langs: 'java', desc: 'Full month name (Java)',                               example: 'January'    },
+  { token: 'MONTH()', langs:'sql', desc: 'Extract month number from date (SQL)',                  example: '1'          },
+  // Section: Day
+  { section: 'Day' },
+  { token: '%d',    langs: 'py',   desc: 'Day of month zero-padded (01–31)',                     example: '05'         },
+  { token: '%e',    langs: 'py',   desc: 'Day of month space-padded ( 1–31)',                    example: ' 5'         },
+  { token: '%j',    langs: 'py',   desc: 'Day of year (001–366)',                                example: '005'        },
+  { token: 'DD',    langs: 'js',   desc: '2-digit day of month (moment.js)',                     example: '05'         },
+  { token: 'D',     langs: 'js',   desc: 'Day of month, no padding (moment.js)',                 example: '5'          },
+  { token: 'DDD',   langs: 'js',   desc: 'Day of year (moment.js)',                              example: '5'          },
+  { token: '2',     langs: 'go',   desc: 'Day of month no padding (Go reference)',               example: '5'          },
+  { token: '02',    langs: 'go',   desc: 'Day zero-padded (Go reference)',                       example: '05'         },
+  { token: 'dd',    langs: 'java', desc: 'Day of month zero-padded (Java)',                      example: '05'         },
+  { token: 'D',     langs: 'java', desc: 'Day of year (Java)',                                   example: '5'          },
+  { token: 'DAY()', langs: 'sql',  desc: 'Extract day of month (SQL)',                           example: '5'          },
+  // Section: Weekday
+  { section: 'Weekday' },
+  { token: '%A',    langs: 'py',   desc: 'Weekday full name',                                    example: 'Monday'     },
+  { token: '%a',    langs: 'py',   desc: 'Weekday abbreviated',                                  example: 'Mon'        },
+  { token: '%w',    langs: 'py',   desc: 'Weekday as number, Sunday=0',                          example: '1'          },
+  { token: 'dddd',  langs: 'js',   desc: 'Full weekday name (moment.js)',                        example: 'Monday'     },
+  { token: 'ddd',   langs: 'js',   desc: 'Abbreviated weekday (moment.js)',                      example: 'Mon'        },
+  { token: 'd',     langs: 'js',   desc: 'Weekday number, Sunday=0 (moment.js)',                 example: '1'          },
+  { token: 'Monday',langs: 'go',   desc: 'Full weekday name (Go reference)',                     example: 'Monday'     },
+  { token: 'Mon',   langs: 'go',   desc: 'Abbreviated weekday (Go reference)',                   example: 'Mon'        },
+  { token: 'EEEE',  langs: 'java', desc: 'Full weekday name (Java)',                             example: 'Monday'     },
+  { token: 'E',     langs: 'java', desc: 'Abbreviated weekday (Java)',                           example: 'Mon'        },
+  { token: 'DAYOFWEEK()', langs:'sql', desc: 'Day of week 1=Sunday (SQL)',                       example: '2'          },
+  // Section: Hour
+  { section: 'Hour' },
+  { token: '%H',    langs: 'py',   desc: 'Hour 24h zero-padded (00–23)',                         example: '09'         },
+  { token: '%I',    langs: 'py',   desc: 'Hour 12h zero-padded (01–12)',                         example: '09'         },
+  { token: '%p',    langs: 'py',   desc: 'AM or PM',                                             example: 'AM'         },
+  { token: 'HH',    langs: 'js',   desc: '24h hour zero-padded (moment.js)',                     example: '09'         },
+  { token: 'hh',    langs: 'js',   desc: '12h hour zero-padded (moment.js)',                     example: '09'         },
+  { token: 'A',     langs: 'js',   desc: 'AM/PM (moment.js)',                                    example: 'AM'         },
+  { token: 'a',     langs: 'js',   desc: 'am/pm lowercase (moment.js)',                          example: 'am'         },
+  { token: '15',    langs: 'go',   desc: 'Hour 24h (Go reference, uses 15)',                     example: '09'         },
+  { token: '3',     langs: 'go',   desc: 'Hour 12h no padding (Go reference)',                   example: '9'          },
+  { token: 'PM',    langs: 'go',   desc: 'AM/PM (Go reference)',                                 example: 'AM'         },
+  { token: 'HH',    langs: 'java', desc: '24h hour zero-padded (Java)',                          example: '09'         },
+  { token: 'hh',    langs: 'java', desc: '12h hour (Java)',                                      example: '09'         },
+  { token: 'a',     langs: 'java', desc: 'AM/PM (Java)',                                         example: 'AM'         },
+  { token: 'HOUR()', langs:'sql',  desc: 'Extract hour (SQL)',                                   example: '9'          },
+  // Section: Minute & Second
+  { section: 'Minute & Second' },
+  { token: '%M',    langs: 'py',   desc: 'Minute zero-padded (00–59)',                           example: '05'         },
+  { token: '%S',    langs: 'py',   desc: 'Second zero-padded (00–59)',                           example: '07'         },
+  { token: '%f',    langs: 'py',   desc: 'Microseconds zero-padded (000000–999999)',              example: '000123'     },
+  { token: 'mm',    langs: 'js',   desc: 'Minute zero-padded (moment.js)',                       example: '05'         },
+  { token: 'ss',    langs: 'js',   desc: 'Second zero-padded (moment.js)',                       example: '07'         },
+  { token: 'SSS',   langs: 'js',   desc: 'Milliseconds (moment.js)',                             example: '123'        },
+  { token: '04',    langs: 'go',   desc: 'Minute zero-padded (Go reference)',                    example: '05'         },
+  { token: '05',    langs: 'go',   desc: 'Second zero-padded (Go reference)',                    example: '07'         },
+  { token: 'mm',    langs: 'java', desc: 'Minute zero-padded (Java)',                            example: '05'         },
+  { token: 'ss',    langs: 'java', desc: 'Second zero-padded (Java)',                            example: '07'         },
+  { token: 'SSS',   langs: 'java', desc: 'Milliseconds (Java)',                                  example: '123'        },
+  { token: 'MINUTE()', langs:'sql', desc: 'Extract minute (SQL)',                                example: '5'          },
+  { token: 'SECOND()', langs:'sql', desc: 'Extract second (SQL)',                                example: '7'          },
+  // Section: Timezone
+  { section: 'Timezone' },
+  { token: '%Z',    langs: 'py',   desc: 'Timezone abbreviation (UTC, EST, …)',                  example: 'UTC'        },
+  { token: '%z',    langs: 'py',   desc: 'UTC offset ±HHMM',                                    example: '+0000'      },
+  { token: 'Z',     langs: 'js',   desc: 'UTC offset or "Z" (moment.js)',                        example: '+00:00'     },
+  { token: 'z',     langs: 'js',   desc: 'Timezone abbreviation (moment.js)',                    example: 'UTC'        },
+  { token: '-07:00',langs: 'go',   desc: 'UTC offset (Go reference)',                            example: '+00:00'     },
+  { token: 'MST',   langs: 'go',   desc: 'Timezone abbreviation (Go reference)',                 example: 'UTC'        },
+  { token: 'Z',     langs: 'java', desc: 'UTC offset ±HHmm (Java)',                              example: '+0000'      },
+  { token: 'VV',    langs: 'java', desc: 'Timezone ID (Java)',                                   example: 'Europe/London'},
+  // Section: Common composite formats
+  { section: 'Common Composite Examples' },
+  { token: '%Y-%m-%d',                langs: 'py',   desc: 'ISO 8601 date',                         example: '2024-01-05' },
+  { token: '%Y-%m-%dT%H:%M:%SZ',      langs: 'py',   desc: 'ISO 8601 datetime UTC',                 example: '2024-01-05T09:05:07Z' },
+  { token: '%a, %d %b %Y %H:%M:%S %Z',langs: 'py',   desc: 'RFC 2822',                             example: 'Fri, 05 Jan 2024 09:05:07 UTC' },
+  { token: 'YYYY-MM-DD',              langs: 'js',   desc: 'ISO 8601 date (moment.js)',             example: '2024-01-05' },
+  { token: 'YYYY-MM-DDTHH:mm:ssZ',    langs: 'js',   desc: 'ISO 8601 datetime (moment.js)',         example: '2024-01-05T09:05:07+00:00' },
+  { token: '2006-01-02',              langs: 'go',   desc: 'ISO 8601 date (Go)',                    example: '2024-01-05' },
+  { token: 'time.RFC3339',            langs: 'go',   desc: '= "2006-01-02T15:04:05Z07:00"',         example: '2024-01-05T09:05:07Z' },
+  { token: 'yyyy-MM-dd',             langs: 'java',  desc: 'ISO 8601 date (Java)',                  example: '2024-01-05' },
+  { token: "yyyy-MM-dd'T'HH:mm:ssX", langs: 'java',  desc: 'ISO 8601 datetime (Java)',              example: '2024-01-05T09:05:07Z' },
+  { token: 'YYYY-MM-DD',             langs: 'sql',   desc: 'ISO date literal',                      example: '2024-01-05' },
+  { token: 'DATE_FORMAT(d,"%Y-%m")',  langs: 'sql',   desc: 'MySQL DATE_FORMAT',                     example: '2024-01'   },
+];
+
+const LANG_LABELS = { py:'Python', js:'JS/moment', go:'Go', java:'Java', sql:'SQL' };
+const LANG_CLASS  = { py:'lang-py', js:'lang-js', go:'lang-go', java:'lang-java', sql:'lang-sql' };
+
+function buildFmtTable() {
+  const tbody = document.getElementById('fmt-tbody');
+  FORMAT_TOKENS.forEach((row, i) => {
+    if (row.section) {
+      const tr = document.createElement('tr');
+      tr.className = 'section-header';
+      tr.dataset.section = row.section.toLowerCase();
+      tr.innerHTML = `<td colspan="4">${row.section}</td>`;
+      tbody.appendChild(tr);
+    } else {
+      const langs = row.langs.split(',').map(l => l.trim());
+      const langBadges = langs.map(l => `<span class="tok-lang ${LANG_CLASS[l]||''}">${LANG_LABELS[l]||l}</span>`).join('');
+      const tr = document.createElement('tr');
+      tr.dataset.search = (row.token + ' ' + langs.join(' ') + ' ' + Object.values(LANG_LABELS).join(' ') + ' ' + row.desc + ' ' + row.example).toLowerCase();
+      tr.innerHTML = `<td><span class="tok" title="Click to copy" style="cursor:pointer" onclick="copyText('${row.token.replace(/'/g,"\\'")}','Token copied')">${row.token}</span></td>
+        <td>${langBadges}</td>
+        <td class="tok-desc">${row.desc}</td>
+        <td style="font-family:'Courier New',monospace;font-size:.78rem;color:#64748b">${row.example}</td>`;
+      tbody.appendChild(tr);
+    }
+  });
+}
+
+function filterFmt() {
+  const q = document.getElementById('fmt-search').value.toLowerCase().trim();
+  const rows = document.getElementById('fmt-tbody').querySelectorAll('tr');
+  rows.forEach(tr => {
+    if (tr.classList.contains('section-header')) {
+      tr.classList.toggle('hidden', !!q); // hide section headers during search
+      return;
+    }
+    const match = !q || tr.dataset.search.includes(q);
+    tr.classList.toggle('hidden', !match);
+  });
+}
+
+buildFmtTable();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

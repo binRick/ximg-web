@@ -197,6 +197,20 @@ const LOG_FILES = {
   inflation:      'inflation.access.log',
   debt:           'debt.access.log',
   budget:         'budget.access.log',
+  base64:         'base64.access.log',
+  hash:           'hash.access.log',
+  diff:           'diff.access.log',
+  url:            'url.access.log',
+  curl:           'curl.access.log',
+  cidr:           'cidr.access.log',
+  uuid:           'uuid.access.log',
+  lorem:          'lorem.access.log',
+  csv:            'csv.access.log',
+  markdown:       'markdown.access.log',
+  password:       'password.access.log',
+  ssl:            'ssl.access.log',
+  epoch:          'epoch.access.log',
+  timespan:       'timespan.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -577,6 +591,20 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="inflation">inflation</button>
           <button class="site-opt" data-site="debt">debt</button>
           <button class="site-opt" data-site="budget">budget</button>
+          <button class="site-opt" data-site="base64">base64</button>
+          <button class="site-opt" data-site="hash">hash</button>
+          <button class="site-opt" data-site="diff">diff</button>
+          <button class="site-opt" data-site="url">url</button>
+          <button class="site-opt" data-site="curl">curl</button>
+          <button class="site-opt" data-site="cidr">cidr</button>
+          <button class="site-opt" data-site="uuid">uuid</button>
+          <button class="site-opt" data-site="lorem">lorem</button>
+          <button class="site-opt" data-site="csv">csv</button>
+          <button class="site-opt" data-site="markdown">markdown</button>
+          <button class="site-opt" data-site="password">password</button>
+          <button class="site-opt" data-site="ssl">ssl</button>
+          <button class="site-opt" data-site="epoch">epoch</button>
+          <button class="site-opt" data-site="timespan">timespan</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

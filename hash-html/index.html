@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hash Generator — hash.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+.subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{padding:.65rem 1.1rem;font-size:.85rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:#c9d1d9}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.page-title{font-size:1.15rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+.page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+label.lbl{display:block;font-size:.72rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem}
+textarea,input[type=text],input[type=password]{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.88rem;padding:.65rem .85rem;outline:none;resize:vertical;transition:border-color .2s}
+textarea:focus,input[type=text]:focus,input[type=password]:focus{border-color:#22d3ee55}
+input[type=text],input[type=password]{resize:none;min-height:unset}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.1rem;margin-bottom:1rem}
+.row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem}
+.btn{background:#0f172a;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-size:.82rem;padding:.45rem .9rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:#22d3ee55;color:#22d3ee}
+.btn.primary{background:rgba(34,211,238,.1);border-color:#22d3ee55;color:#22d3ee}
+.btn.primary:hover{background:rgba(34,211,238,.18)}
+.toggle-row{display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:#94a3b8;cursor:pointer;user-select:none}
+input[type=checkbox]{accent-color:#22d3ee;width:14px;height:14px;cursor:pointer}
+.hash-list{display:flex;flex-direction:column;gap:.6rem}
+.hash-item{background:#0a0a22;border:1px solid #1e293b;border-radius:6px;padding:.65rem .85rem;display:none}
+.hash-item.show{display:block}
+.hash-algo{font-size:.7rem;font-weight:700;color:#22d3ee;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem;display:flex;justify-content:space-between;align-items:center}
+.hash-val{font-family:'Courier New',monospace;font-size:.82rem;color:#c9d1d9;word-break:break-all;line-height:1.5}
+.hash-val.computing{color:#475569;font-style:italic}
+.copy-small{background:transparent;border:1px solid #1e293b;border-radius:4px;color:#475569;font-size:.72rem;padding:.15rem .5rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.copy-small:hover{border-color:#22d3ee55;color:#22d3ee}
+.copy-small.copied{color:#22c55e;border-color:#22c55e55}
+.check-grid{display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:.85rem}
+.drop-zone{border:2px dashed #1e293b;border-radius:8px;padding:2.5rem 1.5rem;text-align:center;transition:all .2s;cursor:pointer;color:#475569;font-size:.88rem;margin-bottom:.85rem}
+.drop-zone:hover,.drop-zone.drag-over{border-color:#22d3ee55;background:rgba(34,211,238,.04);color:#c9d1d9}
+.drop-zone input[type=file]{display:none}
+.file-name{font-size:.8rem;color:#94a3b8;margin-bottom:.75rem;min-height:1.1em;font-family:'Courier New',monospace}
+.progress-bar-wrap{height:4px;background:#1e293b;border-radius:2px;margin-bottom:.85rem;overflow:hidden;display:none}
+.progress-bar{height:100%;background:#22d3ee;border-radius:2px;transition:width .2s}
+.algo-select{background:#070720;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-size:.85rem;padding:.5rem .75rem;outline:none;font-family:inherit;cursor:pointer}
+.algo-select:focus{border-color:#22d3ee55}
+.hmac-out-wrap{position:relative}
+.hmac-copy{position:absolute;top:.5rem;right:.5rem;background:#0f172a;border:1px solid #1e293b;border-radius:5px;color:#64748b;font-size:.75rem;padding:.25rem .6rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.hmac-copy:hover{border-color:#22d3ee55;color:#22d3ee}
+.hmac-copy.copied{color:#22c55e;border-color:#22c55e55}
+.note{font-size:.76rem;color:#475569;margin-top:.5rem;line-height:1.6}
+select option{background:#0a0a22}
+</style>
+</head>
+<body>
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('texthash')">Text Hash</button>
+  <button class="tab-btn" onclick="showTab('filehash')">File Hash</button>
+  <button class="tab-btn" onclick="showTab('hmac')">HMAC</button>
+</nav>
+
+<!-- TEXT HASH -->
+<div id="texthash" class="tab-panel active">
+<div class="page">
+  <div class="page-title">Text Hash Generator</div>
+  <div class="page-sub">Compute multiple hashes simultaneously. MD5 implemented in JS; SHA variants use SubtleCrypto.</div>
+  <div class="card">
+    <label class="lbl">Input Text</label>
+    <textarea id="th-input" rows="5" placeholder="Type or paste text to hash..." oninput="computeTextHashes()"></textarea>
+    <div class="check-grid" style="margin-top:.85rem">
+      <label class="toggle-row"><input type="checkbox" id="chk-md5" checked onchange="computeTextHashes()"> MD5</label>
+      <label class="toggle-row"><input type="checkbox" id="chk-sha1" checked onchange="computeTextHashes()"> SHA-1</label>
+      <label class="toggle-row"><input type="checkbox" id="chk-sha256" checked onchange="computeTextHashes()"> SHA-256</label>
+      <label class="toggle-row"><input type="checkbox" id="chk-sha384" onchange="computeTextHashes()"> SHA-384</label>
+      <label class="toggle-row"><input type="checkbox" id="chk-sha512" onchange="computeTextHashes()"> SHA-512</label>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="document.getElementById('th-input').value='';computeTextHashes()">Clear</button>
+    </div>
+  </div>
+  <div class="hash-list">
+    <div class="hash-item" id="hi-md5">
+      <div class="hash-algo">MD5 <button class="copy-small" id="cp-md5" onclick="copyHash('hi-md5','cp-md5')">Copy</button></div>
+      <div class="hash-val" id="hv-md5"></div>
+    </div>
+    <div class="hash-item" id="hi-sha1">
+      <div class="hash-algo">SHA-1 <button class="copy-small" id="cp-sha1" onclick="copyHash('hi-sha1','cp-sha1')">Copy</button></div>
+      <div class="hash-val" id="hv-sha1"></div>
+    </div>
+    <div class="hash-item" id="hi-sha256">
+      <div class="hash-algo">SHA-256 <button class="copy-small" id="cp-sha256" onclick="copyHash('hi-sha256','cp-sha256')">Copy</button></div>
+      <div class="hash-val" id="hv-sha256"></div>
+    </div>
+    <div class="hash-item" id="hi-sha384">
+      <div class="hash-algo">SHA-384 <button class="copy-small" id="cp-sha384" onclick="copyHash('hi-sha384','cp-sha384')">Copy</button></div>
+      <div class="hash-val" id="hv-sha384"></div>
+    </div>
+    <div class="hash-item" id="hi-sha512">
+      <div class="hash-algo">SHA-512 <button class="copy-small" id="cp-sha512" onclick="copyHash('hi-sha512','cp-sha512')">Copy</button></div>
+      <div class="hash-val" id="hv-sha512"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- FILE HASH -->
+<div id="filehash" class="tab-panel">
+<div class="page">
+  <div class="page-title">File Hash</div>
+  <div class="page-sub">Compute SHA-256 and SHA-512 of any file using SubtleCrypto.</div>
+  <div class="card">
+    <div class="drop-zone" id="fh-drop" onclick="document.getElementById('fh-input').click()">
+      <input type="file" id="fh-input" onchange="hashFile(this.files[0])">
+      <div>&#128196; Drop a file here, or click to browse</div>
+      <div style="font-size:.75rem;margin-top:.4rem;color:#334155">Any file type — SHA-256 and SHA-512 computed in browser</div>
+    </div>
+    <div class="file-name" id="fh-filename"></div>
+    <div class="progress-bar-wrap" id="fh-progress-wrap"><div class="progress-bar" id="fh-progress" style="width:0%"></div></div>
+  </div>
+  <div class="hash-list">
+    <div class="hash-item" id="fhi-sha256">
+      <div class="hash-algo">SHA-256 <button class="copy-small" id="fcp-sha256" onclick="copyHash('fhi-sha256','fcp-sha256')">Copy</button></div>
+      <div class="hash-val" id="fhv-sha256"></div>
+    </div>
+    <div class="hash-item" id="fhi-sha512">
+      <div class="hash-algo">SHA-512 <button class="copy-small" id="fcp-sha512" onclick="copyHash('fhi-sha512','fcp-sha512')">Copy</button></div>
+      <div class="hash-val" id="fhv-sha512"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- HMAC -->
+<div id="hmac" class="tab-panel">
+<div class="page">
+  <div class="page-title">HMAC Generator</div>
+  <div class="page-sub">Hash-based Message Authentication Code using SubtleCrypto.</div>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:.85rem">
+      <div>
+        <label class="lbl">Secret Key</label>
+        <input type="password" id="hmac-key" placeholder="Enter secret key..." oninput="computeHmac()">
+      </div>
+      <div>
+        <label class="lbl">Algorithm</label>
+        <select class="algo-select" id="hmac-algo" onchange="computeHmac()" style="width:100%">
+          <option value="SHA-256">HMAC-SHA-256</option>
+          <option value="SHA-384">HMAC-SHA-384</option>
+          <option value="SHA-512">HMAC-SHA-512</option>
+          <option value="SHA-1">HMAC-SHA-1</option>
+        </select>
+      </div>
+    </div>
+    <label class="lbl">Message</label>
+    <textarea id="hmac-msg" rows="4" placeholder="Enter message to authenticate..." oninput="computeHmac()"></textarea>
+    <div class="row" style="margin-top:.75rem">
+      <button class="btn" onclick="document.getElementById('hmac-key').value='';document.getElementById('hmac-msg').value='';document.getElementById('hmac-out').value='';document.getElementById('hmac-info').textContent=''">Clear</button>
+    </div>
+  </div>
+  <div class="card">
+    <label class="lbl">HMAC Output (hex)</label>
+    <div class="hmac-out-wrap">
+      <textarea id="hmac-out" readonly rows="3" style="word-break:break-all"></textarea>
+      <button class="hmac-copy" id="hmac-copy-btn" onclick="copyHmac()">Copy</button>
+    </div>
+    <div class="note" id="hmac-info"></div>
+  </div>
+</div>
+</div>
+
+<script>
+// ── Tab switching ────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── MD5 implementation ────────────────────────────────────────────────────────
+function md5(str) {
+  function safeAdd(x, y) { const lsw=(x&0xFFFF)+(y&0xFFFF); return (((x>>16)+(y>>16)+(lsw>>16))<<16)|(lsw&0xFFFF); }
+  function bitRotateLeft(num, cnt) { return (num<<cnt)|(num>>>(32-cnt)); }
+  function md5cmn(q, a, b, x, s, t) { return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b); }
+  function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t)}
+  function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t)}
+  function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t)}
+  function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t)}
+
+  const utf8 = unescape(encodeURIComponent(str));
+  const bytes = [];
+  for (let i=0;i<utf8.length;i++) bytes.push(utf8.charCodeAt(i));
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  const bitLen = (utf8.length * 8);
+  bytes.push(bitLen & 0xFF, (bitLen>>>8)&0xFF, (bitLen>>>16)&0xFF, (bitLen>>>24)&0xFF, 0,0,0,0);
+
+  const M = [];
+  for (let i=0;i<bytes.length;i+=4)
+    M.push((bytes[i])|(bytes[i+1]<<8)|(bytes[i+2]<<16)|(bytes[i+3]<<24));
+
+  let a=0x67452301, b=0xefcdab89, c=0x98badcfe, d=0x10325476;
+  for (let i=0;i<M.length;i+=16) {
+    const [aa,bb,cc,dd]=[a,b,c,d];
+    a=md5ff(a,b,c,d,M[i+ 0], 7,-680876936);  d=md5ff(d,a,b,c,M[i+ 1],12,-389564586);
+    c=md5ff(c,d,a,b,M[i+ 2],17, 606105819);  b=md5ff(b,c,d,a,M[i+ 3],22,-1044525330);
+    a=md5ff(a,b,c,d,M[i+ 4], 7,-176418897);  d=md5ff(d,a,b,c,M[i+ 5],12,1200080426);
+    c=md5ff(c,d,a,b,M[i+ 6],17,-1473231341); b=md5ff(b,c,d,a,M[i+ 7],22,-45705983);
+    a=md5ff(a,b,c,d,M[i+ 8], 7,1770035416);  d=md5ff(d,a,b,c,M[i+ 9],12,-1958414417);
+    c=md5ff(c,d,a,b,M[i+10],17,-42063);       b=md5ff(b,c,d,a,M[i+11],22,-1990404162);
+    a=md5ff(a,b,c,d,M[i+12], 7,1804603682);  d=md5ff(d,a,b,c,M[i+13],12,-40341101);
+    c=md5ff(c,d,a,b,M[i+14],17,-1502002290); b=md5ff(b,c,d,a,M[i+15],22,1236535329);
+    a=md5gg(a,b,c,d,M[i+ 1], 5,-165796510);  d=md5gg(d,a,b,c,M[i+ 6], 9,-1069501632);
+    c=md5gg(c,d,a,b,M[i+11],14, 643717713);  b=md5gg(b,c,d,a,M[i+ 0],20,-373897302);
+    a=md5gg(a,b,c,d,M[i+ 5], 5,-701558691);  d=md5gg(d,a,b,c,M[i+10], 9, 38016083);
+    c=md5gg(c,d,a,b,M[i+15],14,-660478335);  b=md5gg(b,c,d,a,M[i+ 4],20,-405537848);
+    a=md5gg(a,b,c,d,M[i+ 9], 5, 568446438);  d=md5gg(d,a,b,c,M[i+14], 9,-1019803690);
+    c=md5gg(c,d,a,b,M[i+ 3],14,-187363961);  b=md5gg(b,c,d,a,M[i+ 8],20,1163531501);
+    a=md5gg(a,b,c,d,M[i+13], 5,-1444681467); d=md5gg(d,a,b,c,M[i+ 2], 9,-51403784);
+    c=md5gg(c,d,a,b,M[i+ 7],14,1735328473);  b=md5gg(b,c,d,a,M[i+12],20,-1926607734);
+    a=md5hh(a,b,c,d,M[i+ 5], 4,-378558);     d=md5hh(d,a,b,c,M[i+ 8],11,-2022574463);
+    c=md5hh(c,d,a,b,M[i+11],16, 1839030562); b=md5hh(b,c,d,a,M[i+14],23,-35309556);
+    a=md5hh(a,b,c,d,M[i+ 1], 4,-1530992060); d=md5hh(d,a,b,c,M[i+ 4],11,1272893353);
+    c=md5hh(c,d,a,b,M[i+ 7],16,-155497632);  b=md5hh(b,c,d,a,M[i+10],23,-1094730640);
+    a=md5hh(a,b,c,d,M[i+13], 4, 681279174);  d=md5hh(d,a,b,c,M[i+ 0],11,-358537222);
+    c=md5hh(c,d,a,b,M[i+ 3],16,-722521979);  b=md5hh(b,c,d,a,M[i+ 6],23, 76029189);
+    a=md5hh(a,b,c,d,M[i+ 9], 4,-640364487);  d=md5hh(d,a,b,c,M[i+12],11,-421815835);
+    c=md5hh(c,d,a,b,M[i+15],16, 530742520);  b=md5hh(b,c,d,a,M[i+ 2],23,-995338651);
+    a=md5ii(a,b,c,d,M[i+ 0], 6,-198630844);  d=md5ii(d,a,b,c,M[i+ 7],10,1126891415);
+    c=md5ii(c,d,a,b,M[i+14],15,-1416354905); b=md5ii(b,c,d,a,M[i+ 5],21,-57434055);
+    a=md5ii(a,b,c,d,M[i+12], 6,1700485571);  d=md5ii(d,a,b,c,M[i+ 3],10,-1894986606);
+    c=md5ii(c,d,a,b,M[i+10],15,-1051523);    b=md5ii(b,c,d,a,M[i+ 1],21,-2054922799);
+    a=md5ii(a,b,c,d,M[i+ 8], 6,1873313359);  d=md5ii(d,a,b,c,M[i+15],10,-30611744);
+    c=md5ii(c,d,a,b,M[i+ 6],15,-1560198380); b=md5ii(b,c,d,a,M[i+13],21,1309151649);
+    a=md5ii(a,b,c,d,M[i+ 4], 6,-145523070);  d=md5ii(d,a,b,c,M[i+11],10,-1120210379);
+    c=md5ii(c,d,a,b,M[i+ 2],15, 718787259);  b=md5ii(b,c,d,a,M[i+ 9],21,-343485551);
+    a=safeAdd(a,aa); b=safeAdd(b,bb); c=safeAdd(c,cc); d=safeAdd(d,dd);
+  }
+  return [a,b,c,d].map(n => {
+    let h='';
+    for (let j=0;j<4;j++) h+=('0'+((n>>(j*8))&0xFF).toString(16)).slice(-2);
+    return h;
+  }).join('');
+}
+
+// ── SubtleCrypto helper ──────────────────────────────────────────────────────
+async function sha(algo, str) {
+  const buf = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest(algo, buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function shaBuffer(algo, buf) {
+  const digest = await crypto.subtle.digest(algo, buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Text Hash ────────────────────────────────────────────────────────────────
+let thTimer = null;
+function computeTextHashes() {
+  clearTimeout(thTimer);
+  thTimer = setTimeout(_computeTextHashes, 50);
+}
+async function _computeTextHashes() {
+  const txt = document.getElementById('th-input').value;
+  const algos = [
+    {id:'md5',  chk:'chk-md5',    item:'hi-md5',    val:'hv-md5'},
+    {id:'sha1', chk:'chk-sha1',   item:'hi-sha1',   val:'hv-sha1'},
+    {id:'sha256',chk:'chk-sha256',item:'hi-sha256',  val:'hv-sha256'},
+    {id:'sha384',chk:'chk-sha384',item:'hi-sha384',  val:'hv-sha384'},
+    {id:'sha512',chk:'chk-sha512',item:'hi-sha512',  val:'hv-sha512'},
+  ];
+  for (const a of algos) {
+    const checked = document.getElementById(a.chk).checked;
+    const item = document.getElementById(a.item);
+    item.classList.toggle('show', checked && txt.length > 0);
+    if (!checked || !txt) continue;
+    const vEl = document.getElementById(a.val);
+    vEl.textContent = 'Computing...';
+    vEl.classList.add('computing');
+  }
+  if (!txt) return;
+  for (const a of algos) {
+    if (!document.getElementById(a.chk).checked) continue;
+    const vEl = document.getElementById(a.val);
+    let result = '';
+    try {
+      if (a.id === 'md5') result = md5(txt);
+      else if (a.id === 'sha1') result = await sha('SHA-1', txt);
+      else if (a.id === 'sha256') result = await sha('SHA-256', txt);
+      else if (a.id === 'sha384') result = await sha('SHA-384', txt);
+      else if (a.id === 'sha512') result = await sha('SHA-512', txt);
+    } catch(e) { result = 'Error: '+e.message; }
+    vEl.textContent = result;
+    vEl.classList.remove('computing');
+  }
+}
+
+function copyHash(itemId, btnId) {
+  const val = document.getElementById(itemId).querySelector('.hash-val').textContent;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById(btnId);
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── File Hash ────────────────────────────────────────────────────────────────
+document.getElementById('fh-drop').addEventListener('dragover', e => {
+  e.preventDefault(); document.getElementById('fh-drop').classList.add('drag-over');
+});
+document.getElementById('fh-drop').addEventListener('dragleave', () => {
+  document.getElementById('fh-drop').classList.remove('drag-over');
+});
+document.getElementById('fh-drop').addEventListener('drop', e => {
+  e.preventDefault(); document.getElementById('fh-drop').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) hashFile(f);
+});
+
+async function hashFile(f) {
+  if (!f) return;
+  document.getElementById('fh-filename').textContent = f.name + ' (' + formatBytes(f.size) + ')';
+  document.getElementById('fhi-sha256').classList.remove('show');
+  document.getElementById('fhi-sha512').classList.remove('show');
+  document.getElementById('fhv-sha256').textContent = 'Computing...';
+  document.getElementById('fhv-sha512').textContent = 'Computing...';
+
+  const pw = document.getElementById('fh-progress-wrap');
+  const pb = document.getElementById('fh-progress');
+  pw.style.display = 'block'; pb.style.width = '0%';
+
+  const buf = await readFileAsBuffer(f, (pct) => { pb.style.width = pct+'%'; });
+  pb.style.width = '100%';
+
+  const [h256, h512] = await Promise.all([
+    shaBuffer('SHA-256', buf),
+    shaBuffer('SHA-512', buf)
+  ]);
+
+  document.getElementById('fhv-sha256').textContent = h256;
+  document.getElementById('fhv-sha512').textContent = h512;
+  document.getElementById('fhi-sha256').classList.add('show');
+  document.getElementById('fhi-sha512').classList.add('show');
+  setTimeout(() => { pw.style.display = 'none'; }, 600);
+}
+
+function readFileAsBuffer(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = e => { if (e.lengthComputable) onProgress(Math.round(e.loaded/e.total*100)); };
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+// ── HMAC ─────────────────────────────────────────────────────────────────────
+let hmacTimer = null;
+function computeHmac() {
+  clearTimeout(hmacTimer);
+  hmacTimer = setTimeout(_computeHmac, 80);
+}
+async function _computeHmac() {
+  const key = document.getElementById('hmac-key').value;
+  const msg = document.getElementById('hmac-msg').value;
+  const algo = document.getElementById('hmac-algo').value;
+  const outEl = document.getElementById('hmac-out');
+  const infoEl = document.getElementById('hmac-info');
+  if (!key || !msg) { outEl.value = ''; infoEl.textContent = ''; return; }
+  try {
+    const enc = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', enc.encode(key),
+      { name: 'HMAC', hash: algo },
+      false, ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg));
+    const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+    outEl.value = hex;
+    infoEl.textContent = `Algorithm: HMAC-${algo} | Output: ${sig.byteLength * 8} bits (${sig.byteLength} bytes) | Key length: ${new TextEncoder().encode(key).length} bytes`;
+  } catch(e) {
+    outEl.value = 'Error: ' + e.message;
+  }
+}
+function copyHmac() {
+  const val = document.getElementById('hmac-out').value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('hmac-copy-btn');
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

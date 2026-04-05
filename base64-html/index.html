@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Base64 Encoder / Decoder — base64.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+.subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{padding:.65rem 1.1rem;font-size:.85rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:#c9d1d9}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.page-title{font-size:1.15rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+.page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+label.lbl{display:block;font-size:.72rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem}
+textarea{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.88rem;padding:.65rem .85rem;outline:none;resize:vertical;transition:border-color .2s;min-height:120px}
+textarea:focus{border-color:#22d3ee55}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.1rem;margin-bottom:1rem}
+.row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem}
+.btn{background:#0f172a;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-size:.82rem;padding:.45rem .9rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:#22d3ee55;color:#22d3ee}
+.btn.primary{background:rgba(34,211,238,.1);border-color:#22d3ee55;color:#22d3ee}
+.btn.primary:hover{background:rgba(34,211,238,.18);border-color:#22d3ee}
+.toggle-row{display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:#94a3b8}
+input[type=checkbox]{accent-color:#22d3ee;width:14px;height:14px;cursor:pointer}
+.output-wrap{position:relative}
+.copy-btn{position:absolute;top:.5rem;right:.5rem;background:#0f172a;border:1px solid #1e293b;border-radius:5px;color:#64748b;font-size:.75rem;padding:.25rem .6rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.copy-btn:hover{border-color:#22d3ee55;color:#22d3ee}
+.copy-btn.copied{color:#22c55e;border-color:#22c55e55}
+.info-bar{font-size:.76rem;color:#475569;margin-top:.4rem;min-height:1.1em}
+.info-bar span{color:#94a3b8}
+.drop-zone{border:2px dashed #1e293b;border-radius:8px;padding:2.5rem 1.5rem;text-align:center;transition:all .2s;cursor:pointer;color:#475569;font-size:.88rem}
+.drop-zone:hover,.drop-zone.drag-over{border-color:#22d3ee55;background:rgba(34,211,238,.04);color:#c9d1d9}
+.drop-zone input[type=file]{display:none}
+.file-info{background:#0a0a22;border:1px solid #1e293b;border-radius:6px;padding:.75rem 1rem;font-size:.82rem;margin-bottom:.75rem;display:none}
+.file-info.show{display:block}
+.fi-row{display:flex;justify-content:space-between;padding:.2rem 0;border-bottom:1px solid #1e293b}
+.fi-row:last-child{border-bottom:none}
+.fi-key{color:#475569}
+.fi-val{color:#c9d1d9;font-family:'Courier New',monospace;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;max-width:300px;white-space:nowrap}
+.error-msg{color:#f87171;font-size:.8rem;margin-top:.4rem;min-height:1.1em}
+.valid-badge{display:inline-block;font-size:.72rem;padding:.15rem .5rem;border-radius:4px;margin-left:.5rem;vertical-align:middle}
+.valid-badge.ok{background:rgba(34,197,94,.12);border:1px solid #22c55e44;color:#22c55e}
+.valid-badge.bad{background:rgba(248,113,113,.12);border:1px solid #f8717144;color:#f87171}
+</style>
+</head>
+<body>
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('encode')">Encode</button>
+  <button class="tab-btn" onclick="showTab('decode')">Decode</button>
+  <button class="tab-btn" onclick="showTab('file')">File</button>
+</nav>
+
+<!-- ENCODE -->
+<div id="encode" class="tab-panel active">
+<div class="page">
+  <div class="page-title">Base64 Encoder</div>
+  <div class="page-sub">Convert plain text or binary data to Base64.</div>
+  <div class="card">
+    <label class="lbl">Input Text</label>
+    <textarea id="enc-input" placeholder="Type or paste text to encode..." oninput="doEncode()"></textarea>
+    <div class="row" style="margin-top:.75rem">
+      <label class="toggle-row"><input type="checkbox" id="enc-urlsafe" onchange="doEncode()"> URL-safe Base64 (+ → - and / → _)</label>
+      <button class="btn" onclick="enc_input.value='';doEncode()">Clear</button>
+    </div>
+  </div>
+  <div class="card">
+    <label class="lbl">Base64 Output</label>
+    <div class="output-wrap">
+      <textarea id="enc-output" readonly placeholder="Base64 output appears here..."></textarea>
+      <button class="copy-btn" id="enc-copy" onclick="copyText('enc-output','enc-copy')">Copy</button>
+    </div>
+    <div class="info-bar" id="enc-info"></div>
+  </div>
+</div>
+</div>
+
+<!-- DECODE -->
+<div id="decode" class="tab-panel">
+<div class="page">
+  <div class="page-title">Base64 Decoder</div>
+  <div class="page-sub">Convert Base64 back to plain text. Auto-detects validity.</div>
+  <div class="card">
+    <label class="lbl">Base64 Input <span id="dec-valid-badge"></span></label>
+    <textarea id="dec-input" placeholder="Paste Base64 string here..." oninput="doDecode()"></textarea>
+    <div class="row" style="margin-top:.75rem">
+      <button class="btn" onclick="dec_input.value='';doDecode()">Clear</button>
+      <button class="btn primary" onclick="swapEncodeDecode()">&#8644; Swap with Encode tab</button>
+    </div>
+    <div class="error-msg" id="dec-error"></div>
+  </div>
+  <div class="card">
+    <label class="lbl">Decoded Output</label>
+    <div class="output-wrap">
+      <textarea id="dec-output" readonly placeholder="Decoded text appears here..."></textarea>
+      <button class="copy-btn" id="dec-copy" onclick="copyText('dec-output','dec-copy')">Copy</button>
+    </div>
+    <div class="info-bar" id="dec-info"></div>
+  </div>
+</div>
+</div>
+
+<!-- FILE -->
+<div id="file" class="tab-panel">
+<div class="page">
+  <div class="page-title">File to Base64</div>
+  <div class="page-sub">Drag and drop a file to get its Base64 representation.</div>
+  <div class="card">
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="ev.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleFileDrop(event)">
+      <input type="file" id="file-input" onchange="handleFileSelect(this.files[0])">
+      <div>&#128196; Drop a file here, or click to browse</div>
+      <div style="font-size:.75rem;margin-top:.4rem;color:#334155">Any file type — binary or text</div>
+    </div>
+    <div class="file-info" id="file-info">
+      <div class="fi-row"><span class="fi-key">Name</span><span class="fi-val" id="fi-name"></span></div>
+      <div class="fi-row"><span class="fi-key">Size</span><span class="fi-val" id="fi-size"></span></div>
+      <div class="fi-row"><span class="fi-key">MIME type</span><span class="fi-val" id="fi-type"></span></div>
+      <div class="fi-row"><span class="fi-key">Base64 length</span><span class="fi-val" id="fi-b64len"></span></div>
+    </div>
+  </div>
+  <div class="card" id="file-out-card" style="display:none">
+    <label class="lbl">Base64 Output</label>
+    <div class="output-wrap">
+      <textarea id="file-output" readonly style="min-height:160px;word-break:break-all"></textarea>
+      <button class="copy-btn" id="file-copy" onclick="copyText('file-output','file-copy')">Copy</button>
+    </div>
+    <div class="row" style="margin-top:.75rem">
+      <label class="toggle-row"><input type="checkbox" id="file-dataurl" onchange="toggleDataUrl()"> Include data URL prefix (data:type;base64,...)</label>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// Tab switching
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// Encode
+const enc_input = document.getElementById('enc-input');
+const enc_output = document.getElementById('enc-output');
+const enc_info = document.getElementById('enc-info');
+function doEncode() {
+  const raw = enc_input.value;
+  if (!raw) { enc_output.value = ''; enc_info.innerHTML = ''; return; }
+  try {
+    let b64 = btoa(unescape(encodeURIComponent(raw)));
+    if (document.getElementById('enc-urlsafe').checked) {
+      b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    enc_output.value = b64;
+    const inputBytes = new TextEncoder().encode(raw).length;
+    enc_info.innerHTML = `Input: <span>${inputBytes} bytes</span> &nbsp;→&nbsp; Output: <span>${b64.length} chars</span> &nbsp;(×${(b64.length / inputBytes).toFixed(2)} ratio)`;
+  } catch(e) {
+    enc_output.value = '';
+    enc_info.innerHTML = '<span style="color:#f87171">Encoding error — input may contain non-encodable characters.</span>';
+  }
+}
+
+// Decode
+const dec_input = document.getElementById('dec-input');
+const dec_output = document.getElementById('dec-output');
+const dec_info = document.getElementById('dec-info');
+const dec_error = document.getElementById('dec-error');
+function isValidBase64(s) {
+  // Accept both standard and url-safe
+  const std = s.replace(/-/g,'+').replace(/_/g,'/');
+  const padded = std + '==='.slice((std.length + 3) % 4);
+  try { atob(padded); return true; } catch(_) { return false; }
+}
+function doDecode() {
+  const raw = dec_input.value.trim();
+  const badge = document.getElementById('dec-valid-badge');
+  if (!raw) {
+    dec_output.value = ''; dec_info.innerHTML = ''; dec_error.textContent = '';
+    badge.innerHTML = ''; return;
+  }
+  const valid = isValidBase64(raw);
+  badge.innerHTML = valid
+    ? '<span class="valid-badge ok">valid base64</span>'
+    : '<span class="valid-badge bad">invalid base64</span>';
+  if (!valid) {
+    dec_error.textContent = 'Input does not appear to be valid Base64.';
+    dec_output.value = ''; dec_info.innerHTML = ''; return;
+  }
+  dec_error.textContent = '';
+  try {
+    const std = raw.replace(/-/g,'+').replace(/_/g,'/');
+    const padded = std + '==='.slice((std.length + 3) % 4);
+    const decoded = decodeURIComponent(escape(atob(padded)));
+    dec_output.value = decoded;
+    const bytes = new TextEncoder().encode(decoded).length;
+    dec_info.innerHTML = `Decoded: <span>${bytes} bytes</span>, <span>${decoded.length} chars</span>`;
+  } catch(e) {
+    dec_error.textContent = 'Decode error: ' + e.message;
+    dec_output.value = ''; dec_info.innerHTML = '';
+  }
+}
+function swapEncodeDecode() {
+  enc_input.value = dec_output.value;
+  doEncode();
+}
+
+// File tab
+let lastFile = null;
+let lastB64 = '';
+function handleFileDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const f = ev.dataTransfer.files[0];
+  if (f) handleFileSelect(f);
+}
+function handleFileSelect(f) {
+  if (!f) return;
+  lastFile = f;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const ab = e.target.result;
+    const bytes = new Uint8Array(ab);
+    // Convert binary to base64
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    lastB64 = btoa(bin);
+    document.getElementById('fi-name').textContent = f.name;
+    document.getElementById('fi-size').textContent = formatBytes(f.size);
+    document.getElementById('fi-type').textContent = f.type || 'unknown';
+    document.getElementById('fi-b64len').textContent = lastB64.length + ' chars';
+    document.getElementById('file-info').classList.add('show');
+    document.getElementById('file-out-card').style.display = 'block';
+    renderFileOutput();
+  };
+  reader.readAsArrayBuffer(f);
+}
+function renderFileOutput() {
+  const fo = document.getElementById('file-output');
+  if (document.getElementById('file-dataurl').checked && lastFile) {
+    fo.value = `data:${lastFile.type || 'application/octet-stream'};base64,${lastB64}`;
+  } else {
+    fo.value = lastB64;
+  }
+}
+function toggleDataUrl() { renderFileOutput(); }
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(2) + ' MB';
+}
+
+// Copy helper
+function copyText(srcId, btnId) {
+  const val = document.getElementById(srcId).value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById(btnId);
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// Fix drop-zone dragover — add event param
+document.getElementById('drop-zone').addEventListener('dragover', e => {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('drag-over');
+});
+document.getElementById('drop-zone').addEventListener('dragleave', () => {
+  document.getElementById('drop-zone').classList.remove('drag-over');
+});
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

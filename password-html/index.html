@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Generator — password.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.subnav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-btn:hover:not(.active){color:#c9d1d9}
+.tab-panel{display:none;padding:1.5rem;max-width:1100px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#c9d1d9;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+label{font-size:.85rem;color:#94a3b8;display:block;margin-bottom:.3rem}
+input[type=range]{width:100%;accent-color:#22d3ee;cursor:pointer}
+input[type=text],input[type=password],input[type=number]{background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.5rem .75rem;border-radius:5px;font-size:.85rem;font-family:inherit}
+input[type=text]:focus,input[type=password]:focus,input[type=number]:focus{outline:none;border-color:#22d3ee}
+input[type=checkbox]{accent-color:#22d3ee;width:15px;height:15px;cursor:pointer}
+select{background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.5rem .75rem;border-radius:5px;font-size:.85rem;font-family:inherit}
+select:focus{outline:none;border-color:#22d3ee}
+select option{background:#0a0a25}
+.btn{background:#0e7490;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#0891b2}
+.btn-ghost{background:none;border:1px solid #334155;color:#94a3b8;padding:.5rem 1rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:all .2s}
+.btn-ghost:hover{border-color:#22d3ee;color:#22d3ee}
+.row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem}
+/* Generator */
+.pw-list{display:flex;flex-direction:column;gap:.5rem;margin-top:1rem}
+.pw-item{display:flex;align-items:center;gap:.5rem;background:#0a0a25;border:1px solid #1e293b;border-radius:6px;padding:.5rem .75rem}
+.pw-text{flex:1;font-family:monospace;font-size:.95rem;letter-spacing:.05em;color:#e2e8f0;word-break:break-all}
+.pw-copy{background:#0e7490;color:#fff;border:none;padding:.25rem .65rem;border-radius:4px;cursor:pointer;font-size:.75rem;white-space:nowrap;flex-shrink:0;transition:background .2s}
+.pw-copy:hover{background:#0891b2}
+.pw-copy.copied{background:#059669!important}
+.control-row{display:grid;grid-template-columns:auto 1fr auto;gap:.75rem;align-items:center;margin-bottom:.75rem}
+.length-val{font-size:1.1rem;font-weight:700;color:#22d3ee;min-width:2.5rem;text-align:right}
+.checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.5rem .75rem;margin-bottom:.75rem}
+.cb-row{display:flex;align-items:center;gap:.5rem;font-size:.88rem}
+/* Strength */
+.strength-input-wrap{position:relative;margin-bottom:1rem}
+.strength-input-wrap input{width:100%;padding-right:3rem;font-family:monospace;font-size:1rem;padding:.65rem .9rem}
+.show-toggle{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;font-size:.85rem}
+.meter{height:8px;border-radius:4px;background:#1e293b;overflow:hidden;margin:1rem 0}
+.meter-fill{height:100%;border-radius:4px;transition:width .3s,background .3s}
+.strength-label{font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.6rem;margin:1rem 0}
+.stat-item{background:#0a0a25;border:1px solid #1e293b;border-radius:6px;padding:.65rem .9rem}
+.stat-label{font-size:.75rem;color:#64748b;margin-bottom:.2rem}
+.stat-val{font-size:1rem;font-weight:700;color:#22d3ee}
+.crack-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:1rem}
+.crack-table th{background:#0e1a2e;color:#22d3ee;padding:.4rem .7rem;text-align:left;border-bottom:1px solid #1e293b}
+.crack-table td{padding:.4rem .7rem;border-bottom:1px solid #1e293b}
+.crack-table tr:hover td{background:#040413}
+.pattern-list{margin-top:1rem}
+.pattern-item{background:#1a0a0a;border:1px solid #7f1d1d;border-radius:5px;padding:.4rem .7rem;font-size:.82rem;color:#f87171;margin-bottom:.3rem}
+.pattern-item.ok{background:#0a1a0a;border-color:#14532d;color:#86efac}
+/* Passphrase */
+.phrase-display{font-size:1.4rem;font-weight:600;letter-spacing:.05em;color:#e2e8f0;background:#0a0a25;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin:1rem 0;text-align:center;min-height:3.5rem;word-break:break-all}
+.word-highlight{color:#22d3ee}
+.entropy-box{display:inline-block;background:#0e1a2e;border:1px solid #22d3ee;border-radius:5px;padding:.3rem .8rem;font-size:.85rem;color:#22d3ee;margin-bottom:.5rem}
+.pp-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem}
+.pp-ctrl{display:flex;flex-direction:column;gap:.3rem}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('generator',this)">Generator</button>
+  <button class="tab-btn" onclick="showTab('strength',this)">Strength</button>
+  <button class="tab-btn" onclick="showTab('passphrase',this)">Passphrase</button>
+</nav>
+
+<!-- GENERATOR -->
+<div id="generator" class="tab-panel active">
+  <h2>Password Generator</h2>
+  <div class="card">
+    <label>Length: <span class="length-val" id="lenVal">16</span></label>
+    <div class="control-row">
+      <span style="color:#64748b;font-size:.85rem">8</span>
+      <input type="range" id="pwLen" min="8" max="128" value="16" oninput="document.getElementById('lenVal').textContent=this.value;schedRegen()">
+      <span style="color:#64748b;font-size:.85rem">128</span>
+    </div>
+    <div class="checkbox-grid">
+      <label class="cb-row"><input type="checkbox" id="useUpper" checked onchange="schedRegen()"> Uppercase (A–Z)</label>
+      <label class="cb-row"><input type="checkbox" id="useLower" checked onchange="schedRegen()"> Lowercase (a–z)</label>
+      <label class="cb-row"><input type="checkbox" id="useNums" checked onchange="schedRegen()"> Numbers (0–9)</label>
+      <label class="cb-row"><input type="checkbox" id="useSyms" checked onchange="schedRegen()"> Symbols (!@#$…)</label>
+      <label class="cb-row"><input type="checkbox" id="exclSimilar" onchange="schedRegen()"> Exclude similar chars (0O, 1lI)</label>
+      <label class="cb-row"><input type="checkbox" id="exclAmbig" onchange="schedRegen()"> Exclude ambiguous ({}[]()\/'")</label>
+    </div>
+    <div class="row">
+      <label style="margin-bottom:0">Quantity:</label>
+      <input type="number" id="pwQty" value="5" min="1" max="20" style="width:70px" oninput="schedRegen()">
+      <button class="btn" onclick="regenAll()">Regenerate</button>
+    </div>
+  </div>
+  <div id="pwList" class="pw-list"></div>
+</div>
+
+<!-- STRENGTH -->
+<div id="strength" class="tab-panel">
+  <h2>Password Strength Analyzer</h2>
+  <div class="card">
+    <label>Enter a password to analyze:</label>
+    <div class="strength-input-wrap">
+      <input type="password" id="strengthInput" placeholder="Type or paste a password..." oninput="analyzeStrength()" autocomplete="off" spellcheck="false">
+      <button class="show-toggle" onclick="toggleShow()">Show</button>
+    </div>
+    <div id="strengthMeter" style="display:none">
+      <div class="strength-label" id="strengthLabel"></div>
+      <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <h3 style="margin-top:1rem">Time to Crack Estimates</h3>
+      <table class="crack-table">
+        <thead><tr><th>Attack Type</th><th>Guesses/sec</th><th>Estimated Time</th></tr></thead>
+        <tbody id="crackTable"></tbody>
+      </table>
+      <div class="pattern-list" id="patternList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PASSPHRASE -->
+<div id="passphrase" class="tab-panel">
+  <h2>Passphrase Generator</h2>
+  <div class="card">
+    <div class="pp-controls">
+      <div class="pp-ctrl">
+        <label>Word count (3–10):</label>
+        <input type="range" id="ppCount" min="3" max="10" value="4" oninput="document.getElementById('ppCountVal').textContent=this.value;genPassphrase()">
+        <div style="font-size:.9rem;color:#22d3ee"><span id="ppCountVal">4</span> words</div>
+      </div>
+      <div class="pp-ctrl">
+        <label>Separator:</label>
+        <select id="ppSep" onchange="genPassphrase()">
+          <option value=" ">Space ( )</option>
+          <option value="-" selected>Dash (-)</option>
+          <option value=".">Dot (.)</option>
+          <option value="_">Underscore (_)</option>
+          <option value="">None</option>
+        </select>
+      </div>
+      <div class="pp-ctrl">
+        <label style="margin-bottom:.5rem">Options:</label>
+        <label class="cb-row" style="margin-bottom:.3rem"><input type="checkbox" id="ppCapitalize" onchange="genPassphrase()"> Capitalize words</label>
+        <label class="cb-row"><input type="checkbox" id="ppNumber" onchange="genPassphrase()"> Append number</label>
+      </div>
+    </div>
+    <div id="ppDisplay" class="phrase-display"></div>
+    <div id="ppEntropy" class="entropy-box"></div>
+    <div class="row" style="margin-top:.5rem">
+      <button class="btn" onclick="genPassphrase()">Regenerate</button>
+      <button class="btn-ghost" onclick="copyPhrase()">Copy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── GENERATOR ─────────────────────────────────────────────────
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const LOWER = 'abcdefghijklmnopqrstuvwxyz';
+const NUMS  = '0123456789';
+const SYMS  = '!@#$%^&*-+=<>?';
+const SYMS_FULL = '!@#$%^&*-+=<>?,./;:~';
+const SIMILAR = '0O1lI';
+const AMBIG = '{}[]()\/\'"\\|';
+
+function buildCharset() {
+  let cs = '';
+  if (document.getElementById('useUpper').checked) cs += UPPER;
+  if (document.getElementById('useLower').checked) cs += LOWER;
+  if (document.getElementById('useNums').checked)  cs += NUMS;
+  if (document.getElementById('useSyms').checked)  cs += SYMS_FULL;
+  if (document.getElementById('exclSimilar').checked) cs = cs.split('').filter(c=>!SIMILAR.includes(c)).join('');
+  if (document.getElementById('exclAmbig').checked)   cs = cs.split('').filter(c=>!AMBIG.includes(c)).join('');
+  return cs || LOWER;
+}
+
+function genPassword(len, charset) {
+  const arr = new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, v => charset[v % charset.length]).join('');
+}
+
+let regenTimer;
+function schedRegen() { clearTimeout(regenTimer); regenTimer = setTimeout(regenAll, 80); }
+
+function regenAll() {
+  const len = parseInt(document.getElementById('pwLen').value);
+  const qty = Math.max(1,Math.min(20,parseInt(document.getElementById('pwQty').value)||5));
+  const charset = buildCharset();
+  const passwords = Array.from({length:qty},()=>genPassword(len,charset));
+  const list = document.getElementById('pwList');
+  list.innerHTML = passwords.map((pw,i)=>`
+    <div class="pw-item" id="pwitem${i}">
+      <div class="pw-text" id="pwtext${i}">${escH(pw)}</div>
+      <button class="pw-copy" onclick="copyPW(${i},this)">Copy</button>
+    </div>`).join('');
+  // store
+  list._passwords = passwords;
+}
+
+function copyPW(i, btn) {
+  const pw = document.getElementById('pwList')._passwords[i];
+  navigator.clipboard.writeText(pw).then(()=>{
+    const orig = btn.textContent; btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); },1500);
+  });
+}
+
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── STRENGTH ───────────────────────────────────────────────────
+function toggleShow() {
+  const inp = document.getElementById('strengthInput');
+  const btn = inp.nextElementSibling;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
+}
+
+const COMMON_PATTERNS = [
+  [/(.)\1{2,}/,'Repeated character(s)'],
+  [/(?:012|123|234|345|456|567|678|789|890|987|876|765|654|543|432|321|210)/i,'Sequential numbers'],
+  [/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i,'Sequential letters'],
+  [/(?:qwerty|asdfg|zxcvb|qweasd|uiop|hjkl)/i,'Keyboard walk detected'],
+  [/^[a-zA-Z]+$/, 'Only letters — no numbers or symbols'],
+  [/^[0-9]+$/, 'Only numbers'],
+  [/password|passwd|letmein|welcome|admin|login|qwerty|abc123|111111|iloveyou|sunshine|princess|monkey|dragon/i,'Common password pattern detected'],
+];
+
+function calcEntropy(pw) {
+  let cs = 0;
+  if (/[a-z]/.test(pw)) cs += 26;
+  if (/[A-Z]/.test(pw)) cs += 26;
+  if (/[0-9]/.test(pw)) cs += 10;
+  if (/[^a-zA-Z0-9]/.test(pw)) cs += 32;
+  return pw.length * Math.log2(Math.max(cs, 2));
+}
+
+function formatTime(seconds) {
+  if (seconds < 1e-6) return 'Instant';
+  if (seconds < 1) return `${(seconds*1000).toFixed(1)} ms`;
+  if (seconds < 60) return `${seconds.toFixed(1)} s`;
+  if (seconds < 3600) return `${(seconds/60).toFixed(1)} min`;
+  if (seconds < 86400) return `${(seconds/3600).toFixed(1)} hr`;
+  if (seconds < 86400*365) return `${(seconds/86400).toFixed(0)} days`;
+  if (seconds < 86400*365*1000) return `${(seconds/(86400*365)).toFixed(0)} years`;
+  if (seconds < 86400*365*1e9) return `${(seconds/(86400*365*1e6)).toFixed(1)} million years`;
+  return `${(seconds/(86400*365*1e12)).toFixed(1)} trillion years`;
+}
+
+function analyzeStrength() {
+  const pw = document.getElementById('strengthInput').value;
+  const meter = document.getElementById('strengthMeter');
+  if (!pw) { meter.style.display='none'; return; }
+  meter.style.display='block';
+
+  const entropy = calcEntropy(pw);
+  let cs = 0;
+  if (/[a-z]/.test(pw)) cs += 26;
+  if (/[A-Z]/.test(pw)) cs += 26;
+  if (/[0-9]/.test(pw)) cs += 10;
+  if (/[^a-zA-Z0-9]/.test(pw)) cs += 32;
+
+  // Strength label
+  let label, color, pct;
+  if (entropy < 28)      { label='Very Weak'; color='#ef4444'; pct=10; }
+  else if (entropy < 40) { label='Weak';      color='#f97316'; pct=25; }
+  else if (entropy < 60) { label='Fair';      color='#eab308'; pct=50; }
+  else if (entropy < 80) { label='Strong';    color='#22c55e'; pct=75; }
+  else                   { label='Very Strong'; color='#22d3ee'; pct=100; }
+
+  document.getElementById('strengthLabel').innerHTML = `<span style="color:${color}">${label}</span>`;
+  const fill = document.getElementById('meterFill');
+  fill.style.width = pct+'%'; fill.style.background = color;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-item"><div class="stat-label">Length</div><div class="stat-val">${pw.length}</div></div>
+    <div class="stat-item"><div class="stat-label">Entropy</div><div class="stat-val">${entropy.toFixed(1)} bits</div></div>
+    <div class="stat-item"><div class="stat-label">Charset size</div><div class="stat-val">${cs}</div></div>
+    <div class="stat-item"><div class="stat-label">Possible combos</div><div class="stat-val">10<sup>${(entropy/3.32).toFixed(0)}</sup></div></div>
+  `;
+
+  const attacks = [
+    ['Online (throttled)', 100, '100 guesses/sec'],
+    ['Online (fast)', 10000, '10K guesses/sec'],
+    ['Offline (bcrypt)', 1e6, '1M guesses/sec'],
+    ['Offline (MD5/fast)', 1e10, '10B guesses/sec'],
+    ['Offline (GPU cluster)', 1e12, '1T guesses/sec'],
+  ];
+  const guesses = Math.pow(2, entropy);
+  document.getElementById('crackTable').innerHTML = attacks.map(([name,gps,desc])=>{
+    const secs = guesses/gps;
+    const rowColor = secs < 3600 ? '#f87171' : secs < 86400*365 ? '#fbbf24' : '#86efac';
+    return `<tr><td>${name}<br><span style="font-size:.75rem;color:#64748b">${desc}</span></td><td style="color:#64748b">${gps.toLocaleString()}</td><td style="color:${rowColor};font-weight:600">${formatTime(secs)}</td></tr>`;
+  }).join('');
+
+  const patternEl = document.getElementById('patternList');
+  const detected = COMMON_PATTERNS.filter(([rx])=>rx.test(pw));
+  if (detected.length) {
+    patternEl.innerHTML = '<h3 style="margin-bottom:.5rem;color:#f59e0b">Patterns Detected:</h3>' +
+      detected.map(([,msg])=>`<div class="pattern-item">${msg}</div>`).join('');
+  } else {
+    patternEl.innerHTML = '<div class="pattern-item ok">No common patterns detected.</div>';
+  }
+}
+
+// ── PASSPHRASE ─────────────────────────────────────────────────
+const WORDLIST = [
+  'able','acid','aged','also','area','army','away','baby','back','ball','band','bank','base','bath','bear',
+  'beat','been','bell','best','bird','blow','blue','boat','body','bomb','bond','bone','book','born','both',
+  'bowl','bulk','burn','busy','calm','card','care','cart','case','cast','cave','cell','chip','city','clap',
+  'clay','clip','club','coal','coat','code','coil','coin','cold','cook','cool','cope','core','corn','cost',
+  'coup','crew','crop','cure','dark','dart','data','date','dawn','dead','deal','dear','debt','deep','deny',
+  'desk','diet','dirt','disk','dock','dome','door','dose','dove','down','draw','drop','drum','dusk','dust',
+  'duty','each','earl','earn','ease','east','edge','else','emit','epic','even','ever','evil','exam','exit',
+  'face','fact','fail','fair','fall','fame','farm','fast','fate','fear','feet','fell','felt','file','fill',
+  'film','find','fire','firm','fish','fist','five','flag','flat','fled','flew','flip','flow','foam','fold',
+  'folk','fond','font','food','fool','foot','ford','fore','fork','form','fort','foul','four','free','from',
+  'fuel','full','fund','fuse','gain','gale','game','gang','gate','gave','gaze','gear','gene','gift','girl',
+  'give','glad','glow','glue','goal','goat','goes','gold','golf','gone','good','gown','grab','gray','grew',
+  'grid','grin','grip','grow','gulf','guru','gust','half','hall','halt','hand','hang','hard','harm','hash',
+  'hate','have','head','heap','heat','heel','held','helm','help','herb','here','hero','hide','high','hill',
+  'hint','hire','hold','hole','home','hood','hook','hope','horn','host','hour','huge','hull','hung','hunt',
+  'hurt','icon','idea','idle','inch','into','iron','isle','item','jack','jail','java','jazz','join','joke',
+  'jump','just','keen','keep','kill','kind','king','knot','know','lack','laid','lake','lamp','land','lane',
+  'lava','lawn','lead','leaf','lean','leap','left','lend','lens','levy','lift','lime','limp','line','link',
+  'lion','list','live','load','loan','lock','loft','lone','long','look','loop','lord','lore','loss','loud',
+  'love','luck','lung','lurk','lush','made','mail','main','make','mall','mane','many','mark','mask','mass',
+  'mast','math','maze','meat','meet','mild','milk','mill','mine','mist','mode','monk','moon','more','most',
+  'move','much','mule','myth','nail','name','navy','need','nest','next','nice','nine','node','none','norm',
+  'nose','note','noun','nova','nude','null','oath','obey','odds','omen','open','oral','orb','oval','over',
+  'pace','pack','page','pain','pair','pale','palm','pane','park','part','pass','past','path','peak','peel',
+  'peer','perk','pest','pick','pier','pile','pill','pine','pink','pipe','plan','play','plot','plow','plug',
+  'plus','poem','poet','pole','poll','pond','pool','port','pose','post','pour','prey','prim','prod','prop',
+  'pull','pump','pure','push','race','rack','raft','rage','raid','rail','rain','ramp','rang','rank','rare',
+  'rate','rave','read','real','reap','reed','reef','reel','rely','rent','rest','rice','rich','ride','ring',
+  'riot','rise','risk','road','roam','roar','rock','rode','role','roll','roof','room','root','rope','rose',
+  'rote','ruin','rule','rush','rust','safe','sage','sail','sake','salt','sand','sang','sank','save','scan',
+  'seal','seam','seed','seek','seem','seep','self','sell','send','shed','ship','shoe','shop','show','shut',
+  'sick','side','silk','site','size','skip','slam','slap','slim','slip','slow','slug','snap','snow','soak',
+  'soap','soar','sock','soft','soil','sole','some','song','sort','soul','soup','sour','span','spin','spot',
+  'star','stay','stem','step','stir','stop','stub','such','suit','sung','sunk','sure','surf','swam','swap',
+  'swim','tail','tale','tall','tame','tape','task','team','tear','tell','test','text','than','that','them',
+  'then','they','thin','this','tier','tile','time','tiny','tide','told','toll','tomb','tone','took','tool',
+  'town','trap','tree','trek','trim','trio','trip','true','tube','tuck','turf','turn','twin','type','ugly',
+  'undo','unit','upon','used','user','vain','vale','vast','veil','very','vest','view','vine','void','vote',
+  'wade','wake','walk','wall','wand','ward','warm','warp','wary','wave','ways','weed','well','went','were',
+  'west','what','when','whom','wide','wilt','wind','wine','wire','wise','wish','with','wolf','wood','word',
+  'wore','worm','worn','wrap','wren','yard','year','yoga','zero','zone','zoom'
+];
+
+function genPassphrase() {
+  const count = parseInt(document.getElementById('ppCount').value);
+  const sep = document.getElementById('ppSep').value;
+  const cap = document.getElementById('ppCapitalize').checked;
+  const num = document.getElementById('ppNumber').checked;
+
+  const arr = new Uint32Array(count);
+  crypto.getRandomValues(arr);
+  const words = Array.from(arr, v => {
+    let w = WORDLIST[v % WORDLIST.length];
+    return cap ? w[0].toUpperCase() + w.slice(1) : w;
+  });
+
+  let numSuffix = '';
+  if (num) {
+    const n = new Uint32Array(1); crypto.getRandomValues(n);
+    numSuffix = sep + (n[0] % 9000 + 1000);
+  }
+
+  const phrase = words.join(sep) + numSuffix;
+  document.getElementById('ppDisplay').textContent = phrase;
+
+  // Entropy: log2(WORDLIST.length ^ count) + extras
+  const entropy = count * Math.log2(WORDLIST.length) + (num ? Math.log2(9000) : 0);
+  document.getElementById('ppEntropy').textContent = `Entropy: ~${entropy.toFixed(1)} bits — wordlist: ${WORDLIST.length} words`;
+}
+
+function copyPhrase() {
+  const phrase = document.getElementById('ppDisplay').textContent;
+  if (!phrase) return;
+  navigator.clipboard.writeText(phrase).then(()=>{
+    const btn = event.target;
+    const orig = btn.textContent; btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent=orig, 1500);
+  });
+}
+
+// Init
+regenAll();
+genPassphrase();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

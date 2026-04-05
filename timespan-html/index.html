@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timespan Calculator — timespan.ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+
+    .subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+    .tab-btn{padding:.65rem 1.1rem;font-size:.82rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+    .tab-btn:hover{color:#c9d1d9}
+    .tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+
+    .page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+    .page-title{font-size:1.2rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+    .page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+
+    label.lbl{display:block;font-size:.7rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+    input[type=datetime-local],input[type=date],input[type=number],input[type=text],select{
+      width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;
+      font-family:'Courier New',monospace;font-size:.9rem;padding:.55rem .8rem;outline:none;transition:border-color .2s;
+    }
+    input:focus,select:focus{border-color:#22d3ee55}
+    select{cursor:pointer}
+    input[type=number]{-moz-appearance:textfield}
+    input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    input[type=checkbox]{width:auto;accent-color:#22d3ee;cursor:pointer}
+
+    .card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem 1.2rem;margin-bottom:1rem}
+    .card-title{font-size:.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem}
+
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:600px){.two-col{grid-template-columns:1fr}}
+
+    .btn{background:#0f172a;border:1px solid #22d3ee44;border-radius:6px;color:#22d3ee;font-size:.8rem;font-weight:600;padding:.5rem 1.1rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:hover{background:#22d3ee15;border-color:#22d3ee88}
+    .btn:active{transform:scale(.97)}
+    .btn-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}
+
+    .btn-sm{background:#070720;border:1px solid #1e293b;border-radius:5px;color:#64748b;font-size:.73rem;padding:.25rem .6rem;cursor:pointer;transition:all .15s}
+    .btn-sm:hover{border-color:#22d3ee55;color:#22d3ee}
+
+    .result-box{background:#040418;border:1px solid #1e293b;border-radius:8px;padding:1.2rem;margin-top:1rem}
+    .rb-human{font-size:1.4rem;font-weight:700;color:#22d3ee;margin-bottom:.75rem;line-height:1.3}
+    .rb-human.error{color:#f85149;font-size:.9rem;font-weight:400}
+
+    .units-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem;margin-bottom:.75rem}
+    .unit-item{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:.5rem .75rem}
+    .unit-label{font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.2rem}
+    .unit-value{font-size:1rem;font-weight:600;color:#c9d1d9;font-family:'Courier New',monospace}
+    .unit-value.accent{color:#22d3ee}
+
+    .breakdown-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.35rem;flex-wrap:wrap}
+    .bd-chunk{background:#070720;border:1px solid #1e293b;border-radius:5px;padding:.2rem .55rem;font-size:.82rem;font-family:'Courier New',monospace}
+    .bd-num{color:#22d3ee;font-weight:700}
+    .bd-unit{color:#64748b}
+
+    .error-msg{font-size:.8rem;color:#f85149;margin-top:.4rem;min-height:1.2em}
+
+    /* Business days */
+    .bday-opts{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:.5rem}
+    .checkbox-label{display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem;color:#94a3b8;user-select:none}
+
+    .bday-result{background:#040418;border:1px solid #1e293b;border-radius:8px;padding:1.2rem;margin-top:1rem}
+    .bday-big{font-size:2.5rem;font-weight:700;color:#22d3ee;font-family:'Courier New',monospace;text-align:center;margin-bottom:.3rem}
+    .bday-sub{text-align:center;font-size:.82rem;color:#64748b;margin-bottom:.9rem}
+    .bday-breakdown{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+    .bday-chip{background:#070720;border:1px solid #1e293b;border-radius:5px;padding:.28rem .7rem;font-size:.78rem}
+    .bday-chip-n{color:#c9d1d9;font-family:'Courier New',monospace}
+    .bday-chip-l{color:#475569;margin-left:.3rem}
+
+    .reverse-result{background:#040418;border:1px solid #1e293b;border-radius:8px;padding:1rem 1.2rem;margin-top:1rem;font-size:.9rem}
+    .rev-date{font-size:1.3rem;font-weight:700;color:#22d3ee;font-family:'Courier New',monospace;margin-bottom:.3rem}
+    .rev-info{color:#64748b;font-size:.8rem}
+
+    /* Add/Subtract */
+    .ops-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem}
+    .op-row{display:grid;grid-template-columns:auto 80px 100px auto;gap:.4rem;align-items:center;background:#070720;border:1px solid #1e293b;border-radius:6px;padding:.4rem .6rem}
+    @media(max-width:540px){.op-row{grid-template-columns:1fr 1fr}}
+    .op-sign{display:flex;gap:.3rem}
+    .op-sign-btn{background:#0f172a;border:1px solid #1e293b;border-radius:4px;color:#64748b;font-size:.8rem;padding:.18rem .5rem;cursor:pointer;transition:all .15s}
+    .op-sign-btn.active{background:rgba(34,211,238,.1);border-color:#22d3ee55;color:#22d3ee}
+    .op-remove{background:none;border:1px solid #1e293b;border-radius:4px;color:#475569;font-size:.78rem;padding:.18rem .4rem;cursor:pointer;transition:all .15s;margin-left:.2rem}
+    .op-remove:hover{border-color:#f8514944;color:#f85149}
+    .op-unit-sel{background:#070720;border:1px solid #1e293b;border-radius:5px;color:#94a3b8;font-size:.8rem;padding:.28rem .55rem;cursor:pointer;font-family:'Courier New',monospace}
+    .op-val{background:#070720;border:1px solid #1e293b;border-radius:5px;color:#e2e8f0;font-size:.85rem;padding:.28rem .55rem;font-family:'Courier New',monospace;width:100%;outline:none}
+    .op-val:focus{border-color:#22d3ee55}
+
+    .chain-result{background:#040418;border:1px solid #1e293b;border-radius:8px;padding:1.2rem;margin-top:1rem}
+    .chain-big{font-size:1.5rem;font-weight:700;color:#22d3ee;font-family:'Courier New',monospace;margin-bottom:.4rem}
+    .chain-steps{display:flex;flex-direction:column;gap:.3rem;margin-top:.6rem}
+    .chain-step{font-size:.8rem;color:#64748b;font-family:'Courier New',monospace}
+    .chain-step b{color:#94a3b8}
+
+    .divider{border:none;border-top:1px solid #1e293b;margin:1.75rem 0}
+
+    .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#0f172a;border:1px solid #22d3ee44;color:#22d3ee;padding:.5rem 1rem;border-radius:6px;font-size:.8rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:999}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+
+<div class="subnav">
+  <button class="tab-btn active" data-tab="duration">Duration</button>
+  <button class="tab-btn" data-tab="bizdays">Business Days</button>
+  <button class="tab-btn" data-tab="addsubtract">Add / Subtract</button>
+</div>
+
+<!-- ═══════════════════════ DURATION ═══════════════════════ -->
+<div class="page tab-panel active" id="tab-duration">
+  <div class="page-title">Duration Calculator</div>
+  <div class="page-sub">Calculate the exact time between two dates and times</div>
+
+  <div class="card">
+    <div class="two-col">
+      <div>
+        <label class="lbl">Start date &amp; time</label>
+        <input type="datetime-local" id="dur-start" oninput="calcDuration()">
+        <div class="btn-row">
+          <button class="btn-sm" onclick="setDurNow('dur-start')">Set to now</button>
+          <button class="btn-sm" onclick="clearInput('dur-start', calcDuration)">Clear</button>
+        </div>
+      </div>
+      <div>
+        <label class="lbl">End date &amp; time</label>
+        <input type="datetime-local" id="dur-end" oninput="calcDuration()">
+        <div class="btn-row">
+          <button class="btn-sm" onclick="setDurNow('dur-end')">Set to now</button>
+          <button class="btn-sm" onclick="clearInput('dur-end', calcDuration)">Clear</button>
+        </div>
+      </div>
+    </div>
+    <div class="error-msg" id="dur-err"></div>
+  </div>
+
+  <div id="dur-result" style="display:none">
+    <div class="result-box">
+      <div class="rb-human" id="dur-human">—</div>
+      <div class="units-grid" id="dur-units"></div>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div class="card-title">Breakdown</div>
+      <div id="dur-breakdown"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BUSINESS DAYS ═══════════════════════ -->
+<div class="page tab-panel" id="tab-bizdays">
+  <div class="page-title">Business Days</div>
+  <div class="page-sub">Count business days between dates, or find a date N business days away</div>
+
+  <!-- Count mode -->
+  <div class="card">
+    <div class="card-title">Count business days between two dates</div>
+    <div class="two-col">
+      <div>
+        <label class="lbl">Start date</label>
+        <input type="date" id="biz-start" oninput="calcBizDays()">
+      </div>
+      <div>
+        <label class="lbl">End date</label>
+        <input type="date" id="biz-end" oninput="calcBizDays()">
+      </div>
+    </div>
+    <div class="bday-opts">
+      <label class="checkbox-label">
+        <input type="checkbox" id="biz-holidays" onchange="calcBizDays()">
+        Exclude US federal holidays
+      </label>
+    </div>
+    <div class="error-msg" id="biz-err"></div>
+  </div>
+
+  <div id="biz-result" style="display:none">
+    <div class="bday-result">
+      <div class="bday-big" id="biz-count">—</div>
+      <div class="bday-sub" id="biz-count-sub">business days</div>
+      <div class="bday-breakdown" id="biz-breakdown"></div>
+    </div>
+    <div id="biz-holiday-list" style="margin-top:.75rem"></div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Reverse mode -->
+  <div class="card">
+    <div class="card-title">Find date N business days from a start</div>
+    <div class="two-col">
+      <div>
+        <label class="lbl">Start date</label>
+        <input type="date" id="rev-start" oninput="calcRevBiz()">
+      </div>
+      <div>
+        <label class="lbl">Business days to add (negative to subtract)</label>
+        <input type="number" id="rev-n" placeholder="e.g. 10 or -5" oninput="calcRevBiz()">
+      </div>
+    </div>
+    <div class="bday-opts">
+      <label class="checkbox-label">
+        <input type="checkbox" id="rev-holidays" onchange="calcRevBiz()">
+        Skip US federal holidays
+      </label>
+    </div>
+    <div class="error-msg" id="rev-err"></div>
+  </div>
+
+  <div id="rev-result" style="display:none">
+    <div class="reverse-result">
+      <div class="rev-date" id="rev-date">—</div>
+      <div class="rev-info" id="rev-info">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ADD / SUBTRACT ═══════════════════════ -->
+<div class="page tab-panel" id="tab-addsubtract">
+  <div class="page-title">Add / Subtract</div>
+  <div class="page-sub">Start from a date/time and apply a chain of operations</div>
+
+  <div class="card">
+    <label class="lbl">Start date &amp; time</label>
+    <input type="datetime-local" id="as-start" oninput="calcChain()">
+    <div class="btn-row">
+      <button class="btn-sm" onclick="setDurNow('as-start')">Set to now</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Operations (chained in order)</div>
+    <div class="ops-list" id="ops-list"></div>
+    <button class="btn" onclick="addOp()">+ Add operation</button>
+    <div class="error-msg" id="as-err"></div>
+  </div>
+
+  <div id="as-result" style="display:none">
+    <div class="chain-result">
+      <div class="card-title">Result</div>
+      <div class="chain-big" id="chain-big">—</div>
+      <div style="font-size:.82rem;color:#64748b" id="chain-iso">—</div>
+      <div style="font-size:.82rem;color:#64748b;margin-top:.2rem" id="chain-ts">—</div>
+      <div class="chain-steps" id="chain-steps"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function setDurNow(id) {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  document.getElementById(id).value = local;
+  if (id === 'dur-start' || id === 'dur-end') calcDuration();
+  if (id === 'as-start') calcChain();
+}
+
+function clearInput(id, cb) {
+  document.getElementById(id).value = '';
+  cb();
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function plural(n, unit) {
+  return n === 1 ? `1 ${unit}` : `${n} ${unit}s`;
+}
+
+function dtlToDate(id) {
+  const v = document.getElementById(id).value;
+  if (!v) return null;
+  return new Date(v);
+}
+
+// ── US Federal Holidays ──────────────────────────────────────────────────────
+function usFederalHolidays(year) {
+  const holidays = [];
+  function add(m, d) { holidays.push(new Date(year, m, d).toDateString()); }
+  function addObserved(m, d) {
+    const dt = new Date(year, m, d);
+    const dow = dt.getDay();
+    if (dow === 0) add(m, d + 1);       // Sunday -> Monday
+    else if (dow === 6) add(m, d - 1);  // Saturday -> Friday
+    else add(m, d);
+  }
+  // New Year's
+  addObserved(0, 1);
+  // MLK Day: 3rd Monday of Jan
+  const mlk = new Date(year, 0, 1);
+  mlk.setDate(1 + ((1 - mlk.getDay() + 7) % 7) + 14);
+  holidays.push(mlk.toDateString());
+  // Presidents' Day: 3rd Monday of Feb
+  const pres = new Date(year, 1, 1);
+  pres.setDate(1 + ((1 - pres.getDay() + 7) % 7) + 14);
+  holidays.push(pres.toDateString());
+  // Memorial Day: last Monday of May
+  const mem = new Date(year, 5, 0); // June 0 = last day of May
+  mem.setDate(mem.getDate() - ((mem.getDay() - 1 + 7) % 7));
+  holidays.push(mem.toDateString());
+  // Juneteenth
+  addObserved(5, 19);
+  // Independence Day
+  addObserved(6, 4);
+  // Labor Day: 1st Monday of Sep
+  const lab = new Date(year, 8, 1);
+  lab.setDate(1 + ((1 - lab.getDay() + 7) % 7));
+  holidays.push(lab.toDateString());
+  // Columbus Day: 2nd Monday of Oct
+  const col = new Date(year, 9, 1);
+  col.setDate(1 + ((1 - col.getDay() + 7) % 7) + 7);
+  holidays.push(col.toDateString());
+  // Veterans Day
+  addObserved(10, 11);
+  // Thanksgiving: 4th Thursday of Nov
+  const thx = new Date(year, 10, 1);
+  thx.setDate(1 + ((4 - thx.getDay() + 7) % 7) + 21);
+  holidays.push(thx.toDateString());
+  // Christmas
+  addObserved(11, 25);
+  return new Set(holidays);
+}
+
+function isBusinessDay(date, holidaySet) {
+  const dow = date.getDay();
+  if (dow === 0 || dow === 6) return false;
+  if (holidaySet && holidaySet.has(date.toDateString())) return false;
+  return true;
+}
+
+function countBusinessDays(start, end, skipHolidays) {
+  // Returns [count, holidayList]
+  let d = new Date(start);
+  d.setHours(0,0,0,0);
+  const e = new Date(end);
+  e.setHours(0,0,0,0);
+
+  const forward = e >= d;
+  if (!forward) { [d, e] = [new Date(e), new Date(d)]; }
+
+  // Build holiday sets for all relevant years
+  const holidaySets = {};
+  if (skipHolidays) {
+    for (let y = d.getFullYear(); y <= e.getFullYear(); y++) {
+      holidaySets[y] = usFederalHolidays(y);
+    }
+  }
+  function getHSet(date) {
+    if (!skipHolidays) return null;
+    return holidaySets[date.getFullYear()];
+  }
+
+  let count = 0;
+  const hitHolidays = [];
+  const cur = new Date(d);
+  while (cur <= e) {
+    const hs = getHSet(cur);
+    if (cur.getDay() !== 0 && cur.getDay() !== 6) {
+      if (!hs || !hs.has(cur.toDateString())) {
+        count++;
+      } else {
+        hitHolidays.push(new Date(cur));
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return { count: forward ? count : -count, holidays: hitHolidays, forward };
+}
+
+function addBusinessDays(startDate, n, skipHolidays) {
+  let d = new Date(startDate);
+  d.setHours(12, 0, 0, 0);
+  const dir = n >= 0 ? 1 : -1;
+  let remaining = Math.abs(n);
+
+  const holidaySets = {};
+  function getHSet(date) {
+    if (!skipHolidays) return null;
+    const y = date.getFullYear();
+    if (!holidaySets[y]) holidaySets[y] = usFederalHolidays(y);
+    return holidaySets[y];
+  }
+
+  while (remaining > 0) {
+    d.setDate(d.getDate() + dir);
+    const hs = getHSet(d);
+    if (isBusinessDay(d, hs)) remaining--;
+  }
+  return d;
+}
+
+// ── DURATION ────────────────────────────────────────────────────────────────
+function calcDuration() {
+  const err = document.getElementById('dur-err');
+  const resDiv = document.getElementById('dur-result');
+  err.textContent = '';
+
+  const s = dtlToDate('dur-start');
+  const e = dtlToDate('dur-end');
+  if (!s || !e) { resDiv.style.display = 'none'; return; }
+  if (isNaN(s) || isNaN(e)) { err.textContent = 'Invalid date'; resDiv.style.display = 'none'; return; }
+
+  const diffMs = e.getTime() - s.getTime();
+  const sign = diffMs < 0 ? -1 : 1;
+  const absMs = Math.abs(diffMs);
+
+  const totalSec = Math.floor(absMs / 1000);
+  const totalMin = Math.floor(absMs / 60000);
+  const totalHr  = Math.floor(absMs / 3600000);
+  const totalDays= Math.floor(absMs / 86400000);
+
+  // Compute years/months/days/hours/minutes/seconds breakdown
+  let a = new Date(Math.min(s.getTime(), e.getTime()));
+  let b = new Date(Math.max(s.getTime(), e.getTime()));
+
+  let years  = b.getFullYear() - a.getFullYear();
+  let months = b.getMonth()    - a.getMonth();
+  let days   = b.getDate()     - a.getDate();
+  let hours  = b.getHours()    - a.getHours();
+  let mins   = b.getMinutes()  - a.getMinutes();
+  let secs   = b.getSeconds()  - a.getSeconds();
+
+  if (secs   < 0) { secs += 60;  mins--; }
+  if (mins   < 0) { mins += 60;  hours--; }
+  if (hours  < 0) { hours += 24; days--; }
+  if (days   < 0) {
+    months--;
+    const prevMonth = new Date(b.getFullYear(), b.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) { months += 12; years--; }
+
+  // Human string
+  const parts = [];
+  if (years  > 0) parts.push(plural(years,  'year'));
+  if (months > 0) parts.push(plural(months, 'month'));
+  if (days   > 0) parts.push(plural(days,   'day'));
+  if (hours  > 0) parts.push(plural(hours,  'hour'));
+  if (mins   > 0) parts.push(plural(mins,   'minute'));
+  if (secs   > 0) parts.push(plural(secs,   'second'));
+  if (parts.length === 0) parts.push('0 seconds');
+
+  const humanStr = (sign < 0 ? '−' : '') + parts.join(', ');
+
+  document.getElementById('dur-human').textContent = humanStr;
+
+  const unitsData = [
+    { label: 'Total days',    value: totalDays.toLocaleString(),   accent: true  },
+    { label: 'Total hours',   value: totalHr.toLocaleString(),     accent: false },
+    { label: 'Total minutes', value: totalMin.toLocaleString(),    accent: false },
+    { label: 'Total seconds', value: totalSec.toLocaleString(),    accent: false },
+    { label: 'Total ms',      value: Math.abs(diffMs).toLocaleString(), accent: false },
+    { label: 'Weeks',         value: Math.floor(totalDays / 7).toLocaleString() + ' wk ' + (totalDays % 7) + ' d', accent: false },
+  ];
+
+  const unitsGrid = document.getElementById('dur-units');
+  unitsGrid.innerHTML = '';
+  unitsData.forEach(u => {
+    const el = document.createElement('div');
+    el.className = 'unit-item';
+    el.innerHTML = `<div class="unit-label">${u.label}</div><div class="unit-value${u.accent?' accent':''}">${u.value}</div>`;
+    unitsGrid.appendChild(el);
+  });
+
+  // Breakdown chips
+  const bdDiv = document.getElementById('dur-breakdown');
+  bdDiv.innerHTML = '';
+  const bdRow = document.createElement('div');
+  bdRow.className = 'breakdown-row';
+  [[years,'year'],[months,'month'],[days,'day'],[hours,'hour'],[mins,'minute'],[secs,'second']].forEach(([n, u]) => {
+    const chip = document.createElement('span');
+    chip.className = 'bd-chunk';
+    chip.innerHTML = `<span class="bd-num">${n}</span> <span class="bd-unit">${u}${n!==1?'s':''}</span>`;
+    bdRow.appendChild(chip);
+  });
+  bdDiv.appendChild(bdRow);
+
+  resDiv.style.display = 'block';
+}
+
+// ── BUSINESS DAYS ────────────────────────────────────────────────────────────
+const HOLIDAY_NAMES = {
+  'New Year': [0, 1],
+  "MLK Day": null,
+  "Presidents' Day": null,
+  "Memorial Day": null,
+  'Juneteenth': [5, 19],
+  "Independence Day": [6, 4],
+  "Labor Day": null,
+  "Columbus Day": null,
+  "Veterans Day": [10, 11],
+  "Thanksgiving": null,
+  'Christmas': [11, 25],
+};
+
+function calcBizDays() {
+  const err = document.getElementById('biz-err');
+  const resDiv = document.getElementById('biz-result');
+  err.textContent = '';
+
+  const sv = document.getElementById('biz-start').value;
+  const ev = document.getElementById('biz-end').value;
+  if (!sv || !ev) { resDiv.style.display = 'none'; return; }
+
+  const s = new Date(sv + 'T12:00:00');
+  const e = new Date(ev + 'T12:00:00');
+  if (isNaN(s) || isNaN(e)) { err.textContent = 'Invalid date'; resDiv.style.display = 'none'; return; }
+
+  const skip = document.getElementById('biz-holidays').checked;
+  const { count, holidays, forward } = countBusinessDays(s, e, skip);
+
+  const absCount = Math.abs(count);
+  document.getElementById('biz-count').textContent = (count < 0 ? '−' : '') + absCount.toLocaleString();
+  document.getElementById('biz-count-sub').textContent = 'business day' + (absCount !== 1 ? 's' : '') + (count < 0 ? ' (end is before start)' : '');
+
+  const totalDays = Math.round(Math.abs(e - s) / 86400000);
+  const weekendDays = totalDays + 1 - absCount - (skip ? holidays.length : 0);
+
+  const breakdown = document.getElementById('biz-breakdown');
+  breakdown.innerHTML = '';
+  [
+    [totalDays + 1, 'total days'],
+    [absCount, 'business days'],
+    [Math.max(0, weekendDays), 'weekend days'],
+    skip ? [holidays.length, 'holidays skipped'] : null,
+  ].filter(Boolean).forEach(([n, l]) => {
+    const chip = document.createElement('div');
+    chip.className = 'bday-chip';
+    chip.innerHTML = `<span class="bday-chip-n">${n}</span><span class="bday-chip-l">${l}</span>`;
+    breakdown.appendChild(chip);
+  });
+
+  const hl = document.getElementById('biz-holiday-list');
+  hl.innerHTML = '';
+  if (skip && holidays.length > 0) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.padding = '.75rem 1rem';
+    let h = '<div class="card-title">Holidays excluded</div><div style="display:flex;flex-wrap:wrap;gap:.4rem">';
+    holidays.forEach(hd => {
+      h += `<span style="background:#070720;border:1px solid #1e293b;border-radius:5px;padding:.2rem .6rem;font-size:.75rem;font-family:\'Courier New\',monospace;color:#94a3b8">${hd.toDateString()}</span>`;
+    });
+    h += '</div>';
+    card.innerHTML = h;
+    hl.appendChild(card);
+  }
+
+  resDiv.style.display = 'block';
+}
+
+function calcRevBiz() {
+  const err = document.getElementById('rev-err');
+  const resDiv = document.getElementById('rev-result');
+  err.textContent = '';
+
+  const sv = document.getElementById('rev-start').value;
+  const nv = document.getElementById('rev-n').value;
+  if (!sv || nv === '') { resDiv.style.display = 'none'; return; }
+
+  const s = new Date(sv + 'T12:00:00');
+  const n = parseInt(nv, 10);
+  if (isNaN(s) || isNaN(n)) { err.textContent = 'Invalid input'; resDiv.style.display = 'none'; return; }
+
+  const skip = document.getElementById('rev-holidays').checked;
+  const result = addBusinessDays(s, n, skip);
+
+  const fmt = result.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  document.getElementById('rev-date').textContent = fmt;
+  document.getElementById('rev-info').textContent =
+    `${n < 0 ? Math.abs(n) + ' business days before' : n + ' business days after'} ${s.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}` +
+    (skip ? ' (holidays excluded)' : '');
+
+  resDiv.style.display = 'block';
+}
+
+// ── ADD / SUBTRACT ───────────────────────────────────────────────────────────
+const OP_UNITS = ['years','months','weeks','days','hours','minutes','seconds'];
+let ops = [];
+
+function addOp() {
+  ops.push({ sign: '+', value: '', unit: 'days' });
+  renderOps();
+}
+
+function removeOp(i) {
+  ops.splice(i, 1);
+  renderOps();
+  calcChain();
+}
+
+function renderOps() {
+  const list = document.getElementById('ops-list');
+  list.innerHTML = '';
+  if (ops.length === 0) {
+    list.innerHTML = '<div style="font-size:.8rem;color:#334155;padding:.4rem 0">No operations yet — click "+ Add operation" to start</div>';
+    return;
+  }
+  ops.forEach((op, i) => {
+    const row = document.createElement('div');
+    row.className = 'op-row';
+
+    const signHTML = `<div class="op-sign">
+      <button class="op-sign-btn ${op.sign==='+'?'active':''}" onclick="setOpSign(${i},'+')">+</button>
+      <button class="op-sign-btn ${op.sign==='-'?'active':''}" onclick="setOpSign(${i},'-')">−</button>
+    </div>`;
+
+    const valHTML = `<input class="op-val" type="number" min="0" placeholder="0"
+      value="${op.value}" oninput="setOpVal(${i},this.value)">`;
+
+    const unitOpts = OP_UNITS.map(u => `<option value="${u}" ${u===op.unit?'selected':''}>${u}</option>`).join('');
+    const unitHTML = `<select class="op-unit-sel" onchange="setOpUnit(${i},this.value)">${unitOpts}</select>`;
+
+    const removeHTML = `<button class="op-remove" onclick="removeOp(${i})">✕</button>`;
+
+    row.innerHTML = signHTML + valHTML + unitHTML + removeHTML;
+    list.appendChild(row);
+  });
+}
+
+function setOpSign(i, s) { ops[i].sign = s; renderOps(); calcChain(); }
+function setOpVal(i, v)  { ops[i].value = v; calcChain(); }
+function setOpUnit(i, u) { ops[i].unit = u; calcChain(); }
+
+function addToDate(date, sign, amount, unit) {
+  const d = new Date(date);
+  const n = sign === '+' ? amount : -amount;
+  switch (unit) {
+    case 'years':   d.setFullYear(d.getFullYear() + n); break;
+    case 'months':  d.setMonth(d.getMonth() + n); break;
+    case 'weeks':   d.setDate(d.getDate() + n * 7); break;
+    case 'days':    d.setDate(d.getDate() + n); break;
+    case 'hours':   d.setHours(d.getHours() + n); break;
+    case 'minutes': d.setMinutes(d.getMinutes() + n); break;
+    case 'seconds': d.setSeconds(d.getSeconds() + n); break;
+  }
+  return d;
+}
+
+function calcChain() {
+  const err = document.getElementById('as-err');
+  const resDiv = document.getElementById('as-result');
+  err.textContent = '';
+
+  const sv = document.getElementById('as-start').value;
+  if (!sv) { resDiv.style.display = 'none'; return; }
+  let cur = new Date(sv);
+  if (isNaN(cur)) { err.textContent = 'Invalid start date'; resDiv.style.display = 'none'; return; }
+
+  const stepsDiv = document.getElementById('chain-steps');
+  stepsDiv.innerHTML = '';
+
+  const validOps = ops.filter(op => op.value !== '' && !isNaN(parseFloat(op.value)));
+  if (validOps.length === 0) {
+    // Show just the start date
+    document.getElementById('chain-big').textContent = cur.toLocaleString();
+    document.getElementById('chain-iso').textContent = cur.toISOString();
+    document.getElementById('chain-ts').textContent  = 'Unix: ' + Math.floor(cur.getTime() / 1000);
+    resDiv.style.display = 'block';
+    return;
+  }
+
+  let prev = new Date(cur);
+  validOps.forEach((op, i) => {
+    const amount = parseFloat(op.value);
+    cur = addToDate(cur, op.sign, amount, op.unit);
+    const step = document.createElement('div');
+    step.className = 'chain-step';
+    step.innerHTML = `<b>${op.sign === '+' ? '+' : '−'}${amount} ${op.unit}</b> → ${cur.toLocaleString()}`;
+    stepsDiv.appendChild(step);
+  });
+
+  document.getElementById('chain-big').textContent = cur.toLocaleString();
+  document.getElementById('chain-iso').textContent  = 'ISO: ' + cur.toISOString();
+  document.getElementById('chain-ts').textContent   = 'Unix: ' + Math.floor(cur.getTime() / 1000) + ' seconds';
+  resDiv.style.display = 'block';
+}
+
+// Init with one op
+addOp();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

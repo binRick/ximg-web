@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UUID Generator — uuid.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+.subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{padding:.65rem 1.1rem;font-size:.82rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:#c9d1d9}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.page-title{font-size:1.2rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+.page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+label.lbl{display:block;font-size:.7rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+input[type=text],textarea,select{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-family:'Courier New',monospace;font-size:.9rem;padding:.55rem .8rem;outline:none;transition:border-color .2s}
+input[type=text]:focus,textarea:focus,select:focus{border-color:#22d3ee55}
+input[type=text].error{border-color:#f8514988}
+select{font-family:'Segoe UI',system-ui,sans-serif;cursor:pointer}
+select option{background:#070720}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.version-btns{display:flex;gap:.6rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.ver-btn{background:#0a0a25;border:1px solid #1e293b;border-radius:6px;color:#94a3b8;cursor:pointer;padding:.55rem 1.1rem;font-size:.85rem;font-weight:600;transition:all .15s;font-family:inherit}
+.ver-btn:hover{border-color:#334155;color:#c9d1d9}
+.ver-btn.active{background:rgba(34,211,238,.1);border-color:#22d3ee55;color:#22d3ee}
+.uuid-display{font-family:'Courier New',monospace;font-size:1.45rem;font-weight:700;letter-spacing:.04em;margin:1.25rem 0;word-break:break-all;line-height:1.5}
+.uuid-segment{display:inline}
+.seg-time-low{color:#22d3ee}
+.seg-time-mid{color:#34d399}
+.seg-time-hi{color:#a78bfa}
+.seg-clock{color:#fb923c}
+.seg-node{color:#f472b6}
+.seg-rand{color:#22d3ee}
+.seg-ver{color:#fb923c;text-decoration:underline dotted;text-underline-offset:3px}
+.seg-variant{color:#f472b6;text-decoration:underline dotted;text-underline-offset:3px}
+.seg-unix{color:#34d399}
+.seg-seq{color:#a78bfa}
+.dash{color:#475569}
+.uuid-actions{display:flex;gap:.6rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.btn{background:#0a0a25;border:1px solid #334155;border-radius:5px;color:#94a3b8;cursor:pointer;padding:.4rem .9rem;font-size:.8rem;font-weight:600;transition:all .15s;font-family:inherit}
+.btn:hover{border-color:#22d3ee;color:#22d3ee}
+.btn.copied{border-color:#22c55e;color:#22c55e}
+.btn-regen{background:rgba(34,211,238,.08);border-color:#22d3ee44;color:#22d3ee}
+.btn-regen:hover{background:rgba(34,211,238,.15)}
+.legend{display:flex;flex-wrap:wrap;gap:.6rem 1.2rem;margin-bottom:1.25rem}
+.legend-item{display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:#94a3b8}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.structure-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:.75rem}
+.structure-table th{background:#040416;color:#64748b;padding:.4rem .7rem;text-align:left;font-weight:600;font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1e293b}
+.structure-table td{padding:.4rem .7rem;border-bottom:1px solid #0d1117;vertical-align:top}
+.structure-table tr:last-child td{border-bottom:none}
+.mono{font-family:'Courier New',monospace}
+.decode-error{font-size:.82rem;color:#f85149;min-height:1.2em;margin-bottom:.5rem}
+.decode-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.6rem;margin-top:1rem}
+.decode-card{background:#040416;border:1px solid #1e293b;border-radius:6px;padding:.85rem 1rem}
+.decode-label{font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem}
+.decode-val{font-family:'Courier New',monospace;font-size:.88rem;color:#e2e8f0;word-break:break-all}
+.decode-val.accent{color:#22d3ee}
+.formats-section{margin-top:1.25rem}
+.fmt-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem}
+.fmt-label{font-size:.75rem;color:#64748b;width:140px;flex-shrink:0}
+.fmt-val{font-family:'Courier New',monospace;font-size:.82rem;color:#94a3b8;flex:1;word-break:break-all}
+.bulk-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:.75rem;align-items:flex-end;margin-bottom:1rem}
+@media(max-width:600px){.bulk-controls{grid-template-columns:1fr}}
+.bulk-area{background:#040416;border:1px solid #1e293b;border-radius:6px;padding:.75rem;font-family:'Courier New',monospace;font-size:.82rem;color:#94a3b8;max-height:400px;overflow-y:auto;line-height:1.6;white-space:pre;user-select:all;min-height:80px}
+.bulk-actions{display:flex;gap:.6rem;margin-top:.75rem;flex-wrap:wrap}
+input[type=number]{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-size:.9rem;padding:.55rem .8rem;outline:none;transition:border-color .2s}
+input[type=number]:focus{border-color:#22d3ee55}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('generate')">Generate</button>
+  <button class="tab-btn" onclick="showTab('decode')">Decode</button>
+  <button class="tab-btn" onclick="showTab('bulk')">Bulk</button>
+</nav>
+
+<div class="page">
+
+<!-- GENERATE TAB -->
+<div id="generate" class="tab-panel active">
+  <div class="page-title">UUID Generator</div>
+  <div class="page-sub">Generate and inspect UUID v1, v4, and v7</div>
+
+  <div class="version-btns">
+    <button class="ver-btn active" id="vbtn-v1" onclick="selectVersion('v1',this)">v1 — Timestamp</button>
+    <button class="ver-btn" id="vbtn-v4" onclick="selectVersion('v4',this)">v4 — Random</button>
+    <button class="ver-btn" id="vbtn-v7" onclick="selectVersion('v7',this)">v7 — Unix-ts Sortable</button>
+  </div>
+
+  <div class="card">
+    <div class="uuid-display" id="uuid-display">generating...</div>
+    <div class="uuid-actions">
+      <button class="btn btn-regen" onclick="regen()">↻ Regenerate</button>
+      <button class="btn" id="copy-btn" onclick="copyUUID(this)">Copy</button>
+      <button class="btn" onclick="copyWithDashes(this)">Copy with dashes</button>
+      <button class="btn" onclick="copyUpper(this)">Copy UPPERCASE</button>
+    </div>
+    <div class="legend" id="legend"></div>
+    <table class="structure-table" id="structure-table">
+      <thead><tr><th>Field</th><th>Bits</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody id="structure-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DECODE TAB -->
+<div id="decode" class="tab-panel">
+  <div class="page-title">UUID Decoder</div>
+  <div class="page-sub">Paste any UUID to parse its version, variant, and embedded data</div>
+  <label class="lbl">UUID</label>
+  <input type="text" id="decode-input" placeholder="550e8400-e29b-41d4-a716-446655440000" oninput="decodeUUID()" style="margin-bottom:.5rem;font-size:1rem">
+  <div class="decode-error" id="decode-error"></div>
+  <div id="decode-results"></div>
+</div>
+
+<!-- BULK TAB -->
+<div id="bulk" class="tab-panel">
+  <div class="page-title">Bulk UUID Generator</div>
+  <div class="page-sub">Generate up to 1000 UUIDs at once</div>
+  <div class="bulk-controls">
+    <div>
+      <label class="lbl">Count</label>
+      <input type="number" id="bulk-count" value="10" min="1" max="1000">
+    </div>
+    <div>
+      <label class="lbl">Version</label>
+      <select id="bulk-ver">
+        <option value="v4">v4 — Random</option>
+        <option value="v1">v1 — Timestamp</option>
+        <option value="v7">v7 — Unix-ts Sortable</option>
+      </select>
+    </div>
+    <button class="btn btn-regen" style="padding:.55rem 1.1rem" onclick="genBulk()">Generate</button>
+  </div>
+  <div class="bulk-area" id="bulk-area">Click Generate to create UUIDs...</div>
+  <div class="bulk-actions">
+    <button class="btn" onclick="copyBulk(this)">Copy All</button>
+    <button class="btn" onclick="copyBulkNoDash(this)">Copy (no dashes)</button>
+    <button class="btn" onclick="copyBulkUpper(this)">Copy UPPERCASE</button>
+    <span id="bulk-count-label" style="font-size:.78rem;color:#475569;align-self:center"></span>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── UUID generation ────────────────────────────────────────────
+var currentVersion = 'v1';
+var currentUUID = '';
+
+function selectVersion(v, el){
+  currentVersion = v;
+  document.querySelectorAll('.ver-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  regen();
+}
+
+function rand16(){ return Math.floor(Math.random()*16); }
+function randHex(n){ var s=''; for(var i=0;i<n;i++) s+=rand16().toString(16); return s; }
+function randByte(){ return Math.floor(Math.random()*256); }
+
+// v4: fully random
+function uuidV4(){
+  var b = Array.from({length:16},()=>randByte());
+  b[6] = (b[6]&0x0f)|0x40;
+  b[8] = (b[8]&0x3f)|0x80;
+  return fmtBytes(b);
+}
+
+// v1: timestamp + clock seq + node
+function uuidV1(){
+  var now = new Date();
+  // 100ns intervals since Oct 15, 1582
+  var t = BigInt(now.getTime()) * BigInt(10000) + BigInt(122192928000000000);
+  var tLow = t & BigInt(0xFFFFFFFF);
+  var tMid = (t >> BigInt(32)) & BigInt(0xFFFF);
+  var tHi = (t >> BigInt(48)) & BigInt(0x0FFF);
+  var clockSeq = Math.floor(Math.random() * 0x3FFF) | 0x8000;
+  var node = Array.from({length:6},()=>randByte());
+  node[0] |= 0x01; // multicast bit for random node
+
+  var b = new Array(16);
+  b[0]=(Number(tLow)>>24)&0xFF; b[1]=(Number(tLow)>>16)&0xFF;
+  b[2]=(Number(tLow)>>8)&0xFF;  b[3]=Number(tLow)&0xFF;
+  b[4]=(Number(tMid)>>8)&0xFF;  b[5]=Number(tMid)&0xFF;
+  b[6]=((Number(tHi)>>8)&0x0F)|0x40; b[7]=Number(tHi)&0xFF;
+  b[8]=(clockSeq>>8)&0xFF;      b[9]=clockSeq&0xFF;
+  for(var i=0;i<6;i++) b[10+i]=node[i];
+  return { uuid: fmtBytes(b), ts: now, clockSeq: clockSeq & 0x3FFF, node: node };
+}
+
+// v7: unix timestamp in ms, random
+function uuidV7(){
+  var now = Date.now();
+  var b = Array.from({length:16},()=>randByte());
+  // First 48 bits: unix ts ms
+  b[0]=(now/Math.pow(2,40))&0xFF;
+  b[1]=(now/Math.pow(2,32))&0xFF;
+  b[2]=(now/Math.pow(2,24))&0xFF;
+  b[3]=(now/Math.pow(2,16))&0xFF;
+  b[4]=(now/Math.pow(2,8))&0xFF;
+  b[5]=now&0xFF;
+  b[6]=(b[6]&0x0f)|0x70;
+  b[8]=(b[8]&0x3f)|0x80;
+  return { uuid: fmtBytes(b), ts: new Date(now) };
+}
+
+function fmtBytes(b){
+  function h(x){ return x.toString(16).padStart(2,'0'); }
+  return h(b[0])+h(b[1])+h(b[2])+h(b[3])+'-'+
+         h(b[4])+h(b[5])+'-'+
+         h(b[6])+h(b[7])+'-'+
+         h(b[8])+h(b[9])+'-'+
+         h(b[10])+h(b[11])+h(b[12])+h(b[13])+h(b[14])+h(b[15]);
+}
+
+function regen(){
+  var result;
+  if(currentVersion==='v1'){
+    result = uuidV1();
+    currentUUID = result.uuid;
+    renderV1(result);
+  } else if(currentVersion==='v7'){
+    result = uuidV7();
+    currentUUID = result.uuid;
+    renderV7(result);
+  } else {
+    currentUUID = uuidV4();
+    renderV4(currentUUID);
+  }
+}
+
+function seg(cls,text){ return '<span class="uuid-segment '+cls+'">'+text+'</span>'; }
+function dash(){ return '<span class="dash">-</span>'; }
+
+function renderV4(uuid){
+  var p = uuid.split('-');
+  document.getElementById('uuid-display').innerHTML =
+    seg('seg-rand',p[0])+dash()+seg('seg-rand',p[1])+dash()+
+    seg('seg-ver',p[2][0])+seg('seg-rand',p[2].slice(1))+dash()+
+    seg('seg-variant',p[3][0])+seg('seg-rand',p[3].slice(1))+dash()+
+    seg('seg-rand',p[4]);
+  document.getElementById('legend').innerHTML =
+    '<div class="legend-item"><span class="legend-dot" style="background:#22d3ee"></span>Random data</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#fb923c"></span>Version (4)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#f472b6"></span>Variant bits</div>';
+  document.getElementById('structure-body').innerHTML =
+    '<tr><td class="mono seg-rand">'+p[0]+'-'+p[1]+'</td><td>48</td><td>random</td><td>Randomly generated bytes</td></tr>'+
+    '<tr><td class="mono"><span class="seg-ver">'+p[2][0]+'</span>'+p[2].slice(1)+'</td><td>4 + 12</td><td>version=4</td><td>First nibble encodes version 4; remaining 12 bits random</td></tr>'+
+    '<tr><td class="mono"><span class="seg-variant">'+p[3][0]+'</span>'+p[3].slice(1)+'</td><td>2 + 14</td><td>variant=10xx</td><td>Top 2 bits = 10 (RFC 4122 variant); 14 bits random</td></tr>'+
+    '<tr><td class="mono seg-rand">'+p[4]+'</td><td>48</td><td>random</td><td>Randomly generated node bytes</td></tr>';
+}
+
+function renderV1(result){
+  var uuid = result.uuid;
+  var p = uuid.split('-');
+  document.getElementById('uuid-display').innerHTML =
+    seg('seg-time-low',p[0])+dash()+seg('seg-time-mid',p[1])+dash()+
+    seg('seg-ver',p[2][0])+seg('seg-time-hi',p[2].slice(1))+dash()+
+    seg('seg-variant',p[3][0])+seg('seg-clock',p[3].slice(1))+dash()+
+    seg('seg-node',p[4]);
+  var tsStr = result.ts.toISOString();
+  document.getElementById('legend').innerHTML =
+    '<div class="legend-item"><span class="legend-dot" style="background:#22d3ee"></span>time_low (32 bits)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#34d399"></span>time_mid (16 bits)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>time_hi (12 bits)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#fb923c"></span>Version (1)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#f472b6"></span>Clock sequence</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#f472b6;opacity:.6"></span>Node ID (MAC/random)</div>';
+  document.getElementById('structure-body').innerHTML =
+    '<tr><td class="mono seg-time-low">'+p[0]+'</td><td>32</td><td>time_low</td><td>Least significant 32 bits of 60-bit timestamp</td></tr>'+
+    '<tr><td class="mono seg-time-mid">'+p[1]+'</td><td>16</td><td>time_mid</td><td>Middle 16 bits of timestamp</td></tr>'+
+    '<tr><td class="mono"><span class="seg-ver">'+p[2][0]+'</span><span class="seg-time-hi">'+p[2].slice(1)+'</span></td><td>4+12</td><td>version + time_hi</td><td>Top nibble = version 1; remaining 12 bits = time high</td></tr>'+
+    '<tr><td class="mono"><span class="seg-variant">'+p[3][0]+'</span><span class="seg-clock">'+p[3].slice(1)+'</span></td><td>2+14</td><td>variant + clock_seq</td><td>Variant (RFC 4122) + clock sequence to avoid duplicates</td></tr>'+
+    '<tr><td class="mono seg-node">'+p[4]+'</td><td>48</td><td>node</td><td>Typically MAC address; here random (multicast bit set)</td></tr>'+
+    '<tr><td colspan="4" style="color:#475569;font-size:.8rem;padding-top:.6rem">Timestamp: '+tsStr+' · Clock seq: '+result.clockSeq+' · Epoch: Oct 15, 1582 (100ns intervals)</td></tr>';
+}
+
+function renderV7(result){
+  var uuid = result.uuid;
+  var p = uuid.split('-');
+  document.getElementById('uuid-display').innerHTML =
+    seg('seg-unix',p[0])+dash()+seg('seg-unix',p[1])+dash()+
+    seg('seg-ver',p[2][0])+seg('seg-seq',p[2].slice(1))+dash()+
+    seg('seg-variant',p[3][0])+seg('seg-rand',p[3].slice(1))+dash()+
+    seg('seg-rand',p[4]);
+  var tsStr = result.ts.toISOString();
+  document.getElementById('legend').innerHTML =
+    '<div class="legend-item"><span class="legend-dot" style="background:#34d399"></span>Unix timestamp (ms, 48 bits)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#fb923c"></span>Version (7)</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Sub-ms sequence</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#f472b6"></span>Variant bits</div>'+
+    '<div class="legend-item"><span class="legend-dot" style="background:#22d3ee"></span>Random</div>';
+  document.getElementById('structure-body').innerHTML =
+    '<tr><td class="mono seg-unix">'+p[0]+p[1]+'</td><td>48</td><td>unix_ts_ms</td><td>Milliseconds since Unix epoch (Jan 1, 1970) — enables lexicographic sort</td></tr>'+
+    '<tr><td class="mono"><span class="seg-ver">'+p[2][0]+'</span><span class="seg-seq">'+p[2].slice(1)+'</span></td><td>4+12</td><td>version + rand_a</td><td>Version nibble = 7; 12 bits random (may be used for sub-ms sequence)</td></tr>'+
+    '<tr><td class="mono"><span class="seg-variant">'+p[3][0]+'</span><span class="seg-rand">'+p[3].slice(1)+'</span></td><td>2+14</td><td>variant + rand_b</td><td>RFC 4122 variant bits; remaining 14 bits random</td></tr>'+
+    '<tr><td class="mono seg-rand">'+p[4]+'</td><td>48</td><td>rand_b</td><td>Random data for uniqueness</td></tr>'+
+    '<tr><td colspan="4" style="color:#475569;font-size:.8rem;padding-top:.6rem">Timestamp: '+tsStr+' ('+result.ts.getTime()+' ms) — lexicographically sortable by time</td></tr>';
+}
+
+// ── Decode ─────────────────────────────────────────────────────
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function normalizeUUID(s){
+  s = s.trim().toLowerCase().replace(/^urn:uuid:/i,'');
+  if(!s.includes('-') && s.length===32){
+    s = s.slice(0,8)+'-'+s.slice(8,12)+'-'+s.slice(12,16)+'-'+s.slice(16,20)+'-'+s.slice(20);
+  }
+  return s;
+}
+
+function decodeUUID(){
+  var raw = document.getElementById('decode-input').value;
+  var errEl = document.getElementById('decode-error');
+  var resDiv = document.getElementById('decode-results');
+  errEl.textContent = '';
+  resDiv.innerHTML = '';
+  if(!raw.trim()) return;
+
+  var uuid = normalizeUUID(raw);
+  if(!UUID_RE.test(uuid)){ errEl.textContent = 'Invalid UUID format'; return; }
+
+  var parts = uuid.split('-');
+  var hex = uuid.replace(/-/g,'');
+  var version = parseInt(hex[12], 16);
+  var variantNibble = parseInt(hex[16], 16);
+  var variant;
+  if((variantNibble & 0x8) === 0) variant = 'NCS backward compat (0xxx)';
+  else if((variantNibble & 0xC) === 0x8) variant = 'RFC 4122 / IETF (10xx)';
+  else if((variantNibble & 0xE) === 0xC) variant = 'Microsoft COM (110x)';
+  else variant = 'Reserved (111x)';
+
+  var cards = [
+    {label:'UUID (canonical)', val: uuid, accent:true},
+    {label:'Version', val: 'Version '+version+(version===1?' (time-based)':version===3?' (MD5 namespace)':version===4?' (random)':version===5?' (SHA-1 namespace)':version===7?' (Unix-ts sortable)':version===8?' (custom)':'')},
+    {label:'Variant', val: variant},
+    {label:'Without dashes', val: hex},
+    {label:'UPPERCASE', val: uuid.toUpperCase()},
+    {label:'URN format', val: 'urn:uuid:'+uuid},
+    {label:'Braces format', val: '{'+uuid+'}'},
+  ];
+
+  // Version-specific extraction
+  if(version===1){
+    try{
+      var tLow = parseInt(hex.slice(0,8),16);
+      var tMid = parseInt(hex.slice(8,12),16);
+      var tHi = parseInt(hex.slice(13,16),16);
+      var ts100ns = BigInt(tHi)*BigInt(0x100000000)*BigInt(0x10000) + BigInt(tMid)*BigInt(0x100000000) + BigInt(tLow);
+      var epochDiff = BigInt(122192928000000000);
+      var tsMs = (ts100ns - epochDiff) / BigInt(10000);
+      var dt = new Date(Number(tsMs));
+      cards.push({label:'Embedded Timestamp (v1)', val: dt.toISOString()+' ('+dt.toLocaleString()+')', accent:true});
+      cards.push({label:'Clock Sequence', val: (parseInt(hex.slice(16,20),16) & 0x3FFF).toString()});
+      cards.push({label:'Node ID', val: hex.slice(20).match(/../g).join(':')});
+    }catch(e){}
+  } else if(version===7){
+    try{
+      var tsMs7 = parseInt(hex.slice(0,12),16);
+      var dt7 = new Date(tsMs7);
+      cards.push({label:'Embedded Timestamp (v7)', val: dt7.toISOString()+' ('+tsMs7+' ms)', accent:true});
+      cards.push({label:'Sortable by?', val: 'Lexicographic order = chronological order'});
+    }catch(e){}
+  }
+
+  resDiv.innerHTML = '<div class="decode-results">'+
+    cards.map(function(c){
+      return '<div class="decode-card"><div class="decode-label">'+c.label+'</div>'+
+        '<div class="decode-val'+(c.accent?' accent':'')+'">'+c.val+'</div></div>';
+    }).join('')+
+    '</div>';
+}
+
+// ── Bulk ───────────────────────────────────────────────────────
+var bulkList = [];
+
+function genBulk(){
+  var count = Math.max(1, Math.min(1000, parseInt(document.getElementById('bulk-count').value)||10));
+  var ver = document.getElementById('bulk-ver').value;
+  bulkList = [];
+  for(var i=0;i<count;i++){
+    if(ver==='v1') bulkList.push(uuidV1().uuid);
+    else if(ver==='v7') bulkList.push(uuidV7().uuid);
+    else bulkList.push(uuidV4());
+  }
+  document.getElementById('bulk-area').textContent = bulkList.join('\n');
+  document.getElementById('bulk-count-label').textContent = count+' UUIDs generated';
+}
+
+function copyBulk(btn){
+  var text = bulkList.join('\n');
+  if(!text){ return; }
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy All'; btn.classList.remove('copied'); },1500);
+  });
+}
+function copyBulkNoDash(btn){
+  var text = bulkList.map(function(u){ return u.replace(/-/g,''); }).join('\n');
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy (no dashes)'; btn.classList.remove('copied'); },1500);
+  });
+}
+function copyBulkUpper(btn){
+  var text = bulkList.map(function(u){ return u.toUpperCase(); }).join('\n');
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy UPPERCASE'; btn.classList.remove('copied'); },1500);
+  });
+}
+
+// ── Copy helpers ───────────────────────────────────────────────
+function copyUUID(btn){
+  navigator.clipboard.writeText(currentUUID.replace(/-/g,'')).then(function(){
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy'; btn.classList.remove('copied'); },1500);
+  });
+}
+function copyWithDashes(btn){
+  navigator.clipboard.writeText(currentUUID).then(function(){
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy with dashes'; btn.classList.remove('copied'); },1500);
+  });
+}
+function copyUpper(btn){
+  navigator.clipboard.writeText(currentUUID.toUpperCase()).then(function(){
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy UPPERCASE'; btn.classList.remove('copied'); },1500);
+  });
+}
+
+// Init
+regen();
+genBulk();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

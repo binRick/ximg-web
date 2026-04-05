@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIDR / Subnet Calculator — cidr.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+.subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{padding:.65rem 1.1rem;font-size:.82rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:#c9d1d9}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.page-title{font-size:1.2rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+.page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+label.lbl{display:block;font-size:.7rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+input[type=text]{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-family:'Courier New',monospace;font-size:1rem;padding:.65rem .9rem;outline:none;transition:border-color .2s}
+input[type=text]:focus{border-color:#22d3ee55}
+input[type=text].error{border-color:#f8514988}
+.calc-input-row{display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1.5rem}
+.calc-input-row>div:first-child{flex:1}
+.calc-btn{background:linear-gradient(135deg,#0e7490,#22d3ee);color:#02020f;border:none;border-radius:6px;padding:.65rem 1.4rem;font-size:.9rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.calc-btn:hover{opacity:.85}
+.error-msg{font-size:.8rem;color:#f85149;min-height:1.2em;margin-bottom:.75rem}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.result-card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem 1.2rem}
+.result-label{font-size:.7rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem}
+.result-val{font-family:'Courier New',monospace;font-size:1.05rem;color:#22d3ee;font-weight:600;word-break:break-all}
+.result-sub{font-size:.75rem;color:#475569;margin-top:.2rem}
+.result-card.highlight{border-color:#22d3ee44;background:#050d1a}
+.host-bar-wrap{margin:1.5rem 0 .5rem}
+.host-bar-label{font-size:.78rem;color:#94a3b8;margin-bottom:.4rem}
+.host-bar{height:28px;background:#1e293b;border-radius:5px;overflow:hidden;display:flex;position:relative}
+.host-bar-net{background:#0e7490;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#e2e8f0;font-weight:700;min-width:2px}
+.host-bar-hosts{background:#22d3ee22;border:1px solid #22d3ee44;height:100%;flex:1;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#22d3ee}
+.host-bar-bc{background:#0e7490;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#e2e8f0;font-weight:700;min-width:2px}
+.binary-section{margin-top:1.5rem}
+.binary-title{font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+.binary-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap}
+.binary-label{font-size:.75rem;color:#64748b;width:130px;flex-shrink:0}
+.binary-bits{display:flex;gap:2px;flex-wrap:wrap}
+.bit{display:inline-flex;width:18px;height:22px;align-items:center;justify-content:center;font-family:'Courier New',monospace;font-size:.75rem;border-radius:3px;font-weight:700}
+.bit-1{background:#22d3ee22;color:#22d3ee;border:1px solid #22d3ee44}
+.bit-0{background:#1e293b22;color:#475569;border:1px solid #1e293b}
+.bit-net{background:#0e749022;color:#0e7490;border:1px solid #0e749044}
+.bit-host{background:#7c3aed22;color:#a78bfa;border:1px solid #7c3aed44}
+.bit-sep{width:6px;display:inline-block}
+.octet-sep{width:4px;height:22px;display:inline-flex;align-items:center;color:#334155;font-size:.8rem}
+.ref-table{width:100%;border-collapse:collapse;font-size:.83rem}
+.ref-table th{background:#070720;color:#64748b;padding:.45rem .75rem;text-align:left;font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1e293b;cursor:pointer;white-space:nowrap}
+.ref-table th:hover{color:#c9d1d9}
+.ref-table th.sorted{color:#22d3ee}
+.ref-table td{padding:.45rem .75rem;border-bottom:1px solid #0d1117;font-family:'Courier New',monospace;font-size:.82rem}
+.ref-table tr:hover td{background:#070720}
+.common-tag{display:inline-block;background:#22d3ee15;color:#22d3ee;border-radius:3px;padding:.1rem .4rem;font-size:.68rem;font-family:'Segoe UI',sans-serif;font-weight:600}
+.range-form{display:grid;grid-template-columns:1fr 1fr auto;gap:.75rem;align-items:flex-end;margin-bottom:1.5rem}
+@media(max-width:600px){.range-form{grid-template-columns:1fr}.results-grid{grid-template-columns:1fr}}
+.cidr-list{list-style:none;margin-top:1rem}
+.cidr-item{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:#070720;border:1px solid #1e293b;border-radius:6px;margin-bottom:.4rem;font-family:'Courier New',monospace;font-size:.9rem}
+.cidr-item .net{color:#22d3ee;flex:0 0 180px}
+.cidr-item .info{color:#64748b;font-size:.78rem;font-family:'Segoe UI',sans-serif}
+.ipv6-badge{display:inline-block;background:#7c3aed22;color:#a78bfa;border:1px solid #7c3aed44;border-radius:3px;padding:.1rem .45rem;font-size:.68rem;font-weight:700;margin-left:.4rem;vertical-align:middle;font-family:'Segoe UI',sans-serif}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('calc')">Calculator</button>
+  <button class="tab-btn" onclick="showTab('range')">Range → CIDR</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div class="page">
+
+<!-- CALCULATOR TAB -->
+<div id="calc" class="tab-panel active">
+  <div class="page-title">CIDR / Subnet Calculator</div>
+  <div class="page-sub">Enter IPv4 or IPv6 CIDR notation (e.g. 192.168.1.0/24 or 10.0.0.0/8)</div>
+  <div class="calc-input-row">
+    <div>
+      <label class="lbl">CIDR Notation</label>
+      <input type="text" id="cidr-input" placeholder="192.168.1.0/24" oninput="calcCIDR()">
+    </div>
+    <button class="calc-btn" onclick="calcCIDR()">Calculate</button>
+  </div>
+  <div class="error-msg" id="cidr-error"></div>
+  <div id="cidr-results" style="display:none">
+    <div class="results-grid" id="cidr-cards"></div>
+    <div id="cidr-bar-wrap" class="host-bar-wrap"></div>
+    <div id="cidr-binary" class="binary-section"></div>
+  </div>
+</div>
+
+<!-- RANGE TAB -->
+<div id="range" class="tab-panel">
+  <div class="page-title">IP Range → CIDR Blocks</div>
+  <div class="page-sub">Find the minimal set of CIDR blocks that exactly cover a start–end IP range</div>
+  <div class="range-form">
+    <div>
+      <label class="lbl">Start IP</label>
+      <input type="text" id="range-start" placeholder="192.168.1.0" oninput="calcRange()">
+    </div>
+    <div>
+      <label class="lbl">End IP</label>
+      <input type="text" id="range-end" placeholder="192.168.1.255" oninput="calcRange()">
+    </div>
+    <button class="calc-btn" onclick="calcRange()">Calculate</button>
+  </div>
+  <div class="error-msg" id="range-error"></div>
+  <div id="range-results"></div>
+</div>
+
+<!-- REFERENCE TAB -->
+<div id="reference" class="tab-panel">
+  <div class="page-title">CIDR Reference Table</div>
+  <div class="page-sub">IPv4 prefix lengths /8 – /32 with host counts and typical use cases</div>
+  <table class="ref-table" id="ref-table">
+    <thead>
+      <tr>
+        <th onclick="sortRef(0)">Prefix</th>
+        <th onclick="sortRef(1)">Subnet Mask</th>
+        <th onclick="sortRef(2)">Hosts</th>
+        <th onclick="sortRef(3)">Addresses</th>
+        <th>Use Case</th>
+      </tr>
+    </thead>
+    <tbody id="ref-body"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── IPv4 utils ─────────────────────────────────────────────────
+function ipToLong(ip){
+  var parts = ip.split('.');
+  if(parts.length !== 4) return NaN;
+  var n = 0;
+  for(var i=0;i<4;i++){
+    var x = parseInt(parts[i],10);
+    if(isNaN(x)||x<0||x>255) return NaN;
+    n = (n*256)+x;
+  }
+  return n >>> 0;
+}
+function longToIp(n){
+  return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255].join('.');
+}
+function toBinary32(n){
+  var s = (n>>>0).toString(2);
+  while(s.length < 32) s = '0' + s;
+  return s;
+}
+function ipClass(ip){
+  var o = parseInt(ip.split('.')[0],10);
+  if(o<128) return 'A';
+  if(o<192) return 'B';
+  if(o<224) return 'C';
+  if(o<240) return 'D (Multicast)';
+  return 'E (Reserved)';
+}
+function isPrivate(ip){
+  var n = ipToLong(ip);
+  if(n>=ipToLong('10.0.0.0') && n<=ipToLong('10.255.255.255')) return 'RFC 1918 (Class A private)';
+  if(n>=ipToLong('172.16.0.0') && n<=ipToLong('172.31.255.255')) return 'RFC 1918 (Class B private)';
+  if(n>=ipToLong('192.168.0.0') && n<=ipToLong('192.168.255.255')) return 'RFC 1918 (Class C private)';
+  if(n>=ipToLong('127.0.0.0') && n<=ipToLong('127.255.255.255')) return 'Loopback';
+  if(n>=ipToLong('169.254.0.0') && n<=ipToLong('169.254.255.255')) return 'Link-local (APIPA)';
+  if(n>=ipToLong('224.0.0.0') && n<=ipToLong('239.255.255.255')) return 'Multicast';
+  return 'Public';
+}
+
+// ── IPv6 utils ─────────────────────────────────────────────────
+function expandIPv6(addr){
+  if(addr.includes('::')) {
+    var parts = addr.split('::');
+    var left = parts[0] ? parts[0].split(':') : [];
+    var right = parts[1] ? parts[1].split(':') : [];
+    var missing = 8 - left.length - right.length;
+    var mid = Array(missing).fill('0000');
+    return left.concat(mid, right).map(function(g){ return g.padStart(4,'0'); }).join(':');
+  }
+  return addr.split(':').map(function(g){ return g.padStart(4,'0'); }).join(':');
+}
+function ipv6ToWords(addr){
+  return expandIPv6(addr).split(':').map(function(g){ return parseInt(g,16); });
+}
+
+function isIPv6(s){ return s.includes(':'); }
+
+function ipv6NetworkAddr(words, prefix){
+  var out = words.slice();
+  var bitsLeft = 128 - prefix;
+  for(var i=7;i>=0;i--){
+    if(bitsLeft<=0) break;
+    if(bitsLeft>=16){ out[i]=0; bitsLeft-=16; }
+    else { var mask = 0xFFFF & (0xFFFF << bitsLeft); out[i] &= mask; bitsLeft=0; }
+  }
+  return out;
+}
+function ipv6ToStr(words){
+  // Use :: compression for longest run of zeros
+  var s = words.map(function(w){ return w.toString(16); }).join(':');
+  return s;
+}
+
+// ── CIDR Calculator ────────────────────────────────────────────
+function calcCIDR(){
+  var val = (document.getElementById('cidr-input').value||'').trim();
+  var errEl = document.getElementById('cidr-error');
+  var resDiv = document.getElementById('cidr-results');
+  errEl.textContent = '';
+  resDiv.style.display = 'none';
+
+  if(!val){ errEl.textContent = ''; return; }
+
+  if(isIPv6(val)){
+    calcCIDRv6(val);
+    return;
+  }
+
+  // IPv4
+  var slash = val.indexOf('/');
+  if(slash < 0){ errEl.textContent = 'Missing prefix length (e.g. /24)'; return; }
+  var ipPart = val.slice(0, slash);
+  var prefix = parseInt(val.slice(slash+1), 10);
+  if(isNaN(prefix)||prefix<0||prefix>32){ errEl.textContent = 'Prefix must be 0–32'; return; }
+  var ipLong = ipToLong(ipPart);
+  if(isNaN(ipLong)){ errEl.textContent = 'Invalid IPv4 address'; return; }
+
+  var maskLong = prefix===0 ? 0 : (0xFFFFFFFF << (32-prefix)) >>> 0;
+  var netLong = (ipLong & maskLong) >>> 0;
+  var bcLong = (netLong | (~maskLong >>> 0)) >>> 0;
+  var totalAddrs = prefix===32 ? 1 : prefix===31 ? 2 : Math.pow(2, 32-prefix);
+  var hostCount = prefix>=31 ? (prefix===32?0:2) : totalAddrs - 2;
+  var firstHost = prefix>=31 ? longToIp(netLong) : longToIp(netLong+1);
+  var lastHost = prefix>=31 ? longToIp(bcLong) : longToIp(bcLong-1);
+
+  var netIp = longToIp(netLong);
+  var bcIp = longToIp(bcLong);
+  var maskIp = longToIp(maskLong);
+  var wildIp = longToIp(~maskLong >>> 0);
+
+  var cards = [
+    {label:'Network Address', val: netIp, sub:'', hi:true},
+    {label:'Broadcast Address', val: bcIp, sub:''},
+    {label:'Subnet Mask', val: maskIp, sub:'/'+prefix},
+    {label:'Wildcard Mask', val: wildIp, sub:'(inverse mask)'},
+    {label:'Usable Host Count', val: hostCount.toLocaleString(), sub: totalAddrs.toLocaleString() + ' total addresses'},
+    {label:'First Usable Host', val: firstHost, sub:''},
+    {label:'Last Usable Host', val: lastHost, sub:''},
+    {label:'IP Class', val: 'Class ' + ipClass(netIp), sub: isPrivate(netIp)},
+    {label:'Input IP', val: longToIp(ipLong), sub: prefix>=1&&prefix<=32 ? 'As entered':''},
+    {label:'Binary Prefix', val: '/'+prefix + ' (' + (32-prefix) + ' host bits)', sub:''},
+  ];
+
+  var html = cards.map(function(c){
+    return '<div class="result-card'+(c.hi?' highlight':'')+'">'+
+      '<div class="result-label">'+c.label+'</div>'+
+      '<div class="result-val">'+c.val+'</div>'+
+      (c.sub?'<div class="result-sub">'+c.sub+'</div>':'')+
+      '</div>';
+  }).join('');
+  document.getElementById('cidr-cards').innerHTML = html;
+
+  // Bar visualization
+  var barHtml = '<div class="host-bar-label">Address space visualization ('+totalAddrs.toLocaleString()+' addresses)</div>'+
+    '<div class="host-bar">'+
+      '<div class="host-bar-net" style="width:'+(prefix<=30?'20px':'14px');
+  barHtml += '" title="'+netIp+'">N</div>';
+  if(hostCount > 0){
+    barHtml += '<div class="host-bar-hosts" title="'+firstHost+' – '+lastHost+'">'+
+      (hostCount>1?hostCount.toLocaleString()+' hosts':firstHost)+'</div>';
+  }
+  if(prefix<=30) barHtml += '<div class="host-bar-bc" style="width:20px" title="'+bcIp+'">BC</div>';
+  barHtml += '</div>';
+  document.getElementById('cidr-bar-wrap').innerHTML = barHtml;
+
+  // Binary representation
+  var ipBin = toBinary32(ipLong);
+  var netBin = toBinary32(netLong);
+  var maskBin = toBinary32(maskLong);
+  function renderBits(binStr, netPfx){
+    var bits = '';
+    for(var i=0;i<32;i++){
+      if(i>0 && i%8===0) bits += '<span class="octet-sep">.</span>';
+      var cls = i < netPfx ? 'bit-net' : 'bit-host';
+      bits += '<span class="bit '+cls+'" title="bit '+(i+1)+'">'+binStr[i]+'</span>';
+    }
+    return bits;
+  }
+  var binHtml = '<div class="binary-title">Binary Representation (cyan=network bits, purple=host bits)</div>'+
+    '<div class="binary-row"><span class="binary-label">IP Address</span><div class="binary-bits">'+renderBits(ipBin,prefix)+'</div></div>'+
+    '<div class="binary-row"><span class="binary-label">Network Addr</span><div class="binary-bits">'+renderBits(netBin,prefix)+'</div></div>'+
+    '<div class="binary-row"><span class="binary-label">Subnet Mask</span><div class="binary-bits">'+
+    (function(){
+      var b='';
+      for(var i=0;i<32;i++){
+        if(i>0&&i%8===0) b+='<span class="octet-sep">.</span>';
+        b+='<span class="bit '+(i<prefix?'bit-1':'bit-0')+'">'+maskBin[i]+'</span>';
+      }
+      return b;
+    })()+
+    '</div></div>';
+  document.getElementById('cidr-binary').innerHTML = binHtml;
+
+  resDiv.style.display = 'block';
+}
+
+function calcCIDRv6(val){
+  var errEl = document.getElementById('cidr-error');
+  var resDiv = document.getElementById('cidr-results');
+  var slash = val.indexOf('/');
+  if(slash < 0){ errEl.textContent = 'Missing prefix length'; return; }
+  var addrPart = val.slice(0, slash);
+  var prefix = parseInt(val.slice(slash+1), 10);
+  if(isNaN(prefix)||prefix<0||prefix>128){ errEl.textContent = 'IPv6 prefix must be 0–128'; return; }
+
+  var words;
+  try { words = ipv6ToWords(addrPart); if(words.length!==8||words.some(isNaN)) throw 0; }
+  catch(e){ errEl.textContent = 'Invalid IPv6 address'; return; }
+
+  var netWords = ipv6NetworkAddr(words, prefix);
+  var totalHosts = prefix>=128 ? BigInt(1) : BigInt(2) ** BigInt(128-prefix);
+  var usable = prefix>=128 ? BigInt(0) : totalHosts - BigInt(2);
+
+  var cards = [
+    {label:'Network Address', val: ipv6ToStr(netWords), hi:true},
+    {label:'Prefix Length', val: '/'+prefix},
+    {label:'Total Addresses', val: prefix<=64 ? '2^'+(128-prefix)+' ('+((128-prefix)>53?'huge':totalHosts.toLocaleString())+')' : totalHosts.toLocaleString()},
+    {label:'Host Bits', val: (128-prefix)+' bits'},
+    {label:'Input Address', val: ipv6ToStr(words)},
+    {label:'Type', val: addrPart.startsWith('fe80') ? 'Link-local' : addrPart.startsWith('fc')||addrPart.startsWith('fd') ? 'Unique local (RFC 4193)' : addrPart.startsWith('2001:db8') ? 'Documentation (RFC 3849)' : addrPart==='::1'?'Loopback':'Global unicast'},
+  ];
+
+  var html = cards.map(function(c){
+    return '<div class="result-card'+(c.hi?' highlight':'')+'">'+
+      '<div class="result-label">'+c.label+'<span class="ipv6-badge">IPv6</span></div>'+
+      '<div class="result-val" style="font-size:.9rem">'+c.val+'</div>'+
+      '</div>';
+  }).join('');
+  document.getElementById('cidr-cards').innerHTML = html;
+  document.getElementById('cidr-bar-wrap').innerHTML = '';
+  document.getElementById('cidr-binary').innerHTML = '';
+  resDiv.style.display = 'block';
+}
+
+// ── Range → CIDR ───────────────────────────────────────────────
+function calcRange(){
+  var startVal = (document.getElementById('range-start').value||'').trim();
+  var endVal = (document.getElementById('range-end').value||'').trim();
+  var errEl = document.getElementById('range-error');
+  var resDiv = document.getElementById('range-results');
+  errEl.textContent = '';
+  resDiv.innerHTML = '';
+
+  if(!startVal || !endVal) return;
+
+  var startLong = ipToLong(startVal);
+  var endLong = ipToLong(endVal);
+  if(isNaN(startLong)){ errEl.textContent = 'Invalid start IP'; return; }
+  if(isNaN(endLong)){ errEl.textContent = 'Invalid end IP'; return; }
+  if(startLong > endLong){ errEl.textContent = 'Start IP must be ≤ End IP'; return; }
+
+  var blocks = rangeToCIDR(startLong, endLong);
+  var total = endLong - startLong + 1;
+  var html = '<div style="font-size:.82rem;color:#64748b;margin-bottom:.75rem">'+
+    blocks.length+' CIDR block'+(blocks.length!==1?'s':'')+' covering '+total.toLocaleString()+' addresses</div>'+
+    '<ul class="cidr-list">'+
+    blocks.map(function(b){
+      var hosts = Math.pow(2, 32-b.prefix);
+      var usable = b.prefix>=31 ? hosts : hosts-2;
+      return '<li class="cidr-item"><span class="net">'+longToIp(b.net)+'/'+b.prefix+'</span>'+
+        '<span class="info">'+(b.prefix<=30?usable.toLocaleString()+' usable hosts':b.prefix===31?'2 hosts (point-to-point)':'Host route')+
+        ' · '+hosts.toLocaleString()+' total</span></li>';
+    }).join('')+
+    '</ul>';
+  resDiv.innerHTML = html;
+}
+
+function rangeToCIDR(start, end){
+  var result = [];
+  var current = start >>> 0;
+  var last = end >>> 0;
+  while(current <= last){
+    var prefix = 32;
+    // Find largest block aligned at current that doesn't exceed last
+    while(prefix > 0){
+      var testPrefix = prefix - 1;
+      var mask = testPrefix === 0 ? 0 : (0xFFFFFFFF << (32-testPrefix)) >>> 0;
+      var netAddr = (current & mask) >>> 0;
+      var bcAddr = (netAddr | (~mask >>> 0)) >>> 0;
+      if(netAddr !== current || bcAddr > last) break;
+      prefix = testPrefix;
+    }
+    var blockSize = Math.pow(2, 32-prefix);
+    result.push({ net: current, prefix: prefix });
+    current = (current + blockSize) >>> 0;
+    if(current === 0) break; // overflow
+  }
+  return result;
+}
+
+// ── Reference table ────────────────────────────────────────────
+var REF_DATA = [
+  [8,  '255.0.0.0',         16777214, 16777216, 'Class A block, large ISP allocation'],
+  [9,  '255.128.0.0',       8388606,  8388608,  'Half Class A'],
+  [10, '255.192.0.0',       4194302,  4194304,  'Quarter Class A'],
+  [11, '255.224.0.0',       2097150,  2097152,  ''],
+  [12, '255.240.0.0',       1048574,  1048576,  'Large enterprise'],
+  [13, '255.248.0.0',       524286,   524288,   ''],
+  [14, '255.252.0.0',       262142,   262144,   ''],
+  [15, '255.254.0.0',       131070,   131072,   ''],
+  [16, '255.255.0.0',       65534,    65536,    'Class B, medium enterprise'],
+  [17, '255.255.128.0',     32766,    32768,    ''],
+  [18, '255.255.192.0',     16382,    16384,    ''],
+  [19, '255.255.224.0',     8190,     8192,     ''],
+  [20, '255.255.240.0',     4094,     4096,     ''],
+  [21, '255.255.248.0',     2046,     2048,     ''],
+  [22, '255.255.252.0',     1022,     1024,     'Medium office'],
+  [23, '255.255.254.0',     510,      512,      ''],
+  [24, '255.255.255.0',     254,      256,      'Class C, small LAN', true],
+  [25, '255.255.255.128',   126,      128,      'Half class C'],
+  [26, '255.255.255.192',   62,       64,       'Small dept'],
+  [27, '255.255.255.224',   30,       32,       'Small team'],
+  [28, '255.255.255.240',   14,       16,       'Small subnet'],
+  [29, '255.255.255.248',   6,        8,        'Tiny subnet'],
+  [30, '255.255.255.252',   2,        4,        'Point-to-point link', true],
+  [31, '255.255.255.254',   2,        2,        'P2P (RFC 3021, no broadcast)'],
+  [32, '255.255.255.255',   0,        1,        'Host route'],
+];
+
+var refSortCol = 0, refSortAsc = true;
+function sortRef(col){
+  if(refSortCol===col) refSortAsc=!refSortAsc;
+  else { refSortCol=col; refSortAsc=true; }
+  document.querySelectorAll('.ref-table th').forEach(function(th,i){ th.classList.toggle('sorted',i===col); });
+  buildRef();
+}
+function buildRef(){
+  var data = REF_DATA.slice().sort(function(a,b){
+    var av = a[refSortCol], bv = b[refSortCol];
+    if(typeof av==='number') return refSortAsc ? av-bv : bv-av;
+    return refSortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+  document.getElementById('ref-body').innerHTML = data.map(function(r){
+    return '<tr>'+
+      '<td><b>/'+ r[0]+'</b></td>'+
+      '<td>'+r[1]+'</td>'+
+      '<td>'+(r[2]>0?r[2].toLocaleString():'0 (host route)')+'</td>'+
+      '<td>'+r[3].toLocaleString()+'</td>'+
+      '<td style="font-family:\'Segoe UI\',sans-serif;font-size:.8rem;color:#94a3b8">'+(r[4]||'')+(r[5]?'<span class="common-tag" style="margin-left:.4rem">common</span>':'')+
+      '</td>'+
+      '</tr>';
+  }).join('');
+}
+buildRef();
+
+// Init
+document.getElementById('cidr-input').value = '192.168.1.0/24';
+calcCIDR();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

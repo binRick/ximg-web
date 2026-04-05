@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Editor — markdown.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.subnav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-btn:hover:not(.active){color:#c9d1d9}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#c9d1d9;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+label{font-size:.85rem;color:#94a3b8;display:block;margin-bottom:.3rem}
+input[type=text]{background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.5rem .75rem;border-radius:5px;font-size:.85rem;font-family:inherit}
+input[type=text]:focus{outline:none;border-color:#22d3ee}
+.btn{background:#0e7490;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#0891b2}
+.btn-ghost{background:none;border:1px solid #334155;color:#94a3b8;padding:.5rem 1rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:all .2s}
+.btn-ghost:hover{border-color:#22d3ee;color:#22d3ee}
+/* EDITOR */
+.editor-shell{display:flex;flex-direction:column;height:calc(100vh - 88px)}
+.toolbar{background:#070720;border-bottom:1px solid #1e293b;padding:.4rem .75rem;display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;flex-shrink:0}
+.tb-btn{background:none;border:1px solid #334155;color:#94a3b8;padding:.25rem .55rem;border-radius:4px;cursor:pointer;font-size:.82rem;font-family:monospace;transition:all .15s;line-height:1.4}
+.tb-btn:hover{border-color:#22d3ee;color:#22d3ee}
+.tb-sep{width:1px;height:20px;background:#334155;margin:0 .15rem}
+.panes{display:flex;flex:1;overflow:hidden}
+.pane{flex:1;display:flex;flex-direction:column;min-width:0}
+.pane-label{background:#040413;color:#64748b;font-size:.75rem;padding:.3rem .75rem;border-bottom:1px solid #1e293b;flex-shrink:0}
+.pane + .pane{border-left:1px solid #1e293b}
+#mdInput{flex:1;background:#040413;border:none;color:#c9d1d9;font-family:'Cascadia Code','Fira Code',monospace;font-size:.9rem;padding:.75rem;resize:none;line-height:1.6;outline:none;overflow-y:auto}
+#mdPreview{flex:1;overflow-y:auto;padding:1rem 1.5rem;background:#02020f;line-height:1.7;font-size:.95rem}
+/* Preview styles */
+#mdPreview h1{color:#22d3ee;font-size:1.6rem;border-bottom:1px solid #1e293b;padding-bottom:.4rem;margin:1.2rem 0 .6rem}
+#mdPreview h2{color:#22d3ee;font-size:1.3rem;border-bottom:1px solid #1e293b;padding-bottom:.3rem;margin:1rem 0 .5rem}
+#mdPreview h3{color:#7dd3fc;font-size:1.1rem;margin:.8rem 0 .4rem}
+#mdPreview h4,#mdPreview h5,#mdPreview h6{color:#94a3b8;margin:.7rem 0 .3rem}
+#mdPreview p{margin:.5rem 0}
+#mdPreview a{color:#22d3ee;text-decoration:none}
+#mdPreview a:hover{text-decoration:underline}
+#mdPreview code{background:#0e1a2e;color:#f59e0b;padding:.1em .35em;border-radius:3px;font-family:monospace;font-size:.88em}
+#mdPreview pre{background:#0a0a25;border:1px solid #1e293b;border-radius:6px;padding:.85rem 1rem;overflow-x:auto;margin:.6rem 0}
+#mdPreview pre code{background:none;color:#c9d1d9;padding:0;font-size:.87rem}
+#mdPreview ul,#mdPreview ol{padding-left:1.5rem;margin:.4rem 0}
+#mdPreview li{margin:.15rem 0}
+#mdPreview blockquote{border-left:3px solid #22d3ee;padding-left:1rem;margin:.5rem 0;color:#94a3b8}
+#mdPreview table{border-collapse:collapse;width:100%;margin:.6rem 0;font-size:.88rem}
+#mdPreview th{background:#0e1a2e;color:#22d3ee;padding:.4rem .7rem;text-align:left;border:1px solid #1e293b}
+#mdPreview td{padding:.35rem .7rem;border:1px solid #1e293b}
+#mdPreview tr:nth-child(even) td{background:#040413}
+#mdPreview hr{border:none;border-top:1px solid #1e293b;margin:1rem 0}
+#mdPreview strong{color:#e2e8f0;font-weight:700}
+#mdPreview em{color:#c9d1d9;font-style:italic}
+#mdPreview img{max-width:100%;border-radius:4px}
+/* REFERENCE */
+.ref-panel{padding:1.5rem;max-width:1100px;margin:0 auto}
+.search-row{margin-bottom:1rem}
+.search-row input{width:100%;max-width:400px;background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.55rem .9rem;border-radius:6px;font-size:.9rem;font-family:inherit}
+.search-row input:focus{outline:none;border-color:#22d3ee}
+.ref-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.ref-table th{background:#0e1a2e;color:#22d3ee;padding:.5rem .75rem;text-align:left;border-bottom:2px solid #22d3ee}
+.ref-table td{padding:.45rem .75rem;border-bottom:1px solid #1e293b;vertical-align:top}
+.ref-table tr:hover td{background:#040413}
+.ref-table code{background:#0a0a25;color:#f59e0b;padding:.1em .35em;border-radius:3px;font-family:monospace;font-size:.85em;white-space:pre}
+/* CONVERT */
+.conv-panel{padding:1.5rem;max-width:1100px;margin:0 auto}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+textarea.code{width:100%;background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.75rem;border-radius:6px;font-family:monospace;font-size:.83rem;resize:vertical;min-height:300px}
+textarea.code:focus{outline:none;border-color:#22d3ee}
+.output-area{position:relative}
+.copy-btn{position:absolute;top:.5rem;right:.5rem;background:#0e7490;color:#fff;border:none;padding:.3rem .7rem;border-radius:4px;cursor:pointer;font-size:.75rem}
+.copy-btn:hover{background:#0891b2}
+.copied{background:#059669!important}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('editor',this)">Editor</button>
+  <button class="tab-btn" onclick="showTab('reference',this)">Reference</button>
+  <button class="tab-btn" onclick="showTab('convert',this)">Convert</button>
+</nav>
+
+<!-- EDITOR -->
+<div id="editor" class="tab-panel active editor-shell">
+  <div class="toolbar">
+    <button class="tb-btn" title="Bold" onclick="wrap('**','**')"><b>B</b></button>
+    <button class="tb-btn" title="Italic" onclick="wrap('_','_')"><i>I</i></button>
+    <button class="tb-btn" title="Strikethrough" onclick="wrap('~~','~~')"><s>S</s></button>
+    <button class="tb-btn" title="Inline code" onclick="wrap('`','`')">code</button>
+    <button class="tb-btn" title="Code block" onclick="wrapBlock('```\n','\n```')">```</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" title="Heading 1" onclick="linePrefix('# ')">H1</button>
+    <button class="tb-btn" title="Heading 2" onclick="linePrefix('## ')">H2</button>
+    <button class="tb-btn" title="Heading 3" onclick="linePrefix('### ')">H3</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" title="Unordered list" onclick="linePrefix('- ')">UL</button>
+    <button class="tb-btn" title="Ordered list" onclick="linePrefix('1. ')">OL</button>
+    <button class="tb-btn" title="Blockquote" onclick="linePrefix('> ')">❝</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" title="Link" onclick="insertLink()">🔗</button>
+    <button class="tb-btn" title="Horizontal rule" onclick="insertHR()">HR</button>
+    <button class="tb-btn" title="Table" onclick="insertTable()">⊞</button>
+    <div class="tb-sep"></div>
+    <button class="btn" style="padding:.3rem .8rem;font-size:.8rem" onclick="copyHTML()">Copy HTML</button>
+  </div>
+  <div class="panes">
+    <div class="pane">
+      <div class="pane-label">Markdown</div>
+      <textarea id="mdInput" spellcheck="false" oninput="renderPreview()" placeholder="# Hello World
+
+Type markdown here...
+
+**Bold**, _italic_, `code`
+
+- List item
+- Another item
+
+> Blockquote
+
+```js
+console.log('Hello!');
+```
+"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-label">Preview</div>
+      <div id="mdPreview"></div>
+    </div>
+  </div>
+</div>
+
+<!-- REFERENCE -->
+<div id="reference" class="tab-panel">
+  <div class="ref-panel">
+    <h2>Markdown Reference</h2>
+    <div class="search-row">
+      <input type="text" id="refSearch" placeholder="Search elements..." oninput="filterRef()">
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <table class="ref-table" id="refTable">
+        <thead><tr><th>Element</th><th>Syntax</th><th>Rendered Example</th></tr></thead>
+        <tbody id="refBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CONVERT -->
+<div id="convert" class="tab-panel">
+  <div class="conv-panel">
+    <h2>HTML → Markdown Converter</h2>
+    <div class="two-col">
+      <div class="card" style="margin-bottom:0">
+        <label>Input — HTML:</label>
+        <textarea class="code" id="htmlIn" placeholder="<h1>Hello</h1>&#10;<p>This is <strong>bold</strong> and <em>italic</em>.</p>&#10;<ul><li>Item one</li><li>Item two</li></ul>" oninput="doHTMLtoMD()"></textarea>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <label>Output — Markdown:</label>
+        <div class="output-area">
+          <textarea class="code" id="mdOut" readonly placeholder="Markdown output will appear here..."></textarea>
+          <button class="copy-btn" onclick="copyEl('mdOut',this)">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── MARKDOWN RENDERER ──────────────────────────────────────────
+function renderMD(md) {
+  let html = md;
+
+  // Escape HTML entities first (protect raw HTML in source)
+  // But we want to allow code blocks first
+  const codeBlocks = [];
+  html = html.replace(/```([\w]*)\n?([\s\S]*?)```/gm, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre><code class="lang-${lang}">${escH(code.replace(/^\n|\n$/g,''))}</code></pre>`);
+    return `\x00CODEBLOCK${idx}\x00`;
+  });
+
+  const inlineCodes = [];
+  html = html.replace(/`([^`]+)`/g, (_, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(`<code>${escH(code)}</code>`);
+    return `\x00INLINE${idx}\x00`;
+  });
+
+  // Tables
+  html = html.replace(/^\|(.+)\|\s*\n\|[-| :]+\|\s*\n((?:\|.+\|\s*\n?)*)/gm, (_, header, rows) => {
+    const th = header.split('|').filter(c=>c.trim()).map(c=>`<th>${c.trim()}</th>`).join('');
+    const trs = rows.trim().split('\n').map(r=>{
+      const tds = r.split('|').filter(c=>c.trim()).map(c=>`<td>${inlineRender(c.trim())}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+
+  // Headings
+  html = html.replace(/^(#{1,6})\s+(.+)$/gm, (_, h, t) => `<h${h.length}>${inlineRender(t)}</h${h.length}>`);
+
+  // HR
+  html = html.replace(/^(---+|___+|\*\*\*+)$/gm, '<hr>');
+
+  // Blockquotes
+  html = html.replace(/^&gt; ?(.*)$/gm, '<blockquote>$1</blockquote>').replace(/<\/blockquote>\n<blockquote>/g, '\n');
+  // raw >
+  html = html.replace(/^> ?(.*)$/gm, '<blockquote>$1</blockquote>');
+
+  // Lists — unordered
+  html = html.replace(/((?:^[ \t]*[-*+] .+\n?)+)/gm, match => {
+    const items = match.trim().split('\n').map(l => `<li>${inlineRender(l.replace(/^[ \t]*[-*+] /,''))}</li>`).join('');
+    return `<ul>${items}</ul>`;
+  });
+
+  // Lists — ordered
+  html = html.replace(/((?:^[ \t]*\d+\. .+\n?)+)/gm, match => {
+    const items = match.trim().split('\n').map(l => `<li>${inlineRender(l.replace(/^[ \t]*\d+\. /,''))}</li>`).join('');
+    return `<ol>${items}</ol>`;
+  });
+
+  // Paragraphs
+  const paragraphed = [];
+  const parts = html.split(/\n{2,}/);
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    if (/^<(h[1-6]|ul|ol|blockquote|pre|table|hr)/.test(trimmed) || trimmed.startsWith('\x00CODEBLOCK')) {
+      paragraphed.push(trimmed);
+    } else {
+      paragraphed.push(`<p>${trimmed.replace(/\n/g,'<br>')}</p>`);
+    }
+  }
+  html = paragraphed.join('\n');
+
+  // Inline rendering for remaining text
+  html = html.replace(/<p>([\s\S]*?)<\/p>/g, (_, c) => `<p>${inlineRender(c)}</p>`);
+  html = html.replace(/<li>([\s\S]*?)<\/li>/g, (_, c) => `<li>${inlineRender(c)}</li>`);
+  html = html.replace(/<blockquote>([\s\S]*?)<\/blockquote>/g, (_, c) => `<blockquote>${inlineRender(c)}</blockquote>`);
+
+  // Restore code blocks
+  html = html.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, i) => codeBlocks[i]);
+  html = html.replace(/\x00INLINE(\d+)\x00/g, (_, i) => inlineCodes[i]);
+
+  return html;
+}
+
+function inlineRender(t) {
+  return t
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/_(.+?)_/g, '<em>$1</em>')
+    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderPreview() {
+  const md = document.getElementById('mdInput').value;
+  document.getElementById('mdPreview').innerHTML = renderMD(md);
+}
+
+// ── TOOLBAR HELPERS ────────────────────────────────────────────
+function wrap(before, after) {
+  const ta = document.getElementById('mdInput');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'text';
+  const newVal = ta.value.slice(0,s) + before + sel + after + ta.value.slice(e);
+  ta.value = newVal;
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+  ta.focus(); renderPreview();
+}
+function wrapBlock(before, after) {
+  const ta = document.getElementById('mdInput');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'code here';
+  const newVal = ta.value.slice(0,s) + before + sel + after + ta.value.slice(e);
+  ta.value = newVal;
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+  ta.focus(); renderPreview();
+}
+function linePrefix(prefix) {
+  const ta = document.getElementById('mdInput');
+  const s = ta.selectionStart;
+  const lineStart = ta.value.lastIndexOf('\n', s-1) + 1;
+  ta.value = ta.value.slice(0,lineStart) + prefix + ta.value.slice(lineStart);
+  ta.selectionStart = ta.selectionEnd = s + prefix.length;
+  ta.focus(); renderPreview();
+}
+function insertLink() {
+  const ta = document.getElementById('mdInput');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s,e) || 'link text';
+  const ins = `[${sel}](https://example.com)`;
+  ta.value = ta.value.slice(0,s) + ins + ta.value.slice(e);
+  ta.selectionStart = s + sel.length + 3;
+  ta.selectionEnd = s + ins.length - 1;
+  ta.focus(); renderPreview();
+}
+function insertHR() {
+  const ta = document.getElementById('mdInput');
+  const s = ta.selectionStart;
+  const ins = '\n\n---\n\n';
+  ta.value = ta.value.slice(0,s) + ins + ta.value.slice(s);
+  ta.selectionStart = ta.selectionEnd = s + ins.length;
+  ta.focus(); renderPreview();
+}
+function insertTable() {
+  const ta = document.getElementById('mdInput');
+  const s = ta.selectionStart;
+  const ins = '\n| Header 1 | Header 2 | Header 3 |\n| --- | --- | --- |\n| Cell | Cell | Cell |\n| Cell | Cell | Cell |\n';
+  ta.value = ta.value.slice(0,s) + ins + ta.value.slice(s);
+  ta.selectionStart = ta.selectionEnd = s + ins.length;
+  ta.focus(); renderPreview();
+}
+function copyHTML() {
+  const html = document.getElementById('mdPreview').innerHTML;
+  navigator.clipboard.writeText(html).then(()=>{ alert('HTML copied!'); });
+}
+
+// ── REFERENCE TABLE ────────────────────────────────────────────
+const REF_DATA = [
+  ['Heading 1','# Heading 1','<h1>Heading 1</h1>'],
+  ['Heading 2','## Heading 2','<h2>Heading 2</h2>'],
+  ['Heading 3','### Heading 3','<h3>Heading 3</h3>'],
+  ['Heading 4','#### Heading 4','<h4>Heading 4</h4>'],
+  ['Bold','**bold text**','<strong>bold text</strong>'],
+  ['Italic','_italic text_','<em>italic text</em>'],
+  ['Bold + Italic','***bold italic***','<strong><em>bold italic</em></strong>'],
+  ['Strikethrough','~~strikethrough~~','<del>strikethrough</del>'],
+  ['Inline Code','`code here`','<code>code here</code>'],
+  ['Code Block','```\\ncode here\\n```','<pre><code>code here</code></pre>'],
+  ['Fenced Code (lang)','```js\\nconsole.log()\\n```','Syntax-highlighted code block'],
+  ['Link','[text](https://url.com)','<a href="...">text</a>'],
+  ['Image','![alt](image.png)','<img alt="alt" src="image.png">'],
+  ['Unordered List','- Item 1\\n- Item 2','<ul><li>...</li></ul>'],
+  ['Ordered List','1. Item 1\\n2. Item 2','<ol><li>...</li></ol>'],
+  ['Blockquote','> quoted text','<blockquote>quoted text</blockquote>'],
+  ['Horizontal Rule','---','<hr>'],
+  ['Table','| Col | Col |\\n|---|---|\\n| val | val |','HTML table'],
+  ['Line Break','Two spaces at end  \\nor blank line','New line or paragraph'],
+  ['Escape character','\\\\*literal asterisk\\\\*','*literal asterisk*'],
+];
+
+function buildRef() {
+  const tbody = document.getElementById('refBody');
+  tbody.innerHTML = REF_DATA.map(([el,syn,ex])=>`
+    <tr>
+      <td>${el}</td>
+      <td><code>${escH(syn)}</code></td>
+      <td style="font-size:.82rem;color:#94a3b8">${escH(ex)}</td>
+    </tr>`).join('');
+}
+function filterRef() {
+  const q = document.getElementById('refSearch').value.toLowerCase();
+  document.querySelectorAll('#refBody tr').forEach((tr,i)=>{
+    const matches = REF_DATA[i].join(' ').toLowerCase().includes(q);
+    tr.style.display = matches ? '' : 'none';
+  });
+}
+
+// ── HTML → MARKDOWN ────────────────────────────────────────────
+function htmlToMD(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return nodeToMD(div).trim();
+}
+
+function nodeToMD(node, opts) {
+  opts = opts || {};
+  let out = '';
+  for (const child of node.childNodes) {
+    if (child.nodeType === 3) {
+      out += child.textContent.replace(/\s+/g,' ');
+    } else if (child.nodeType === 1) {
+      const tag = child.tagName.toLowerCase();
+      const inner = nodeToMD(child, opts);
+      switch(tag) {
+        case 'h1': out += `\n# ${inner}\n\n`; break;
+        case 'h2': out += `\n## ${inner}\n\n`; break;
+        case 'h3': out += `\n### ${inner}\n\n`; break;
+        case 'h4': out += `\n#### ${inner}\n\n`; break;
+        case 'h5': out += `\n##### ${inner}\n\n`; break;
+        case 'h6': out += `\n###### ${inner}\n\n`; break;
+        case 'p': out += `\n${inner}\n\n`; break;
+        case 'br': out += '\n'; break;
+        case 'strong': case 'b': out += `**${inner}**`; break;
+        case 'em': case 'i': out += `_${inner}_`; break;
+        case 'del': case 's': out += `~~${inner}~~`; break;
+        case 'code': out += opts.inPre ? inner : `\`${inner}\``; break;
+        case 'pre': {
+          const codeEl = child.querySelector('code');
+          const lang = (codeEl && (codeEl.className.match(/language-(\w+)/)||[])[1]) || '';
+          const codeText = codeEl ? codeEl.textContent : child.textContent;
+          out += `\n\`\`\`${lang}\n${codeText.trim()}\n\`\`\`\n\n`;
+          break;
+        }
+        case 'a': out += `[${inner}](${child.getAttribute('href')||''})`; break;
+        case 'img': out += `![${child.getAttribute('alt')||''}](${child.getAttribute('src')||''})`; break;
+        case 'ul': {
+          for (const li of child.querySelectorAll(':scope > li')) out += `- ${nodeToMD(li).trim()}\n`;
+          out += '\n'; break;
+        }
+        case 'ol': {
+          let n = 1;
+          for (const li of child.querySelectorAll(':scope > li')) { out += `${n++}. ${nodeToMD(li).trim()}\n`; }
+          out += '\n'; break;
+        }
+        case 'li': out += inner; break;
+        case 'blockquote': out += inner.trim().split('\n').map(l=>`> ${l}`).join('\n') + '\n\n'; break;
+        case 'hr': out += '\n---\n\n'; break;
+        case 'table': {
+          const rows = Array.from(child.querySelectorAll('tr'));
+          if (!rows.length) break;
+          const headerCells = Array.from(rows[0].querySelectorAll('th,td')).map(c=>nodeToMD(c).trim());
+          out += `| ${headerCells.join(' | ')} |\n`;
+          out += `| ${headerCells.map(()=>'---').join(' | ')} |\n`;
+          for (const row of rows.slice(1)) {
+            const cells = Array.from(row.querySelectorAll('td')).map(c=>nodeToMD(c).trim());
+            out += `| ${cells.join(' | ')} |\n`;
+          }
+          out += '\n'; break;
+        }
+        default: out += inner;
+      }
+    }
+  }
+  return out;
+}
+
+function doHTMLtoMD() {
+  const inp = document.getElementById('htmlIn').value.trim();
+  if (!inp) { document.getElementById('mdOut').value = ''; return; }
+  document.getElementById('mdOut').value = htmlToMD(inp);
+}
+
+function copyEl(id, btn) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const orig = btn.textContent; btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// Init
+buildRef();
+renderPreview();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

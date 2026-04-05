@@ -147,6 +147,20 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [inflation.ximg.app](https://inflation.ximg.app) | Inflation Calculator — historical US CPI data 1920–2024, purchasing power erosion over time, cumulative inflation %, average rate, area chart with annual CPI bars; custom rate mode |
 | [debt.ximg.app](https://debt.ximg.app) | Debt Payoff Calculator — Avalanche vs Snowball comparison for up to 6 debts, payoff dates, total interest, payoff order per method, interest saved, dual-line remaining-debt chart |
 | [budget.ximg.app](https://budget.ximg.app) | Budget Planner 50/30/20 — categorized needs/wants/savings inputs, actual vs target donut charts, category progress bars, surplus/deficit table, over/under status chips, budget grade |
+| [ximg.app/base64/](https://ximg.app/base64/) | Base64 Encoder/Decoder — encode/decode text with URL-safe toggle, file drag-and-drop to base64, byte count, copy button |
+| [ximg.app/hash/](https://ximg.app/hash/) | Hash Generator — MD5, SHA-1/256/384/512 from text or files, HMAC generator (Web Crypto), copy per hash |
+| [ximg.app/diff/](https://ximg.app/diff/) | Text Diff — Myers algorithm side-by-side diff (added green / removed red), JSON-aware structural diff |
+| [ximg.app/url/](https://ximg.app/url/) | URL Tools — encoder/decoder, full URL parser, interactive URL builder with live assembly |
+| [ximg.app/curl/](https://ximg.app/curl/) | cURL Builder — GUI form for method/URL/headers/body/auth/flags, live curl command preview, searchable flag reference |
+| [ximg.app/cidr/](https://ximg.app/cidr/) | CIDR / Subnet Calculator — IPv4+IPv6 network/broadcast/mask/wildcard/hosts, IP range to CIDR, prefix reference table |
+| [ximg.app/uuid/](https://ximg.app/uuid/) | UUID Generator — v1/v4/v7 with color-coded segment breakdown, UUID decoder, bulk generator up to 1000 |
+| [ximg.app/lorem/](https://ximg.app/lorem/) | Lorem Ipsum Generator — words/sentences/paragraphs, fake code identifiers and JSON, placeholder markdown |
+| [ximg.app/csv/](https://ximg.app/csv/) | CSV Tools — sortable table viewer, CSV↔JSON converter, synthetic data generator with typed columns |
+| [ximg.app/markdown/](https://ximg.app/markdown/) | Markdown Editor — live split-pane preview (vanilla JS renderer), formatting toolbar, cheat sheet, HTML→Markdown converter |
+| [ximg.app/password/](https://ximg.app/password/) | Password Generator — entropy/strength meter with crack-time estimates, EFF passphrase generator |
+| [ximg.app/ssl/](https://ximg.app/ssl/) | SSL / TLS Tools — PEM cert decoder (SANs/validity/fingerprints), expiry countdown, TLS version and cipher reference |
+| [epoch.ximg.app](https://epoch.ximg.app) | Unix Epoch Converter — live timestamp display, epoch↔datetime in multiple timezones, format token reference for Python/JS/Go/Java/SQL |
+| [timespan.ximg.app](https://timespan.ximg.app) | Timespan Calculator — date duration, business-day counter (US holidays), chainable date arithmetic |
 
 ## Architecture
 

@@ -50,7 +50,10 @@
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
     ]},
     { label: 'Dev Tools', apps: [
-      ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color']
+      ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
+      ['base64','base64'],['hash','hash'],['diff','diff'],['url','url'],['curl','curl'],
+      ['cidr','cidr'],['uuid','uuid'],['lorem','lorem'],['csv','csv'],['markdown','markdown'],
+      ['password','password'],['ssl','ssl'],['epoch','epoch'],['timespan','timespan']
     ]},
     { label: 'Finance', apps: [
       ['compound','compound'],
@@ -121,7 +124,7 @@
   var curPath = window.location.pathname.split('/')[1] || '';
 
   // Apps served via ximg.app/<app>/ path (no individual SSL cert yet)
-  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1,mortgage:1,retire:1,inflation:1,debt:1,budget:1,savings:1,tax:1,stocks:1,options:1,forex:1,dcf:1,rome:1};
+  var PATH_APPS = {binary:1,color:1,compiler:1,immune:1,quantum:1,synth:1,mortgage:1,retire:1,inflation:1,debt:1,budget:1,savings:1,tax:1,stocks:1,options:1,forex:1,dcf:1,rome:1,base64:1,hash:1,diff:1,url:1,curl:1,cidr:1,uuid:1,lorem:1,csv:1,markdown:1,password:1,ssl:1,epoch:1,timespan:1};
 
   function appHref(subdomain) {
     return PATH_APPS[subdomain]

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV Tools — csv.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.subnav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-btn:hover:not(.active){color:#c9d1d9}
+.tab-panel{display:none;padding:1.5rem;max-width:1100px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#c9d1d9;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+label{font-size:.85rem;color:#94a3b8;display:block;margin-bottom:.3rem}
+textarea{width:100%;background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.75rem;border-radius:6px;font-family:monospace;font-size:.85rem;resize:vertical;min-height:140px}
+textarea:focus{outline:none;border-color:#22d3ee}
+input[type=text],input[type=number],select{background:#0a0a25;border:1px solid #334155;color:#c9d1d9;padding:.5rem .75rem;border-radius:5px;font-size:.85rem;font-family:inherit}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:#22d3ee}
+select option{background:#0a0a25}
+.btn{background:#0e7490;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#0891b2}
+.btn-ghost{background:none;border:1px solid #334155;color:#94a3b8;padding:.5rem 1rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:all .2s}
+.btn-ghost:hover{border-color:#22d3ee;color:#22d3ee}
+.row{display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.75rem}
+.row.center{align-items:center}
+.stats{display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.stat{background:#0a0a25;border:1px solid #1e293b;border-radius:6px;padding:.5rem 1rem;font-size:.85rem;color:#94a3b8}
+.stat span{color:#22d3ee;font-weight:700}
+.table-wrap{overflow:auto;max-height:420px;border:1px solid #1e293b;border-radius:6px}
+table.csv-table{width:100%;border-collapse:collapse;font-size:.82rem}
+table.csv-table th{background:#0e1a2e;color:#22d3ee;padding:.45rem .7rem;text-align:left;white-space:nowrap;position:sticky;top:0;cursor:pointer;user-select:none;border-bottom:2px solid #22d3ee}
+table.csv-table th:hover{background:#122538}
+table.csv-table th .sort-icon{margin-left:.3rem;opacity:.5}
+table.csv-table th.asc .sort-icon::after{content:'▲'}
+table.csv-table th.desc .sort-icon::after{content:'▼'}
+table.csv-table th:not(.asc):not(.desc) .sort-icon::after{content:'⇅'}
+table.csv-table td{padding:.4rem .7rem;border-bottom:1px solid #1e293b;vertical-align:top;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.csv-table tr:hover td{background:#0a0a25}
+.drop-zone{border:2px dashed #334155;border-radius:8px;padding:2rem;text-align:center;color:#64748b;transition:all .2s;cursor:pointer}
+.drop-zone.drag-over{border-color:#22d3ee;color:#22d3ee;background:#0a1520}
+.drop-zone:hover{border-color:#22d3ee;color:#c9d1d9}
+.drop-icon{font-size:2rem;margin-bottom:.5rem}
+.output-area{position:relative}
+.output-area textarea{background:#050515}
+.copy-btn{position:absolute;top:.5rem;right:.5rem;background:#0e7490;color:#fff;border:none;padding:.3rem .7rem;border-radius:4px;cursor:pointer;font-size:.75rem}
+.copy-btn:hover{background:#0891b2}
+.copied{background:#059669!important}
+.err{color:#f87171;font-size:.85rem;padding:.5rem;background:#1a0a0a;border:1px solid #7f1d1d;border-radius:5px;margin-top:.5rem}
+.delim-row{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.delim-row label{margin-bottom:0;margin-right:.25rem}
+.gen-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem}
+.col-def{background:#0a0a25;border:1px solid #1e293b;border-radius:6px;padding:.75rem;font-size:.85rem}
+.col-def .col-name{font-weight:600;color:#22d3ee;margin-bottom:.4rem}
+.format-toggle{display:flex;gap:0;margin-bottom:1rem;border:1px solid #334155;border-radius:6px;overflow:hidden;width:fit-content}
+.format-btn{background:none;border:none;color:#94a3b8;padding:.5rem 1.1rem;cursor:pointer;font-size:.85rem;font-family:inherit;transition:all .2s}
+.format-btn.active{background:#0e7490;color:#fff}
+.format-btn:hover:not(.active){background:#0a0a25;color:#c9d1d9}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+.info{font-size:.8rem;color:#64748b;margin-top:.4rem}
+</style>
+</head>
+<body>
+
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('viewer')">Viewer</button>
+  <button class="tab-btn" onclick="showTab('convert')">Convert</button>
+  <button class="tab-btn" onclick="showTab('generate')">Generate</button>
+</nav>
+
+<!-- VIEWER TAB -->
+<div id="viewer" class="tab-panel active">
+  <h2>CSV Viewer</h2>
+  <div class="card">
+    <div class="delim-row">
+      <label>Delimiter:</label>
+      <select id="delimiter" onchange="reparse()">
+        <option value=",">Comma (,)</option>
+        <option value="\t">Tab</option>
+        <option value=";">Semicolon (;)</option>
+        <option value="|">Pipe (|)</option>
+      </select>
+      <label style="margin-left:.5rem">First row is header:</label>
+      <input type="checkbox" id="hasHeader" checked onchange="reparse()" style="accent-color:#22d3ee;width:16px;height:16px">
+    </div>
+    <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()" ondragover="e=>e.preventDefault()" ondrop="">
+      <div class="drop-icon">📂</div>
+      <div>Drop a .csv file here or click to open</div>
+      <div style="font-size:.8rem;margin-top:.3rem">or paste CSV below</div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.tsv,.txt" style="display:none">
+    <div style="margin-top:.75rem">
+      <label>Or paste CSV text:</label>
+      <textarea id="csvInput" placeholder="name,age,city&#10;Alice,30,New York&#10;Bob,25,London" oninput="reparse()" rows="6"></textarea>
+    </div>
+  </div>
+  <div id="viewerStats" class="stats" style="display:none"></div>
+  <div id="viewerErr"></div>
+  <div id="tableWrap"></div>
+</div>
+
+<!-- CONVERT TAB -->
+<div id="convert" class="tab-panel">
+  <h2>CSV ↔ JSON Converter</h2>
+  <div class="format-toggle">
+    <button class="format-btn active" id="modeCSVtoJSON" onclick="setConvertMode('csv2json')">CSV → JSON</button>
+    <button class="format-btn" id="modeJSONtoCSV" onclick="setConvertMode('json2csv')">JSON → CSV</button>
+  </div>
+  <div class="two-col">
+    <div class="card" style="margin-bottom:0">
+      <label id="convertInLabel">Input — CSV:</label>
+      <textarea id="convertIn" rows="16" placeholder="name,age,city&#10;Alice,30,New York&#10;Bob,25,London" oninput="doConvert()"></textarea>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <label id="convertOutLabel">Output — JSON:</label>
+      <div class="output-area">
+        <textarea id="convertOut" rows="16" readonly placeholder="Output will appear here..."></textarea>
+        <button class="copy-btn" onclick="copyEl('convertOut',this)">Copy</button>
+      </div>
+    </div>
+  </div>
+  <div id="convertErr" style="margin-top:.5rem"></div>
+</div>
+
+<!-- GENERATE TAB -->
+<div id="generate" class="tab-panel">
+  <h2>Synthetic CSV Generator</h2>
+  <div class="card">
+    <div class="row center">
+      <div>
+        <label>Columns:</label>
+        <input type="number" id="genCols" value="4" min="1" max="20" style="width:70px" oninput="updateColDefs()">
+      </div>
+      <div>
+        <label>Rows:</label>
+        <input type="number" id="genRows" value="20" min="1" max="5000" style="width:90px">
+      </div>
+      <div>
+        <label>Delimiter:</label>
+        <select id="genDelim">
+          <option value=",">Comma</option>
+          <option value="\t">Tab</option>
+          <option value=";">Semicolon</option>
+          <option value="|">Pipe</option>
+        </select>
+      </div>
+      <div style="padding-top:1.3rem">
+        <button class="btn" onclick="generateCSV()">Generate</button>
+      </div>
+    </div>
+    <div id="colDefs" class="gen-row"></div>
+  </div>
+  <div id="genOutput" style="display:none">
+    <div class="card" style="position:relative">
+      <div class="row center" style="margin-bottom:.5rem">
+        <h3 id="genStats">Generated</h3>
+        <button class="btn" onclick="copyEl('genOut',this)">Copy</button>
+        <button class="btn-ghost" onclick="downloadCSV()">Download .csv</button>
+      </div>
+      <div class="output-area">
+        <textarea id="genOut" rows="18" readonly style="font-size:.78rem"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── CSV PARSER ─────────────────────────────────────────────────
+function parseCSV(text, delim) {
+  delim = delim === '\\t' ? '\t' : delim;
+  const rows = [];
+  let i = 0;
+  while (i < text.length) {
+    const row = [];
+    while (i < text.length && text[i] !== '\n' && text[i] !== '\r') {
+      if (text[i] === '"') {
+        i++;
+        let cell = '';
+        while (i < text.length) {
+          if (text[i] === '"' && text[i+1] === '"') { cell += '"'; i += 2; }
+          else if (text[i] === '"') { i++; break; }
+          else { cell += text[i++]; }
+        }
+        row.push(cell);
+        if (text[i] === delim) i++;
+      } else {
+        let cell = '';
+        while (i < text.length && text[i] !== delim && text[i] !== '\n' && text[i] !== '\r') cell += text[i++];
+        row.push(cell);
+        if (text[i] === delim) i++;
+      }
+    }
+    if (text[i] === '\r') i++;
+    if (text[i] === '\n') i++;
+    if (row.length > 0 && !(row.length === 1 && row[0] === '')) rows.push(row);
+  }
+  return rows;
+}
+
+// ── VIEWER ─────────────────────────────────────────────────────
+let csvData = null, sortCol = -1, sortDir = 1;
+
+// File drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) readFile(f);
+});
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) readFile(e.target.files[0]);
+});
+function readFile(f) {
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById('csvInput').value = ev.target.result; reparse(); };
+  r.readAsText(f);
+}
+
+function reparse() {
+  sortCol = -1; sortDir = 1;
+  const raw = document.getElementById('csvInput').value.trim();
+  if (!raw) { document.getElementById('tableWrap').innerHTML = ''; document.getElementById('viewerStats').style.display = 'none'; document.getElementById('viewerErr').innerHTML = ''; return; }
+  const delim = document.getElementById('delimiter').value;
+  try {
+    const rows = parseCSV(raw, delim);
+    csvData = rows;
+    renderTable(rows);
+  } catch(e) {
+    document.getElementById('viewerErr').innerHTML = `<div class="err">Parse error: ${e.message}</div>`;
+  }
+}
+
+function renderTable(rows) {
+  const header = document.getElementById('hasHeader').checked;
+  const errEl = document.getElementById('viewerErr');
+  errEl.innerHTML = '';
+  if (!rows.length) { document.getElementById('tableWrap').innerHTML = ''; return; }
+
+  const headerRow = header ? rows[0] : null;
+  const dataRows = header ? rows.slice(1) : rows;
+  const numCols = rows[0].length;
+  const numRows = dataRows.length;
+
+  const statsEl = document.getElementById('viewerStats');
+  statsEl.style.display = 'flex';
+  statsEl.innerHTML = `<div class="stat">Rows: <span>${numRows.toLocaleString()}</span></div><div class="stat">Columns: <span>${numCols}</span></div><div class="stat">Total cells: <span>${(numRows*numCols).toLocaleString()}</span></div>`;
+
+  let html = '<div class="table-wrap"><table class="csv-table"><thead><tr>';
+  for (let c = 0; c < numCols; c++) {
+    const label = headerRow ? (headerRow[c] || `col${c+1}`) : `Column ${c+1}`;
+    const cls = sortCol === c ? (sortDir === 1 ? 'asc' : 'desc') : '';
+    html += `<th class="${cls}" onclick="sortByCol(${c})"><span>${escH(label)}</span><span class="sort-icon"></span></th>`;
+  }
+  html += '</tr></thead><tbody>';
+  const display = dataRows.slice(0, 10000);
+  for (const row of display) {
+    html += '<tr>';
+    for (let c = 0; c < numCols; c++) html += `<td title="${escH(row[c]||'')}">${escH(row[c]||'')}</td>`;
+    html += '</tr>';
+  }
+  if (dataRows.length > 10000) html += `<tr><td colspan="${numCols}" style="text-align:center;color:#64748b;padding:1rem">…showing first 10,000 of ${dataRows.length.toLocaleString()} rows</td></tr>`;
+  html += '</tbody></table></div>';
+  document.getElementById('tableWrap').innerHTML = html;
+}
+
+function sortByCol(c) {
+  if (!csvData) return;
+  if (sortCol === c) sortDir = -sortDir;
+  else { sortCol = c; sortDir = 1; }
+  const header = document.getElementById('hasHeader').checked;
+  const headerRow = header ? csvData[0] : null;
+  const dataRows = (header ? csvData.slice(1) : csvData).slice();
+  dataRows.sort((a, b) => {
+    const av = a[c] || '', bv = b[c] || '';
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return (an - bn) * sortDir;
+    return av.localeCompare(bv) * sortDir;
+  });
+  renderTable(headerRow ? [headerRow, ...dataRows] : dataRows);
+}
+
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── CONVERT ────────────────────────────────────────────────────
+let convertMode = 'csv2json';
+function setConvertMode(m) {
+  convertMode = m;
+  document.getElementById('modeCSVtoJSON').classList.toggle('active', m==='csv2json');
+  document.getElementById('modeJSONtoCSV').classList.toggle('active', m==='json2csv');
+  document.getElementById('convertInLabel').textContent = m==='csv2json' ? 'Input — CSV:' : 'Input — JSON:';
+  document.getElementById('convertOutLabel').textContent = m==='csv2json' ? 'Output — JSON:' : 'Output — CSV:';
+  document.getElementById('convertIn').placeholder = m==='csv2json' ? 'name,age\nAlice,30\nBob,25' : '[{"name":"Alice","age":30},{"name":"Bob","age":25}]';
+  document.getElementById('convertOut').placeholder = 'Output will appear here...';
+  document.getElementById('convertOut').value = '';
+  document.getElementById('convertErr').innerHTML = '';
+  doConvert();
+}
+function doConvert() {
+  const inp = document.getElementById('convertIn').value.trim();
+  const errEl = document.getElementById('convertErr');
+  const out = document.getElementById('convertOut');
+  if (!inp) { out.value = ''; errEl.innerHTML = ''; return; }
+  try {
+    if (convertMode === 'csv2json') {
+      const rows = parseCSV(inp, ',');
+      if (rows.length < 1) { out.value = '[]'; return; }
+      const headers = rows[0];
+      const data = rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, i) => {
+          const v = r[i] !== undefined ? r[i] : '';
+          const n = parseFloat(v);
+          obj[h] = v !== '' && !isNaN(n) && String(n) === v ? n : v;
+        });
+        return obj;
+      });
+      out.value = JSON.stringify(data, null, 2);
+      errEl.innerHTML = `<div style="color:#22d3ee;font-size:.82rem;margin-top:.3rem">${data.length} record${data.length!==1?'s':''} converted.</div>`;
+    } else {
+      const data = JSON.parse(inp);
+      if (!Array.isArray(data) || !data.length) { out.value = ''; errEl.innerHTML = '<div class="err">Input must be a non-empty JSON array of objects.</div>'; return; }
+      const keys = [...new Set(data.flatMap(r => Object.keys(r)))];
+      const escCell = v => {
+        const s = v === null || v === undefined ? '' : String(v);
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+      };
+      const lines = [keys.map(escCell).join(','), ...data.map(r => keys.map(k => escCell(r[k])).join(','))];
+      out.value = lines.join('\n');
+      errEl.innerHTML = `<div style="color:#22d3ee;font-size:.82rem;margin-top:.3rem">${data.length} record${data.length!==1?'s':''} converted.</div>`;
+    }
+  } catch(e) { out.value = ''; errEl.innerHTML = `<div class="err">Error: ${e.message}</div>`; }
+}
+
+// ── GENERATE ───────────────────────────────────────────────────
+const DATA_TYPES = ['text','number','date','email','name','uuid'];
+const NAMES_F = ['Alice','Emma','Olivia','Sophia','Ava','Isabella','Mia','Charlotte','Amelia','Harper','Evelyn','Abigail','Emily','Elizabeth','Mila','Ella','Avery','Sofia','Camila','Aria','Scarlett','Victoria','Madison','Luna','Grace','Chloe','Penelope','Layla','Riley','Zoey'];
+const NAMES_M = ['James','John','Robert','Michael','William','David','Richard','Joseph','Thomas','Charles','Christopher','Daniel','Matthew','Anthony','Mark','Donald','Steven','Paul','Andrew','Joshua','Kenneth','Kevin','Brian','George','Edward','Ronald','Timothy','Jason','Jeffrey','Ryan'];
+const SURNAMES = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Wilson','Martinez','Anderson','Taylor','Thomas','Hernandez','Moore','Martin','Jackson','Thompson','White','Lopez','Lee','Gonzalez','Harris','Clark','Lewis','Robinson','Walker','Perez','Hall','Young'];
+const WORDS = ['apple','sky','river','cloud','stone','mountain','forest','ocean','flame','wind','shadow','light','crystal','ember','frost','bloom','thunder','silver','golden','dark','swift','bright','calm','wild','deep','tall','small','round','sharp','soft'];
+const DOMAINS = ['gmail.com','yahoo.com','outlook.com','protonmail.com','company.io','example.org','mail.net'];
+
+function rnd(n){return Math.floor(Math.random()*n)}
+function pick(arr){return arr[rnd(arr.length)]}
+function uuid(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);
+  });
+}
+function genCell(type) {
+  switch(type) {
+    case 'number': return (Math.random()*10000).toFixed(rnd(3));
+    case 'date': {
+      const d = new Date(2018 + rnd(7), rnd(12), 1 + rnd(28));
+      return d.toISOString().slice(0,10);
+    }
+    case 'email': {
+      const n = pick(NAMES_F.concat(NAMES_M)).toLowerCase();
+      return `${n}${rnd(99)+1}@${pick(DOMAINS)}`;
+    }
+    case 'name': return `${pick(rnd(2)?NAMES_F:NAMES_M)} ${pick(SURNAMES)}`;
+    case 'uuid': return uuid();
+    default: return `${pick(WORDS)}_${rnd(9999)}`;
+  }
+}
+
+function updateColDefs() {
+  const n = Math.max(1, Math.min(20, parseInt(document.getElementById('genCols').value)||4));
+  const container = document.getElementById('colDefs');
+  const existing = container.querySelectorAll('.col-def');
+  // Add missing
+  for (let i = existing.length; i < n; i++) {
+    const div = document.createElement('div');
+    div.className = 'col-def';
+    div.innerHTML = `<div class="col-name">Column ${i+1}</div>
+      <div style="margin-bottom:.4rem"><label>Name:</label><input type="text" value="col${i+1}" style="width:100%" oninput=""></div>
+      <div><label>Type:</label><select style="width:100%">${DATA_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></div>`;
+    container.appendChild(div);
+  }
+  // Remove excess
+  while (container.children.length > n) container.removeChild(container.lastChild);
+}
+
+function generateCSV() {
+  const rows = Math.max(1, Math.min(5000, parseInt(document.getElementById('genRows').value)||20));
+  const rawDelim = document.getElementById('genDelim').value;
+  const delim = rawDelim === '\\t' ? '\t' : rawDelim;
+  const colDefs = document.querySelectorAll('#colDefs .col-def');
+  const cols = Array.from(colDefs).map(d => ({
+    name: d.querySelector('input[type=text]').value || 'col',
+    type: d.querySelector('select').value
+  }));
+  if (!cols.length) return;
+  const escCell = v => {
+    const s = String(v);
+    return (s.includes(delim)||s.includes('"')||s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s;
+  };
+  const lines = [cols.map(c=>escCell(c.name)).join(delim)];
+  for (let r = 0; r < rows; r++) {
+    lines.push(cols.map(c=>escCell(genCell(c.type))).join(delim));
+  }
+  const csv = lines.join('\n');
+  document.getElementById('genOut').value = csv;
+  document.getElementById('genStats').textContent = `Generated: ${rows.toLocaleString()} rows × ${cols.length} columns`;
+  document.getElementById('genOutput').style.display = 'block';
+}
+
+function downloadCSV() {
+  const csv = document.getElementById('genOut').value;
+  if (!csv) return;
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'generated.csv'; a.click();
+}
+
+function copyEl(id, btn) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const orig = btn.textContent; btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copied');},1500);
+  });
+}
+
+// Init
+updateColDefs();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

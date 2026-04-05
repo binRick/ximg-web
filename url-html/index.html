@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Tools — url.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#c9d1d9;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+.subnav{position:sticky;top:44px;z-index:100;background:#02020f;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{padding:.65rem 1.1rem;font-size:.85rem;font-weight:600;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:#c9d1d9}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.page{max-width:1100px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.page-title{font-size:1.15rem;font-weight:700;color:#f1f5f9;margin-bottom:.2rem}
+.page-sub{font-size:.8rem;color:#475569;margin-bottom:1.25rem}
+label.lbl{display:block;font-size:.72rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem}
+textarea,input[type=text]{width:100%;background:#070720;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.88rem;padding:.65rem .85rem;outline:none;transition:border-color .2s}
+textarea{resize:vertical}
+input[type=text]{resize:none}
+textarea:focus,input[type=text]:focus{border-color:#22d3ee55}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.1rem;margin-bottom:1rem}
+.row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem}
+.btn{background:#0f172a;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-size:.82rem;padding:.45rem .9rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:#22d3ee55;color:#22d3ee}
+.btn.primary{background:rgba(34,211,238,.1);border-color:#22d3ee55;color:#22d3ee}
+.btn.primary:hover{background:rgba(34,211,238,.18)}
+.btn.danger{background:rgba(248,113,113,.08);border-color:#f8717133;color:#f87171}
+.btn.danger:hover{background:rgba(248,113,113,.15)}
+.output-wrap{position:relative}
+.copy-btn{position:absolute;top:.5rem;right:.5rem;background:#0f172a;border:1px solid #1e293b;border-radius:5px;color:#64748b;font-size:.75rem;padding:.25rem .6rem;cursor:pointer;font-family:inherit;transition:all .15s}
+.copy-btn:hover{border-color:#22d3ee55;color:#22d3ee}
+.copy-btn.copied{color:#22c55e;border-color:#22c55e55}
+/* Encode / Decode tab */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+.pct-table{width:100%;border-collapse:collapse;font-size:.79rem;margin-top:.75rem}
+.pct-table th{background:#0a0a22;color:#22d3ee;padding:.4rem .65rem;text-align:left;font-weight:600;font-size:.72rem;letter-spacing:.05em}
+.pct-table td{padding:.35rem .65rem;border-bottom:1px solid #1e293b;font-family:'Courier New',monospace}
+.pct-table tr:last-child td{border-bottom:none}
+.pct-table td:first-child{color:#22d3ee}
+.pct-table td:nth-child(2){color:#c9d1d9}
+.pct-table td:nth-child(3){color:#475569}
+.pct-found{background:rgba(34,211,238,.06)}
+/* Parse tab */
+.parse-table{width:100%;border-collapse:collapse;font-size:.83rem;margin-top:.5rem}
+.parse-table th{background:#0a0a22;color:#22d3ee;padding:.45rem .75rem;text-align:left;font-weight:600;font-size:.72rem;letter-spacing:.05em;white-space:nowrap}
+.parse-table td{padding:.4rem .75rem;border-bottom:1px solid #1e293b;vertical-align:top}
+.parse-table tr:last-child td{border-bottom:none}
+.pt-key{color:#94a3b8;font-weight:600;white-space:nowrap;width:120px}
+.pt-val{font-family:'Courier New',monospace;color:#c9d1d9;word-break:break-all}
+.pt-val.empty{color:#334155;font-style:italic}
+.pt-sub{font-size:.76rem;color:#94a3b8}
+.pt-sub-row{display:flex;gap:1rem;align-items:baseline;padding:.2rem 0;border-bottom:1px dashed #1e293b}
+.pt-sub-row:last-child{border-bottom:none}
+.pt-sub-key{color:#22d3ee;min-width:80px;flex-shrink:0;font-family:'Courier New',monospace}
+.pt-sub-val{color:#c9d1d9;font-family:'Courier New',monospace;word-break:break-all}
+.parse-empty{color:#334155;font-style:italic;font-size:.85rem;padding:.75rem 0}
+.section-label{font-size:.72rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin:.75rem 0 .35rem}
+/* Builder tab */
+.builder-form{display:flex;flex-direction:column;gap:.75rem}
+.field-row{display:grid;grid-template-columns:140px 1fr;gap:.65rem;align-items:center}
+@media(max-width:580px){.field-row{grid-template-columns:1fr}}
+.field-lbl{font-size:.78rem;color:#94a3b8;font-weight:600;text-align:right}
+@media(max-width:580px){.field-lbl{text-align:left}}
+.proto-select{background:#070720;border:1px solid #1e293b;border-radius:6px;color:#c9d1d9;font-size:.88rem;padding:.5rem .75rem;outline:none;font-family:'Courier New',monospace;cursor:pointer;width:100%}
+.proto-select:focus{border-color:#22d3ee55}
+select option{background:#0a0a22}
+.qp-list{display:flex;flex-direction:column;gap:.4rem;margin-top:.25rem}
+.qp-row{display:flex;gap:.5rem;align-items:center}
+.qp-row input{flex:1;min-width:0}
+.qp-eq{color:#475569;font-size:.9rem;flex-shrink:0}
+.qp-del{background:transparent;border:none;color:#475569;font-size:1.1rem;cursor:pointer;padding:0 .25rem;transition:color .15s;flex-shrink:0}
+.qp-del:hover{color:#f87171}
+.url-result-box{background:#0a0a22;border:1px solid #22d3ee44;border-radius:6px;padding:.75rem 1rem;font-family:'Courier New',monospace;font-size:.88rem;color:#22d3ee;word-break:break-all;line-height:1.6;min-height:2.5rem;position:relative}
+.url-result-empty{color:#334155;font-style:italic}
+.info-bar{font-size:.76rem;color:#475569;margin-top:.4rem;min-height:1.1em}
+</style>
+</head>
+<body>
+<nav class="subnav">
+  <button class="tab-btn active" onclick="showTab('encodedec')">Encode / Decode</button>
+  <button class="tab-btn" onclick="showTab('parse')">Parse</button>
+  <button class="tab-btn" onclick="showTab('builder')">Builder</button>
+</nav>
+
+<!-- ENCODE / DECODE -->
+<div id="encodedec" class="tab-panel active">
+<div class="page">
+  <div class="page-title">URL Encode / Decode</div>
+  <div class="page-sub">Percent-encode or decode URL components using encodeURIComponent.</div>
+  <div class="two-col">
+    <div class="card">
+      <label class="lbl">Plain Text Input</label>
+      <textarea id="ed-plain" rows="6" placeholder="Type text to encode..." oninput="encodeFromPlain()"></textarea>
+      <div class="row" style="margin-top:.65rem">
+        <button class="btn" onclick="ed_plain.value='';encodeFromPlain()">Clear</button>
+      </div>
+    </div>
+    <div class="card">
+      <label class="lbl">URL-Encoded Output</label>
+      <div class="output-wrap">
+        <textarea id="ed-encoded" rows="6" placeholder="Encoded text appears here..." oninput="decodeFromEncoded()"></textarea>
+        <button class="copy-btn" id="ed-copy-enc" onclick="copyEl('ed-encoded','ed-copy-enc')">Copy</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-label">Percent-encoded characters found</div>
+    <div id="pct-chars-info" style="font-size:.8rem;color:#475569;margin-bottom:.5rem"></div>
+    <table class="pct-table" id="pct-table">
+      <thead><tr><th>Encoded</th><th>Char</th><th>Unicode name / description</th></tr></thead>
+      <tbody id="pct-tbody"></tbody>
+    </table>
+  </div>
+  <div class="card" style="margin-top:.5rem">
+    <div class="section-label">Common percent-encoded characters reference</div>
+    <table class="pct-table">
+      <thead><tr><th>Encoded</th><th>Char</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>%20</td><td>Space</td><td>Use + in query strings (application/x-www-form-urlencoded)</td></tr>
+        <tr><td>%21</td><td>!</td><td>Exclamation mark — safe in most URLs but encoded by encodeURIComponent</td></tr>
+        <tr><td>%23</td><td>#</td><td>Fragment identifier — must be encoded inside query params</td></tr>
+        <tr><td>%24</td><td>$</td><td>Dollar sign</td></tr>
+        <tr><td>%25</td><td>%</td><td>Percent sign — must always be encoded</td></tr>
+        <tr><td>%26</td><td>&amp;</td><td>Ampersand — separator in query strings</td></tr>
+        <tr><td>%27</td><td>'</td><td>Single quote (apostrophe)</td></tr>
+        <tr><td>%28</td><td>(</td><td>Left parenthesis</td></tr>
+        <tr><td>%29</td><td>)</td><td>Right parenthesis</td></tr>
+        <tr><td>%2B</td><td>+</td><td>Plus — means space in query strings</td></tr>
+        <tr><td>%2C</td><td>,</td><td>Comma</td></tr>
+        <tr><td>%2F</td><td>/</td><td>Forward slash — path separator</td></tr>
+        <tr><td>%3A</td><td>:</td><td>Colon — used in scheme and host</td></tr>
+        <tr><td>%3D</td><td>=</td><td>Equals — key=value separator</td></tr>
+        <tr><td>%3F</td><td>?</td><td>Question mark — query string start</td></tr>
+        <tr><td>%40</td><td>@</td><td>At sign — userinfo separator</td></tr>
+        <tr><td>%5B</td><td>[</td><td>Left bracket</td></tr>
+        <tr><td>%5D</td><td>]</td><td>Right bracket</td></tr>
+        <tr><td>%7B</td><td>{</td><td>Left curly brace</td></tr>
+        <tr><td>%7D</td><td>}</td><td>Right curly brace</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- PARSE -->
+<div id="parse" class="tab-panel">
+<div class="page">
+  <div class="page-title">URL Parser</div>
+  <div class="page-sub">Paste a full URL to break it into its components. Updates live as you type.</div>
+  <div class="card">
+    <label class="lbl">URL Input</label>
+    <input type="text" id="parse-input" placeholder="https://user:pass@example.com:8080/path/page?foo=bar&baz=qux#section" oninput="runParse()">
+    <div class="row" style="margin-top:.65rem">
+      <button class="btn" onclick="document.getElementById('parse-input').value='';runParse()">Clear</button>
+      <button class="btn primary" onclick="document.getElementById('parse-input').value='https://user:pass@api.example.com:8080/v1/search?q=hello+world&limit=10&sort=date#results';runParse()">Load example</button>
+    </div>
+  </div>
+  <div id="parse-output"></div>
+</div>
+</div>
+
+<!-- BUILDER -->
+<div id="builder" class="tab-panel">
+<div class="page">
+  <div class="page-title">URL Builder</div>
+  <div class="page-sub">Fill in the fields below to assemble a URL live.</div>
+  <div class="card">
+    <div class="builder-form">
+      <div class="field-row">
+        <span class="field-lbl">Protocol</span>
+        <select class="proto-select" id="bl-proto" onchange="buildUrl()">
+          <option value="https">https://</option>
+          <option value="http">http://</option>
+          <option value="ftp">ftp://</option>
+          <option value="ws">ws://</option>
+          <option value="wss">wss://</option>
+          <option value="mailto">mailto:</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Host</span>
+        <input type="text" id="bl-host" placeholder="example.com" oninput="buildUrl()">
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Port</span>
+        <input type="text" id="bl-port" placeholder="Optional (e.g. 8080)" oninput="buildUrl()">
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Path</span>
+        <input type="text" id="bl-path" placeholder="/api/v1/resource" oninput="buildUrl()">
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Query params</span>
+        <div style="flex:1">
+          <div class="qp-list" id="qp-list"></div>
+          <button class="btn" style="margin-top:.5rem" onclick="addQueryParam()">+ Add param</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Fragment</span>
+        <input type="text" id="bl-fragment" placeholder="section-name (without #)" oninput="buildUrl()">
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <label class="lbl">Assembled URL</label>
+    <div class="output-wrap">
+      <div class="url-result-box" id="bl-result"><span class="url-result-empty">Fill in the fields above...</span></div>
+      <button class="copy-btn" id="bl-copy" onclick="copyBuilt()">Copy</button>
+    </div>
+    <div class="info-bar" id="bl-info"></div>
+  </div>
+</div>
+</div>
+
+<script>
+// ── Tab switching ────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── Copy helper ───────────────────────────────────────────────────────────────
+function copyEl(srcId, btnId) {
+  const val = document.getElementById(srcId).value || document.getElementById(srcId).textContent;
+  if (!val || val === document.querySelector('.url-result-empty')?.textContent) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById(btnId);
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── Encode / Decode ───────────────────────────────────────────────────────────
+const ed_plain   = document.getElementById('ed-plain');
+const ed_encoded = document.getElementById('ed-encoded');
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const PCT_NAMES = {
+  '%09':'Tab','%0A':'Line feed (newline)','%0D':'Carriage return',
+  '%20':'Space','%21':'Exclamation mark (!)','%22':'Double quote (")','%23':'Number sign (#)',
+  '%24':'Dollar sign ($)','%25':'Percent sign (%)','%26':'Ampersand (&)','%27':'Apostrophe (\')',
+  '%28':'Left parenthesis (()','%29':'Right parenthesis ())','%2A':'Asterisk (*)','%2B':'Plus sign (+)',
+  '%2C':'Comma (,)','%2F':'Slash (/)','%3A':'Colon (:)','%3B':'Semicolon (;)',
+  '%3D':'Equals sign (=)','%3F':'Question mark (?)','%40':'At sign (@)',
+  '%5B':'Left square bracket ([)','%5C':'Backslash (\\)','%5D':'Right square bracket (])',
+  '%5E':'Caret (^)','%60':'Backtick (`)','%7B':'Left curly brace ({)',
+  '%7C':'Pipe (|)','%7D':'Right curly brace (})','%7E':'Tilde (~)',
+};
+
+function encodeFromPlain() {
+  const plain = ed_plain.value;
+  if (!plain) { ed_encoded.value = ''; updatePctTable(''); return; }
+  const enc = encodeURIComponent(plain);
+  ed_encoded.value = enc;
+  updatePctTable(enc);
+}
+
+function decodeFromEncoded() {
+  const enc = ed_encoded.value;
+  if (!enc) { ed_plain.value = ''; updatePctTable(''); return; }
+  try {
+    ed_plain.value = decodeURIComponent(enc);
+    updatePctTable(enc);
+  } catch(e) {
+    ed_plain.value = '';
+    document.getElementById('pct-chars-info').textContent = 'Decode error: ' + e.message;
+  }
+}
+
+function updatePctTable(encoded) {
+  const tbody = document.getElementById('pct-tbody');
+  const infoEl = document.getElementById('pct-chars-info');
+  if (!encoded) { tbody.innerHTML = ''; infoEl.textContent = ''; return; }
+  const found = new Set();
+  const re = /%[0-9A-Fa-f]{2}/g;
+  let m;
+  while ((m = re.exec(encoded)) !== null) found.add(m[0].toUpperCase());
+  if (!found.size) { tbody.innerHTML = '<tr><td colspan="3" style="color:#334155;font-style:italic;padding:.5rem .65rem">No percent-encoded characters found.</td></tr>'; infoEl.textContent=''; return; }
+  infoEl.textContent = found.size + ' unique percent-encoded sequence' + (found.size>1?'s':'') + ' found.';
+  tbody.innerHTML = [...found].sort().map(pct => {
+    let char = '';
+    try { char = decodeURIComponent(pct); } catch(_) { char = '?'; }
+    const name = PCT_NAMES[pct] || ('Unicode U+' + pct.slice(1).toUpperCase());
+    return `<tr class="pct-found"><td>${escHtml(pct)}</td><td>${escHtml(char)}</td><td>${escHtml(name)}</td></tr>`;
+  }).join('');
+}
+
+// ── Parse ─────────────────────────────────────────────────────────────────────
+function runParse() {
+  const raw = document.getElementById('parse-input').value.trim();
+  const out = document.getElementById('parse-output');
+  if (!raw) { out.innerHTML = ''; return; }
+
+  let url;
+  try { url = new URL(raw); }
+  catch(e) {
+    out.innerHTML = `<div class="card" style="color:#f87171;font-size:.83rem">Invalid URL: ${escHtml(e.message)}</div>`;
+    return;
+  }
+
+  const rows = [
+    ['Protocol / Scheme', url.protocol.replace(':','') || '—'],
+    ['Host', url.hostname || '—'],
+    ['Port', url.port || (url.protocol==='https:'?'443 (default)':url.protocol==='http:'?'80 (default)':'—')],
+    ['Path', url.pathname || '/'],
+    ['Hash / Fragment', url.hash ? url.hash.slice(1) : '—'],
+    ['Origin', url.origin || '—'],
+    ['Username', url.username || '—'],
+    ['Password', url.password ? '••••••••' : '—'],
+    ['Full URL', url.href],
+  ];
+
+  let tableHtml = rows.map(([k,v]) =>
+    `<tr><td class="pt-key">${escHtml(k)}</td><td class="pt-val${v==='—'?' empty':''}">${escHtml(v)}</td></tr>`
+  ).join('');
+
+  // Query params
+  const params = [...url.searchParams.entries()];
+  let paramsHtml = '';
+  if (params.length) {
+    paramsHtml = `<div class="section-label" style="padding:.75rem .75rem 0">Query Parameters (${params.length})</div>
+    <div style="padding:.5rem .75rem .75rem">
+      ${params.map(([k,v]) => `<div class="pt-sub-row"><span class="pt-sub-key">${escHtml(k)}</span><span class="pt-sub-val">${escHtml(v)}</span></div>`).join('')}
+    </div>`;
+  } else {
+    paramsHtml = `<div class="section-label" style="padding:.75rem .75rem 0">Query Parameters</div><div style="padding:.35rem .75rem .75rem;color:#334155;font-style:italic;font-size:.82rem">None</div>`;
+  }
+
+  out.innerHTML = `<div class="card" style="padding:0;overflow:hidden">
+    <table class="parse-table">
+      <thead><tr><th>Component</th><th>Value</th></tr></thead>
+      <tbody>${tableHtml}</tbody>
+    </table>
+    ${paramsHtml}
+  </div>`;
+}
+
+// ── Builder ───────────────────────────────────────────────────────────────────
+let qpCount = 0;
+
+function addQueryParam(k='', v='') {
+  const list = document.getElementById('qp-list');
+  const id = ++qpCount;
+  const div = document.createElement('div');
+  div.className = 'qp-row';
+  div.id = 'qp-row-' + id;
+  div.innerHTML = `<input type="text" placeholder="key" value="${escHtmlAttr(k)}" oninput="buildUrl()" style="flex:1">
+    <span class="qp-eq">=</span>
+    <input type="text" placeholder="value" value="${escHtmlAttr(v)}" oninput="buildUrl()" style="flex:2">
+    <button class="qp-del" onclick="removeQp(${id})" title="Remove">&#215;</button>`;
+  list.appendChild(div);
+  buildUrl();
+}
+
+function escHtmlAttr(s) { return String(s).replace(/"/g,'&quot;'); }
+
+function removeQp(id) {
+  const el = document.getElementById('qp-row-' + id);
+  if (el) el.remove();
+  buildUrl();
+}
+
+function buildUrl() {
+  const proto    = document.getElementById('bl-proto').value;
+  const host     = document.getElementById('bl-host').value.trim();
+  const port     = document.getElementById('bl-port').value.trim();
+  const path     = document.getElementById('bl-path').value.trim();
+  const fragment = document.getElementById('bl-fragment').value.trim();
+
+  const resultEl = document.getElementById('bl-result');
+  const infoEl   = document.getElementById('bl-info');
+
+  if (!host && proto !== 'mailto') {
+    resultEl.innerHTML = '<span class="url-result-empty">Enter a host to build a URL...</span>';
+    infoEl.textContent = ''; return;
+  }
+
+  // Collect query params
+  const rows = document.querySelectorAll('#qp-list .qp-row');
+  const params = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const k = inputs[0]?.value.trim();
+    const v = inputs[1]?.value;
+    if (k) params.push([k, v ?? '']);
+  });
+
+  let url = proto + (proto === 'mailto' ? ':' : '://') + host;
+  if (port && proto !== 'mailto') url += ':' + port;
+  if (path) {
+    if (!path.startsWith('/') && proto !== 'mailto') url += '/' + path;
+    else url += path;
+  }
+  if (params.length) {
+    url += '?' + params.map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+  }
+  if (fragment) url += '#' + encodeURIComponent(fragment);
+
+  resultEl.textContent = url;
+  resultEl.title = url;
+  infoEl.textContent = `Length: ${url.length} chars${params.length ? ' | Query params: ' + params.length : ''}`;
+}
+
+function copyBuilt() {
+  const val = document.getElementById('bl-result').textContent;
+  if (!val || val.includes('Fill in') || val.includes('Enter a host')) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('bl-copy');
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// Initialize builder with one empty param row
+addQueryParam();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
