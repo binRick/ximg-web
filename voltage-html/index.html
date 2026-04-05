@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voltage Reference — voltage.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1.5rem;max-width:900px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#e2e8f0;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
+label{font-size:.85rem;color:#94a3b8;min-width:180px}
+input[type=number]{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem .75rem;border-radius:5px;font-size:.9rem;width:140px;font-family:inherit}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem}
+.result-box{background:#0a0a25;border:1px solid #22d3ee;border-radius:6px;padding:1rem;margin-top:1rem}
+.result-line{display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #1e293b;font-size:.9rem}
+.result-line:last-child{border:none}
+.result-key{color:#94a3b8}
+.result-val{color:#22d3ee;font-family:monospace;font-weight:600}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid #1e293b;vertical-align:top}
+tr:hover td{background:#0a0a25}
+canvas{background:#0a0a25;border-radius:6px;display:block;width:100%}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('divider')">Voltage Divider</button>
+  <button class="tab-btn" onclick="showTab('converter')">Level Converter</button>
+  <button class="tab-btn" onclick="showTab('reference')">Voltage References</button>
+  <button class="tab-btn" onclick="showTab('units')">Unit Converter</button>
+  <button class="tab-btn" onclick="showTab('ac')">AC Voltage</button>
+</nav>
+
+<div id="divider" class="tab-panel active">
+  <h2>Voltage Divider Calculator</h2>
+  <div class="card">
+    <div class="field-row"><label>Input Voltage Vin (V)</label><input type="number" id="vd_vin" value="5" min="0" step="0.1" oninput="calcVD()"></div>
+    <div class="field-row"><label>R1 (upper, Ω)</label><input type="number" id="vd_r1" value="10000" min="1" step="any" oninput="calcVD()"></div>
+    <div class="field-row"><label>R2 (lower, Ω)</label><input type="number" id="vd_r2" value="10000" min="1" step="any" oninput="calcVD()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Output Voltage (Vout)</span><span class="result-val" id="vd_vout">—</span></div>
+      <div class="result-line"><span class="result-key">Divider ratio (R2/(R1+R2))</span><span class="result-val" id="vd_ratio">—</span></div>
+      <div class="result-line"><span class="result-key">Current through divider</span><span class="result-val" id="vd_curr">—</span></div>
+      <div class="result-line"><span class="result-key">Thevenin equivalent R</span><span class="result-val" id="vd_rth">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Find R1 or R2 for a Target Vout</h3>
+    <div class="field-row"><label>Vin (V)</label><input type="number" id="vd2_vin" value="5" min="0" step="0.1" oninput="calcVD2()"></div>
+    <div class="field-row"><label>Target Vout (V)</label><input type="number" id="vd2_vout" value="3.3" min="0" step="0.1" oninput="calcVD2()"></div>
+    <div class="field-row"><label>Known R1 (Ω) — leave 0 for R2 known</label><input type="number" id="vd2_r1" value="0" min="0" step="any" oninput="calcVD2()"></div>
+    <div class="field-row"><label>Known R2 (Ω)</label><input type="number" id="vd2_r2" value="10000" min="0" step="any" oninput="calcVD2()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Required R1</span><span class="result-val" id="vd2_R1">—</span></div>
+      <div class="result-line"><span class="result-key">Required R2</span><span class="result-val" id="vd2_R2">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="converter" class="tab-panel">
+  <h2>Logic Level Converter Reference</h2>
+  <div class="card">
+    <div class="info-box" style="margin-bottom:1rem">
+      Connecting 5V logic to 3.3V devices directly can damage them. Common solutions: resistor divider, dedicated level shifter ICs, or MOSFETs.
+    </div>
+    <h3>Resistor Divider (5V → 3.3V, unidirectional)</h3>
+    <div class="field-row"><label>Source voltage (V)</label><input type="number" id="lc_vs" value="5" min="1" step="0.1" oninput="calcLC()"></div>
+    <div class="field-row"><label>Target voltage (V)</label><input type="number" id="lc_vt" value="3.3" min="0.5" step="0.1" oninput="calcLC()"></div>
+    <div class="field-row"><label>R2 (lower, Ω)</label><input type="number" id="lc_r2" value="4700" min="100" step="100" oninput="calcLC()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">R1 required</span><span class="result-val" id="lc_r1">—</span></div>
+      <div class="result-line"><span class="result-key">Actual Vout</span><span class="result-val" id="lc_vout">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Common Level Shifter ICs</h3>
+    <table>
+      <thead><tr><th>Part</th><th>Channels</th><th>Direction</th><th>Vlow</th><th>Vhigh</th><th>Speed</th></tr></thead>
+      <tbody>
+        <tr><td>BSS138 MOSFET</td><td>1</td><td>Bidirectional</td><td>1.8–3.3V</td><td>3.3–5V</td><td>Medium</td></tr>
+        <tr><td>TXB0108</td><td>8</td><td>Bidirectional auto</td><td>1.2–3.6V</td><td>1.65–5.5V</td><td>Fast</td></tr>
+        <tr><td>74LVC245</td><td>8</td><td>Unidirectional</td><td>1.65–3.6V</td><td>2.7–5.5V</td><td>Very fast</td></tr>
+        <tr><td>LSF0108</td><td>8</td><td>Bidirectional</td><td>0.9–3.6V</td><td>1.8–5.5V</td><td>Fast</td></tr>
+        <tr><td>SN74AHCT125</td><td>4</td><td>Unidirectional</td><td>—</td><td>5V output</td><td>Very fast</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel">
+  <h2>Common Voltage Levels</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Standard</th><th>Logic High (VIH)</th><th>Logic Low (VIL)</th><th>Typical VOH/VOL</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>TTL (5V)</td><td>&gt;2.0V</td><td>&lt;0.8V</td><td>3.4V / 0.2V</td><td>74xx series, Arduino Uno</td></tr>
+        <tr><td>LVTTL (3.3V)</td><td>&gt;2.0V</td><td>&lt;0.8V</td><td>2.4V / 0.4V</td><td>Most modern MCUs</td></tr>
+        <tr><td>LVCMOS 1.8V</td><td>&gt;0.65Vcc</td><td>&lt;0.35Vcc</td><td>Vcc-0.2 / 0.2V</td><td>Modern FPGAs, low-power</td></tr>
+        <tr><td>LVCMOS 1.2V</td><td>&gt;0.7V</td><td>&lt;0.5V</td><td>Vcc / 0V</td><td>Latest IoT, AI chips</td></tr>
+        <tr><td>RS-232</td><td>-3 to -15V = 1</td><td>+3 to +15V = 0</td><td>±10V typical</td><td>Inverted! DB9 connectors</td></tr>
+        <tr><td>LVDS</td><td>Differential +100–400mV</td><td>Differential -100–400mV</td><td>±250mV typical</td><td>High speed serial, cameras</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Standard Supply Voltages</h3>
+    <table>
+      <thead><tr><th>Voltage</th><th>Tolerance</th><th>Common Use</th></tr></thead>
+      <tbody>
+        <tr><td>1.0V</td><td>±5%</td><td>FPGA core, high-end SoC</td></tr>
+        <tr><td>1.2V</td><td>±5%</td><td>DDR4 memory</td></tr>
+        <tr><td>1.5V</td><td>±5%</td><td>DDR3 memory</td></tr>
+        <tr><td>1.8V</td><td>±5%</td><td>Modern MCU I/O, eMMC</td></tr>
+        <tr><td>2.5V</td><td>±5%</td><td>DDR2, some FPGA I/O</td></tr>
+        <tr><td>3.3V</td><td>±5%</td><td>Most modern MCUs, sensors</td></tr>
+        <tr><td>5V</td><td>±5%</td><td>USB, legacy TTL, Arduino</td></tr>
+        <tr><td>12V</td><td>±5%</td><td>ATX PSU, motors, steppers</td></tr>
+        <tr><td>24V</td><td>±5%</td><td>Industrial PLCs, servo drives</td></tr>
+        <tr><td>48V</td><td>±10%</td><td>PoE++, telecom, EV battery packs</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="units" class="tab-panel">
+  <h2>Voltage Unit Converter</h2>
+  <div class="card">
+    <div class="field-row"><label>Value</label><input type="number" id="uc_val" value="1" step="any" oninput="calcUnits()"></div>
+    <div class="field-row"><label>From unit</label>
+      <select id="uc_from" onchange="calcUnits()">
+        <option value="1e-3">Millivolts (mV)</option>
+        <option value="1" selected>Volts (V)</option>
+        <option value="1e3">Kilovolts (kV)</option>
+        <option value="1e6">Megavolts (MV)</option>
+        <option value="1e-6">Microvolts (µV)</option>
+        <option value="1e-9">Nanovolts (nV)</option>
+      </select>
+    </div>
+    <div class="result-box" id="unitResults"></div>
+  </div>
+  <div class="card">
+    <h3>dBV / dBu / dBm Converter</h3>
+    <div class="field-row"><label>Voltage (V)</label><input type="number" id="db_v" value="1" min="0.000001" step="any" oninput="calcDB()"></div>
+    <div class="field-row"><label>Load impedance (Ω)</label><input type="number" id="db_z" value="50" min="1" step="any" oninput="calcDB()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">dBV (ref 1V RMS)</span><span class="result-val" id="db_dbv">—</span></div>
+      <div class="result-line"><span class="result-key">dBu (ref 0.7746V)</span><span class="result-val" id="db_dbu">—</span></div>
+      <div class="result-line"><span class="result-key">dBm (ref 1mW into Z)</span><span class="result-val" id="db_dbm">—</span></div>
+      <div class="result-line"><span class="result-key">Power (into Z)</span><span class="result-val" id="db_pw">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="ac" class="tab-panel">
+  <h2>AC Voltage Calculator</h2>
+  <div class="card">
+    <div class="field-row"><label>Peak Voltage Vpeak (V)</label><input type="number" id="ac_vp" value="170" min="0" step="any" oninput="calcAC()"></div>
+    <div class="field-row"><label>Frequency (Hz)</label>
+      <select id="ac_freq" onchange="calcAC()">
+        <option value="60">60 Hz (US/Canada/Mexico)</option>
+        <option value="50">50 Hz (Europe/Asia/Australia)</option>
+        <option value="400">400 Hz (Aviation)</option>
+      </select>
+    </div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Vrms (RMS voltage)</span><span class="result-val" id="ac_vrms">—</span></div>
+      <div class="result-line"><span class="result-key">Vavg (average of |V|)</span><span class="result-val" id="ac_vavg">—</span></div>
+      <div class="result-line"><span class="result-key">Vpp (peak-to-peak)</span><span class="result-val" id="ac_vpp">—</span></div>
+      <div class="result-line"><span class="result-key">Period</span><span class="result-val" id="ac_period">—</span></div>
+      <div class="result-line"><span class="result-key">Angular frequency ω</span><span class="result-val" id="ac_omega">—</span></div>
+    </div>
+    <canvas id="acCanvas" height="200" style="margin-top:1rem"></canvas>
+  </div>
+  <div class="card">
+    <h3>World Mains Voltages</h3>
+    <table>
+      <thead><tr><th>Region</th><th>Vrms</th><th>Freq</th><th>Vpeak</th><th>Plug type</th></tr></thead>
+      <tbody>
+        <tr><td>USA, Canada</td><td>120V</td><td>60 Hz</td><td>170V</td><td>NEMA 5-15</td></tr>
+        <tr><td>Europe, most of world</td><td>230V</td><td>50 Hz</td><td>325V</td><td>Type C/E/F</td></tr>
+        <tr><td>UK, Ireland</td><td>230V</td><td>50 Hz</td><td>325V</td><td>Type G (3-pin)</td></tr>
+        <tr><td>Japan</td><td>100V</td><td>50/60 Hz</td><td>141V</td><td>Type A/B</td></tr>
+        <tr><td>Australia, NZ</td><td>230V</td><td>50 Hz</td><td>325V</td><td>Type I</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='ac') {calcAC();drawAC();}
+}
+function fmtR(r){return r>=1e6?(r/1e6).toFixed(3)+' MΩ':r>=1e3?(r/1e3).toFixed(3)+' kΩ':r.toFixed(2)+' Ω';}
+function calcVD(){
+  const vin=parseFloat(document.getElementById('vd_vin').value)||5;
+  const r1=parseFloat(document.getElementById('vd_r1').value)||10000;
+  const r2=parseFloat(document.getElementById('vd_r2').value)||10000;
+  const vout=vin*r2/(r1+r2),ratio=r2/(r1+r2),curr=vin/(r1+r2),rth=r1*r2/(r1+r2);
+  document.getElementById('vd_vout').textContent=vout.toFixed(4)+' V';
+  document.getElementById('vd_ratio').textContent=(ratio*100).toFixed(2)+'%';
+  document.getElementById('vd_curr').textContent=(curr*1e6).toFixed(2)+' µA';
+  document.getElementById('vd_rth').textContent=fmtR(rth);
+}
+function calcVD2(){
+  const vin=parseFloat(document.getElementById('vd2_vin').value)||5;
+  const vout=parseFloat(document.getElementById('vd2_vout').value)||3.3;
+  const r1_k=parseFloat(document.getElementById('vd2_r1').value)||0;
+  const r2_k=parseFloat(document.getElementById('vd2_r2').value)||10000;
+  const ratio=vout/vin;
+  if(r1_k>0){
+    const r2_calc=r1_k*ratio/(1-ratio);
+    document.getElementById('vd2_R1').textContent=fmtR(r1_k)+' (given)';
+    document.getElementById('vd2_R2').textContent=fmtR(r2_calc);
+  } else {
+    const r1_calc=r2_k*(1-ratio)/ratio;
+    document.getElementById('vd2_R1').textContent=fmtR(r1_calc);
+    document.getElementById('vd2_R2').textContent=fmtR(r2_k)+' (given)';
+  }
+}
+function calcLC(){
+  const vs=parseFloat(document.getElementById('lc_vs').value)||5;
+  const vt=parseFloat(document.getElementById('lc_vt').value)||3.3;
+  const r2=parseFloat(document.getElementById('lc_r2').value)||4700;
+  const r1=r2*(vs-vt)/vt;
+  const vout_act=vs*r2/(r1+r2);
+  document.getElementById('lc_r1').textContent=fmtR(r1);
+  document.getElementById('lc_vout').textContent=vout_act.toFixed(3)+' V';
+}
+function calcUnits(){
+  const val=parseFloat(document.getElementById('uc_val').value)||1;
+  const from=parseFloat(document.getElementById('uc_from').value)||1;
+  const v=val*from;
+  const units=[['nV',1e-9],['µV',1e-6],['mV',1e-3],['V',1],['kV',1e3],['MV',1e6]];
+  let html='';
+  for(const [name,scale] of units) html+=`<div class="result-line"><span class="result-key">${name}</span><span class="result-val">${(v/scale).toExponential(4)}</span></div>`;
+  document.getElementById('unitResults').innerHTML=html;
+}
+function calcDB(){
+  const v=parseFloat(document.getElementById('db_v').value)||1;
+  const z=parseFloat(document.getElementById('db_z').value)||50;
+  const dbv=20*Math.log10(v/1);
+  const dbu=20*Math.log10(v/0.7746);
+  const pw=v*v/z;
+  const dbm=10*Math.log10(pw/0.001);
+  document.getElementById('db_dbv').textContent=dbv.toFixed(2)+' dBV';
+  document.getElementById('db_dbu').textContent=dbu.toFixed(2)+' dBu';
+  document.getElementById('db_dbm').textContent=dbm.toFixed(2)+' dBm';
+  document.getElementById('db_pw').textContent=pw>=1?pw.toFixed(3)+' W':(pw*1000).toFixed(3)+' mW';
+}
+function calcAC(){
+  const vp=parseFloat(document.getElementById('ac_vp').value)||170;
+  const f=parseFloat(document.getElementById('ac_freq').value)||60;
+  const vrms=vp/Math.SQRT2,vavg=vp*2/Math.PI,vpp=vp*2,T=1/f,w=2*Math.PI*f;
+  document.getElementById('ac_vrms').textContent=vrms.toFixed(2)+' V';
+  document.getElementById('ac_vavg').textContent=vavg.toFixed(2)+' V';
+  document.getElementById('ac_vpp').textContent=vpp.toFixed(2)+' V';
+  document.getElementById('ac_period').textContent=(T*1000).toFixed(2)+' ms';
+  document.getElementById('ac_omega').textContent=w.toFixed(2)+' rad/s';
+  drawAC(vp,f);
+}
+function drawAC(vp,f){
+  vp=vp||170;f=f||60;
+  const c=document.getElementById('acCanvas');if(!c)return;
+  const W=c.width=c.offsetWidth*devicePixelRatio;
+  const H=c.height=200*devicePixelRatio;
+  const ctx=c.getContext('2d');const s=devicePixelRatio;
+  ctx.fillStyle='#0a0a25';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(100,150,120,0.15)';ctx.lineWidth=1;
+  for(let i=1;i<10;i++){ctx.beginPath();ctx.moveTo(i*W/10,0);ctx.lineTo(i*W/10,H);ctx.stroke();}
+  for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(0,i*H/5);ctx.lineTo(W,i*H/5);ctx.stroke();}
+  ctx.strokeStyle='rgba(100,180,140,0.3)';ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  const cycles=3,scale=H*0.38/vp;
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=W;i++){
+    const t=i/W*cycles/f;
+    const v=vp*Math.sin(2*Math.PI*f*t);
+    const py=H/2-v*scale;
+    i===0?ctx.moveTo(0,py):ctx.lineTo(i,py);
+  }
+  ctx.stroke();
+  // RMS line
+  const vrms=vp/Math.SQRT2;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.setLineDash([5*s,5*s]);
+  ctx.beginPath();ctx.moveTo(0,H/2-vrms*scale);ctx.lineTo(W,H/2-vrms*scale);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,H/2+vrms*scale);ctx.lineTo(W,H/2+vrms*scale);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font=`${10*s}px monospace`;ctx.textAlign='left';
+  ctx.fillText('Vrms='+vrms.toFixed(1)+'V',4,H/2-vrms*scale-4*s);
+}
+calcVD();calcVD2();calcLC();calcUnits();calcDB();calcAC();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

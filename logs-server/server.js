@@ -215,6 +215,24 @@ const LOG_FILES = {
   ssl:            'ssl.access.log',
   epoch:          'epoch.access.log',
   timespan:       'timespan.access.log',
+  '555timer':     '555timer.access.log',
+  arduino:        'arduino.access.log',
+  battery:        'battery.access.log',
+  capacitor:      'capacitor.access.log',
+  fpga:           'fpga.access.log',
+  impedance:      'impedance.access.log',
+  ohms:           'ohms.access.log',
+  opamp:          'opamp.access.log',
+  oscilloscope:   'oscilloscope.access.log',
+  pcb:            'pcb.access.log',
+  pinout:         'pinout.access.log',
+  psu:            'psu.access.log',
+  pwm:            'pwm.access.log',
+  resistor:       'resistor.access.log',
+  spectrum:       'spectrum.access.log',
+  spi:            'spi.access.log',
+  uart:           'uart.access.log',
+  voltage:        'voltage.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -609,6 +627,24 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="ssl">ssl</button>
           <button class="site-opt" data-site="epoch">epoch</button>
           <button class="site-opt" data-site="timespan">timespan</button>
+          <button class="site-opt" data-site="555timer">555timer</button>
+          <button class="site-opt" data-site="arduino">arduino</button>
+          <button class="site-opt" data-site="battery">battery</button>
+          <button class="site-opt" data-site="capacitor">capacitor</button>
+          <button class="site-opt" data-site="fpga">fpga</button>
+          <button class="site-opt" data-site="impedance">impedance</button>
+          <button class="site-opt" data-site="ohms">ohms</button>
+          <button class="site-opt" data-site="opamp">opamp</button>
+          <button class="site-opt" data-site="oscilloscope">oscilloscope</button>
+          <button class="site-opt" data-site="pcb">pcb</button>
+          <button class="site-opt" data-site="pinout">pinout</button>
+          <button class="site-opt" data-site="psu">psu</button>
+          <button class="site-opt" data-site="pwm">pwm</button>
+          <button class="site-opt" data-site="resistor">resistor</button>
+          <button class="site-opt" data-site="spectrum">spectrum</button>
+          <button class="site-opt" data-site="spi">spi</button>
+          <button class="site-opt" data-site="uart">uart</button>
+          <button class="site-opt" data-site="voltage">voltage</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

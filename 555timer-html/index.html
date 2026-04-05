@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>555 Timer Designer — 555timer.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1.5rem;max-width:900px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
+label{font-size:.85rem;color:#94a3b8;min-width:150px}
+input[type=number]{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem .75rem;border-radius:5px;font-size:.9rem;width:140px}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem}
+.result-box{background:#0a0a25;border:1px solid #22d3ee;border-radius:6px;padding:1rem;margin-top:1rem}
+.result-line{display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid #1e293b;font-size:.9rem}
+.result-line:last-child{border:none}
+.result-key{color:#94a3b8}
+.result-val{color:#22d3ee;font-family:monospace;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:650px){.grid2{grid-template-columns:1fr}}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8;margin-top:1rem}
+.pin-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.pin-table th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+.pin-table td{padding:.4rem .5rem;border-bottom:1px solid #1e293b}
+canvas{background:#0a0a25;border-radius:6px;width:100%;margin-top:.75rem}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('astable')">Astable</button>
+  <button class="tab-btn" onclick="showTab('monostable')">Monostable</button>
+  <button class="tab-btn" onclick="showTab('pinout')">Pinout</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div id="astable" class="tab-panel active">
+  <h2>Astable Mode — Oscillator / Square Wave Generator</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="field-row"><label>R1 (kΩ)</label><input type="number" id="a_r1" value="1" min="0.001" step="any" oninput="calcAstable()"></div>
+      <div class="field-row"><label>R2 (kΩ)</label><input type="number" id="a_r2" value="68" min="0.001" step="any" oninput="calcAstable()"></div>
+      <div class="field-row"><label>C (μF)</label><input type="number" id="a_c" value="0.1" min="0.0001" step="any" oninput="calcAstable()"></div>
+      <div class="result-box">
+        <div class="result-line"><span class="result-key">Frequency (f)</span><span class="result-val" id="a_freq">—</span></div>
+        <div class="result-line"><span class="result-key">Period (T)</span><span class="result-val" id="a_period">—</span></div>
+        <div class="result-line"><span class="result-key">Duty Cycle</span><span class="result-val" id="a_duty">—</span></div>
+        <div class="result-line"><span class="result-key">t_high</span><span class="result-val" id="a_th">—</span></div>
+        <div class="result-line"><span class="result-key">t_low</span><span class="result-val" id="a_tl">—</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.5rem">Waveform Preview</h3>
+      <canvas id="astableCanvas" height="150"></canvas>
+      <div class="info-box">
+        <strong style="color:#22d3ee">Formulas:</strong><br>
+        f = 1.44 / ((R1 + 2·R2) × C)<br>
+        t_high = 0.693 × (R1 + R2) × C<br>
+        t_low = 0.693 × R2 × C<br>
+        Duty = (R1+R2)/(R1+2×R2) × 100%<br><br>
+        Note: Duty cycle always &gt;50% in standard config. For ≤50%, use a diode across R2.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Design for Target Frequency</h3>
+    <div class="field-row"><label>Target Frequency</label><input type="number" id="ta_freq" value="1000" min="0.01" oninput="designAstable()"><select id="ta_funit" onchange="designAstable()"><option value="1">Hz</option><option value="1000" selected>kHz</option></select></div>
+    <div class="field-row"><label>Target Duty Cycle (%)</label><input type="number" id="ta_duty" value="50" min="51" max="99" oninput="designAstable()"></div>
+    <div class="result-box" id="ta_result"><div style="color:#94a3b8;font-size:.85rem">Suggested component values will appear here</div></div>
+  </div>
+</div>
+
+<div id="monostable" class="tab-panel">
+  <h2>Monostable Mode — One-Shot Timer</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="field-row"><label>R (kΩ)</label><input type="number" id="m_r" value="100" min="0.001" step="any" oninput="calcMono()"></div>
+      <div class="field-row"><label>C (μF)</label><input type="number" id="m_c" value="10" min="0.0001" step="any" oninput="calcMono()"></div>
+      <div class="result-box">
+        <div class="result-line"><span class="result-key">Pulse Width (t)</span><span class="result-val" id="m_t">—</span></div>
+        <div class="result-line"><span class="result-key">Formula</span><span class="result-val">t = 1.1 × R × C</span></div>
+        <div class="result-line"><span class="result-key">Re-trigger</span><span class="result-val">Not re-triggerable</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.5rem">Output Pulse</h3>
+      <canvas id="monoCanvas" height="150"></canvas>
+      <div class="info-box">
+        <strong style="color:#22d3ee">Monostable Operation:</strong><br>
+        Triggered by a LOW pulse on pin 2 (TRIGGER). Output goes HIGH for t = 1.1×R×C seconds, then returns LOW. Useful for debouncing, pulse stretching, and time delays.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Design for Target Delay</h3>
+    <div class="field-row"><label>Target Delay</label><input type="number" id="tm_delay" value="1" min="0.001" oninput="designMono()"><select id="tm_unit" onchange="designMono()"><option value="0.001">ms</option><option value="1" selected>s</option><option value="60">min</option></select></div>
+    <div class="result-box" id="tm_result"><div style="color:#94a3b8;font-size:.85rem">Component suggestions will appear here</div></div>
+  </div>
+</div>
+
+<div id="pinout" class="tab-panel">
+  <h2>555 Timer Pinout</h2>
+  <div class="grid2">
+    <div class="card">
+      <svg viewBox="0 0 300 280" style="width:100%;max-width:300px;display:block;margin:0 auto">
+        <rect x="80" y="60" width="140" height="160" fill="#1e293b" stroke="#22d3ee" stroke-width="2" rx="4"/>
+        <rect x="130" y="55" width="40" height="12" fill="#0a0a25" rx="6"/>
+        <text x="150" y="150" text-anchor="middle" font-size="18" fill="#22d3ee" font-family="monospace" font-weight="bold">NE555</text>
+        <!-- Left pins -->
+        <line x1="40" y1="90" x2="80" y2="90" stroke="#94a3b8" stroke-width="2"/>
+        <text x="35" y="94" text-anchor="end" font-size="11" fill="#e2e8f0">1</text>
+        <text x="85" y="94" font-size="10" fill="#22d3ee">GND</text>
+        <line x1="40" y1="120" x2="80" y2="120" stroke="#94a3b8" stroke-width="2"/>
+        <text x="35" y="124" text-anchor="end" font-size="11" fill="#e2e8f0">2</text>
+        <text x="85" y="124" font-size="10" fill="#22d3ee">TRIG</text>
+        <line x1="40" y1="150" x2="80" y2="150" stroke="#94a3b8" stroke-width="2"/>
+        <text x="35" y="154" text-anchor="end" font-size="11" fill="#e2e8f0">3</text>
+        <text x="85" y="154" font-size="10" fill="#22d3ee">OUT</text>
+        <line x1="40" y1="180" x2="80" y2="180" stroke="#94a3b8" stroke-width="2"/>
+        <text x="35" y="184" text-anchor="end" font-size="11" fill="#e2e8f0">4</text>
+        <text x="85" y="184" font-size="10" fill="#22d3ee">RESET</text>
+        <!-- Right pins -->
+        <line x1="220" y1="90" x2="260" y2="90" stroke="#94a3b8" stroke-width="2"/>
+        <text x="265" y="94" font-size="11" fill="#e2e8f0">8</text>
+        <text x="185" y="94" text-anchor="end" font-size="10" fill="#22d3ee">VCC</text>
+        <line x1="220" y1="120" x2="260" y2="120" stroke="#94a3b8" stroke-width="2"/>
+        <text x="265" y="124" font-size="11" fill="#e2e8f0">7</text>
+        <text x="185" y="124" text-anchor="end" font-size="10" fill="#22d3ee">DIS</text>
+        <line x1="220" y1="150" x2="260" y2="150" stroke="#94a3b8" stroke-width="2"/>
+        <text x="265" y="154" font-size="11" fill="#e2e8f0">6</text>
+        <text x="185" y="154" text-anchor="end" font-size="10" fill="#22d3ee">THR</text>
+        <line x1="220" y1="180" x2="260" y2="180" stroke="#94a3b8" stroke-width="2"/>
+        <text x="265" y="184" font-size="11" fill="#e2e8f0">5</text>
+        <text x="185" y="184" text-anchor="end" font-size="10" fill="#22d3ee">CV</text>
+      </svg>
+    </div>
+    <div class="card">
+      <table class="pin-table">
+        <thead><tr><th>Pin</th><th>Name</th><th>Function</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>GND</td><td>Ground (0V)</td></tr>
+          <tr><td>2</td><td>TRIGGER</td><td>Starts timing when &lt; ⅓ Vcc</td></tr>
+          <tr><td>3</td><td>OUTPUT</td><td>High (≈Vcc) or Low (≈0V), up to 200mA</td></tr>
+          <tr><td>4</td><td>RESET</td><td>Active LOW reset; tie HIGH if unused</td></tr>
+          <tr><td>5</td><td>CTRL VOLT</td><td>Modifies thresholds; bypass with 10nF to GND</td></tr>
+          <tr><td>6</td><td>THRESHOLD</td><td>Resets output when &gt; ⅔ Vcc</td></tr>
+          <tr><td>7</td><td>DISCHARGE</td><td>Open collector; discharges timing cap</td></tr>
+          <tr><td>8</td><td>VCC</td><td>Supply voltage (4.5V – 15V, bipolar; 3V–18V, CMOS)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel">
+  <h2>555 Timer Reference</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.5rem">Common Variants</h3>
+      <table class="pin-table">
+        <thead><tr><th>Part</th><th>Type</th><th>Vcc</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>NE555</td><td>Bipolar</td><td>5–15V</td><td>Original, high drive current</td></tr>
+          <tr><td>LM555</td><td>Bipolar</td><td>5–15V</td><td>TI version of NE555</td></tr>
+          <tr><td>TLC555</td><td>CMOS</td><td>3–15V</td><td>Low power, TI LinCMOS</td></tr>
+          <tr><td>ICM7555</td><td>CMOS</td><td>2–18V</td><td>Very low power (60μA)</td></tr>
+          <tr><td>NE556</td><td>Dual bipolar</td><td>5–15V</td><td>Two 555s in one 14-pin DIP</td></tr>
+          <tr><td>NE558</td><td>Quad</td><td>5–15V</td><td>Four timers, shared Vcc/GND</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#22d3ee;margin-bottom:.5rem">Absolute Maximum Ratings (NE555)</h3>
+      <div class="info-box">
+        Supply voltage: 18V max<br>
+        Output current: 200mA sink/source<br>
+        Power dissipation: 600mW (DIP-8)<br>
+        Operating temp: 0°C to 70°C (NE), -55 to +125°C (SE)<br>
+        Timing accuracy: ±1% typical<br>
+        Frequency range: DC to 500kHz (bipolar), DC to 3MHz (CMOS)<br>
+        Internal comparator thresholds: Vcc/3 and 2×Vcc/3
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+function fmtTime(s){
+  if(s>=1) return s.toPrecision(4).replace(/\.?0+$/,'')+'s';
+  if(s>=1e-3) return (s*1e3).toPrecision(4).replace(/\.?0+$/,'')+'ms';
+  if(s>=1e-6) return (s*1e6).toPrecision(4).replace(/\.?0+$/,'')+'μs';
+  return (s*1e9).toPrecision(4).replace(/\.?0+$/,'')+'ns';
+}
+function fmtFreq(f){
+  if(f>=1e6) return (f/1e6).toPrecision(4).replace(/\.?0+$/,'')+'MHz';
+  if(f>=1e3) return (f/1e3).toPrecision(4).replace(/\.?0+$/,'')+'kHz';
+  return f.toPrecision(4).replace(/\.?0+$/,'')+'Hz';
+}
+function calcAstable(){
+  const R1=parseFloat(document.getElementById('a_r1').value||0)*1e3;
+  const R2=parseFloat(document.getElementById('a_r2').value||0)*1e3;
+  const C=parseFloat(document.getElementById('a_c').value||0)*1e-6;
+  if(!R1||!R2||!C) return;
+  const th=0.693*(R1+R2)*C;
+  const tl=0.693*R2*C;
+  const T=th+tl;
+  const f=1/T;
+  const duty=(th/T)*100;
+  document.getElementById('a_freq').textContent=fmtFreq(f);
+  document.getElementById('a_period').textContent=fmtTime(T);
+  document.getElementById('a_duty').textContent=duty.toFixed(1)+'%';
+  document.getElementById('a_th').textContent=fmtTime(th);
+  document.getElementById('a_tl').textContent=fmtTime(tl);
+  drawAstable(duty/100);
+}
+function drawAstable(duty){
+  const canvas=document.getElementById('astableCanvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width=canvas.offsetWidth*window.devicePixelRatio||600;
+  const H=150;canvas.height=H;
+  ctx.scale(1,1);
+  ctx.fillStyle='#0a0a25';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;
+  const cycles=3;const pw=W/cycles;
+  ctx.beginPath();
+  let x=0;
+  for(let i=0;i<cycles;i++){
+    const hi=pw*duty;const lo=pw*(1-duty);
+    ctx.moveTo(x,H-20);ctx.lineTo(x,20);
+    ctx.lineTo(x+hi,20);ctx.lineTo(x+hi,H-20);
+    ctx.lineTo(x+hi+lo,H-20);
+    x+=pw;
+  }
+  ctx.stroke();
+  ctx.fillStyle='#94a3b8';ctx.font='11px monospace';
+  ctx.fillText('HIGH',8,35);ctx.fillText('LOW',8,H-8);
+}
+function calcMono(){
+  const R=parseFloat(document.getElementById('m_r').value||0)*1e3;
+  const C=parseFloat(document.getElementById('m_c').value||0)*1e-6;
+  if(!R||!C) return;
+  const t=1.1*R*C;
+  document.getElementById('m_t').textContent=fmtTime(t);
+  drawMono(t);
+}
+function drawMono(t){
+  const canvas=document.getElementById('monoCanvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width=canvas.offsetWidth*window.devicePixelRatio||600;
+  const H=150;canvas.height=H;
+  ctx.fillStyle='#0a0a25';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(0,H-20);ctx.lineTo(W*0.2,H-20);ctx.lineTo(W*0.2,20);ctx.lineTo(W*0.2+4,20);
+  ctx.moveTo(W*0.2,H*0.5);ctx.lineTo(W*0.2+20,H*0.5);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.beginPath();
+  ctx.moveTo(0,H-20);ctx.lineTo(W*0.15,H-20);ctx.lineTo(W*0.15,20);ctx.lineTo(W*0.65,20);ctx.lineTo(W*0.65,H-20);ctx.lineTo(W,H-20);
+  ctx.stroke();
+  ctx.fillStyle='#94a3b8';ctx.font='11px monospace';
+  ctx.fillText('trigger',W*0.1,H*0.45);ctx.fillText('← pulse width →',W*0.25,15);
+}
+function designAstable(){
+  const f=parseFloat(document.getElementById('ta_freq').value||0)*parseFloat(document.getElementById('ta_funit').value);
+  const duty=parseFloat(document.getElementById('ta_duty').value||50)/100;
+  if(!f||duty<=0.5) return;
+  const C=0.1e-6;
+  const R2=((1-duty)*1.44)/(f*C*(2*duty-1));
+  const R1=(1.44/(f*C)-2*R2);
+  const el=document.getElementById('ta_result');
+  if(R1<=0){el.innerHTML='<div style="color:#f87171">Duty cycle too high for this configuration. Max ~99%.</div>';return;}
+  el.innerHTML=`<div class="result-line"><span class="result-key">R1 (suggested)</span><span class="result-val">${(R1/1e3).toPrecision(3)}kΩ</span></div><div class="result-line"><span class="result-key">R2 (suggested)</span><span class="result-val">${(R2/1e3).toPrecision(3)}kΩ</span></div><div class="result-line"><span class="result-key">C (fixed)</span><span class="result-val">0.1μF</span></div>`;
+}
+function designMono(){
+  const t=parseFloat(document.getElementById('tm_delay').value||0)*parseFloat(document.getElementById('tm_unit').value);
+  if(!t) return;
+  const C=10e-6;const R=t/(1.1*C);
+  document.getElementById('tm_result').innerHTML=`<div class="result-line"><span class="result-key">R (suggested)</span><span class="result-val">${(R/1e3).toPrecision(3)}kΩ</span></div><div class="result-line"><span class="result-key">C (fixed)</span><span class="result-val">10μF</span></div>`;
+}
+calcAstable();calcMono();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

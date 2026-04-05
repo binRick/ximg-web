@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power Supply Design — psu.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1.5rem;max-width:960px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#e2e8f0;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
+label{font-size:.85rem;color:#94a3b8;min-width:180px}
+input[type=number]{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem .75rem;border-radius:5px;font-size:.9rem;width:140px;font-family:inherit}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem}
+.result-box{background:#0a0a25;border:1px solid #22d3ee;border-radius:6px;padding:1rem;margin-top:1rem}
+.result-line{display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #1e293b;font-size:.9rem}
+.result-line:last-child{border:none}
+.result-key{color:#94a3b8}
+.result-val{color:#22d3ee;font-family:monospace;font-weight:600}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid #1e293b;vertical-align:top}
+tr:hover td{background:#0a0a25}
+img{max-width:100%;border-radius:6px}
+pre{background:#0a0a25;border:1px solid #334155;border-radius:6px;padding:1rem;font-size:.82rem;overflow-x:auto;line-height:1.6;color:#e2e8f0}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('linear')">Linear Reg</button>
+  <button class="tab-btn" onclick="showTab('lm317')">LM317 Calc</button>
+  <button class="tab-btn" onclick="showTab('buckboost')">Buck/Boost</button>
+  <button class="tab-btn" onclick="showTab('filter')">Filter Caps</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div id="linear" class="tab-panel active">
+  <h2>Linear Voltage Regulators</h2>
+  <div class="card" style="text-align:center"><img src="./images/lm7805.jpg" alt="LM7805 regulator" style="max-height:220px;width:auto"></div>
+  <div class="card">
+    <h3>7805 / 78xx Fixed Regulator</h3>
+    <div class="field-row"><label>Input Voltage (V)</label><input type="number" id="lr_vin" value="12" min="0" step="0.5" oninput="calcLinear()"></div>
+    <div class="field-row"><label>Output Voltage (V)</label>
+      <select id="lr_vout" onchange="calcLinear()">
+        <option value="5">5V (7805)</option>
+        <option value="6">6V (7806)</option>
+        <option value="8">8V (7808)</option>
+        <option value="9">9V (7809)</option>
+        <option value="12">12V (7812)</option>
+        <option value="15">15V (7815)</option>
+        <option value="24">24V (7824)</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Load Current (mA)</label><input type="number" id="lr_i" value="500" min="1" max="1500" step="50" oninput="calcLinear()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Headroom (Vin-Vout)</span><span class="result-val" id="lr_head">—</span></div>
+      <div class="result-line"><span class="result-key">Power dissipation</span><span class="result-val" id="lr_pd">—</span></div>
+      <div class="result-line"><span class="result-key">Efficiency</span><span class="result-val" id="lr_eff">—</span></div>
+      <div class="result-line"><span class="result-key">Heatsink needed?</span><span class="result-val" id="lr_heat">—</span></div>
+      <div class="result-line"><span class="result-key">Min input voltage</span><span class="result-val" id="lr_min_vin">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="info-box">
+      Linear regulators dissipate excess voltage as heat: P = (Vin-Vout) × I. For high currents or large Vin-Vout differences, use a switching regulator instead. The 78xx series has a 2V typical dropout voltage — keep Vin ≥ Vout + 2V.
+    </div>
+  </div>
+</div>
+
+<div id="lm317" class="tab-panel">
+  <h2>LM317 Adjustable Regulator</h2>
+  <div class="card">
+    <div class="info-box" style="margin-bottom:1rem">
+      Vout = 1.25 × (1 + R2/R1) + Iadj × R2<br>
+      Iadj ≈ 50µA (often ignored). Typical: R1=240Ω, R2=variable.
+    </div>
+    <div class="field-row"><label>Desired Output (V)</label><input type="number" id="lm_vout" value="5" min="1.25" max="37" step="0.1" oninput="calcLM317()"></div>
+    <div class="field-row"><label>R1 (Ω)</label><input type="number" id="lm_r1" value="240" min="100" max="1000" step="10" oninput="calcLM317()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">R2 required</span><span class="result-val" id="lm_r2">—</span></div>
+      <div class="result-line"><span class="result-key">Nearest E24 R2</span><span class="result-val" id="lm_r2e24">—</span></div>
+      <div class="result-line"><span class="result-key">Actual Vout (with E24 R2)</span><span class="result-val" id="lm_vout_act">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>LM317 Pinout (TO-220)</h3>
+    <table>
+      <thead><tr><th>Pin</th><th>Name</th><th>Connection</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Adjustment (ADJ)</td><td>R1/R2 divider midpoint</td></tr>
+        <tr><td>2</td><td>Output (OUT)</td><td>To R1 top, load, output cap</td></tr>
+        <tr><td>3</td><td>Input (IN)</td><td>Unregulated DC input, input cap</td></tr>
+      </tbody>
+    </table>
+    <div class="info-box" style="margin-top:1rem">
+      Recommended: 0.1µF tantalum cap on input, 1µF on output. 10µF electrolytic on output for transient response. 1N4002 diode from output to input protects against reverse current if input removed before output.
+    </div>
+  </div>
+</div>
+
+<div id="buckboost" class="tab-panel">
+  <h2>Buck &amp; Boost Converter Formulas</h2>
+  <div class="card">
+    <h3>Buck (Step-Down) Converter</h3>
+    <div class="field-row"><label>Input Voltage Vin (V)</label><input type="number" id="bk_vin" value="12" min="1" step="0.5" oninput="calcBuck()"></div>
+    <div class="field-row"><label>Output Voltage Vout (V)</label><input type="number" id="bk_vout" value="5" min="0.5" step="0.1" oninput="calcBuck()"></div>
+    <div class="field-row"><label>Load Current Iout (A)</label><input type="number" id="bk_i" value="1" min="0.001" step="0.1" oninput="calcBuck()"></div>
+    <div class="field-row"><label>Switching Frequency (kHz)</label><input type="number" id="bk_fsw" value="300" min="1" max="10000" step="50" oninput="calcBuck()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Duty cycle (D)</span><span class="result-val" id="bk_d">—</span></div>
+      <div class="result-line"><span class="result-key">Min inductance (CCM boundary)</span><span class="result-val" id="bk_l">—</span></div>
+      <div class="result-line"><span class="result-key">Input current (avg)</span><span class="result-val" id="bk_iin">—</span></div>
+      <div class="result-line"><span class="result-key">Ideal efficiency</span><span class="result-val" id="bk_eff">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Boost (Step-Up) Converter</h3>
+    <div class="field-row"><label>Input Voltage Vin (V)</label><input type="number" id="bo_vin" value="5" min="1" step="0.5" oninput="calcBoost()"></div>
+    <div class="field-row"><label>Output Voltage Vout (V)</label><input type="number" id="bo_vout" value="12" min="2" step="0.5" oninput="calcBoost()"></div>
+    <div class="field-row"><label>Load Current Iout (A)</label><input type="number" id="bo_i" value="0.5" min="0.001" step="0.1" oninput="calcBoost()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Duty cycle (D)</span><span class="result-val" id="bo_d">—</span></div>
+      <div class="result-line"><span class="result-key">Input current (avg)</span><span class="result-val" id="bo_iin">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="filter" class="tab-panel">
+  <h2>Filter Capacitor Sizing</h2>
+  <div class="card">
+    <h3>Rectifier Filter Cap</h3>
+    <div class="field-row"><label>Load Current (mA)</label><input type="number" id="fc_i" value="500" min="1" step="50" oninput="calcFilter()"></div>
+    <div class="field-row"><label>Line Frequency (Hz)</label>
+      <select id="fc_freq" onchange="calcFilter()">
+        <option value="60">60 Hz (US/Japan)</option>
+        <option value="50">50 Hz (Europe)</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Ripple Voltage (Vpp)</label><input type="number" id="fc_ripple" value="1" min="0.1" max="10" step="0.1" oninput="calcFilter()"></div>
+    <div class="field-row"><label>Rectifier type</label>
+      <select id="fc_rect" onchange="calcFilter()">
+        <option value="fullwave">Full-wave bridge (2× freq)</option>
+        <option value="halfwave">Half-wave (1× freq)</option>
+      </select>
+    </div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Minimum capacitance</span><span class="result-val" id="fc_c">—</span></div>
+      <div class="result-line"><span class="result-key">Effective ripple freq</span><span class="result-val" id="fc_feff">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Output Decoupling Cap Recommendation</h3>
+    <table>
+      <thead><tr><th>Application</th><th>Cap Type</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Linear reg bulk</td><td>Electrolytic</td><td>10–100µF</td></tr>
+        <tr><td>IC decoupling</td><td>MLCC Ceramic</td><td>100nF per IC</td></tr>
+        <tr><td>Bulk supply bypass</td><td>Electrolytic</td><td>100–470µF</td></tr>
+        <tr><td>HF bypass (RF)</td><td>MLCC 0402</td><td>10–100pF</td></tr>
+        <tr><td>Switching reg output</td><td>Low-ESR electrolytic</td><td>100–1000µF</td></tr>
+        <tr><td>ADC reference</td><td>Film or C0G ceramic</td><td>1–10µF</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel">
+  <h2>PSU Reference</h2>
+  <div class="card">
+    <h3>Common Voltage Regulators</h3>
+    <table>
+      <thead><tr><th>Part</th><th>Vin max</th><th>Vout</th><th>Iout max</th><th>Dropout</th><th>Package</th></tr></thead>
+      <tbody>
+        <tr><td>LM7805</td><td>35V</td><td>5V fixed</td><td>1.5A</td><td>2V</td><td>TO-220</td></tr>
+        <tr><td>LM7812</td><td>35V</td><td>12V fixed</td><td>1.5A</td><td>2V</td><td>TO-220</td></tr>
+        <tr><td>LM317</td><td>40V</td><td>1.25–37V adj</td><td>1.5A</td><td>3V</td><td>TO-220</td></tr>
+        <tr><td>LM1117-3.3</td><td>15V</td><td>3.3V fixed</td><td>800mA</td><td>1.1V</td><td>SOT-223</td></tr>
+        <tr><td>AMS1117-5.0</td><td>15V</td><td>5V fixed</td><td>1A</td><td>1.3V</td><td>SOT-223</td></tr>
+        <tr><td>MCP1700</td><td>6V</td><td>1.2–5V adj</td><td>250mA</td><td>178mV</td><td>SOT-23</td></tr>
+        <tr><td>LT1763</td><td>20V</td><td>1.22–20V adj</td><td>500mA</td><td>300mV</td><td>MSOP-8</td></tr>
+        <tr><td>XL4005</td><td>32V</td><td>0.8–30V adj</td><td>5A</td><td>switching</td><td>SOP-8</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+function calcLinear(){
+  const vin=parseFloat(document.getElementById('lr_vin').value)||12;
+  const vout=parseFloat(document.getElementById('lr_vout').value)||5;
+  const i=parseFloat(document.getElementById('lr_i').value)||500;
+  const iA=i/1000;
+  const head=vin-vout,pd=head*iA,eff=vout/vin*100;
+  document.getElementById('lr_head').textContent=head.toFixed(2)+' V';
+  document.getElementById('lr_pd').textContent=pd.toFixed(3)+' W';
+  document.getElementById('lr_eff').textContent=eff.toFixed(1)+'%';
+  document.getElementById('lr_heat').textContent=pd>0.5?'Yes — heatsink required (>0.5W)':'No — may be OK in free air';
+  document.getElementById('lr_min_vin').textContent=(vout+2).toFixed(1)+' V (2V dropout)';
+}
+const E24=[1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1];
+function nearestE24(r){
+  const exp=Math.floor(Math.log10(r)),m=r/Math.pow(10,exp);
+  let best=E24[0],minD=Math.abs(m-E24[0]);
+  for(const v of E24){const d=Math.abs(m-v);if(d<minD){minD=d;best=v;}}
+  return best*Math.pow(10,exp);
+}
+function calcLM317(){
+  const vout=parseFloat(document.getElementById('lm_vout').value)||5;
+  const r1=parseFloat(document.getElementById('lm_r1').value)||240;
+  const r2=(vout/1.25-1)*r1;
+  const r2e24=nearestE24(r2);
+  const vout_act=1.25*(1+r2e24/r1);
+  document.getElementById('lm_r2').textContent=r2.toFixed(1)+' Ω';
+  document.getElementById('lm_r2e24').textContent=r2e24>=1000?(r2e24/1000).toFixed(2)+' kΩ':r2e24.toFixed(1)+' Ω';
+  document.getElementById('lm_vout_act').textContent=vout_act.toFixed(3)+' V';
+}
+function calcBuck(){
+  const vin=parseFloat(document.getElementById('bk_vin').value)||12;
+  const vout=parseFloat(document.getElementById('bk_vout').value)||5;
+  const i=parseFloat(document.getElementById('bk_i').value)||1;
+  const fsw=parseFloat(document.getElementById('bk_fsw').value)||300;
+  const D=vout/vin;
+  const Lmin=(vin-vout)*D/(2*i*fsw*1000);
+  const Iin=i*D;
+  document.getElementById('bk_d').textContent=(D*100).toFixed(1)+'%';
+  document.getElementById('bk_l').textContent=(Lmin*1e6).toFixed(2)+' µH';
+  document.getElementById('bk_iin').textContent=Iin.toFixed(3)+' A';
+  document.getElementById('bk_eff').textContent='~'+(vout/vin*100*0.95).toFixed(1)+'% (est.)';
+}
+function calcBoost(){
+  const vin=parseFloat(document.getElementById('bo_vin').value)||5;
+  const vout=parseFloat(document.getElementById('bo_vout').value)||12;
+  const i=parseFloat(document.getElementById('bo_i').value)||0.5;
+  const D=1-vin/vout;
+  const Iin=i*vout/vin;
+  document.getElementById('bo_d').textContent=(D*100).toFixed(1)+'%';
+  document.getElementById('bo_iin').textContent=Iin.toFixed(3)+' A';
+}
+function calcFilter(){
+  const i=parseFloat(document.getElementById('fc_i').value)||500;
+  const fl=parseFloat(document.getElementById('fc_freq').value)||60;
+  const vr=parseFloat(document.getElementById('fc_ripple').value)||1;
+  const rect=document.getElementById('fc_rect').value;
+  const feff=rect==='fullwave'?fl*2:fl;
+  const C=i/1000/(feff*vr);
+  document.getElementById('fc_c').textContent=(C*1e6).toFixed(0)+' µF';
+  document.getElementById('fc_feff').textContent=feff+' Hz';
+}
+calcLinear();calcLM317();calcBuck();calcBoost();calcFilter();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

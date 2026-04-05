@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oscilloscope Viewer — oscilloscope.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1rem;cursor:pointer;font-size:.85rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1rem 1.5rem;max-width:1000px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+.scope-screen{background:#040d14;border:3px solid #1e293b;border-radius:8px;position:relative;overflow:hidden}
+.scope-canvas{display:block;width:100%;aspect-ratio:4/3}
+.controls{display:flex;flex-wrap:wrap;gap:1rem;padding:1rem;background:#070720;border:1px solid #1e293b;border-radius:8px;margin-top:.75rem}
+.ctrl-group{display:flex;flex-direction:column;gap:.3rem}
+.ctrl-label{font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
+.ctrl-val{font-size:.9rem;color:#22d3ee;font-family:monospace}
+input[type=range]{accent-color:#22d3ee;width:120px}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.3rem .6rem;border-radius:4px;font-size:.85rem}
+.btn-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:.35rem .8rem;border-radius:5px;cursor:pointer;font-size:.82rem;transition:background .15s}
+.btn:hover{background:#334155}
+.btn.active{background:#0e4a5e;border-color:#22d3ee;color:#22d3ee}
+.measurements{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-top:.75rem}
+.meas-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:.6rem 1rem}
+.meas-key{font-size:.75rem;color:#64748b;text-transform:uppercase}
+.meas-val{font-size:1rem;color:#22d3ee;font-family:monospace;font-weight:600}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('scope')">Oscilloscope</button>
+  <button class="tab-btn" onclick="showTab('lissajous')">Lissajous</button>
+  <button class="tab-btn" onclick="showTab('spectrum')">FFT Spectrum</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div id="scope" class="tab-panel active">
+  <h2>Waveform Viewer</h2>
+  <div class="scope-screen">
+    <canvas id="scopeCanvas" class="scope-canvas"></canvas>
+  </div>
+  <div class="measurements" id="measurements">
+    <div class="meas-box"><div class="meas-key">Frequency</div><div class="meas-val" id="m_freq">—</div></div>
+    <div class="meas-box"><div class="meas-key">Period</div><div class="meas-val" id="m_period">—</div></div>
+    <div class="meas-box"><div class="meas-key">Amplitude</div><div class="meas-val" id="m_amp">—</div></div>
+    <div class="meas-box"><div class="meas-key">Vpp</div><div class="meas-val" id="m_vpp">—</div></div>
+    <div class="meas-box"><div class="meas-key">Vrms</div><div class="meas-val" id="m_vrms">—</div></div>
+    <div class="meas-box"><div class="meas-key">DC Offset</div><div class="meas-val" id="m_dc">—</div></div>
+  </div>
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Waveform</span>
+      <select id="waveType" onchange="updateScope()">
+        <option value="sine">Sine</option>
+        <option value="square">Square</option>
+        <option value="sawtooth">Sawtooth</option>
+        <option value="triangle">Triangle</option>
+        <option value="pulse">Pulse</option>
+        <option value="noise">Noise</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Frequency</span>
+      <input type="range" id="freq" min="0.5" max="4" step="0.1" value="1" oninput="updateScope()">
+      <span class="ctrl-val" id="freq_val">1 kHz</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Amplitude</span>
+      <input type="range" id="amp" min="0.1" max="1" step="0.05" value="0.8" oninput="updateScope()">
+      <span class="ctrl-val" id="amp_val">3.2 V</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">DC Offset</span>
+      <input type="range" id="dcoff" min="-0.4" max="0.4" step="0.05" value="0" oninput="updateScope()">
+      <span class="ctrl-val" id="dc_val">0 V</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Timebase</span>
+      <input type="range" id="timebase" min="0.5" max="4" step="0.5" value="2" oninput="updateScope()">
+      <span class="ctrl-val" id="tb_val">2 cycles</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Color</span>
+      <select id="traceColor" onchange="updateScope()">
+        <option value="#22d3ee">Cyan</option>
+        <option value="#22c55e">Green</option>
+        <option value="#f59e0b">Amber</option>
+        <option value="#f87171">Red</option>
+        <option value="#a78bfa">Purple</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Trigger</span>
+      <select id="trigger" onchange="updateScope()">
+        <option value="rising">Rising edge</option>
+        <option value="falling">Falling edge</option>
+      </select>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="runBtn" onclick="toggleRun()">⏸ Pause</button>
+    <button class="btn" onclick="addChannel2()">+ Ch2</button>
+  </div>
+</div>
+
+<div id="lissajous" class="tab-panel">
+  <h2>Lissajous Figures (X-Y Mode)</h2>
+  <div class="scope-screen">
+    <canvas id="lissCanvas" class="scope-canvas" style="aspect-ratio:1/1"></canvas>
+  </div>
+  <div class="controls">
+    <div class="ctrl-group"><span class="ctrl-label">X Freq (Hz)</span><input type="range" id="lx_freq" min="1" max="5" step="1" value="1" oninput="updateLiss()"><span class="ctrl-val" id="lx_val">1</span></div>
+    <div class="ctrl-group"><span class="ctrl-label">Y Freq (Hz)</span><input type="range" id="ly_freq" min="1" max="5" step="1" value="2" oninput="updateLiss()"><span class="ctrl-val" id="ly_val">2</span></div>
+    <div class="ctrl-group"><span class="ctrl-label">Phase (°)</span><input type="range" id="lphase" min="0" max="360" step="5" value="90" oninput="updateLiss()"><span class="ctrl-val" id="lp_val">90°</span></div>
+  </div>
+  <div class="card" style="margin-top:.75rem">
+    <div style="color:#94a3b8;font-size:.85rem;line-height:1.8">
+      <strong style="color:#22d3ee">Lissajous figures</strong> show the phase relationship between two signals. The X:Y frequency ratio determines the shape. A circle = 90° phase shift at 1:1 ratio. Used to measure phase and frequency relationships on analog oscilloscopes.
+    </div>
+  </div>
+</div>
+
+<div id="spectrum" class="tab-panel">
+  <h2>FFT Spectrum Analyzer</h2>
+  <div class="scope-screen">
+    <canvas id="fftCanvas" class="scope-canvas"></canvas>
+  </div>
+  <div class="controls">
+    <div class="ctrl-group"><span class="ctrl-label">Signal</span><select id="fft_type" onchange="updateFFT()"><option value="sine">Pure Sine</option><option value="square">Square Wave</option><option value="sawtooth">Sawtooth</option><option value="pulse">Pulse</option></select></div>
+    <div class="ctrl-group"><span class="ctrl-label">Fundamental (Hz)</span><input type="range" id="fft_f0" min="1" max="8" step="1" value="2" oninput="updateFFT()"><span class="ctrl-val" id="fft_f0_val">200 Hz</span></div>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel active" style="display:none" id="reference">
+  <h2>Oscilloscope Reference</h2>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Controls Guide</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <thead><tr><th style="background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left">Control</th><th style="background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left">Function</th><th style="background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left">Typical Units</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:.4rem;border-bottom:1px solid #1e293b">Volts/Div</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Vertical scale per division</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">1mV – 10V/div</td></tr>
+        <tr><td style="padding:.4rem;border-bottom:1px solid #1e293b">Time/Div</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Horizontal (time) scale per division</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">1ns – 1s/div</td></tr>
+        <tr><td style="padding:.4rem;border-bottom:1px solid #1e293b">Trigger</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Stabilizes waveform display</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Rising/Falling/Level</td></tr>
+        <tr><td style="padding:.4rem;border-bottom:1px solid #1e293b">Coupling</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">DC passes all; AC removes DC offset</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">AC/DC/GND</td></tr>
+        <tr><td style="padding:.4rem;border-bottom:1px solid #1e293b">Bandwidth</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Highest frequency accurately displayed</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">25MHz – 1GHz+</td></tr>
+        <tr><td style="padding:.4rem;border-bottom:1px solid #1e293b">Sample Rate</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Points captured per second</td><td style="padding:.4rem;border-bottom:1px solid #1e293b">Must be ≥2× bandwidth</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let running=true, animId=null, ch2Active=false;
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='lissajous') startLiss();
+  if(id==='spectrum') startFFT();
+}
+
+// Main scope
+function waveform(type,t,duty){
+  const p=t%(2*Math.PI);
+  switch(type){
+    case 'sine': return Math.sin(t);
+    case 'square': return p<Math.PI?1:-1;
+    case 'sawtooth': return p/Math.PI-1;
+    case 'triangle': return p<Math.PI?-1+2*p/Math.PI:3-2*p/Math.PI;
+    case 'pulse': return p<0.4*Math.PI?1:-1;
+    case 'noise': return (Math.random()*2-1)*0.8+Math.sin(t)*0.2;
+    default: return Math.sin(t);
+  }
+}
+
+let scopePhase=0;
+function drawScope(){
+  const canvas=document.getElementById('scopeCanvas');
+  if(!canvas) return;
+  const W=canvas.width=canvas.offsetWidth*devicePixelRatio;
+  const H=canvas.height=canvas.offsetWidth*devicePixelRatio*(3/4);
+  const ctx=canvas.getContext('2d');
+  // Background
+  ctx.fillStyle='#040d14';ctx.fillRect(0,0,W,H);
+  // Grid
+  const gx=10,gy=8;
+  ctx.strokeStyle='rgba(100,150,120,0.15)';ctx.lineWidth=1;
+  for(let i=1;i<gx;i++){ctx.beginPath();ctx.moveTo(i*W/gx,0);ctx.lineTo(i*W/gx,H);ctx.stroke();}
+  for(let i=1;i<gy;i++){ctx.beginPath();ctx.moveTo(0,i*H/gy);ctx.lineTo(W,i*H/gy);ctx.stroke();}
+  ctx.strokeStyle='rgba(100,180,140,0.3)';
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+
+  const type=document.getElementById('waveType').value;
+  const freq=parseFloat(document.getElementById('freq').value);
+  const amp=parseFloat(document.getElementById('amp').value);
+  const dcoff=parseFloat(document.getElementById('dcoff').value);
+  const cycles=parseFloat(document.getElementById('timebase').value);
+  const color=document.getElementById('traceColor').value;
+
+  // Main trace
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=W;i++){
+    const t=scopePhase+(i/W)*cycles*2*Math.PI;
+    const y=(waveform(type,t)+dcoff)*amp;
+    const py=H/2-y*(H*0.4);
+    i===0?ctx.moveTo(0,py):ctx.lineTo(i,py);
+  }
+  ctx.stroke();
+
+  // Channel 2 (if active)
+  if(ch2Active){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.beginPath();
+    for(let i=0;i<=W;i++){
+      const t=scopePhase+(i/W)*cycles*2*Math.PI+Math.PI/2;
+      const y=(Math.sin(t)*0.6+0.1);
+      const py=H/2-y*(H*0.4);
+      i===0?ctx.moveTo(0,py):ctx.lineTo(i,py);
+    }
+    ctx.stroke();
+  }
+
+  // Measurements
+  const freal=freq*1000;
+  const period=1/freal;
+  const vpeak=amp*4;
+  const fmtF=f=>f>=1e3?(f/1e3).toPrecision(4).replace(/\.?0+$/,'')+'kHz':f.toPrecision(4).replace(/\.?0+$/,'')+'Hz';
+  const fmtT=t=>t<1e-6?(t*1e9).toFixed(2)+'ns':t<1e-3?(t*1e6).toFixed(2)+'μs':(t*1e3).toFixed(2)+'ms';
+  document.getElementById('m_freq').textContent=fmtF(freal);
+  document.getElementById('m_period').textContent=fmtT(period);
+  document.getElementById('m_amp').textContent=(vpeak/2).toFixed(2)+'V';
+  document.getElementById('m_vpp').textContent=vpeak.toFixed(2)+'V';
+  document.getElementById('m_vrms').textContent=(type==='sine'?vpeak/2/Math.SQRT2:vpeak/2).toFixed(3)+'V';
+  document.getElementById('m_dc').textContent=(dcoff*4).toFixed(2)+'V';
+
+  if(running) scopePhase+=0.03;
+}
+
+function updateScope(){
+  const freq=parseFloat(document.getElementById('freq').value);
+  const amp=parseFloat(document.getElementById('amp').value);
+  const dcoff=parseFloat(document.getElementById('dcoff').value);
+  const tb=parseFloat(document.getElementById('timebase').value);
+  document.getElementById('freq_val').textContent=(freq*1000)>=1000?(freq)+'kHz':(freq*1000)+'Hz';
+  document.getElementById('amp_val').textContent=(amp*4).toFixed(1)+'V';
+  document.getElementById('dc_val').textContent=(dcoff*4).toFixed(1)+'V';
+  document.getElementById('tb_val').textContent=tb+' cycles';
+}
+function toggleRun(){
+  running=!running;
+  document.getElementById('runBtn').textContent=running?'⏸ Pause':'▶ Run';
+}
+function addChannel2(){ch2Active=!ch2Active;}
+
+// Lissajous
+let lissPhase=0;
+function drawLiss(){
+  const canvas=document.getElementById('lissCanvas');
+  if(!canvas||!document.getElementById('lissajous').classList.contains('active')) return;
+  const W=canvas.width=canvas.offsetWidth*devicePixelRatio;
+  const H=canvas.height=W;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='rgba(4,13,20,0.15)';ctx.fillRect(0,0,W,H);
+  const fx=parseInt(document.getElementById('lx_freq').value);
+  const fy=parseInt(document.getElementById('ly_freq').value);
+  const phase=parseFloat(document.getElementById('lphase').value)*Math.PI/180;
+  document.getElementById('lx_val').textContent=fx;
+  document.getElementById('ly_val').textContent=fy;
+  document.getElementById('lp_val').textContent=document.getElementById('lphase').value+'°';
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=1.5;ctx.beginPath();
+  const N=1000;
+  for(let i=0;i<=N;i++){
+    const t=lissPhase+i/N*2*Math.PI*Math.max(fx,fy);
+    const x=Math.sin(fx*t+phase);
+    const y=Math.sin(fy*t);
+    const px=(x+1)/2*W*0.9+W*0.05;
+    const py=(y+1)/2*H*0.9+H*0.05;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  lissPhase+=0.01;
+}
+function startLiss(){
+  function loop(){drawLiss();requestAnimationFrame(loop);}
+  loop();
+}
+function updateLiss(){}
+
+// FFT
+function drawFFT(){
+  const canvas=document.getElementById('fftCanvas');
+  if(!canvas||!document.getElementById('spectrum').classList.contains('active')) return;
+  const W=canvas.width=canvas.offsetWidth*devicePixelRatio;
+  const H=canvas.height=canvas.offsetWidth*devicePixelRatio*(3/4);
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#040d14';ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(100,150,120,0.15)';ctx.lineWidth=1;
+  for(let i=1;i<10;i++){ctx.beginPath();ctx.moveTo(i*W/10,0);ctx.lineTo(i*W/10,H);ctx.stroke();}
+  for(let i=1;i<8;i++){ctx.beginPath();ctx.moveTo(0,i*H/8);ctx.lineTo(W,i*H/8);ctx.stroke();}
+
+  const type=document.getElementById('fft_type').value;
+  const f0=parseInt(document.getElementById('fft_f0').value)*100;
+  document.getElementById('fft_f0_val').textContent=f0+'Hz';
+  const maxF=f0*20;
+
+  // Compute harmonics
+  let harmonics=[];
+  if(type==='sine') harmonics=[{n:1,a:1}];
+  else if(type==='square') for(let n=1;n<=15;n+=2) harmonics.push({n,a:4/(Math.PI*n)});
+  else if(type==='sawtooth') for(let n=1;n<=15;n++) harmonics.push({n,a:1/n});
+  else if(type==='pulse') for(let n=1;n<=12;n++) harmonics.push({n,a:Math.abs(Math.sin(n*Math.PI*0.2)/(n*Math.PI*0.2))});
+
+  harmonics.forEach(h=>{
+    const fx=h.n*f0/maxF*W;
+    const fy=H-h.a*H*0.85;
+    ctx.strokeStyle='#22d3ee';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(fx,H);ctx.lineTo(fx,fy);ctx.stroke();
+    ctx.fillStyle='#22d3ee';ctx.font='10px monospace';
+    if(h.n<=5) ctx.fillText(h.n===1?'f₀':`${h.n}f₀`,fx-8,fy-4);
+  });
+  ctx.fillStyle='#64748b';ctx.font='11px monospace';
+  ctx.fillText('0',4,H-4);ctx.fillText(maxF>=1000?(maxF/1000)+'kHz':maxF+'Hz',W-40,H-4);
+}
+function startFFT(){function loop(){drawFFT();requestAnimationFrame(loop);}loop();}
+function updateFFT(){}
+
+// Main animation loop
+function mainLoop(){
+  if(document.getElementById('scope').classList.contains('active')) drawScope();
+  requestAnimationFrame(mainLoop);
+}
+mainLoop();
+updateScope();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

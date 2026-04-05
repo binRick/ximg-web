@@ -44,7 +44,7 @@
       ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'Electronics', apps: [
-      ['circuit','circuit'],['compiler','compiler'],['logic','logic'],['protocol','protocol']
+      ['555timer','555 Timer'],['arduino','arduino'],['battery','battery'],['capacitor','capacitor'],['circuit','circuit'],['compiler','compiler'],['fpga','fpga'],['impedance','impedance'],['logic','logic'],['ohms','ohms'],['opamp','opamp'],['oscilloscope','oscilloscope'],['pcb','pcb'],['pinout','pinout'],['protocol','protocol'],['psu','psu'],['pwm','pwm'],['resistor','resistor'],['spectrum','spectrum'],['spi','spi'],['uart','uart'],['voltage','voltage']
     ]},
     { label: 'Data', apps: [
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']

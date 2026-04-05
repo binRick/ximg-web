@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RF Spectrum Analyzer — spectrum.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1rem;cursor:pointer;font-size:.85rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1rem 1.5rem;max-width:1000px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:.75rem;font-size:1.2rem}
+.screen{background:#040d14;border:2px solid #1e293b;border-radius:8px;position:relative;overflow:hidden;margin-bottom:.75rem}
+.controls{display:flex;flex-wrap:wrap;gap:1rem;padding:1rem;background:#070720;border:1px solid #1e293b;border-radius:8px;margin-bottom:.75rem}
+.ctrl-group{display:flex;flex-direction:column;gap:.3rem}
+.ctrl-label{font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
+.ctrl-val{font-size:.85rem;color:#22d3ee;font-family:monospace}
+input[type=range]{accent-color:#22d3ee;width:140px}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.4rem .6rem;border-radius:4px;font-size:.85rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid #1e293b}
+.marker{display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;font-size:.85rem;font-family:monospace}
+.marker-color{width:12px;height:12px;border-radius:2px}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('analyzer')">Spectrum Analyzer</button>
+  <button class="tab-btn" onclick="showTab('waterfall')">Waterfall</button>
+  <button class="tab-btn" onclick="showTab('bands')">Band Plan</button>
+</nav>
+
+<div id="analyzer" class="tab-panel active">
+  <h2>RF Spectrum Analyzer</h2>
+  <div class="screen">
+    <canvas id="specCanvas" style="display:block;width:100%;aspect-ratio:16/9"></canvas>
+  </div>
+  <div id="markers" style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.75rem"></div>
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Center Freq</span>
+      <input type="range" id="centerFreq" min="0" max="100" value="50" oninput="updateSpec()">
+      <span class="ctrl-val" id="cf_val">100 MHz</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Span</span>
+      <select id="span" onchange="updateSpec()">
+        <option value="1">1 MHz</option>
+        <option value="5">5 MHz</option>
+        <option value="10">10 MHz</option>
+        <option value="50" selected>50 MHz</option>
+        <option value="100">100 MHz</option>
+        <option value="500">500 MHz</option>
+        <option value="1000">1 GHz</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Ref Level (dBm)</span>
+      <input type="range" id="refLevel" min="-100" max="10" value="-20" oninput="updateSpec()">
+      <span class="ctrl-val" id="rl_val">-20 dBm</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Scale</span>
+      <select id="scale" onchange="updateSpec()">
+        <option value="10" selected>10 dB/div</option>
+        <option value="5">5 dB/div</option>
+        <option value="2">2 dB/div</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Preset Signal</span>
+      <select id="preset" onchange="loadPreset()">
+        <option value="fm">FM Broadcast (88-108 MHz)</option>
+        <option value="wifi">WiFi 2.4GHz</option>
+        <option value="ism">ISM 433 MHz</option>
+        <option value="vhf">VHF Air Band</option>
+        <option value="noisy">Noisy channel</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Noise Floor</span>
+      <input type="range" id="noiseFloor" min="-120" max="-60" value="-90" oninput="updateSpec()">
+      <span class="ctrl-val" id="nf_val">-90 dBm</span>
+    </div>
+  </div>
+</div>
+
+<div id="waterfall" class="tab-panel">
+  <h2>Waterfall Display</h2>
+  <div class="screen">
+    <canvas id="wfCanvas" style="display:block;width:100%;aspect-ratio:16/9"></canvas>
+  </div>
+  <div style="color:#94a3b8;font-size:.85rem;margin-top:.5rem;line-height:1.6">
+    Time flows top to bottom. Bright colors indicate strong signals. Useful for seeing intermittent transmissions and frequency drift over time.
+  </div>
+</div>
+
+<div id="bands" class="tab-panel">
+  <h2>Radio Frequency Band Allocations</h2>
+  <div class="card">
+    <table><thead><tr><th>Band</th><th>Frequency Range</th><th>Primary Allocations</th></tr></thead><tbody>
+      <tr><td>AM Broadcast</td><td>530–1700 kHz</td><td>AM radio, NRSC-5 HD Radio</td></tr>
+      <tr><td>160m (Ham)</td><td>1.8–2.0 MHz</td><td>Amateur radio, nighttime DX</td></tr>
+      <tr><td>40m (Ham)</td><td>7.0–7.3 MHz</td><td>Amateur, evening/night DX</td></tr>
+      <tr><td>20m (Ham)</td><td>14.0–14.35 MHz</td><td>Amateur, best HF DX band</td></tr>
+      <tr><td>10m (Ham)</td><td>28–29.7 MHz</td><td>Amateur, excellent when solar cycle active</td></tr>
+      <tr><td>FM Broadcast</td><td>87.5–108 MHz</td><td>Commercial FM radio</td></tr>
+      <tr><td>VHF TV/Aero</td><td>108–137 MHz</td><td>Aviation comms (AM), VOR/ILS</td></tr>
+      <tr><td>2m (Ham)</td><td>144–148 MHz</td><td>Amateur, local repeaters, satellite</td></tr>
+      <tr><td>NOAA Weather</td><td>162.4–162.55 MHz</td><td>NOAA Weather Radio (7 channels)</td></tr>
+      <tr><td>FRS/GMRS</td><td>462–467 MHz</td><td>Family Radio Service, GMRS</td></tr>
+      <tr><td>70cm (Ham)</td><td>420–450 MHz</td><td>Amateur, ATV, repeaters</td></tr>
+      <tr><td>ISM 433 MHz</td><td>433.05–434.79 MHz</td><td>Remote controls, IoT, RFID</td></tr>
+      <tr><td>ISM 868 MHz</td><td>863–870 MHz</td><td>LoRa, Z-Wave (EU), IoT</td></tr>
+      <tr><td>ISM 915 MHz</td><td>902–928 MHz</td><td>LoRa, LoRaWAN (US), IoT</td></tr>
+      <tr><td>L-Band GPS</td><td>1227.6 / 1575.42 MHz</td><td>GPS L1/L2, GLONASS</td></tr>
+      <tr><td>WiFi 2.4 GHz</td><td>2400–2500 MHz</td><td>IEEE 802.11b/g/n, Bluetooth, Zigbee</td></tr>
+      <tr><td>WiFi 5 GHz</td><td>5150–5850 MHz</td><td>IEEE 802.11a/n/ac/ax</td></tr>
+      <tr><td>WiFi 6E / 6 GHz</td><td>5925–7125 MHz</td><td>IEEE 802.11ax Wi-Fi 6E</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='waterfall') startWF();
+}
+
+let signals=[], peakHold=[], wfRows=[];
+function loadPreset(){
+  const p=document.getElementById('preset').value;
+  if(p==='fm'){signals=[{f:91.5,bw:0.2,p:-45},{f:95.1,bw:0.2,p:-52},{f:99.3,bw:0.2,p:-48},{f:103.7,bw:0.2,p:-55}];document.getElementById('centerFreq').value=50;updateSpec();}
+  else if(p==='wifi'){signals=[{f:2412,bw:22,p:-55},{f:2437,bw:22,p:-62},{f:2462,bw:22,p:-58}];document.getElementById('centerFreq').value=50;updateSpec();}
+  else if(p==='ism'){signals=[{f:433.92,bw:0.25,p:-65},{f:433.92,bw:0.05,p:-42}];updateSpec();}
+  else if(p==='vhf'){signals=[{f:121.5,bw:0.05,p:-70},{f:123.45,bw:0.05,p:-55},{f:127.4,bw:0.05,p:-63}];updateSpec();}
+  else {signals=[];updateSpec();}
+}
+
+function getFreqRange(){
+  const cf=parseFloat(document.getElementById('centerFreq').value)*2;
+  const span=parseFloat(document.getElementById('span').value);
+  return {cf,span,fmin:cf-span/2,fmax:cf+span/2};
+}
+function fmtF(f){
+  if(f>=1000) return (f/1000).toPrecision(4).replace(/\.?0+$/,'')+'GHz';
+  if(f>=1) return f.toPrecision(5).replace(/\.?0+$/,'')+'MHz';
+  return (f*1000).toPrecision(4).replace(/\.?0+$/,'')+'kHz';
+}
+
+function drawSpectrum(){
+  const canvas=document.getElementById('specCanvas');
+  if(!canvas) return;
+  const W=canvas.width=canvas.offsetWidth*devicePixelRatio||800;
+  const H=canvas.height=W*9/16;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#040d14';ctx.fillRect(0,0,W,H);
+  const refLevel=parseFloat(document.getElementById('refLevel').value);
+  const scaleDiv=parseFloat(document.getElementById('scale').value);
+  const noiseFloor=parseFloat(document.getElementById('noiseFloor').value);
+  const {cf,span,fmin,fmax}=getFreqRange();
+  const divs=8; // vertical divisions
+  const hdivs=10;
+
+  // Grid
+  ctx.strokeStyle='rgba(100,150,120,0.15)';ctx.lineWidth=1;
+  for(let i=1;i<hdivs;i++){ctx.beginPath();ctx.moveTo(i*W/hdivs,0);ctx.lineTo(i*W/hdivs,H);ctx.stroke();}
+  for(let i=1;i<divs;i++){ctx.beginPath();ctx.moveTo(0,i*H/divs);ctx.lineTo(W,i*H/divs);ctx.stroke();}
+  // Axes labels
+  ctx.fillStyle='#64748b';ctx.font=`${Math.max(9,W*0.012)}px monospace`;
+  for(let i=0;i<=divs;i++){
+    const dbm=refLevel-i*scaleDiv;
+    ctx.fillText(dbm+'dBm',2,i*H/divs+12);
+  }
+  for(let i=0;i<=hdivs;i++){
+    const f=fmin+(fmax-fmin)*i/hdivs;
+    ctx.fillText(fmtF(f),i*W/hdivs-15,H-4);
+  }
+
+  // Generate trace
+  const trace=new Float32Array(W);
+  // Noise
+  for(let x=0;x<W;x++) trace[x]=noiseFloor+Math.random()*3;
+  // Add signals
+  signals.forEach(sig=>{
+    const fc=sig.f;
+    for(let x=0;x<W;x++){
+      const f=fmin+(fmax-fmin)*x/W;
+      const dist=Math.abs(f-fc);
+      if(dist<sig.bw*3){
+        const pow=sig.p-20*Math.log10(Math.max(0.1,dist/sig.bw*2));
+        if(pow>trace[x]) trace[x]=pow;
+      }
+    }
+  });
+  // Random bursts
+  for(let b=0;b<3;b++){
+    const bx=Math.floor(Math.random()*W);const bpow=noiseFloor+15+Math.random()*20;
+    for(let dx=-5;dx<5;dx++) if(bx+dx>=0&&bx+dx<W&&bpow>trace[bx+dx]) trace[bx+dx]=bpow;
+  }
+
+  // Peak hold
+  if(peakHold.length!==W) peakHold=new Float32Array(W).fill(noiseFloor-10);
+  for(let x=0;x<W;x++) if(trace[x]>peakHold[x]) peakHold[x]=trace[x];
+
+  // Draw peak hold
+  ctx.strokeStyle='rgba(255,150,50,0.4)';ctx.lineWidth=1;ctx.beginPath();
+  for(let x=0;x<W;x++){
+    const y=(refLevel-peakHold[x])/scaleDiv/divs*H;
+    x===0?ctx.moveTo(0,Math.max(0,Math.min(H,y))):ctx.lineTo(x,Math.max(0,Math.min(H,y)));
+  }ctx.stroke();
+
+  // Draw filled trace
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(34,211,238,0.8)');
+  grad.addColorStop(0.5,'rgba(34,211,238,0.3)');
+  grad.addColorStop(1,'rgba(34,211,238,0.05)');
+  ctx.fillStyle=grad;ctx.beginPath();
+  ctx.moveTo(0,H);
+  for(let x=0;x<W;x++){
+    const y=(refLevel-trace[x])/scaleDiv/divs*H;
+    ctx.lineTo(x,Math.max(0,Math.min(H,y)));
+  }
+  ctx.lineTo(W,H);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let x=0;x<W;x++){
+    const y=(refLevel-trace[x])/scaleDiv/divs*H;
+    x===0?ctx.moveTo(0,Math.max(0,Math.min(H,y))):ctx.lineTo(x,Math.max(0,Math.min(H,y)));
+  }ctx.stroke();
+
+  // Update markers
+  let maxPow=-999,maxX=0;
+  for(let x=0;x<W;x++) if(trace[x]>maxPow){maxPow=trace[x];maxX=x;}
+  const maxF=fmin+(fmax-fmin)*maxX/W;
+  document.getElementById('markers').innerHTML=`<div class="marker"><div class="marker-color" style="background:#22d3ee"></div>Peak: ${fmtF(maxF)} @ ${maxPow.toFixed(1)} dBm</div>`;
+}
+
+function updateSpec(){
+  const cf=parseFloat(document.getElementById('centerFreq').value)*2;
+  const span=parseFloat(document.getElementById('span').value);
+  const rl=parseFloat(document.getElementById('refLevel').value);
+  const nf=parseFloat(document.getElementById('noiseFloor').value);
+  document.getElementById('cf_val').textContent=fmtF(cf);
+  document.getElementById('rl_val').textContent=rl+'dBm';
+  document.getElementById('nf_val').textContent=nf+'dBm';
+}
+
+// Waterfall
+let wfRunning=false;
+function startWF(){
+  if(wfRunning) return; wfRunning=true;
+  const colors=['#040d14','#0a1a2e','#0e2a3a','#16405a','#1a5c7a','#22d3ee','#66e8f7','#ffffff'];
+  function drawWF(){
+    const canvas=document.getElementById('wfCanvas');
+    if(!canvas||!document.getElementById('waterfall').classList.contains('active')){wfRunning=false;return;}
+    const W=canvas.width=canvas.offsetWidth*devicePixelRatio||800;
+    const H=canvas.height=W*9/16;
+    const ctx=canvas.getContext('2d');
+    // Shift down
+    ctx.drawImage(canvas,0,2,W,H-2,0,4,W,H-2);
+    // New row
+    const row=new Float32Array(W);
+    const {fmin,fmax}=getFreqRange();
+    const nf=parseFloat(document.getElementById('noiseFloor').value||-90);
+    for(let x=0;x<W;x++) row[x]=nf+Math.random()*4;
+    signals.forEach(sig=>{
+      for(let x=0;x<W;x++){
+        const f=fmin+(fmax-fmin)*x/W;
+        const dist=Math.abs(f-sig.f);
+        if(dist<sig.bw*3){const p=sig.p-20*Math.log10(Math.max(0.1,dist/sig.bw*2));if(p>row[x])row[x]=p;}
+      }
+    });
+    for(let x=0;x<W;x++){
+      const norm=Math.max(0,Math.min(1,(row[x]-nf)/50));
+      const ci=Math.floor(norm*(colors.length-1));
+      ctx.fillStyle=colors[Math.min(ci,colors.length-1)];
+      ctx.fillRect(x,0,1,4);
+    }
+    requestAnimationFrame(drawWF);
+  }
+  drawWF();
+}
+
+loadPreset();
+updateSpec();
+function loop(){drawSpectrum();requestAnimationFrame(loop);}
+loop();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

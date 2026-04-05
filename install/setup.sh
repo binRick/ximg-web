@@ -223,6 +223,11 @@ DOMAINS=(
   base64.ximg.app hash.ximg.app diff.ximg.app url.ximg.app curl.ximg.app
   cidr.ximg.app uuid.ximg.app lorem.ximg.app csv.ximg.app markdown.ximg.app
   password.ximg.app ssl.ximg.app epoch.ximg.app timespan.ximg.app
+  555timer.ximg.app arduino.ximg.app battery.ximg.app capacitor.ximg.app
+  fpga.ximg.app impedance.ximg.app ohms.ximg.app opamp.ximg.app
+  oscilloscope.ximg.app pcb.ximg.app pinout.ximg.app psu.ximg.app
+  pwm.ximg.app resistor.ximg.app spectrum.ximg.app spi.ximg.app
+  uart.ximg.app voltage.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

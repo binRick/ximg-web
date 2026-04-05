@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impedance Calculator — impedance.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1.5rem;max-width:900px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#e2e8f0;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
+label{font-size:.85rem;color:#94a3b8;min-width:160px}
+input[type=number]{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem .75rem;border-radius:5px;font-size:.9rem;width:140px;font-family:inherit}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem}
+.result-box{background:#0a0a25;border:1px solid #22d3ee;border-radius:6px;padding:1rem;margin-top:1rem}
+.result-line{display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #1e293b;font-size:.9rem}
+.result-line:last-child{border:none}
+.result-key{color:#94a3b8}
+.result-val{color:#22d3ee;font-family:monospace;font-weight:600}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid #1e293b}
+tr:hover td{background:#0a0a25}
+canvas{background:#0a0a25;border-radius:6px;display:block;width:100%}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('rlc')">R/L/C Impedance</button>
+  <button class="tab-btn" onclick="showTab('resonance')">Resonance</button>
+  <button class="tab-btn" onclick="showTab('matching')">Impedance Matching</button>
+  <button class="tab-btn" onclick="showTab('phasor')">Phasor Diagram</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div id="rlc" class="tab-panel active">
+  <h2>R / L / C Impedance Calculator</h2>
+  <div class="card">
+    <div class="field-row"><label>Frequency (Hz)</label><input type="number" id="freq_z" value="1000" min="0.001" step="any" oninput="calcRLC()"></div>
+    <div class="field-row"><label>Resistance R (Ω)</label><input type="number" id="r_z" value="100" min="0" step="any" oninput="calcRLC()"></div>
+    <div class="field-row"><label>Inductance L (mH)</label><input type="number" id="l_z" value="10" min="0" step="any" oninput="calcRLC()"></div>
+    <div class="field-row"><label>Capacitance C (µF)</label><input type="number" id="c_z" value="10" min="0" step="any" oninput="calcRLC()"></div>
+    <div class="field-row"><label>Configuration</label>
+      <select id="rlc_config" onchange="calcRLC()">
+        <option value="series">Series (R + L + C)</option>
+        <option value="parallel">Parallel (R ∥ L ∥ C)</option>
+        <option value="rl">RL Series</option>
+        <option value="rc">RC Series</option>
+        <option value="lc">LC Series</option>
+      </select>
+    </div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Inductive Reactance (XL)</span><span class="result-val" id="xl_r">—</span></div>
+      <div class="result-line"><span class="result-key">Capacitive Reactance (XC)</span><span class="result-val" id="xc_r">—</span></div>
+      <div class="result-line"><span class="result-key">Net Reactance (X)</span><span class="result-val" id="x_r">—</span></div>
+      <div class="result-line"><span class="result-key">Impedance Magnitude |Z|</span><span class="result-val" id="z_mag">—</span></div>
+      <div class="result-line"><span class="result-key">Phase Angle (θ)</span><span class="result-val" id="z_phase">—</span></div>
+      <div class="result-line"><span class="result-key">Complex Z</span><span class="result-val" id="z_complex">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="resonance" class="tab-panel">
+  <h2>LC Resonance Calculator</h2>
+  <div class="card">
+    <div class="field-row"><label>Inductance L (mH)</label><input type="number" id="res_l" value="10" min="0.0001" step="any" oninput="calcRes()"></div>
+    <div class="field-row"><label>Capacitance C (nF)</label><input type="number" id="res_c" value="1" min="0.0001" step="any" oninput="calcRes()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Resonant Frequency (f₀)</span><span class="result-val" id="res_f">—</span></div>
+      <div class="result-line"><span class="result-key">Angular Frequency (ω₀)</span><span class="result-val" id="res_w">—</span></div>
+      <div class="result-line"><span class="result-key">Resonant Period</span><span class="result-val" id="res_t">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Q Factor (Quality Factor)</h3>
+    <div class="field-row"><label>Resistance R (Ω)</label><input type="number" id="q_r" value="10" min="0.001" step="any" oninput="calcQ()"></div>
+    <div class="field-row"><label>Inductance L (mH)</label><input type="number" id="q_l" value="10" min="0.0001" step="any" oninput="calcQ()"></div>
+    <div class="field-row"><label>Capacitance C (nF)</label><input type="number" id="q_c" value="1" min="0.0001" step="any" oninput="calcQ()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Q Factor</span><span class="result-val" id="q_val">—</span></div>
+      <div class="result-line"><span class="result-key">Bandwidth (3dB)</span><span class="result-val" id="q_bw">—</span></div>
+      <div class="result-line"><span class="result-key">Damping Ratio (ζ)</span><span class="result-val" id="q_damp">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="matching" class="tab-panel">
+  <h2>Impedance Matching</h2>
+  <div class="card">
+    <h3>L-Network Matching</h3>
+    <div class="field-row"><label>Source Z (Ω)</label><input type="number" id="m_zs" value="50" min="1" step="any" oninput="calcMatch()"></div>
+    <div class="field-row"><label>Load Z (Ω)</label><input type="number" id="m_zl" value="200" min="1" step="any" oninput="calcMatch()"></div>
+    <div class="field-row"><label>Frequency (MHz)</label><input type="number" id="m_freq" value="100" min="0.001" step="any" oninput="calcMatch()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Q factor required</span><span class="result-val" id="m_q">—</span></div>
+      <div class="result-line"><span class="result-key">Shunt reactance (X1)</span><span class="result-val" id="m_x1">—</span></div>
+      <div class="result-line"><span class="result-key">Series reactance (X2)</span><span class="result-val" id="m_x2">—</span></div>
+      <div class="result-line"><span class="result-key">Shunt capacitor</span><span class="result-val" id="m_c1">—</span></div>
+      <div class="result-line"><span class="result-key">Series inductor</span><span class="result-val" id="m_l2">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="info-box">
+      <strong style="color:#22d3ee">Why impedance matching?</strong> Maximum power transfer occurs when source and load impedances are complex conjugates (Z_source = Z_load*). Mismatches cause reflections — characterized by VSWR (Voltage Standing Wave Ratio). In RF systems, a 2:1 VSWR means ~11% reflected power. Transformers match at DC/low-frequency; L/T/π networks match at RF.
+    </div>
+  </div>
+</div>
+
+<div id="phasor" class="tab-panel">
+  <h2>Phasor Diagram</h2>
+  <div class="card">
+    <div class="field-row"><label>R (Ω)</label><input type="number" id="ph_r" value="100" min="0" step="any" oninput="drawPhasor()"></div>
+    <div class="field-row"><label>XL (Ω)</label><input type="number" id="ph_xl" value="80" min="0" step="any" oninput="drawPhasor()"></div>
+    <div class="field-row"><label>XC (Ω)</label><input type="number" id="ph_xc" value="40" min="0" step="any" oninput="drawPhasor()"></div>
+    <canvas id="phasorCanvas" height="320" style="background:#0a0a25;border-radius:6px;width:100%;margin-top:.5rem"></canvas>
+    <div id="phasorInfo" style="margin-top:.75rem"></div>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel">
+  <h2>Impedance Reference</h2>
+  <div class="card">
+    <h3>Key Formulas</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Impedance</th><th>Formula</th></tr></thead>
+      <tbody>
+        <tr><td>Resistor</td><td>Z = R</td><td>Real only, no phase shift</td></tr>
+        <tr><td>Inductor</td><td>Z = jωL</td><td>XL = 2πfL (Ω), voltage leads current by 90°</td></tr>
+        <tr><td>Capacitor</td><td>Z = 1/(jωC)</td><td>XC = 1/(2πfC) (Ω), current leads voltage by 90°</td></tr>
+        <tr><td>Series RLC</td><td>Z = R + j(XL-XC)</td><td>|Z| = √(R² + (XL-XC)²)</td></tr>
+        <tr><td>Parallel RLC</td><td>1/Z = 1/R + 1/(jXL) + 1/(jXC)</td><td>More complex</td></tr>
+        <tr><td>Resonance</td><td>XL = XC</td><td>f₀ = 1/(2π√(LC))</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Common Impedances at 50 Hz</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Value</th><th>Impedance at 50 Hz</th></tr></thead>
+      <tbody>
+        <tr><td>Inductor</td><td>100 mH</td><td>XL = 31.4 Ω</td></tr>
+        <tr><td>Capacitor</td><td>100 µF</td><td>XC = 31.8 Ω</td></tr>
+        <tr><td>Inductor</td><td>1 H</td><td>XL = 314 Ω</td></tr>
+        <tr><td>Capacitor</td><td>10 µF</td><td>XC = 318 Ω</td></tr>
+        <tr><td>Transformer (typical)</td><td>—</td><td>50 Ω or 600 Ω depending on type</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='phasor') drawPhasor();
+}
+
+function fmtOhm(v){return v>=1e6?(v/1e6).toFixed(3)+' MΩ':v>=1e3?(v/1e3).toFixed(3)+' kΩ':v.toFixed(3)+' Ω';}
+function fmtFreq(f){return f>=1e6?(f/1e6).toFixed(4)+' MHz':f>=1e3?(f/1e3).toFixed(4)+' kHz':f.toFixed(3)+' Hz';}
+
+function calcRLC(){
+  const f=parseFloat(document.getElementById('freq_z').value)||1000;
+  const R=parseFloat(document.getElementById('r_z').value)||0;
+  const L=parseFloat(document.getElementById('l_z').value)||0;
+  const C=parseFloat(document.getElementById('c_z').value)||0;
+  const cfg=document.getElementById('rlc_config').value;
+  const w=2*Math.PI*f;
+  const XL=w*L/1000;
+  const XC=C>0?1/(w*C*1e-6):Infinity;
+  let Xnet,Zmag,phase;
+  if(cfg==='series'||cfg==='rl'||cfg==='rc'||cfg==='lc'){
+    const effectiveXL=(cfg==='rc')?0:XL;
+    const effectiveXC=(cfg==='rl')?0:(C>0?XC:0);
+    Xnet=effectiveXL-effectiveXC;
+    const effectiveR=(cfg==='lc')?0:R;
+    Zmag=Math.sqrt(effectiveR*effectiveR+Xnet*Xnet);
+    phase=Math.atan2(Xnet,effectiveR)*180/Math.PI;
+  } else {
+    // parallel
+    const Gr=R>0?1/R:0;
+    const Bl=XL>0?-1/XL:0;
+    const Bc=XC>0&&isFinite(XC)?1/XC:0;
+    const G=Gr,B=Bl+Bc;
+    Zmag=1/Math.sqrt(G*G+B*B);
+    phase=-Math.atan2(B,G)*180/Math.PI;
+    Xnet=Zmag*Math.sin(phase*Math.PI/180);
+  }
+  document.getElementById('xl_r').textContent=fmtOhm(XL);
+  document.getElementById('xc_r').textContent=isFinite(XC)?fmtOhm(XC):'∞ (no C)';
+  document.getElementById('x_r').textContent=fmtOhm(Math.abs(Xnet))+(Xnet>=0?' (inductive)':' (capacitive)');
+  document.getElementById('z_mag').textContent=fmtOhm(Zmag);
+  document.getElementById('z_phase').textContent=phase.toFixed(2)+'°';
+  const sign=Xnet>=0?'+':'-';
+  document.getElementById('z_complex').textContent=`${R.toFixed(2)} ${sign} j${Math.abs(Xnet).toFixed(2)} Ω`;
+}
+
+function calcRes(){
+  const L=parseFloat(document.getElementById('res_l').value)||10;
+  const C=parseFloat(document.getElementById('res_c').value)||1;
+  const f0=1/(2*Math.PI*Math.sqrt(L/1000*C*1e-9));
+  const w0=2*Math.PI*f0;
+  document.getElementById('res_f').textContent=fmtFreq(f0);
+  document.getElementById('res_w').textContent=(w0/1000).toFixed(2)+' krad/s';
+  document.getElementById('res_t').textContent=(1/f0*1e6).toFixed(4)+' µs';
+}
+
+function calcQ(){
+  const R=parseFloat(document.getElementById('q_r').value)||10;
+  const L=parseFloat(document.getElementById('q_l').value)||10;
+  const C=parseFloat(document.getElementById('q_c').value)||1;
+  const f0=1/(2*Math.PI*Math.sqrt(L/1000*C*1e-9));
+  const w0=2*Math.PI*f0;
+  const Q=w0*L/1000/R;
+  const BW=f0/Q;
+  document.getElementById('q_val').textContent=Q.toFixed(2);
+  document.getElementById('q_bw').textContent=fmtFreq(BW);
+  document.getElementById('q_damp').textContent=(1/(2*Q)).toFixed(4);
+}
+
+function calcMatch(){
+  const Zs=parseFloat(document.getElementById('m_zs').value)||50;
+  const Zl=parseFloat(document.getElementById('m_zl').value)||200;
+  const f=parseFloat(document.getElementById('m_freq').value)*1e6||100e6;
+  const w=2*Math.PI*f;
+  if(Zl<Zs){
+    document.getElementById('m_q').textContent='Swap source/load (Zl must be > Zs for L-net)';
+    return;
+  }
+  const Q=Math.sqrt(Zl/Zs-1);
+  const X1=Zl/Q; // shunt reactance
+  const X2=Zs*Q; // series reactance
+  const C1=1/(w*X1);
+  const L2=X2/w;
+  document.getElementById('m_q').textContent=Q.toFixed(3);
+  document.getElementById('m_x1').textContent=fmtOhm(X1);
+  document.getElementById('m_x2').textContent=fmtOhm(X2);
+  document.getElementById('m_c1').textContent=(C1*1e12).toFixed(2)+' pF';
+  document.getElementById('m_l2').textContent=(L2*1e9).toFixed(2)+' nH';
+}
+
+function drawPhasor(){
+  const R=parseFloat(document.getElementById('ph_r').value)||0;
+  const XL=parseFloat(document.getElementById('ph_xl').value)||0;
+  const XC=parseFloat(document.getElementById('ph_xc').value)||0;
+  const c=document.getElementById('phasorCanvas');if(!c)return;
+  const W=c.width=c.offsetWidth*devicePixelRatio;
+  const H=c.height=320*devicePixelRatio;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#0a0a25';ctx.fillRect(0,0,W,H);
+  const s=devicePixelRatio;
+  const cx=W*0.4,cy=H*0.5;
+  const Xnet=XL-XC;
+  const Zmag=Math.sqrt(R*R+Xnet*Xnet)||1;
+  const scale=Math.min(W*0.3,H*0.35)/Zmag;
+  // Axes
+  ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-W*0.35,cy);ctx.lineTo(cx+W*0.35,cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-H*0.4);ctx.lineTo(cx,cy+H*0.4);ctx.stroke();
+  ctx.fillStyle='#334155';ctx.font=`${10*s}px monospace`;ctx.textAlign='center';
+  ctx.fillText('R',cx+W*0.33,cy-4*s);
+  ctx.fillText('jX',cx+4*s,cy-H*0.38);
+  ctx.fillText('-jX',cx+4*s,cy+H*0.38);
+  // R phasor
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*scale,cy);ctx.stroke();
+  ctx.fillStyle='#f59e0b';ctx.font=`${11*s}px monospace`;ctx.textAlign='center';
+  ctx.fillText('R='+R.toFixed(0)+'Ω',cx+R*scale/2,cy+14*s);
+  // X phasor
+  if(Xnet!==0){
+    ctx.strokeStyle=Xnet>0?'#22c55e':'#f87171';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx+R*scale,cy);ctx.lineTo(cx+R*scale,cy-Xnet*scale);ctx.stroke();
+    ctx.fillStyle=Xnet>0?'#22c55e':'#f87171';
+    ctx.fillText((Xnet>0?'XL-XC=':'XC-XL=')+Math.abs(Xnet).toFixed(0)+'Ω',cx+R*scale+30*s,cy-Xnet*scale/2);
+  }
+  // Z phasor
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*scale,cy-Xnet*scale);ctx.stroke();
+  ctx.fillStyle='#22d3ee';ctx.font=`${12*s}px bold monospace`;ctx.textAlign='center';
+  ctx.fillText('|Z|='+Zmag.toFixed(1)+'Ω',cx+R*scale/2+20*s,cy-Xnet*scale/2-8*s);
+  // Angle
+  const angle=Math.atan2(-Xnet,R)*180/Math.PI;
+  ctx.fillStyle='#a78bfa';ctx.font=`${11*s}px monospace`;ctx.textAlign='left';
+  ctx.fillText('θ='+angle.toFixed(1)+'°',cx+4*s,cy-8*s);
+}
+
+calcRLC();calcRes();calcQ();calcMatch();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

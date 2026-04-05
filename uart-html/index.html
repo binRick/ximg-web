@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UART Reference — uart.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1.5rem;max-width:960px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+h3{color:#e2e8f0;margin-bottom:.5rem;font-size:1rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
+label{font-size:.85rem;color:#94a3b8;min-width:160px}
+input[type=number]{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem .75rem;border-radius:5px;font-size:.9rem;width:140px;font-family:inherit}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem}
+.result-box{background:#0a0a25;border:1px solid #22d3ee;border-radius:6px;padding:1rem;margin-top:1rem}
+.result-line{display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #1e293b;font-size:.9rem}
+.result-line:last-child{border:none}
+.result-key{color:#94a3b8}
+.result-val{color:#22d3ee;font-family:monospace;font-weight:600}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid #1e293b;vertical-align:top}
+tr:hover td{background:#0a0a25}
+pre{background:#0a0a25;border:1px solid #334155;border-radius:6px;padding:1rem;font-size:.82rem;overflow-x:auto;line-height:1.6;color:#e2e8f0;white-space:pre-wrap}
+.kw{color:#22d3ee}
+.fn{color:#a78bfa}
+.cm{color:#64748b;font-style:italic}
+.str{color:#86efac}
+canvas{background:#040d14;border-radius:6px;display:block;width:100%}
+img{max-width:100%;border-radius:6px}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="showTab('frame')">Frame Viewer</button>
+  <button class="tab-btn" onclick="showTab('baud')">Baud Rate Calc</button>
+  <button class="tab-btn" onclick="showTab('arduino')">Arduino Code</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div id="overview" class="tab-panel active">
+  <h2>UART — Universal Asynchronous Receiver-Transmitter</h2>
+  <div class="card" style="text-align:center"><img src="./images/uart.jpg" alt="UART module" style="max-height:240px;width:auto"></div>
+  <div class="grid2">
+    <div class="card">
+      <h3>UART Frame Structure</h3>
+      <div class="info-box">
+        <strong style="color:#f87171">Start bit</strong> (1) → <strong style="color:#22d3ee">Data bits</strong> (5–9) → <strong style="color:#f59e0b">Parity bit</strong> (optional) → <strong style="color:#22c55e">Stop bit(s)</strong> (1 or 2)<br><br>
+        Standard: 8N1 — 8 data bits, no parity, 1 stop bit. Line is idle-high (logic 1). Start bit is always logic 0 (low).
+      </div>
+    </div>
+    <div class="card">
+      <h3>Key Properties</h3>
+      <table>
+        <tbody>
+          <tr><td>Type</td><td>Asynchronous serial, full-duplex</td></tr>
+          <tr><td>Wires</td><td>2 (TX, RX) + GND</td></tr>
+          <tr><td>Clocking</td><td>No clock line — uses baud rate</td></tr>
+          <tr><td>Topology</td><td>Point-to-point (2 devices)</td></tr>
+          <tr><td>Addressing</td><td>None</td></tr>
+          <tr><td>Voltage levels</td><td>TTL (0/5V), 3.3V, RS-232 (±15V)</td></tr>
+          <tr><td>Max speed</td><td>~20 Mbps (hardware-dependent)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Wiring — Cross Connections</h3>
+    <div class="info-box">
+      TX on device A connects to RX on device B, and RX on device A connects to TX on device B.<br>
+      Always share a common GND.<br><br>
+      <strong style="color:#f87171">Voltage warning:</strong> 5V UART TX connected to 3.3V device RX may damage it. Use a voltage divider (2×1kΩ) or a logic level converter.
+    </div>
+    <table style="margin-top:.75rem">
+      <thead><tr><th>Device A</th><th>→</th><th>Device B</th></tr></thead>
+      <tbody>
+        <tr><td style="color:#22d3ee">TX</td><td>→</td><td style="color:#f59e0b">RX</td></tr>
+        <tr><td style="color:#f59e0b">RX</td><td>←</td><td style="color:#22d3ee">TX</td></tr>
+        <tr><td>GND</td><td>—</td><td>GND</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="frame" class="tab-panel">
+  <h2>UART Frame Visualizer</h2>
+  <div class="card">
+    <div class="field-row"><label>Character (ASCII)</label>
+      <input type="text" id="uart_char" value="A" maxlength="1" style="width:60px;background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:1.2rem;font-family:monospace;text-align:center" oninput="drawUARTFrame()">
+    </div>
+    <div class="field-row"><label>Data bits</label>
+      <select id="uart_bits" onchange="drawUARTFrame()">
+        <option value="8" selected>8 bits</option>
+        <option value="7">7 bits</option>
+        <option value="5">5 bits</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Parity</label>
+      <select id="uart_parity" onchange="drawUARTFrame()">
+        <option value="N">None (N)</option>
+        <option value="E">Even (E)</option>
+        <option value="O">Odd (O)</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Stop bits</label>
+      <select id="uart_stop" onchange="drawUARTFrame()">
+        <option value="1">1</option>
+        <option value="2">2</option>
+      </select>
+    </div>
+    <canvas id="uartCanvas" height="200"></canvas>
+    <div id="frameInfo" style="margin-top:.75rem;font-size:.85rem;color:#94a3b8"></div>
+  </div>
+</div>
+
+<div id="baud" class="tab-panel">
+  <h2>Baud Rate &amp; Timing Calculator</h2>
+  <div class="card">
+    <div class="field-row"><label>Baud rate</label>
+      <select id="baud_preset" onchange="applyBaud()">
+        <option value="9600">9600</option>
+        <option value="19200">19200</option>
+        <option value="38400">38400</option>
+        <option value="57600">57600</option>
+        <option value="115200" selected>115200</option>
+        <option value="230400">230400</option>
+        <option value="460800">460800</option>
+        <option value="921600">921600</option>
+        <option value="custom">Custom</option>
+      </select>
+      <input type="number" id="baud_val" value="115200" min="300" step="any" oninput="calcBaud()">
+    </div>
+    <div class="field-row"><label>Frame format</label>
+      <select id="baud_format" onchange="calcBaud()">
+        <option value="10">8N1 (10 bits/char)</option>
+        <option value="11">8E1 / 8O1 (11 bits/char)</option>
+        <option value="11b">8N2 (11 bits/char)</option>
+      </select>
+    </div>
+    <div class="result-box">
+      <div class="result-line"><span class="result-key">Bit period (Tbit)</span><span class="result-val" id="b_period">—</span></div>
+      <div class="result-line"><span class="result-key">Byte time</span><span class="result-val" id="b_byte">—</span></div>
+      <div class="result-line"><span class="result-key">Max throughput</span><span class="result-val" id="b_tp">—</span></div>
+      <div class="result-line"><span class="result-key">Time to send 1 KB</span><span class="result-val" id="b_1k">—</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Common UART Baud Rates</h3>
+    <table>
+      <thead><tr><th>Baud Rate</th><th>Bit Period</th><th>KB/s (8N1)</th><th>Common Use</th></tr></thead>
+      <tbody>
+        <tr><td>9600</td><td>104.2 µs</td><td>0.96</td><td>RS-232, legacy GPS, modems</td></tr>
+        <tr><td>19200</td><td>52.1 µs</td><td>1.92</td><td>Older devices</td></tr>
+        <tr><td>115200</td><td>8.68 µs</td><td>11.52</td><td>Arduino default, ESP8266 AT</td></tr>
+        <tr><td>230400</td><td>4.34 µs</td><td>23.04</td><td>Fast MCU debug</td></tr>
+        <tr><td>921600</td><td>1.09 µs</td><td>92.16</td><td>ESP32 flash programming</td></tr>
+        <tr><td>1Mbaud</td><td>1.0 µs</td><td>100</td><td>Industrial UART, Dynamixel</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="arduino" class="tab-panel">
+  <h2>Arduino Serial Code</h2>
+  <div class="card">
+    <h3>Basic Serial Communication</h3>
+    <pre><span class="kw">void</span> <span class="fn">setup</span>() {
+  <span class="fn">Serial.begin</span>(115200);  <span class="cm">// init hardware UART</span>
+  <span class="fn">Serial.println</span>(<span class="str">"Hello UART"</span>);
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="cm">// Echo received bytes back</span>
+  <span class="kw">if</span> (<span class="fn">Serial.available</span>()) {
+    <span class="kw">byte</span> b = <span class="fn">Serial.read</span>();
+    <span class="fn">Serial.print</span>(<span class="str">"Got: 0x"</span>);
+    <span class="fn">Serial.println</span>(b, HEX);
+  }
+}</pre>
+  </div>
+  <div class="card">
+    <h3>SoftwareSerial (any pins)</h3>
+    <pre>#include &lt;SoftwareSerial.h&gt;
+
+<span class="cm">// SoftwareSerial(RX_pin, TX_pin)</span>
+SoftwareSerial mySerial(4, 5);
+
+<span class="kw">void</span> <span class="fn">setup</span>() {
+  <span class="fn">Serial.begin</span>(9600);    <span class="cm">// hardware (USB)</span>
+  <span class="fn">mySerial.begin</span>(9600); <span class="cm">// software UART</span>
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">if</span> (<span class="fn">mySerial.available</span>())
+    <span class="fn">Serial.write</span>(<span class="fn">mySerial.read</span>());
+  <span class="kw">if</span> (<span class="fn">Serial.available</span>())
+    <span class="fn">mySerial.write</span>(<span class="fn">Serial.read</span>());
+}</pre>
+  </div>
+  <div class="card">
+    <h3>Parse CSV from Serial</h3>
+    <pre>String line;
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">while</span> (<span class="fn">Serial.available</span>()) {
+    <span class="kw">char</span> c = <span class="fn">Serial.read</span>();
+    <span class="kw">if</span> (c == <span class="str">'\n'</span>) {
+      <span class="cm">// process complete line</span>
+      int comma = line.indexOf(<span class="str">','</span>);
+      float a = line.substring(0, comma).toFloat();
+      float b = line.substring(comma+1).toFloat();
+      <span class="fn">Serial.print</span>(a+b);
+      line = <span class="str">""</span>;
+    } <span class="kw">else</span> line += c;
+  }
+}</pre>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel">
+  <h2>UART Reference</h2>
+  <div class="card">
+    <h3>RS-232 vs TTL vs RS-485</h3>
+    <table>
+      <thead><tr><th>Standard</th><th>Voltage (logic 1/0)</th><th>Distance</th><th>Devices</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>TTL UART</td><td>+5V / 0V (or 3.3V/0V)</td><td>&lt;1m</td><td>2</td><td>MCU-to-MCU, short range</td></tr>
+        <tr><td>RS-232</td><td>-3 to -15V / +3 to +15V</td><td>15m</td><td>2</td><td>PC serial port (DB9)</td></tr>
+        <tr><td>RS-485</td><td>Differential ±1.5–5V</td><td>1200m</td><td>Up to 32</td><td>Industrial, half-duplex bus, Modbus</td></tr>
+        <tr><td>RS-422</td><td>Differential</td><td>1200m</td><td>1 master, 10 slaves</td><td>Full-duplex variant of RS-485</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Parity Explained</h3>
+    <div class="info-box">
+      <strong style="color:#22d3ee">No parity (N)</strong> — no extra bit. Most common. Use CRC or application-level error checking.<br>
+      <strong style="color:#22d3ee">Even parity (E)</strong> — parity bit set so total 1-bits in data+parity is even.<br>
+      <strong style="color:#22d3ee">Odd parity (O)</strong> — parity bit set so total 1-bits is odd.<br><br>
+      Example: data 0b01000001 ('A') has two 1-bits. Even parity bit = 0. Odd parity bit = 1.
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='frame') drawUARTFrame();
+}
+
+function drawUARTFrame(){
+  const ch=document.getElementById('uart_char').value||'A';
+  const code=ch.charCodeAt(0);
+  const bits=parseInt(document.getElementById('uart_bits').value)||8;
+  const parity=document.getElementById('uart_parity').value;
+  const stop=parseInt(document.getElementById('uart_stop').value)||1;
+  const c=document.getElementById('uartCanvas');if(!c)return;
+  const W=c.width=c.offsetWidth*devicePixelRatio;
+  const H=c.height=200*devicePixelRatio;
+  const ctx=c.getContext('2d');const s=devicePixelRatio;
+  ctx.fillStyle='#040d14';ctx.fillRect(0,0,W,H);
+  const totalBits=1+bits+(parity!=='N'?1:0)+stop;
+  const margin=10*s,bw=(W-margin*2)/totalBits;
+  const hi=H*0.15,lo=H*0.72;
+  const dataBits=[];for(let i=0;i<bits;i++) dataBits.push((code>>i)&1);
+  let parityBit=0;
+  if(parity==='E'){let c1=dataBits.filter(b=>b).length;parityBit=c1%2===0?0:1;}
+  if(parity==='O'){let c1=dataBits.filter(b=>b).length;parityBit=c1%2===0?1:0;}
+  const allBits=[0,...dataBits,...(parity!=='N'?[parityBit]:[]),...Array(stop).fill(1)];
+  const colors=['#f87171',...Array(bits).fill('#22d3ee'),...(parity!=='N'?['#f59e0b']:[]),...Array(stop).fill('#22c55e')];
+  const labels=['START',...dataBits.map((_,i)=>'b'+i),...(parity!=='N'?['PAR']:[]),...Array(stop).fill('STOP')];
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.beginPath();
+  // idle high before start
+  ctx.moveTo(margin,hi);ctx.lineTo(margin,hi);
+  allBits.forEach((b,i)=>{
+    const x=margin+i*bw,nx=x+bw,y=b?hi:lo;
+    const prevy=i===0?hi:(allBits[i-1]?hi:lo);
+    if(y!==prevy){ctx.lineTo(x,y);}else{ctx.moveTo(x,y);}
+    ctx.lineTo(nx,y);
+  });
+  ctx.stroke();
+  // Segment backgrounds and labels
+  allBits.forEach((b,i)=>{
+    const x=margin+i*bw,y=b?hi:lo;
+    ctx.fillStyle=colors[i]+'22';
+    ctx.fillRect(x,hi,bw,lo-hi);
+    ctx.strokeStyle=colors[i]+'44';ctx.lineWidth=1;
+    ctx.strokeRect(x,hi,bw,lo-hi);
+    ctx.fillStyle=colors[i];ctx.font=`${9*s}px monospace`;ctx.textAlign='center';
+    ctx.fillText(labels[i],x+bw/2,lo+14*s);
+    ctx.fillText(b,x+bw/2,(hi+lo)/2+3*s);
+  });
+  // Info
+  const info=`'${ch}' (0x${code.toString(16).toUpperCase()}, ${code}) | ${bits}${parity}${stop} | ${totalBits} bits/char`;
+  document.getElementById('frameInfo').textContent=info;
+}
+
+function applyBaud(){
+  const v=document.getElementById('baud_preset').value;
+  if(v!=='custom'){document.getElementById('baud_val').value=v;calcBaud();}
+}
+function calcBaud(){
+  const baud=parseFloat(document.getElementById('baud_val').value)||115200;
+  const fmt=document.getElementById('baud_format').value;
+  const bitsPerChar=parseInt(fmt)||10;
+  const tbit=1/baud;
+  const tbyte=bitsPerChar*tbit;
+  const tp=baud/bitsPerChar;
+  const t1k=1024/tp;
+  const fmtT=t=>t<1e-6?(t*1e9).toFixed(2)+'ns':t<1e-3?(t*1e6).toFixed(2)+'µs':(t*1e3).toFixed(2)+'ms';
+  document.getElementById('b_period').textContent=fmtT(tbit);
+  document.getElementById('b_byte').textContent=fmtT(tbyte);
+  document.getElementById('b_tp').textContent=(tp/1000).toFixed(3)+' KB/s';
+  document.getElementById('b_1k').textContent=fmtT(t1k);
+}
+drawUARTFrame();calcBaud();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

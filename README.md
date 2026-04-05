@@ -161,6 +161,24 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ximg.app/ssl/](https://ximg.app/ssl/) | SSL / TLS Tools — PEM cert decoder (SANs/validity/fingerprints), expiry countdown, TLS version and cipher reference |
 | [epoch.ximg.app](https://epoch.ximg.app) | Unix Epoch Converter — live timestamp display, epoch↔datetime in multiple timezones, format token reference for Python/JS/Go/Java/SQL |
 | [timespan.ximg.app](https://timespan.ximg.app) | Timespan Calculator — date duration, business-day counter (US holidays), chainable date arithmetic |
+| [555timer.ximg.app](https://555timer.ximg.app) | 555 Timer Designer — astable/monostable calculator, waveform preview, pinout reference |
+| [arduino.ximg.app](https://arduino.ximg.app) | Arduino Reference — Uno pinout, timer/PWM guide, code snippets, LED calculator |
+| [battery.ximg.app](https://battery.ximg.app) | Battery Reference — chemistry comparison, runtime calculator, LiPo guide, series/parallel pack designer |
+| [capacitor.ximg.app](https://capacitor.ximg.app) | Capacitor Calculator — code decoder, reactance (Xc), series/parallel, energy & charge |
+| [fpga.ximg.app](https://fpga.ximg.app) | FPGA Reference — architecture overview, Verilog/VHDL examples, dev board comparison, LUT visualizer |
+| [impedance.ximg.app](https://impedance.ximg.app) | Impedance Calculator — R/L/C series/parallel, LC resonance, L-network matching, phasor diagram |
+| [ohms.ximg.app](https://ohms.ximg.app) | Ohm's Law Calculator — V/I/R/P solver, power triangle, voltage divider, Kirchhoff's KCL/KVL |
+| [opamp.ximg.app](https://opamp.ximg.app) | Op-Amp Calculator — inverting/non-inverting/difference amplifier gain, summing amp, comparator reference |
+| [oscilloscope.ximg.app](https://oscilloscope.ximg.app) | Oscilloscope Viewer — animated waveforms, Lissajous figures, FFT spectrum analyzer |
+| [pcb.ximg.app](https://pcb.ximg.app) | PCB Design Reference — trace width calc (IPC-2221), via calculator, layer stackup, design rules |
+| [pinout.ximg.app](https://pinout.ximg.app) | IC Pinout Reference — Arduino Uno, ESP32, Raspberry Pi 4, ATmega328P, STM32F103 |
+| [psu.ximg.app](https://psu.ximg.app) | Power Supply Design — linear reg efficiency, LM317 designer, buck/boost calc, filter cap sizing |
+| [pwm.ximg.app](https://pwm.ximg.app) | PWM Reference — waveform visualizer, timer prescaler calc, servo control, application freq guide |
+| [resistor.ximg.app](https://resistor.ximg.app) | Resistor Calculator — 3/4/5-band color code decoder, SMD code, series/parallel, E24/E96 tables |
+| [spectrum.ximg.app](https://spectrum.ximg.app) | RF Spectrum Analyzer — modulation visualizations, frequency band reference, antenna guide |
+| [spi.ximg.app](https://spi.ximg.app) | SPI Reference — timing diagram for all 4 modes, SPI vs I2C vs UART, Arduino code, device list |
+| [uart.ximg.app](https://uart.ximg.app) | UART Reference — frame visualizer, baud rate calculator, RS-232 vs TTL vs RS-485, Arduino code |
+| [voltage.ximg.app](https://voltage.ximg.app) | Voltage Reference — divider calc, logic level converter, standard voltage levels, dBV/dBu/dBm, AC mains |
 
 ## Architecture
 
