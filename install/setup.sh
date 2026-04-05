@@ -214,6 +214,8 @@ DOMAINS=(
   regex.ximg.app jwt.ximg.app cron.ximg.app color.ximg.app
   dna.ximg.app cell.ximg.app immune.ximg.app
   binary.ximg.app
+  compiler.ximg.app
+  quantum.ximg.app synth.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

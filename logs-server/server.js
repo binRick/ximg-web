@@ -169,6 +169,7 @@ const LOG_FILES = {
   punch:          'punch.access.log',
   terminal:       'terminal.access.log',
   circuit:        'circuit.access.log',
+  compiler:       'compiler.access.log',
   logic:          'logic.access.log',
   protocol:       'protocol.access.log',
   mainframe:      'mainframe.access.log',
@@ -181,6 +182,8 @@ const LOG_FILES = {
   dna:            'dna.access.log',
   cell:           'cell.access.log',
   immune:         'immune.access.log',
+  quantum:        'quantum.access.log',
+  synth:          'synth.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -534,6 +537,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="terminal">terminal</button>
           <button class="site-opt" data-site="punch">punch</button>
           <button class="site-opt" data-site="circuit">circuit</button>
+          <button class="site-opt" data-site="compiler">compiler</button>
           <button class="site-opt" data-site="logic">logic</button>
           <button class="site-opt" data-site="protocol">protocol</button>
           <button class="site-opt" data-site="mainframe">mainframe</button>
@@ -546,6 +550,8 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="dna">dna</button>
           <button class="site-opt" data-site="cell">cell</button>
           <button class="site-opt" data-site="immune">immune</button>
+          <button class="site-opt" data-site="quantum">quantum</button>
+          <button class="site-opt" data-site="synth">synth</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

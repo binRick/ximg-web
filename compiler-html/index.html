@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Compilers Work — compiler.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem;overflow-x:auto}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
+.tab-btn.active{color:#f97316;border-bottom-color:#f97316}
+.tab-btn:hover:not(.active){color:#e2e8f0}
+.tab-panel{display:none;padding:1.5rem;max-width:1200px;margin:0 auto}
+.tab-panel.active{display:block}
+
+h1{font-size:1.4rem;color:#f97316;margin-bottom:.25rem}
+h2{color:#f97316;margin-bottom:1rem;font-size:1.15rem}
+h3{color:#eab308;margin-bottom:.6rem;font-size:1rem}
+.subtitle{color:#64748b;font-size:.85rem;margin-bottom:1.5rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+.info-box h3{color:#eab308;margin-bottom:.5rem}
+pre,code{font-family:'Courier New',monospace}
+code{color:#eab308;background:#0a0a20;padding:.15rem .4rem;border-radius:3px;font-size:.85rem}
+
+/* Lexer */
+.editor-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.editor-wrap{grid-template-columns:1fr}}
+.editor-label{color:#64748b;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+#source-input{width:100%;height:120px;background:#0a0a20;color:#e2e8f0;border:1px solid #1e293b;border-radius:8px;padding:.75rem;font-family:'Courier New',monospace;font-size:.9rem;resize:vertical;outline:none;transition:border-color .2s}
+#source-input:focus{border-color:#f97316}
+.token-stream{min-height:60px;display:flex;flex-wrap:wrap;gap:.35rem;padding:.75rem;background:#0a0a20;border:1px solid #1e293b;border-radius:8px;align-items:flex-start;align-content:flex-start}
+.tok{padding:.2rem .5rem;border-radius:4px;font-family:'Courier New',monospace;font-size:.8rem;font-weight:600;cursor:default;transition:transform .1s}
+.tok:hover{transform:scale(1.1)}
+.tok-keyword{background:#1e3a5f;color:#60a5fa}
+.tok-identifier{background:#14532d;color:#4ade80}
+.tok-number{background:#431407;color:#fb923c}
+.tok-operator{background:#3b0764;color:#e879f9}
+.tok-string{background:#422006;color:#fbbf24}
+.tok-punctuation{background:#1e293b;color:#94a3b8}
+.tok-invalid{background:#450a0a;color:#f87171;border:1px solid #991b1b}
+
+.token-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:1rem}
+.token-table th{background:#0f172a;color:#94a3b8;padding:.5rem .75rem;text-align:left;border-bottom:1px solid #1e293b;font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+.token-table td{padding:.4rem .75rem;border-bottom:1px solid #0f172a;font-family:'Courier New',monospace}
+.token-table tr:hover td{background:#070720}
+.tok-type-keyword{color:#60a5fa}
+.tok-type-identifier{color:#4ade80}
+.tok-type-number{color:#fb923c}
+.tok-type-operator{color:#e879f9}
+.tok-type-string{color:#fbbf24}
+.tok-type-punctuation{color:#64748b}
+.tok-type-invalid{color:#f87171}
+
+/* AST */
+.ast-layout{display:grid;grid-template-columns:300px 1fr;gap:1rem}
+@media(max-width:800px){.ast-layout{grid-template-columns:1fr}}
+#ast-canvas{width:100%;background:#0a0a20;border:1px solid #1e293b;border-radius:8px;display:block}
+.ast-legend{font-size:.8rem;display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
+.legend-item{display:flex;align-items:center;gap:.3rem}
+.legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+
+/* IR */
+.ir-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.ir-layout{grid-template-columns:1fr}}
+.ir-code{background:#0a0a20;border:1px solid #1e293b;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.85rem;line-height:1.8;min-height:160px}
+.ir-line{padding:.1rem .5rem;border-radius:3px;border-left:2px solid transparent;transition:all .3s}
+.ir-line.highlight{background:#1a1a00;border-left-color:#eab308;color:#fbbf24}
+.ir-line .ir-comment{color:#4b5563}
+.ir-step-btn{background:#f97316;color:#000;border:none;padding:.5rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:700;font-size:.85rem;transition:background .2s;margin-right:.5rem}
+.ir-step-btn:hover{background:#ea580c}
+.ir-step-btn:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+.ir-controls{display:flex;align-items:center;gap:.5rem;margin:1rem 0;flex-wrap:wrap}
+.ir-counter{color:#64748b;font-size:.85rem}
+
+/* Optimization */
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.opt-grid{grid-template-columns:1fr}}
+.opt-label{font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem}
+.before-code{background:#0a0a20;border:1px solid #450a0a;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.82rem;line-height:1.8}
+.after-code{background:#0a0a20;border:1px solid #14532d;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.82rem;line-height:1.8}
+.changed{background:#1a2a00;color:#4ade80}
+.removed{background:#2a0a0a;color:#f87171;text-decoration:line-through}
+.asm-code{background:#0a0a20;border:1px solid #1e3a5f;border-radius:8px;padding:1rem;font-family:'Courier New',monospace;font-size:.82rem;line-height:2}
+.asm-line{display:flex;gap:1rem;padding:.1rem 0;border-bottom:1px solid #0f172a}
+.asm-line:last-child{border-bottom:none}
+.asm-label{color:#f97316;min-width:80px}
+.asm-instr{color:#60a5fa;min-width:60px}
+.asm-args{color:#4ade80;min-width:120px}
+.asm-comment{color:#4b5563;font-size:.78rem}
+
+.pipeline-viz{display:flex;align-items:center;gap:0;margin:1.5rem 0;overflow-x:auto;padding:.5rem 0}
+.pipe-stage{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:.75rem 1rem;text-align:center;min-width:110px;flex-shrink:0}
+.pipe-stage.active-stage{border-color:#f97316;background:#1a0a00}
+.pipe-stage-name{font-size:.8rem;font-weight:700;color:#f97316}
+.pipe-stage-icon{font-size:1.4rem;margin-bottom:.3rem}
+.pipe-stage-desc{font-size:.7rem;color:#64748b;margin-top:.3rem}
+.pipe-arrow{color:#334155;font-size:1.2rem;flex-shrink:0;margin:0 .25rem}
+
+.section-intro{color:#94a3b8;font-size:.88rem;line-height:1.7;margin-bottom:1.5rem}
+</style>
+</head>
+<body>
+
+<div class="sub-nav">
+  <button class="tab-btn active" onclick="switchTab('lexer',this)">1. Lexer</button>
+  <button class="tab-btn" onclick="switchTab('parser',this)">2. Parser / AST</button>
+  <button class="tab-btn" onclick="switchTab('ir',this)">3. Intermediate Code</button>
+  <button class="tab-btn" onclick="switchTab('opt',this)">4. Optimization &amp; Output</button>
+</div>
+
+<!-- TAB 1: LEXER -->
+<div id="tab-lexer" class="tab-panel active">
+  <h1>How Compilers Work</h1>
+  <p class="subtitle">Follow source code through each stage of compilation</p>
+
+  <div class="pipeline-viz">
+    <div class="pipe-stage active-stage">
+      <div class="pipe-stage-icon">📝</div>
+      <div class="pipe-stage-name">Lexer</div>
+      <div class="pipe-stage-desc">Chars → Tokens</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-stage-icon">🌳</div>
+      <div class="pipe-stage-name">Parser</div>
+      <div class="pipe-stage-desc">Tokens → AST</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-stage-icon">⚙️</div>
+      <div class="pipe-stage-name">IR Gen</div>
+      <div class="pipe-stage-desc">AST → IR</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-stage-icon">✨</div>
+      <div class="pipe-stage-name">Optimizer</div>
+      <div class="pipe-stage-desc">IR → IR'</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-stage-icon">🖥️</div>
+      <div class="pipe-stage-name">Code Gen</div>
+      <div class="pipe-stage-desc">IR' → ASM</div>
+    </div>
+  </div>
+
+  <h2>Stage 1: Lexer / Tokenizer</h2>
+  <p class="section-intro">The lexer reads raw source characters and groups them into <strong>tokens</strong> — the atomic units of meaning. It strips whitespace and comments, classifying each token by type.</p>
+
+  <div class="editor-wrap">
+    <div>
+      <div class="editor-label">Source Code</div>
+      <textarea id="source-input" spellcheck="false">int x = 5 + 3 * 2;
+int y = x * 2;
+if (y > 10) {
+  return y;
+}</textarea>
+    </div>
+    <div>
+      <div class="editor-label">Token Stream</div>
+      <div id="token-stream" class="token-stream"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <h3>Token Table</h3>
+    <div style="overflow-x:auto">
+      <table class="token-table">
+        <thead><tr><th>#</th><th>Type</th><th>Value</th><th>Line</th><th>Col</th></tr></thead>
+        <tbody id="token-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:1rem">
+    <h3>How Lexing Works</h3>
+    <p>The lexer uses a <strong>finite automaton</strong> — it scans character by character, transitioning states based on what it sees. When it reaches a state where no more characters can extend the current token, it emits the token and resets.</p>
+    <br>
+    <p>Token types in this grammar: <code>keyword</code> (int, if, return), <code>identifier</code> (names), <code>number</code> (integer literals), <code>string</code> ("..."), <code>operator</code> (+, -, *, /, =, ==, !=, &lt;, &gt;, &lt;=, &gt;=, &amp;&amp;, ||), <code>punctuation</code> (; , ( ) { }), <code>invalid</code> (unrecognized characters).</p>
+  </div>
+</div>
+
+<!-- TAB 2: PARSER / AST -->
+<div id="tab-parser" class="tab-panel">
+  <h2>Stage 2: Parser &amp; Abstract Syntax Tree</h2>
+  <p class="section-intro">The parser takes the token stream and builds an <strong>Abstract Syntax Tree (AST)</strong> — a hierarchical representation of the program's structure. Each node represents a syntactic construct. Hover over a node to see what source text it corresponds to.</p>
+
+  <div class="ast-layout">
+    <div>
+      <div class="card">
+        <h3>Source</h3>
+        <div id="ast-source-display" style="font-family:'Courier New',monospace;font-size:.82rem;line-height:1.9;white-space:pre"></div>
+      </div>
+      <div class="card">
+        <h3>Parse Grammar</h3>
+        <div class="info-box" style="font-size:.78rem">
+          <code>program → stmt*</code><br>
+          <code>stmt → varDecl | ifStmt | returnStmt | exprStmt</code><br>
+          <code>varDecl → type id '=' expr ';'</code><br>
+          <code>ifStmt → 'if' '(' expr ')' block</code><br>
+          <code>expr → term (('+' | '-') term)*</code><br>
+          <code>term → factor (('*' | '/') factor)*</code><br>
+          <code>factor → number | id | '(' expr ')'</code>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="editor-label" style="margin-bottom:.4rem">AST Diagram — hover nodes to highlight source</div>
+      <canvas id="ast-canvas" height="500"></canvas>
+      <div class="ast-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1e3a5f"></div><span style="font-size:.78rem;color:#60a5fa">VarDecl</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#14532d"></div><span style="font-size:.78rem;color:#4ade80">BinaryExpr</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#431407"></div><span style="font-size:.78rem;color:#fb923c">Literal</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b0764"></div><span style="font-size:.78rem;color:#e879f9">Identifier</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1a3a1a"></div><span style="font-size:.78rem;color:#86efac">IfStmt</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1a1a3a"></div><span style="font-size:.78rem;color:#a5b4fc">ReturnStmt</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: INTERMEDIATE CODE -->
+<div id="tab-ir" class="tab-panel">
+  <h2>Stage 3: Intermediate Representation (IR)</h2>
+  <p class="section-intro">The AST is lowered to <strong>3-address code</strong> (also called IR or TAC). Each instruction has at most one operator and three operands. This form is architecture-independent and easy to optimize. Click "Next Step" to animate the translation one statement at a time.</p>
+
+  <div class="ir-controls">
+    <button class="ir-step-btn" id="ir-prev-btn" onclick="irStep(-1)" disabled>← Prev</button>
+    <button class="ir-step-btn" id="ir-next-btn" onclick="irStep(1)">Next Step →</button>
+    <button class="ir-step-btn" onclick="irReset()" style="background:#334155;color:#e2e8f0">Reset</button>
+    <span class="ir-counter" id="ir-counter">Step 0 / 0</span>
+  </div>
+
+  <div class="ir-layout">
+    <div>
+      <div class="editor-label" style="margin-bottom:.5rem">Source (current statement highlighted)</div>
+      <div class="ir-code" id="ir-source"></div>
+    </div>
+    <div>
+      <div class="editor-label" style="margin-bottom:.5rem">Generated IR Instructions</div>
+      <div class="ir-code" id="ir-output"></div>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-top:1rem">
+    <h3>About 3-Address Code</h3>
+    <p>Every complex expression is broken into <strong>temporaries</strong> (t1, t2, ...). Each instruction does exactly one operation: <code>t1 = a op b</code> or <code>x = t1</code>. This regularity makes optimization straightforward — no deeply nested expressions to navigate.</p>
+    <br>
+    <p>Real compilers use SSA (Static Single Assignment) form where each variable is assigned exactly once, enabling powerful optimizations like dead code elimination and global value numbering.</p>
+  </div>
+</div>
+
+<!-- TAB 4: OPTIMIZATION & OUTPUT -->
+<div id="tab-opt" class="tab-panel">
+  <h2>Stage 4: Optimization &amp; Code Generation</h2>
+  <p class="section-intro">The optimizer transforms IR to be faster/smaller without changing semantics. Then the code generator maps IR to target machine instructions.</p>
+
+  <div class="card">
+    <h3>Constant Folding</h3>
+    <p style="color:#94a3b8;font-size:.83rem;margin-bottom:1rem">Evaluate constant expressions at compile time. <code>5 + 3 * 2</code> → computed to <code>11</code> before runtime.</p>
+    <div class="opt-grid">
+      <div>
+        <div class="opt-label">Before Optimization</div>
+        <div class="before-code" id="cf-before"></div>
+      </div>
+      <div>
+        <div class="opt-label">After Constant Folding</div>
+        <div class="after-code" id="cf-after"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Dead Code Elimination</h3>
+    <p style="color:#94a3b8;font-size:.83rem;margin-bottom:1rem">Remove instructions whose results are never used. Reduces IR size and register pressure.</p>
+    <div class="opt-grid">
+      <div>
+        <div class="opt-label">Before</div>
+        <div class="before-code" id="dce-before"></div>
+      </div>
+      <div>
+        <div class="opt-label">After DCE</div>
+        <div class="after-code" id="dce-after"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Common Subexpression Elimination (CSE)</h3>
+    <p style="color:#94a3b8;font-size:.83rem;margin-bottom:1rem">If the same computation appears twice, compute it once and reuse the result.</p>
+    <div class="opt-grid">
+      <div>
+        <div class="opt-label">Before</div>
+        <div class="before-code" id="cse-before"></div>
+      </div>
+      <div>
+        <div class="opt-label">After CSE</div>
+        <div class="after-code" id="cse-after"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>x86-64 Assembly Output</h3>
+    <p style="color:#94a3b8;font-size:.83rem;margin-bottom:1rem">After optimization, the code generator maps IR instructions to real machine instructions. Each IR temp maps to a register or stack slot.</p>
+    <div id="asm-output" class="asm-code"></div>
+    <div class="info-box" style="margin-top:1rem;font-size:.8rem">
+      <h3>Instruction Legend</h3>
+      <p><code>mov dest, src</code> — copy value from src to dest register</p>
+      <p><code>imul dest, src</code> — multiply dest by src, store in dest</p>
+      <p><code>add dest, src</code> — add src to dest</p>
+      <p><code>cmp a, b</code> — compare a and b, set CPU flags</p>
+      <p><code>jg label</code> — jump if greater (based on flags from cmp)</p>
+      <p><code>mov [rbp-N], reg</code> — store register to stack (local variable)</p>
+      <p><code>mov reg, [rbp-N]</code> — load from stack into register</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SHARED LEXER
+// ============================================================
+const KEYWORDS = new Set(['int','float','if','else','while','for','return','void','char','bool','true','false']);
+const OPERATORS = ['==','!=','<=','>=','&&','||','++','--','+=','-=','*=','/=','<','>','=','+','-','*','/','%','!','&','|','^'];
+
+function tokenize(src) {
+  const tokens = [];
+  let i = 0, line = 1, col = 1;
+  while (i < src.length) {
+    const start_col = col;
+    const ch = src[i];
+    // whitespace
+    if (/\s/.test(ch)) {
+      if (ch === '\n') { line++; col = 1; } else col++;
+      i++; continue;
+    }
+    // line comment
+    if (ch === '/' && src[i+1] === '/') {
+      while (i < src.length && src[i] !== '\n') { i++; col++; }
+      continue;
+    }
+    // string
+    if (ch === '"') {
+      let val = '"'; i++; col++;
+      while (i < src.length && src[i] !== '"' && src[i] !== '\n') { val += src[i]; i++; col++; }
+      if (src[i] === '"') { val += '"'; i++; col++; }
+      tokens.push({type:'string', value:val, line, col:start_col}); continue;
+    }
+    // number
+    if (/[0-9]/.test(ch)) {
+      let val = '';
+      while (i < src.length && /[0-9.]/.test(src[i])) { val += src[i]; i++; col++; }
+      tokens.push({type:'number', value:val, line, col:start_col}); continue;
+    }
+    // identifier / keyword
+    if (/[a-zA-Z_]/.test(ch)) {
+      let val = '';
+      while (i < src.length && /[a-zA-Z0-9_]/.test(src[i])) { val += src[i]; i++; col++; }
+      tokens.push({type: KEYWORDS.has(val) ? 'keyword' : 'identifier', value:val, line, col:start_col}); continue;
+    }
+    // operator (try 2-char first)
+    let matched = false;
+    for (const op of OPERATORS) {
+      if (src.slice(i, i+op.length) === op) {
+        tokens.push({type:'operator', value:op, line, col:start_col});
+        i += op.length; col += op.length; matched = true; break;
+      }
+    }
+    if (matched) continue;
+    // punctuation
+    if (/[;,(){}[\]]/.test(ch)) {
+      tokens.push({type:'punctuation', value:ch, line, col:start_col});
+      i++; col++; continue;
+    }
+    // invalid
+    tokens.push({type:'invalid', value:ch, line, col:start_col});
+    i++; col++;
+  }
+  return tokens;
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'parser') renderAST();
+  if (name === 'ir') irReset();
+  if (name === 'opt') renderOpt();
+  // update pipeline highlight
+  const stageMap = {lexer:0, parser:1, ir:2, opt:3};
+  document.querySelectorAll('.pipe-stage').forEach((s,i) => {
+    s.classList.toggle('active-stage', i === stageMap[name] || (name==='opt' && i>=3));
+  });
+}
+
+// ============================================================
+// TAB 1: LEXER
+// ============================================================
+function getSource() { return document.getElementById('source-input').value; }
+
+function renderLexer() {
+  const tokens = tokenize(getSource());
+  // token stream
+  const stream = document.getElementById('token-stream');
+  stream.innerHTML = '';
+  tokens.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'tok tok-' + t.type;
+    span.textContent = t.value;
+    span.title = t.type + ' @ L' + t.line + ':' + t.col;
+    stream.appendChild(span);
+  });
+  // table
+  const tbody = document.getElementById('token-tbody');
+  tbody.innerHTML = '';
+  tokens.forEach((t, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="color:#4b5563">${i+1}</td><td class="tok-type-${t.type}">${t.type}</td><td style="color:#e2e8f0">${escHtml(t.value)}</td><td style="color:#4b5563">${t.line}</td><td style="color:#4b5563">${t.col}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('source-input').addEventListener('input', renderLexer);
+renderLexer();
+
+// ============================================================
+// TAB 2: PARSER / AST
+// ============================================================
+function parseSource(src) {
+  const tokens = tokenize(src);
+  let pos = 0;
+  function peek() { return tokens[pos]; }
+  function consume(type, val) {
+    const t = tokens[pos];
+    if (!t) return null;
+    if (type && t.type !== type) return null;
+    if (val && t.value !== val) return null;
+    pos++;
+    return t;
+  }
+  function parseProgram() {
+    const stmts = [];
+    while (pos < tokens.length) {
+      const s = parseStmt();
+      if (s) stmts.push(s); else break;
+    }
+    return {type:'Program', children:stmts, srcStart:0, srcEnd:src.length};
+  }
+  function parseStmt() {
+    const t = peek();
+    if (!t) return null;
+    if (t.type === 'keyword' && ['int','float','char','bool','void'].includes(t.value)) return parseVarDecl();
+    if (t.type === 'keyword' && t.value === 'if') return parseIf();
+    if (t.type === 'keyword' && t.value === 'return') return parseReturn();
+    return parseExprStmt();
+  }
+  function parseVarDecl() {
+    const typeT = consume('keyword');
+    const nameT = consume('identifier');
+    if (!typeT || !nameT) return null;
+    let init = null;
+    if (peek() && peek().value === '=') {
+      consume(); init = parseExpr();
+    }
+    consume('punctuation', ';');
+    return {type:'VarDecl', varType:typeT.value, name:nameT.value, init, children: init ? [init] : [], label: typeT.value + ' ' + nameT.value};
+  }
+  function parseIf() {
+    consume('keyword','if');
+    consume('punctuation','(');
+    const cond = parseExpr();
+    consume('punctuation',')');
+    const body = parseBlock();
+    return {type:'IfStmt', cond, body, children:[cond, body], label:'if'};
+  }
+  function parseBlock() {
+    consume('punctuation','{');
+    const stmts = [];
+    while (peek() && peek().value !== '}') {
+      const s = parseStmt();
+      if (s) stmts.push(s); else break;
+    }
+    consume('punctuation','}');
+    return {type:'Block', children:stmts, label:'{ block }'};
+  }
+  function parseReturn() {
+    consume('keyword','return');
+    const val = parseExpr();
+    consume('punctuation',';');
+    return {type:'ReturnStmt', val, children:val ? [val] : [], label:'return'};
+  }
+  function parseExprStmt() {
+    const e = parseExpr();
+    if (!e) { pos++; return null; }
+    consume('punctuation',';');
+    return {type:'ExprStmt', expr:e, children:[e], label:'exprStmt'};
+  }
+  function parseExpr() { return parseComparison(); }
+  function parseComparison() {
+    let left = parseAdditive();
+    while (peek() && ['<','>','<=','>=','==','!=','&&','||'].includes(peek().value)) {
+      const op = consume().value;
+      const right = parseAdditive();
+      left = {type:'BinaryExpr', op, left, right, children:[left,right], label:'BinaryExpr('+op+')'};
+    }
+    return left;
+  }
+  function parseAdditive() {
+    let left = parseMult();
+    while (peek() && ['+','-'].includes(peek().value)) {
+      const op = consume().value;
+      const right = parseMult();
+      left = {type:'BinaryExpr', op, left, right, children:[left,right], label:'BinaryExpr('+op+')'};
+    }
+    return left;
+  }
+  function parseMult() {
+    let left = parseUnary();
+    while (peek() && ['*','/','%'].includes(peek().value)) {
+      const op = consume().value;
+      const right = parseUnary();
+      left = {type:'BinaryExpr', op, left, right, children:[left,right], label:'BinaryExpr('+op+')'};
+    }
+    return left;
+  }
+  function parseUnary() {
+    if (peek() && peek().value === '!') { consume(); const o = parsePrimary(); return {type:'UnaryExpr',op:'!',operand:o,children:o?[o]:[],label:'UnaryExpr(!)'}; }
+    return parsePrimary();
+  }
+  function parsePrimary() {
+    const t = peek();
+    if (!t) return null;
+    if (t.type === 'number') { consume(); return {type:'Literal', value:t.value, children:[], label:'Literal('+t.value+')'}; }
+    if (t.type === 'identifier') { consume(); return {type:'Identifier', name:t.value, children:[], label:'Id('+t.value+')'}; }
+    if (t.type === 'string') { consume(); return {type:'Literal', value:t.value, children:[], label:'Literal('+t.value+')'}; }
+    if (t.value === '(') { consume(); const e = parseExpr(); consume('punctuation',')'); return e; }
+    return null;
+  }
+  return parseProgram();
+}
+
+// AST rendering
+let astHoveredNode = null;
+function renderAST() {
+  const src = getSource();
+  const ast = parseSource(src);
+  // source display
+  const srcEl = document.getElementById('ast-source-display');
+  srcEl.innerHTML = escHtml(src);
+  drawAST(ast);
+}
+
+function drawAST(ast) {
+  const canvas = document.getElementById('ast-canvas');
+  const parent = canvas.parentElement;
+  canvas.width = parent.clientWidth || 600;
+  const ctx = canvas.getContext('2d');
+
+  // layout nodes
+  const nodes = [];
+  const levelCounts = {};
+  function layout(node, depth, sibIdx, sibCount) {
+    if (!node) return;
+    levelCounts[depth] = (levelCounts[depth] || 0) + 1;
+    node._depth = depth;
+    node._sibIdx = sibIdx;
+    node._sibCount = sibCount;
+    nodes.push(node);
+    if (node.children) node.children.forEach((c,i) => layout(c, depth+1, i, node.children.length));
+  }
+  layout(ast, 0, 0, 1);
+
+  const maxDepth = Math.max(...nodes.map(n => n._depth));
+  const H = Math.max(500, (maxDepth + 1) * 80 + 60);
+  canvas.height = H;
+  ctx.clearRect(0, 0, canvas.width, H);
+
+  // assign x positions using simple subtree width
+  function subtreeWidth(node) {
+    if (!node || !node.children || node.children.length === 0) return 1;
+    return node.children.reduce((s,c) => s + subtreeWidth(c), 0);
+  }
+  function assignX(node, left, right) {
+    if (!node) return;
+    node._x = (left + right) / 2;
+    if (node.children && node.children.length > 0) {
+      const total = subtreeWidth(node);
+      let cur = left;
+      node.children.forEach(c => {
+        const w = subtreeWidth(c) / total * (right - left);
+        assignX(c, cur, cur + w);
+        cur += w;
+      });
+    }
+  }
+  assignX(ast, 40, canvas.width - 40);
+  nodes.forEach(n => { n._y = 40 + n._depth * 75; });
+
+  // draw edges
+  function drawEdges(node) {
+    if (!node || !node.children) return;
+    node.children.forEach(c => {
+      if (!c) return;
+      ctx.beginPath();
+      ctx.moveTo(node._x, node._y + 18);
+      ctx.lineTo(c._x, c._y - 18);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawEdges(c);
+    });
+  }
+  drawEdges(ast);
+
+  // color map
+  const colorMap = {
+    Program:     {bg:'#0f172a', border:'#1e293b', text:'#94a3b8'},
+    VarDecl:     {bg:'#1e3a5f', border:'#2563eb', text:'#60a5fa'},
+    BinaryExpr:  {bg:'#14532d', border:'#16a34a', text:'#4ade80'},
+    Literal:     {bg:'#431407', border:'#ea580c', text:'#fb923c'},
+    Identifier:  {bg:'#3b0764', border:'#9333ea', text:'#e879f9'},
+    IfStmt:      {bg:'#1a3a1a', border:'#22c55e', text:'#86efac'},
+    Block:       {bg:'#0f1f0f', border:'#1e3b1e', text:'#4b5563'},
+    ReturnStmt:  {bg:'#1a1a3a', border:'#4f46e5', text:'#a5b4fc'},
+    ExprStmt:    {bg:'#1a1510', border:'#78350f', text:'#fbbf24'},
+    UnaryExpr:   {bg:'#1a1030', border:'#7c3aed', text:'#c4b5fd'},
+  };
+
+  function drawNode(node) {
+    if (!node) return;
+    const c = colorMap[node.type] || {bg:'#1e293b', border:'#334155', text:'#94a3b8'};
+    const x = node._x, y = node._y;
+    const label = node.label || node.type;
+    ctx.font = 'bold 11px Courier New, monospace';
+    const tw = ctx.measureText(label).width;
+    const W = Math.max(tw + 20, 60), H2 = 28;
+    const rx = x - W/2, ry = y - H2/2;
+    // shadow
+    ctx.shadowColor = c.border;
+    ctx.shadowBlur = node === astHoveredNode ? 12 : 0;
+    // box
+    ctx.fillStyle = node === astHoveredNode ? c.border : c.bg;
+    ctx.strokeStyle = c.border;
+    ctx.lineWidth = node === astHoveredNode ? 2 : 1;
+    roundRect(ctx, rx, ry, W, H2, 5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // text
+    ctx.fillStyle = c.text;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x, y);
+    if (node.children) node.children.forEach(drawNode);
+  }
+  drawNode(ast);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.arcTo(x+w,y, x+w,y+r, r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.arcTo(x+w,y+h, x+w-r,y+h, r);
+  ctx.lineTo(x+r, y+h);
+  ctx.arcTo(x,y+h, x,y+h-r, r);
+  ctx.lineTo(x, y+r);
+  ctx.arcTo(x,y, x+r,y, r);
+  ctx.closePath();
+}
+
+// ============================================================
+// TAB 3: IR
+// ============================================================
+const IR_PROGRAMS = [
+  {
+    label: 'int x = 5 + 3 * 2;',
+    ir: [
+      {comment:false, text:'t1 = 3 * 2', note:'multiply 3 * 2'},
+      {comment:false, text:'t2 = 5 + t1', note:'add 5 to t1'},
+      {comment:false, text:'x = t2', note:'assign to x'},
+    ]
+  },
+  {
+    label: 'int y = x * 2;',
+    ir: [
+      {comment:false, text:'t3 = x * 2', note:'multiply x by 2'},
+      {comment:false, text:'y = t3', note:'assign to y'},
+    ]
+  },
+  {
+    label: 'if (y > 10) {',
+    ir: [
+      {comment:false, text:'t4 = y > 10', note:'compare y to 10'},
+      {comment:false, text:'ifFalse t4 goto L_end', note:'skip block if false'},
+    ]
+  },
+  {
+    label: 'return y;',
+    ir: [
+      {comment:false, text:'return y', note:'return value of y'},
+    ]
+  },
+  {
+    label: '}  // end if',
+    ir: [
+      {comment:true, text:'L_end:', note:'label for end of if'},
+    ]
+  }
+];
+
+let irStep_idx = 0;
+let irGenerated = [];
+
+function irReset() {
+  irStep_idx = 0;
+  irGenerated = [];
+  renderIRSource();
+  renderIROutput();
+  updateIRCounter();
+  document.getElementById('ir-prev-btn').disabled = true;
+  document.getElementById('ir-next-btn').disabled = false;
+}
+
+function irStep(dir) {
+  irStep_idx = Math.max(0, Math.min(IR_PROGRAMS.length, irStep_idx + dir));
+  if (dir > 0 && irStep_idx > 0) {
+    const prog = IR_PROGRAMS[irStep_idx - 1];
+    prog.ir.forEach(line => irGenerated.push(line));
+  } else if (dir < 0) {
+    irGenerated = [];
+    for (let i = 0; i < irStep_idx; i++) {
+      IR_PROGRAMS[i].ir.forEach(l => irGenerated.push(l));
+    }
+  }
+  renderIRSource();
+  renderIROutput();
+  updateIRCounter();
+  document.getElementById('ir-prev-btn').disabled = irStep_idx === 0;
+  document.getElementById('ir-next-btn').disabled = irStep_idx >= IR_PROGRAMS.length;
+}
+
+function renderIRSource() {
+  const el = document.getElementById('ir-source');
+  el.innerHTML = IR_PROGRAMS.map((p,i) => {
+    const active = i === irStep_idx - 1;
+    return `<div class="ir-line${active?' highlight':''}">${escHtml(p.label)}</div>`;
+  }).join('');
+}
+
+function renderIROutput() {
+  const el = document.getElementById('ir-output');
+  el.innerHTML = irGenerated.map((l, i) => {
+    const isNew = i >= irGenerated.length - (irStep_idx > 0 ? IR_PROGRAMS[irStep_idx-1].ir.length : 0);
+    return `<div class="ir-line${isNew?' highlight':''}">${l.comment ? '<span class="ir-comment">' : ''}${escHtml(l.text)}${l.comment ? '</span>' : ''} <span style="color:#4b5563;font-size:.75rem">// ${escHtml(l.note)}</span></div>`;
+  }).join('');
+}
+
+function updateIRCounter() {
+  document.getElementById('ir-counter').textContent = `Step ${irStep_idx} / ${IR_PROGRAMS.length}`;
+}
+
+irReset();
+
+// ============================================================
+// TAB 4: OPTIMIZATION
+// ============================================================
+function renderOpt() {
+  // Constant Folding
+  document.getElementById('cf-before').innerHTML = [
+    't1 = 3 * 2',
+    't2 = 5 + t1',
+    'x = t2',
+    't3 = x * 2',
+    'y = t3',
+  ].map(l => `<div style="padding:.1rem 0">${escHtml(l)}</div>`).join('');
+
+  document.getElementById('cf-after').innerHTML = [
+    {t:'<span class="changed">t1 = 6</span>', c:'// 3*2 folded'},
+    {t:'<span class="changed">t2 = 11</span>', c:'// 5+6 folded'},
+    {t:'x = t2'},
+    {t:'t3 = x * 2'},
+    {t:'y = t3'},
+  ].map(o => `<div style="padding:.1rem 0">${o.t}${o.c?' <span style="color:#4b5563;font-size:.75rem">'+o.c+'</span>':''}</div>`).join('');
+
+  // Dead Code Elimination
+  document.getElementById('dce-before').innerHTML = [
+    'a = 5',
+    'b = a + 3',  // b never used
+    'c = a * 2',
+    'return c',
+  ].map(l => `<div style="padding:.1rem 0">${escHtml(l)}</div>`).join('');
+
+  document.getElementById('dce-after').innerHTML = [
+    {t:'a = 5'},
+    {t:'<span class="removed">b = a + 3</span>', c:'// b never used → eliminated'},
+    {t:'c = a * 2'},
+    {t:'return c'},
+  ].map(o => `<div style="padding:.1rem 0">${o.t}${o.c?' <span style="color:#4b5563;font-size:.75rem">'+o.c+'</span>':''}</div>`).join('');
+
+  // CSE
+  document.getElementById('cse-before').innerHTML = [
+    't1 = x * y',
+    't2 = x * y',  // same as t1
+    'a = t1 + 1',
+    'b = t2 + 2',
+  ].map(l => `<div style="padding:.1rem 0">${escHtml(l)}</div>`).join('');
+
+  document.getElementById('cse-after').innerHTML = [
+    {t:'t1 = x * y'},
+    {t:'<span class="changed">t2 = t1</span>', c:'// reuse t1 (same expr)'},
+    {t:'a = t1 + 1'},
+    {t:'b = t2 + 2'},
+  ].map(o => `<div style="padding:.1rem 0">${o.t}${o.c?' <span style="color:#4b5563;font-size:.75rem">'+o.c+'</span>':''}</div>`).join('');
+
+  // Assembly output
+  const asmLines = [
+    {label:'', instr:'mov', args:'eax, 11', comment:'; t2 = 11 (constant folded)'},
+    {label:'', instr:'mov', args:'[rbp-4], eax', comment:'; x = t2'},
+    {label:'', instr:'mov', args:'eax, [rbp-4]', comment:'; load x'},
+    {label:'', instr:'imul', args:'eax, 2', comment:'; t3 = x * 2'},
+    {label:'', instr:'mov', args:'[rbp-8], eax', comment:'; y = t3'},
+    {label:'', instr:'mov', args:'eax, [rbp-8]', comment:'; load y'},
+    {label:'', instr:'cmp', args:'eax, 10', comment:'; compare y to 10'},
+    {label:'', instr:'jle', args:'.L_end', comment:'; jump if y <= 10'},
+    {label:'', instr:'mov', args:'eax, [rbp-8]', comment:'; load y for return'},
+    {label:'', instr:'ret', args:'', comment:'; return y'},
+    {label:'.L_end:', instr:'', args:'', comment:'; end of if block'},
+  ];
+  document.getElementById('asm-output').innerHTML = asmLines.map(l =>
+    `<div class="asm-line"><span class="asm-label">${l.label}</span><span class="asm-instr">${l.instr}</span><span class="asm-args">${l.args}</span><span class="asm-comment">${l.comment}</span></div>`
+  ).join('');
+}
+
+renderOpt();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

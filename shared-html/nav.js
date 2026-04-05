@@ -34,7 +34,7 @@
       ['arpanet','arpanet'],['mainframe','mainframe'],['punch','punch card'],['terminal','terminal'],
     ]},
     { label: 'Science', apps: [
-      ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['training','training'],['waves','waves'],['world','world']
+      ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['quantum','quantum'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['synth','synth'],['training','training'],['waves','waves'],['world','world']
     ]},
     { label: 'Food', apps: [
       ['chinese','chinese'],['grilling','grilling'],['india','india'],['pizza','pizza'],
@@ -44,7 +44,7 @@
       ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
     ]},
     { label: 'Electronics', apps: [
-      ['circuit','circuit'],['logic','logic'],['protocol','protocol']
+      ['circuit','circuit'],['compiler','compiler'],['logic','logic'],['protocol','protocol']
     ]},
     { label: 'Data', apps: [
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']

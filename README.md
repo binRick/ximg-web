@@ -124,7 +124,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [terminal.ximg.app](https://terminal.ximg.app) | Retro Terminal — interactive VAX-11/780 BSD simulation, CRT phosphor green scanlines, classic Unix commands, cowsay, fortune, banner, and boot sequence |
 | [punch.ximg.app](https://punch.ximg.app) | Punch Card — IBM 80-column Hollerith encoder/decoder, interactive Canvas card, click-to-toggle holes, FORTRAN/COBOL samples, computing history from 1890 |
 | [circuit.ximg.app](https://circuit.ximg.app) | Circuit Builder — drag-and-drop circuit canvas (resistors, caps, inductors, LEDs, logic gates), DC analysis calculators, component reference |
-| [logic.ximg.app](https://logic.ximg.app) | Logic Gates — interactive gate simulator (AND/OR/NOT/XOR/NAND/NOR/XNOR), truth tables, half & full adder, boolean expression evaluator |
+| [logic.ximg.app](https://logic.ximg.app) | Logic Gates — interactive gate simulator (AND/OR/NOT/XOR/NAND/NOR/XNOR), drag-and-drop circuit builder, truth tables with K-map, 4-bit ripple carry adder, ALU explanation |
+| [compiler.ximg.app](https://compiler.ximg.app) | How Compilers Work — live lexer with colored token stream, AST tree diagram, 3-address IR code generation step-by-step, constant folding/DCE/CSE optimizations, x86-64 assembly output |
 | [protocol.ximg.app](https://protocol.ximg.app) | Protocol Visualizer — animated UART, SPI, and I²C waveform diagrams with configurable baud rates, modes, and data bytes |
 | [mainframe.ximg.app](https://mainframe.ximg.app) | IBM Mainframe history — interactive timeline (701 to z16), JCL syntax explorer, batch processing lifecycle, MIPS performance table, and COBOL reference |
 | [regex.ximg.app](https://regex.ximg.app) | Live regex tester — 4-tab tool: Tester (live highlighting, group extraction), Groups (color-coded table), Replace (backreference preview), Reference (cheatsheet + 14 patterns) |
@@ -132,6 +133,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [jwt.ximg.app](https://jwt.ximg.app) | JWT decoder & encoder — decode any token, HMAC sign (HS256/384/512), expiry/nbf/iat validation, claims reference, algorithm comparison |
 | [cron.ximg.app](https://cron.ximg.app) | Cron expression builder — human-readable output, next 10 scheduled runs, 16 presets, field breakdown, special character reference |
 | [color.ximg.app](https://color.ximg.app) | Color tools — picker (HEX/RGB/HSL/CMYK), palette generator (7 harmony types), WCAG AA/AAA contrast checker, CSS variable export |
+| [quantum.ximg.app](https://quantum.ximg.app) | Quantum Mechanics Explorer — wave-packet propagation with wavefunction collapse, double-slit interference vs. which-path observation, Bloch sphere qubit explorer, entangled Bell state measurement, Schrödinger's cat |
+| [synth.ximg.app](https://synth.ximg.app) | Web Audio Synthesizer — playable 2-octave piano keyboard, oscillator types with ADSR envelope, distortion/filter/delay/reverb effects chain, real-time FFT spectrum analyzer, oscilloscope, synth presets, chord theory player |
 
 ## Architecture
 
