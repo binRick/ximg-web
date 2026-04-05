@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Antenna Calculator — antenna.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;flex-wrap:wrap;gap:0;padding:0 1rem}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1rem;cursor:pointer;font-size:.85rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s}
+.tab-btn.active{color:#22d3ee;border-bottom-color:#22d3ee}
+.tab-panel{display:none;padding:1.5rem;max-width:900px;margin:0 auto}
+.tab-panel.active{display:block}
+h2{color:#22d3ee;margin-bottom:1rem;font-size:1.2rem}
+.card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1.25rem;margin-bottom:1rem}
+.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
+label{font-size:.85rem;color:#94a3b8;min-width:160px}
+input[type=number]{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem;width:150px;font-family:monospace}
+select{background:#0a0a25;border:1px solid #334155;color:#e2e8f0;padding:.5rem;border-radius:5px;font-size:.9rem}
+.result-box{background:#0a0a25;border:1px solid #22d3ee;border-radius:6px;padding:1rem;margin-top:1rem}
+.result-line{display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid #1e293b;font-size:.9rem}
+.result-line:last-child{border:none}
+.rk{color:#94a3b8}.rv{color:#22d3ee;font-family:monospace;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:650px){.grid2{grid-template-columns:1fr}}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:6px;padding:1rem;font-size:.85rem;line-height:1.8;color:#94a3b8;margin-top:1rem}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:#1e293b;color:#22d3ee;padding:.5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid #1e293b}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <button class="tab-btn active" onclick="showTab('dipole')">Dipole</button>
+  <button class="tab-btn" onclick="showTab('yagi')">Yagi-Uda</button>
+  <button class="tab-btn" onclick="showTab('vertical')">Quarter-Wave Vertical</button>
+  <button class="tab-btn" onclick="showTab('patch')">Patch Antenna</button>
+  <button class="tab-btn" onclick="showTab('reference')">Reference</button>
+</nav>
+
+<div id="dipole" class="tab-panel active">
+  <h2>Half-Wave Dipole Antenna</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="field-row"><label>Frequency (MHz)</label><input type="number" id="dip_f" value="146" min="0.1" step="0.1" oninput="calcDipole()"></div>
+      <div class="field-row"><label>Velocity factor</label><input type="number" id="dip_vf" value="0.97" min="0.5" max="1" step="0.01" oninput="calcDipole()"></div>
+      <div class="result-box">
+        <div class="result-line"><span class="rk">Total length (λ/2)</span><span class="rv" id="dip_total">—</span></div>
+        <div class="result-line"><span class="rk">Each element (λ/4)</span><span class="rv" id="dip_half">—</span></div>
+        <div class="result-line"><span class="rk">Wavelength (λ)</span><span class="rv" id="dip_lambda">—</span></div>
+        <div class="result-line"><span class="rk">Impedance</span><span class="rv">~73 Ω</span></div>
+        <div class="result-line"><span class="rk">Gain</span><span class="rv">2.15 dBi / 0 dBd</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <img src="images/dipole.svg" alt="Dipole antenna diagram" style="width:100%;border-radius:4px">
+      <div class="info-box">
+        <strong style="color:#22d3ee">Formula:</strong> L = 142.5 / f(MHz) meters (with typical 0.95 shortening factor)<br>
+        A half-wave dipole has 2.15 dBi gain over isotropic, omnidirectional in the plane perpendicular to the antenna axis. Feed impedance ~73Ω, close to 75Ω coax.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Common Amateur Radio Dipole Lengths</h3>
+    <table id="dip_table">
+      <thead><tr><th>Band</th><th>Freq (MHz)</th><th>Total Length</th><th>Each Leg</th></tr></thead>
+      <tbody id="dip_tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="yagi" class="tab-panel">
+  <h2>Yagi-Uda Antenna Designer</h2>
+  <div class="card">
+    <div class="field-row"><label>Center Frequency (MHz)</label><input type="number" id="yagi_f" value="144" min="1" step="0.1" oninput="calcYagi()"></div>
+    <div class="field-row"><label>Number of directors</label><input type="number" id="yagi_n" value="3" min="1" max="15" step="1" oninput="calcYagi()"></div>
+    <div class="result-box" id="yagi_results"></div>
+  </div>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Yagi Element Dimensions</h3>
+    <div id="yagi_elements"></div>
+  </div>
+</div>
+
+<div id="vertical" class="tab-panel">
+  <h2>Quarter-Wave Vertical Antenna</h2>
+  <div class="card">
+    <div class="field-row"><label>Frequency (MHz)</label><input type="number" id="vert_f" value="27.185" min="0.1" step="0.001" oninput="calcVert()"></div>
+    <div class="field-row"><label>Velocity factor</label><input type="number" id="vert_vf" value="0.95" min="0.5" max="1" step="0.01" oninput="calcVert()"></div>
+    <div class="field-row"><label>Ground radials count</label><input type="number" id="vert_radials" value="4" min="1" max="128" step="1" oninput="calcVert()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="rk">Vertical element length</span><span class="rv" id="vert_len">—</span></div>
+      <div class="result-line"><span class="rk">Radial length (each)</span><span class="rv" id="vert_rad">—</span></div>
+      <div class="result-line"><span class="rk">Wavelength</span><span class="rv" id="vert_lam">—</span></div>
+      <div class="result-line"><span class="rk">Impedance</span><span class="rv" id="vert_z">~36 Ω (≥32 radials: ~50 Ω)</span></div>
+      <div class="result-line"><span class="rk">Gain</span><span class="rv">~5.2 dBi over perfect ground</span></div>
+    </div>
+  </div>
+  <div class="info-box">
+    Quarter-wave verticals require a ground plane (radials) for proper operation. With 4 radials: ~36Ω. With 32+ radials: approaches 50Ω (direct coax match).
+    Radials can be elevated (reduces required count) or buried. 60° angle elevated radials = best compromise.
+  </div>
+</div>
+
+<div id="patch" class="tab-panel">
+  <h2>Rectangular Microstrip Patch Antenna</h2>
+  <div class="card">
+    <div class="field-row"><label>Frequency (GHz)</label><input type="number" id="patch_f" value="2.45" min="0.1" step="0.01" oninput="calcPatch()"></div>
+    <div class="field-row"><label>Substrate εr</label><input type="number" id="patch_er" value="4.4" min="1" step="0.1" oninput="calcPatch()"></div>
+    <div class="field-row"><label>Substrate height (mm)</label><input type="number" id="patch_h" value="1.6" min="0.1" step="0.1" oninput="calcPatch()"></div>
+    <div class="result-box">
+      <div class="result-line"><span class="rk">Patch width (W)</span><span class="rv" id="patch_w">—</span></div>
+      <div class="result-line"><span class="rk">Patch length (L)</span><span class="rv" id="patch_l">—</span></div>
+      <div class="result-line"><span class="rk">Effective εr</span><span class="rv" id="patch_ereff">—</span></div>
+      <div class="result-line"><span class="rk">Gain (typical)</span><span class="rv">6–8 dBi</span></div>
+      <div class="result-line"><span class="rk">Common use</span><span class="rv">WiFi, GPS, IoT, RFID</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="reference" class="tab-panel">
+  <h2>Antenna Reference</h2>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Antenna Types Comparison</h3>
+    <table><thead><tr><th>Antenna</th><th>Gain</th><th>Impedance</th><th>Pattern</th><th>Use</th></tr></thead><tbody>
+      <tr><td>Isotropic (theoretical)</td><td>0 dBi</td><td>—</td><td>Spherical</td><td>Reference only</td></tr>
+      <tr><td>Half-wave dipole</td><td>2.15 dBi</td><td>73 Ω</td><td>Figure-8</td><td>HF/VHF base, portable</td></tr>
+      <tr><td>Quarter-wave vertical</td><td>~5 dBi</td><td>36–50 Ω</td><td>Omni (low elevation)</td><td>Mobile, broadcast</td></tr>
+      <tr><td>Yagi-Uda (3el)</td><td>7–8 dBi</td><td>25–75 Ω</td><td>Directional</td><td>VHF/UHF, point-to-point</td></tr>
+      <tr><td>Yagi-Uda (10el)</td><td>12–14 dBi</td><td>25–50 Ω</td><td>High directional</td><td>Weak-signal work</td></tr>
+      <tr><td>Patch (microstrip)</td><td>6–8 dBi</td><td>50 Ω</td><td>Hemispherical</td><td>WiFi, GPS, PCB mount</td></tr>
+      <tr><td>Parabolic dish</td><td>25–45 dBi</td><td>50 Ω (feed)</td><td>Very narrow</td><td>Microwave, satellite</td></tr>
+    </tbody></table>
+  </div>
+  <div class="card">
+    <h3 style="color:#22d3ee;margin-bottom:.5rem">Frequency Bands Quick Reference</h3>
+    <table><thead><tr><th>Band</th><th>Frequency</th><th>λ (approx)</th><th>Applications</th></tr></thead><tbody>
+      <tr><td>LF</td><td>30–300 kHz</td><td>1km–10km</td><td>Navigation, time signals</td></tr>
+      <tr><td>MF</td><td>300kHz–3MHz</td><td>100m–1km</td><td>AM broadcast, 160m ham</td></tr>
+      <tr><td>HF</td><td>3–30 MHz</td><td>10m–100m</td><td>Shortwave, 40/20/10m ham</td></tr>
+      <tr><td>VHF</td><td>30–300 MHz</td><td>1m–10m</td><td>FM, TV, 2m ham, NOAA</td></tr>
+      <tr><td>UHF</td><td>300MHz–3GHz</td><td>10cm–1m</td><td>LTE, 70cm ham, WiFi 2.4G</td></tr>
+      <tr><td>SHF</td><td>3–30 GHz</td><td>1cm–10cm</td><td>WiFi 5G/6G, radar, sat</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+function fmtLen(m){
+  if(m>=1) return m.toFixed(3)+'m ('+(m*100).toFixed(1)+'cm / '+(m*39.37).toFixed(2)+'" / '+(m*3.281).toFixed(3)+"')";
+  return (m*100).toFixed(2)+'cm';
+}
+function calcDipole(){
+  const f=parseFloat(document.getElementById('dip_f').value||1);
+  const vf=parseFloat(document.getElementById('dip_vf').value||0.97);
+  const lambda=3e8/f/1e6*vf;
+  const total=lambda/2;
+  const half=total/2;
+  document.getElementById('dip_total').textContent=fmtLen(total);
+  document.getElementById('dip_half').textContent=fmtLen(half);
+  document.getElementById('dip_lambda').textContent=fmtLen(lambda);
+  buildDipTable();
+}
+function buildDipTable(){
+  const bands=[['160m',1.8],['80m',3.6],['40m',7.1],['20m',14.1],['15m',21.1],['10m',28.1],['6m',51],['2m',146],['70cm',433]];
+  const tb=document.getElementById('dip_tbody');tb.innerHTML='';
+  bands.forEach(([name,f])=>{
+    const total=142.5/f;const half=total/2;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td>${f} MHz</td><td>${total.toFixed(3)}m</td><td>${half.toFixed(3)}m</td>`;
+    tb.appendChild(tr);
+  });
+}
+function calcYagi(){
+  const f=parseFloat(document.getElementById('yagi_f').value||144);
+  const n=parseInt(document.getElementById('yagi_n').value||3);
+  const lambda=300/f;
+  const reflector=lambda*0.508;
+  const driven=lambda*0.480;
+  const gain=3+n*2.5;
+  const directors=[];
+  for(let i=0;i<n;i++) directors.push({el:'Director '+(i+1),len:(lambda*(0.455-0.003*i)).toFixed(4)+'m',spacing:(lambda*(0.25+0.05*i)).toFixed(4)+'m from driven'});
+  let html=`<div class="result-line"><span class="rk">Approx. gain</span><span class="rv">${gain.toFixed(1)} dBi</span></div><div class="result-line"><span class="rk">Impedance</span><span class="rv">~28 Ω (use gamma match to 50Ω)</span></div><div class="result-line"><span class="rk">Reflector</span><span class="rv">${reflector.toFixed(4)}m</span></div><div class="result-line"><span class="rk">Driven element</span><span class="rv">${driven.toFixed(4)}m</span></div>`;
+  document.getElementById('yagi_results').innerHTML=html;
+  let tbl='<table><thead><tr><th>Element</th><th>Length</th><th>Spacing from driven</th></tr></thead><tbody>';
+  tbl+=`<tr><td>Reflector</td><td>${reflector.toFixed(4)}m</td><td>${(lambda*0.2).toFixed(4)}m behind</td></tr>`;
+  tbl+=`<tr><td>Driven</td><td>${driven.toFixed(4)}m</td><td>—</td></tr>`;
+  directors.forEach(d=>tbl+=`<tr><td>${d.el}</td><td>${d.len}</td><td>${d.spacing}</td></tr>`);
+  tbl+='</tbody></table>';
+  document.getElementById('yagi_elements').innerHTML=tbl;
+}
+function calcVert(){
+  const f=parseFloat(document.getElementById('vert_f').value||27);
+  const vf=parseFloat(document.getElementById('vert_vf').value||0.95);
+  const n=parseInt(document.getElementById('vert_radials').value||4);
+  const lambda=3e8/f/1e6*vf;
+  const vert=lambda/4;
+  const rad=lambda/4;
+  const z=n>=32?50:n>=16?43:36;
+  document.getElementById('vert_len').textContent=fmtLen(vert);
+  document.getElementById('vert_rad').textContent=fmtLen(rad);
+  document.getElementById('vert_lam').textContent=fmtLen(lambda);
+  document.getElementById('vert_z').textContent=`~${z} Ω (with ${n} radials)`;
+}
+function calcPatch(){
+  const f=parseFloat(document.getElementById('patch_f').value||2.45)*1e9;
+  const er=parseFloat(document.getElementById('patch_er').value||4.4);
+  const h=parseFloat(document.getElementById('patch_h').value||1.6)*1e-3;
+  const c=3e8;
+  const W=c/(2*f)*Math.sqrt(2/(er+1));
+  const ereff=(er+1)/2+(er-1)/2*Math.pow(1+12*h/W,-0.5);
+  const dL=0.412*h*(ereff+0.3)*(W/h+0.264)/((ereff-0.258)*(W/h+0.8));
+  const L=c/(2*f*Math.sqrt(ereff))-2*dL;
+  document.getElementById('patch_w').textContent=(W*1000).toFixed(2)+'mm';
+  document.getElementById('patch_l').textContent=(L*1000).toFixed(2)+'mm';
+  document.getElementById('patch_ereff').textContent=ereff.toFixed(3);
+}
+calcDipole();calcYagi();calcVert();calcPatch();buildDipTable();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

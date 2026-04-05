@@ -179,6 +179,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [spi.ximg.app](https://spi.ximg.app) | SPI Reference — timing diagram for all 4 modes, SPI vs I2C vs UART, Arduino code, device list |
 | [uart.ximg.app](https://uart.ximg.app) | UART Reference — frame visualizer, baud rate calculator, RS-232 vs TTL vs RS-485, Arduino code |
 | [voltage.ximg.app](https://voltage.ximg.app) | Voltage Reference — divider calc, logic level converter, standard voltage levels, dBV/dBu/dBm, AC mains |
+| [antenna.ximg.app](https://antenna.ximg.app) | Antenna Calculator — dipole/Yagi/quarter-wave/patch design, wavelength converter, gain reference, coax guide |
 
 ## Architecture
 
