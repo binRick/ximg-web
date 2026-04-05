@@ -139,23 +139,6 @@ const LOG_FILES = {
   pirates:     'pirates.access.log',
   medieval:    'medieval.access.log',
   rome:        'rome.access.log',
-  egypt:       'egypt.access.log',
-  greece:      'greece.access.log',
-  babylon:     'babylon.access.log',
-  aztec:       'aztec.access.log',
-  mongols:     'mongols.access.log',
-  vikings:     'vikings.access.log',
-  crusades:    'crusades.access.log',
-  samurai:     'samurai.access.log',
-  ottoman:     'ottoman.access.log',
-  ww2:         'ww2.access.log',
-  ww1:         'ww1.access.log',
-  revolution:  'revolution.access.log',
-  industrial:  'industrial.access.log',
-  civilwar:    'civilwar.access.log',
-  renaissance: 'renaissance.access.log',
-  silkroad:    'silkroad.access.log',
-  colonial:    'colonial.access.log',
   bbs:         'bbs.access.log',
   dos:         'dos.access.log',
   modem:       'modem.access.log',
@@ -564,23 +547,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="passwords">passwords</button>
           <button class="site-opt" data-site="physics">physics</button>
           <button class="site-opt" data-site="pirates">pirates</button>
-          <button class="site-opt" data-site="egypt">egypt</button>
-          <button class="site-opt" data-site="greece">greece</button>
-          <button class="site-opt" data-site="babylon">babylon</button>
-          <button class="site-opt" data-site="aztec">aztec</button>
-          <button class="site-opt" data-site="mongols">mongols</button>
-          <button class="site-opt" data-site="vikings">vikings</button>
-          <button class="site-opt" data-site="crusades">crusades</button>
-          <button class="site-opt" data-site="samurai">samurai</button>
-          <button class="site-opt" data-site="ottoman">ottoman</button>
-          <button class="site-opt" data-site="ww2">ww2</button>
-          <button class="site-opt" data-site="ww1">ww1</button>
-          <button class="site-opt" data-site="revolution">revolution</button>
-          <button class="site-opt" data-site="industrial">industrial</button>
-          <button class="site-opt" data-site="civilwar">civilwar</button>
-          <button class="site-opt" data-site="renaissance">renaissance</button>
-          <button class="site-opt" data-site="silkroad">silkroad</button>
-          <button class="site-opt" data-site="colonial">colonial</button>
           <button class="site-opt" data-site="pizza">pizza</button>
           <button class="site-opt" data-site="sushi">sushi</button>
           <button class="site-opt" data-site="tacos">tacos</button>
