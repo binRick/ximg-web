@@ -80,9 +80,9 @@
 
   var s = document.createElement('style');
   s.textContent =
-    'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
+    'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;' +
     'gap:.35rem;padding:.4rem .75rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
-    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;}' +
+    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;flex-wrap:wrap;}' +
 
     '.nav-brand{font-weight:700;font-size:.88rem;color:#f1f5f9;margin-right:.5rem;' +
     'letter-spacing:-.02em;text-decoration:none;flex-shrink:0}' +
