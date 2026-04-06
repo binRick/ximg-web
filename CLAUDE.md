@@ -6,6 +6,10 @@ Multi-site web portfolio/demo stack hosted at ximg.app.
 
 After completing any task, show a one or two sentence summary of what changed and why. Keep it brief.
 
+## Landing Page
+
+**Every app must have a card on the landing page (`public-html/index.html`).** When adding a new app, always add its card to the landing page as part of the checklist — not just to `apps-html/index.html`. If an app exists in the apps directory but has no card on the landing page, that is a bug.
+
 ## Git Workflow
 
 **All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
