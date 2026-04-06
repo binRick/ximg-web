@@ -287,13 +287,13 @@ Frontend features: tab per subdomain, color-coded HTTP status codes (2xx green /
 
 ## SSL
 
-Certificates issued via [Certbot](https://certbot.eff.org/) HTTP-01 webroot challenge. Each subdomain has its own individual cert. Certs are stored at `/etc/letsencrypt/live/<subdomain>.ximg.app/`, mounted read-only into nginx. Auto-renewed by the certbot systemd timer; a deploy hook reloads nginx on renewal. TLS 1.2/1.3 only, HSTS enforced (`max-age=63072000`).
+A single wildcard cert covers all `*.ximg.app` subdomains. It was issued via [acme.sh](https://acme.sh) with GoDaddy DNS-01 challenge and is stored at `/etc/letsencrypt/live/wildcard.ximg.app/`, mounted read-only into nginx. Auto-renewed by acme.sh's cron job (~day 60); the renewal hook reloads nginx automatically. TLS 1.2/1.3 only, HSTS enforced (`max-age=63072000`).
 
-```bash
-# Issue a new cert for a subdomain
-certbot certonly --webroot -d newsubdomain.ximg.app -w /root/ximg-web/public-html --non-interactive
+**Do not issue individual certs per subdomain** — the wildcard covers everything. Every nginx `server {}` block should use:
 
-certbot renew --dry-run   # test renewal
+```nginx
+ssl_certificate     /etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/wildcard.ximg.app/privkey.pem;
 ```
 
 ## Logging
@@ -328,7 +328,7 @@ Every new app must be wired into all of the following:
 2. **Favicon** — download a thematically appropriate image, save as `favicon.ico` or `favicon.png`, reference it in `<head>`
 3. **`compose.yaml`** — add a new `httpd:2.4-alpine` service
 4. **`nginx/nginx.conf`** — add the subdomain to the HTTP redirect `server_name` list and add a new HTTPS `server {}` block
-5. **SSL cert** — `certbot certonly --webroot -d newsubdomain.ximg.app -w /root/ximg-web/public-html --non-interactive`; reference the new cert in the nginx server block
+5. **SSL** — no new cert needed; reference the wildcard cert in the nginx server block (`/etc/letsencrypt/live/wildcard.ximg.app/`)
 6. **`shared-html/nav.js`** — add nav entry
 7. **`public-html/index.html`** — add landing page card
 8. **`apps-html/index.html`** — add a row to the `APPS` array
@@ -336,4 +336,4 @@ Every new app must be wired into all of the following:
 10. **Nagios** — add a `define host {}` entry in `nagios-server/ximg-hosts.cfg` and add the subdomain to the `members` list
 11. **`README.md`** — add a row to the Live Sites table
 12. **`install/setup.sh`** — add the subdomain to the `DOMAINS` array
-13. **DNS** — add an A record → `172.238.205.61` before running certbot
+13. **DNS** — add an A record → `172.238.205.61`

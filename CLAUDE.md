@@ -93,7 +93,11 @@ This is the single authoritative checklist. Follow every step in order.
 4. **compose.yaml** — add a new `httpd:2.4-alpine` service with volumes for the html dir and `shared-html`
 5. **nginx.conf (HTTP block)** — add the new subdomain to the HTTP→HTTPS redirect `server_name` list (the block at the top of the HTTPS server section that redirects port 80)
 6. **nginx.conf (HTTPS block)** — add a new `server { listen 443 ssl; server_name <subdomain>.ximg.app; ... }` block proxying to the new service
-7. **SSL cert** — issue an individual cert: `certbot certonly --webroot -d <subdomain>.ximg.app -w /root/ximg-web/public-html --non-interactive`; reference it in the nginx server block (see SSL section below)
+7. **SSL cert** — no new cert needed. The wildcard cert at `/etc/letsencrypt/live/wildcard.ximg.app/` covers all `*.ximg.app` subdomains. Reference it in the nginx server block:
+   ```nginx
+   ssl_certificate     /etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem;
+   ssl_certificate_key /etc/letsencrypt/live/wildcard.ximg.app/privkey.pem;
+   ```
 
 ### Wiring
 
@@ -123,8 +127,7 @@ Missing any of these means the app is invisible, unmonitored, or incomplete.
 
 After creating a new app, always verify all of the following before considering the task done:
 
-1. **Cert acquired** — `certbot certificates | grep <subdomain>`
-2. **Container up** — `docker compose ps <service>`
+1. **Container up** — `docker compose ps <service>`
 3. **Website works** — `curl -sk https://<subdomain>.ximg.app | head -5`
 4. **App is unique** — confirm `<title>` tag is NOT `ximg.app` (which would mean nginx is routing to the wrong upstream)
 
@@ -132,52 +135,27 @@ If any check fails, fix it before finishing.
 
 ## SSL / Adding a New Subdomain
 
-Each subdomain gets its own individual cert. Issue it with:
+**Do NOT issue a new cert per subdomain.** A wildcard cert covering all `*.ximg.app` subdomains is already in place, issued via acme.sh + GoDaddy DNS-01 challenge and stored at:
+
+```
+/etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem
+/etc/letsencrypt/live/wildcard.ximg.app/privkey.pem
+```
+
+Auto-renewal is handled by acme.sh's cron job (renews ~day 60, reloads nginx automatically).
+
+Every new nginx `server {}` block should reference the wildcard cert:
+
+```nginx
+ssl_certificate     /etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/wildcard.ximg.app/privkey.pem;
+```
+
+After adding a server block, reload nginx:
 
 ```bash
-# Step 1 — DNS A record must already point to 172.238.205.61
-
-# Step 2 — issue cert for the new subdomain:
-certbot certonly --webroot -d newsubdomain.ximg.app \
-  -w /root/ximg-web/public-html \
-  --non-interactive
-
-# Step 3 — reference the cert in the nginx server block:
-#   ssl_certificate     /etc/letsencrypt/live/newsubdomain.ximg.app/fullchain.pem;
-#   ssl_certificate_key /etc/letsencrypt/live/newsubdomain.ximg.app/privkey.pem;
-
-# Step 4 — reload nginx:
-docker compose exec nginx nginx -s reload
+docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 ```
-
-## Certbot Rate Limit Fallback
-
-Let's Encrypt enforces a limit of **50 certificates per registered domain (`ximg.app`) per 7-day rolling window**. If certbot fails with a rate-limit error when adding a new app, do NOT leave the app broken or uncreated. Instead, host it temporarily at `https://ximg.app/<appname>/` using a path-based nginx location block under the main `ximg.app` server block.
-
-**Fallback procedure:**
-
-1. Create the `*-html/` directory and `index.html` as normal — but set all asset paths (CSS, JS, images) relative or root-relative with the `/appname/` prefix in mind. The simplest approach: use relative paths (`./style.css`) so they work under any base path.
-
-2. In `nginx/nginx.conf`, add a `location` block inside the existing `ximg.app` server block:
-```nginx
-location /appname/ {
-    proxy_pass         http://appname:80/;
-    proxy_set_header   Host              $host;
-    proxy_set_header   X-Real-IP         $remote_addr;
-    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header   X-Forwarded-Proto $scheme;
-}
-```
-
-3. Start the Apache container as normal (`docker compose up -d appname`).
-
-4. Reload nginx: `docker compose exec nginx nginx -s reload`
-
-5. Verify: `curl -sk https://ximg.app/appname/ | head -5`
-
-6. Note the rate-limit retry timestamp from the certbot error message. Once the window clears, issue the individual cert and migrate the app to its proper subdomain — updating nginx.conf, nav.js, apps-html, logs-server, nagios, README, and install/setup.sh as per the normal checklist.
-
-**Do not skip creating the app just because a cert is unavailable.** The path-based fallback keeps the app live and reachable immediately.
 
 ## SSH Honeypot
 
