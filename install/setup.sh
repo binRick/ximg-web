@@ -237,6 +237,7 @@ DOMAINS=(
   uart.ximg.app voltage.ximg.app
   antenna.ximg.app
   dockerimage.ximg.app
+  downloader.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

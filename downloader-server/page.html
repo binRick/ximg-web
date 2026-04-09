@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>downloader.ximg.app</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0d0d16;color:#c9d1d9;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
+    .page{flex:1;max-width:860px;width:100%;margin:0 auto;padding:1.5rem 1rem 2rem}
+
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:#586069;margin-bottom:1.6rem}
+
+    /* sub-nav */
+    .subnav{display:flex;gap:.4rem;margin-bottom:1.4rem;flex-wrap:wrap}
+    .snav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:5px;
+      color:#586069;font-family:'Courier New',monospace;font-size:.75rem;padding:.3rem .75rem;
+      cursor:pointer;transition:all .15s}
+    .snav-btn:hover{border-color:rgba(56,189,248,.4);color:#38bdf8}
+    .snav-btn.active{border-color:#38bdf8;color:#38bdf8;background:rgba(56,189,248,.08)}
+
+    /* input area */
+    .input-card{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:1.2rem 1.3rem;margin-bottom:1.2rem}
+    .input-row{display:flex;gap:.6rem;align-items:stretch;margin-bottom:.8rem}
+    .img-input{flex:1;background:#0d1117;border:1px solid rgba(255,255,255,.12);border-radius:6px;
+      color:#c9d1d9;font-family:'Courier New',monospace;font-size:.95rem;padding:.65rem .9rem;
+      outline:none;transition:border-color .2s}
+    .img-input:focus{border-color:rgba(56,189,248,.5)}
+    .img-input::placeholder{color:#3a4453}
+    .pull-btn{background:linear-gradient(135deg,#0ea5e9,#38bdf8);border:none;border-radius:6px;
+      color:#0d0d16;font-family:'Courier New',monospace;font-weight:700;font-size:.88rem;
+      padding:.65rem 1.3rem;cursor:pointer;transition:opacity .15s;white-space:nowrap;flex-shrink:0}
+    .pull-btn:hover{opacity:.9}
+    .pull-btn:disabled{opacity:.4;cursor:not-allowed}
+
+    /* quick picks */
+    .picks-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#586069;margin-bottom:.45rem}
+    .picks{display:flex;flex-wrap:wrap;gap:.35rem}
+    .pick{background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;
+      color:#79c0ff;font-size:.72rem;padding:.2rem .5rem;cursor:pointer;transition:all .12s;font-family:'Courier New',monospace}
+    .pick:hover{border-color:rgba(56,189,248,.4);color:#38bdf8}
+
+    /* progress */
+    .progress-wrap{margin-bottom:1.2rem;display:none}
+    .progress-wrap.show{display:block}
+    .prog-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
+    .prog-image{font-size:.88rem;color:#38bdf8;font-weight:700}
+    .prog-status{font-size:.72rem;padding:.2rem .55rem;border-radius:3px;font-weight:600}
+    .status-pulling{background:rgba(255,166,87,.15);color:#ffa657}
+    .status-ready{background:rgba(63,185,80,.15);color:#3fb950}
+    .status-error{background:rgba(248,81,73,.15);color:#f85149}
+
+    .log-box{background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:8px;
+      padding:.8rem 1rem;font-size:.78rem;line-height:1.65;height:320px;overflow-y:auto;
+      white-space:pre-wrap;word-break:break-all;color:#7ee787;position:relative}
+    .log-box .log-err{color:#f85149}
+    .log-box .log-dim{color:#586069}
+
+    /* download button */
+    .dl-btn{display:none;align-items:center;gap:.65rem;margin-top:.9rem;
+      background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.4);border-radius:8px;
+      padding:.7rem 1.2rem;cursor:pointer;font-family:'Courier New',monospace;
+      font-size:.88rem;color:#3fb950;font-weight:700;transition:all .2s;text-decoration:none;width:100%}
+    .dl-btn.show{display:flex}
+    .dl-btn:hover{background:rgba(63,185,80,.18);border-color:rgba(63,185,80,.7)}
+    .dl-icon{font-size:1.2rem}
+    .dl-info{display:flex;flex-direction:column;gap:.1rem;flex:1}
+    .dl-name{font-size:.88rem}
+    .dl-hint{font-size:.7rem;color:#586069;font-weight:400}
+    .dl-arrow{font-size:1.1rem;margin-left:auto}
+
+    /* history */
+    .history-section{margin-top:1.5rem}
+    .history-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#586069;margin-bottom:.6rem}
+    .history-list{display:flex;flex-direction:column;gap:.4rem}
+    .history-item{background:#161b22;border:1px solid rgba(255,255,255,.07);border-radius:6px;
+      padding:.5rem .8rem;display:flex;align-items:center;gap:.75rem;font-size:.8rem}
+    .hist-img{color:#79c0ff;flex:1}
+    .hist-time{color:#586069;font-size:.7rem}
+    .hist-dl{background:none;border:1px solid rgba(63,185,80,.3);border-radius:4px;color:#3fb950;
+      font-family:'Courier New',monospace;font-size:.7rem;padding:.2rem .5rem;cursor:pointer;transition:all .15s}
+    .hist-dl:hover{background:rgba(63,185,80,.1)}
+
+    /* how it works */
+    .how-section{margin-top:2rem;background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:1.1rem 1.2rem}
+    .how-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#586069;margin-bottom:.8rem}
+    .steps{display:flex;flex-direction:column;gap:.6rem}
+    .step{display:flex;align-items:flex-start;gap:.75rem;font-size:.8rem}
+    .step-num{min-width:22px;height:22px;border-radius:50%;background:rgba(56,189,248,.12);
+      border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:.7rem;font-weight:700;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.05rem}
+    .step-text{color:#c9d1d9;line-height:1.5}
+    .step-text b{color:#38bdf8}
+
+    .warn-box{background:rgba(255,166,87,.05);border:1px solid rgba(255,166,87,.2);border-radius:6px;
+      padding:.65rem .9rem;font-size:.75rem;color:#886030;margin-top:.9rem;line-height:1.6}
+    .warn-box b{color:#ffa657}
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <h1>📦 Docker Image Downloader</h1>
+  <p class="subtitle">Pull any Docker image to this server and download it as a compressed <code>.tar.gz</code> archive</p>
+
+  <!-- sub-nav -->
+  <div class="subnav">
+    <button class="snav-btn active" onclick="setView('pull',this)">Pull &amp; Download</button>
+    <button class="snav-btn" onclick="setView('history',this)">History</button>
+    <button class="snav-btn" onclick="setView('how',this)">How it works</button>
+  </div>
+
+  <!-- ── Pull view ─────────────────────────────────────────────────────────── -->
+  <div id="view-pull">
+    <div class="input-card">
+      <div class="input-row">
+        <input class="img-input" id="img-ref" type="text"
+               placeholder="nginx:1.25.3  ·  python:3.12-slim  ·  ghcr.io/owner/repo:tag"
+               onkeydown="if(event.key==='Enter')startPull()">
+        <button class="pull-btn" id="pull-btn" onclick="startPull()">Pull &amp; Download</button>
+      </div>
+      <div class="picks-label">Quick picks</div>
+      <div class="picks">
+        <span class="pick" onclick="setPick('alpine:latest')">alpine:latest</span>
+        <span class="pick" onclick="setPick('ubuntu:24.04')">ubuntu:24.04</span>
+        <span class="pick" onclick="setPick('debian:bookworm-slim')">debian:bookworm-slim</span>
+        <span class="pick" onclick="setPick('nginx:alpine')">nginx:alpine</span>
+        <span class="pick" onclick="setPick('nginx:1.25.3')">nginx:1.25.3</span>
+        <span class="pick" onclick="setPick('node:22-alpine')">node:22-alpine</span>
+        <span class="pick" onclick="setPick('python:3.12-slim')">python:3.12-slim</span>
+        <span class="pick" onclick="setPick('redis:7-alpine')">redis:7-alpine</span>
+        <span class="pick" onclick="setPick('postgres:16-alpine')">postgres:16-alpine</span>
+        <span class="pick" onclick="setPick('golang:1.22-alpine')">golang:1.22-alpine</span>
+        <span class="pick" onclick="setPick('httpd:2.4-alpine')">httpd:2.4-alpine</span>
+        <span class="pick" onclick="setPick('busybox:latest')">busybox:latest</span>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="prog-header">
+        <span class="prog-image" id="prog-image"></span>
+        <span class="prog-status" id="prog-status"></span>
+      </div>
+      <div class="log-box" id="log-box"></div>
+      <a class="dl-btn" id="dl-btn" href="#" onclick="return triggerDownload()">
+        <span class="dl-icon">⬇️</span>
+        <span class="dl-info">
+          <span class="dl-name" id="dl-name"></span>
+          <span class="dl-hint">Click to download as .tar.gz &nbsp;·&nbsp; import with: docker load &lt; file.tar.gz</span>
+        </span>
+        <span class="dl-arrow">→</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ── History view ──────────────────────────────────────────────────────── -->
+  <div id="view-history" style="display:none">
+    <div class="history-title">Downloaded this session</div>
+    <div class="history-list" id="history-list">
+      <div style="color:#586069;font-size:.82rem">No downloads yet this session.</div>
+    </div>
+  </div>
+
+  <!-- ── How it works ──────────────────────────────────────────────────────── -->
+  <div id="view-how" style="display:none">
+    <div class="how-section">
+      <div class="how-title">How it works</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-text">You type an image reference — e.g. <b>nginx:1.25.3</b> — and click Pull &amp; Download.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">This server runs <b>docker pull nginx:1.25.3</b> and streams the pull log to your browser in real time via Server-Sent Events.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Once the pull completes, the server pipes <b>docker save nginx:1.25.3 | gzip</b> directly to your browser as an HTTP download — no temp file on disk.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">After your download finishes, the image is removed from the server with <b>docker rmi -f</b> to reclaim disk space.</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text">You can load the archive on any machine with <b>docker load &lt; nginx-1.25.3.tar.gz</b>, no registry access required.</div></div>
+      </div>
+      <div class="warn-box">
+        <b>Note:</b> Downloads are streamed directly — the browser receives bytes as docker save produces them. Large images may take several minutes. Do not close the tab during download.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var currentImage = null;
+var history = [];
+
+function setView(name, btn) {
+  ['pull','history','how'].forEach(function(v) {
+    document.getElementById('view-'+v).style.display = v===name ? '' : 'none';
+  });
+  document.querySelectorAll('.snav-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+
+  if (name === 'history') renderHistory();
+}
+
+function setPick(ref) {
+  document.getElementById('img-ref').value = ref;
+  document.getElementById('img-ref').focus();
+}
+
+function startPull() {
+  var ref = document.getElementById('img-ref').value.trim();
+  if (!ref) return;
+
+  // Basic client-side format check
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:@]*$/.test(ref) || ref.length > 256) {
+    alert('Invalid image reference');
+    return;
+  }
+
+  currentImage = ref;
+
+  var progWrap = document.getElementById('progress-wrap');
+  var logBox   = document.getElementById('log-box');
+  var dlBtn    = document.getElementById('dl-btn');
+  var progImg  = document.getElementById('prog-image');
+  var progStat = document.getElementById('prog-status');
+
+  progWrap.classList.add('show');
+  logBox.textContent = '';
+  dlBtn.classList.remove('show');
+  progImg.textContent = ref;
+  setStatus('pulling');
+
+  document.getElementById('pull-btn').disabled = true;
+
+  var es = new EventSource('/pull?' + new URLSearchParams({ image: ref }));
+
+  // We POST via fetch but SSE doesn't support POST natively —
+  // so the server accepts GET for SSE and POST for initial kick-off.
+  // Instead: open SSE on GET, server streams progress.
+  // Actually we'll use fetch + ReadableStream for the POST SSE approach.
+  es.close(); // close dummy EventSource
+
+  // Use fetch with streaming body read for SSE from POST
+  fetch('/pull', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: ref })
+  }).then(function(resp) {
+    if (!resp.ok) {
+      return resp.text().then(function(t) { throw new Error(t); });
+    }
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buf = '';
+
+    function pump() {
+      return reader.read().then(function(result) {
+        if (result.done) {
+          document.getElementById('pull-btn').disabled = false;
+          return;
+        }
+        buf += decoder.decode(result.value, { stream: true });
+        var lines = buf.split('\n');
+        buf = lines.pop(); // keep incomplete line
+
+        lines.forEach(function(line) {
+          if (!line.startsWith('data: ')) return;
+          var json;
+          try { json = JSON.parse(line.slice(6)); } catch(_) { return; }
+          handleEvent(json);
+        });
+
+        return pump();
+      });
+    }
+    return pump();
+  }).catch(function(err) {
+    appendLog('Error: ' + err.message + '\n', true);
+    setStatus('error');
+    document.getElementById('pull-btn').disabled = false;
+  });
+}
+
+function handleEvent(ev) {
+  if (ev.type === 'start') {
+    appendLog('$ docker pull ' + ev.image + '\n');
+  } else if (ev.type === 'log') {
+    appendLog(ev.text);
+  } else if (ev.type === 'done') {
+    setStatus('ready');
+    showDownload(ev.image);
+    addHistory(ev.image);
+    document.getElementById('pull-btn').disabled = false;
+  } else if (ev.type === 'error') {
+    appendLog('\n' + ev.text + '\n', true);
+    setStatus('error');
+    document.getElementById('pull-btn').disabled = false;
+  }
+}
+
+function appendLog(text, isErr) {
+  var box = document.getElementById('log-box');
+  var span = document.createElement('span');
+  if (isErr) span.className = 'log-err';
+  span.textContent = text;
+  box.appendChild(span);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setStatus(s) {
+  var el = document.getElementById('prog-status');
+  el.className = 'prog-status status-' + s;
+  el.textContent = s === 'pulling' ? '⟳ pulling…' : s === 'ready' ? '✓ ready' : '✗ error';
+}
+
+function showDownload(image) {
+  var btn = document.getElementById('dl-btn');
+  var name = document.getElementById('dl-name');
+  var filename = image.replace(/[/:@]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.tar.gz';
+  name.textContent = filename;
+  btn.href = '/download?image=' + encodeURIComponent(image);
+  btn.classList.add('show');
+  btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function triggerDownload() {
+  var image = currentImage;
+  if (!image) return false;
+  var filename = image.replace(/[/:@]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.tar.gz';
+  var a = document.createElement('a');
+  a.href = '/download?image=' + encodeURIComponent(image);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Show post-download hint in log
+  setTimeout(function() {
+    appendLog('\n$ docker rmi -f ' + image + '  # server cleanup after download\n', false);
+    appendLog('$ docker load < ' + filename + '  # load on target machine\n');
+  }, 500);
+
+  return false;
+}
+
+function addHistory(image) {
+  var filename = image.replace(/[/:@]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.tar.gz';
+  history.unshift({ image: image, filename: filename, time: new Date().toLocaleTimeString() });
+}
+
+function renderHistory() {
+  var el = document.getElementById('history-list');
+  if (!history.length) {
+    el.innerHTML = '<div style="color:#586069;font-size:.82rem">No downloads yet this session.</div>';
+    return;
+  }
+  el.innerHTML = history.map(function(h) {
+    return '<div class="history-item">' +
+      '<span class="hist-img">🐳 ' + h.image + '</span>' +
+      '<span class="hist-time">' + h.time + '</span>' +
+      '<a class="hist-dl" href="/download?image=' + encodeURIComponent(h.image) +
+        '" download="' + h.filename + '">re-download</a>' +
+    '</div>';
+  }).join('');
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

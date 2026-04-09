@@ -63,7 +63,7 @@
       ['base64','base64'],['hash','hash'],['diff','diff'],['url','url'],['curl','curl'],
       ['cidr','cidr'],['uuid','uuid'],['lorem','lorem'],['csv','csv'],['markdown','markdown'],
       ['password','password'],['ssl','ssl'],['epoch','epoch'],['timespan','timespan'],['ps1','ps1'],
-      ['dockerimage','dockerimage']
+      ['dockerimage','dockerimage'],['downloader','downloader']
     ]},
     { label: 'Finance', apps: [
       ['compound','compound'],
