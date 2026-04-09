@@ -23,7 +23,7 @@ Never leave finished work uncommitted.
 ## Architecture
 
 - **nginx:alpine** — SSL termination (Let's Encrypt, single cert covering all subdomains), HTTP→HTTPS redirect, reverse proxy
-- **Apache httpd:2.4-alpine** — one container per static site, serves on port 80 internally
+- **nginx:alpine (`static`)** — single container serving all static sites; uses `root /sites/$host` to route each request to the correct `*-html/` directory mounted at `/sites/<subdomain>.ximg.app`
 - **Node.js 22 Alpine** — WebSocket log streaming server (`logs-server/server.js`, port 3000)
 - **Python 3.12 Alpine + paramiko** — SSH honeypot (`ssh-server/`), host port 22
 - **Docker Compose** (`compose.yaml`) orchestrates all services
@@ -33,7 +33,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-Each subdomain has its own Apache container and `*-html/` directory for static files. The table below lists representative subdomains — the full list of 194+ is in `README.md` and `apps-html/index.html`.
+All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, nagios, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 195+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|
@@ -53,7 +53,7 @@ Each subdomain has its own Apache container and `*-html/` directory for static f
 
 ## Shared Nav
 
-`shared-html/nav.js` — shared navigation bar (IIFE), volume-mounted read-only into every Apache container at `/usr/local/apache2/htdocs/shared/`.
+`shared-html/nav.js` — shared navigation bar (IIFE), volume-mounted read-only into the `static` container at `/sites/shared/` and served at `/shared/nav.js` on every subdomain.
 
 **IMPORTANT:** The nav script MUST be loaded at the end of `<body>`, NOT in `<head>`. It calls `document.body.prepend()` and will silently fail if the body doesn't exist yet. Always place it as the last `<script>` before `</body>`:
 ```html
@@ -72,12 +72,11 @@ Use the right command for the situation:
 
 | Situation | Command |
 |-----------|---------|
-| Static file change (HTML/CSS/JS in `*-html/`) | No restart needed — Apache serves files live |
+| Static file change (HTML/CSS/JS in `*-html/`) | No restart needed — nginx `static` serves files live |
 | nginx config change (`nginx/nginx.conf`) | `docker compose exec nginx nginx -s reload` |
 | Node.js server change (`logs-server/`, `change-server/`, etc.) | `docker compose restart <service>` |
-| compose.yaml change (new service, new volume mount) | `docker compose up -d` |
+| compose.yaml change (new volume mount to `static`) | `docker compose up -d` |
 | Dockerfile or build context change | `docker compose up -d --build <service>` |
-| New container added | `docker compose up -d <service>` |
 
 After any nginx config change, always test first: `docker compose exec nginx nginx -t`
 
@@ -90,9 +89,9 @@ This is the single authoritative checklist. Follow every step in order.
 1. **Create `*-html/` directory** with `index.html` as the entry point
 2. **Favicon** — download a thematically appropriate image, save as `favicon.ico` or `favicon.png`, reference it in `<head>`. Download a real image; don't use a generic placeholder.
 3. **Nav script** — add `<script src="/shared/nav.js?v=2"></script>` as the last `<script>` before `</body>`
-4. **compose.yaml** — add a new `httpd:2.4-alpine` service with volumes for the html dir and `shared-html`
+4. **compose.yaml** — add a new volume mount to the `static` service: `- ./<name>-html:/sites/<subdomain>.ximg.app:ro`
 5. **nginx.conf (HTTP block)** — add the new subdomain to the HTTP→HTTPS redirect `server_name` list (the block at the top of the HTTPS server section that redirects port 80)
-6. **nginx.conf (HTTPS block)** — add a new `server { listen 443 ssl; server_name <subdomain>.ximg.app; ... }` block proxying to the new service
+6. **nginx.conf (HTTPS block)** — add a new `server { listen 443 ssl; server_name <subdomain>.ximg.app; ... }` block proxying to `static` (`set $upstream static`)
 7. **SSL cert** — no new cert needed. The wildcard cert at `/etc/letsencrypt/live/wildcard.ximg.app/` covers all `*.ximg.app` subdomains. Reference it in the nginx server block:
    ```nginx
    ssl_certificate     /etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem;

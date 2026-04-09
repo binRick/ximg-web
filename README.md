@@ -1,10 +1,10 @@
 # ximg-web
 
-Production multi-site web portfolio stack running on a single Linux VM at `172.238.205.61`. nginx sits in front as a reverse proxy handling SSL termination and virtual hosting. Apache serves static content per subdomain on the internal Docker network. Several Node.js and Python services power dynamic features.
+Production multi-site web portfolio stack running on a single Linux VM at `172.238.205.61`. nginx sits in front as a reverse proxy handling SSL termination and virtual hosting. A single nginx `static` container serves all static sites by routing each request to the correct `*-html/` directory based on the `Host` header. Dynamic features are powered by dedicated Node.js and Python services.
 
 ## Live Sites
 
-195 virtual hosts (root + 194 subdomains), each with its own Apache container.
+196 virtual hosts (root + 195 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -14,6 +14,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [claude.ximg.app](https://claude.ximg.app) | Anthropic's Claude AI assistant — model family (Haiku/Sonnet/Opus), Constitutional AI, API quick-start, and Claude Code CLI reference. |
 | [ps1.ximg.app](https://ps1.ximg.app) | Interactive bash PS1 prompt generator — 15 prebuilt themes, live terminal preview, drag-to-reorder components, color pickers, and one-click copy. |
 | [dockerimage.ximg.app](https://dockerimage.ximg.app) | Docker Image Explorer — browse common images with sizes and architectures, visualize Dockerfile layers, inspect metadata field reference, and image command cheatsheet. |
+| [downloader.ximg.app](https://downloader.ximg.app) | Docker Image Downloader — pull any image by name, stream pull progress via SSE, then download as a .tar.gz archive piped directly from docker save to the browser. |
 | [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns. |
 | [bsd.ximg.app](https://bsd.ximg.app) | Berkeley Software Distribution — the OS that gave the internet TCP/IP, OpenSSH, and ZFS. FreeBSD, OpenBSD, NetBSD, DragonFly, history, and the BSD in every Mac and PlayStation. |
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash. |
@@ -228,8 +229,9 @@ Browser
   │
   └─► nginx :80/:443  (SSL termination, HTTP→HTTPS, virtual hosting)
         │
-        ├─► Apache httpd containers (one per static subdomain, :80 internal)
-        │     └── shared-html/nav.js volume-mounted into every container
+        ├─► static (nginx, single container for all static sites)
+        │     ├── each *-html/ mounted at /sites/<subdomain>.ximg.app
+        │     └── shared-html/nav.js mounted at /sites/shared/
         │
         ├─► logs-server (Node.js :3000)
         │     ├── WebSocket /ws  — tails nginx access logs + SSH session files
@@ -252,7 +254,7 @@ All containers run on an internal Docker bridge network. Only nginx (80/443), ss
 | Component | Image / Runtime | Role |
 |-----------|----------------|------|
 | nginx | `nginx:alpine` | Reverse proxy, SSL termination, HTTP→HTTPS, virtual hosting |
-| Apache httpd | `httpd:2.4-alpine` | Static file serving — one container per subdomain |
+| static | `nginx:alpine` | Single container serving all static sites via `$host`-based root routing |
 | logs-server | `node:22-alpine` | WebSocket log streamer; tails nginx logs and SSH session files |
 | change-server | `node:22-alpine` | Serves live git commit history |
 | mail-server | `node:22-alpine` | SMTP receiver on port 25, webmail reader UI |
@@ -261,7 +263,7 @@ All containers run on an internal Docker bridge network. Only nginx (80/443), ss
 
 ## Shared Nav
 
-`shared-html/nav.js` — shared navigation bar (IIFE) volume-mounted read-only into every Apache container at `/shared/`. Load it as the **last script before `</body>`** — it calls `document.body.prepend()` and silently fails if the body doesn't exist yet.
+`shared-html/nav.js` — shared navigation bar (IIFE) volume-mounted read-only into the `static` container at `/sites/shared/` and served at `/shared/nav.js` on every subdomain. Load it as the **last script before `</body>`** — it calls `document.body.prepend()` and silently fails if the body doesn't exist yet.
 
 ## SSH Honeypot
 
@@ -327,7 +329,7 @@ Every new app must be wired into all of the following:
 
 1. **`*-html/` directory** — create with `index.html`; add `<script src="/shared/nav.js?v=2"></script>` as the last script before `</body>`
 2. **Favicon** — download a thematically appropriate image, save as `favicon.ico` or `favicon.png`, reference it in `<head>`
-3. **`compose.yaml`** — add a new `httpd:2.4-alpine` service
+3. **`compose.yaml`** — add a volume mount to the `static` service: `- ./<name>-html:/sites/<subdomain>.ximg.app:ro`
 4. **`nginx/nginx.conf`** — add the subdomain to the HTTP redirect `server_name` list and add a new HTTPS `server {}` block
 5. **SSL** — no new cert needed; reference the wildcard cert in the nginx server block (`/etc/letsencrypt/live/wildcard.ximg.app/`)
 6. **`shared-html/nav.js`** — add nav entry
