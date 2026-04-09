@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Stars — ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0a0f;
+    --bg2:      #111118;
+    --bg3:      #1a1a24;
+    --border:   rgba(255,255,255,.08);
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --accent:   #f59e0b;
+    --green:    #22c55e;
+    --blue:     #3b82f6;
+    --mono:     'Courier New', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    padding-top: 48px;
+  }
+
+  /* ── toolbar ── */
+  .toolbar {
+    position: sticky;
+    top: 48px;
+    z-index: 100;
+    background: rgba(10,10,15,.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: .6rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+  }
+
+  .toolbar input[type=search] {
+    flex: 1 1 220px;
+    min-width: 180px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: .82rem;
+    padding: .38rem .7rem;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .toolbar input[type=search]:focus { border-color: var(--accent); }
+
+  .toolbar select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: .82rem;
+    padding: .38rem .6rem;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .status-bar {
+    font-size: .75rem;
+    color: var(--muted);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .status-bar .count { color: var(--accent); font-weight: 700; }
+  .status-bar .sync-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .status-bar .sync-dot.syncing { background: var(--accent); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: .75rem;
+    padding: 1rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ── card ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    transition: border-color .15s, transform .1s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .card:hover {
+    border-color: rgba(245,158,11,.35);
+    transform: translateY(-1px);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+  }
+  .card-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--bg3);
+  }
+  .card-name {
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--accent);
+    word-break: break-all;
+    line-height: 1.2;
+  }
+  .card-owner {
+    font-size: .72rem;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .card-desc {
+    font-size: .77rem;
+    color: #94a3b8;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    align-items: center;
+    margin-top: .1rem;
+  }
+
+  .lang-dot {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .lang-label {
+    font-size: .72rem;
+    color: var(--muted);
+  }
+
+  .stat {
+    font-size: .72rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+  }
+  .stat svg { opacity: .6; }
+
+  .card-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+  }
+  .topic {
+    font-size: .65rem;
+    background: rgba(59,130,246,.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59,130,246,.2);
+    border-radius: 20px;
+    padding: .1rem .45rem;
+    white-space: nowrap;
+  }
+
+  /* ── empty / loading ── */
+  .msg {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+  .spinner {
+    display: inline-block;
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-bottom: 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <input type="search" id="q" placeholder="Search repos, descriptions, topics…" autocomplete="off">
+  <select id="sort">
+    <option value="stars_desc">⭐ Most Stars</option>
+    <option value="stars_asc">⭐ Fewest Stars</option>
+    <option value="forks_desc">🍴 Most Forks</option>
+    <option value="starred_desc">🕒 Recently Starred</option>
+    <option value="updated_desc">🔄 Recently Updated</option>
+    <option value="name_asc">A→Z</option>
+    <option value="name_desc">Z→A</option>
+  </select>
+  <select id="lang">
+    <option value="">All Languages</option>
+  </select>
+  <div class="status-bar" id="status">Loading…</div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="msg"><div class="spinner"></div><br>Fetching ~9,500 stars…</div>
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+(function () {
+  // Language → color map (GitHub's palette subset)
+  const LANG_COLORS = {
+    JavaScript:'#f1e05a',TypeScript:'#3178c6',Python:'#3572A5',Go:'#00ADD8',
+    Rust:'#dea584',C:'#555555','C++':'#f34b7d','C#':'#178600',Java:'#b07219',
+    Ruby:'#701516',PHP:'#4F5D95',Shell:'#89e051',HTML:'#e34c26',CSS:'#563d7c',
+    Kotlin:'#A97BFF',Swift:'#F05138',Scala:'#c22d40',Haskell:'#5e5086',
+    Lua:'#000080',Perl:'#0298c3',R:'#198ce7',Dart:'#00B4AB',Elixir:'#6e4a7e',
+    Clojure:'#db5855',Nix:'#7e7eff',Vim:'#199f4b',Assembly:'#6E4C13',
+    Makefile:'#427819',Dockerfile:'#384d54',YAML:'#cb171e',
+  };
+
+  function langColor(l) { return LANG_COLORS[l] || '#8b8b8b'; }
+
+  function relTime(iso) {
+    if (!iso) return '';
+    const diff = (Date.now() - new Date(iso)) / 1000;
+    if (diff < 60)   return 'just now';
+    if (diff < 3600) return Math.floor(diff/60)   + 'm ago';
+    if (diff < 86400)return Math.floor(diff/3600)  + 'h ago';
+    if (diff < 2592000) return Math.floor(diff/86400) + 'd ago';
+    if (diff < 31536000) return Math.floor(diff/2592000) + 'mo ago';
+    return Math.floor(diff/31536000) + 'y ago';
+  }
+
+  function fmt(n) {
+    if (n >= 1000) return (n/1000).toFixed(1).replace(/\.0$/,'') + 'k';
+    return String(n);
+  }
+
+  // Star SVG icon
+  const starSVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+  const forkSVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v6M18 9a6 6 0 0 1-6 6H9"/></svg>`;
+
+  function renderCard(r) {
+    const topicsHtml = r.topics.slice(0, 5).map(t =>
+      `<span class="topic">${t}</span>`
+    ).join('');
+
+    const langHtml = r.language
+      ? `<span class="lang-dot" style="background:${langColor(r.language)}"></span><span class="lang-label">${r.language}</span>`
+      : '';
+
+    return `<a class="card" href="${r.html_url}" target="_blank" rel="noopener">
+  <div class="card-header">
+    <img class="card-avatar" src="${r.owner_avatar}&s=56" alt="${r.owner_login}" loading="lazy" width="28" height="28">
+    <div>
+      <div class="card-name">${r.full_name}</div>
+    </div>
+  </div>
+  ${r.description ? `<div class="card-desc">${escHtml(r.description)}</div>` : ''}
+  <div class="card-meta">
+    ${langHtml}
+    <span class="stat">${starSVG} ${fmt(r.stargazers_count)}</span>
+    ${r.forks_count ? `<span class="stat">${forkSVG} ${fmt(r.forks_count)}</span>` : ''}
+    ${r.starred_at ? `<span class="stat" style="margin-left:auto">★ ${relTime(r.starred_at)}</span>` : ''}
+  </div>
+  ${topicsHtml ? `<div class="card-topics">${topicsHtml}</div>` : ''}
+</a>`;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let allStars = [];
+  const grid   = document.getElementById('grid');
+  const qInput = document.getElementById('q');
+  const sort   = document.getElementById('sort');
+  const lang   = document.getElementById('lang');
+  const status = document.getElementById('status');
+
+  function sortStars(arr, key) {
+    const a = arr.slice();
+    switch (key) {
+      case 'stars_desc':   return a.sort((x,y) => y.stargazers_count - x.stargazers_count);
+      case 'stars_asc':    return a.sort((x,y) => x.stargazers_count - y.stargazers_count);
+      case 'forks_desc':   return a.sort((x,y) => y.forks_count - x.forks_count);
+      case 'starred_desc': return a.sort((x,y) => (y.starred_at||'').localeCompare(x.starred_at||''));
+      case 'updated_desc': return a.sort((x,y) => (y.updated_at||'').localeCompare(x.updated_at||''));
+      case 'name_asc':     return a.sort((x,y) => x.full_name.localeCompare(y.full_name));
+      case 'name_desc':    return a.sort((x,y) => y.full_name.localeCompare(x.full_name));
+      default:             return a;
+    }
+  }
+
+  function render() {
+    const q  = qInput.value.trim().toLowerCase();
+    const lv = lang.value;
+    const sv = sort.value;
+
+    let filtered = allStars;
+
+    if (lv) filtered = filtered.filter(r => r.language === lv);
+
+    if (q) {
+      filtered = filtered.filter(r =>
+        r.full_name.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.topics.some(t => t.toLowerCase().includes(q)) ||
+        (r.language || '').toLowerCase().includes(q)
+      );
+    }
+
+    filtered = sortStars(filtered, sv);
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="msg">No results for "${escHtml(q || lv)}"</div>`;
+      return;
+    }
+
+    // Render in chunks to avoid blocking
+    grid.innerHTML = '';
+    const CHUNK = 50;
+    let i = 0;
+    function chunk() {
+      const frag = document.createDocumentFragment();
+      const end = Math.min(i + CHUNK, filtered.length);
+      while (i < end) {
+        const div = document.createElement('div');
+        div.innerHTML = renderCard(filtered[i]);
+        frag.appendChild(div.firstElementChild);
+        i++;
+      }
+      grid.appendChild(frag);
+      if (i < filtered.length) requestAnimationFrame(chunk);
+    }
+    chunk();
+
+    status.innerHTML = `<span class="sync-dot${allStars._syncing ? ' syncing' : ''}"></span><span class="count">${filtered.length.toLocaleString()}</span> of ${allStars.length.toLocaleString()} stars`;
+  }
+
+  function buildLangFilter(stars) {
+    const counts = {};
+    for (const r of stars) if (r.language) counts[r.language] = (counts[r.language]||0) + 1;
+    const langs = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+    lang.innerHTML = '<option value="">All Languages</option>' +
+      langs.map(([l,c]) => `<option value="${l}">${l} (${c})</option>`).join('');
+  }
+
+  let renderTimer;
+  function schedRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 80);
+  }
+
+  qInput.addEventListener('input', schedRender);
+  sort.addEventListener('change', schedRender);
+  lang.addEventListener('change', schedRender);
+
+  // Load data
+  fetch('/api/stars')
+    .then(r => r.json())
+    .then(data => {
+      allStars = data.stars || [];
+      allStars._syncing = data.syncing;
+
+      buildLangFilter(allStars);
+
+      const syncAge = data.lastSync ? relTime(data.lastSync) : 'never';
+      const dot = data.syncing ? '<span class="sync-dot syncing"></span>' : '<span class="sync-dot"></span>';
+      status.innerHTML = `${dot}<span class="count">${allStars.length.toLocaleString()}</span> stars · synced ${syncAge}`;
+
+      if (allStars.length === 0 && data.syncing) {
+        grid.innerHTML = `<div class="msg"><div class="spinner"></div><br>Initial sync in progress — check back in a minute</div>`;
+        return;
+      }
+
+      render();
+    })
+    .catch(err => {
+      grid.innerHTML = `<div class="msg">Failed to load stars: ${err.message}</div>`;
+    });
+})();
+</script>
+</body>
+</html>

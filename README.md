@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-196 virtual hosts (root + 195 subdomains), all static sites served by a single nginx container.
+197 virtual hosts (root + 196 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -15,6 +15,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ps1.ximg.app](https://ps1.ximg.app) | Interactive bash PS1 prompt generator — 15 prebuilt themes, live terminal preview, drag-to-reorder components, color pickers, and one-click copy. |
 | [dockerimage.ximg.app](https://dockerimage.ximg.app) | Docker Image Explorer — browse common images with sizes and architectures, visualize Dockerfile layers, inspect metadata field reference, and image command cheatsheet. |
 | [dockerimagedownloader.ximg.app](https://dockerimagedownloader.ximg.app) | Docker Image Downloader — pull any image by name, stream pull progress via SSE, then download as a .tar.gz archive piped directly from docker save to the browser. |
+| [githubstars.ximg.app](https://githubstars.ximg.app) | GitHub Stars — browse, search, sort, and filter all starred repositories; synced hourly from the GitHub API. |
 | [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns. |
 | [bsd.ximg.app](https://bsd.ximg.app) | Berkeley Software Distribution — the OS that gave the internet TCP/IP, OpenSSH, and ZFS. FreeBSD, OpenBSD, NetBSD, DragonFly, history, and the BSD in every Mac and PlayStation. |
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash. |

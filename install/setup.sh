@@ -238,6 +238,7 @@ DOMAINS=(
   antenna.ximg.app
   dockerimage.ximg.app
   dockerimagedownloader.ximg.app
+  githubstars.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
