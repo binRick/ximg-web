@@ -33,7 +33,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-Each subdomain has its own Apache container and `*-html/` directory for static files. The table below lists representative subdomains — the full list of 193+ is in `README.md` and `apps-html/index.html`.
+Each subdomain has its own Apache container and `*-html/` directory for static files. The table below lists representative subdomains — the full list of 194+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|

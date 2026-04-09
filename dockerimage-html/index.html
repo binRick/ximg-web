@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dockerimage.ximg.app</title>
+  <link rel="icon" href="favicon.png">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0d0d16;color:#c9d1d9;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
+    .page{flex:1;max-width:1060px;width:100%;margin:0 auto;padding:1.5rem 1rem 2rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:#586069;margin-bottom:1.4rem}
+
+    /* tabs */
+    .tabs{display:flex;gap:.4rem;margin-bottom:1.2rem;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:0}
+    .tab{background:none;border:none;color:#586069;font-family:'Courier New',monospace;font-size:.82rem;
+      padding:.45rem .9rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+    .tab.active{color:#38bdf8;border-bottom-color:#38bdf8}
+    .tab:hover:not(.active){color:#c9d1d9}
+    .section{display:none}.section.active{display:block}
+
+    /* search */
+    .search-row{display:flex;gap:.6rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+    input[type=text],textarea,select{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:6px;
+      color:#c9d1d9;font-family:'Courier New',monospace;font-size:.85rem;padding:.55rem .8rem;
+      outline:none;transition:border-color .2s}
+    input[type=text]:focus,textarea:focus,select:focus{border-color:rgba(56,189,248,.5)}
+    input[type=text]{flex:1;min-width:180px}
+    select{background:#161b22;cursor:pointer}
+
+    /* image grid */
+    .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.75rem}
+    .img-card{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:1rem;
+      cursor:pointer;transition:border-color .18s,background .18s}
+    .img-card:hover{border-color:rgba(56,189,248,.4);background:#1a1f2e}
+    .img-card.selected{border-color:#38bdf8;background:#1a2030}
+    .img-hdr{display:flex;align-items:center;gap:.65rem;margin-bottom:.6rem}
+    .img-icon{font-size:1.4rem;flex-shrink:0}
+    .img-name{font-size:.95rem;font-weight:700;color:#fff}
+    .img-tag{font-size:.7rem;color:#586069}
+    .img-badges{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.55rem}
+    .badge{font-size:.67rem;font-weight:600;padding:.15rem .45rem;border-radius:3px}
+    .badge-blue{background:rgba(56,189,248,.15);color:#38bdf8}
+    .badge-grn{background:rgba(63,185,80,.15);color:#3fb950}
+    .badge-yel{background:rgba(255,166,87,.15);color:#ffa657}
+    .badge-red{background:rgba(248,81,73,.15);color:#f85149}
+    .badge-pur{background:rgba(188,140,255,.15);color:#bc8cff}
+    .img-meta{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;font-size:.75rem}
+    .meta-k{color:#586069}
+    .meta-v{color:#c9d1d9}
+    .pull-cmd{margin-top:.65rem;background:#0d1117;border-radius:5px;padding:.45rem .7rem;font-size:.75rem;
+      color:#7ee787;display:flex;align-items:center;justify-content:space-between;gap:.5rem;border:1px solid rgba(255,255,255,.06)}
+    .copy-btn{background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;
+      font-family:'Courier New',monospace;font-size:.68rem;padding:.15rem .45rem;cursor:pointer;transition:all .15s;flex-shrink:0}
+    .copy-btn:hover{border-color:rgba(56,189,248,.5);color:#38bdf8}
+    .copy-btn.copied{border-color:rgba(63,185,80,.5);color:#3fb950}
+
+    /* detail panel */
+    .detail{background:#161b22;border:1px solid rgba(56,189,248,.2);border-radius:8px;padding:1.1rem;margin-top:1rem;display:none}
+    .detail.open{display:block}
+    .detail-title{font-size:1rem;font-weight:700;color:#38bdf8;margin-bottom:.9rem}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;margin-bottom:.9rem}
+    @media(max-width:560px){.detail-grid{grid-template-columns:1fr}}
+    .detail-row{display:flex;flex-direction:column;gap:.15rem}
+    .detail-k{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#586069}
+    .detail-v{font-size:.82rem;color:#c9d1d9}
+    .tags-list{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem}
+    .size-bar-wrap{margin-top:.75rem}
+    .size-bar-label{font-size:.72rem;color:#586069;margin-bottom:.4rem}
+    .size-bars{display:flex;flex-direction:column;gap:.4rem}
+    .size-row{display:flex;align-items:center;gap:.6rem;font-size:.75rem}
+    .size-name{min-width:100px;color:#c9d1d9;flex-shrink:0}
+    .size-track{flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:8px;position:relative}
+    .size-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#0ea5e9,#38bdf8);transition:width .4s}
+    .size-num{min-width:55px;text-align:right;color:#586069}
+
+    /* layer visualizer */
+    .layer-area{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:700px){.layer-area{grid-template-columns:1fr}}
+    .label{font-size:.7rem;color:#586069;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem}
+    .dockerfile-input{width:100%;min-height:240px;resize:vertical;font-size:.8rem;line-height:1.6;color:#c9d1d9}
+    .layer-stack{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.8rem;min-height:240px}
+    .layer-stack-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#586069;margin-bottom:.75rem}
+    .layer-item{display:flex;align-items:flex-start;gap:.65rem;padding:.55rem .65rem;border-radius:6px;
+      margin-bottom:.35rem;border:1px solid rgba(255,255,255,.06);background:#0d1117;font-size:.78rem;transition:background .15s}
+    .layer-item:hover{background:#12172a}
+    .layer-num{font-size:.65rem;color:#586069;min-width:22px;text-align:right;padding-top:.05rem;flex-shrink:0}
+    .layer-inst{font-weight:700;min-width:52px;flex-shrink:0;font-size:.75rem}
+    .inst-FROM{color:#38bdf8}.inst-RUN{color:#3fb950}.inst-COPY{color:#ffa657}.inst-ADD{color:#ffa657}
+    .inst-ENV{color:#bc8cff}.inst-ARG{color:#bc8cff}.inst-EXPOSE{color:#f85149}.inst-CMD{color:#ff7b72}
+    .inst-ENTRYPOINT{color:#ff7b72}.inst-WORKDIR{color:#7ee787}.inst-USER{color:#7ee787}
+    .inst-LABEL{color:#586069}.inst-VOLUME{color:#586069}.inst-ONBUILD{color:#586069}
+    .inst-HEALTHCHECK{color:#fbbf24}.inst-SHELL{color:#586069}
+    .layer-text{color:#c9d1d9;word-break:break-all;flex:1;line-height:1.4}
+    .layer-size{font-size:.68rem;color:#586069;flex-shrink:0;margin-left:auto;padding-left:.4rem;white-space:nowrap}
+    .layer-cached{font-size:.65rem;padding:.1rem .3rem;border-radius:3px;background:rgba(63,185,80,.12);
+      color:#3fb950;flex-shrink:0;margin-left:.3rem}
+    .layer-actions{display:flex;gap:.6rem;margin-top:.8rem}
+    .btn{background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);border-radius:6px;
+      color:#38bdf8;font-family:'Courier New',monospace;font-size:.78rem;padding:.45rem .9rem;cursor:pointer;transition:all .15s}
+    .btn:hover{background:rgba(56,189,248,.2)}
+    .btn-sm{font-size:.72rem;padding:.3rem .65rem}
+    .layer-stats{display:flex;gap:1.2rem;margin-top:.9rem;font-size:.75rem}
+    .stat-box{display:flex;flex-direction:column;gap:.1rem}
+    .stat-label{color:#586069;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em}
+    .stat-val{color:#38bdf8;font-weight:700}
+    .empty-msg{color:#586069;font-size:.8rem;text-align:center;margin-top:3rem}
+
+    /* commands ref */
+    .cmd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:.75rem}
+    @media(max-width:500px){.cmd-grid{grid-template-columns:1fr}}
+    .cmd-section{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.9rem}
+    .cmd-section h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#586069;margin-bottom:.7rem}
+    .cmd-row{display:flex;align-items:flex-start;gap:.65rem;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.78rem}
+    .cmd-row:last-child{border:none;padding-bottom:0}
+    .cmd-code{color:#7ee787;min-width:220px;flex-shrink:0;word-break:break-all}
+    .cmd-desc{color:#586069}
+
+    /* inspect */
+    .inspect-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:700px){.inspect-grid{grid-template-columns:1fr}}
+    .inspect-panel{background:#161b22;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.9rem}
+    .inspect-panel h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.7rem}
+    .field-list{display:flex;flex-direction:column;gap:.4rem}
+    .field-row{display:flex;gap:.5rem;align-items:flex-start;font-size:.78rem;padding:.35rem .5rem;
+      border-radius:4px;transition:background .12s;cursor:help}
+    .field-row:hover{background:rgba(255,255,255,.04)}
+    .field-key{color:#38bdf8;min-width:150px;flex-shrink:0;font-weight:600}
+    .field-type{color:#ffa657;font-size:.68rem;min-width:60px;flex-shrink:0}
+    .field-desc{color:#586069;font-size:.75rem}
+    .json-out{background:#0d1117;border:1px solid rgba(255,255,255,.07);border-radius:6px;padding:.8rem;
+      font-size:.75rem;line-height:1.7;white-space:pre-wrap;max-height:460px;overflow-y:auto;color:#c9d1d9;margin-top:.6rem}
+    .json-key{color:#79c0ff}
+    .json-str{color:#a5d6ff}
+    .json-num{color:#ffa657}
+    .json-bool{color:#f85149}
+    .json-null{color:#586069}
+
+    .sep{border-top:1px solid rgba(255,255,255,.06);margin:.9rem 0}
+    .filter-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.9rem}
+    .filter-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#586069;
+      font-family:'Courier New',monospace;font-size:.72rem;padding:.25rem .6rem;cursor:pointer;transition:all .15s}
+    .filter-btn.on{border-color:rgba(56,189,248,.5);color:#38bdf8;background:rgba(56,189,248,.07)}
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <h1>🐳 Docker Image Explorer</h1>
+  <p class="subtitle">Browse common images, visualize layers, inspect metadata, and reference image commands</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('images',this)">Images</button>
+    <button class="tab" onclick="switchTab('layers',this)">Layer Visualizer</button>
+    <button class="tab" onclick="switchTab('inspect',this)">Inspect Reference</button>
+    <button class="tab" onclick="switchTab('commands',this)">Commands</button>
+  </div>
+
+  <!-- ══════════════ IMAGES TAB ══════════════ -->
+  <div id="tab-images" class="section active">
+    <div class="search-row">
+      <input type="text" id="img-search" placeholder="Search images…" oninput="filterImages()">
+      <select id="cat-filter" onchange="filterImages()">
+        <option value="">All categories</option>
+        <option value="base">Base OS</option>
+        <option value="lang">Languages</option>
+        <option value="web">Web Servers</option>
+        <option value="db">Databases</option>
+        <option value="cache">Cache / Queue</option>
+        <option value="devops">DevOps</option>
+        <option value="security">Security</option>
+      </select>
+    </div>
+    <div class="img-grid" id="img-grid"></div>
+    <div class="detail" id="img-detail"></div>
+  </div>
+
+  <!-- ══════════════ LAYERS TAB ══════════════ -->
+  <div id="tab-layers" class="section">
+    <div class="layer-area">
+      <div>
+        <div class="label">Dockerfile</div>
+        <textarea class="dockerfile-input" id="df-input" placeholder="Paste or type your Dockerfile here…" oninput="parseLayers()"></textarea>
+        <div class="layer-actions">
+          <button class="btn btn-sm" onclick="loadExample('node')">Node example</button>
+          <button class="btn btn-sm" onclick="loadExample('python')">Python example</button>
+          <button class="btn btn-sm" onclick="loadExample('go')">Go multi-stage</button>
+          <button class="btn btn-sm" onclick="clearDf()">Clear</button>
+        </div>
+        <div class="layer-stats" id="layer-stats"></div>
+      </div>
+      <div>
+        <div class="layer-stack">
+          <div class="layer-stack-title">Image Layers (top = latest)</div>
+          <div id="layer-list"><div class="empty-msg">Paste a Dockerfile to visualize layers</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ INSPECT TAB ══════════════ -->
+  <div id="tab-inspect" class="section">
+    <div class="inspect-grid">
+      <div class="inspect-panel">
+        <h3 style="color:#38bdf8">docker inspect — field reference</h3>
+        <div class="field-list" id="inspect-fields"></div>
+      </div>
+      <div class="inspect-panel">
+        <h3 style="color:#7ee787">Example output</h3>
+        <div class="label" style="margin-bottom:.5rem">docker inspect nginx:alpine</div>
+        <div class="json-out" id="inspect-json"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ COMMANDS TAB ══════════════ -->
+  <div id="tab-commands" class="section">
+    <div class="cmd-grid" id="cmd-grid"></div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+var IMAGES = [
+  { id:'alpine', name:'alpine', icon:'🏔️', cat:'base',
+    tags:['latest','3.19','3.18','3.17','edge'],
+    desc:'Minimal Linux based on musl libc and BusyBox. The go-to base for tiny images.',
+    compressed:'3.5 MB', uncompressed:'7.8 MB', layers:5,
+    arch:['amd64','arm64','arm/v6','arm/v7','386'],
+    pull:'docker pull alpine', os:'Linux', official:true },
+  { id:'ubuntu', name:'ubuntu', icon:'🟠', cat:'base',
+    tags:['24.04','22.04','20.04','rolling','latest'],
+    desc:'Ubuntu LTS base. Familiar apt ecosystem, glibc compatibility, larger footprint than Alpine.',
+    compressed:'29 MB', uncompressed:'78 MB', layers:3,
+    arch:['amd64','arm64','arm/v7','ppc64le','s390x','riscv64'],
+    pull:'docker pull ubuntu:24.04', os:'Linux', official:true },
+  { id:'debian', name:'debian', icon:'🌀', cat:'base',
+    tags:['bookworm','bookworm-slim','bullseye','bullseye-slim'],
+    desc:'Stable Debian release. Slim variants strip locales and man pages for smaller images.',
+    compressed:'49 MB', uncompressed:'124 MB', layers:1,
+    arch:['amd64','arm64','arm/v5','arm/v7','386','mips64le','ppc64le','s390x'],
+    pull:'docker pull debian:bookworm-slim', os:'Linux', official:true },
+  { id:'busybox', name:'busybox', icon:'📦', cat:'base',
+    tags:['latest','1.36','stable','glibc','musl'],
+    desc:'Single binary with 300+ Unix tools. Good for scratch-based debugging images.',
+    compressed:'2.2 MB', uncompressed:'4.9 MB', layers:1,
+    arch:['amd64','arm64','arm/v5','arm/v6','arm/v7','386','mips64le','ppc64le','s390x'],
+    pull:'docker pull busybox', os:'Linux', official:true },
+  { id:'scratch', name:'scratch', icon:'⬜', cat:'base',
+    tags:['latest'],
+    desc:'Empty base image. Used for fully statically compiled binaries (Go, Rust). Zero overhead.',
+    compressed:'0 B', uncompressed:'0 B', layers:0,
+    arch:['amd64','arm64'],
+    pull:'FROM scratch', os:'N/A', official:true },
+  { id:'node', name:'node', icon:'🟢', cat:'lang',
+    tags:['22','22-alpine','20','20-alpine','20-slim','lts','lts-alpine'],
+    desc:'Official Node.js. Alpine variants are 5× smaller. Slim strips dev tools.',
+    compressed:'139 MB', uncompressed:'391 MB', layers:10,
+    arch:['amd64','arm64','arm/v7'],
+    pull:'docker pull node:22-alpine', os:'Linux', official:true },
+  { id:'python', name:'python', icon:'🐍', cat:'lang',
+    tags:['3.12','3.12-slim','3.12-alpine','3.11','3.10','3.12-bookworm'],
+    desc:'CPython interpreter. Slim removes dev headers; Alpine is smallest but may need gcc for C extensions.',
+    compressed:'52 MB', uncompressed:'145 MB', layers:9,
+    arch:['amd64','arm64','arm/v7','386','ppc64le','s390x'],
+    pull:'docker pull python:3.12-slim', os:'Linux', official:true },
+  { id:'golang', name:'golang', icon:'🔵', cat:'lang',
+    tags:['1.22','1.22-alpine','1.21','1.22-bookworm'],
+    desc:'Go compiler + stdlib. Build stage only — final image is usually scratch or alpine.',
+    compressed:'230 MB', uncompressed:'820 MB', layers:6,
+    arch:['amd64','arm64','arm/v6','arm/v7','386','ppc64le','s390x'],
+    pull:'docker pull golang:1.22-alpine', os:'Linux', official:true },
+  { id:'rust', name:'rust', icon:'🦀', cat:'lang',
+    tags:['latest','1.77','1.77-slim','alpine','slim'],
+    desc:'Rust toolchain. Build stage only — final image usually scratch. Builds are slow; use cargo-chef caching.',
+    compressed:'402 MB', uncompressed:'1.4 GB', layers:8,
+    arch:['amd64','arm64'],
+    pull:'docker pull rust:1.77-slim', os:'Linux', official:true },
+  { id:'nginx', name:'nginx', icon:'⚡', cat:'web',
+    tags:['latest','1.25','alpine','alpine-slim','stable','mainline'],
+    desc:'High-performance HTTP server & reverse proxy. Alpine variant is a popular production base.',
+    compressed:'14 MB', uncompressed:'42 MB', layers:7,
+    arch:['amd64','arm64','arm/v7','386','ppc64le','s390x'],
+    pull:'docker pull nginx:alpine', os:'Linux', official:true },
+  { id:'httpd', name:'httpd', icon:'🪶', cat:'web',
+    tags:['latest','2.4','2.4-alpine','2.4-bookworm'],
+    desc:'Apache HTTP Server. Simple to configure for static file serving.',
+    compressed:'57 MB', uncompressed:'148 MB', layers:4,
+    arch:['amd64','arm64','arm/v7'],
+    pull:'docker pull httpd:2.4-alpine', os:'Linux', official:true },
+  { id:'caddy', name:'caddy', icon:'🦅', cat:'web',
+    tags:['latest','2','2-alpine','builder'],
+    desc:'Modern web server with automatic HTTPS via Let\'s Encrypt and simple Caddyfile config.',
+    compressed:'44 MB', uncompressed:'120 MB', layers:5,
+    arch:['amd64','arm64','arm/v6','arm/v7'],
+    pull:'docker pull caddy:2-alpine', os:'Linux', official:true },
+  { id:'postgres', name:'postgres', icon:'🐘', cat:'db',
+    tags:['16','16-alpine','15','15-alpine','14','latest'],
+    desc:'PostgreSQL relational database. Alpine variants save ~200 MB vs the default Debian image.',
+    compressed:'87 MB', uncompressed:'240 MB', layers:14,
+    arch:['amd64','arm64','arm/v7','ppc64le'],
+    pull:'docker pull postgres:16-alpine', os:'Linux', official:true },
+  { id:'mysql', name:'mysql', icon:'🐬', cat:'db',
+    tags:['8.3','8.0','5.7','latest','innovation'],
+    desc:'MySQL relational database. No Alpine variant — use mariadb:10-jammy as a lighter alternative.',
+    compressed:'150 MB', uncompressed:'580 MB', layers:11,
+    arch:['amd64','arm64'],
+    pull:'docker pull mysql:8.3', os:'Linux', official:true },
+  { id:'redis', name:'redis', icon:'🔴', cat:'cache',
+    tags:['7','7-alpine','6','latest','7-bookworm'],
+    desc:'In-memory key-value store. Alpine variant is 30 MB compressed. Ideal for caching & pub/sub.',
+    compressed:'32 MB', uncompressed:'89 MB', layers:8,
+    arch:['amd64','arm64','arm/v7'],
+    pull:'docker pull redis:7-alpine', os:'Linux', official:true },
+  { id:'rabbitmq', name:'rabbitmq', icon:'🐰', cat:'cache',
+    tags:['3','3-management','3-alpine','4'],
+    desc:'AMQP message broker. Management tag adds the web UI plugin on port 15672.',
+    compressed:'93 MB', uncompressed:'280 MB', layers:9,
+    arch:['amd64','arm64'],
+    pull:'docker pull rabbitmq:3-management', os:'Linux', official:true },
+  { id:'docker', name:'docker', icon:'🐳', cat:'devops',
+    tags:['latest','26','dind','cli','26-dind-alpine3.19'],
+    desc:'Docker-in-Docker or CLI image. Used in CI/CD pipelines that need to build/push images.',
+    compressed:'28 MB', uncompressed:'78 MB', layers:5,
+    arch:['amd64','arm64','arm/v6','arm/v7'],
+    pull:'docker pull docker:26-cli', os:'Linux', official:true },
+  { id:'traefik', name:'traefik', icon:'🔀', cat:'devops',
+    tags:['latest','v3','v2','v3.0'],
+    desc:'Cloud-native reverse proxy & load balancer with automatic TLS and Docker-native service discovery.',
+    compressed:'47 MB', uncompressed:'124 MB', layers:3,
+    arch:['amd64','arm64','arm/v6','arm/v7'],
+    pull:'docker pull traefik:v3', os:'Linux', official:true },
+];
+
+var LAYER_COLORS = {
+  FROM:'#38bdf8',RUN:'#3fb950',COPY:'#ffa657',ADD:'#ffa657',ENV:'#bc8cff',
+  ARG:'#bc8cff',EXPOSE:'#f85149',CMD:'#ff7b72',ENTRYPOINT:'#ff7b72',
+  WORKDIR:'#7ee787',USER:'#7ee787',LABEL:'#586069',VOLUME:'#586069',
+  HEALTHCHECK:'#fbbf24',SHELL:'#586069',ONBUILD:'#586069'
+};
+
+// Layer size estimates (bytes)
+var LAYER_SIZES = {
+  FROM:0,ARG:0,LABEL:0,EXPOSE:0,VOLUME:0,
+  RUN:5242880,   // ~5 MB average
+  COPY:1048576,  // ~1 MB average
+  ADD:1048576,
+  ENV:0,WORKDIR:0,USER:0,
+  CMD:0,ENTRYPOINT:0,SHELL:0,
+  HEALTHCHECK:0,ONBUILD:0
+};
+
+var EXAMPLES = {
+  node:`FROM node:22-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+EXPOSE 3000
+ENV NODE_ENV=production
+USER node
+CMD ["node", "server.js"]`,
+
+  python:`FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+ENV PYTHONUNBUFFERED=1
+USER nobody
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]`,
+
+  go:`# ── Build stage ──────────────────────
+FROM golang:1.22-alpine AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app ./cmd/server
+
+# ── Final stage ───────────────────────
+FROM scratch
+COPY --from=builder /app /app
+EXPOSE 8080
+ENTRYPOINT ["/app"]`
+};
+
+var INSPECT_FIELDS = [
+  { key:'Id', type:'string', desc:'Full 256-bit image digest (sha256:...)' },
+  { key:'RepoTags', type:'[]string', desc:'Repository:tag pairs, e.g. ["nginx:alpine"]' },
+  { key:'RepoDigests', type:'[]string', desc:'Immutable digest references for each repo' },
+  { key:'Parent', type:'string', desc:'Parent image ID (empty if pulled from registry)' },
+  { key:'Created', type:'string', desc:'ISO 8601 timestamp of image creation' },
+  { key:'Container', type:'string', desc:'ID of the build container (legacy field)' },
+  { key:'DockerVersion', type:'string', desc:'Docker version used to build the image' },
+  { key:'Author', type:'string', desc:'Maintainer label value (if set)' },
+  { key:'Architecture', type:'string', desc:'CPU arch: amd64, arm64, arm, 386, etc.' },
+  { key:'Os', type:'string', desc:'Operating system: linux, windows, darwin' },
+  { key:'Size', type:'int64', desc:'Uncompressed size in bytes' },
+  { key:'VirtualSize', type:'int64', desc:'Total including shared layers' },
+  { key:'Config.Cmd', type:'[]string', desc:'Default command executed in container' },
+  { key:'Config.Entrypoint', type:'[]string', desc:'Entry point overrides CMD' },
+  { key:'Config.Env', type:'[]string', desc:'Environment variables baked into image' },
+  { key:'Config.ExposedPorts', type:'map', desc:'Declared ports (informational only)' },
+  { key:'Config.WorkingDir', type:'string', desc:'Default working directory' },
+  { key:'Config.User', type:'string', desc:'Default user or UID to run as' },
+  { key:'Config.Labels', type:'map', desc:'Key-value metadata labels' },
+  { key:'Config.Volumes', type:'map', desc:'Declared mount points' },
+  { key:'RootFS.Type', type:'string', desc:'Always "layers" for normal images' },
+  { key:'RootFS.Layers', type:'[]string', desc:'Ordered list of layer diff IDs (sha256)' },
+  { key:'GraphDriver.Name', type:'string', desc:'Storage driver: overlay2, aufs, devicemapper' },
+];
+
+var INSPECT_JSON = `[
+  {
+    <span class="json-key">"Id"</span>: <span class="json-str">"sha256:3f8a4339aad...c7"</span>,
+    <span class="json-key">"RepoTags"</span>: [<span class="json-str">"nginx:alpine"</span>],
+    <span class="json-key">"RepoDigests"</span>: [
+      <span class="json-str">"nginx@sha256:da9c94bec1...a3"</span>
+    ],
+    <span class="json-key">"Parent"</span>: <span class="json-str">""</span>,
+    <span class="json-key">"Created"</span>: <span class="json-str">"2024-02-07T18:31:14.12Z"</span>,
+    <span class="json-key">"Architecture"</span>: <span class="json-str">"amd64"</span>,
+    <span class="json-key">"Os"</span>: <span class="json-str">"linux"</span>,
+    <span class="json-key">"Size"</span>: <span class="json-num">41234567</span>,
+    <span class="json-key">"VirtualSize"</span>: <span class="json-num">41234567</span>,
+    <span class="json-key">"Config"</span>: {
+      <span class="json-key">"Cmd"</span>: [<span class="json-str">"nginx"</span>, <span class="json-str">"-g"</span>, <span class="json-str">"daemon off;"</span>],
+      <span class="json-key">"Entrypoint"</span>: [<span class="json-str">"/docker-entrypoint.sh"</span>],
+      <span class="json-key">"Env"</span>: [<span class="json-str">"PATH=/usr/local/sbin:..."</span>],
+      <span class="json-key">"ExposedPorts"</span>: { <span class="json-key">"80/tcp"</span>: {} },
+      <span class="json-key">"WorkingDir"</span>: <span class="json-str">""</span>,
+      <span class="json-key">"User"</span>: <span class="json-str">""</span>,
+      <span class="json-key">"Labels"</span>: {
+        <span class="json-key">"maintainer"</span>: <span class="json-str">"NGINX Docker Maintainers"</span>
+      }
+    },
+    <span class="json-key">"RootFS"</span>: {
+      <span class="json-key">"Type"</span>: <span class="json-str">"layers"</span>,
+      <span class="json-key">"Layers"</span>: [
+        <span class="json-str">"sha256:4abcb926..."</span>,
+        <span class="json-str">"sha256:cc4f75e0..."</span>,
+        <span class="json-str">"sha256:a08b5e0c..."</span>
+      ]
+    },
+    <span class="json-key">"GraphDriver"</span>: {
+      <span class="json-key">"Name"</span>: <span class="json-str">"overlay2"</span>
+    }
+  }
+]`;
+
+var COMMANDS = [
+  { title:'Pull & List', items:[
+    { cmd:'docker pull <image>:<tag>', desc:'Download image from registry' },
+    { cmd:'docker pull --platform linux/arm64 <image>', desc:'Pull specific platform image' },
+    { cmd:'docker images', desc:'List locally cached images' },
+    { cmd:'docker images --filter dangling=true', desc:'Show untagged (dangling) images' },
+    { cmd:'docker images --format "table {{.Repository}}\\t{{.Tag}}\\t{{.Size}}"', desc:'Custom output format' },
+  ]},
+  { title:'Inspect & History', items:[
+    { cmd:'docker inspect <image>', desc:'Full metadata in JSON' },
+    { cmd:'docker inspect --format "{{.Os}}/{{.Architecture}}" <image>', desc:'Extract specific fields' },
+    { cmd:'docker history <image>', desc:'Show layer commands and sizes' },
+    { cmd:'docker history --no-trunc <image>', desc:'Show full commands (untruncated)' },
+    { cmd:'docker manifest inspect <image>', desc:'Show multi-arch manifest list' },
+  ]},
+  { title:'Tag & Push', items:[
+    { cmd:'docker tag <src> <registry>/<repo>:<tag>', desc:'Create a new tag alias' },
+    { cmd:'docker push <registry>/<repo>:<tag>', desc:'Upload to registry' },
+    { cmd:'docker login <registry>', desc:'Authenticate to a registry' },
+    { cmd:'docker logout <registry>', desc:'Remove stored credentials' },
+  ]},
+  { title:'Build', items:[
+    { cmd:'docker build -t <name>:<tag> .', desc:'Build from Dockerfile in current dir' },
+    { cmd:'docker build --no-cache -t <name> .', desc:'Force full rebuild (skip cache)' },
+    { cmd:'docker build --target <stage> .', desc:'Build specific multi-stage target' },
+    { cmd:'docker buildx build --platform linux/amd64,linux/arm64 .', desc:'Multi-arch build via BuildKit' },
+    { cmd:'docker build --build-arg KEY=val .', desc:'Pass ARG values at build time' },
+  ]},
+  { title:'Save & Load', items:[
+    { cmd:'docker save <image> | gzip > img.tar.gz', desc:'Export image to tar archive' },
+    { cmd:'docker load < img.tar.gz', desc:'Import image from tar archive' },
+    { cmd:'docker export <container> > fs.tar', desc:'Export container filesystem (no metadata)' },
+    { cmd:'docker import fs.tar <name>:<tag>', desc:'Import filesystem as new image' },
+  ]},
+  { title:'Cleanup', items:[
+    { cmd:'docker rmi <image>', desc:'Remove image (fails if containers exist)' },
+    { cmd:'docker rmi -f <image>', desc:'Force remove even with containers' },
+    { cmd:'docker image prune', desc:'Remove dangling images' },
+    { cmd:'docker image prune -a', desc:'Remove ALL unused images' },
+    { cmd:'docker system prune --volumes', desc:'Full cleanup: stopped containers, unused images, networks, volumes' },
+  ]},
+];
+
+// ── Render Images ─────────────────────────────────────────────────────────────
+
+var selectedImg = null;
+
+function renderImages(list) {
+  var grid = document.getElementById('img-grid');
+  var maxSize = Math.max.apply(null, list.map(function(img) {
+    return parseMB(img.compressed);
+  }));
+
+  grid.innerHTML = list.map(function(img) {
+    var catColor = {base:'badge-grn',lang:'badge-blue',web:'badge-yel',
+      db:'badge-pur',cache:'badge-red',devops:'badge-blue',security:'badge-red'}[img.cat] || 'badge-grn';
+    var catLabel = {base:'Base OS',lang:'Language',web:'Web Server',
+      db:'Database',cache:'Cache/Queue',devops:'DevOps',security:'Security'}[img.cat] || img.cat;
+    return '<div class="img-card" id="card-'+img.id+'" onclick="showDetail(\''+img.id+'\')">' +
+      '<div class="img-hdr">' +
+        '<div class="img-icon">'+img.icon+'</div>' +
+        '<div><div class="img-name">'+img.name+'</div>' +
+        '<div class="img-tag">'+img.tags.slice(0,3).join(' · ')+(img.tags.length>3?' …':'')+'</div></div>' +
+      '</div>' +
+      '<div class="img-badges">' +
+        '<span class="badge '+catColor+'">'+catLabel+'</span>' +
+        (img.official ? '<span class="badge badge-grn">Official</span>' : '') +
+        '<span class="badge badge-blue">'+img.arch.length+' arch</span>' +
+      '</div>' +
+      '<div class="img-meta">' +
+        '<span class="meta-k">Compressed</span><span class="meta-v">'+img.compressed+'</span>' +
+        '<span class="meta-k">Uncompressed</span><span class="meta-v">'+img.uncompressed+'</span>' +
+        '<span class="meta-k">Layers</span><span class="meta-v">'+img.layers+'</span>' +
+        '<span class="meta-k">OS</span><span class="meta-v">'+img.os+'</span>' +
+      '</div>' +
+      '<div class="pull-cmd"><span>$ '+img.pull+'</span>' +
+        '<button class="copy-btn" onclick="event.stopPropagation();copyCmd(this,\''+img.pull+'\')">copy</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function parseMB(str) {
+  if (!str || str==='0 B') return 0;
+  var m = str.match(/([\d.]+)\s*(MB|GB|KB)/i);
+  if (!m) return 0;
+  var n = parseFloat(m[1]);
+  if (m[2].toUpperCase()==='GB') n *= 1024;
+  if (m[2].toUpperCase()==='KB') n /= 1024;
+  return n;
+}
+
+function showDetail(id) {
+  var img = IMAGES.find(function(i){return i.id===id;});
+  if (!img) return;
+
+  // deselect all, select this
+  document.querySelectorAll('.img-card').forEach(function(c){c.classList.remove('selected');});
+  var card = document.getElementById('card-'+id);
+  if (selectedImg===id && document.getElementById('img-detail').classList.contains('open')) {
+    document.getElementById('img-detail').classList.remove('open');
+    selectedImg = null;
+    return;
+  }
+  if (card) card.classList.add('selected');
+  selectedImg = id;
+
+  var maxMB = Math.max.apply(null, IMAGES.map(function(i){return parseMB(i.compressed);}));
+
+  var detail = document.getElementById('img-detail');
+  detail.classList.add('open');
+  detail.innerHTML =
+    '<div class="detail-title">'+img.icon+' '+img.name+'</div>' +
+    '<p style="font-size:.82rem;color:#c9d1d9;margin-bottom:.9rem">'+img.desc+'</p>' +
+    '<div class="detail-grid">' +
+      '<div class="detail-row"><div class="detail-k">Compressed size</div><div class="detail-v">'+img.compressed+'</div></div>' +
+      '<div class="detail-row"><div class="detail-k">Uncompressed size</div><div class="detail-v">'+img.uncompressed+'</div></div>' +
+      '<div class="detail-row"><div class="detail-k">Layers</div><div class="detail-v">'+img.layers+'</div></div>' +
+      '<div class="detail-row"><div class="detail-k">OS</div><div class="detail-v">'+img.os+'</div></div>' +
+      '<div class="detail-row"><div class="detail-k">Official image</div><div class="detail-v">'+(img.official?'✅ Yes':'❌ No')+'</div></div>' +
+      '<div class="detail-row"><div class="detail-k">Architectures</div><div class="detail-v">'+img.arch.join(', ')+'</div></div>' +
+    '</div>' +
+    '<div class="detail-row" style="margin-bottom:.75rem"><div class="detail-k" style="margin-bottom:.4rem">Available tags</div>' +
+      '<div class="tags-list">'+img.tags.map(function(t){return '<span class="badge badge-blue">'+t+'</span>';}).join('')+'</div>' +
+    '</div>' +
+    '<div class="size-bar-wrap">' +
+      '<div class="size-bar-label">Compressed size vs other images</div>' +
+      '<div class="size-bars">' +
+        IMAGES.slice().sort(function(a,b){return parseMB(a.compressed)-parseMB(b.compressed);}).slice(0,8).map(function(i) {
+          var pct = maxMB > 0 ? Math.max(1, Math.round(parseMB(i.compressed)/maxMB*100)) : 1;
+          var hi = i.id===id ? 'style="background:linear-gradient(90deg,#ffa657,#fb923c)"' : '';
+          return '<div class="size-row">' +
+            '<span class="size-name">'+(i.id===id?'<b>'+i.name+'</b>':i.name)+'</span>' +
+            '<div class="size-track"><div class="size-fill" '+hi+' style="width:'+pct+'%"></div></div>' +
+            '<span class="size-num">'+i.compressed+'</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+
+  // scroll into view
+  setTimeout(function(){detail.scrollIntoView({behavior:'smooth',block:'nearest'});}, 50);
+}
+
+function filterImages() {
+  var q = document.getElementById('img-search').value.toLowerCase();
+  var cat = document.getElementById('cat-filter').value;
+  var filtered = IMAGES.filter(function(img) {
+    var matchQ = !q || img.name.toLowerCase().includes(q) || img.desc.toLowerCase().includes(q) || img.tags.some(function(t){return t.includes(q);});
+    var matchCat = !cat || img.cat===cat;
+    return matchQ && matchCat;
+  });
+  renderImages(filtered);
+  document.getElementById('img-detail').classList.remove('open');
+  selectedImg = null;
+}
+
+function copyCmd(btn, cmd) {
+  navigator.clipboard.writeText(cmd);
+  btn.textContent = 'copied!';
+  btn.classList.add('copied');
+  setTimeout(function(){btn.textContent='copy';btn.classList.remove('copied');}, 1500);
+}
+
+// ── Layer Visualizer ──────────────────────────────────────────────────────────
+
+var CACHEABLE = ['FROM','COPY','ADD','ARG'];
+var NON_CACHE_HINT = ['RUN'];
+
+function parseLayers() {
+  var src = document.getElementById('df-input').value;
+  var lines = src.split('\n');
+  var instructions = [];
+  var buf = '';
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    // skip blank and comment lines
+    if (/^\s*(#|$)/.test(line)) continue;
+    if (buf) {
+      // continuation
+      buf += '\n' + line.replace(/\\\s*$/, '').trimStart();
+      if (!line.trim().endsWith('\\')) {
+        instructions.push(buf.replace(/\\\s*\n\s*/g,' '));
+        buf = '';
+      }
+    } else if (line.trim().endsWith('\\')) {
+      buf = line.replace(/\\\s*$/, '').trim();
+    } else {
+      instructions.push(line.trim());
+    }
+  }
+  if (buf) instructions.push(buf);
+
+  var parsed = instructions.map(function(inst) {
+    var m = inst.match(/^(\w+)\s*([\s\S]*)$/);
+    if (!m) return null;
+    return { kw: m[1].toUpperCase(), rest: m[2].trim() };
+  }).filter(Boolean);
+
+  var listEl = document.getElementById('layer-list');
+  if (!parsed.length) {
+    listEl.innerHTML = '<div class="empty-msg">Paste a Dockerfile to visualize layers</div>';
+    document.getElementById('layer-stats').innerHTML = '';
+    return;
+  }
+
+  // count layer-creating instructions
+  var LAYER_INSTS = {FROM:1,RUN:1,COPY:1,ADD:1};
+  var layerCount = parsed.filter(function(p){return LAYER_INSTS[p.kw];}).length;
+  var totalEst = 0;
+  parsed.forEach(function(p){ totalEst += (LAYER_SIZES[p.kw]||0); });
+
+  // Render reversed (top = latest)
+  var reversed = parsed.slice().reverse();
+  listEl.innerHTML = reversed.map(function(p, ri) {
+    var idx = parsed.length - ri;
+    var color = LAYER_COLORS[p.kw] || '#586069';
+    var isLayer = LAYER_INSTS[p.kw];
+    var sizeEst = LAYER_SIZES[p.kw] || 0;
+    var sizeStr = sizeEst > 0 ? fmtBytes(sizeEst) : '0 B';
+    var cacheHint = NON_CACHE_HINT.indexOf(p.kw) >= 0 ? '' : '<span class="layer-cached">cached</span>';
+    return '<div class="layer-item">' +
+      '<span class="layer-num">'+idx+'</span>' +
+      '<span class="layer-inst inst-'+p.kw+'" style="color:'+color+'">'+p.kw+'</span>' +
+      '<span class="layer-text">'+esc(p.rest)+'</span>' +
+      (isLayer ? '<span class="layer-size">~'+sizeStr+'</span>' : '') +
+      (isLayer && p.kw!=='RUN' ? cacheHint : '') +
+    '</div>';
+  }).join('');
+
+  document.getElementById('layer-stats').innerHTML =
+    '<div class="stat-box"><div class="stat-label">Instructions</div><div class="stat-val">'+parsed.length+'</div></div>' +
+    '<div class="stat-box"><div class="stat-label">Layers created</div><div class="stat-val">'+layerCount+'</div></div>' +
+    '<div class="stat-box"><div class="stat-label">Est. image size</div><div class="stat-val">~'+fmtBytes(totalEst)+'</div></div>';
+}
+
+function fmtBytes(b) {
+  if (b >= 1073741824) return (b/1073741824).toFixed(1)+' GB';
+  if (b >= 1048576) return (b/1048576).toFixed(0)+' MB';
+  if (b >= 1024) return (b/1024).toFixed(0)+' KB';
+  return b+' B';
+}
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function loadExample(key) {
+  document.getElementById('df-input').value = EXAMPLES[key] || '';
+  parseLayers();
+}
+function clearDf() {
+  document.getElementById('df-input').value = '';
+  document.getElementById('layer-list').innerHTML = '<div class="empty-msg">Paste a Dockerfile to visualize layers</div>';
+  document.getElementById('layer-stats').innerHTML = '';
+}
+
+// ── Inspect Reference ─────────────────────────────────────────────────────────
+
+function renderInspect() {
+  document.getElementById('inspect-fields').innerHTML = INSPECT_FIELDS.map(function(f) {
+    return '<div class="field-row" title="'+f.desc+'">' +
+      '<span class="field-key">'+f.key+'</span>' +
+      '<span class="field-type">'+f.type+'</span>' +
+      '<span class="field-desc">'+f.desc+'</span>' +
+    '</div>';
+  }).join('');
+  document.getElementById('inspect-json').innerHTML = INSPECT_JSON;
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+
+function renderCommands() {
+  document.getElementById('cmd-grid').innerHTML = COMMANDS.map(function(sec) {
+    return '<div class="cmd-section"><h3>'+sec.title+'</h3>' +
+      sec.items.map(function(c) {
+        return '<div class="cmd-row">' +
+          '<span class="cmd-code">$ '+esc(c.cmd)+'</span>' +
+          '<span class="cmd-desc">'+c.desc+'</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }).join('');
+}
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+renderImages(IMAGES);
+renderInspect();
+renderCommands();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

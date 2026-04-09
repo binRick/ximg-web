@@ -236,6 +236,7 @@ DOMAINS=(
   pwm.ximg.app resistor.ximg.app spectrum.ximg.app spi.ximg.app
   uart.ximg.app voltage.ximg.app
   antenna.ximg.app
+  dockerimage.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
