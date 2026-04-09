@@ -461,7 +461,8 @@ const HTML = `<!DOCTYPE html>
     .dl-table tr.new-row td{animation:flashIn .5s ease}
     .dl-img{color:#38bdf8;font-family:\'Courier New\',monospace}
     .dl-ip{color:var(--dim)}
-    .dl-num{color:#ffa657;text-align:right}
+    .dl-num{color:#ffa657;text-align:center}
+    .dl-table th.dl-num-h{text-align:center}
     .dl-outcome-downloaded{color:var(--green)}
     .dl-outcome-ttl{color:var(--dim)}
     .dl-empty{color:var(--dim);padding:2rem;text-align:center;font-size:.8rem}
@@ -748,10 +749,10 @@ const HTML = `<!DOCTYPE html>
             <th>Time</th>
             <th>IP</th>
             <th>Image</th>
-            <th>Pull&nbsp;time</th>
-            <th>Size</th>
-            <th>Wait</th>
-            <th>Download&nbsp;time</th>
+            <th class="dl-num-h">Pull&nbsp;time</th>
+            <th class="dl-num-h">Size</th>
+            <th class="dl-num-h">Wait</th>
+            <th class="dl-num-h">Download&nbsp;time</th>
             <th>Outcome</th>
           </tr>
         </thead>
@@ -1071,10 +1072,10 @@ const HTML = `<!DOCTYPE html>
               '<td class="dl-ip">' + esc(fmtTs(e.ts)) + '</td>' +
               '<td class="dl-ip">' + esc(e.ip || '—') + '</td>' +
               '<td class="dl-img">' + esc(e.image) + '</td>' +
-              '<td class="dl-num" style="text-align:right">' + fmtSecs(e.pullSecs) + '</td>' +
-              '<td class="dl-num" style="text-align:right">' + fmtMB(e.sizeMB) + '</td>' +
-              '<td class="dl-num" style="text-align:right">' + fmtSecs(e.waitSecs) + '</td>' +
-              '<td class="dl-num" style="text-align:right">' + fmtSecs(e.downloadSecs) + '</td>' +
+              '<td class="dl-num">' + fmtSecs(e.pullSecs) + '</td>' +
+              '<td class="dl-num">' + fmtMB(e.sizeMB) + '</td>' +
+              '<td class="dl-num">' + fmtSecs(e.waitSecs) + '</td>' +
+              '<td class="dl-num">' + fmtSecs(e.downloadSecs) + '</td>' +
               '<td class="' + outcomeClass + '">' + outcomeLabel + '</td>' +
             '</tr>';
           }).join('');
