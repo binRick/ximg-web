@@ -4,27 +4,43 @@ const fs         = require('fs');
 const path       = require('path');
 const url        = require('url');
 
-const PORT = 3001;
+const PORT     = 3001;
+const LOG_FILE = '/data/dockerimagedownloader.log';
+
+// ── Download log ──────────────────────────────────────────────────────────────
+function appendLog(entry) {
+  try {
+    fs.appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n');
+  } catch (e) {
+    console.error('[log write error]', e.message);
+  }
+}
+
+function getImageSizeBytes(image, cb) {
+  execFile('docker', ['image', 'inspect', '--format', '{{.Size}}', image], (err, stdout) => {
+    cb(err ? 0 : parseInt(stdout.trim(), 10) || 0);
+  });
+}
+
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.socket.remoteAddress || '';
+}
 
 // ── Validation ────────────────────────────────────────────────────────────────
-// Allow valid Docker image references:
-//   name[:tag][@digest]
-//   registry/name[:tag]
-//   registry:port/name[:tag]
-// No shell metacharacters, max 256 chars.
 function validImageRef(ref) {
   if (!ref || typeof ref !== 'string') return false;
   if (ref.length > 256) return false;
   return /^[a-zA-Z0-9][a-zA-Z0-9._\-/:@]*$/.test(ref);
 }
 
-// Produce a safe filename from an image ref, e.g. "nginx:1.25.3" → "nginx-1.25.3.tar.gz"
 function safeFilename(ref) {
   return ref.replace(/[/:@]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.tar.gz';
 }
 
 // ── In-flight pull tracking ───────────────────────────────────────────────────
-// Maps image ref → { status: 'pulling'|'ready'|'failed', ttlTimer }
+// Maps image ref → { status, ttlTimer, pullStarted, pullEnded, ip, sizeMB }
 const pulls = new Map();
 const TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -34,9 +50,18 @@ function scheduleCleanup(image) {
   if (entry.ttlTimer) clearTimeout(entry.ttlTimer);
   entry.ttlTimer = setTimeout(() => {
     console.log('[ttl] cleaning up unpulled image:', image);
+    appendLog({
+      ts:          new Date().toISOString(),
+      ip:          entry.ip || '',
+      image,
+      pullSecs:    entry.pullSecs || 0,
+      sizeMB:      entry.sizeMB || 0,
+      waitSecs:    null,
+      downloadSecs: null,
+      outcome:     'ttl_expired',
+    });
     execFile('docker', ['rmi', '-f', image], (err) => {
       if (err) console.error('[ttl rmi error]', err.message);
-      else console.log('[ttl] removed', image);
     });
     pulls.delete(image);
   }, TTL_MS);
@@ -51,7 +76,6 @@ const server = http.createServer((req, res) => {
   const parsed = url.parse(req.url, true);
   const { pathname, query } = parsed;
 
-  // CORS — allow the frontend origin
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -62,7 +86,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── POST /pull  — stream docker pull output via SSE ──────────────────────────
+  // ── POST /pull ────────────────────────────────────────────────────────────
   if (req.method === 'POST' && pathname === '/pull') {
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > 1024) req.destroy(); });
@@ -76,48 +100,58 @@ const server = http.createServer((req, res) => {
         return;
       }
 
+      const ip = clientIp(req);
+
       res.writeHead(200, {
-        'Content-Type':  'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection':    'keep-alive',
-        'X-Accel-Buffering': 'no',   // tell nginx not to buffer SSE
+        'Content-Type':      'text/event-stream',
+        'Cache-Control':     'no-cache',
+        'Connection':        'keep-alive',
+        'X-Accel-Buffering': 'no',
       });
 
       sendSSE(res, { type: 'start', image });
 
-      // If already pulled and ready, skip re-pull
       const existing = pulls.get(image);
       if (existing && existing.status === 'ready') {
+        // Update ip in case it's a different user re-pulling
+        existing.ip = ip;
         sendSSE(res, { type: 'log', text: 'Image already cached on server.\n' });
         sendSSE(res, { type: 'done', image });
         res.end();
         return;
       }
 
-      // Spawn docker pull
+      const pullStarted = Date.now();
       const pull = spawn('docker', ['pull', image], { stdio: ['ignore', 'pipe', 'pipe'] });
 
-      pulls.set(image, { status: 'pulling' });
+      pulls.set(image, { status: 'pulling', ip, pullStarted });
 
       let resClosed = false;
       res.on('close', () => { resClosed = true; });
 
       const safeWrite = obj => { if (!resClosed) sendSSE(res, obj); };
 
-      const onData = chunk => safeWrite({ type: 'log', text: chunk.toString() });
-      pull.stdout.on('data', onData);
-      pull.stderr.on('data', onData);
+      pull.stdout.on('data', chunk => safeWrite({ type: 'log', text: chunk.toString() }));
+      pull.stderr.on('data', chunk => safeWrite({ type: 'log', text: chunk.toString() }));
 
       pull.on('close', (code, signal) => {
+        const pullSecs = parseFloat(((Date.now() - pullStarted) / 1000).toFixed(1));
+
         if (code === 0 || (code === null && signal === null)) {
-          pulls.set(image, { status: 'ready' });
-          scheduleCleanup(image);
-          safeWrite({ type: 'done', image });
+          // Get image size, then mark ready
+          getImageSizeBytes(image, (sizeBytes) => {
+            const sizeMB = parseFloat((sizeBytes / 1048576).toFixed(1));
+            const pullEnded = Date.now();
+            pulls.set(image, { status: 'ready', ip, pullStarted, pullEnded, pullSecs, sizeMB });
+            scheduleCleanup(image);
+            safeWrite({ type: 'done', image });
+            if (!resClosed) res.end();
+          });
         } else {
-          pulls.set(image, { status: 'failed' });
+          pulls.set(image, { status: 'failed', ip, pullStarted, pullSecs });
           safeWrite({ type: 'error', text: 'docker pull exited (code=' + code + ' signal=' + signal + ')' });
+          if (!resClosed) res.end();
         }
-        if (!resClosed) res.end();
       });
 
       pull.on('error', err => {
@@ -129,7 +163,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── GET /download  — stream docker save | gzip → client ─────────────────────
+  // ── GET /download ─────────────────────────────────────────────────────────
   if (req.method === 'GET' && pathname === '/download') {
     const image = query.image;
 
@@ -139,7 +173,16 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    const ip = clientIp(req);
     const filename = safeFilename(image);
+    const downloadStarted = Date.now();
+
+    const entry = pulls.get(image);
+    if (entry && entry.ttlTimer) clearTimeout(entry.ttlTimer);
+
+    const waitSecs = entry && entry.pullEnded
+      ? parseFloat(((downloadStarted - entry.pullEnded) / 1000).toFixed(1))
+      : null;
 
     res.writeHead(200, {
       'Content-Type':        'application/gzip',
@@ -148,11 +191,6 @@ const server = http.createServer((req, res) => {
       'X-Accel-Buffering':   'no',
     });
 
-    // Cancel TTL cleanup — download handles its own cleanup on close
-    const entry = pulls.get(image);
-    if (entry && entry.ttlTimer) clearTimeout(entry.ttlTimer);
-
-    // docker save <image> | gzip -c → response
     const save = spawn('docker', ['save', image], { stdio: ['ignore', 'pipe', 'pipe'] });
     const gz   = spawn('gzip',   ['-c'],          { stdio: ['pipe',   'pipe', 'pipe'] });
 
@@ -161,14 +199,26 @@ const server = http.createServer((req, res) => {
 
     save.stderr.on('data', d => console.error('[save stderr]', d.toString().trim()));
     gz.stderr.on('data',   d => console.error('[gzip stderr]', d.toString().trim()));
-
     save.on('error', err => { console.error('[save error]', err.message); res.destroy(); });
     gz.on('error',   err => { console.error('[gzip error]', err.message); res.destroy(); });
 
     res.on('close', () => {
       save.kill();
       gz.kill();
-      // Remove image from server after download to reclaim disk space
+
+      const downloadSecs = parseFloat(((Date.now() - downloadStarted) / 1000).toFixed(1));
+
+      appendLog({
+        ts:           new Date().toISOString(),
+        ip:           entry ? (entry.ip || ip) : ip,
+        image,
+        pullSecs:     entry ? (entry.pullSecs || 0) : 0,
+        sizeMB:       entry ? (entry.sizeMB || 0) : 0,
+        waitSecs,
+        downloadSecs,
+        outcome:      'downloaded',
+      });
+
       execFile('docker', ['rmi', '-f', image], (err) => {
         if (err) console.error('[rmi error]', err.message);
         else { pulls.delete(image); console.log('[rmi] cleaned up', image); }
@@ -177,21 +227,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── GET /status  — check if an image is ready ─────────────────────────────
+  // ── GET /status ───────────────────────────────────────────────────────────
   if (req.method === 'GET' && pathname === '/status') {
     const image = query.image;
-    if (!validImageRef(image)) {
-      res.writeHead(400);
-      res.end('Invalid image reference');
-      return;
-    }
+    if (!validImageRef(image)) { res.writeHead(400); res.end('Invalid image reference'); return; }
     const entry = pulls.get(image);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: entry ? entry.status : 'unknown' }));
     return;
   }
 
-  // ── Serve the frontend HTML ───────────────────────────────────────────────
+  // ── Serve static files ────────────────────────────────────────────────────
   if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
     const html = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
     res.writeHead(200, { 'Content-Type': 'text/html' });

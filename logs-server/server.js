@@ -4,9 +4,10 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const geoip = require('geoip-lite');
 
-const LOGS_DIR   = '/logs';
-const SSH_DIR    = '/ssh-logs';
-const PORT       = 3000;
+const LOGS_DIR    = '/logs';
+const SSH_DIR     = '/ssh-logs';
+const DL_LOG_FILE = '/data/dockerimagedownloader.log';
+const PORT        = 3000;
 
 function stripAnsi(s) {
   return s.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '')
@@ -446,6 +447,24 @@ const HTML = `<!DOCTYPE html>
     #ssh-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
     .ssh-placeholder{color:var(--dim);padding:2rem;text-align:center}
     .ssh-empty{color:var(--dim);padding:1rem;font-size:.75rem}
+
+    #dl-container{flex:1;overflow:hidden;display:none;flex-direction:column}
+    #dl-toolbar{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.06);font-size:.75rem;flex-shrink:0}
+    #dl-count{color:var(--dim)}
+    #dl-table-wrap{flex:1;overflow-y:auto;padding:.5rem .75rem}
+    #dl-table-wrap::-webkit-scrollbar{width:6px}
+    #dl-table-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    .dl-table{width:100%;border-collapse:collapse;font-size:.76rem}
+    .dl-table th{color:var(--dim);font-weight:600;text-align:left;padding:.3rem .5rem;border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap;position:sticky;top:0;background:#0d0d16;z-index:1}
+    .dl-table td{padding:.35rem .5rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;word-break:break-word}
+    .dl-table tr:hover td{background:rgba(255,255,255,.025)}
+    .dl-table tr.new-row td{animation:flashIn .5s ease}
+    .dl-img{color:#38bdf8;font-family:\'Courier New\',monospace}
+    .dl-ip{color:var(--dim)}
+    .dl-num{color:#ffa657;text-align:right}
+    .dl-outcome-downloaded{color:var(--green)}
+    .dl-outcome-ttl{color:var(--dim)}
+    .dl-empty{color:var(--dim);padding:2rem;text-align:center;font-size:.8rem}
     .log-line{display:grid;grid-template-columns:215px 130px 160px 48px 55px 72px 1fr;gap:.75rem;
       padding:.1rem .25rem;border-radius:3px;transition:background .15s;overflow:hidden}
     .log-line > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -695,6 +714,7 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
     <button class="tab" id="ssh-tab">ssh sessions</button>
+    <button class="tab" id="dl-tab">docker downloads</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>
@@ -713,6 +733,30 @@ const HTML = `<!DOCTYPE html>
     <div id="ssh-list"><div class="ssh-empty">Loading sessions…</div></div>
     <div id="ssh-right">
       <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
+    </div>
+  </div>
+
+  <div id="dl-container">
+    <div id="dl-toolbar">
+      <span id="dl-count">—</span>
+      <button onclick="loadDockerDownloads()" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:\'Courier New\',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">↺ refresh</button>
+    </div>
+    <div id="dl-table-wrap">
+      <table class="dl-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>IP</th>
+            <th>Image</th>
+            <th>Pull&nbsp;time</th>
+            <th>Size</th>
+            <th>Wait</th>
+            <th>Download&nbsp;time</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody id="dl-tbody"><tr><td colspan="8" class="dl-empty">Loading…</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -947,12 +991,102 @@ const HTML = `<!DOCTYPE html>
 
     sshTab.addEventListener('click', () => {
       if (!sshMode) enterSshMode();
+      if (dlMode) leaveDlMode();
     });
 
-    document.querySelectorAll('.tab:not(#ssh-tab)').forEach(btn => {
+    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (sshMode) { leaveSshMode(); }
+        if (sshMode) leaveSshMode();
+        if (dlMode) leaveDlMode();
       });
+    });
+
+    // ── Docker downloads viewer ───────────────────────────────────────────────
+    const dlTab       = document.getElementById('dl-tab');
+    const dlContainer = document.getElementById('dl-container');
+    let dlMode = false;
+    let dlPollTimer = null;
+
+    function enterDlMode() {
+      dlMode = true;
+      dlTab.classList.add('active');
+      document.querySelector('.tab[data-site="all"]').classList.remove('active');
+      pickerBtn.classList.remove('has-selection');
+      pickerBtn.textContent = '☰ app ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
+      document.getElementById('pause-btn').style.display = 'none';
+      document.querySelector('.stats').style.display = 'none';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      logContainer.style.display = 'none';
+      sshContainer.style.display = 'none';
+      dlContainer.style.display = 'flex';
+      loadDockerDownloads();
+      dlPollTimer = setInterval(loadDockerDownloads, 15000);
+    }
+
+    function leaveDlMode() {
+      dlMode = false;
+      dlTab.classList.remove('active');
+      document.getElementById('pause-btn').style.display = '';
+      document.querySelector('.stats').style.display = '';
+      dlContainer.style.display = 'none';
+      logContainer.style.display = '';
+      clearInterval(dlPollTimer);
+      selectSite('all');
+    }
+
+    function fmtSecs(v) {
+      if (v === null || v === undefined) return '—';
+      if (v < 60) return v.toFixed(1) + 's';
+      return (v / 60).toFixed(1) + 'm';
+    }
+    function fmtMB(v) {
+      if (!v) return '—';
+      if (v >= 1024) return (v / 1024).toFixed(1) + ' GB';
+      return v.toFixed(0) + ' MB';
+    }
+    function fmtTs(ts) {
+      try {
+        const d = new Date(ts);
+        return d.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      } catch(_) { return ts; }
+    }
+
+    function loadDockerDownloads() {
+      fetch('/docker-downloads')
+        .then(r => r.json())
+        .then(entries => {
+          const tbody = document.getElementById('dl-tbody');
+          const count = document.getElementById('dl-count');
+          count.textContent = entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies');
+          if (!entries.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="dl-empty">No downloads recorded yet.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = entries.map(e => {
+            const outcomeClass = e.outcome === 'downloaded' ? 'dl-outcome-downloaded' : 'dl-outcome-ttl';
+            const outcomeLabel = e.outcome === 'downloaded' ? '✓ downloaded' : '⏱ ttl expired';
+            return '<tr>' +
+              '<td class="dl-ip">' + esc(fmtTs(e.ts)) + '</td>' +
+              '<td class="dl-ip">' + esc(e.ip || '—') + '</td>' +
+              '<td class="dl-img">' + esc(e.image) + '</td>' +
+              '<td class="dl-num" style="text-align:right">' + fmtSecs(e.pullSecs) + '</td>' +
+              '<td class="dl-num" style="text-align:right">' + fmtMB(e.sizeMB) + '</td>' +
+              '<td class="dl-num" style="text-align:right">' + fmtSecs(e.waitSecs) + '</td>' +
+              '<td class="dl-num" style="text-align:right">' + fmtSecs(e.downloadSecs) + '</td>' +
+              '<td class="' + outcomeClass + '">' + outcomeLabel + '</td>' +
+            '</tr>';
+          }).join('');
+        })
+        .catch(() => {
+          document.getElementById('dl-tbody').innerHTML =
+            '<tr><td colspan="8" class="dl-empty">Failed to load download log.</td></tr>';
+        });
+    }
+
+    dlTab.addEventListener('click', () => {
+      if (!dlMode) { if (sshMode) leaveSshMode(); enterDlMode(); }
     });
   </script>
 </body>
@@ -1000,6 +1134,23 @@ const server = http.createServer(async (req, res) => {
     } catch (_) { res.writeHead(404); res.end(); }
     return;
   }
+  if (req.url === '/docker-downloads') {
+    try {
+      const lines = fs.existsSync(DL_LOG_FILE)
+        ? fs.readFileSync(DL_LOG_FILE, 'utf8').trim().split('\n').filter(Boolean)
+        : [];
+      const entries = lines.map(l => { try { return JSON.parse(l); } catch(_) { return null; } })
+                           .filter(Boolean)
+                           .reverse(); // newest first
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(entries));
+    } catch(e) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('[]');
+    }
+    return;
+  }
+
   if (req.url === '/mario-scores') {
     const cors = {
       'Access-Control-Allow-Origin': '*',
