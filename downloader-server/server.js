@@ -24,8 +24,23 @@ function safeFilename(ref) {
 }
 
 // ── In-flight pull tracking ───────────────────────────────────────────────────
-// Maps image ref → { status: 'pulling'|'ready'|'failed', clients: [res, ...] }
+// Maps image ref → { status: 'pulling'|'ready'|'failed', ttlTimer }
 const pulls = new Map();
+const TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function scheduleCleanup(image) {
+  const entry = pulls.get(image);
+  if (!entry) return;
+  if (entry.ttlTimer) clearTimeout(entry.ttlTimer);
+  entry.ttlTimer = setTimeout(() => {
+    console.log('[ttl] cleaning up unpulled image:', image);
+    execFile('docker', ['rmi', '-f', image], (err) => {
+      if (err) console.error('[ttl rmi error]', err.message);
+      else console.log('[ttl] removed', image);
+    });
+    pulls.delete(image);
+  }, TTL_MS);
+}
 
 function sendSSE(res, obj) {
   res.write('data: ' + JSON.stringify(obj) + '\n\n');
@@ -96,6 +111,7 @@ const server = http.createServer((req, res) => {
       pull.on('close', (code, signal) => {
         if (code === 0 || (code === null && signal === null)) {
           pulls.set(image, { status: 'ready' });
+          scheduleCleanup(image);
           safeWrite({ type: 'done', image });
         } else {
           pulls.set(image, { status: 'failed' });
@@ -131,6 +147,10 @@ const server = http.createServer((req, res) => {
       'Transfer-Encoding':   'chunked',
       'X-Accel-Buffering':   'no',
     });
+
+    // Cancel TTL cleanup — download handles its own cleanup on close
+    const entry = pulls.get(image);
+    if (entry && entry.ttlTimer) clearTimeout(entry.ttlTimer);
 
     // docker save <image> | gzip -c → response
     const save = spawn('docker', ['save', image], { stdio: ['ignore', 'pipe', 'pipe'] });
