@@ -124,7 +124,7 @@ const LOG_FILES = {
   programming: 'programming.access.log',
   ps1:         'ps1.access.log',
   dockerimage:  'dockerimage.access.log',
-  downloader:   'downloader.access.log',
+  dockerimagedownloader: 'dockerimagedownloader.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   unix:        'unix.access.log',
@@ -572,7 +572,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="programming">programming</button>
           <button class="site-opt" data-site="ps1">ps1</button>
           <button class="site-opt" data-site="dockerimage">dockerimage</button>
-          <button class="site-opt" data-site="downloader">downloader</button>
+          <button class="site-opt" data-site="dockerimagedownloader">dockerimagedownloader</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
           <button class="site-opt" data-site="network">network</button>
