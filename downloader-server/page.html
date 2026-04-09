@@ -71,17 +71,26 @@
     .dl-hint{font-size:.7rem;color:#586069;font-weight:400}
     .dl-arrow{font-size:1.1rem;margin-left:auto}
 
-    /* history */
-    .history-section{margin-top:1.5rem}
-    .history-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#586069;margin-bottom:.6rem}
-    .history-list{display:flex;flex-direction:column;gap:.4rem}
-    .history-item{background:#161b22;border:1px solid rgba(255,255,255,.07);border-radius:6px;
-      padding:.5rem .8rem;display:flex;align-items:center;gap:.75rem;font-size:.8rem}
-    .hist-img{color:#79c0ff;flex:1}
-    .hist-time{color:#586069;font-size:.7rem}
-    .hist-dl{background:none;border:1px solid rgba(63,185,80,.3);border-radius:4px;color:#3fb950;
-      font-family:'Courier New',monospace;font-size:.7rem;padding:.2rem .5rem;cursor:pointer;transition:all .15s}
-    .hist-dl:hover{background:rgba(63,185,80,.1)}
+    /* history table */
+    .hist-toolbar{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;font-size:.75rem}
+    .hist-count{color:#586069}
+    .hist-refresh{background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;
+      color:#586069;font-family:'Courier New',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer}
+    .hist-refresh:hover{border-color:rgba(56,189,248,.4);color:#38bdf8}
+    .hist-wrap{overflow-x:auto}
+    .hist-table{width:100%;border-collapse:collapse;font-size:.76rem}
+    .hist-table th{color:#586069;font-weight:600;text-align:left;padding:.3rem .5rem;
+      border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
+    .hist-table th.hn{text-align:center}
+    .hist-table td{padding:.35rem .5rem;border-bottom:1px solid rgba(255,255,255,.04);
+      vertical-align:top;word-break:break-word}
+    .hist-table tr:hover td{background:rgba(255,255,255,.025)}
+    .h-img{color:#38bdf8;font-family:'Courier New',monospace}
+    .h-dim{color:#586069}
+    .h-num{color:#ffa657;text-align:center}
+    .h-ok{color:#3fb950}
+    .h-ttl{color:#586069}
+    .h-empty{color:#586069;padding:2rem;text-align:center;font-size:.8rem}
 
     /* how it works */
     .how-section{margin-top:2rem;background:#161b22;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:1.1rem 1.2rem}
@@ -157,9 +166,26 @@
 
   <!-- ── History view ──────────────────────────────────────────────────────── -->
   <div id="view-history" style="display:none">
-    <div class="history-title">Downloaded this session</div>
-    <div class="history-list" id="history-list">
-      <div style="color:#586069;font-size:.82rem">No downloads yet this session.</div>
+    <div class="hist-toolbar">
+      <span class="hist-count" id="hist-count">—</span>
+      <button class="hist-refresh" onclick="loadHistory()">↺ refresh</button>
+    </div>
+    <div class="hist-wrap">
+      <table class="hist-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>IP</th>
+            <th>Image</th>
+            <th class="hn">Pull&nbsp;time</th>
+            <th class="hn">Size</th>
+            <th class="hn">Wait</th>
+            <th class="hn">Download&nbsp;time</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody id="hist-tbody"><tr><td colspan="8" class="h-empty">Loading…</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -184,7 +210,6 @@
 
 <script>
 var currentImage = null;
-var dlHistory = [];
 
 function setView(name, btn) {
   ['pull','history','how'].forEach(function(v) {
@@ -193,7 +218,7 @@ function setView(name, btn) {
   document.querySelectorAll('.snav-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
 
-  if (name === 'history') renderHistory();
+  if (name === 'history') loadHistory();
 }
 
 function setPick(ref) {
@@ -284,7 +309,6 @@ function handleEvent(ev) {
   } else if (ev.type === 'done') {
     setStatus('ready');
     showDownload(ev.image);
-    addHistory(ev.image);
     document.getElementById('pull-btn').disabled = false;
   } else if (ev.type === 'error') {
     appendLog('\n' + ev.text + '\n', true);
@@ -338,25 +362,48 @@ function triggerDownload() {
   return false;
 }
 
-function addHistory(image) {
-  var filename = image.replace(/[/:@]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.tar.gz';
-  dlHistory.unshift({ image: image, filename: filename, time: new Date().toLocaleTimeString() });
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+function fmtTs(ts) {
+  try {
+    var d = new Date(ts);
+    return d.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  } catch(_) { return ts; }
+}
+function fmtSecs(v) { return (v == null || v === '') ? '—' : v + 's'; }
+function fmtMB(v)   { return (v == null || v === '') ? '—' : v + ' MB'; }
 
-function renderHistory() {
-  var el = document.getElementById('history-list');
-  if (!dlHistory.length) {
-    el.innerHTML = '<div style="color:#586069;font-size:.82rem">No downloads yet this session.</div>';
-    return;
-  }
-  el.innerHTML = dlHistory.map(function(h) {
-    return '<div class="history-item">' +
-      '<span class="hist-img">🐳 ' + h.image + '</span>' +
-      '<span class="hist-time">' + h.time + '</span>' +
-      '<a class="hist-dl" href="/download?image=' + encodeURIComponent(h.image) +
-        '" download="' + h.filename + '">re-download</a>' +
-    '</div>';
-  }).join('');
+function loadHistory() {
+  var tbody = document.getElementById('hist-tbody');
+  var count = document.getElementById('hist-count');
+  tbody.innerHTML = '<tr><td colspan="8" class="h-empty">Loading…</td></tr>';
+  fetch('/docker-downloads')
+    .then(function(r) { return r.json(); })
+    .then(function(entries) {
+      count.textContent = entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies');
+      if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="h-empty">No downloads recorded yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = entries.map(function(e) {
+        var cls = e.outcome === 'downloaded' ? 'h-ok' : 'h-ttl';
+        var lbl = e.outcome === 'downloaded' ? '✓ downloaded' : '⏱ ttl expired';
+        return '<tr>' +
+          '<td class="h-dim">' + esc(fmtTs(e.ts)) + '</td>' +
+          '<td class="h-dim">' + esc(e.ip || '—') + '</td>' +
+          '<td class="h-img">' + esc(e.image) + '</td>' +
+          '<td class="h-num">' + fmtSecs(e.pullSecs) + '</td>' +
+          '<td class="h-num">' + fmtMB(e.sizeMB) + '</td>' +
+          '<td class="h-num">' + fmtSecs(e.waitSecs) + '</td>' +
+          '<td class="h-num">' + fmtSecs(e.downloadSecs) + '</td>' +
+          '<td class="' + cls + '">' + lbl + '</td>' +
+        '</tr>';
+      }).join('');
+    })
+    .catch(function() {
+      tbody.innerHTML = '<tr><td colspan="8" class="h-empty">Failed to load download log.</td></tr>';
+    });
 }
 </script>
 

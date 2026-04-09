@@ -237,6 +237,24 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── GET /docker-downloads ─────────────────────────────────────────────────
+  if (req.method === 'GET' && pathname === '/docker-downloads') {
+    try {
+      const lines = fs.existsSync(LOG_FILE)
+        ? fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n').filter(Boolean)
+        : [];
+      const entries = lines.map(l => { try { return JSON.parse(l); } catch(_) { return null; } })
+                           .filter(Boolean)
+                           .reverse();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(entries));
+    } catch(e) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('[]');
+    }
+    return;
+  }
+
   // ── Serve static files ────────────────────────────────────────────────────
   if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
     const html = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
