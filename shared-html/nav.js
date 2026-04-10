@@ -36,7 +36,7 @@
       ['silkroad','silkroad'],['colonial','colonial'],
     ]},
     { label: 'Retro', apps: [
-      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['fidonet','fidonet'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['terminal','terminal'],
+      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['fidonet','fidonet'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['templeos','TempleOS'],['terminal','terminal'],
     ]},
     { label: 'Science', apps: [
       ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['quantum','quantum'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['synth','synth'],['training','training'],['waves','waves'],['world','world']
