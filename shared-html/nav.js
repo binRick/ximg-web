@@ -20,7 +20,7 @@
     { label: 'Tech', apps: [
       ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],['crypto','crypto'],
       ['docker','docker'],['dns','dns'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['agents','agents'],['algorithms','algorithms'],['cdn','cdn'],['database','database'],['embeddings','embeddings'],['loadbalancer','loadbalancer'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['agents','agents'],['algorithms','algorithms'],['bgp','bgp'],['cdn','cdn'],['chmod','chmod'],['database','database'],['embeddings','embeddings'],['iptables','iptables'],['loadbalancer','loadbalancer'],['makefile','makefile'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tls','tls'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['utf8','utf8'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coffee','coffee'],['florida','florida'],
@@ -59,7 +59,7 @@
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
     ]},
     { label: 'Dev Tools', apps: [
-      ['bgp','bgp'],['chmod','chmod'],['iptables','iptables'],['makefile','makefile'],['tls','tls'],['utf8','utf8'],['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
+      ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
       ['base64','base64'],['hash','hash'],['diff','diff'],['url','url'],['curl','curl'],
       ['cidr','cidr'],['uuid','uuid'],['lorem','lorem'],['csv','csv'],['markdown','markdown'],
       ['password','password'],['ssl','ssl'],['epoch','epoch'],['timespan','timespan'],['ps1','ps1'],
