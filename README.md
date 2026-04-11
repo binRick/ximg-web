@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-206 virtual hosts (root + 205 subdomains), all static sites served by a single nginx container.
+207 virtual hosts (root + 206 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
