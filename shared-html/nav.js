@@ -31,9 +31,9 @@
       ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],['rome','rome'],
       ['egypt','egypt'],['greece','greece'],['babylon','babylon'],['aztec','aztec'],
       ['mongols','mongols'],['vikings','vikings'],['crusades','crusades'],['samurai','samurai'],
-      ['ottoman','ottoman'],['ww2','ww2'],['ww1','ww1'],['revolution','revolution'],
-      ['french','french rev.'],['industrial','industrial'],['civilwar','civilwar'],['renaissance','renaissance'],
-      ['silkroad','silkroad'],['colonial','colonial'],
+      ['ottoman','ottoman'],['napoleon','napoleon'],['ww2','ww2'],['ww1','ww1'],['revolution','revolution'],
+      ['french','french rev.'],['russianrev','russian rev.'],['industrial','industrial'],['civilwar','civilwar'],['renaissance','renaissance'],
+      ['silkroad','silkroad'],['colonial','colonial'],['british','british empire'],['spacerace','space race'],
     ]},
     { label: 'Retro', apps: [
       ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['fidonet','fidonet'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['templeos','TempleOS'],['terminal','terminal'],

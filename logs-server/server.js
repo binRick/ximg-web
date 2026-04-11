@@ -131,6 +131,9 @@ const LOG_FILES = {
   smtp:                  'smtp.ximg.app.access.log',
   chmod:                 'chmod.access.log',
   iptables:              'iptables.access.log',
+  french:                'french.access.log',
+  russianrev:            'russianrev.access.log',
+  napoleon:              'napoleon.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   unix:        'unix.access.log',
@@ -603,6 +606,8 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="smtp">smtp</button>
           <button class="site-opt" data-site="chmod">chmod</button>
           <button class="site-opt" data-site="iptables">iptables</button>
+          <button class="site-opt" data-site="french">french</button>
+          <button class="site-opt" data-site="napoleon">napoleon</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
           <button class="site-opt" data-site="network">network</button>

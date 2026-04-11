@@ -241,6 +241,7 @@ DOMAINS=(
   githubstars.ximg.app
   templeos.ximg.app
   iptables.ximg.app
+  french.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
