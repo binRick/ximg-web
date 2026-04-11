@@ -59,7 +59,7 @@
       ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
     ]},
     { label: 'Dev Tools', apps: [
-      ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
+      ['chmod','chmod'],['iptables','iptables'],['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
       ['base64','base64'],['hash','hash'],['diff','diff'],['url','url'],['curl','curl'],
       ['cidr','cidr'],['uuid','uuid'],['lorem','lorem'],['csv','csv'],['markdown','markdown'],
       ['password','password'],['ssl','ssl'],['epoch','epoch'],['timespan','timespan'],['ps1','ps1'],
