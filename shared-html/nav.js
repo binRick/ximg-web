@@ -18,9 +18,9 @@
 
   var GROUPS = [
     { label: 'Tech', apps: [
-      ['ai','ai'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bsd','bsd'],['claude','claude'],['computers','computers'],['crypto','crypto'],
-      ['docker','docker'],['dns','dns'],['git','git'],['http','http'],['internet','internet'],['json','json'],['linux','linux'],['mac','mac'],
-      ['agents','agents'],['algorithms','algorithms'],['bgp','bgp'],['cdn','cdn'],['chmod','chmod'],['database','database'],['embeddings','embeddings'],['iptables','iptables'],['loadbalancer','loadbalancer'],['makefile','makefile'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tls','tls'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['utf8','utf8'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+      ['agents','agents'],['ai','ai'],['algorithms','algorithms'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bgp','bgp'],['bsd','bsd'],
+      ['cdn','cdn'],['chmod','chmod'],['claude','claude'],['computers','computers'],['crypto','crypto'],['database','database'],['dns','dns'],['docker','docker'],
+      ['embeddings','embeddings'],['git','git'],['http','http'],['internet','internet'],['iptables','iptables'],['json','json'],['linux','linux'],['loadbalancer','loadbalancer'],['mac','mac'],['makefile','makefile'],['nagios','nagios'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tls','tls'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['utf8','utf8'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['coffee','coffee'],['florida','florida'],
@@ -28,15 +28,13 @@
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'History', apps: [
-      ['coldwar','coldwar'],['medieval','medieval'],['pirates','pirates'],['rome','rome'],
-      ['egypt','egypt'],['greece','greece'],['babylon','babylon'],['aztec','aztec'],
-      ['mongols','mongols'],['vikings','vikings'],['crusades','crusades'],['samurai','samurai'],
-      ['ottoman','ottoman'],['napoleon','napoleon'],['ww2','ww2'],['ww1','ww1'],['cuba','cuba crisis'],['revolution','revolution'],
-      ['french','french rev.'],['russianrev','russian rev.'],['industrial','industrial'],['civilwar','civilwar'],['renaissance','renaissance'],
-      ['silkroad','silkroad'],['colonial','colonial'],['british','british empire'],['spacerace','space race'],['communism','communism'],
+      ['aztec','aztec'],['babylon','babylon'],['british','british empire'],['civilwar','civilwar'],['coldwar','coldwar'],['colonial','colonial'],['communism','communism'],['crusades','crusades'],
+      ['cuba','cuba crisis'],['egypt','egypt'],['french','french rev.'],['greece','greece'],['industrial','industrial'],['medieval','medieval'],['mongols','mongols'],['napoleon','napoleon'],
+      ['ottoman','ottoman'],['pirates','pirates'],['renaissance','renaissance'],['revolution','revolution'],['rome','rome'],['russianrev','russian rev.'],['samurai','samurai'],
+      ['silkroad','silkroad'],['spacerace','space race'],['vikings','vikings'],['ww1','ww1'],['ww2','ww2'],
     ]},
     { label: 'Retro', apps: [
-      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['fidonet','fidonet'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['templeos','TempleOS'],['terminal','terminal'],
+      ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['dos','DOS'],['fidonet','fidonet'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['templeos','TempleOS'],['terminal','terminal'],
     ]},
     { label: 'Science', apps: [
       ['biology','biology'],['brain','brain'],['butterfly','butterfly'],['cell','cell'],['chaos','chaos'],['chemistry','chemistry'],['dna','dna'],['epidemic','epidemic'],['evolution','evolution'],['gravity','gravity'],['immune','immune'],['math','math'],['nutrition','nutrition'],['physics','physics'],['quantum','quantum'],['sandbox','sandbox'],['sleep','sleep'],['space','space'],['synth','synth'],['training','training'],['waves','waves'],['world','world']
@@ -56,17 +54,17 @@
       ['555timer','555 Timer'],['antenna','antenna'],['arduino','arduino'],['battery','battery'],['capacitor','capacitor'],['circuit','circuit'],['compiler','compiler'],['fpga','fpga'],['impedance','impedance'],['logic','logic'],['ohms','ohms'],['opamp','opamp'],['oscilloscope','oscilloscope'],['pcb','pcb'],['pinout','pinout'],['protocol','protocol'],['psu','psu'],['pwm','pwm'],['resistor','resistor'],['spectrum','spectrum'],['spi','spi'],['uart','uart'],['voltage','voltage']
     ]},
     { label: 'Dev Tools', apps: [
-      ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
-      ['base64','base64'],['hash','hash'],['diff','diff'],['url','url'],['curl','curl'],
-      ['cidr','cidr'],['uuid','uuid'],['lorem','lorem'],['csv','csv'],['markdown','markdown'],
-      ['password','password'],['ssl','ssl'],['epoch','epoch'],['timespan','timespan'],['ps1','ps1'],
-      ['dockerimage','dockerimage'],['dockerimagedownloader','docker image downloader'],['githubstars','github stars']
+      ['base64','base64'],['binary','binary'],['cidr','cidr'],['color','color'],['cron','cron'],
+      ['csv','csv'],['curl','curl'],['diff','diff'],['dockerimagedownloader','docker image downloader'],['dockerimage','dockerimage'],
+      ['epoch','epoch'],['githubstars','github stars'],['hash','hash'],['jwt','JWT'],['lorem','lorem'],
+      ['markdown','markdown'],['password','password'],['ps1','ps1'],['regex','regex'],['ssl','ssl'],
+      ['timespan','timespan'],['url','url'],['uuid','uuid']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['status','status'],['stats','stats'],['video','video'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['status','status'],['video','video'],['ximg','ximg']
     ]},
   ];
 
