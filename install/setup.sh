@@ -196,7 +196,7 @@ DOMAINS=(
   space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
   pirates.ximg.app medieval.ximg.app rome.ximg.app bbs.ximg.app dos.ximg.app modem.ximg.app commodore.ximg.app
   egypt.ximg.app greece.ximg.app babylon.ximg.app aztec.ximg.app mongols.ximg.app vikings.ximg.app crusades.ximg.app
-  samurai.ximg.app ottoman.ximg.app ww2.ximg.app ww1.ximg.app revolution.ximg.app industrial.ximg.app
+  samurai.ximg.app ottoman.ximg.app ww2.ximg.app ww1.ximg.app cuba.ximg.app revolution.ximg.app industrial.ximg.app
   civilwar.ximg.app renaissance.ximg.app silkroad.ximg.app colonial.ximg.app
   physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
   dns.ximg.app suricata.ximg.app crypto.ximg.app
@@ -245,6 +245,7 @@ DOMAINS=(
   russianrev.ximg.app
   napoleon.ximg.app
   british.ximg.app
+  cuba.ximg.app
   spacerace.ximg.app
 )
 
