@@ -128,6 +128,7 @@ const LOG_FILES = {
   dockerimagedownloader: 'dockerimagedownloader.access.log',
   githubstars:           'githubstars.access.log',
   templeos:              'templeos.access.log',
+  smtp:                  'smtp.ximg.app.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   unix:        'unix.access.log',
@@ -597,6 +598,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="dockerimagedownloader">dockerimagedownloader</button>
           <button class="site-opt" data-site="githubstars">githubstars</button>
           <button class="site-opt" data-site="templeos">templeos</button>
+          <button class="site-opt" data-site="smtp">smtp</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
           <button class="site-opt" data-site="network">network</button>

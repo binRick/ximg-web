@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>smtp.ximg.app</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #080d14;
+      --blue: #38bdf8;
+      --cyan: #22d3ee;
+      --grn:  #4ade80;
+      --yel:  #fbbf24;
+      --red:  #f87171;
+      --purp: #a78bfa;
+      --orn:  #fb923c;
+      --dim:  #64748b;
+      --text: #e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(56,189,248,.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(56,189,248,.03) 1px,transparent 1px);
+      background-size:40px 40px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(120px);opacity:.12;pointer-events:none;z-index:0}
+    .glow-1{width:700px;height:700px;background:#0ea5e9;top:-250px;left:-200px}
+    .glow-2{width:500px;height:500px;background:#7c3aed;bottom:-150px;right:-150px}
+
+    .wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.5rem}
+
+    h1{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#38bdf8 0%,#22d3ee 40%,#a78bfa 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:var(--dim);margin-top:.25rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .smtp-tabs{display:flex;justify-content:center;gap:.4rem;flex-wrap:wrap;
+      border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .smtp-tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
+      font-family:inherit;transition:all .2s}
+    .smtp-tab.active{color:var(--blue);border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.07)}
+    .smtp-tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .smtp-section{display:flex;flex-direction:column;gap:1.3rem}
+    .smtp-section.hidden{display:none}
+
+    .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--blue);margin-bottom:-.2rem}
+
+    /* ── Cards ── */
+    .card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.25rem 1.5rem}
+    .card p{font-size:.84rem;line-height:1.75;color:#94a3b8}
+    .card p+p{margin-top:.6rem}
+
+    /* ── Grid layouts ── */
+    .two-col{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.8rem}
+    .three-col{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.8rem}
+
+    /* ── Command/code blocks ── */
+    .cmd-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden}
+    .cmd-row{display:grid;grid-template-columns:minmax(220px,auto) 1fr;
+      border-bottom:1px solid rgba(255,255,255,.05);align-items:start}
+    .cmd-row:last-child{border-bottom:none}
+    .cmd-code{font-family:'Courier New',monospace;font-size:.78rem;padding:.6rem 1rem;
+      color:var(--cyan);background:rgba(0,0,0,.25);border-right:1px solid rgba(255,255,255,.05);
+      word-break:break-all;line-height:1.5}
+    .cmd-code .arg{color:var(--yel)}
+    .cmd-code .flag{color:var(--grn)}
+    .cmd-desc{font-size:.78rem;padding:.6rem 1rem;color:#94a3b8;line-height:1.5}
+
+    .code-block{font-family:'Courier New',monospace;font-size:.78rem;line-height:1.75;
+      background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07);border-radius:10px;
+      padding:1rem 1.2rem;white-space:pre;overflow-x:auto;color:#94a3b8;position:relative}
+    .c-s{color:var(--grn)}   /* server */
+    .c-c{color:var(--cyan)}  /* client */
+    .c-dim{color:var(--dim)} /* comment */
+    .c-y{color:var(--yel)}   /* highlight */
+    .c-r{color:var(--red)}   /* error */
+    .c-p{color:var(--purp)}  /* purple */
+
+    /* ── Flow steps ── */
+    .flow{display:flex;flex-direction:column;gap:.5rem}
+    .flow-step{display:grid;grid-template-columns:2rem 1fr;gap:.75rem;align-items:start}
+    .flow-num{width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:.78rem;font-weight:800;background:rgba(56,189,248,.12);color:var(--blue);
+      border:1px solid rgba(56,189,248,.3);flex-shrink:0;margin-top:.1rem}
+    .flow-body{font-size:.83rem;line-height:1.7;color:#94a3b8}
+    .flow-body strong{color:var(--text)}
+
+    /* ── Response code table ── */
+    .resp-grid{display:flex;flex-direction:column;gap:.5rem}
+    .resp-row{display:grid;grid-template-columns:3.5rem 1fr;gap:1rem;align-items:start;
+      background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.75rem 1rem}
+    .resp-code{font-family:'Courier New',monospace;font-size:1rem;font-weight:800;text-align:center;
+      padding:.25rem .5rem;border-radius:6px}
+    .resp-2xx{color:var(--grn);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25)}
+    .resp-3xx{color:var(--cyan);background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25)}
+    .resp-4xx{color:var(--yel);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25)}
+    .resp-5xx{color:var(--red);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25)}
+    .resp-body{font-size:.8rem;color:#94a3b8;line-height:1.6}
+    .resp-body strong{color:var(--text);font-family:'Courier New',monospace;font-size:.82rem}
+
+    /* ── Port cards ── */
+    .port-card{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem}
+    .port-num{font-family:'Courier New',monospace;font-size:1.4rem;font-weight:800;color:var(--cyan);margin-bottom:.3rem}
+    .port-name{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:.5rem}
+    .port-desc{font-size:.8rem;color:#94a3b8;line-height:1.6}
+    .port-badge{display:inline-block;font-size:.65rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;
+      margin-top:.5rem;text-transform:uppercase;letter-spacing:.06em}
+    .badge-rec{background:rgba(74,222,128,.1);color:var(--grn);border:1px solid rgba(74,222,128,.3)}
+    .badge-dep{background:rgba(248,113,113,.08);color:var(--red);border:1px solid rgba(248,113,113,.25)}
+    .badge-leg{background:rgba(100,116,139,.15);color:var(--dim);border:1px solid rgba(100,116,139,.25)}
+
+    /* ── Security badges ── */
+    .sec-grid{display:flex;flex-direction:column;gap:.6rem}
+    .sec-item{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);border-radius:12px;
+      padding:.9rem 1.1rem;display:grid;grid-template-columns:auto 1fr;gap:.9rem;align-items:start}
+    .sec-badge{font-family:'Courier New',monospace;font-size:.75rem;font-weight:700;
+      padding:.25rem .6rem;border-radius:6px;white-space:nowrap}
+    .spf{background:rgba(56,189,248,.1);color:var(--blue);border:1px solid rgba(56,189,248,.3)}
+    .dkim{background:rgba(167,139,250,.12);color:var(--purp);border:1px solid rgba(167,139,250,.3)}
+    .dmarc{background:rgba(34,211,238,.1);color:var(--cyan);border:1px solid rgba(34,211,238,.3)}
+    .tls{background:rgba(74,222,128,.1);color:var(--grn);border:1px solid rgba(74,222,128,.3)}
+    .sts{background:rgba(251,191,36,.1);color:var(--yel);border:1px solid rgba(251,191,36,.3)}
+    .sec-text{font-size:.8rem;color:#94a3b8;line-height:1.6}
+    .sec-text strong{color:var(--text)}
+
+    /* ── Fact row ── */
+    .fact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.7rem}
+    .fact{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;
+      padding:.9rem 1rem;text-align:center}
+    .fact-val{font-size:1.3rem;font-weight:800;color:var(--cyan);font-family:'Courier New',monospace}
+    .fact-lbl{font-size:.72rem;color:var(--dim);margin-top:.25rem}
+
+    /* ── Header table ── */
+    .hdr-card{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem}
+    .hdr-name{font-family:'Courier New',monospace;font-size:.88rem;font-weight:700;color:var(--cyan);margin-bottom:.3rem}
+    .hdr-desc{font-size:.8rem;color:#94a3b8;line-height:1.6}
+    .hdr-ex{font-family:'Courier New',monospace;font-size:.72rem;color:var(--grn);
+      background:rgba(0,0,0,.4);border-radius:5px;padding:.3rem .6rem;margin-top:.45rem;word-break:break-all}
+
+    /* ── Copy button ── */
+    .copy-btn{position:absolute;top:.6rem;right:.7rem;background:rgba(56,189,248,.1);
+      border:1px solid rgba(56,189,248,.25);border-radius:5px;color:var(--blue);
+      font-family:inherit;font-size:.68rem;padding:.2rem .55rem;cursor:pointer;transition:all .2s}
+    .copy-btn:hover{background:rgba(56,189,248,.2)}
+    .copy-btn.copied{color:var(--grn);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.08)}
+
+    .warn-card{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);
+      border-radius:14px;padding:1.25rem 1.5rem}
+    .warn-card p{font-size:.84rem;line-height:1.75;color:#94a3b8}
+    .warn-card .warn-title{font-size:.72rem;font-weight:700;text-transform:uppercase;
+      letter-spacing:.1em;color:var(--red);margin-bottom:.5rem}
+  </style>
+</head>
+<body>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="wrap">
+  <div>
+    <h1>✉ SMTP</h1>
+    <div class="subtitle">Simple Mail Transfer Protocol · RFC 5321 · port 25 / 465 / 587</div>
+  </div>
+
+  <div class="smtp-tabs">
+    <button class="smtp-tab active" onclick="show('overview',this)">Overview</button>
+    <button class="smtp-tab" onclick="show('session',this)">Session Flow</button>
+    <button class="smtp-tab" onclick="show('commands',this)">Commands</button>
+    <button class="smtp-tab" onclick="show('responses',this)">Response Codes</button>
+    <button class="smtp-tab" onclick="show('ports',this)">Ports</button>
+    <button class="smtp-tab" onclick="show('security',this)">Security</button>
+    <button class="smtp-tab" onclick="show('headers',this)">Headers</button>
+    <button class="smtp-tab" onclick="show('diag',this)">Diagnostics</button>
+  </div>
+
+  <!-- ── OVERVIEW ──────────────────────────────────────────────────────────── -->
+  <div id="s-overview" class="smtp-section">
+    <div class="sec-title">What is SMTP?</div>
+    <div class="card">
+      <p>SMTP (Simple Mail Transfer Protocol) is the standard protocol for sending email across the internet. Defined in <strong style="color:var(--blue)">RFC 5321</strong>, it operates as a push protocol: a client connects to a server and delivers a message. SMTP handles only delivery — reading mail uses IMAP or POP3.</p>
+      <p>Every internet email travels through at least two SMTP hops: your mail client → your mail server (submission), then your mail server → the recipient's mail server (relay). Each hop adds a <code style="color:var(--cyan);font-size:.82rem">Received:</code> trace header.</p>
+    </div>
+
+    <div class="sec-title">Key facts</div>
+    <div class="fact-grid">
+      <div class="fact"><div class="fact-val">1982</div><div class="fact-lbl">RFC 821 (original)</div></div>
+      <div class="fact"><div class="fact-val">5321</div><div class="fact-lbl">Current RFC</div></div>
+      <div class="fact"><div class="fact-val">25</div><div class="fact-lbl">MTA relay port</div></div>
+      <div class="fact"><div class="fact-val">587</div><div class="fact-lbl">Submission port</div></div>
+      <div class="fact"><div class="fact-val">465</div><div class="fact-lbl">SMTPS (implicit TLS)</div></div>
+      <div class="fact"><div class="fact-val">ASCII</div><div class="fact-lbl">Original encoding</div></div>
+    </div>
+
+    <div class="sec-title">Mail delivery path</div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-body"><strong>MUA → MSA</strong> — Mail User Agent (Outlook, Thunderbird) submits to Mail Submission Agent on port <strong>587</strong> with AUTH credentials.</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-body"><strong>MSA → MTA</strong> — Submission server hands off to the outbound Mail Transfer Agent (MTA), which looks up the recipient domain's <strong>MX record</strong> in DNS.</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-body"><strong>MTA → MTA</strong> — Sender's MTA connects to recipient's MTA on port <strong>25</strong> and delivers the message over an authenticated, TLS-encrypted session.</div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-body"><strong>MTA → MDA</strong> — Recipient's MTA passes the message to the Mail Delivery Agent (MDA), which stores it in the mailbox for retrieval over IMAP/POP3.</div></div>
+    </div>
+
+    <div class="sec-title">Protocol layers</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">Application</div><div class="cmd-desc">SMTP (RFC 5321), MIME (RFC 2045), DKIM, SPF, DMARC</div></div>
+      <div class="cmd-row"><div class="cmd-code">Security</div><div class="cmd-desc">STARTTLS (RFC 3207), SMTPS (port 465), SASL AUTH (RFC 4954)</div></div>
+      <div class="cmd-row"><div class="cmd-code">Transport</div><div class="cmd-desc">TCP — connection-oriented, reliable, ordered delivery</div></div>
+      <div class="cmd-row"><div class="cmd-code">Network</div><div class="cmd-desc">IPv4 / IPv6</div></div>
+    </div>
+  </div>
+
+  <!-- ── SESSION FLOW ───────────────────────────────────────────────────────── -->
+  <div id="s-session" class="smtp-section hidden">
+    <div class="sec-title">Full SMTP session (with STARTTLS + AUTH)</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button><span class="c-dim"># TCP connect to port 587</span>
+<span class="c-s">220 mail.example.com ESMTP Postfix (Ubuntu)</span>       <span class="c-dim">← server greeting</span>
+
+<span class="c-c">EHLO client.sender.com</span>                               <span class="c-dim">← identify + request extensions</span>
+<span class="c-s">250-mail.example.com</span>
+<span class="c-s">250-PIPELINING</span>
+<span class="c-s">250-SIZE 52428800</span>
+<span class="c-s">250-STARTTLS</span>
+<span class="c-s">250-AUTH PLAIN LOGIN</span>
+<span class="c-s">250 8BITMIME</span>
+
+<span class="c-c">STARTTLS</span>                                              <span class="c-dim">← upgrade to TLS</span>
+<span class="c-s">220 2.0.0 Ready to start TLS</span>
+<span class="c-dim">… TLS handshake …</span>
+
+<span class="c-c">EHLO client.sender.com</span>                               <span class="c-dim">← re-identify after TLS</span>
+<span class="c-s">250-AUTH PLAIN LOGIN</span>
+<span class="c-s">250 SIZE 52428800</span>
+
+<span class="c-c">AUTH PLAIN <span class="c-y">AHVzZXJuYW1lAHBhc3N3b3Jk</span></span>            <span class="c-dim">← base64("\0user\0pass")</span>
+<span class="c-s">235 2.7.0 Authentication successful</span>
+
+<span class="c-c">MAIL FROM:&lt;alice@sender.com&gt; SIZE=1024</span>               <span class="c-dim">← envelope sender</span>
+<span class="c-s">250 2.1.0 Ok</span>
+
+<span class="c-c">RCPT TO:&lt;bob@example.com&gt;</span>                            <span class="c-dim">← envelope recipient</span>
+<span class="c-s">250 2.1.5 Ok</span>
+
+<span class="c-c">DATA</span>                                                  <span class="c-dim">← begin message body</span>
+<span class="c-s">354 End data with &lt;CR&gt;&lt;LF&gt;.&lt;CR&gt;&lt;LF&gt;</span>
+
+<span class="c-c">From: Alice &lt;alice@sender.com&gt;
+To: Bob &lt;bob@example.com&gt;
+Subject: Hello
+Date: Thu, 10 Apr 2025 12:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+Hello Bob, this is a test message.
+.</span>                                                     <span class="c-dim">← single dot = end of message</span>
+<span class="c-s">250 2.0.0 Ok: queued as A1B2C3</span>
+
+<span class="c-c">QUIT</span>
+<span class="c-s">221 2.0.0 Bye</span></div>
+
+    <div class="sec-title">Envelope vs message headers</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code"><span class="flag">Envelope MAIL FROM</span></div><div class="cmd-desc">Used by MTAs for routing and bounce delivery. Never seen by end user. Also called the "return path" or "5321.From".</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="flag">Envelope RCPT TO</span></div><div class="cmd-desc">The actual delivery destination. May differ from the <code>To:</code> header (e.g. BCC, mailing lists, forwarding).</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="arg">Header From:</span></div><div class="cmd-desc">What the recipient sees in their mail client. Must match SPF/DKIM domain to pass authentication. Also called "5322.From".</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="arg">Header To:</span></div><div class="cmd-desc">Display recipient. Does not control delivery — RCPT TO does.</div></div>
+    </div>
+
+    <div class="sec-title">DATA termination</div>
+    <div class="card">
+      <p>The message body ends with a line containing only a single period (<code style="color:var(--cyan)">.</code>). If a line in the body starts with a period, the sender must "dot-stuff" it by prepending an extra period — the receiver strips the extra period.</p>
+    </div>
+  </div>
+
+  <!-- ── COMMANDS ──────────────────────────────────────────────────────────── -->
+  <div id="s-commands" class="smtp-section hidden">
+    <div class="sec-title">Core SMTP commands (RFC 5321)</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">EHLO <span class="arg">domain</span></div><div class="cmd-desc">Open session and announce extensions. Replaces HELO. Server responds with supported capabilities.</div></div>
+      <div class="cmd-row"><div class="cmd-code">HELO <span class="arg">domain</span></div><div class="cmd-desc">Legacy greeting — no extensions. Use EHLO unless connecting to a very old server.</div></div>
+      <div class="cmd-row"><div class="cmd-code">MAIL FROM:<span class="arg">&lt;addr&gt;</span></div><div class="cmd-desc">Start a new mail transaction. Sets the envelope sender (return-path). Optional SIZE= parameter.</div></div>
+      <div class="cmd-row"><div class="cmd-code">RCPT TO:<span class="arg">&lt;addr&gt;</span></div><div class="cmd-desc">Specify a delivery recipient. Repeat for multiple recipients. Server may reject unknown users here.</div></div>
+      <div class="cmd-row"><div class="cmd-code">DATA</div><div class="cmd-desc">Begin transferring message headers and body. Server replies 354. Terminate with a lone period on its own line.</div></div>
+      <div class="cmd-row"><div class="cmd-code">QUIT</div><div class="cmd-desc">Close the session gracefully. Server replies 221 and closes the connection.</div></div>
+      <div class="cmd-row"><div class="cmd-code">RSET</div><div class="cmd-desc">Abort the current mail transaction without closing the connection. Clears MAIL FROM and RCPT TO state.</div></div>
+      <div class="cmd-row"><div class="cmd-code">NOOP</div><div class="cmd-desc">No operation — keep connection alive and verify the server is still responsive. Server replies 250.</div></div>
+      <div class="cmd-row"><div class="cmd-code">VRFY <span class="arg">user</span></div><div class="cmd-desc">Verify that a mailbox exists. Most servers disable this to prevent user enumeration.</div></div>
+      <div class="cmd-row"><div class="cmd-code">EXPN <span class="arg">list</span></div><div class="cmd-desc">Expand a mailing list alias. Nearly always disabled on public servers.</div></div>
+      <div class="cmd-row"><div class="cmd-code">HELP <span class="arg">[cmd]</span></div><div class="cmd-desc">Request information about supported commands. Optional and often disabled.</div></div>
+    </div>
+
+    <div class="sec-title">ESMTP extensions (announced in EHLO response)</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">STARTTLS</div><div class="cmd-desc">RFC 3207. Upgrade plaintext connection to TLS in-place. Must EHLO again after upgrade.</div></div>
+      <div class="cmd-row"><div class="cmd-code">AUTH <span class="arg">mechanisms</span></div><div class="cmd-desc">RFC 4954. Client authentication. Common mechanisms: PLAIN, LOGIN, CRAM-MD5, XOAUTH2.</div></div>
+      <div class="cmd-row"><div class="cmd-code">SIZE <span class="arg">bytes</span></div><div class="cmd-desc">RFC 1870. Server announces max message size. Client may include SIZE= in MAIL FROM.</div></div>
+      <div class="cmd-row"><div class="cmd-code">8BITMIME</div><div class="cmd-desc">RFC 6152. Server accepts 8-bit data in message body (not just 7-bit ASCII).</div></div>
+      <div class="cmd-row"><div class="cmd-code">PIPELINING</div><div class="cmd-desc">RFC 2920. Client may send multiple commands without waiting for each response, improving throughput.</div></div>
+      <div class="cmd-row"><div class="cmd-code">DSN</div><div class="cmd-desc">RFC 3461. Delivery Status Notifications — request success/failure receipts.</div></div>
+      <div class="cmd-row"><div class="cmd-code">SMTPUTF8</div><div class="cmd-desc">RFC 6531. Internationalized email addresses using UTF-8.</div></div>
+      <div class="cmd-row"><div class="cmd-code">CHUNKING / BDAT</div><div class="cmd-desc">RFC 3030. Binary transfer in chunks — avoids dot-stuffing for large messages.</div></div>
+    </div>
+
+    <div class="sec-title">AUTH mechanisms</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">AUTH PLAIN</div><div class="cmd-desc">Single base64 string: <code style="color:var(--yel)">\0username\0password</code>. Simple but credentials are base64, not encrypted — always use over TLS.</div></div>
+      <div class="cmd-row"><div class="cmd-code">AUTH LOGIN</div><div class="cmd-desc">Server prompts for username then password separately, each base64-encoded. Obsolete; prefer PLAIN over TLS.</div></div>
+      <div class="cmd-row"><div class="cmd-code">AUTH CRAM-MD5</div><div class="cmd-desc">Challenge-response using HMAC-MD5. Does not expose password in transit but MD5 is considered weak.</div></div>
+      <div class="cmd-row"><div class="cmd-code">AUTH XOAUTH2</div><div class="cmd-desc">OAuth 2.0 Bearer token. Used by Gmail, Outlook 365. Token format: <code style="color:var(--yel)">user=u\x01auth=Bearer TOKEN\x01\x01</code>.</div></div>
+    </div>
+  </div>
+
+  <!-- ── RESPONSE CODES ─────────────────────────────────────────────────────── -->
+  <div id="s-responses" class="smtp-section hidden">
+    <div class="sec-title">2xx — Positive completion</div>
+    <div class="resp-grid">
+      <div class="resp-row"><div class="resp-code resp-2xx">211</div><div class="resp-body"><strong>System status</strong> — response to HELP or STATUS command.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">214</div><div class="resp-body"><strong>Help message</strong> — information on how to use the server.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">220</div><div class="resp-body"><strong>Service ready</strong> — server greeting, sent immediately on connect.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">221</div><div class="resp-body"><strong>Closing transmission channel</strong> — response to QUIT.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">235</div><div class="resp-body"><strong>Authentication successful</strong> — AUTH accepted.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">250</div><div class="resp-body"><strong>Requested action OK</strong> — most common success code. Used for EHLO, MAIL FROM, RCPT TO, message accepted.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">251</div><div class="resp-body"><strong>User not local, forwarding</strong> — RCPT TO accepted but will be relayed.</div></div>
+      <div class="resp-row"><div class="resp-code resp-2xx">252</div><div class="resp-body"><strong>Cannot verify, will attempt delivery</strong> — VRFY couldn't confirm but will try delivery.</div></div>
+    </div>
+
+    <div class="sec-title">3xx — Positive intermediate</div>
+    <div class="resp-grid">
+      <div class="resp-row"><div class="resp-code resp-3xx">334</div><div class="resp-body"><strong>AUTH challenge</strong> — server is sending a base64-encoded challenge (AUTH LOGIN, CRAM-MD5).</div></div>
+      <div class="resp-row"><div class="resp-code resp-3xx">354</div><div class="resp-body"><strong>Start mail input</strong> — response to DATA. Server ready to receive message; end with <code style="color:var(--cyan)">&lt;CRLF&gt;.&lt;CRLF&gt;</code>.</div></div>
+    </div>
+
+    <div class="sec-title">4xx — Transient negative (retry later)</div>
+    <div class="resp-grid">
+      <div class="resp-row"><div class="resp-code resp-4xx">421</div><div class="resp-body"><strong>Service not available</strong> — server shutting down or too busy. MTA should retry.</div></div>
+      <div class="resp-row"><div class="resp-code resp-4xx">450</div><div class="resp-body"><strong>Mailbox unavailable</strong> — temporary issue, e.g. mailbox locked. Retry later.</div></div>
+      <div class="resp-row"><div class="resp-code resp-4xx">451</div><div class="resp-body"><strong>Local error in processing</strong> — often greylisting or policy checks. Retry after delay.</div></div>
+      <div class="resp-row"><div class="resp-code resp-4xx">452</div><div class="resp-body"><strong>Insufficient storage</strong> — disk full or message quota exceeded temporarily.</div></div>
+      <div class="resp-row"><div class="resp-code resp-4xx">454</div><div class="resp-body"><strong>TLS not available</strong> — response to STARTTLS when TLS cannot be offered right now.</div></div>
+    </div>
+
+    <div class="sec-title">5xx — Permanent negative (do not retry)</div>
+    <div class="resp-grid">
+      <div class="resp-row"><div class="resp-code resp-5xx">500</div><div class="resp-body"><strong>Syntax error</strong> — command not recognized.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">501</div><div class="resp-body"><strong>Bad parameters</strong> — command syntax OK but arguments are invalid.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">502</div><div class="resp-body"><strong>Command not implemented</strong> — server doesn't support this command.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">503</div><div class="resp-body"><strong>Bad sequence</strong> — command out of order, e.g. DATA before RCPT TO.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">504</div><div class="resp-body"><strong>Parameter not implemented</strong> — command known but parameter unsupported.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">521</div><div class="resp-body"><strong>Host does not accept mail</strong> — server exists but is not accepting mail.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">535</div><div class="resp-body"><strong>Authentication failed</strong> — wrong credentials or mechanism not accepted.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">541</div><div class="resp-body"><strong>No valid recipients</strong> — all RCPT TO addresses were rejected.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">550</div><div class="resp-body"><strong>Mailbox unavailable</strong> — address doesn't exist or policy rejection. Most common bounce code.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">551</div><div class="resp-body"><strong>User not local</strong> — server won't forward; try the indicated address.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">552</div><div class="resp-body"><strong>Storage limit exceeded</strong> — recipient mailbox is full (permanent).</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">553</div><div class="resp-body"><strong>Mailbox name not allowed</strong> — address syntax invalid or not permitted.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">554</div><div class="resp-body"><strong>Transaction failed</strong> — catch-all for policy failures, spam rejection, blacklisting.</div></div>
+      <div class="resp-row"><div class="resp-code resp-5xx">556</div><div class="resp-body"><strong>Domain does not accept mail</strong> — null MX record (RFC 7505); destination explicitly refuses email.</div></div>
+    </div>
+  </div>
+
+  <!-- ── PORTS ─────────────────────────────────────────────────────────────── -->
+  <div id="s-ports" class="smtp-section hidden">
+    <div class="sec-title">SMTP port assignments</div>
+    <div class="two-col">
+      <div class="port-card">
+        <div class="port-num">25</div>
+        <div class="port-name">SMTP — MTA relay</div>
+        <div class="port-desc">Server-to-server mail transfer between MTAs. Authenticated clients should NOT use port 25. Most ISPs block outbound port 25 to prevent spam.</div>
+        <div class="port-badge badge-leg">MTA only</div>
+      </div>
+      <div class="port-card">
+        <div class="port-num">587</div>
+        <div class="port-name">SMTP Submission (STARTTLS)</div>
+        <div class="port-desc">RFC 6409. The correct port for mail clients and applications to submit email. Requires AUTH. Starts plaintext then upgrades to TLS via STARTTLS.</div>
+        <div class="port-badge badge-rec">Recommended</div>
+      </div>
+      <div class="port-card">
+        <div class="port-num">465</div>
+        <div class="port-name">SMTPS — Implicit TLS</div>
+        <div class="port-desc">TLS wraps the entire session from the first byte (like HTTPS). Originally deprecated but revived by RFC 8314 (2018) as the preferred submission port alongside 587.</div>
+        <div class="port-badge badge-rec">Recommended</div>
+      </div>
+      <div class="port-card">
+        <div class="port-num">2525</div>
+        <div class="port-name">Alternate submission</div>
+        <div class="port-desc">Non-standard but widely supported by ESPs (SendGrid, Mailgun). Used when ISPs block 587. No RFC backing — check provider docs.</div>
+        <div class="port-badge badge-leg">Non-standard</div>
+      </div>
+    </div>
+
+    <div class="sec-title">587 vs 465</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code"><span class="flag">587 STARTTLS</span></div><div class="cmd-desc">Connection starts plaintext. Client sends EHLO, server advertises STARTTLS, client upgrades in-band. If STARTTLS fails, client must abort.</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="arg">465 Implicit TLS</span></div><div class="cmd-desc">TLS negotiated before any SMTP bytes. Simpler — no in-band upgrade. RFC 8314 recommends this for new implementations.</div></div>
+    </div>
+
+    <div class="warn-card">
+      <div class="warn-title">Port 25 abuse</div>
+      <p>Never submit client mail over port 25. It exists for MTA-to-MTA relay and has no authentication requirement by default. Almost all residential and cloud ISPs block outbound port 25 connections to combat spam. Use port 587 or 465 with AUTH.</p>
+    </div>
+  </div>
+
+  <!-- ── SECURITY ───────────────────────────────────────────────────────────── -->
+  <div id="s-security" class="smtp-section hidden">
+    <div class="sec-title">Email authentication standards</div>
+    <div class="sec-grid">
+      <div class="sec-item">
+        <div class="sec-badge spf">SPF</div>
+        <div class="sec-text"><strong>Sender Policy Framework</strong> (RFC 7208) — a DNS TXT record that lists which IP addresses are authorized to send mail for a domain. Checked by the receiving MTA against the envelope MAIL FROM domain.<br><br>Example: <code style="color:var(--grn);font-size:.76rem">v=spf1 include:_spf.google.com ~all</code></div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-badge dkim">DKIM</div>
+        <div class="sec-text"><strong>DomainKeys Identified Mail</strong> (RFC 6376) — adds a cryptographic signature to message headers. The signing domain publishes a public key in DNS. Receivers verify the signature, proving the message wasn't tampered with in transit.<br><br>Example: <code style="color:var(--grn);font-size:.76rem">DKIM-Signature: v=1; a=rsa-sha256; d=example.com; s=mail; ...</code></div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-badge dmarc">DMARC</div>
+        <div class="sec-text"><strong>Domain-based Message Authentication, Reporting and Conformance</strong> (RFC 7489) — builds on SPF and DMARC. Tells receivers what to do when checks fail: none / quarantine / reject. Enables aggregate reports.<br><br>Example: <code style="color:var(--grn);font-size:.76rem">v=DMARC1; p=reject; rua=mailto:dmarc@example.com</code></div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-badge tls">STARTTLS / MTA-STS</div>
+        <div class="sec-text"><strong>STARTTLS</strong> (RFC 3207) upgrades an SMTP connection to TLS. Without policy enforcement, a man-in-the-middle can strip STARTTLS. <strong>MTA-STS</strong> (RFC 8461) solves this by publishing a policy that mandates TLS for inbound delivery, verified via HTTPS.<br><br>DNS: <code style="color:var(--grn);font-size:.76rem">_mta-sts.example.com TXT "v=STSv1; id=20240101"</code></div>
+      </div>
+      <div class="sec-item">
+        <div class="sec-badge sts">DANE / TLSRPT</div>
+        <div class="sec-text"><strong>DANE</strong> (DNS-Based Authentication of Named Entities, RFC 7671) pins the TLS certificate expected on the SMTP server using a TLSA record in DNSSEC-signed DNS. <strong>TLSRPT</strong> (RFC 8460) provides failure reporting for MTA-STS and DANE.<br><br>DNS: <code style="color:var(--grn);font-size:.76rem">_25._tcp.mail.example.com TLSA 3 1 1 &lt;hash&gt;</code></div>
+      </div>
+    </div>
+
+    <div class="sec-title">TLS configuration best practices</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code"><span class="flag">TLS 1.2+</span></div><div class="cmd-desc">Require TLS 1.2 minimum. TLS 1.3 preferred. Disable SSLv3, TLS 1.0, TLS 1.1.</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="flag">Forward secrecy</span></div><div class="cmd-desc">Prefer ECDHE cipher suites so session keys cannot be decrypted later even if the private key is compromised.</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="arg">Opportunistic TLS</span></div><div class="cmd-desc">Most MTA-to-MTA connections use opportunistic TLS — try TLS, fall back to plaintext. Not secure against active attacks without MTA-STS or DANE.</div></div>
+      <div class="cmd-row"><div class="cmd-code"><span class="arg">Cert validation</span></div><div class="cmd-desc">Submission clients must validate the server certificate. MTAs traditionally ignore cert errors — MTA-STS changes this for enrolled domains.</div></div>
+    </div>
+  </div>
+
+  <!-- ── HEADERS ────────────────────────────────────────────────────────────── -->
+  <div id="s-headers" class="smtp-section hidden">
+    <div class="sec-title">Standard message headers (RFC 5322)</div>
+    <div class="two-col">
+      <div class="hdr-card">
+        <div class="hdr-name">From</div>
+        <div class="hdr-desc">Display name and email address of the author. Must align with DKIM signature domain for DMARC to pass.</div>
+        <div class="hdr-ex">From: Alice &lt;alice@example.com&gt;</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">To</div>
+        <div class="hdr-desc">Primary recipient(s). Display only — actual delivery is controlled by RCPT TO envelope command.</div>
+        <div class="hdr-ex">To: Bob &lt;bob@example.com&gt;</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Cc</div>
+        <div class="hdr-desc">Carbon copy recipients — visible to all recipients. MTA must also RCPT TO each Cc address.</div>
+        <div class="hdr-ex">Cc: carol@example.com</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Bcc</div>
+        <div class="hdr-desc">Blind carbon copy — sent to recipient but header stripped before delivery to To/Cc recipients.</div>
+        <div class="hdr-ex">Bcc: hidden@example.com</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Subject</div>
+        <div class="hdr-desc">One-line message summary. Non-ASCII characters must be RFC 2047 encoded.</div>
+        <div class="hdr-ex">Subject: =?UTF-8?Q?Hello?=</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Date</div>
+        <div class="hdr-desc">Date and time when the message was composed, including timezone offset.</div>
+        <div class="hdr-ex">Date: Thu, 10 Apr 2025 12:00:00 +0000</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Message-ID</div>
+        <div class="hdr-desc">Globally unique identifier for the message, assigned by the sending MTA. Used for threading and deduplication.</div>
+        <div class="hdr-ex">Message-ID: &lt;abc123@mail.example.com&gt;</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Reply-To</div>
+        <div class="hdr-desc">Address that replies should be directed to, if different from From.</div>
+        <div class="hdr-ex">Reply-To: support@example.com</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Return-Path</div>
+        <div class="hdr-desc">Added by the final MTA. Contains the envelope MAIL FROM address used for bounce delivery.</div>
+        <div class="hdr-ex">Return-Path: &lt;bounce+id@example.com&gt;</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Received</div>
+        <div class="hdr-desc">Trace header added by each MTA that handles the message. Listed in reverse order (newest first). Used for debugging and spam analysis.</div>
+        <div class="hdr-ex">Received: from mail.sender.com ([1.2.3.4]) by mail.example.com</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">MIME-Version</div>
+        <div class="hdr-desc">Declares MIME encoding. Always <code style="color:var(--cyan)">1.0</code>. Required when using any MIME content types.</div>
+        <div class="hdr-ex">MIME-Version: 1.0</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Content-Type</div>
+        <div class="hdr-desc">MIME type of the body. Use multipart/mixed for attachments, multipart/alternative for HTML+text fallback.</div>
+        <div class="hdr-ex">Content-Type: multipart/mixed; boundary="abc"</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">Content-Transfer-Encoding</div>
+        <div class="hdr-desc">Encoding used for the body: 7bit, 8bit, base64, or quoted-printable. base64 for binary; QP for mostly-ASCII with some special chars.</div>
+        <div class="hdr-ex">Content-Transfer-Encoding: base64</div>
+      </div>
+      <div class="hdr-card">
+        <div class="hdr-name">X-Mailer / User-Agent</div>
+        <div class="hdr-desc">Identifies the software that composed the message. Non-standard but universally supported.</div>
+        <div class="hdr-ex">X-Mailer: Thunderbird 115.0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DIAGNOSTICS ────────────────────────────────────────────────────────── -->
+  <div id="s-diag" class="smtp-section hidden">
+    <div class="sec-title">Test SMTP with OpenSSL (port 587 STARTTLS)</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button>openssl s_client -starttls smtp -connect mail.example.com:587 -cpe</div>
+
+    <div class="sec-title">Test SMTPS with OpenSSL (port 465 implicit TLS)</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button>openssl s_client -connect mail.example.com:465</div>
+
+    <div class="sec-title">Send test email with swaks</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button>swaks \
+  --to bob@example.com \
+  --from alice@sender.com \
+  --server mail.example.com \
+  --port 587 \
+  --tls \
+  --auth LOGIN \
+  --auth-user alice@sender.com \
+  --auth-password "secret" \
+  --header "Subject: test" \
+  --body "Hello from swaks"</div>
+
+    <div class="sec-title">Look up MX records</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button>dig MX example.com +short
+# or
+nslookup -type=MX example.com</div>
+
+    <div class="sec-title">Check SPF / DKIM / DMARC DNS records</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button><span class="c-dim"># SPF</span>
+dig TXT example.com +short | grep spf
+
+<span class="c-dim"># DKIM (replace 'mail' with your selector)</span>
+dig TXT mail._domainkey.example.com +short
+
+<span class="c-dim"># DMARC</span>
+dig TXT _dmarc.example.com +short
+
+<span class="c-dim"># MTA-STS policy</span>
+dig TXT _mta-sts.example.com +short
+curl https://mta-sts.example.com/.well-known/mta-sts.txt</div>
+
+    <div class="sec-title">Telnet raw SMTP session (port 25)</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button>telnet mail.example.com 25</div>
+
+    <div class="sec-title">Postfix log grep for a message</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button><span class="c-dim"># Find queue ID for a recipient</span>
+grep "to=&lt;bob@example.com&gt;" /var/log/mail.log | tail -20
+
+<span class="c-dim"># Follow a queue ID through the log</span>
+grep "QUEUEID" /var/log/mail.log</div>
+
+    <div class="sec-title">Check if an IP is blacklisted (DNSBL)</div>
+    <div class="code-block"><button class="copy-btn" onclick="copyBlock(this)">copy</button><span class="c-dim"># Reverse the IP octets and query a DNSBL</span>
+<span class="c-dim"># For IP 1.2.3.4:</span>
+dig 4.3.2.1.zen.spamhaus.org +short
+dig 4.3.2.1.bl.spamcop.net +short</div>
+
+    <div class="sec-title">Common diagnostic tools</div>
+    <div class="cmd-card">
+      <div class="cmd-row"><div class="cmd-code">swaks</div><div class="cmd-desc">Swiss Army Knife for SMTP. Full-featured test tool: TLS, AUTH, attachments, custom headers.</div></div>
+      <div class="cmd-row"><div class="cmd-code">openssl s_client</div><div class="cmd-desc">Test TLS handshake and inspect server certificates. Use <code style="color:var(--yel)">-starttls smtp</code> for STARTTLS.</div></div>
+      <div class="cmd-row"><div class="cmd-code">mailx / mail</div><div class="cmd-desc">UNIX CLI mail sender. Quick one-liner tests: <code style="color:var(--yel)">echo "body" | mail -s "subject" user@host</code>.</div></div>
+      <div class="cmd-row"><div class="cmd-code">mxtoolbox.com</div><div class="cmd-desc">Web-based: MX lookup, DNSBL check, SMTP test, header analyzer, SPF/DKIM/DMARC validator.</div></div>
+      <div class="cmd-row"><div class="cmd-code">mail-tester.com</div><div class="cmd-desc">Send an email to a unique address and get a spam score with actionable fixes.</div></div>
+      <div class="cmd-row"><div class="cmd-code">postfix -v</div><div class="cmd-desc">Run postfix commands with verbose output. <code style="color:var(--yel)">postqueue -p</code> shows the mail queue.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.smtp-section').forEach(function(s){ s.classList.add('hidden'); });
+  document.getElementById('s-'+id).classList.remove('hidden');
+  document.querySelectorAll('.smtp-tab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  location.hash = id;
+}
+
+function copyBlock(btn) {
+  var block = btn.parentElement;
+  var text = block.innerText.replace(/^copy\n?/,'').trim();
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+(function(){
+  var tabs = ['overview','session','commands','responses','ports','security','headers','diag'];
+  var hash = location.hash.replace('#','');
+  var idx = tabs.indexOf(hash);
+  if (idx > 0) {
+    var btn = document.querySelectorAll('.smtp-tab')[idx];
+    if (btn) show(hash, btn);
+  }
+})();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
