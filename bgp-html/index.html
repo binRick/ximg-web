@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bgp.ximg.app</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080d14;
+      --bg2: #0d1520;
+      --bg3: #111d2e;
+      --border: rgba(255,255,255,.08);
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --gold: #fbbf24;
+      --blue: #38bdf8;
+      --green: #4ade80;
+      --purple: #a78bfa;
+      --red: #f87171;
+      --orange: #fb923c;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .page-header {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      background: linear-gradient(180deg, rgba(56,189,248,.06) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .page-header h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .page-header .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-top: .5rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      font-size: .8rem;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+
+    section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    section:last-of-type { border-bottom: none; }
+
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 1.2em;
+      background: var(--blue);
+      border-radius: 2px;
+    }
+
+    /* ───────────────────────────── TOPOLOGY ───────────────────────── */
+    #topology-wrap {
+      position: relative;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: var(--bg2);
+    }
+    #topology-canvas { display: block; width: 100%; cursor: pointer; }
+
+    .topo-legend {
+      display: flex; flex-wrap: wrap; gap: .75rem;
+      margin-top: 1rem; font-size: .8rem; color: var(--muted);
+    }
+    .topo-legend span { display: flex; align-items: center; gap: .4rem; }
+    .topo-legend span::before {
+      content: '';
+      width: 12px; height: 12px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    .leg-t1::before { background: var(--gold); }
+    .leg-t2::before { background: var(--blue); }
+    .leg-ent::before { background: var(--green); }
+    .leg-cdn::before { background: var(--purple); }
+    .leg-uni::before { background: var(--orange); }
+
+    .topo-hint {
+      font-size: .78rem; color: var(--muted); margin-top: .6rem; text-align: center;
+    }
+
+    /* ───────────────────────────── ROUTE TABLE ─────────────────────── */
+    #route-table-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #route-table-header {
+      padding: .8rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    #route-table-header strong { color: var(--blue); }
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    thead tr { background: rgba(255,255,255,.03); }
+    th {
+      padding: .6rem .9rem;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: .04em;
+      font-size: .72rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: .55rem .9rem; border-bottom: 1px solid rgba(255,255,255,.04); }
+    tr:last-child td { border-bottom: none; }
+    tr.best-route { background: rgba(74,222,128,.06); }
+    tr.best-route td:first-child { border-left: 3px solid var(--green); }
+    .tag {
+      display: inline-block;
+      padding: .15rem .45rem;
+      border-radius: 4px;
+      font-size: .7rem;
+      font-weight: 600;
+    }
+    .tag-i { background: rgba(74,222,128,.15); color: var(--green); }
+    .tag-e { background: rgba(251,191,36,.15); color: var(--gold); }
+    .tag-inc { background: rgba(248,113,113,.15); color: var(--red); }
+
+    #bgp-decision-box {
+      margin-top: 1rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      font-size: .82rem;
+    }
+    #bgp-decision-box h4 { color: var(--gold); margin-bottom: .6rem; font-size: .85rem; }
+    .decision-steps { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .dstep {
+      padding: .3rem .7rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: .75rem;
+    }
+    .dstep.active { border-color: var(--green); background: rgba(74,222,128,.1); color: var(--green); }
+    .dstep.inactive { color: var(--muted); }
+
+    /* ───────────────────────────── ATTR CARDS ──────────────────────── */
+    .attr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .attr-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      backdrop-filter: blur(4px);
+      transition: border-color .2s, background .2s;
+    }
+    .attr-card:hover { border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.05); }
+    .attr-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .5rem; font-family: monospace; }
+    .attr-card p { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+    .attr-card .pref-badge {
+      display: inline-block;
+      margin-top: .6rem;
+      padding: .2rem .5rem;
+      border-radius: 4px;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+    }
+    .pref-high { background: rgba(74,222,128,.15); color: var(--green); }
+    .pref-low  { background: rgba(248,113,113,.15); color: var(--red); }
+
+    /* ───────────────────────────── FSM ────────────────────────────── */
+    #fsm-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 700px) { #fsm-wrap { grid-template-columns: 1fr; } }
+
+    #fsm-canvas-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #fsm-canvas { display: block; width: 100%; }
+
+    #fsm-detail {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+    }
+    #fsm-detail h3 { font-size: 1rem; font-weight: 700; margin-bottom: .6rem; color: var(--blue); }
+    #fsm-detail p  { font-size: .82rem; color: var(--muted); margin-bottom: .8rem; }
+    .event-list { list-style: none; }
+    .event-list li {
+      font-size: .78rem; padding: .3rem 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      display: flex; gap: .5rem;
+    }
+    .event-list li::before { content: '→'; color: var(--blue); }
+    .event-list li:last-child { border-bottom: none; }
+
+    .fsm-msg-row {
+      display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem;
+    }
+    .msg-badge {
+      padding: .25rem .6rem; border-radius: 4px; font-size: .72rem; font-weight: 700;
+    }
+    .msg-open   { background: rgba(56,189,248,.15); color: var(--blue); }
+    .msg-ka     { background: rgba(74,222,128,.15); color: var(--green); }
+    .msg-upd    { background: rgba(167,139,250,.15); color: var(--purple); }
+    .msg-notif  { background: rgba(248,113,113,.15); color: var(--red); }
+
+    .fsm-animate-btn {
+      margin-top: 1rem;
+      padding: .5rem 1.2rem;
+      border-radius: 6px;
+      border: 1px solid var(--blue);
+      background: rgba(56,189,248,.1);
+      color: var(--blue);
+      font-size: .82rem; font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .fsm-animate-btn:hover { background: rgba(56,189,248,.2); }
+
+    /* ───────────────────────────── MSG TYPES ───────────────────────── */
+    .msg-accordion { display: flex; flex-direction: column; gap: .6rem; }
+    .msg-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .msg-item-header {
+      display: flex; align-items: center; gap: .8rem;
+      padding: .85rem 1.1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+    }
+    .msg-item-header:hover { background: rgba(255,255,255,.03); }
+    .msg-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; font-weight: 800;
+      flex-shrink: 0;
+    }
+    .msg-item-header h4 { flex: 1; font-size: .9rem; font-weight: 700; }
+    .msg-item-header .arrow { color: var(--muted); transition: transform .2s; font-size: .8rem; }
+    .msg-item.open .arrow { transform: rotate(90deg); }
+    .msg-item-body {
+      display: none;
+      padding: 0 1.1rem 1rem;
+      font-size: .82rem; color: var(--muted);
+    }
+    .msg-item.open .msg-item-body { display: block; }
+    .msg-field-table { width: 100%; margin-top: .6rem; font-size: .78rem; }
+    .msg-field-table td { padding: .25rem .5rem; }
+    .msg-field-table td:first-child { color: var(--blue); font-family: monospace; white-space: nowrap; }
+    .msg-field-table tr { border-bottom: 1px solid var(--border); }
+    .msg-field-table tr:last-child { border-bottom: none; }
+
+    /* ───────────────────────────── HIJACK ──────────────────────────── */
+    #hijack-wrap {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+    @media (max-width: 700px) { #hijack-wrap { grid-template-columns: 1fr; } }
+
+    #hijack-canvas-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #hijack-canvas { display: block; width: 100%; }
+
+    .hijack-explain {
+      display: flex; flex-direction: column; gap: .8rem;
+    }
+    .hijack-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      font-size: .82rem;
+    }
+    .hijack-box h4 { font-size: .85rem; font-weight: 700; margin-bottom: .4rem; }
+    .hijack-box p { color: var(--muted); }
+    .hijack-box code {
+      display: inline-block;
+      background: rgba(255,255,255,.07);
+      border-radius: 4px;
+      padding: .1rem .4rem;
+      font-size: .75rem;
+    }
+    .border-green { border-color: rgba(74,222,128,.3); }
+    .border-red   { border-color: rgba(248,113,113,.3); }
+    .border-blue  { border-color: rgba(56,189,248,.3); }
+
+    /* ───────────────────────────── eBGP vs iBGP ────────────────────── */
+    #ebgp-wrap {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+    @media (max-width: 700px) { #ebgp-wrap { grid-template-columns: 1fr; } }
+
+    .ebgp-diagram {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #ebgp-canvas { display: block; width: 100%; }
+
+    .diff-table-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .diff-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .diff-table th {
+      padding: .6rem .9rem; background: rgba(255,255,255,.04);
+      text-align: left; font-size: .75rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid var(--border);
+    }
+    .diff-table td { padding: .55rem .9rem; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .diff-table tr:last-child td { border-bottom: none; }
+    .col-prop { color: var(--muted); font-size: .75rem; }
+    .col-ebgp { color: var(--green); }
+    .col-ibgp { color: var(--blue); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 3px; }
+
+    @media (max-width: 600px) {
+      .attr-grid { grid-template-columns: 1fr; }
+      table { font-size: .72rem; }
+      td, th { padding: .45rem .6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>BGP</h1>
+  <p class="subtitle">Border Gateway Protocol &mdash; Internet Routing Visualizer</p>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 1 — TOPOLOGY MAP
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">Network Topology Map</div>
+
+    <div id="topology-wrap">
+      <canvas id="topology-canvas" height="460"></canvas>
+    </div>
+
+    <div class="topo-legend">
+      <span class="leg-t1">Tier 1 Provider</span>
+      <span class="leg-t2">Tier 2 ISP</span>
+      <span class="leg-ent">Enterprise</span>
+      <span class="leg-cdn">CDN</span>
+      <span class="leg-uni">University / Datacenter</span>
+    </div>
+    <p class="topo-hint">Click a source AS, then click a destination AS to animate route propagation.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 2 — ROUTE TABLE
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">BGP Routing Table</div>
+
+    <div id="route-table-wrap">
+      <div id="route-table-header">Showing RIB for <strong id="rib-as-label">AS3 (Tier 2 ISP)</strong></div>
+      <div style="overflow-x:auto">
+        <table id="route-table">
+          <thead>
+            <tr>
+              <th>Network</th>
+              <th>Next Hop</th>
+              <th>AS Path</th>
+              <th>Local Pref</th>
+              <th>MED</th>
+              <th>Origin</th>
+              <th>Weight</th>
+            </tr>
+          </thead>
+          <tbody id="route-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="bgp-decision-box">
+      <h4>BGP Path Selection — Decision Process</h4>
+      <div class="decision-steps" id="decision-steps">
+        <div class="dstep inactive" data-step="weight">1. Weight (highest)</div>
+        <div class="dstep inactive" data-step="localpref">2. Local Pref (highest)</div>
+        <div class="dstep inactive" data-step="origin">3. Locally originated</div>
+        <div class="dstep inactive" data-step="aspath">4. AS Path (shortest)</div>
+        <div class="dstep inactive" data-step="origintype">5. Origin type (IGP &gt; EGP &gt; ?)</div>
+        <div class="dstep inactive" data-step="med">6. MED (lowest)</div>
+        <div class="dstep inactive" data-step="ebgp">7. eBGP &gt; iBGP</div>
+        <div class="dstep inactive" data-step="igp">8. IGP metric (lowest)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 3 — ATTRIBUTES EXPLORER
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">BGP Path Attributes Explorer</div>
+    <div class="attr-grid">
+
+      <div class="attr-card">
+        <h3 style="color:var(--blue)">AS_PATH</h3>
+        <p>Sequence of AS numbers the route has traversed. Used for loop prevention — if your own AS number appears in the path, the route is discarded. Shorter paths are preferred.</p>
+        <span class="pref-badge pref-low">Shorter = Better</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--green)">NEXT_HOP</h3>
+        <p>IP address of the border router that should be used as the next hop to reach the advertised prefix. For eBGP, this is set to the advertising router's IP; for iBGP, it is not modified.</p>
+        <span class="pref-badge pref-high">Must be reachable</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--gold)">LOCAL_PREF</h3>
+        <p>Used within an AS (iBGP) to signal the preferred exit point. Higher value wins. Not propagated to eBGP peers. Default is 100. Operators raise it to prefer a specific path.</p>
+        <span class="pref-badge pref-high">Higher = Better</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--purple)">MED (MULTI_EXIT_DISC)</h3>
+        <p>Hint to neighboring ASes about the preferred entry point when multiple links exist. Lower value wins. Only compared between routes from the same neighboring AS.</p>
+        <span class="pref-badge pref-low">Lower = Better</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--orange)">ORIGIN</h3>
+        <p>Indicates how the route entered BGP. <strong>IGP (i)</strong> — injected via network command. <strong>EGP (e)</strong> — learned from old EGP. <strong>Incomplete (?)</strong> — redistributed from another protocol. IGP is most preferred.</p>
+        <span class="pref-badge pref-high">IGP &gt; EGP &gt; Incomplete</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--red)">COMMUNITY</h3>
+        <p>32-bit policy tags attached to routes. Well-known values: <code style="background:rgba(255,255,255,.07);border-radius:3px;padding:.1rem .3rem;font-size:.75rem">NO_EXPORT 65535:65281</code>, <code style="background:rgba(255,255,255,.07);border-radius:3px;padding:.1rem .3rem;font-size:.75rem">NO_ADVERTISE 65535:65282</code>, <code style="background:rgba(255,255,255,.07);border-radius:3px;padding:.1rem .3rem;font-size:.75rem">BLACKHOLE 65535:666</code>. Used extensively for traffic engineering.</p>
+        <span class="pref-badge pref-high">Flexible policy tool</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--text)">WEIGHT (Cisco)</h3>
+        <p>Cisco-proprietary attribute. Local to the router — never propagated. Highest wins. Evaluated first in Cisco's BGP decision process. Default is 0 for learned routes, 32768 for local.</p>
+        <span class="pref-badge pref-high">Highest = Best (local only)</span>
+      </div>
+
+      <div class="attr-card">
+        <h3 style="color:var(--muted)">ATOMIC_AGGREGATE &amp; AGGREGATOR</h3>
+        <p>Set when a router aggregates (summarizes) more-specific prefixes into a less-specific one. AGGREGATOR identifies the AS and router that did the aggregation. Informs peers that information may have been lost.</p>
+        <span class="pref-badge" style="background:rgba(100,116,139,.2);color:var(--muted)">Informational</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 4 — FSM
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">BGP Session State Machine</div>
+    <div id="fsm-wrap">
+      <div id="fsm-canvas-wrap">
+        <canvas id="fsm-canvas" height="360"></canvas>
+      </div>
+      <div id="fsm-detail">
+        <h3 id="fsm-state-name">Idle</h3>
+        <p id="fsm-state-desc">Initial state. BGP is waiting for a Start event (e.g., operator enables BGP or peer comes up). Resources are initialized. The router refuses all incoming BGP connections.</p>
+        <ul class="event-list" id="fsm-events">
+          <li>Start event → move to Connect</li>
+          <li>All errors → remain in Idle</li>
+        </ul>
+        <div class="fsm-msg-row" id="fsm-msgs"></div>
+        <button class="fsm-animate-btn" id="fsm-animate-btn">Animate Session Setup</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 5 — MESSAGE TYPES
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">BGP Message Types</div>
+    <div class="msg-accordion">
+
+      <div class="msg-item open" data-msg="0">
+        <div class="msg-item-header">
+          <span class="msg-num" style="background:rgba(56,189,248,.2);color:var(--blue)">1</span>
+          <h4>OPEN</h4>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="msg-item-body">
+          <p>First message sent after a TCP connection is established. Negotiates the BGP session parameters. Both peers exchange OPEN messages and verify compatibility.</p>
+          <table class="msg-field-table">
+            <tr><td>Version</td><td>BGP version number (current: 4)</td></tr>
+            <tr><td>My Autonomous System</td><td>Sender's AS number (2-byte or 4-byte via capability)</td></tr>
+            <tr><td>Hold Time</td><td>Proposed hold time in seconds; smaller value is negotiated (default 90s)</td></tr>
+            <tr><td>BGP Identifier</td><td>Router ID — highest IP or manually set 32-bit value</td></tr>
+            <tr><td>Optional Parameters</td><td>Capabilities: 4-byte ASN, MP-BGP, Route Refresh, etc.</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="msg-item" data-msg="1">
+        <div class="msg-item-header">
+          <span class="msg-num" style="background:rgba(167,139,250,.2);color:var(--purple)">2</span>
+          <h4>UPDATE</h4>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="msg-item-body">
+          <p>The workhorse of BGP. Advertises new routes (NLRI + path attributes) and/or withdraws previously advertised routes. A single UPDATE can carry multiple prefixes and withdrawals.</p>
+          <table class="msg-field-table">
+            <tr><td>Withdrawn Routes Length</td><td>Length of withdrawn routes field in bytes</td></tr>
+            <tr><td>Withdrawn Routes</td><td>List of IP prefixes being removed from service</td></tr>
+            <tr><td>Total Path Attribute Length</td><td>Length of path attributes field</td></tr>
+            <tr><td>Path Attributes</td><td>AS_PATH, NEXT_HOP, LOCAL_PREF, MED, COMMUNITY, etc.</td></tr>
+            <tr><td>NLRI</td><td>Network Layer Reachability Information — list of advertised prefixes</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="msg-item" data-msg="2">
+        <div class="msg-item-header">
+          <span class="msg-num" style="background:rgba(74,222,128,.2);color:var(--green)">3</span>
+          <h4>KEEPALIVE</h4>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="msg-item-body">
+          <p>Sent periodically to keep the session alive. No payload — just the 19-byte BGP header. Sent every 1/3 of the hold time (default every 30s). Also sent in response to OPEN to acknowledge the session.</p>
+          <table class="msg-field-table">
+            <tr><td>Marker</td><td>16 bytes of 0xFF — synchronization and authentication marker</td></tr>
+            <tr><td>Length</td><td>19 (header only)</td></tr>
+            <tr><td>Type</td><td>4 (KEEPALIVE)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="msg-item" data-msg="3">
+        <div class="msg-item-header">
+          <span class="msg-num" style="background:rgba(248,113,113,.2);color:var(--red)">4</span>
+          <h4>NOTIFICATION</h4>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="msg-item-body">
+          <p>Sent when an error is detected. Immediately closes the TCP connection after sending. The receiving router must reset the session.</p>
+          <table class="msg-field-table">
+            <tr><td>Error Code</td><td>1=Header, 2=OPEN, 3=UPDATE, 4=Hold Timer, 5=FSM, 6=Cease</td></tr>
+            <tr><td>Error Subcode</td><td>Further qualification of the error type</td></tr>
+            <tr><td>Data</td><td>Variable-length field with diagnostic data</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="msg-item" data-msg="4">
+        <div class="msg-item-header">
+          <span class="msg-num" style="background:rgba(251,191,36,.2);color:var(--gold)">5</span>
+          <h4>ROUTE-REFRESH (RFC 2918)</h4>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="msg-item-body">
+          <p>Requests a peer to re-send its routing table for a given address family without tearing down the session. Used after policy changes. Both peers must advertise the Route Refresh capability in OPEN.</p>
+          <table class="msg-field-table">
+            <tr><td>AFI</td><td>Address Family Identifier (1=IPv4, 2=IPv6)</td></tr>
+            <tr><td>Reserved</td><td>1 byte, must be 0</td></tr>
+            <tr><td>SAFI</td><td>Subsequent AFI (1=unicast, 2=multicast, 128=MPLS VPN)</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 6 — ROUTE HIJACKING
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">Route Hijacking Demo</div>
+    <div id="hijack-wrap">
+      <div id="hijack-canvas-wrap">
+        <canvas id="hijack-canvas" height="320"></canvas>
+      </div>
+      <div class="hijack-explain">
+        <div class="hijack-box border-green">
+          <h4 style="color:var(--green)">Legitimate Route</h4>
+          <p>AS15169 (Google) announces <code>8.8.8.0/24</code>. All traffic destined for 8.8.8.x is forwarded to Google's routers via the best path.</p>
+        </div>
+        <div class="hijack-box border-red">
+          <h4 style="color:var(--red)">BGP Hijack</h4>
+          <p>Malicious AS announces <code>8.8.8.0/25</code> — a more-specific prefix. BGP always prefers the longer prefix match. Traffic to the first half of 8.8.8.x now flows to the attacker.</p>
+        </div>
+        <div class="hijack-box border-blue">
+          <h4 style="color:var(--blue)">RPKI / ROA Mitigation</h4>
+          <p>Resource Public Key Infrastructure (RPKI) lets the legitimate owner cryptographically sign their prefix. A Route Origin Authorization (ROA) declares which AS is allowed to originate a prefix and the maximum prefix length. RPKI-validating routers drop invalid announcements.</p>
+        </div>
+        <div class="hijack-box" style="border-color:rgba(251,191,36,.3)">
+          <h4 style="color:var(--gold)">Real-World Examples</h4>
+          <p>2010: China Telecom hijacked ~37,000 prefixes for 18 min.<br>2018: Mylobot malware hijacked AWS routes to steal crypto.<br>2022: Vodafone AS55410 leaked routes affecting Facebook.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 7 — eBGP vs iBGP
+═══════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-title">eBGP vs iBGP</div>
+    <div id="ebgp-wrap">
+      <div class="ebgp-diagram">
+        <canvas id="ebgp-canvas" height="320"></canvas>
+      </div>
+      <div class="diff-table-wrap">
+        <table class="diff-table">
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>eBGP</th>
+              <th>iBGP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-prop">Peers</td>
+              <td class="col-ebgp">Different ASes</td>
+              <td class="col-ibgp">Same AS</td>
+            </tr>
+            <tr>
+              <td class="col-prop">TTL default</td>
+              <td class="col-ebgp">1 (direct links only)</td>
+              <td class="col-ibgp">255 (loopback possible)</td>
+            </tr>
+            <tr>
+              <td class="col-prop">NEXT_HOP</td>
+              <td class="col-ebgp">Set to self</td>
+              <td class="col-ibgp">Unchanged (neighbor's IP)</td>
+            </tr>
+            <tr>
+              <td class="col-prop">LOCAL_PREF</td>
+              <td class="col-ebgp">Stripped on export</td>
+              <td class="col-ibgp">Propagated unchanged</td>
+            </tr>
+            <tr>
+              <td class="col-prop">AS_PATH</td>
+              <td class="col-ebgp">Own AS prepended</td>
+              <td class="col-ibgp">Unchanged</td>
+            </tr>
+            <tr>
+              <td class="col-prop">Split horizon</td>
+              <td class="col-ebgp">N/A</td>
+              <td class="col-ibgp">Routes NOT re-advertised to other iBGP peers</td>
+            </tr>
+            <tr>
+              <td class="col-prop">Full mesh</td>
+              <td class="col-ebgp">Not required</td>
+              <td class="col-ibgp">Required (or Route Reflector / Confederation)</td>
+            </tr>
+            <tr>
+              <td class="col-prop">Admin distance</td>
+              <td class="col-ebgp">20</td>
+              <td class="col-ibgp">200</td>
+            </tr>
+            <tr>
+              <td class="col-prop">MED propagated</td>
+              <td class="col-ebgp">To neighbors (optional)</td>
+              <td class="col-ibgp">Yes, within AS</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// TOPOLOGY CANVAS
+// ══════════════════════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('topology-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const NODES = [
+    { id: 'AS1',  label: 'AS7018', org: 'AT&T',       type: 'tier1', prefix: '12.0.0.0/8',       rx: .50, ry: .12 },
+    { id: 'AS2',  label: 'AS174',  org: 'Cogent',     type: 'tier1', prefix: '38.0.0.0/8',        rx: .82, ry: .20 },
+    { id: 'AS3',  label: 'AS3356', org: 'Tier 2 ISP', type: 'tier2', prefix: '4.0.0.0/9',         rx: .22, ry: .35 },
+    { id: 'AS4',  label: 'AS1299', org: 'Telia',      type: 'tier2', prefix: '62.0.0.0/8',        rx: .72, ry: .50 },
+    { id: 'AS5',  label: 'AS65001',org: 'Enterprise', type: 'ent',   prefix: '203.0.113.0/24',    rx: .12, ry: .65 },
+    { id: 'AS6',  label: 'AS13335',org: 'Cloudflare', type: 'cdn',   prefix: '104.16.0.0/12',     rx: .50, ry: .55 },
+    { id: 'AS7',  label: 'AS11537',org: 'University', type: 'uni',   prefix: '198.51.100.0/24',   rx: .28, ry: .82 },
+    { id: 'AS8',  label: 'AS36351',org: 'Datacenter', type: 'uni',   prefix: '192.0.2.0/24',      rx: .78, ry: .80 },
+  ];
+
+  const EDGES = [
+    ['AS1','AS2'],['AS1','AS3'],['AS1','AS4'],
+    ['AS2','AS3'],['AS2','AS4'],
+    ['AS3','AS5'],['AS3','AS6'],['AS3','AS7'],
+    ['AS4','AS6'],['AS4','AS8'],
+    ['AS1','AS6'],['AS2','AS6'],
+  ];
+
+  const COLORS = {
+    tier1: '#fbbf24', tier2: '#38bdf8', ent: '#4ade80', cdn: '#a78bfa', uni: '#fb923c'
+  };
+
+  let W, H;
+  let nodes = [];
+  let selectedSrc = null;
+  let selectedDst = null;
+  let animParticles = [];
+  let animPath = [];
+  let animFrame = null;
+
+  function hexPath(cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 180 * (60 * i - 30);
+      const x = cx + r * Math.cos(a);
+      const y = cy + r * Math.sin(a);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  function layout() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W = rect.width;
+    H = 460;
+    canvas.width = W;
+    canvas.height = H;
+    nodes = NODES.map(n => ({
+      ...n,
+      x: n.rx * W,
+      y: n.ry * H,
+      r: Math.min(W, H) * 0.055,
+    }));
+  }
+
+  function drawGrid() {
+    const step = 30;
+    ctx.strokeStyle = 'rgba(56,189,248,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+  }
+
+  function drawEdges() {
+    EDGES.forEach(([a, b]) => {
+      const na = nodes.find(n => n.id === a);
+      const nb = nodes.find(n => n.id === b);
+      ctx.beginPath();
+      ctx.moveTo(na.x, na.y);
+      ctx.lineTo(nb.x, nb.y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  }
+
+  function drawPathEdges(path) {
+    if (!path || path.length < 2) return;
+    for (let i = 0; i < path.length - 1; i++) {
+      const na = nodes.find(n => n.id === path[i]);
+      const nb = nodes.find(n => n.id === path[i + 1]);
+      ctx.beginPath();
+      ctx.moveTo(na.x, na.y);
+      ctx.lineTo(nb.x, nb.y);
+      ctx.strokeStyle = 'rgba(74,222,128,0.8)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  function drawNodes() {
+    nodes.forEach(n => {
+      const color = COLORS[n.type];
+      const isSelected = (n.id === (selectedSrc && selectedSrc.id)) || (n.id === (selectedDst && selectedDst.id));
+
+      // glow
+      if (isSelected) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = color;
+      }
+
+      // fill
+      hexPath(n.x, n.y, n.r);
+      const grad = ctx.createRadialGradient(n.x, n.y - n.r * .3, 0, n.x, n.y, n.r);
+      grad.addColorStop(0, color + '33');
+      grad.addColorStop(1, color + '0a');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // border
+      hexPath(n.x, n.y, n.r);
+      ctx.strokeStyle = isSelected ? color : color + '88';
+      ctx.lineWidth = isSelected ? 2.5 : 1.5;
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+
+      // labels
+      const fs = Math.max(9, n.r * 0.38);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = color;
+      ctx.font = `700 ${fs}px monospace`;
+      ctx.fillText(n.label, n.x, n.y - fs * 0.4);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = `600 ${fs * 0.8}px sans-serif`;
+      ctx.fillText(n.org, n.x, n.y + fs * 0.5);
+
+      ctx.fillStyle = 'rgba(148,163,184,0.7)';
+      ctx.font = `${fs * 0.65}px monospace`;
+      ctx.fillText(n.prefix, n.x, n.y + fs * 1.4);
+    });
+  }
+
+  function drawParticles() {
+    animParticles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(74,222,128,${p.alpha})`;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#4ade80';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    drawGrid();
+    drawEdges();
+    drawPathEdges(animPath);
+    drawNodes();
+    drawParticles();
+  }
+
+  // BFS path between two nodes
+  function findPath(srcId, dstId) {
+    const adj = {};
+    nodes.forEach(n => { adj[n.id] = []; });
+    EDGES.forEach(([a, b]) => { adj[a].push(b); adj[b].push(a); });
+    const queue = [[srcId]];
+    const visited = new Set([srcId]);
+    while (queue.length) {
+      const path = queue.shift();
+      const cur = path[path.length - 1];
+      if (cur === dstId) return path;
+      for (const nb of adj[cur]) {
+        if (!visited.has(nb)) { visited.add(nb); queue.push([...path, nb]); }
+      }
+    }
+    return null;
+  }
+
+  function startAnimation(path) {
+    animPath = path;
+    animParticles = [];
+    let delay = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const na = nodes.find(n => n.id === path[i]);
+      const nb = nodes.find(n => n.id === path[i + 1]);
+      for (let j = 0; j < 5; j++) {
+        animParticles.push({ na, nb, t: 0, r: 4, alpha: 0, segDelay: delay + j * 0.08, seg: i });
+      }
+      delay += 0.6;
+    }
+    let totalTime = 0;
+    const duration = path.length * 0.6 + 0.5;
+
+    function step() {
+      totalTime += 0.016;
+      animParticles.forEach(p => {
+        const t = Math.max(0, (totalTime - p.segDelay) / 0.5);
+        p.t = Math.min(1, t);
+        p.alpha = p.t < 0.1 ? p.t * 10 : p.t > 0.9 ? (1 - p.t) * 10 : 1;
+        p.x = p.na.x + (p.nb.x - p.na.x) * p.t;
+        p.y = p.na.y + (p.nb.y - p.na.y) * p.t;
+      });
+      render();
+      if (totalTime < duration + 0.5) {
+        animFrame = requestAnimationFrame(step);
+      } else {
+        animParticles = [];
+        render();
+      }
+    }
+    if (animFrame) cancelAnimationFrame(animFrame);
+    animFrame = requestAnimationFrame(step);
+  }
+
+  canvas.addEventListener('click', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const my = (e.clientY - rect.top) * (H / rect.height);
+
+    let hit = null;
+    for (const n of nodes) {
+      const dx = mx - n.x, dy = my - n.y;
+      if (Math.sqrt(dx * dx + dy * dy) < n.r) { hit = n; break; }
+    }
+    if (!hit) return;
+
+    if (!selectedSrc) {
+      selectedSrc = hit;
+      animPath = [];
+      render();
+    } else if (hit.id !== selectedSrc.id) {
+      selectedDst = hit;
+      const path = findPath(selectedSrc.id, selectedDst.id);
+      if (path) {
+        startAnimation(path);
+        updateRouteTable(selectedSrc);
+      }
+      selectedSrc = null;
+      selectedDst = null;
+    } else {
+      selectedSrc = null;
+      animPath = [];
+      render();
+    }
+  });
+
+  window.addEventListener('resize', () => { layout(); render(); });
+  layout();
+  render();
+  // Show initial route table
+  updateRouteTable(nodes.find(n => n.id === 'AS3'));
+
+  window._topoNodes = nodes;
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// ROUTE TABLE
+// ══════════════════════════════════════════════════════════════════════
+function updateRouteTable(asNode) {
+  const label = document.getElementById('rib-as-label');
+  if (!asNode) return;
+
+  const ribData = {
+    'AS3': {
+      name: 'AS3356 (Tier 2 ISP)',
+      routes: [
+        { net: '12.0.0.0/8',        nh: '10.1.3.1', path: 'AS7018',           lp: 100, med: 0,   origin: 'i', weight: 0,   best: true },
+        { net: '38.0.0.0/8',        nh: '10.1.3.2', path: 'AS174',            lp: 100, med: 10,  origin: 'i', weight: 0,   best: true },
+        { net: '104.16.0.0/12',     nh: '10.3.6.1', path: 'AS13335',          lp: 100, med: 0,   origin: 'i', weight: 0,   best: true },
+        { net: '62.0.0.0/8',        nh: '10.1.3.1', path: 'AS7018 AS1299',    lp: 100, med: 50,  origin: 'i', weight: 0,   best: false },
+        { net: '62.0.0.0/8',        nh: '10.1.3.2', path: 'AS174 AS1299',     lp: 100, med: 10,  origin: 'i', weight: 0,   best: true  },
+        { net: '203.0.113.0/24',    nh: '10.3.5.1', path: 'AS65001',          lp: 150, med: 0,   origin: 'i', weight: 0,   best: true  },
+        { net: '198.51.100.0/24',   nh: '10.3.7.1', path: 'AS11537',          lp: 100, med: 0,   origin: '?', weight: 0,   best: true  },
+      ],
+      decisionStep: 'localpref'
+    },
+    'AS1': {
+      name: 'AS7018 (AT&T - Tier 1)',
+      routes: [
+        { net: '38.0.0.0/8',        nh: '192.168.1.2', path: 'AS174',         lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+        { net: '4.0.0.0/9',         nh: '192.168.1.3', path: 'AS3356',        lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+        { net: '62.0.0.0/8',        nh: '192.168.1.4', path: 'AS1299',        lp: 100, med: 20,  origin: 'i', weight: 0, best: true },
+        { net: '104.16.0.0/12',     nh: '10.1.6.1',   path: 'AS13335',        lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+        { net: '203.0.113.0/24',    nh: '192.168.1.3', path: 'AS3356 AS65001',lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+      ],
+      decisionStep: 'med'
+    },
+    'default': {
+      name: asNode.label + ' (' + asNode.org + ')',
+      routes: [
+        { net: '0.0.0.0/0',         nh: '10.0.0.1', path: 'AS7018',           lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+        { net: '12.0.0.0/8',        nh: '10.0.0.1', path: 'AS7018',           lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+        { net: '38.0.0.0/8',        nh: '10.0.0.2', path: 'AS174',            lp: 100, med: 10,  origin: 'i', weight: 0, best: true },
+        { net: '104.16.0.0/12',     nh: '10.0.0.3', path: 'AS13335',          lp: 100, med: 0,   origin: 'i', weight: 0, best: true },
+      ],
+      decisionStep: 'aspath'
+    }
+  };
+
+  const data = ribData[asNode.id] || ribData['default'];
+  label.textContent = data.name;
+
+  const tbody = document.getElementById('route-tbody');
+  tbody.innerHTML = '';
+  data.routes.forEach(r => {
+    const tr = document.createElement('tr');
+    if (r.best) tr.className = 'best-route';
+    const origClass = r.origin === 'i' ? 'tag-i' : r.origin === 'e' ? 'tag-e' : 'tag-inc';
+    const origLabel = r.origin === 'i' ? 'IGP (i)' : r.origin === 'e' ? 'EGP (e)' : 'Incomplete (?)';
+    tr.innerHTML = `
+      <td>${r.best ? '<strong>' + r.net + '</strong>' : r.net}</td>
+      <td style="font-family:monospace;font-size:.75rem">${r.nh}</td>
+      <td style="font-family:monospace;font-size:.75rem">${r.path}</td>
+      <td>${r.lp}</td>
+      <td>${r.med}</td>
+      <td><span class="tag ${origClass}">${origLabel}</span></td>
+      <td>${r.weight}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Decision steps
+  const steps = document.querySelectorAll('.dstep');
+  steps.forEach(s => {
+    s.className = 'dstep ' + (s.dataset.step === data.decisionStep ? 'active' : 'inactive');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// FSM CANVAS
+// ══════════════════════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('fsm-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const STATES = [
+    { id: 0, name: 'Idle',        color: '#f87171' },
+    { id: 1, name: 'Connect',     color: '#fb923c' },
+    { id: 2, name: 'Active',      color: '#fbbf24' },
+    { id: 3, name: 'OpenSent',    color: '#38bdf8' },
+    { id: 4, name: 'OpenConfirm', color: '#a78bfa' },
+    { id: 5, name: 'Established', color: '#4ade80' },
+  ];
+
+  const FSM_DETAIL = [
+    {
+      name: 'Idle',
+      desc: 'Initial state. BGP is waiting for a Start event (e.g., operator enables BGP). Resources are initialized. All incoming connections are refused.',
+      events: ['Start event → Connect', 'All errors → remain Idle'],
+      msgs: []
+    },
+    {
+      name: 'Connect',
+      desc: 'BGP is waiting for the TCP connection to complete. A ConnectRetry timer is running. If TCP succeeds, BGP moves forward; if it fails, moves to Active.',
+      events: ['TCP success → OpenSent', 'TCP fail → Active', 'ConnectRetry timer → Active', 'Stop → Idle'],
+      msgs: []
+    },
+    {
+      name: 'Active',
+      desc: 'BGP is actively trying to establish a TCP connection. Listens for incoming connections and retries outgoing ones. If connection succeeds, moves to OpenSent.',
+      events: ['TCP success → OpenSent', 'ConnectRetry expire → Connect', 'Stop → Idle'],
+      msgs: []
+    },
+    {
+      name: 'OpenSent',
+      desc: 'TCP is established. The local router has sent an OPEN message and is waiting for the peer\'s OPEN. Hold timer starts (usually 4 minutes initial).',
+      events: ['OPEN received → OpenConfirm', 'Error in OPEN → send NOTIFICATION → Idle', 'Hold timer expire → Idle'],
+      msgs: ['OPEN']
+    },
+    {
+      name: 'OpenConfirm',
+      desc: 'OPEN messages exchanged. Waiting for a KEEPALIVE (or NOTIFICATION) from the peer. Sends KEEPALIVE. Hold timer running with negotiated value.',
+      events: ['KEEPALIVE received → Established', 'NOTIFICATION received → Idle', 'Hold timer expire → Idle'],
+      msgs: ['OPEN', 'KEEPALIVE']
+    },
+    {
+      name: 'Established',
+      desc: 'Session is up! Routes are exchanged via UPDATE messages. KEEPALIVE messages are sent every 1/3 of the hold time. This is the normal operating state.',
+      events: ['KEEPALIVE received → reset hold timer', 'UPDATE received → process route', 'NOTIFICATION or error → Idle'],
+      msgs: ['OPEN', 'KEEPALIVE', 'UPDATE', 'NOTIFICATION']
+    },
+  ];
+
+  let W, H;
+  let statePositions = [];
+  let currentState = 0;
+  let animatingFSM = false;
+  let fsmAnimFrame = null;
+  let currentAnimState = -1;
+  let animProgress = 0;
+
+  const MSG_COLORS = { OPEN: '#38bdf8', KEEPALIVE: '#4ade80', UPDATE: '#a78bfa', NOTIFICATION: '#f87171' };
+
+  function layout() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W = rect.width; H = 360;
+    canvas.width = W; canvas.height = H;
+
+    const cx = W / 2, cy = H / 2;
+    const rx = W * 0.37, ry = H * 0.38;
+    statePositions = STATES.map((s, i) => {
+      const angle = Math.PI / 180 * (60 * i - 90);
+      return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle), r: Math.min(W, H) * 0.07 };
+    });
+  }
+
+  function drawFSM() {
+    ctx.clearRect(0, 0, W, H);
+
+    // draw arrows between states (circular)
+    for (let i = 0; i < STATES.length; i++) {
+      const a = statePositions[i];
+      const b = statePositions[(i + 1) % STATES.length];
+      const isActive = animatingFSM && currentAnimState === i;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = isActive ? 'rgba(74,222,128,0.9)' : 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = isActive ? 2.5 : 1.5;
+      ctx.stroke();
+
+      // Arrowhead at b
+      const angle = Math.atan2(b.y - a.y, b.x - a.x);
+      const offset = b.r + 4;
+      const tx = b.x - offset * Math.cos(angle);
+      const ty = b.y - offset * Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx - 10 * Math.cos(angle - 0.4), ty - 10 * Math.sin(angle - 0.4));
+      ctx.lineTo(tx - 10 * Math.cos(angle + 0.4), ty - 10 * Math.sin(angle + 0.4));
+      ctx.closePath();
+      ctx.fillStyle = isActive ? 'rgba(74,222,128,0.9)' : 'rgba(255,255,255,0.15)';
+      ctx.fill();
+    }
+
+    // Animated particle
+    if (animatingFSM && currentAnimState >= 0) {
+      const a = statePositions[currentAnimState];
+      const b = statePositions[(currentAnimState + 1) % STATES.length];
+      const t = animProgress;
+      const px = a.x + (b.x - a.x) * t;
+      const py = a.y + (b.y - a.y) * t;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#4ade80';
+      ctx.shadowBlur = 14; ctx.shadowColor = '#4ade80';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // State nodes
+    STATES.forEach((s, i) => {
+      const pos = statePositions[i];
+      const isActive = i === currentState;
+      const isHighlighted = animatingFSM && i <= currentAnimState;
+
+      if (isActive) { ctx.shadowBlur = 18; ctx.shadowColor = s.color; }
+
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, pos.r, 0, Math.PI * 2);
+      ctx.fillStyle = isActive ? s.color + '33' : isHighlighted ? s.color + '22' : 'rgba(255,255,255,0.04)';
+      ctx.fill();
+      ctx.strokeStyle = isActive ? s.color : isHighlighted ? s.color + 'aa' : 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = isActive ? 2.5 : 1.5;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isActive ? s.color : s.color + 'cc';
+      const fs = Math.max(8, pos.r * 0.35);
+      ctx.font = `700 ${fs}px sans-serif`;
+      ctx.fillText(s.name, pos.x, pos.y + fs * 0.4);
+    });
+  }
+
+  function selectState(idx) {
+    currentState = idx;
+    const detail = FSM_DETAIL[idx];
+    document.getElementById('fsm-state-name').textContent = detail.name;
+    document.getElementById('fsm-state-desc').textContent = detail.desc;
+    const evList = document.getElementById('fsm-events');
+    evList.innerHTML = detail.events.map(e => `<li>${e}</li>`).join('');
+    const msgRow = document.getElementById('fsm-msgs');
+    msgRow.innerHTML = detail.msgs.map(m => `<span class="msg-badge msg-${m.toLowerCase().replace('-','')}">${m}</span>`).join('');
+    drawFSM();
+  }
+
+  canvas.addEventListener('click', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const my = (e.clientY - rect.top) * (H / rect.height);
+    for (let i = 0; i < statePositions.length; i++) {
+      const p = statePositions[i];
+      const dx = mx - p.x, dy = my - p.y;
+      if (Math.sqrt(dx * dx + dy * dy) < p.r) { selectState(i); return; }
+    }
+  });
+
+  document.getElementById('fsm-animate-btn').addEventListener('click', function() {
+    if (animatingFSM) return;
+    animatingFSM = true;
+    currentAnimState = 0;
+    animProgress = 0;
+    currentState = 0;
+
+    function step() {
+      animProgress += 0.025;
+      if (animProgress >= 1) {
+        animProgress = 0;
+        currentAnimState++;
+        currentState = currentAnimState % STATES.length;
+        selectState(currentState);
+        if (currentAnimState >= STATES.length - 1) {
+          animatingFSM = false;
+          currentAnimState = -1;
+          drawFSM();
+          return;
+        }
+      }
+      drawFSM();
+      fsmAnimFrame = requestAnimationFrame(step);
+    }
+    fsmAnimFrame = requestAnimationFrame(step);
+  });
+
+  window.addEventListener('resize', () => { layout(); drawFSM(); });
+  layout();
+  selectState(0);
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// MSG ACCORDION
+// ══════════════════════════════════════════════════════════════════════
+document.querySelectorAll('.msg-item-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const item = header.closest('.msg-item');
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.msg-item').forEach(i => i.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// HIJACK CANVAS
+// ══════════════════════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('hijack-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  let tick = 0;
+  let rafId;
+
+  const legit = { x: 0, y: 0, label: 'AS15169\n(Google)', prefix: '8.8.8.0/24', color: '#4ade80' };
+  const attacker = { x: 0, y: 0, label: 'AS99999\n(Attacker)', prefix: '8.8.8.0/25', color: '#f87171' };
+  const transit = { x: 0, y: 0, label: 'Transit\nAS174', color: '#38bdf8' };
+  const user = { x: 0, y: 0, label: 'AS65100\n(User)', color: '#e2e8f0' };
+
+  function layout() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W = rect.width; H = 320;
+    canvas.width = W; canvas.height = H;
+
+    legit.x    = W * 0.15; legit.y    = H * 0.30;
+    attacker.x = W * 0.15; attacker.y = H * 0.72;
+    transit.x  = W * 0.55; transit.y  = H * 0.28;
+    user.x     = W * 0.82; user.y     = H * 0.50;
+  }
+
+  function drawNode(n, r) {
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = n.color + '1a';
+    ctx.fill();
+    ctx.strokeStyle = n.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = n.color;
+    ctx.font = '700 10px monospace';
+    ctx.textAlign = 'center';
+    const lines = n.label.split('\n');
+    lines.forEach((l, i) => ctx.fillText(l, n.x, n.y - (lines.length - 1) * 6 + i * 13));
+    if (n.prefix) {
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '9px monospace';
+      ctx.fillText(n.prefix, n.x, n.y + r + 12);
+    }
+  }
+
+  function drawArrow(from, to, color, label, dashed, flip) {
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    const r = 28;
+    const sx = from.x + r * Math.cos(angle);
+    const sy = from.y + r * Math.sin(angle);
+    const ex = to.x - r * Math.cos(angle);
+    const ey = to.y - r * Math.sin(angle);
+
+    ctx.beginPath();
+    ctx.moveTo(sx, sy); ctx.lineTo(ex, ey);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = dashed ? 2 : 2;
+    if (dashed) ctx.setLineDash([6, 4]); else ctx.setLineDash([]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // arrowhead
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - 10 * Math.cos(angle - .4), ey - 10 * Math.sin(angle - .4));
+    ctx.lineTo(ex - 10 * Math.cos(angle + .4), ey - 10 * Math.sin(angle + .4));
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    if (label) {
+      const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+      const perp = flip ? -1 : 1;
+      const lx = mx + perp * 12 * Math.sin(angle);
+      const ly = my - perp * 12 * Math.cos(angle);
+      ctx.fillStyle = color;
+      ctx.font = '700 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, lx, ly);
+    }
+  }
+
+  function drawPacket(from, to, t, color) {
+    const x = from.x + (to.x - from.x) * t;
+    const y = from.y + (to.y - from.y) * t;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 10; ctx.shadowColor = color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    tick += 0.012;
+
+    // Background label
+    ctx.fillStyle = 'rgba(74,222,128,0.06)';
+    ctx.fillRect(legit.x - 60, legit.y - 50, 120, 100);
+    ctx.fillStyle = 'rgba(248,113,113,0.06)';
+    ctx.fillRect(attacker.x - 60, attacker.y - 50, 120, 100);
+
+    // Edges: legitimate route
+    drawArrow(legit, transit, '#4ade8088', '8.8.8.0/24');
+    drawArrow(transit, user, '#4ade8088', '8.8.8.0/24', false, true);
+
+    // Hijack route (dashed)
+    drawArrow(attacker, transit, '#f8717188', '8.8.8.0/25', true);
+    drawArrow(attacker, user, '#f8717166', '8.8.8.0/25 ✓ (more specific)', true);
+
+    // Animated packets
+    const t1 = (tick * 0.5) % 1;
+    const t2 = ((tick * 0.5) + 0.4) % 1;
+
+    // Legit traffic going to attacker after hijack
+    drawPacket(user, attacker, t1, '#f87171');
+    drawPacket(user, attacker, t2, '#f87171');
+
+    // nodes
+    drawNode(legit, 28);
+    drawNode(attacker, 28);
+    drawNode(transit, 28);
+    drawNode(user, 28);
+
+    // Warning label
+    ctx.fillStyle = '#f87171';
+    ctx.font = '700 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠ Traffic diverted to attacker', W / 2, H - 10);
+
+    rafId = requestAnimationFrame(render);
+  }
+
+  window.addEventListener('resize', () => { layout(); });
+  layout();
+  render();
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// eBGP vs iBGP CANVAS
+// ══════════════════════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('ebgp-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+
+  function layout() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W = rect.width; H = 320;
+    canvas.width = W; canvas.height = H;
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = 14;
+    const halfW = W / 2;
+
+    // AS65001 box (left)
+    ctx.strokeStyle = 'rgba(56,189,248,0.4)';
+    ctx.fillStyle = 'rgba(56,189,248,0.05)';
+    ctx.lineWidth = 2;
+    roundRect(pad, pad + 20, halfW - pad * 2 - 10, H - pad * 2 - 20, 10);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('AS65001 (iBGP full mesh)', pad + 10, pad + 16);
+
+    // AS65002 box (right)
+    ctx.strokeStyle = 'rgba(74,222,128,0.4)';
+    ctx.fillStyle = 'rgba(74,222,128,0.05)';
+    roundRect(halfW + 10, pad + 20, halfW - pad - 10, H - pad * 2 - 20, 10);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#4ade80';
+    ctx.font = '700 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('AS65002', halfW + 20, pad + 16);
+
+    // iBGP routers (3 inside left AS)
+    const ibgpNodes = [
+      { x: halfW * 0.22, y: H * 0.35, label: 'R1' },
+      { x: halfW * 0.60, y: H * 0.30, label: 'R2' },
+      { x: halfW * 0.38, y: H * 0.70, label: 'R3' },
+    ];
+
+    // iBGP edges (full mesh) — dashed
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(56,189,248,0.5)';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < ibgpNodes.length; i++) {
+      for (let j = i + 1; j < ibgpNodes.length; j++) {
+        ctx.beginPath();
+        ctx.moveTo(ibgpNodes[i].x, ibgpNodes[i].y);
+        ctx.lineTo(ibgpNodes[j].x, ibgpNodes[j].y);
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
+
+    ibgpNodes.forEach(n => {
+      ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(56,189,248,0.15)'; ctx.fill();
+      ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#38bdf8'; ctx.font = '700 11px monospace';
+      ctx.textAlign = 'center'; ctx.fillText(n.label, n.x, n.y + 4);
+    });
+
+    // iBGP label
+    ctx.fillStyle = 'rgba(56,189,248,0.6)';
+    ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('iBGP (same AS)', halfW * 0.40, H * 0.88);
+
+    // eBGP router (right AS)
+    const er = { x: halfW + (halfW - pad) * 0.45, y: H * 0.50 };
+    ctx.beginPath(); ctx.arc(er.x, er.y, 20, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(74,222,128,0.15)'; ctx.fill();
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#4ade80'; ctx.font = '700 11px monospace';
+    ctx.textAlign = 'center'; ctx.fillText('R4', er.x, er.y + 4);
+
+    // eBGP edge between R2 (border router) and R4
+    const border = ibgpNodes[1];
+    ctx.beginPath();
+    ctx.moveTo(border.x, border.y); ctx.lineTo(er.x, er.y);
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // eBGP label on edge
+    const emx = (border.x + er.x) / 2;
+    const emy = (border.y + er.y) / 2 - 12;
+    ctx.fillStyle = '#4ade80'; ctx.font = '700 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('eBGP', emx, emy);
+    ctx.fillStyle = 'rgba(74,222,128,0.5)';
+    ctx.font = '8px monospace';
+    ctx.fillText('(different AS)', emx, emy + 11);
+
+    // TTL annotations
+    ctx.fillStyle = 'rgba(251,191,36,0.7)';
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TTL=255 (loopback ok)', halfW * 0.38, H * 0.96);
+    ctx.fillText('TTL=1 (direct only)', emx, emy + 24);
+  }
+
+  window.addEventListener('resize', () => { layout(); draw(); });
+  layout();
+  draw();
+})();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

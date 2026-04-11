@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tls.ximg.app</title>
+<link rel="icon" href="/favicon.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080d14;
+    --bg2: #0d1520;
+    --bg3: #111c2e;
+    --bg4: #162236;
+    --green: #4ade80;
+    --green-dim: #166534;
+    --blue: #38bdf8;
+    --blue-dim: #0c4a6e;
+    --yellow: #fbbf24;
+    --purple: #c084fc;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --border: #1e3050;
+    --glow-green: 0 0 12px #4ade8066;
+    --glow-blue: 0 0 12px #38bdf866;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* Header */
+  .site-header {
+    text-align: center;
+    padding: 48px 20px 32px;
+    background: linear-gradient(180deg, #0d1a2a 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .site-header h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    background: linear-gradient(135deg, var(--green) 0%, var(--blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .site-header .subtitle {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Main layout */
+  .main-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 20px 0;
+  }
+
+  /* Version tabs */
+  .version-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    width: fit-content;
+    margin: 0 auto 28px;
+  }
+  .version-tab {
+    padding: 10px 28px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+  }
+  .version-tab.active {
+    background: var(--bg4);
+    color: var(--text);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .version-tab:hover:not(.active) { color: var(--text); }
+
+  /* Controls bar */
+  .controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn:hover { background: var(--bg4); border-color: #2a4060; }
+  .btn.primary { background: #0f2a1a; border-color: var(--green-dim); color: var(--green); }
+  .btn.primary:hover { background: #143520; box-shadow: var(--glow-green); }
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .speed-control input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    height: 4px;
+    background: var(--bg4);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .speed-control input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--blue);
+    cursor: pointer;
+    box-shadow: var(--glow-blue);
+  }
+  .rtt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border: 1px solid;
+  }
+  .rtt-badge.tls12 { background: #1a0d00; border-color: #92400e; color: var(--yellow); }
+  .rtt-badge.tls13 { background: #0a1a10; border-color: var(--green-dim); color: var(--green); }
+
+  /* Handshake diagram */
+  .diagram-wrapper {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 16px 20px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .diagram-columns {
+    display: grid;
+    grid-template-columns: 140px 1fr 140px;
+    gap: 0;
+    position: relative;
+  }
+
+  .endpoint-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .endpoint-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 7px 18px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid;
+  }
+  .endpoint-label.client { color: var(--green); border-color: var(--green-dim); background: #0a1a10; }
+  .endpoint-label.server { color: var(--blue); border-color: var(--blue-dim); background: #071524; }
+  .endpoint-line {
+    width: 2px;
+    flex: 1;
+    min-height: 400px;
+  }
+  .endpoint-line.client { background: linear-gradient(180deg, var(--green) 0%, var(--green-dim) 100%); box-shadow: var(--glow-green); }
+  .endpoint-line.server { background: linear-gradient(180deg, var(--blue) 0%, var(--blue-dim) 100%); box-shadow: var(--glow-blue); }
+
+  /* Steps column */
+  .steps-col {
+    padding: 0 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 44px; /* align with line after label */
+  }
+
+  .step-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.15s;
+    padding: 0 4px;
+  }
+  .step-row:hover { background: #0f1e30; }
+  .step-row.active-step { background: #0f1e30; box-shadow: 0 0 0 1px #2a4060; }
+  .step-row.highlighted { background: #121f30; }
+
+  /* RTT bracket */
+  .rtt-bracket {
+    position: absolute;
+    left: -12px;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    border-left: 2px solid;
+    border-top: 2px solid;
+    border-bottom: 2px solid;
+    border-radius: 3px 0 0 3px;
+    opacity: 0.5;
+  }
+  .rtt-bracket.rtt1 { border-color: var(--yellow); }
+  .rtt-bracket.rtt2 { border-color: var(--purple); }
+  .rtt-label {
+    position: absolute;
+    left: -42px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    opacity: 0.6;
+  }
+  .rtt-label.rtt1 { color: var(--yellow); }
+  .rtt-label.rtt2 { color: var(--purple); }
+
+  /* Arrow */
+  .arrow-container {
+    flex: 1;
+    position: relative;
+    height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  .step-number {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    min-width: 18px;
+    font-weight: 600;
+  }
+  .arrow-line {
+    flex: 1;
+    height: 2px;
+    position: relative;
+    margin: 0 6px;
+    overflow: visible;
+  }
+  .arrow-line.to-server {
+    background: linear-gradient(90deg, var(--green) 0%, var(--blue) 100%);
+  }
+  .arrow-line.to-client {
+    background: linear-gradient(90deg, var(--blue) 0%, var(--green) 100%);
+  }
+  .arrow-line.encrypted {
+    background: none;
+    border-top: 2px dashed;
+  }
+  .arrow-line.encrypted.to-server { border-image: linear-gradient(90deg, var(--green) 0%, var(--blue) 100%) 1; }
+  .arrow-line.encrypted.to-client { border-image: linear-gradient(90deg, var(--blue) 0%, var(--green) 100%) 1; }
+  .arrow-line.bidirectional { background: linear-gradient(90deg, var(--green) 0%, var(--yellow) 50%, var(--blue) 100%); }
+
+  /* Animated travel dot */
+  .travel-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .travel-dot.to-server { background: var(--green); left: 0; box-shadow: 0 0 8px var(--green); }
+  .travel-dot.to-client { background: var(--blue); right: 0; box-shadow: 0 0 8px var(--blue); }
+
+  /* Arrow head */
+  .arrowhead {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+  .arrow-line.to-server .arrowhead {
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left: 8px solid var(--blue);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .arrow-line.to-client .arrowhead {
+    left: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right: 8px solid var(--blue);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .arrow-line.to-server.encrypted .arrowhead { border-left-color: var(--blue); }
+  .arrow-line.to-client.encrypted .arrowhead { border-right-color: var(--green); }
+
+  .step-label-area {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .step-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--bg2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+  }
+  .step-sub {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .encrypted-badge {
+    font-size: 0.55rem;
+    color: var(--yellow);
+    background: #1a1000;
+    border: 1px solid #92400e;
+    border-radius: 3px;
+    padding: 1px 4px;
+    margin-top: 1px;
+  }
+
+  /* App data step */
+  .step-row.appdata .step-name { color: var(--yellow); border-color: #92400e; background: #110e00; }
+  .step-row.appdata .arrow-line { background: linear-gradient(90deg, var(--yellow), var(--yellow)); }
+
+  /* Step dim/active states */
+  .step-row.dim { opacity: 0.3; }
+  .step-row.playing { opacity: 1; }
+  .step-row.done { opacity: 0.65; }
+
+  /* Detail panel */
+  .detail-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 24px;
+    min-height: 160px;
+    transition: all 0.2s;
+  }
+  .detail-panel h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .detail-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .detail-badge.client { background: #0a1a10; color: var(--green); border: 1px solid var(--green-dim); }
+  .detail-badge.server { background: #071524; color: var(--blue); border: 1px solid var(--blue-dim); }
+  .detail-badge.both { background: #1a1000; color: var(--yellow); border: 1px solid #92400e; }
+  .detail-badge.enc { background: #1a0d00; color: var(--yellow); }
+  .detail-desc {
+    color: #94a3b8;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin: 10px 0 16px;
+  }
+  .detail-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .detail-field {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .detail-field-name {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 3px;
+  }
+  .detail-field-val {
+    font-size: 0.8rem;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+  }
+  .detail-crypto {
+    background: #0a1520;
+    border: 1px solid #1a3050;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    color: #7dd3fc;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .detail-crypto .icon { font-size: 1rem; flex-shrink: 0; }
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    color: var(--text-dim);
+    font-size: 0.875rem;
+  }
+
+  /* Section headers */
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Three panel grid */
+  .panels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 700px) {
+    .panels-grid { grid-template-columns: 1fr; }
+    .diagram-columns { grid-template-columns: 90px 1fr 90px; }
+    .endpoint-label { font-size: 0.65rem; padding: 5px 10px; }
+  }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .panel-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-icon { font-size: 1rem; }
+
+  /* Cipher suites */
+  .cipher-suite-block {
+    margin-bottom: 16px;
+  }
+  .cipher-version-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .cipher-name {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--yellow);
+    background: #110e00;
+    border: 1px solid #92400e44;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .cipher-name:hover { border-color: var(--yellow); }
+  .cipher-name.selected { border-color: var(--yellow); box-shadow: 0 0 8px #fbbf2433; }
+  .cipher-parts {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .cipher-parts.visible { display: grid; }
+  .cipher-part {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  .cipher-part-label { font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px; }
+  .cipher-part-val { font-size: 0.72rem; color: var(--text); font-family: monospace; }
+
+  .tls13-ciphers { display: flex; flex-direction: column; gap: 4px; }
+  .tls13-cipher-row {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: var(--green);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .aead-badge { font-size: 0.58rem; background: #0a1a10; border: 1px solid var(--green-dim); color: var(--green); border-radius: 3px; padding: 1px 5px; }
+
+  /* Cert chain */
+  .cert-chain { display: flex; flex-direction: column; gap: 8px; }
+  .cert-node {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .cert-node:hover { border-color: #2a4060; }
+  .cert-node.root { border-left: 3px solid var(--purple); }
+  .cert-node.intermediate { border-left: 3px solid var(--blue); }
+  .cert-node.leaf { border-left: 3px solid var(--green); }
+  .cert-node-title { font-size: 0.78rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .cert-node-sub { font-size: 0.68rem; color: var(--text-dim); }
+  .cert-arrow { text-align: center; color: var(--text-dim); font-size: 0.8rem; margin: 2px 0; }
+
+  /* Key concepts */
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .concept-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .concept-card:hover { background: var(--bg3); border-color: #2a4060; }
+  .concept-card-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .concept-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .concept-body {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+    display: none;
+  }
+  .concept-card.open .concept-body { display: block; }
+  .concept-card.open { background: var(--bg3); border-color: #2a4060; }
+
+  /* Animations */
+  @keyframes shootRight {
+    0%   { left: 0; opacity: 1; }
+    100% { left: calc(100% - 8px); opacity: 1; }
+  }
+  @keyframes shootLeft {
+    0%   { right: 0; opacity: 1; }
+    100% { right: calc(100% - 8px); opacity: 1; }
+  }
+  @keyframes fadeGlow {
+    0%,100% { opacity: 0.5; }
+    50%      { opacity: 1; box-shadow: 0 0 20px var(--green); }
+  }
+  @keyframes pulseBlue {
+    0%,100% { box-shadow: var(--glow-blue); }
+    50%      { box-shadow: 0 0 20px var(--blue); }
+  }
+
+  .animating-dot-right {
+    animation: shootRight var(--dot-duration, 0.6s) linear forwards;
+  }
+  .animating-dot-left {
+    animation: shootLeft var(--dot-duration, 0.6s) linear forwards;
+  }
+
+  /* Step active glow */
+  .step-row.active-step .step-name {
+    box-shadow: 0 0 8px #38bdf844;
+    border-color: #38bdf866;
+  }
+
+  .step-row.appdata.active-step .step-name {
+    box-shadow: 0 0 8px #fbbf2444;
+    border-color: var(--yellow);
+  }
+
+  /* Progress underline for step */
+  .step-progress {
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--green), var(--blue));
+    border-radius: 1px;
+    transition: width 0.1s linear;
+  }
+
+  .step-row.done .step-progress { width: 100%; }
+
+  /* Tooltip on hover */
+  .step-row:hover .step-name { border-color: #2a4060; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>TLS</h1>
+  <p class="subtitle">Transport Layer Security &mdash; Handshake Visualizer</p>
+</header>
+
+<div class="main-container">
+
+  <!-- Version Tabs -->
+  <div class="version-tabs">
+    <button class="version-tab active" id="tab-12" onclick="switchVersion('1.2')">TLS 1.2</button>
+    <button class="version-tab" id="tab-13" onclick="switchVersion('1.3')">TLS 1.3</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <button class="btn primary" id="play-btn" onclick="togglePlay()">
+      <span id="play-icon">&#9654;</span> <span id="play-label">Play</span>
+    </button>
+    <button class="btn" onclick="resetAnimation()">&#8635; Reset</button>
+    <div class="speed-control">
+      <span>Speed</span>
+      <input type="range" id="speed-slider" min="0.5" max="3" step="0.25" value="1" oninput="updateSpeed(this.value)">
+      <span id="speed-label">1x</span>
+    </div>
+    <span class="rtt-badge tls12" id="rtt-12-badge">&#9650; 2 RTTs (TLS 1.2)</span>
+    <span class="rtt-badge tls13" id="rtt-13-badge" style="display:none">&#9650; 1 RTT (TLS 1.3)</span>
+  </div>
+
+  <!-- Handshake Diagram -->
+  <div class="diagram-wrapper">
+    <div class="diagram-columns">
+      <!-- Client col -->
+      <div class="endpoint-col">
+        <div class="endpoint-label client">CLIENT</div>
+        <div class="endpoint-line client" id="client-line"></div>
+      </div>
+
+      <!-- Steps -->
+      <div class="steps-col" id="steps-col">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Server col -->
+      <div class="endpoint-col">
+        <div class="endpoint-label server">SERVER</div>
+        <div class="endpoint-line server" id="server-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Panel -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="empty-state" id="detail-empty">Click any step above to see details &mdash; or press Play</div>
+    <div id="detail-content" style="display:none"></div>
+  </div>
+
+  <!-- Cipher Suites + Cert Chain -->
+  <div class="panels-grid">
+    <!-- Cipher Suites -->
+    <div class="panel">
+      <div class="panel-title"><span class="panel-icon">&#128272;</span> Cipher Suites</div>
+
+      <div class="cipher-suite-block" id="cipher-12-block">
+        <div class="cipher-version-label">TLS 1.2 — Key Exchange + Auth + Enc + MAC</div>
+        <div class="cipher-name selected" id="cs-0" onclick="toggleCipher('cs-0', 0)">ECDHE-RSA-AES128-GCM-SHA256</div>
+        <div class="cipher-parts visible" id="cp-0">
+          <div class="cipher-part"><div class="cipher-part-label">Key Exchange</div><div class="cipher-part-val">ECDHE</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">Authentication</div><div class="cipher-part-val">RSA</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">Encryption</div><div class="cipher-part-val">AES-128-GCM</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">MAC / PRF</div><div class="cipher-part-val">SHA-256</div></div>
+        </div>
+        <div class="cipher-name" id="cs-1" onclick="toggleCipher('cs-1', 1)">ECDHE-RSA-AES256-GCM-SHA384</div>
+        <div class="cipher-parts" id="cp-1">
+          <div class="cipher-part"><div class="cipher-part-label">Key Exchange</div><div class="cipher-part-val">ECDHE</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">Authentication</div><div class="cipher-part-val">RSA</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">Encryption</div><div class="cipher-part-val">AES-256-GCM</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">MAC / PRF</div><div class="cipher-part-val">SHA-384</div></div>
+        </div>
+        <div class="cipher-name" id="cs-2" onclick="toggleCipher('cs-2', 2)">DHE-RSA-CHACHA20-POLY1305</div>
+        <div class="cipher-parts" id="cp-2">
+          <div class="cipher-part"><div class="cipher-part-label">Key Exchange</div><div class="cipher-part-val">DHE</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">Authentication</div><div class="cipher-part-val">RSA</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">Encryption</div><div class="cipher-part-val">ChaCha20</div></div>
+          <div class="cipher-part"><div class="cipher-part-label">MAC / PRF</div><div class="cipher-part-val">Poly1305</div></div>
+        </div>
+      </div>
+
+      <div class="cipher-suite-block" id="cipher-13-block" style="display:none">
+        <div class="cipher-version-label">TLS 1.3 — AEAD only, no key-exchange in name</div>
+        <div class="tls13-ciphers">
+          <div class="tls13-cipher-row">TLS_AES_128_GCM_SHA256 <span class="aead-badge">AEAD</span></div>
+          <div class="tls13-cipher-row">TLS_AES_256_GCM_SHA384 <span class="aead-badge">AEAD</span></div>
+          <div class="tls13-cipher-row">TLS_CHACHA20_POLY1305_SHA256 <span class="aead-badge">AEAD</span></div>
+        </div>
+        <div style="margin-top:12px; font-size:0.72rem; color:var(--text-dim); line-height:1.5">
+          TLS 1.3 removed all non-AEAD, RC4, 3DES, and non-PFS cipher suites. Key exchange (ECDHE/X25519) is negotiated separately via <code style="color:var(--blue)">key_share</code> extension.
+        </div>
+      </div>
+    </div>
+
+    <!-- Certificate Chain -->
+    <div class="panel">
+      <div class="panel-title"><span class="panel-icon">&#128196;</span> Certificate Chain</div>
+      <div class="cert-chain">
+        <div class="cert-node root" onclick="showCertDetail('root')">
+          <div class="cert-node-title">&#128081; Root CA</div>
+          <div class="cert-node-sub">DigiCert Global Root CA &mdash; Self-signed, 20yr validity<br>Key: RSA 4096 &nbsp;|&nbsp; Sig: SHA-256</div>
+        </div>
+        <div class="cert-arrow">&#8595; signs</div>
+        <div class="cert-node intermediate" onclick="showCertDetail('intermediate')">
+          <div class="cert-node-title">&#127981; Intermediate CA</div>
+          <div class="cert-node-sub">DigiCert SHA2 Secure Server CA &mdash; 5yr validity<br>Key: RSA 2048 &nbsp;|&nbsp; Sig: SHA-256 &nbsp;|&nbsp; OCSP stapling</div>
+        </div>
+        <div class="cert-arrow">&#8595; signs</div>
+        <div class="cert-node leaf" onclick="showCertDetail('leaf')">
+          <div class="cert-node-title">&#128196; Leaf / Server Cert</div>
+          <div class="cert-node-sub">*.ximg.app &mdash; 90 days (Let's Encrypt)<br>Key: EC P-256 &nbsp;|&nbsp; SANs: ximg.app, *.ximg.app</div>
+        </div>
+      </div>
+      <div id="cert-detail-box" style="display:none; margin-top:12px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:0.75rem; color:#94a3b8; line-height:1.6;"></div>
+    </div>
+  </div>
+
+  <!-- Key Concepts -->
+  <div class="section-title">Key Concepts</div>
+  <div class="concepts-grid" id="concepts-grid">
+    <!-- populated by JS -->
+  </div>
+
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+// ─── Data ────────────────────────────────────────────────────────────────────
+
+const STEPS = {
+  '1.2': [
+    {
+      id: 's12-1', name: 'ClientHello', dir: 'to-server', encrypted: false,
+      sub: 'client random, cipher suites, extensions',
+      desc: 'The client opens the TLS negotiation by sending its maximum supported TLS version, a 32-byte random nonce, a list of supported cipher suites, and extensions like SNI (server name) and supported elliptic curves.',
+      fields: [
+        { n: 'Version', v: 'TLS 1.2 (0x0303)' },
+        { n: 'Random', v: '28 bytes + timestamp' },
+        { n: 'Session ID', v: '0 (new session)' },
+        { n: 'Cipher Suites', v: '30+ suites listed' },
+        { n: 'Extensions', v: 'SNI, ALPN, EC curves' },
+      ],
+      crypto: 'No crypto yet — plaintext. The random bytes prevent replay attacks and seed the key derivation later.',
+      rtt: 1,
+    },
+    {
+      id: 's12-2', name: 'ServerHello', dir: 'to-client', encrypted: false,
+      sub: 'chosen cipher, server random',
+      desc: 'Server picks the best cipher suite from the client\'s list, selects TLS 1.2, generates its own 32-byte random nonce, and returns the negotiated parameters.',
+      fields: [
+        { n: 'Version', v: 'TLS 1.2 (0x0303)' },
+        { n: 'Random', v: '32 bytes (server nonce)' },
+        { n: 'Cipher Suite', v: 'ECDHE-RSA-AES128-GCM-SHA256' },
+        { n: 'Session ID', v: 'optional resumption ID' },
+        { n: 'Extensions', v: 'ALPN, Renegotiation info' },
+      ],
+      crypto: 'Server commits to the cipher suite. Both sides now know the key exchange algorithm (ECDHE), auth method (RSA), and AEAD cipher (AES-GCM).',
+      rtt: 1,
+    },
+    {
+      id: 's12-3', name: 'Certificate', dir: 'to-client', encrypted: false,
+      sub: 'server X.509 cert chain',
+      desc: 'Server sends its X.509 certificate chain — leaf cert, intermediate CA, and (optionally) root CA. The client validates the chain against trusted root CAs in its trust store.',
+      fields: [
+        { n: 'Cert Type', v: 'X.509 v3' },
+        { n: 'Subject', v: 'CN=*.ximg.app' },
+        { n: 'Issuer', v: "Let's Encrypt R11" },
+        { n: 'Public Key', v: 'EC P-256 (secp256r1)' },
+        { n: 'SANs', v: 'ximg.app, *.ximg.app' },
+        { n: 'Validity', v: '90 days' },
+      ],
+      crypto: 'Client verifies the cert signature using the CA\'s public key. Also checks OCSP/CRL for revocation status.',
+      rtt: 1,
+    },
+    {
+      id: 's12-4', name: 'ServerKeyExchange', dir: 'to-client', encrypted: false,
+      sub: 'DH/ECDH parameters, signed',
+      desc: 'When using DHE/ECDHE key exchange, the server sends its ephemeral public key (a fresh DH/ECDH key pair per session) and signs it with the private key of its certificate to prove authenticity.',
+      fields: [
+        { n: 'Curve', v: 'secp256r1 (P-256)' },
+        { n: 'Server pubkey', v: '65 bytes (uncompressed EC point)' },
+        { n: 'Signature algo', v: 'SHA-256+RSA' },
+        { n: 'Signature', v: '256 bytes over params + randoms' },
+      ],
+      crypto: 'Ephemeral key means the session key is never derivable from the certificate private key — this is Forward Secrecy. The signature proves the server owns the cert.',
+      rtt: 1,
+    },
+    {
+      id: 's12-5', name: 'ServerHelloDone', dir: 'to-client', encrypted: false,
+      sub: 'server flight complete',
+      desc: 'A single-byte message signaling that the server has finished its part of the handshake negotiation. The client can now compute its key material and respond.',
+      fields: [
+        { n: 'Body', v: '(empty — 0 bytes)' },
+      ],
+      crypto: 'No cryptographic operation. Acts as a synchronization point — the client now knows the server\'s entire hello flight has arrived.',
+      rtt: 1,
+    },
+    {
+      id: 's12-6', name: 'ClientKeyExchange', dir: 'to-server', encrypted: false,
+      sub: 'pre-master secret (ephemeral pubkey)',
+      desc: 'The client sends its ephemeral ECDH public key. Both sides can now independently compute the same shared secret (ECDH shared point) without it ever traversing the network.',
+      fields: [
+        { n: 'Client EC pubkey', v: '65 bytes (P-256 point)' },
+        { n: 'Shared secret', v: 'computed locally, never sent' },
+      ],
+      crypto: 'Both sides compute ECDH(server_priv, client_pub) = ECDH(client_priv, server_pub) = pre-master secret. PRF(pre-master, randoms) → 48-byte master secret → 4 session keys.',
+      rtt: 2,
+    },
+    {
+      id: 's12-7', name: 'ChangeCipherSpec', dir: 'to-server', encrypted: false,
+      sub: 'switching to encryption now',
+      desc: 'A legacy TLS record type (not a real handshake message). Signals that subsequent records will be encrypted with the just-negotiated keys.',
+      fields: [
+        { n: 'Value', v: '0x01 (single byte)' },
+      ],
+      crypto: 'Client activates the write key derived from the master secret. From here on, client→server traffic is AES-128-GCM encrypted with the client write key.',
+      rtt: 2,
+    },
+    {
+      id: 's12-8', name: 'Finished', dir: 'to-server', encrypted: true,
+      sub: 'PRF(master_secret, "client finished", hash)',
+      desc: 'The first encrypted message. Contains a Finished verification data — a PRF-hash over the entire handshake transcript (all preceding messages). If the server can decrypt and validate it, both sides confirm identical views of the handshake.',
+      fields: [
+        { n: 'verify_data', v: '12 bytes (PRF output)' },
+        { n: 'Encrypted with', v: 'AES-128-GCM client write key' },
+        { n: 'MAC', v: 'GHASH (implicit in GCM)' },
+      ],
+      crypto: 'Binds the session keys to the full handshake transcript. Detects any MITM tampering with earlier plaintext messages.',
+      rtt: 2,
+    },
+    {
+      id: 's12-9', name: 'ChangeCipherSpec', dir: 'to-client', encrypted: false,
+      sub: 'server switching to encryption',
+      desc: 'Server acknowledges receipt of the client\'s Finished and signals it is now activating encryption on its side.',
+      fields: [
+        { n: 'Value', v: '0x01 (single byte)' },
+      ],
+      crypto: 'Server activates the server write key. All subsequent server→client records will be encrypted with the server write key.',
+      rtt: 2,
+    },
+    {
+      id: 's12-10', name: 'Finished', dir: 'to-client', encrypted: true,
+      sub: 'PRF(master_secret, "server finished", hash)',
+      desc: 'Server\'s Finished message — encrypted verification over the full transcript. Client validates it; if valid, the TLS handshake is complete and application data can flow.',
+      fields: [
+        { n: 'verify_data', v: '12 bytes (PRF output)' },
+        { n: 'Encrypted with', v: 'AES-128-GCM server write key' },
+      ],
+      crypto: 'Mutual transcript validation complete. Both sides proved they derived identical keys from the same ephemeral shared secret and randoms.',
+      rtt: 2,
+    },
+    {
+      id: 's12-11', name: 'Application Data', dir: 'bidirectional', encrypted: true, isAppData: true,
+      sub: 'HTTP request / response — fully encrypted',
+      desc: 'TLS handshake complete. All application data (HTTP/2 frames, HTTP/1.1 text, etc.) is now encrypted with AES-128-GCM. Each record has a unique nonce (derived from sequence number) preventing replay.',
+      fields: [
+        { n: 'Record type', v: '0x17 (Application Data)' },
+        { n: 'Cipher', v: 'AES-128-GCM' },
+        { n: 'AEAD tag', v: '16 bytes per record' },
+        { n: 'Max record size', v: '16 KB' },
+      ],
+      crypto: 'Each record: AES-GCM encrypt(plaintext, nonce=IV⊕seqno, AAD=record header). GHASH authentication prevents any bit-flip without detection.',
+      rtt: 2,
+    },
+  ],
+  '1.3': [
+    {
+      id: 's13-1', name: 'ClientHello', dir: 'to-server', encrypted: false,
+      sub: 'key_share, supported_versions, cipher suites',
+      desc: 'TLS 1.3 ClientHello front-loads the ECDH key share. The client sends its ephemeral public keys for several groups (X25519, P-256) immediately — no waiting for ServerKeyExchange.',
+      fields: [
+        { n: 'supported_versions', v: 'TLS 1.3 (0x0304)' },
+        { n: 'key_share', v: 'X25519 pubkey (32 bytes)' },
+        { n: 'signature_algorithms', v: 'ecdsa_secp256r1_sha256, rsa_pss_sha256' },
+        { n: 'cipher_suites', v: 'TLS_AES_128_GCM_SHA256 …' },
+        { n: 'psk_key_exchange_modes', v: 'psk_dhe_ke (0-RTT capable)' },
+      ],
+      crypto: 'Client pre-generates an ECDH keypair. Sending the public key now allows server to derive the shared secret in one round trip.',
+      rtt: 1,
+    },
+    {
+      id: 's13-2', name: 'ServerHello', dir: 'to-client', encrypted: false,
+      sub: 'key_share response, chosen cipher',
+      desc: 'Server picks the cipher suite and responds with its own ECDH ephemeral public key. Both sides can now independently compute the handshake secret.',
+      fields: [
+        { n: 'supported_versions', v: 'TLS 1.3 (0x0304)' },
+        { n: 'key_share', v: 'server X25519 pubkey (32 bytes)' },
+        { n: 'cipher_suite', v: 'TLS_AES_128_GCM_SHA256' },
+      ],
+      crypto: 'ECDH(client_priv, server_pub) → shared_secret. HKDF-Extract(shared_secret) → handshake_secret → symmetric keys for the rest of the handshake.',
+      rtt: 1,
+    },
+    {
+      id: 's13-3', name: 'EncryptedExtensions', dir: 'to-client', encrypted: true,
+      sub: 'ALPN, max fragment length — encrypted',
+      desc: 'The first encrypted message from the server. Contains extensions that in TLS 1.2 were sent in plaintext in ServerHello — now hidden from network observers.',
+      fields: [
+        { n: 'ALPN', v: 'h2 (HTTP/2 selected)' },
+        { n: 'server_name', v: '(confirmation)' },
+        { n: 'Encrypted with', v: 'server handshake write key' },
+      ],
+      crypto: 'Encrypted under the server_handshake_traffic_secret, derived from the handshake_secret via HKDF-Expand-Label.',
+      rtt: 1,
+    },
+    {
+      id: 's13-4', name: 'Certificate', dir: 'to-client', encrypted: true,
+      sub: 'X.509 cert — encrypted',
+      desc: 'Server\'s certificate chain, now sent encrypted. In TLS 1.3, even the server\'s identity (cert) is hidden from passive observers — a major privacy improvement.',
+      fields: [
+        { n: 'Cert chain', v: 'leaf + intermediate' },
+        { n: 'OCSP staple', v: 'embedded (optional)' },
+        { n: 'Encrypted with', v: 'server handshake write key' },
+      ],
+      crypto: 'Certificate is encrypted — network observers cannot see which server the client is connecting to (combined with Encrypted Client Hello / ECH for full privacy).',
+      rtt: 1,
+    },
+    {
+      id: 's13-5', name: 'CertificateVerify', dir: 'to-client', encrypted: true,
+      sub: 'signature over transcript hash — encrypted',
+      desc: 'Replaces ServerKeyExchange. The server signs the full handshake transcript hash with its certificate private key, proving it owns the certificate.',
+      fields: [
+        { n: 'Signature algo', v: 'ecdsa_secp256r1_sha256' },
+        { n: 'Signed data', v: 'SHA-256(handshake transcript)' },
+        { n: 'Prefix', v: '"TLS 1.3, server CertificateVerify"' },
+      ],
+      crypto: 'Sign(cert_private_key, 0x20×64 || context || 0x00 || transcript_hash). The context string prevents cross-protocol attacks.',
+      rtt: 1,
+    },
+    {
+      id: 's13-6', name: 'Finished', dir: 'to-client', encrypted: true,
+      sub: 'HMAC over transcript — encrypted',
+      desc: 'Server Finished closes the server handshake flight. Contains an HMAC (using the finished_key derived from handshake secret) over the full transcript.',
+      fields: [
+        { n: 'verify_data', v: 'HMAC-SHA256(finished_key, transcript_hash)' },
+        { n: 'Encrypted with', v: 'server handshake write key' },
+      ],
+      crypto: 'After validating, the client derives the master_secret (from handshake_secret) and the application traffic secrets. Application data can start flowing immediately.',
+      rtt: 1,
+    },
+    {
+      id: 's13-7', name: 'Finished', dir: 'to-server', encrypted: true,
+      sub: 'client HMAC over transcript — encrypted',
+      desc: 'Client\'s Finished, encrypted under the client handshake write key. Confirms the client derived the same transcript hash and keys.',
+      fields: [
+        { n: 'verify_data', v: 'HMAC-SHA256(client_finished_key, transcript_hash)' },
+        { n: 'Encrypted with', v: 'client handshake write key' },
+      ],
+      crypto: 'After sending, the client switches to the application traffic keys. The handshake is complete from the client\'s perspective.',
+      rtt: 1,
+    },
+    {
+      id: 's13-8', name: 'Application Data', dir: 'bidirectional', encrypted: true, isAppData: true,
+      sub: 'HTTP/2 frames — starts after 1 RTT',
+      desc: 'Application data begins after just 1 RTT — vs 2 RTTs in TLS 1.2. TLS 1.3 also supports 0-RTT early data for repeat connections (with caveats around replay protection).',
+      fields: [
+        { n: 'Record type', v: '0x17 (inner: 0x16 handshake or 0x17 app)' },
+        { n: 'Cipher', v: 'AES-128-GCM (AEAD)' },
+        { n: 'Key source', v: 'client/server_application_traffic_secret' },
+        { n: '0-RTT', v: 'optional early data on resumption' },
+      ],
+      crypto: 'Keys: HKDF-Expand-Label(master_secret, "c ap traffic" | "s ap traffic", …). Nonce = IV ⊕ sequence_number, rotated per record.',
+      rtt: 1,
+    },
+  ],
+};
+
+const CERT_DETAILS = {
+  root: '<strong style="color:var(--purple)">Root CA</strong><br>Self-signed certificate at the top of the trust chain. Pre-installed in OS/browser trust stores. Validity: 20–30 years. Never used to sign server certs directly — delegates to intermediates. Offline storage for security.',
+  intermediate: '<strong style="color:var(--blue)">Intermediate CA</strong><br>Signs leaf (server) certificates. Reduces risk: if compromised, can be revoked without touching root. Sends OCSP staples. Validity: 1–10 years. Browser verifies intermediate was signed by root.',
+  leaf: '<strong style="color:var(--green)">Leaf / Server Certificate</strong><br>Installed on the web server. Contains the server\'s public key. Subject Alternative Names (SANs) list all domains it covers. Let\'s Encrypt issues 90-day certs; auto-renewed via ACME protocol.',
+};
+
+const CONCEPTS = [
+  {
+    title: 'Forward Secrecy (PFS)',
+    color: '#4ade80',
+    body: 'Ephemeral key exchange (ECDHE/DHE) generates a fresh keypair per session. Even if the server\'s long-term private key is stolen later, past session keys cannot be recovered — recorded traffic stays safe.',
+  },
+  {
+    title: 'SNI — Server Name Indication',
+    color: '#38bdf8',
+    body: 'TLS extension where the client sends the target hostname in ClientHello (plaintext). Allows one IP to host many TLS sites. In TLS 1.3 + ECH, the SNI can be encrypted too.',
+  },
+  {
+    title: 'ALPN — Application Protocol Negotiation',
+    color: '#c084fc',
+    body: 'TLS extension that lets client and server agree on the application protocol (e.g. "h2" for HTTP/2, "http/1.1"). Avoids a round trip that would otherwise be needed after TLS completes.',
+  },
+  {
+    title: 'HSTS — HTTP Strict Transport Security',
+    color: '#fbbf24',
+    body: 'Server sends Strict-Transport-Security header telling browsers to only connect via HTTPS for N seconds. After first visit, browsers refuse plaintext connections — prevents SSL stripping attacks.',
+  },
+  {
+    title: 'Session Tickets (Resumption)',
+    color: '#f87171',
+    body: 'Server encrypts session state into a ticket (with a server-side key) and sends it to the client. On reconnect the client presents the ticket — skipping the full handshake for 0.5–1 RTT savings. TLS 1.3 uses PSK (pre-shared key) mode instead.',
+  },
+  {
+    title: 'OCSP Stapling',
+    color: '#34d399',
+    body: 'The server fetches its own OCSP revocation response from the CA and "staples" it to the TLS handshake. Client gets fresh revocation proof without making a separate OCSP request — faster and more private.',
+  },
+  {
+    title: 'Certificate Transparency (CT)',
+    color: '#60a5fa',
+    body: 'CAs must log every issued cert to public append-only CT logs. Browsers require SCTs (Signed Certificate Timestamps) proving a cert is logged. Catches mis-issued certs quickly.',
+  },
+  {
+    title: '0-RTT Early Data (TLS 1.3)',
+    color: '#a78bfa',
+    body: 'On session resumption, TLS 1.3 allows sending application data with the first flight (0 RTTs). Trade-off: early data has no forward secrecy and is vulnerable to replay attacks — safe only for idempotent requests.',
+  },
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let currentVersion = '1.2';
+let currentStepIndex = -1;
+let isPlaying = false;
+let animTimer = null;
+let speed = 1;
+let selectedStep = null;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+function init() {
+  renderSteps();
+  renderConcepts();
+}
+
+function renderSteps() {
+  const col = document.getElementById('steps-col');
+  col.innerHTML = '';
+  const steps = STEPS[currentVersion];
+
+  // figure out RTT spans for brackets
+  // TLS 1.2: rtt1 = steps 1-5, rtt2 = steps 6-11
+  // TLS 1.3: rtt1 = all (1 RTT)
+  const rttMap = {};
+  if (currentVersion === '1.2') {
+    steps.forEach((s, i) => { rttMap[i] = s.rtt; });
+  } else {
+    steps.forEach((s, i) => { rttMap[i] = 1; });
+  }
+
+  steps.forEach((step, i) => {
+    const row = document.createElement('div');
+    row.className = 'step-row' + (step.isAppData ? ' appdata' : '') + ' dim';
+    row.id = 'step-row-' + i;
+    row.onclick = () => selectStep(i);
+
+    // RTT bracket (first of each RTT group)
+    if (currentVersion === '1.2') {
+      const isFirstOfRtt = (i === 0 || rttMap[i] !== rttMap[i-1]);
+      const isLastOfRtt  = (i === steps.length - 1 || rttMap[i] !== rttMap[i+1]);
+      if (isFirstOfRtt || isLastOfRtt) {
+        const bk = document.createElement('div');
+        const cl = rttMap[i] === 1 ? 'rtt1' : 'rtt2';
+        bk.className = `rtt-bracket ${cl}`;
+        if (isFirstOfRtt) {
+          const lb = document.createElement('span');
+          lb.className = `rtt-label ${cl}`;
+          lb.textContent = `RTT ${rttMap[i]}`;
+          bk.appendChild(lb);
+        }
+        row.appendChild(bk);
+      }
+    }
+
+    // Arrow area
+    const arrowContainer = document.createElement('div');
+    arrowContainer.className = 'arrow-container';
+
+    const stepNum = document.createElement('span');
+    stepNum.className = 'step-number';
+    stepNum.textContent = i + 1;
+    arrowContainer.appendChild(stepNum);
+
+    const line = document.createElement('div');
+    let lineClass = 'arrow-line ' + step.dir;
+    if (step.encrypted) lineClass += ' encrypted';
+    line.className = lineClass;
+    line.id = 'arrow-line-' + i;
+
+    // Arrowhead
+    const ah = document.createElement('div');
+    ah.className = 'arrowhead';
+    line.appendChild(ah);
+
+    // Travel dot
+    const dot = document.createElement('div');
+    dot.className = 'travel-dot ' + (step.dir === 'to-server' ? 'to-server' : (step.dir === 'bidirectional' ? 'to-server' : 'to-client'));
+    dot.id = 'dot-' + i;
+    line.appendChild(dot);
+
+    // Label
+    const labelArea = document.createElement('div');
+    labelArea.className = 'step-label-area';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'step-name';
+    nameEl.textContent = step.name;
+    labelArea.appendChild(nameEl);
+
+    if (step.sub) {
+      const subEl = document.createElement('div');
+      subEl.className = 'step-sub';
+      subEl.textContent = step.sub;
+      labelArea.appendChild(subEl);
+    }
+    if (step.encrypted) {
+      const enc = document.createElement('div');
+      enc.className = 'encrypted-badge';
+      enc.textContent = '&#128274; encrypted';
+      enc.innerHTML = '&#128274; encrypted';
+      labelArea.appendChild(enc);
+    }
+    line.appendChild(labelArea);
+
+    // Progress bar
+    const prog = document.createElement('div');
+    prog.className = 'step-progress';
+    row.appendChild(prog);
+
+    arrowContainer.appendChild(line);
+    row.appendChild(arrowContainer);
+    col.appendChild(row);
+  });
+}
+
+function renderConcepts() {
+  const grid = document.getElementById('concepts-grid');
+  grid.innerHTML = '';
+  CONCEPTS.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'concept-card';
+    card.onclick = () => card.classList.toggle('open');
+    card.innerHTML = `
+      <div class="concept-card-title">
+        <div class="concept-dot" style="background:${c.color}"></div>
+        ${c.title}
+      </div>
+      <div class="concept-body">${c.body}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ─── Version Switch ────────────────────────────────────────────────────────────
+
+function switchVersion(v) {
+  stopAnimation();
+  resetAnimation();
+  currentVersion = v;
+  document.getElementById('tab-12').classList.toggle('active', v === '1.2');
+  document.getElementById('tab-13').classList.toggle('active', v === '1.3');
+  document.getElementById('rtt-12-badge').style.display = v === '1.2' ? '' : 'none';
+  document.getElementById('rtt-13-badge').style.display = v === '1.3' ? '' : 'none';
+  document.getElementById('cipher-12-block').style.display = v === '1.2' ? '' : 'none';
+  document.getElementById('cipher-13-block').style.display = v === '1.3' ? '' : 'none';
+  renderSteps();
+  hideDetail();
+}
+
+// ─── Animation ────────────────────────────────────────────────────────────────
+
+function togglePlay() {
+  if (isPlaying) {
+    stopAnimation();
+  } else {
+    startAnimation();
+  }
+}
+
+function startAnimation() {
+  isPlaying = true;
+  document.getElementById('play-icon').textContent = '⏸';
+  document.getElementById('play-label').textContent = 'Pause';
+  if (currentStepIndex >= STEPS[currentVersion].length - 1) {
+    currentStepIndex = -1;
+    clearAllSteps();
+  }
+  advanceStep();
+}
+
+function stopAnimation() {
+  isPlaying = false;
+  document.getElementById('play-icon').textContent = '▶';
+  document.getElementById('play-label').textContent = 'Play';
+  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+}
+
+function resetAnimation() {
+  stopAnimation();
+  currentStepIndex = -1;
+  clearAllSteps();
+  hideDetail();
+}
+
+function clearAllSteps() {
+  const steps = STEPS[currentVersion];
+  steps.forEach((_, i) => {
+    const row = document.getElementById('step-row-' + i);
+    if (row) {
+      row.className = 'step-row' + (steps[i].isAppData ? ' appdata' : '') + ' dim';
+    }
+    const dot = document.getElementById('dot-' + i);
+    if (dot) { dot.style.animation = 'none'; dot.style.opacity = '0'; }
+  });
+}
+
+function advanceStep() {
+  if (!isPlaying) return;
+  const steps = STEPS[currentVersion];
+  currentStepIndex++;
+
+  if (currentStepIndex >= steps.length) {
+    stopAnimation();
+    return;
+  }
+
+  activateStep(currentStepIndex);
+
+  // Calculate duration based on speed
+  const dotDuration = Math.round(600 / speed);
+  const pauseDuration = Math.round(900 / speed);
+  const totalDelay = dotDuration + pauseDuration;
+
+  animTimer = setTimeout(() => advanceStep(), totalDelay);
+}
+
+function activateStep(index) {
+  const steps = STEPS[currentVersion];
+  const step = steps[index];
+
+  // Mark previous as done
+  if (index > 0) {
+    const prevRow = document.getElementById('step-row-' + (index - 1));
+    if (prevRow) {
+      prevRow.className = 'step-row' + (steps[index-1].isAppData ? ' appdata' : '') + ' done';
+    }
+  }
+
+  // Mark current
+  const row = document.getElementById('step-row-' + index);
+  if (row) {
+    row.className = 'step-row' + (step.isAppData ? ' appdata' : '') + ' active-step playing';
+  }
+
+  // Animate dot
+  const dot = document.getElementById('dot-' + index);
+  const duration = Math.round(600 / speed);
+  if (dot) {
+    dot.style.cssText = `--dot-duration: ${duration}ms; opacity: 1;`;
+    dot.style.animation = 'none';
+    // Force reflow
+    void dot.offsetWidth;
+    const animClass = step.dir === 'to-server' ? 'animating-dot-right' : 'animating-dot-left';
+    dot.className = 'travel-dot ' + (step.dir === 'to-server' || step.dir === 'bidirectional' ? 'to-server' : 'to-client') + ' ' + animClass;
+    dot.style.setProperty('--dot-duration', duration + 'ms');
+  }
+
+  // Auto-show detail for current step
+  selectStep(index, true);
+}
+
+function updateSpeed(val) {
+  speed = parseFloat(val);
+  document.getElementById('speed-label').textContent = speed + 'x';
+}
+
+// ─── Step Selection ────────────────────────────────────────────────────────────
+
+function selectStep(index, auto) {
+  selectedStep = index;
+  const step = STEPS[currentVersion][index];
+  showDetail(step, index);
+}
+
+function showDetail(step, index) {
+  document.getElementById('detail-empty').style.display = 'none';
+  const content = document.getElementById('detail-content');
+  content.style.display = 'block';
+
+  const dirLabel = step.dir === 'to-server' ? 'Client → Server' : step.dir === 'to-client' ? 'Server → Client' : 'Client ↔ Server';
+  const dirClass = step.dir === 'to-server' ? 'client' : step.dir === 'to-client' ? 'server' : 'both';
+
+  const fieldsHtml = (step.fields || []).map(f => `
+    <div class="detail-field">
+      <div class="detail-field-name">${f.n}</div>
+      <div class="detail-field-val">${f.v}</div>
+    </div>
+  `).join('');
+
+  const encBadge = step.encrypted ? `<span class="detail-badge enc">&#128274; Encrypted</span>` : '';
+
+  content.innerHTML = `
+    <h3>
+      <span>${step.name}</span>
+      <span class="detail-badge ${dirClass}">${dirLabel}</span>
+      ${encBadge}
+    </h3>
+    <div class="detail-desc">${step.desc}</div>
+    ${fieldsHtml ? `<div class="detail-fields">${fieldsHtml}</div>` : ''}
+    <div class="detail-crypto">
+      <span class="icon">&#9881;</span>
+      <span>${step.crypto}</span>
+    </div>
+  `;
+}
+
+function hideDetail() {
+  document.getElementById('detail-empty').style.display = '';
+  document.getElementById('detail-content').style.display = 'none';
+  selectedStep = null;
+}
+
+// ─── Cipher toggles ──────────────────────────────────────────────────────────
+
+function toggleCipher(btnId, idx) {
+  [0,1,2].forEach(i => {
+    document.getElementById('cs-' + i).classList.toggle('selected', i === idx);
+    const parts = document.getElementById('cp-' + i);
+    parts.classList.toggle('visible', i === idx);
+  });
+}
+
+// ─── Cert details ─────────────────────────────────────────────────────────────
+
+function showCertDetail(type) {
+  const box = document.getElementById('cert-detail-box');
+  const text = CERT_DETAILS[type];
+  if (box.style.display !== 'none' && box.innerHTML.includes(CERT_DETAILS[type])) {
+    box.style.display = 'none';
+  } else {
+    box.style.display = 'block';
+    box.innerHTML = text;
+  }
+}
+
+// ─── Start ───────────────────────────────────────────────────────────────────
+init();
+</script>
+
+</body>
+</html>

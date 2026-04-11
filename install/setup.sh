@@ -241,6 +241,7 @@ DOMAINS=(
   githubstars.ximg.app
   templeos.ximg.app
   iptables.ximg.app
+  tls.ximg.app bgp.ximg.app makefile.ximg.app utf8.ximg.app
   french.ximg.app
   russianrev.ximg.app
   napoleon.ximg.app

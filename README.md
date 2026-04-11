@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-207 virtual hosts (root + 206 subdomains), all static sites served by a single nginx container.
+211 virtual hosts (root + 210 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -19,6 +19,10 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [smtp.ximg.app](https://smtp.ximg.app) | Simple Mail Transfer Protocol — full session flow, all commands and ESMTP extensions, response codes, ports 25/465/587, TLS/STARTTLS, SPF, DKIM, DMARC, and diagnostic commands. |
 | [chmod.ximg.app](https://chmod.ximg.app) | Linux file permissions calculator — toggle owner/group/other bits, special modes (setuid/setgid/sticky), octal and symbolic output, chmod commands, ls -la preview, quick presets, and permission reference table. |
 | [iptables.ximg.app](https://iptables.ximg.app) | Linux firewall rule visualizer — animated netfilter packet flow diagram, table/chain reference, interactive rule builder with live iptables and nftables output, templates, and quick reference cheatsheet. |
+| [tls.ximg.app](https://tls.ximg.app) | TLS/SSL handshake visualizer — animated step-by-step TLS 1.2 and 1.3 handshake diagrams with RTT comparison, cipher suite breakdown, certificate chain viewer, and key concepts reference. |
+| [bgp.ximg.app](https://bgp.ximg.app) | Border Gateway Protocol visualizer — interactive AS topology map with route propagation animation, BGP attributes explorer, session state machine, message type reference, and route hijacking demo. |
+| [makefile.ximg.app](https://makefile.ximg.app) | Makefile generator and visualizer — interactive Canvas dependency graph, target builder with project templates (C/Python/Docker/Node.js), live syntax-highlighted Makefile output, and automatic variables reference. |
+| [utf8.ximg.app](https://utf8.ximg.app) | Unicode/UTF-8 encoding explorer — real-time per-character analysis with code points, byte sequences, bit-level encoding diagrams, HTML entities, URL encoding, and UTF-16/UTF-32 comparison. |
 | [templeos.ximg.app](https://templeos.ximg.app) | TempleOS — a shrine to Terry A. Davis (1969–2018): HolyC oracle, 16-color VGA palette, annotated code snippets, 15-year timeline, and reverence for the greatest solo programmer in history. |
 | [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns. |
 | [bsd.ximg.app](https://bsd.ximg.app) | Berkeley Software Distribution — the OS that gave the internet TCP/IP, OpenSSH, and ZFS. FreeBSD, OpenBSD, NetBSD, DragonFly, history, and the BSD in every Mac and PlayStation. |
