@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-204 virtual hosts (root + 203 subdomains), all static sites served by a single nginx container.
+206 virtual hosts (root + 205 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -220,8 +220,10 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [samurai.ximg.app](https://samurai.ximg.app) | Samurai Japan — bushido, shoguns, cherry blossoms, interactive sakura and Mount Fuji canvas. |
 | [ottoman.ximg.app](https://ottoman.ximg.app) | Ottoman Empire — sultans, Constantinople, crescent moon, interactive Istanbul skyline. |
 | [french.ximg.app](https://french.ximg.app) | French Revolution — causes, Terror, Robespierre, Napoleon, animated waving tricolor flag. |
+| [russianrev.ximg.app](https://russianrev.ximg.app) | Russian Revolution — Tsarist collapse, Bolshevik coup, Civil War, Romanov execution, Red Terror, animated rotating Soviet red star canvas. |
 | [napoleon.ximg.app](https://napoleon.ximg.app) | Napoleon Bonaparte — rise to Emperor, 6 campaigns from Austerlitz to Waterloo, Napoleonic Code, Hundred Days timeline, animated imperial eagle canvas. |
 | [british.ximg.app](https://british.ximg.app) | The British Empire — The Sun Never Sets: 13.7M sq miles, 412M subjects, 8 major colonies, key figures from Victoria to Gandhi, full 1600–1997 timeline, animated waving Union Jack canvas. |
+| [spacerace.ximg.app](https://spacerace.ximg.app) | The Space Race — Sputnik to Moon (1957–1972): Soviet & American missions, rocket thrust comparisons, key figures from Korolev to Katherine Johnson, Apollo 11 mission timeline, interactive warp-speed starfield. |
 | [ww2.ximg.app](https://ww2.ximg.app) | World War II — battles, leaders, radar, interactive Chain Home radar sweep visualization. |
 | [ww1.ximg.app](https://ww1.ximg.app) | World War I — trenches, battles, causes (MAIN), interactive Western Front trench scene. |
 | [revolution.ximg.app](https://revolution.ximg.app) | American Revolution — Founding Fathers, famous quotes, interactive waving flag canvas. |

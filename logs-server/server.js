@@ -114,6 +114,7 @@ const LOG_FILES = {
   internet:  'internet.access.log',
   fidonet:   'fidonet.access.log',
   coldwar:   'coldwar.access.log',
+  cuba:      'cuba.access.log',
   passwords: 'passwords.access.log',
   change:    'change.access.log',
   apps:      'apps.access.log',
@@ -135,6 +136,7 @@ const LOG_FILES = {
   russianrev:            'russianrev.access.log',
   napoleon:              'napoleon.access.log',
   british:               'british.access.log',
+  spacerace:             'spacerace.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   unix:        'unix.access.log',
@@ -544,6 +546,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="cnc">cnc</button>
           <button class="site-opt" data-site="coffee">coffee</button>
           <button class="site-opt" data-site="coldwar">coldwar</button>
+          <button class="site-opt" data-site="cuba">cuba</button>
           <button class="site-opt" data-site="computers">computers</button>
           <button class="site-opt" data-site="crypto">crypto</button>
           <button class="site-opt" data-site="dns">dns</button>
@@ -611,6 +614,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="russianrev">russianrev</button>
           <button class="site-opt" data-site="napoleon">napoleon</button>
           <button class="site-opt" data-site="british">british</button>
+          <button class="site-opt" data-site="spacerace">spacerace</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
           <button class="site-opt" data-site="network">network</button>
