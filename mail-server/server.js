@@ -57,9 +57,10 @@ const smtp = new SMTPServer({
   size:           25 * 1024 * 1024, // 25 MB max
 
   onRcptTo(address, session, cb) {
-    // Accept mail for @ximg.app only
-    if (address.address.toLowerCase().endsWith('@ximg.app')) return cb();
-    return cb(new Error('Only @ximg.app recipients accepted'));
+    // Accept mail for @ximg.app and @dockerimage.dev
+    const addr = address.address.toLowerCase();
+    if (addr.endsWith('@ximg.app') || addr.endsWith('@dockerimage.dev')) return cb();
+    return cb(new Error('Only @ximg.app and @dockerimage.dev recipients accepted'));
   },
 
   onData(stream, session, cb) {
