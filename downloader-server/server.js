@@ -1,4 +1,5 @@
 const http       = require('http');
+const https      = require('https');
 const { spawn, execFile } = require('child_process');
 const fs         = require('fs');
 const path       = require('path');
@@ -6,6 +7,7 @@ const url        = require('url');
 
 const PORT     = 3001;
 const LOG_FILE = '/data/dockerimagedownloader.log';
+let imagesCache = null;
 
 // ── Download log ──────────────────────────────────────────────────────────────
 function appendLog(entry) {
@@ -252,6 +254,86 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('[]');
     }
+    return;
+  }
+
+  // ── GET /logos/:name.svg ──────────────────────────────────────────────────
+  if (req.method === 'GET' && pathname.startsWith('/logos/') && pathname.endsWith('.svg')) {
+    const name = path.basename(pathname, '.svg').replace(/[^a-z0-9._-]/gi, '');
+    const file = path.join(__dirname, 'logos', name + '.svg');
+    if (fs.existsSync(file)) {
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public,max-age=86400' });
+      res.end(fs.readFileSync(file));
+    } else {
+      res.writeHead(404); res.end();
+    }
+    return;
+  }
+
+  // ── GET /api/images ───────────────────────────────────────────────────────
+  if (req.method === 'GET' && pathname === '/api/images') {
+    const cached = imagesCache;
+    if (cached && Date.now() - cached.ts < 3600000) {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=3600' });
+      res.end(JSON.stringify(cached.data));
+      return;
+    }
+
+    function hubGet(urlStr) {
+      return new Promise((resolve, reject) => {
+        https.get(urlStr, { headers: { 'User-Agent': 'dockerimage.dev/1.0' } }, (r) => {
+          let body = '';
+          r.on('data', d => { body += d; });
+          r.on('end', () => { try { resolve(JSON.parse(body)); } catch(e) { reject(e); } });
+        }).on('error', reject);
+      });
+    }
+
+    async function fetchAll() {
+      // Paginate all official library images
+      let libraryImages = [];
+      let nextUrl = 'https://hub.docker.com/v2/repositories/library/?page_size=100&ordering=-pull_count';
+      while (nextUrl) {
+        const data = await hubGet(nextUrl);
+        if (!data.results) break;
+        for (const r of data.results) {
+          libraryImages.push({ name: r.name, pulls: r.pull_count || 0, stars: r.star_count || 0, official: true, desc: r.description || '' });
+        }
+        nextUrl = data.next || null;
+      }
+
+      // Fetch popular community images (5 pages × 100)
+      let communityImages = [];
+      const communityFetches = [];
+      for (let p = 1; p <= 5; p++) {
+        communityFetches.push(hubGet('https://hub.docker.com/v2/search/repositories/?query=&page_size=100&page=' + p + '&ordering=-pull_count').catch(() => ({ results: [] })));
+      }
+      const pages = await Promise.all(communityFetches);
+      for (const page of pages) {
+        for (const r of (page.results || [])) {
+          communityImages.push({ name: r.repo_name || r.name || '', pulls: r.pull_count || 0, stars: r.star_count || 0, official: !!r.is_official, desc: r.short_description || r.description || '' });
+        }
+      }
+
+      // Merge: official wins on duplicates
+      const seen = new Set();
+      const merged = [];
+      for (const img of libraryImages) { seen.add(img.name); merged.push(img); }
+      for (const img of communityImages) { if (!seen.has(img.name)) { seen.add(img.name); merged.push(img); } }
+      return merged;
+    }
+
+    fetchAll()
+      .then(data => {
+        imagesCache = { ts: Date.now(), data };
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=3600' });
+        res.end(JSON.stringify(data));
+      })
+      .catch(err => {
+        console.error('[api/images error]', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      });
     return;
   }
 
