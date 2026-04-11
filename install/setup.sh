@@ -248,6 +248,7 @@ DOMAINS=(
   british.ximg.app
   cuba.ximg.app
   spacerace.ximg.app
+  communism.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

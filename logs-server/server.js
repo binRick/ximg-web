@@ -115,6 +115,7 @@ const LOG_FILES = {
   fidonet:   'fidonet.access.log',
   coldwar:   'coldwar.access.log',
   cuba:      'cuba.access.log',
+  communism: 'communism.access.log',
   passwords: 'passwords.access.log',
   change:    'change.access.log',
   apps:      'apps.access.log',
@@ -129,7 +130,8 @@ const LOG_FILES = {
   dockerimagedownloader: 'dockerimagedownloader.access.log',
   githubstars:           'githubstars.access.log',
   templeos:              'templeos.access.log',
-  smtp:                  'smtp.ximg.app.access.log',
+  smtp:                  'smtp.access.log',
+  video:                 'video.access.log',
   chmod:                 'chmod.access.log',
   iptables:              'iptables.access.log',
   tls:                   'tls.access.log',
@@ -551,6 +553,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="coffee">coffee</button>
           <button class="site-opt" data-site="coldwar">coldwar</button>
           <button class="site-opt" data-site="cuba">cuba</button>
+          <button class="site-opt" data-site="communism">communism</button>
           <button class="site-opt" data-site="computers">computers</button>
           <button class="site-opt" data-site="crypto">crypto</button>
           <button class="site-opt" data-site="dns">dns</button>

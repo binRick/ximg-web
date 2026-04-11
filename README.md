@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-211 virtual hosts (root + 210 subdomains), all static sites served by a single nginx container.
+212 virtual hosts (root + 211 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -230,6 +230,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [cuba.ximg.app](https://cuba.ximg.app) | Cuban Missile Crisis — 13 days to nuclear war (Oct 1962): Bay of Pigs background, day-by-day crisis timeline, JFK vs Khrushchev, Vasili Arkhipov (the man who saved the world), and a NORAD radar simulation. |
 | [spacerace.ximg.app](https://spacerace.ximg.app) | The Space Race — Sputnik to Moon (1957–1972): Soviet & American missions, rocket thrust comparisons, key figures from Korolev to Katherine Johnson, Apollo 11 mission timeline, interactive warp-speed starfield. |
 | [cuba.ximg.app](https://cuba.ximg.app) | Cuban Missile Crisis — 13 Days to Nuclear War (October 1962): Bay of Pigs, ExComm, Black Saturday, Vasili Arkhipov, interactive NORAD radar. |
+| [communism.ximg.app](https://communism.ximg.app) | Communism — the deadliest ideology: 100M dead, Gulag, Mao's famine, Pol Pot's genocide, animated death counter. |
 | [ww2.ximg.app](https://ww2.ximg.app) | World War II — battles, leaders, radar, interactive Chain Home radar sweep visualization. |
 | [ww1.ximg.app](https://ww1.ximg.app) | World War I — trenches, battles, causes (MAIN), interactive Western Front trench scene. |
 | [revolution.ximg.app](https://revolution.ximg.app) | American Revolution — Founding Fathers, famous quotes, interactive waving flag canvas. |

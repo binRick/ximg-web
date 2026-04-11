@@ -33,7 +33,7 @@
       ['mongols','mongols'],['vikings','vikings'],['crusades','crusades'],['samurai','samurai'],
       ['ottoman','ottoman'],['napoleon','napoleon'],['ww2','ww2'],['ww1','ww1'],['cuba','cuba crisis'],['revolution','revolution'],
       ['french','french rev.'],['russianrev','russian rev.'],['industrial','industrial'],['civilwar','civilwar'],['renaissance','renaissance'],
-      ['silkroad','silkroad'],['colonial','colonial'],['british','british empire'],['spacerace','space race'],
+      ['silkroad','silkroad'],['colonial','colonial'],['british','british empire'],['spacerace','space race'],['communism','communism'],
     ]},
     { label: 'Retro', apps: [
       ['arpanet','arpanet'],['bbs','BBS'],['commodore','commodore'],['fidonet','fidonet'],['dos','DOS'],['mainframe','mainframe'],['modem','modem'],['punch','punch card'],['templeos','TempleOS'],['terminal','terminal'],
