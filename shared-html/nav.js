@@ -32,7 +32,7 @@
       ['egypt','egypt'],['greece','greece'],['babylon','babylon'],['aztec','aztec'],
       ['mongols','mongols'],['vikings','vikings'],['crusades','crusades'],['samurai','samurai'],
       ['ottoman','ottoman'],['ww2','ww2'],['ww1','ww1'],['revolution','revolution'],
-      ['industrial','industrial'],['civilwar','civilwar'],['renaissance','renaissance'],
+      ['french','french rev.'],['industrial','industrial'],['civilwar','civilwar'],['renaissance','renaissance'],
       ['silkroad','silkroad'],['colonial','colonial'],
     ]},
     { label: 'Retro', apps: [

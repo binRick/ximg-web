@@ -240,6 +240,7 @@ DOMAINS=(
   dockerimagedownloader.ximg.app
   githubstars.ximg.app
   templeos.ximg.app
+  iptables.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"

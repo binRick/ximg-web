@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iptables.ximg.app</title>
+<link rel="icon" href="/favicon.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080d14;
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.16);
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+
+  --input-color:    #38bdf8;
+  --output-color:   #4ade80;
+  --forward-color:  #fbbf24;
+  --prerouting-color:  #a78bfa;
+  --postrouting-color: #22d3ee;
+
+  --accept-color: #22c55e;
+  --drop-color:   #ef4444;
+  --reject-color: #f97316;
+  --log-color:    #eab308;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* nav placeholder */
+.main-wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+header {
+  text-align: center;
+  padding: 3.5rem 0 2.5rem;
+}
+header h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  background: linear-gradient(135deg, #38bdf8 0%, #a78bfa 50%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -1px;
+}
+header p {
+  color: var(--text-dim);
+  margin-top: .5rem;
+  font-size: 1.1rem;
+}
+
+/* ── Section containers ── */
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(12px);
+}
+section h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+section h2 .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem; height: 1.6rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  font-size: .75rem;
+  color: #94a3b8;
+}
+
+/* ── Flow Diagram ── */
+#flow-section { overflow: hidden; }
+
+.flow-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.25rem;
+  align-items: center;
+}
+.flow-controls label { color: var(--text-dim); font-size: .85rem; }
+.radio-group { display: flex; gap: .4rem; flex-wrap: wrap; }
+.radio-group input[type=radio] { display: none; }
+.radio-group label {
+  padding: .35rem .85rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: .82rem;
+  color: var(--text-dim);
+  transition: all .2s;
+}
+.radio-group input[type=radio]:checked + label {
+  background: rgba(56,189,248,.15);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.simulate-btn {
+  margin-left: auto;
+  padding: .45rem 1.25rem;
+  border: 1px solid #38bdf8;
+  border-radius: 20px;
+  background: rgba(56,189,248,.12);
+  color: #38bdf8;
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 600;
+  transition: all .2s;
+}
+.simulate-btn:hover { background: rgba(56,189,248,.22); }
+.simulate-btn:active { transform: scale(.97); }
+
+.flow-canvas-wrap {
+  position: relative;
+  width: 100%;
+  overflow: auto;
+}
+#flowCanvas {
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+}
+
+/* ── Table Tabs ── */
+.tabs { display: flex; gap: .3rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.tab-btn {
+  padding: .4rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: .9rem;
+  font-family: 'Courier New', monospace;
+  transition: all .2s;
+}
+.tab-btn.active, .tab-btn:hover {
+  background: rgba(167,139,250,.12);
+  border-color: #a78bfa;
+  color: #a78bfa;
+}
+
+.table-info { display: none; }
+.table-info.active { display: block; }
+.chain-pills { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .6rem; }
+.chain-pill {
+  padding: .3rem 1rem;
+  border-radius: 20px;
+  font-size: .82rem;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  border: 1px solid;
+}
+.chain-pill.input    { background: rgba(56,189,248,.1);  border-color: #38bdf8;  color: #38bdf8; }
+.chain-pill.output   { background: rgba(74,222,128,.1);  border-color: #4ade80;  color: #4ade80; }
+.chain-pill.forward  { background: rgba(251,191,36,.1);  border-color: #fbbf24;  color: #fbbf24; }
+.chain-pill.prerouting  { background: rgba(167,139,250,.1); border-color: #a78bfa; color: #a78bfa; }
+.chain-pill.postrouting { background: rgba(34,211,238,.1);  border-color: #22d3ee; color: #22d3ee; }
+
+.table-desc { color: var(--text-dim); font-size: .88rem; margin-bottom: .75rem; }
+
+/* ── Rule Builder ── */
+.builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+.field { display: flex; flex-direction: column; gap: .3rem; }
+.field label { font-size: .8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.field select, .field input {
+  background: rgba(0,0,0,.4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: .45rem .7rem;
+  font-family: 'Courier New', monospace;
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .2s;
+}
+.field select:focus, .field input:focus { border-color: rgba(255,255,255,.25); }
+.field select option { background: #0f172a; }
+
+.cmd-preview {
+  background: rgba(0,0,0,.5);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+.cmd-preview-label {
+  font-size: .75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: .5rem;
+}
+.cmd-preview pre {
+  font-family: 'Courier New', monospace;
+  font-size: .9rem;
+  color: #a5f3fc;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.cmd-preview pre.nft { color: #86efac; margin-top: .5rem; }
+
+.builder-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.btn {
+  padding: .5rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: .88rem;
+  font-weight: 600;
+  transition: all .18s;
+}
+.btn-primary {
+  background: rgba(56,189,248,.2);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+}
+.btn-primary:hover { background: rgba(56,189,248,.32); }
+.btn-ghost {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.btn-ghost:hover { background: rgba(255,255,255,.1); border-color: var(--border-hover); color: var(--text); }
+.btn-danger {
+  background: rgba(239,68,68,.12);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+.btn-danger:hover { background: rgba(239,68,68,.22); }
+
+/* ── Ruleset display ── */
+.ruleset-wrap { margin-top: 1.25rem; }
+.ruleset-wrap h3 { font-size: .9rem; color: var(--text-dim); margin-bottom: .6rem; font-weight: 500; }
+#rulesetDisplay {
+  background: rgba(0,0,0,.5);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: .85rem;
+  min-height: 60px;
+  max-height: 260px;
+  overflow-y: auto;
+  color: #a5f3fc;
+}
+.rule-line {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .25rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.rule-line:last-child { border-bottom: none; }
+.rule-line code { flex: 1; font-size: .85rem; }
+.rule-del {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  opacity: .5;
+  font-size: 1rem;
+  transition: opacity .15s;
+  padding: 0 .3rem;
+}
+.rule-del:hover { opacity: 1; }
+.rule-target-badge {
+  font-size: .72rem;
+  padding: .1rem .5rem;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.rule-target-badge.ACCEPT { background: rgba(34,197,94,.15); color: #22c55e; }
+.rule-target-badge.DROP   { background: rgba(239,68,68,.15);  color: #ef4444; }
+.rule-target-badge.REJECT { background: rgba(249,115,22,.15); color: #f97316; }
+.rule-target-badge.LOG    { background: rgba(234,179,8,.15);  color: #eab308; }
+
+.empty-ruleset { color: var(--text-muted); font-size: .85rem; font-family: sans-serif; padding: .5rem 0; }
+
+/* ── Templates ── */
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .6rem;
+}
+.template-card {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.template-card:hover {
+  border-color: var(--border-hover);
+  background: rgba(255,255,255,.05);
+  transform: translateY(-1px);
+}
+.template-card h4 { font-size: .88rem; color: var(--text); margin-bottom: .3rem; }
+.template-card p  { font-size: .78rem; color: var(--text-muted); }
+
+/* ── Default Policies ── */
+.policy-grid { display: flex; flex-wrap: wrap; gap: .75rem; }
+.policy-card {
+  flex: 1;
+  min-width: 130px;
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+.policy-card .chain-name {
+  font-family: 'Courier New', monospace;
+  font-size: .95rem;
+  font-weight: 700;
+  margin-bottom: .6rem;
+}
+.policy-card .chain-name.input    { color: #38bdf8; }
+.policy-card .chain-name.output   { color: #4ade80; }
+.policy-card .chain-name.forward  { color: #fbbf24; }
+.policy-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin: .5rem 0;
+}
+.policy-toggle button {
+  flex: 1;
+  padding: .3rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 600;
+  transition: all .18s;
+}
+.policy-toggle button.active-accept { background: rgba(34,197,94,.2); color: #22c55e; }
+.policy-toggle button.active-drop   { background: rgba(239,68,68,.2);  color: #ef4444; }
+.policy-effect { font-size: .75rem; color: var(--text-muted); margin-top: .4rem; }
+
+/* ── Quick Reference ── */
+.ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: .85rem;
+}
+.ref-item {
+  background: rgba(0,0,0,.35);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+}
+.ref-item .ref-desc { color: var(--text-dim); font-size: .8rem; margin-bottom: .4rem; }
+.ref-item code {
+  display: block;
+  font-family: 'Courier New', monospace;
+  font-size: .82rem;
+  color: #a5f3fc;
+  background: rgba(0,0,0,.4);
+  padding: .35rem .6rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.ref-item code:hover { background: rgba(56,189,248,.1); }
+.ref-item code + code { margin-top: .25rem; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 640px) {
+  header h1 { font-size: 2.2rem; }
+  section { padding: 1.25rem; }
+  .builder-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="main-wrap">
+  <header>
+    <h1>iptables</h1>
+    <p>Linux Firewall Rule Visualizer</p>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 1 — PACKET FLOW DIAGRAM
+  ══════════════════════════════════════════════ -->
+  <section id="flow-section">
+    <h2><span class="badge">1</span>Packet Flow Diagram</h2>
+    <div class="flow-controls">
+      <div class="radio-group">
+        <input type="radio" name="pkt" id="pkt-in"  value="incoming" checked>
+        <label for="pkt-in">Incoming → local process</label>
+        <input type="radio" name="pkt" id="pkt-out" value="outgoing">
+        <label for="pkt-out">Outgoing from local</label>
+        <input type="radio" name="pkt" id="pkt-fwd" value="forward">
+        <label for="pkt-fwd">Forwarded packet</label>
+      </div>
+      <button class="simulate-btn" id="simBtn">&#9654; Simulate Packet</button>
+    </div>
+    <div class="flow-canvas-wrap">
+      <canvas id="flowCanvas" width="900" height="440"></canvas>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 2 — TABLE / CHAIN SELECTOR
+  ══════════════════════════════════════════════ -->
+  <section>
+    <h2><span class="badge">2</span>Table &amp; Chain Reference</h2>
+    <div class="tabs">
+      <button class="tab-btn active" data-table="filter">filter</button>
+      <button class="tab-btn" data-table="nat">nat</button>
+      <button class="tab-btn" data-table="mangle">mangle</button>
+      <button class="tab-btn" data-table="raw">raw</button>
+    </div>
+
+    <div class="table-info active" id="tbl-filter">
+      <p class="table-desc">The <strong>filter</strong> table is the default table for packet filtering — allowing or denying packets. Most firewall rules go here.</p>
+      <div class="chain-pills">
+        <span class="chain-pill input">INPUT</span>
+        <span class="chain-pill forward">FORWARD</span>
+        <span class="chain-pill output">OUTPUT</span>
+      </div>
+    </div>
+    <div class="table-info" id="tbl-nat">
+      <p class="table-desc">The <strong>nat</strong> table is consulted for packets that create a new connection. Used for Network Address Translation (SNAT, DNAT, MASQUERADE).</p>
+      <div class="chain-pills">
+        <span class="chain-pill prerouting">PREROUTING</span>
+        <span class="chain-pill output">OUTPUT</span>
+        <span class="chain-pill postrouting">POSTROUTING</span>
+      </div>
+    </div>
+    <div class="table-info" id="tbl-mangle">
+      <p class="table-desc">The <strong>mangle</strong> table is used for specialized packet alteration — modifying TTL, TOS, MARK fields, etc. Applied to all 5 chains.</p>
+      <div class="chain-pills">
+        <span class="chain-pill prerouting">PREROUTING</span>
+        <span class="chain-pill input">INPUT</span>
+        <span class="chain-pill forward">FORWARD</span>
+        <span class="chain-pill output">OUTPUT</span>
+        <span class="chain-pill postrouting">POSTROUTING</span>
+      </div>
+    </div>
+    <div class="table-info" id="tbl-raw">
+      <p class="table-desc">The <strong>raw</strong> table has the highest priority and is mainly used to configure exemptions from connection tracking (NOTRACK). Applied before connection tracking.</p>
+      <div class="chain-pills">
+        <span class="chain-pill prerouting">PREROUTING</span>
+        <span class="chain-pill output">OUTPUT</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 3 — RULE BUILDER
+  ══════════════════════════════════════════════ -->
+  <section>
+    <h2><span class="badge">3</span>Rule Builder <span style="color:var(--text-muted);font-size:.8rem;font-weight:400;margin-left:.5rem">filter table</span></h2>
+    <div class="builder-grid">
+      <div class="field">
+        <label>Chain</label>
+        <select id="rb-chain">
+          <option>INPUT</option>
+          <option>OUTPUT</option>
+          <option>FORWARD</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Protocol</label>
+        <select id="rb-proto">
+          <option value="">all</option>
+          <option value="tcp">tcp</option>
+          <option value="udp">udp</option>
+          <option value="icmp">icmp</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Source IP / CIDR</label>
+        <input id="rb-src" type="text" placeholder="0.0.0.0/0">
+      </div>
+      <div class="field">
+        <label>Destination IP / CIDR</label>
+        <input id="rb-dst" type="text" placeholder="0.0.0.0/0">
+      </div>
+      <div class="field">
+        <label>Dest Port / Range</label>
+        <input id="rb-port" type="text" placeholder="22  or  80:443">
+      </div>
+      <div class="field">
+        <label>Interface</label>
+        <input id="rb-iface" type="text" placeholder="eth0">
+      </div>
+      <div class="field">
+        <label>State</label>
+        <select id="rb-state">
+          <option value="">— none —</option>
+          <option value="NEW">NEW</option>
+          <option value="ESTABLISHED">ESTABLISHED</option>
+          <option value="RELATED,ESTABLISHED">RELATED,ESTABLISHED</option>
+          <option value="INVALID">INVALID</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Target</label>
+        <select id="rb-target">
+          <option>ACCEPT</option>
+          <option>DROP</option>
+          <option>REJECT</option>
+          <option>LOG</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="cmd-preview">
+      <div class="cmd-preview-label">iptables command</div>
+      <pre id="previewIpt">iptables -A INPUT -j ACCEPT</pre>
+      <div class="cmd-preview-label" style="margin-top:.75rem">nftables equivalent</div>
+      <pre id="previewNft" class="nft">nft add rule ip filter input accept</pre>
+    </div>
+
+    <div class="builder-actions">
+      <button class="btn btn-primary" id="addRuleBtn">+ Add to Ruleset</button>
+      <button class="btn btn-ghost" id="clearFieldsBtn">Clear Fields</button>
+    </div>
+
+    <div class="ruleset-wrap">
+      <h3>Current Ruleset</h3>
+      <div id="rulesetDisplay"><span class="empty-ruleset">No rules yet — build one above or load a template.</span></div>
+      <div class="builder-actions" style="margin-top:.75rem">
+        <button class="btn btn-ghost" id="copyRulesetBtn">&#128203; Copy Ruleset</button>
+        <button class="btn btn-danger" id="clearRulesetBtn">&#128465; Clear All</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 4 — COMMON RULE TEMPLATES
+  ══════════════════════════════════════════════ -->
+  <section>
+    <h2><span class="badge">4</span>Common Rule Templates</h2>
+    <div class="templates-grid" id="templatesGrid"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 5 — DEFAULT POLICIES
+  ══════════════════════════════════════════════ -->
+  <section>
+    <h2><span class="badge">5</span>Default Chain Policies</h2>
+    <p style="color:var(--text-dim);font-size:.88rem;margin-bottom:1rem">
+      The default policy is the action taken when a packet reaches the end of a chain without matching any rule. Toggle to see the effect.
+    </p>
+    <div class="policy-grid" id="policyGrid"></div>
+    <div id="policyEffect" style="margin-top:1rem;padding:.9rem 1.2rem;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;font-size:.88rem;color:var(--text-dim);min-height:42px;"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 6 — QUICK REFERENCE
+  ══════════════════════════════════════════════ -->
+  <section>
+    <h2><span class="badge">6</span>Quick Reference Cheatsheet</h2>
+    <div class="ref-grid" id="refGrid"></div>
+  </section>
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+/* ════════════════════════════════════════════
+   FLOW DIAGRAM — Canvas renderer + animation
+════════════════════════════════════════════ */
+(function () {
+  const canvas = document.getElementById('flowCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const COLORS = {
+    INPUT:       '#38bdf8',
+    OUTPUT:      '#4ade80',
+    FORWARD:     '#fbbf24',
+    PREROUTING:  '#a78bfa',
+    POSTROUTING: '#22d3ee',
+    ROUTING:     '#94a3b8',
+    NET:         '#475569',
+    LOCAL:       '#64748b',
+    TEXT:        '#e2e8f0',
+    BG:          '#080d14',
+  };
+
+  // Node definitions [id, label, x, y, w, h, color]
+  const nodes = {
+    net_in:     { label:'Network',      x:30,  y:180, w:110, h:44, color:COLORS.NET },
+    prenat:     { label:'PREROUTING',   x:190, y:180, w:130, h:44, color:COLORS.PREROUTING, sub:'nat·mangle·raw' },
+    route:      { label:'Routing\nDecision', x:380, y:180, w:110, h:44, color:COLORS.ROUTING },
+    input:      { label:'INPUT',        x:230, y:310, w:110, h:44, color:COLORS.INPUT,  sub:'filter·mangle' },
+    local:      { label:'Local Process',x:230, y:390, w:130, h:44, color:COLORS.LOCAL },
+    output:     { label:'OUTPUT',       x:390, y:390, w:110, h:44, color:COLORS.OUTPUT, sub:'filter·nat·mangle' },
+    forward:    { label:'FORWARD',      x:530, y:180, w:110, h:44, color:COLORS.FORWARD, sub:'filter·mangle' },
+    post:       { label:'POSTROUTING',  x:680, y:280, w:130, h:44, color:COLORS.POSTROUTING, sub:'nat·mangle' },
+    net_out:    { label:'Network',      x:760, y:390, w:110, h:44, color:COLORS.NET },
+  };
+
+  const PATHS = {
+    incoming: ['net_in','prenat','route','input','local'],
+    outgoing: ['local','output','post','net_out'],
+    forward:  ['net_in','prenat','route','forward','post','net_out'],
+  };
+
+  function nodeCenter(id) {
+    const n = nodes[id];
+    return { x: n.x + n.w / 2, y: n.y + n.h / 2 };
+  }
+
+  function drawRoundRect(x, y, w, h, r, fillColor, alpha) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    ctx.fillStyle = fillColor + (alpha || 'ff');
+    ctx.fill();
+    ctx.strokeStyle = fillColor + '99';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  function drawNode(id, highlight) {
+    const n = nodes[id];
+    const alpha = highlight ? 'ff' : '28';
+    drawRoundRect(n.x, n.y, n.w, n.h, 8, n.color, highlight ? '3a' : '18');
+    ctx.strokeStyle = n.color + (highlight ? 'dd' : '44');
+    ctx.lineWidth = highlight ? 2 : 1;
+    ctx.beginPath();
+    ctx.roundRect(n.x, n.y, n.w, n.h, 8);
+    ctx.stroke();
+
+    const lines = n.label.split('\n');
+    ctx.fillStyle = highlight ? '#fff' : n.color + 'aa';
+    ctx.font = `${highlight ? '700' : '500'} 12px "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (lines.length === 1) {
+      ctx.fillText(n.label, n.x + n.w / 2, n.y + n.h / 2 - (n.sub ? 5 : 0));
+    } else {
+      ctx.fillText(lines[0], n.x + n.w / 2, n.y + n.h / 2 - 8);
+      ctx.fillText(lines[1], n.x + n.w / 2, n.y + n.h / 2 + 8);
+    }
+    if (n.sub) {
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = highlight ? 'rgba(255,255,255,.5)' : n.color + '55';
+      ctx.fillText(n.sub, n.x + n.w / 2, n.y + n.h / 2 + (lines.length > 1 ? 20 : 14));
+    }
+  }
+
+  function arrow(x1, y1, x2, y2, color, dashed) {
+    ctx.save();
+    ctx.strokeStyle = color || '#334155';
+    ctx.lineWidth = dashed ? 1.5 : 1.5;
+    if (dashed) ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // arrowhead
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const size = 7;
+    ctx.fillStyle = color || '#334155';
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - size * Math.cos(angle - 0.4), y2 - size * Math.sin(angle - 0.4));
+    ctx.lineTo(x2 - size * Math.cos(angle + 0.4), y2 - size * Math.sin(angle + 0.4));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawEdge(aId, bId, colorOverride) {
+    const a = nodeCenter(aId), b = nodeCenter(bId);
+    const na = nodes[aId], nb = nodes[bId];
+    // Simple straight edge with right-angle elbow if needed
+    let x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+    // exit/entry points
+    if (Math.abs(a.x - b.x) > Math.abs(a.y - b.y)) {
+      // horizontal dominant
+      x1 = a.x > b.x ? na.x : na.x + na.w;
+      x2 = a.x > b.x ? nb.x + nb.w : nb.x;
+      y1 = a.y; y2 = b.y;
+    } else {
+      // vertical dominant
+      y1 = a.y > b.y ? na.y : na.y + na.h;
+      y2 = a.y > b.y ? nb.y + nb.h : nb.y;
+      x1 = a.x; x2 = b.x;
+    }
+    const color = colorOverride || '#1e3a4a';
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    if (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    // arrowhead
+    const dx = x2 - (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5 ? x2 : x1);
+    const dy = y2 - y1;
+    const angle = Math.atan2(y2 - (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5 ? y1 : y1), x2 - (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5 ? x2 : x1));
+    const size = 7;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - size * Math.cos(angle - 0.45), y2 - size * Math.sin(angle - 0.45));
+    ctx.lineTo(x2 - size * Math.cos(angle + 0.45), y2 - size * Math.sin(angle + 0.45));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // All static edges (always drawn)
+  const staticEdges = [
+    ['net_in','prenat'],['prenat','route'],
+    ['route','input'],['input','local'],
+    ['local','output'],['output','post'],
+    ['route','forward'],['forward','post'],
+    ['post','net_out'],
+  ];
+
+  let animating = false;
+  let animT = 0;
+  let animPath = [];
+  let animPoints = [];
+  let activePathIds = new Set();
+
+  function buildAnimPoints(path) {
+    const pts = [];
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = nodeCenter(path[i]), b = nodeCenter(path[i+1]);
+      const na = nodes[path[i]];
+      const nb = nodes[path[i+1]];
+      let x1, y1, x2, y2;
+      if (Math.abs(a.x - b.x) > Math.abs(a.y - b.y)) {
+        x1 = a.x > b.x ? na.x : na.x + na.w;
+        x2 = a.x > b.x ? nb.x + nb.w : nb.x;
+        y1 = a.y; y2 = b.y;
+      } else {
+        y1 = a.y > b.y ? na.y : na.y + na.h;
+        y2 = a.y > b.y ? nb.y + nb.h : nb.y;
+        x1 = a.x; x2 = b.x;
+      }
+      const hasElbow = Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5;
+      pts.push({ x: x1, y: y1 });
+      if (hasElbow) pts.push({ x: x2, y: y1 });
+      pts.push({ x: x2, y: y2 });
+    }
+    return pts;
+  }
+
+  function getPathMode() {
+    return document.querySelector('input[name=pkt]:checked').value;
+  }
+
+  function drawFrame() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Background
+    ctx.fillStyle = COLORS.BG;
+    ctx.fillRect(0, 0, W, H);
+
+    // Static edges
+    staticEdges.forEach(([a, b]) => drawEdge(a, b));
+
+    // Highlight path edges
+    if (animating && animPath.length > 1) {
+      for (let i = 0; i < animPath.length - 1; i++) {
+        drawEdge(animPath[i], animPath[i+1], '#38bdf844');
+      }
+    }
+
+    // Draw all nodes
+    Object.keys(nodes).forEach(id => {
+      drawNode(id, activePathIds.has(id));
+    });
+
+    // Animate packet dot
+    if (animating && animPoints.length > 1) {
+      const total = animPoints.length - 1;
+      const seg = animT * total;
+      const i = Math.min(Math.floor(seg), total - 1);
+      const frac = seg - i;
+      const p1 = animPoints[i], p2 = animPoints[i + 1];
+      const px = p1.x + (p2.x - p1.x) * frac;
+      const py = p1.y + (p2.y - p1.y) * frac;
+
+      // Glow
+      const grd = ctx.createRadialGradient(px, py, 0, px, py, 18);
+      grd.addColorStop(0, 'rgba(255,255,255,0.6)');
+      grd.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(px, py, 18, 0, Math.PI * 2);
+      ctx.fillStyle = grd; ctx.fill();
+
+      // Dot
+      ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  let rafId = null;
+  let startTime = null;
+  const ANIM_DURATION = 2200;
+
+  function runAnim() {
+    if (rafId) cancelAnimationFrame(rafId);
+    const mode = getPathMode();
+    animPath = PATHS[mode];
+    animPoints = buildAnimPoints(animPath);
+    activePathIds = new Set(animPath);
+    animating = true;
+    animT = 0;
+    startTime = null;
+
+    function step(ts) {
+      if (!startTime) startTime = ts;
+      animT = Math.min((ts - startTime) / ANIM_DURATION, 1);
+      drawFrame();
+      if (animT < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        animating = false;
+        setTimeout(() => { activePathIds = new Set(); drawFrame(); }, 1200);
+      }
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  document.getElementById('simBtn').addEventListener('click', runAnim);
+  document.querySelectorAll('input[name=pkt]').forEach(r => r.addEventListener('change', () => { activePathIds = new Set(); drawFrame(); }));
+
+  drawFrame();
+})();
+
+/* ════════════════════════════════════════════
+   TABLE TABS
+════════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.table-info').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tbl-' + btn.dataset.table).classList.add('active');
+  });
+});
+
+/* ════════════════════════════════════════════
+   RULE BUILDER
+════════════════════════════════════════════ */
+(function () {
+  const fields = {
+    chain:  document.getElementById('rb-chain'),
+    proto:  document.getElementById('rb-proto'),
+    src:    document.getElementById('rb-src'),
+    dst:    document.getElementById('rb-dst'),
+    port:   document.getElementById('rb-port'),
+    iface:  document.getElementById('rb-iface'),
+    state:  document.getElementById('rb-state'),
+    target: document.getElementById('rb-target'),
+  };
+
+  const previewIpt = document.getElementById('previewIpt');
+  const previewNft = document.getElementById('previewNft');
+  const rulesetDisplay = document.getElementById('rulesetDisplay');
+  let ruleset = [];
+
+  function buildIpt() {
+    const chain  = fields.chain.value;
+    const proto  = fields.proto.value;
+    const src    = fields.src.value.trim();
+    const dst    = fields.dst.value.trim();
+    const port   = fields.port.value.trim();
+    const iface  = fields.iface.value.trim();
+    const state  = fields.state.value;
+    const target = fields.target.value;
+
+    let cmd = `iptables -A ${chain}`;
+    if (proto)  cmd += ` -p ${proto}`;
+    if (src && src !== '0.0.0.0/0')  cmd += ` -s ${src}`;
+    if (dst && dst !== '0.0.0.0/0')  cmd += ` -d ${dst}`;
+    if (iface) {
+      cmd += chain === 'OUTPUT' ? ` -o ${iface}` : ` -i ${iface}`;
+    }
+    if (state) cmd += ` -m state --state ${state}`;
+    if (port && proto && proto !== 'icmp') {
+      cmd += port.includes(':') ? ` --dport ${port}` : ` --dport ${port}`;
+    }
+    cmd += ` -j ${target}`;
+    return cmd;
+  }
+
+  function buildNft() {
+    const chain  = fields.chain.value.toLowerCase();
+    const proto  = fields.proto.value;
+    const src    = fields.src.value.trim();
+    const dst    = fields.dst.value.trim();
+    const port   = fields.port.value.trim();
+    const iface  = fields.iface.value.trim();
+    const state  = fields.state.value;
+    const target = fields.target.value.toLowerCase();
+
+    let rule = `nft add rule ip filter ${chain}`;
+    if (iface) rule += chain === 'output' ? ` oifname "${iface}"` : ` iifname "${iface}"`;
+    if (src && src !== '0.0.0.0/0') rule += ` ip saddr ${src}`;
+    if (dst && dst !== '0.0.0.0/0') rule += ` ip daddr ${dst}`;
+    if (proto && proto !== 'all') rule += ` ${proto}`;
+    if (port && proto && proto !== 'icmp') rule += ` dport ${port}`;
+    if (state) {
+      const map = { NEW:'new', ESTABLISHED:'established', 'RELATED,ESTABLISHED':'related,established', INVALID:'invalid' };
+      rule += ` ct state ${map[state] || state}`;
+    }
+    const tmap = { accept:'accept', drop:'drop', reject:'reject', log:'log' };
+    rule += ` ${tmap[target] || target}`;
+    return rule;
+  }
+
+  function update() {
+    previewIpt.textContent = buildIpt();
+    previewNft.textContent = buildNft();
+  }
+
+  Object.values(fields).forEach(el => el.addEventListener('input', update));
+  Object.values(fields).forEach(el => el.addEventListener('change', update));
+  update();
+
+  function renderRuleset() {
+    if (ruleset.length === 0) {
+      rulesetDisplay.innerHTML = '<span class="empty-ruleset">No rules yet — build one above or load a template.</span>';
+      return;
+    }
+    rulesetDisplay.innerHTML = ruleset.map((r, i) =>
+      `<div class="rule-line">
+        <span class="rule-target-badge ${r.target}">${r.target}</span>
+        <code>${escHtml(r.cmd)}</code>
+        <button class="rule-del" data-i="${i}" title="Remove">&#215;</button>
+      </div>`
+    ).join('');
+    rulesetDisplay.querySelectorAll('.rule-del').forEach(btn => {
+      btn.addEventListener('click', () => { ruleset.splice(+btn.dataset.i, 1); renderRuleset(); });
+    });
+  }
+
+  document.getElementById('addRuleBtn').addEventListener('click', () => {
+    ruleset.push({ cmd: buildIpt(), target: fields.target.value });
+    renderRuleset();
+  });
+
+  document.getElementById('clearFieldsBtn').addEventListener('click', () => {
+    fields.chain.value  = 'INPUT';
+    fields.proto.value  = '';
+    fields.src.value    = '';
+    fields.dst.value    = '';
+    fields.port.value   = '';
+    fields.iface.value  = '';
+    fields.state.value  = '';
+    fields.target.value = 'ACCEPT';
+    update();
+  });
+
+  document.getElementById('clearRulesetBtn').addEventListener('click', () => { ruleset = []; renderRuleset(); });
+
+  document.getElementById('copyRulesetBtn').addEventListener('click', () => {
+    const text = ruleset.map(r => r.cmd).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyRulesetBtn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  });
+
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // Expose for templates
+  window._ruleBuilder = { fields, update, ruleset, renderRuleset };
+})();
+
+/* ════════════════════════════════════════════
+   TEMPLATES
+════════════════════════════════════════════ */
+(function () {
+  const templates = [
+    {
+      name: 'Allow SSH (port 22)',
+      desc: 'Accept inbound TCP on port 22',
+      apply: f => { f.chain.value='INPUT'; f.proto.value='tcp'; f.port.value='22'; f.state.value='NEW,ESTABLISHED'; f.target.value='ACCEPT'; f.src.value=''; f.dst.value=''; f.iface.value=''; }
+    },
+    {
+      name: 'Allow HTTP',
+      desc: 'Accept inbound TCP on port 80',
+      apply: f => { f.chain.value='INPUT'; f.proto.value='tcp'; f.port.value='80'; f.state.value=''; f.target.value='ACCEPT'; f.src.value=''; f.dst.value=''; f.iface.value=''; }
+    },
+    {
+      name: 'Allow HTTPS',
+      desc: 'Accept inbound TCP on port 443',
+      apply: f => { f.chain.value='INPUT'; f.proto.value='tcp'; f.port.value='443'; f.state.value=''; f.target.value='ACCEPT'; f.src.value=''; f.dst.value=''; f.iface.value=''; }
+    },
+    {
+      name: 'Allow Established',
+      desc: 'Accept return traffic for established connections',
+      apply: f => { f.chain.value='INPUT'; f.proto.value=''; f.port.value=''; f.state.value='RELATED,ESTABLISHED'; f.target.value='ACCEPT'; f.src.value=''; f.dst.value=''; f.iface.value=''; }
+    },
+    {
+      name: 'Block Specific IP',
+      desc: 'Drop all traffic from an IP address',
+      apply: f => { f.chain.value='INPUT'; f.proto.value=''; f.src.value='10.0.0.1'; f.dst.value=''; f.port.value=''; f.state.value=''; f.target.value='DROP'; f.iface.value=''; }
+    },
+    {
+      name: 'Allow Ping (ICMP)',
+      desc: 'Accept ICMP echo requests',
+      apply: f => { f.chain.value='INPUT'; f.proto.value='icmp'; f.port.value=''; f.state.value=''; f.target.value='ACCEPT'; f.src.value=''; f.dst.value=''; f.iface.value=''; }
+    },
+    {
+      name: 'Log & Drop Invalid',
+      desc: 'Log then drop INVALID state packets',
+      apply: f => { f.chain.value='INPUT'; f.proto.value=''; f.port.value=''; f.state.value='INVALID'; f.target.value='DROP'; f.src.value=''; f.dst.value=''; f.iface.value=''; }
+    },
+    {
+      name: 'Full Default Policy',
+      desc: 'Drop all → allow established + SSH + HTTP/S',
+      bulk: true,
+      apply: f => {
+        const rb = window._ruleBuilder;
+        rb.ruleset.length = 0;
+        const rules = [
+          { chain:'INPUT',  proto:'',    port:'',    state:'RELATED,ESTABLISHED', target:'ACCEPT', src:'', dst:'', iface:'' },
+          { chain:'INPUT',  proto:'tcp', port:'22',  state:'NEW', target:'ACCEPT', src:'', dst:'', iface:'' },
+          { chain:'INPUT',  proto:'tcp', port:'80',  state:'NEW', target:'ACCEPT', src:'', dst:'', iface:'' },
+          { chain:'INPUT',  proto:'tcp', port:'443', state:'NEW', target:'ACCEPT', src:'', dst:'', iface:'' },
+          { chain:'INPUT',  proto:'icmp',port:'',    state:'',    target:'ACCEPT', src:'', dst:'', iface:'' },
+          { chain:'OUTPUT', proto:'',    port:'',    state:'',    target:'ACCEPT', src:'', dst:'', iface:'' },
+          { chain:'INPUT',  proto:'',    port:'',    state:'',    target:'DROP',   src:'', dst:'', iface:'' },
+        ];
+        function applyObj(obj) {
+          Object.assign(f, {chain:{value:obj.chain},proto:{value:obj.proto},port:{value:obj.port},state:{value:obj.state},target:{value:obj.target},src:{value:obj.src},dst:{value:obj.dst},iface:{value:obj.iface}});
+        }
+        rules.forEach(r => {
+          f.chain.value=r.chain; f.proto.value=r.proto; f.port.value=r.port;
+          f.state.value=r.state; f.target.value=r.target; f.src.value=r.src;
+          f.dst.value=r.dst; f.iface.value=r.iface;
+          rb.update();
+          rb.ruleset.push({ cmd: document.getElementById('previewIpt').textContent, target: r.target });
+        });
+        rb.renderRuleset();
+        // Reset fields
+        f.chain.value='INPUT'; f.proto.value=''; f.port.value=''; f.state.value=''; f.target.value='ACCEPT';
+        f.src.value=''; f.dst.value=''; f.iface.value='';
+        rb.update();
+      }
+    },
+  ];
+
+  const grid = document.getElementById('templatesGrid');
+  templates.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.innerHTML = `<h4>${t.name}</h4><p>${t.desc}</p>`;
+    card.addEventListener('click', () => {
+      const f = window._ruleBuilder.fields;
+      t.apply(f);
+      window._ruleBuilder.update();
+      // scroll to builder
+      document.getElementById('previewIpt').closest('section').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    });
+    grid.appendChild(card);
+  });
+})();
+
+/* ════════════════════════════════════════════
+   DEFAULT POLICIES
+════════════════════════════════════════════ */
+(function () {
+  const chains = [
+    { id:'INPUT',   name:'INPUT',   cls:'input',   defaultPolicy:'ACCEPT',
+      effects: {
+        ACCEPT: 'Packets reaching end of INPUT chain are accepted. Safe for desktops; risky for servers — any unmatched packet is allowed in.',
+        DROP:   'Packets reaching end of INPUT chain are silently dropped. Recommended for servers: only explicitly allowed traffic gets through.'
+      }
+    },
+    { id:'FORWARD', name:'FORWARD', cls:'forward',  defaultPolicy:'ACCEPT',
+      effects: {
+        ACCEPT: 'Forwarded packets (routing/NAT traffic) are allowed if no rule matches. OK if this host is not a router.',
+        DROP:   'Forwarded traffic is dropped by default. Correct for hosts that are not acting as routers or firewalls.'
+      }
+    },
+    { id:'OUTPUT',  name:'OUTPUT',  cls:'output',   defaultPolicy:'ACCEPT',
+      effects: {
+        ACCEPT: 'All outbound packets are allowed unless explicitly blocked. This is the typical setting.',
+        DROP:   'No outbound traffic unless explicitly allowed. Very restrictive — useful for hardened servers.'
+      }
+    },
+  ];
+
+  const grid = document.getElementById('policyGrid');
+  const effectEl = document.getElementById('policyEffect');
+  const state = {};
+
+  chains.forEach(c => {
+    state[c.id] = c.defaultPolicy;
+    const card = document.createElement('div');
+    card.className = 'policy-card';
+    card.innerHTML = `
+      <div class="chain-name ${c.cls}">${c.name}</div>
+      <div class="policy-toggle">
+        <button id="pol-accept-${c.id}" class="active-accept">ACCEPT</button>
+        <button id="pol-drop-${c.id}">DROP</button>
+      </div>
+      <div class="policy-effect" id="pol-eff-${c.id}">
+        <code style="font-size:.75rem;color:#64748b">iptables -P ${c.name} ACCEPT</code>
+      </div>
+    `;
+    grid.appendChild(card);
+
+    const aBtn = card.querySelector(`#pol-accept-${c.id}`);
+    const dBtn = card.querySelector(`#pol-drop-${c.id}`);
+    const codeEl = card.querySelector(`#pol-eff-${c.id} code`);
+
+    function setPolicy(pol) {
+      state[c.id] = pol;
+      aBtn.className = pol === 'ACCEPT' ? 'active-accept' : '';
+      dBtn.className = pol === 'DROP'   ? 'active-drop'   : '';
+      codeEl.textContent = `iptables -P ${c.name} ${pol}`;
+      updateEffect();
+    }
+    aBtn.addEventListener('click', () => setPolicy('ACCEPT'));
+    dBtn.addEventListener('click', () => setPolicy('DROP'));
+
+    card.addEventListener('mouseenter', () => {
+      effectEl.textContent = c.effects[state[c.id]];
+    });
+    card.addEventListener('mouseleave', () => { updateEffect(); });
+  });
+
+  function updateEffect() {
+    const parts = chains.filter(c => state[c.id] === 'DROP').map(c => c.name);
+    if (parts.length === 0) {
+      effectEl.textContent = 'All chains set to ACCEPT — permissive mode. Every unmatched packet is allowed.';
+    } else {
+      effectEl.textContent = `${parts.join(' + ')} default DROP — unmatched packets in these chains will be silently discarded.`;
+    }
+  }
+  updateEffect();
+})();
+
+/* ════════════════════════════════════════════
+   QUICK REFERENCE
+════════════════════════════════════════════ */
+(function () {
+  const refs = [
+    { desc: 'List rules with line numbers (filter table)', cmds: ['iptables -L -n -v --line-numbers'] },
+    { desc: 'List rules for specific chain', cmds: ['iptables -L INPUT -n -v'] },
+    { desc: 'List NAT table rules', cmds: ['iptables -t nat -L -n -v'] },
+    { desc: 'Flush (delete) all rules', cmds: ['iptables -F'] },
+    { desc: 'Flush specific chain', cmds: ['iptables -F INPUT'] },
+    { desc: 'Delete rule by line number', cmds: ['iptables -D INPUT 3'] },
+    { desc: 'Insert rule at position', cmds: ['iptables -I INPUT 1 -p tcp --dport 22 -j ACCEPT'] },
+    { desc: 'Set default policy', cmds: ['iptables -P INPUT DROP', 'iptables -P FORWARD DROP'] },
+    { desc: 'Save rules (iptables-persistent)', cmds: ['iptables-save > /etc/iptables/rules.v4'] },
+    { desc: 'Restore saved rules', cmds: ['iptables-restore < /etc/iptables/rules.v4'] },
+    { desc: 'Allow loopback interface', cmds: ['iptables -A INPUT -i lo -j ACCEPT'] },
+    { desc: 'Rate-limit connections (10/min)', cmds: ['iptables -A INPUT -p tcp --dport 22 -m limit --limit 10/min -j ACCEPT'] },
+    { desc: 'Block ping from outside', cmds: ['iptables -A INPUT -p icmp --icmp-type echo-request -j DROP'] },
+    { desc: 'NAT / masquerade (internet sharing)', cmds: ['iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE'] },
+    { desc: 'Port forward (DNAT)', cmds: ['iptables -t nat -A PREROUTING -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:80'] },
+    { desc: 'List nftables ruleset', cmds: ['nft list ruleset'] },
+    { desc: 'Flush nftables ruleset', cmds: ['nft flush ruleset'] },
+    { desc: 'Show connection tracking table', cmds: ['conntrack -L'] },
+  ];
+
+  const grid = document.getElementById('refGrid');
+  refs.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'ref-item';
+    item.innerHTML = `<div class="ref-desc">${r.desc}</div>` +
+      r.cmds.map(c => `<code title="Click to copy">${escHtml(c)}</code>`).join('');
+    item.querySelectorAll('code').forEach(el => {
+      el.addEventListener('click', () => {
+        navigator.clipboard.writeText(el.textContent).then(() => {
+          const orig = el.textContent;
+          el.textContent = '✓ Copied!';
+          setTimeout(() => el.textContent = orig, 1200);
+        });
+      });
+    });
+    grid.appendChild(item);
+  });
+
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+})();
+</script>
+</body>
+</html>
