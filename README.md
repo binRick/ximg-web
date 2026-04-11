@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-212 virtual hosts (root + 211 subdomains), all static sites served by a single nginx container.
+215 virtual hosts (root + 214 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -16,6 +16,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [dockerimage.ximg.app](https://dockerimage.ximg.app) | Docker Image Explorer — browse common images with sizes and architectures, visualize Dockerfile layers, inspect metadata field reference, and image command cheatsheet. |
 | [dockerimagedownloader.ximg.app](https://dockerimagedownloader.ximg.app) | Docker Image Downloader — pull any image by name, stream pull progress via SSE, then download as a .tar.gz archive piped directly from docker save to the browser. |
 | [githubstars.ximg.app](https://githubstars.ximg.app) | GitHub Stars — browse, search, sort, and filter all starred repositories; synced hourly from the GitHub API. |
+| [video.ximg.app](https://video.ximg.app) | Video player and media reference — codec comparison, container formats, and streaming protocols. |
 | [smtp.ximg.app](https://smtp.ximg.app) | Simple Mail Transfer Protocol — full session flow, all commands and ESMTP extensions, response codes, ports 25/465/587, TLS/STARTTLS, SPF, DKIM, DMARC, and diagnostic commands. |
 | [chmod.ximg.app](https://chmod.ximg.app) | Linux file permissions calculator — toggle owner/group/other bits, special modes (setuid/setgid/sticky), octal and symbolic output, chmod commands, ls -la preview, quick presets, and permission reference table. |
 | [iptables.ximg.app](https://iptables.ximg.app) | Linux firewall rule visualizer — animated netfilter packet flow diagram, table/chain reference, interactive rule builder with live iptables and nftables output, templates, and quick reference cheatsheet. |

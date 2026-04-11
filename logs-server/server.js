@@ -615,6 +615,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="githubstars">githubstars</button>
           <button class="site-opt" data-site="templeos">templeos</button>
           <button class="site-opt" data-site="smtp">smtp</button>
+          <button class="site-opt" data-site="video">video</button>
           <button class="site-opt" data-site="chmod">chmod</button>
           <button class="site-opt" data-site="iptables">iptables</button>
           <button class="site-opt" data-site="tls">tls</button>
