@@ -14,7 +14,7 @@
     .subtitle{font-size:.8rem;color:#586069;margin-bottom:1.6rem}
 
     /* sub-nav */
-    .subnav{display:flex;gap:.4rem;margin-bottom:1.4rem;flex-wrap:wrap}
+    .subnav{display:flex;gap:.4rem;margin-bottom:1.4rem;flex-wrap:wrap;justify-content:center}
     .snav-btn{background:none;border:1px solid rgba(255,255,255,.1);border-radius:5px;
       color:#586069;font-family:'Courier New',monospace;font-size:.75rem;padding:.3rem .75rem;
       cursor:pointer;transition:all .15s}
@@ -551,31 +551,95 @@ function fmtStars(n) {
   return String(n);
 }
 
+function mapLibraryImage(r) {
+  return {
+    name: r.name,
+    cat: guessCategory(r.name, r.categories || []),
+    pulls: r.pull_count || 0,
+    stars: r.star_count || 0,
+    official: true,
+    desc: r.description || ''
+  };
+}
+
+function mapSearchImage(r) {
+  var name = r.repo_name || r.name || '';
+  return {
+    name: name,
+    cat: guessCategory(name, []),
+    pulls: r.pull_count || 0,
+    stars: r.star_count || 0,
+    official: !!r.is_official,
+    desc: r.short_description || r.description || ''
+  };
+}
+
+function fetchAllLibraryPages(url, acc) {
+  acc = acc || [];
+  return fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.results || !data.results.length) return acc;
+      acc = acc.concat(data.results.map(mapLibraryImage));
+      setImgsStatus('Fetching official images… ' + acc.length + ' so far');
+      if (data.next) return fetchAllLibraryPages(data.next, acc);
+      return acc;
+    });
+}
+
+function fetchSearchPages(query, pages) {
+  var fetches = [];
+  for (var p = 1; p <= pages; p++) {
+    fetches.push(
+      fetch('https://hub.docker.com/v2/search/repositories/?query=' + encodeURIComponent(query) +
+            '&page_size=100&page=' + p + '&ordering=-pull_count')
+        .then(function(r) { return r.json(); })
+        .then(function(data) { return (data.results || []).map(mapSearchImage); })
+        .catch(function() { return []; })
+    );
+  }
+  return Promise.all(fetches).then(function(pages) {
+    return [].concat.apply([], pages);
+  });
+}
+
+function setImgsStatus(msg) {
+  document.getElementById('imgs-status').textContent = msg;
+}
+
 function initImages() {
   if (imgsLoaded) { renderImages(); return; }
   imgsLoaded = true;
-  document.getElementById('imgs-status').textContent = 'Fetching from Docker Hub…';
+  setImgsStatus('Fetching from Docker Hub…');
 
-  fetch('https://hub.docker.com/v2/repositories/library/?page_size=100&ordering=-pull_count')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!data.results || !data.results.length) throw new Error('empty');
-      imgsData = data.results.map(function(r) {
-        return {
-          name: r.name,
-          cat: guessCategory(r.name, r.categories || []),
-          pulls: r.pull_count || 0,
-          stars: r.star_count || 0,
-          official: true,
-          desc: r.description || ''
-        };
+  var libraryPromise = fetchAllLibraryPages(
+    'https://hub.docker.com/v2/repositories/library/?page_size=100&ordering=-pull_count'
+  );
+
+  // Fetch popular community images across several broad queries
+  var communityPromise = fetchSearchPages('', 5);
+
+  Promise.all([libraryPromise, communityPromise])
+    .then(function(results) {
+      var official = results[0];
+      var community = results[1];
+
+      // Merge: deduplicate by name, official entries win
+      var seen = {};
+      var merged = [];
+      official.forEach(function(img) { seen[img.name] = true; merged.push(img); });
+      community.forEach(function(img) {
+        if (!seen[img.name]) { seen[img.name] = true; merged.push(img); }
       });
-      document.getElementById('imgs-status').textContent = 'Showing ' + imgsData.length + ' official images from Docker Hub';
+
+      if (!merged.length) throw new Error('empty');
+      imgsData = merged;
+      setImgsStatus('Showing ' + imgsData.length + ' images from Docker Hub');
       renderImages();
     })
     .catch(function() {
       imgsData = FALLBACK_IMAGES.slice();
-      document.getElementById('imgs-status').textContent = 'Showing ' + imgsData.length + ' popular images (cached data)';
+      setImgsStatus('Showing ' + imgsData.length + ' popular images (cached data)');
       renderImages();
     });
 }
