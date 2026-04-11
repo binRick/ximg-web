@@ -127,6 +127,7 @@ const LOG_FILES = {
   programming: 'programming.access.log',
   ps1:         'ps1.access.log',
   dockerimage:  'dockerimage.access.log',
+  'dockerimage.dev': 'dockerimage.dev.access.log',
   dockerimagedownloader: 'dockerimagedownloader.access.log',
   githubstars:           'githubstars.access.log',
   templeos:              'templeos.access.log',
@@ -611,6 +612,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="programming">programming</button>
           <button class="site-opt" data-site="ps1">ps1</button>
           <button class="site-opt" data-site="dockerimage">dockerimage</button>
+          <button class="site-opt" data-site="dockerimage.dev">dockerimage.dev</button>
           <button class="site-opt" data-site="dockerimagedownloader">dockerimagedownloader</button>
           <button class="site-opt" data-site="githubstars">githubstars</button>
           <button class="site-opt" data-site="templeos">templeos</button>
