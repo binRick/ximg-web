@@ -134,6 +134,7 @@ const LOG_FILES = {
   french:                'french.access.log',
   russianrev:            'russianrev.access.log',
   napoleon:              'napoleon.access.log',
+  british:               'british.access.log',
   systemd:     'systemd.access.log',
   vr:          'vr.access.log',
   unix:        'unix.access.log',
@@ -607,7 +608,9 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="chmod">chmod</button>
           <button class="site-opt" data-site="iptables">iptables</button>
           <button class="site-opt" data-site="french">french</button>
+          <button class="site-opt" data-site="russianrev">russianrev</button>
           <button class="site-opt" data-site="napoleon">napoleon</button>
+          <button class="site-opt" data-site="british">british</button>
           <button class="site-opt" data-site="quake">quake</button>
           <button class="site-opt" data-site="claudemd">claudemd</button>
           <button class="site-opt" data-site="network">network</button>

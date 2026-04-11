@@ -33,7 +33,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, nagios, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 201+ is in `README.md` and `apps-html/index.html`.
+All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, nagios, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 202+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|

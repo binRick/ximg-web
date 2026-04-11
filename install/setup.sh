@@ -242,6 +242,7 @@ DOMAINS=(
   templeos.ximg.app
   iptables.ximg.app
   french.ximg.app
+  napoleon.ximg.app
 )
 
 CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
