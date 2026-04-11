@@ -55,21 +55,12 @@
     { label: 'Electronics', apps: [
       ['555timer','555 Timer'],['antenna','antenna'],['arduino','arduino'],['battery','battery'],['capacitor','capacitor'],['circuit','circuit'],['compiler','compiler'],['fpga','fpga'],['impedance','impedance'],['logic','logic'],['ohms','ohms'],['opamp','opamp'],['oscilloscope','oscilloscope'],['pcb','pcb'],['pinout','pinout'],['protocol','protocol'],['psu','psu'],['pwm','pwm'],['resistor','resistor'],['spectrum','spectrum'],['spi','spi'],['uart','uart'],['voltage','voltage']
     ]},
-    { label: 'Data', apps: [
-      ['visualize','visualize'],['statslab','statslab'],['regression','regression'],['probability','probability']
-    ]},
     { label: 'Dev Tools', apps: [
       ['regex','regex'],['binary','binary'],['jwt','JWT'],['cron','cron'],['color','color'],
       ['base64','base64'],['hash','hash'],['diff','diff'],['url','url'],['curl','curl'],
       ['cidr','cidr'],['uuid','uuid'],['lorem','lorem'],['csv','csv'],['markdown','markdown'],
       ['password','password'],['ssl','ssl'],['epoch','epoch'],['timespan','timespan'],['ps1','ps1'],
       ['dockerimage','dockerimage'],['dockerimagedownloader','docker image downloader'],['githubstars','github stars']
-    ]},
-    { label: 'Finance', apps: [
-      ['compound','compound'],
-      ['mortgage','mortgage'],['retire','retire'],['inflation','inflation'],['debt','debt'],
-      ['budget','budget'],['savings','savings'],['tax','tax'],['stocks','stocks'],
-      ['options','options'],['forex','forex'],['dcf','DCF']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
