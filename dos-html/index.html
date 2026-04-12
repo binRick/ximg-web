@@ -228,6 +228,26 @@
     .prose strong { color: var(--cyan); }
     .prose em { color: var(--white); font-style: normal; }
 
+    /* ── Simulator ── */
+    .sim-wrap { background: #000; border: 2px solid rgba(85,255,255,.25); border-radius: 8px; overflow: hidden; box-shadow: 0 0 30px rgba(85,255,255,.08); }
+    .sim-titlebar { background: var(--blue); padding: .4rem 1rem; display: flex; align-items: center; gap: .75rem; }
+    .sim-title { font-size: .8rem; color: var(--ltwhite); letter-spacing: .06em; flex: 1; text-align: center; }
+    .sim-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.3); }
+    .sim-screen { padding: 1rem 1.2rem 0; min-height: 360px; max-height: 480px; overflow-y: auto; font-size: .85rem; line-height: 1.55; }
+    .sim-screen::-webkit-scrollbar { width: 6px; }
+    .sim-screen::-webkit-scrollbar-track { background: #000; }
+    .sim-screen::-webkit-scrollbar-thumb { background: rgba(85,255,255,.25); border-radius: 3px; }
+    .sim-line { color: var(--white); white-space: pre-wrap; word-break: break-all; }
+    .sim-line.prompt { color: var(--cyan); }
+    .sim-line.error { color: #ff5555; }
+    .sim-line.info { color: #55ff55; }
+    .sim-line.header { color: var(--cyan); font-weight: 700; }
+    .sim-line.muted { color: var(--muted); }
+    .sim-input-row { display: flex; align-items: center; padding: .5rem 1.2rem .85rem; border-top: 1px solid rgba(85,255,255,.1); margin-top: .5rem; gap: .4rem; }
+    .sim-prompt-label { color: var(--cyan); font-size: .85rem; flex-shrink: 0; white-space: nowrap; }
+    .sim-input { background: transparent; border: none; outline: none; color: var(--ltwhite); font-family: 'Courier New', monospace; font-size: .85rem; flex: 1; caret-color: var(--cyan); }
+    .sim-hint { font-size: .75rem; color: var(--muted); margin-top: .65rem; text-align: center; font-style: italic; }
+
     /* ── Sub Nav ── */
     .sub-nav-wrap {
       position: sticky; top: 0; z-index: 100;
@@ -277,6 +297,7 @@
     <a href="#software">📦 Software</a>
     <a href="#boot">🏁 Boot</a>
     <a href="#timeline">📜 Timeline</a>
+    <a href="#simulator">▶ Simulator</a>
   </div>
 </nav>
 
@@ -758,11 +779,27 @@
     </div>
   </div>
 
+  <div id="simulator" class="page-section">
+    <div class="section-title">MS-DOS Simulator</div>
+    <div class="sim-wrap">
+      <div class="sim-titlebar">
+        <div class="sim-dot"></div><div class="sim-dot"></div><div class="sim-dot"></div>
+        <div class="sim-title">MS-DOS Prompt — C:\&gt;</div>
+      </div>
+      <div class="sim-screen" id="sim-output"></div>
+      <div class="sim-input-row">
+        <span class="sim-prompt-label" id="sim-prompt-label">C:\&gt;</span>
+        <input class="sim-input" id="sim-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="200">
+      </div>
+    </div>
+    <div class="sim-hint">Type <strong style="color:var(--cyan)">HELP</strong> for a list of commands. Try DIR, VER, TYPE AUTOEXEC.BAT, or FORMAT A:</div>
+  </div>
+
 </div><!-- /wrap -->
 
 <script>
 // ── Sub-nav routing ──────────────────────────────────────────────────────────
-var SECTIONS = ['commands','config','memory','software','boot','timeline'];
+var SECTIONS = ['commands','config','memory','software','boot','timeline','simulator'];
 var navLinks = document.querySelectorAll('.sub-nav a');
 
 function showSection(id) {
@@ -788,6 +825,503 @@ navLinks.forEach(function(a) {
 var initial = (location.hash.slice(1) || 'commands');
 if (SECTIONS.indexOf(initial) === -1) initial = 'commands';
 showSection(initial);
+
+// ── DOS Simulator ────────────────────────────────────────────────────────────
+(function() {
+  var output = document.getElementById('sim-output');
+  var input  = document.getElementById('sim-input');
+  var promptLabel = document.getElementById('sim-prompt-label');
+  var cwd = 'C:\\';
+  var history = [];
+  var histIdx = -1;
+  var formatStep = 0;
+
+  var FILES = {
+    'C:\\AUTOEXEC.BAT': [
+      '@ECHO OFF',
+      'PROMPT $P$G',
+      'PATH C:\\DOS;C:\\WINDOWS',
+      'SET TEMP=C:\\TEMP',
+      'SET BLASTER=A220 I5 D1 H5 P330 T6',
+      'LH C:\\DOS\\MSCDEX.EXE /D:MSCD001 /L:D',
+      'LH C:\\DOS\\MOUSE.COM',
+      'C:\\WINDOWS\\WIN.COM'
+    ],
+    'C:\\CONFIG.SYS': [
+      'DEVICE=C:\\DOS\\HIMEM.SYS',
+      'DEVICE=C:\\DOS\\EMM386.EXE NOEMS',
+      'BUFFERS=40',
+      'FILES=60',
+      'DOS=HIGH,UMB',
+      'STACKS=9,256',
+      'SHELL=C:\\DOS\\COMMAND.COM /P /E:512'
+    ]
+  };
+
+  var DIR_LISTINGS = {
+    'C:\\': {
+      dirs: ['DOS','WINDOWS','GAMES','TEMP','UTILS'],
+      files: [
+        { name:'AUTOEXEC.BAT', size:198,  date:'04-12-95' },
+        { name:'CONFIG.SYS',   size:174,  date:'04-12-95' },
+        { name:'COMMAND.COM',  size:54645, date:'09-30-93' }
+      ]
+    },
+    'C:\\DOS': {
+      dirs: [],
+      files: [
+        { name:'COMMAND.COM', size:54645, date:'09-30-93' },
+        { name:'HIMEM.SYS',   size:13935, date:'09-30-93' },
+        { name:'EMM386.EXE',  size:110174,date:'09-30-93' },
+        { name:'FDISK.EXE',   size:29336, date:'09-30-93' },
+        { name:'FORMAT.COM',  size:22974, date:'09-30-93' },
+        { name:'EDIT.COM',    size:413,   date:'09-30-93' },
+        { name:'QBASIC.EXE',  size:194309,date:'09-30-93' },
+        { name:'DEFRAG.EXE',  size:179083,date:'09-30-93' },
+        { name:'SCANDISK.EXE',size:119065,date:'09-30-93' }
+      ]
+    },
+    'C:\\GAMES': {
+      dirs: ['DOOM','QUAKE','WOLF3D','COMMANDER'],
+      files: [
+        { name:'GAMES.TXT', size:512, date:'01-01-95' }
+      ]
+    }
+  };
+
+  function print(text, cls) {
+    var line = document.createElement('div');
+    line.className = 'sim-line' + (cls ? ' ' + cls : '');
+    line.textContent = text;
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function printRaw(html) {
+    var line = document.createElement('div');
+    line.className = 'sim-line';
+    line.innerHTML = html;
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function blank() { print(''); }
+
+  function updatePrompt() {
+    promptLabel.textContent = cwd + '>';
+  }
+
+  function normPath(p) {
+    if (!p) return cwd;
+    p = p.toUpperCase().trim();
+    if (p === '\\') return 'C:\\';
+    if (p.indexOf(':') === -1) {
+      if (p[0] === '\\') return 'C:' + p;
+      return (cwd === 'C:\\' ? 'C:\\' : cwd + '\\') + p;
+    }
+    return p;
+  }
+
+  var CMDS = {
+    VER: function() {
+      blank();
+      print('MS-DOS Version 6.22', 'header');
+      blank();
+    },
+    DIR: function(args) {
+      var path = normPath(args[0]);
+      var listing = DIR_LISTINGS[path] || DIR_LISTINGS['C:\\'];
+      blank();
+      print(' Volume in drive C is MSDOS622', 'muted');
+      print(' Volume Serial Number is 1A2B-3C4D', 'muted');
+      blank();
+      print(' Directory of ' + path);
+      blank();
+      listing.dirs.forEach(function(d) {
+        print(padR(d,12) + '  <DIR>          04-12-95   9:00a', 'info');
+      });
+      listing.files.forEach(function(f) {
+        print(padR(f.name,12) + '  ' + padL(String(f.size),9) + '  ' + f.date + '   9:00a');
+      });
+      blank();
+      var fc = listing.files.length;
+      var dc = listing.dirs.length;
+      var totalBytes = listing.files.reduce(function(a,f){return a+f.size;},0);
+      print('       ' + fc + ' file(s)      ' + totalBytes + ' bytes');
+      print('       ' + dc + ' dir(s)   213,475,328 bytes free');
+      blank();
+    },
+    CD: function(args) {
+      if (!args[0]) { print(cwd); return; }
+      var target = args[0].toUpperCase();
+      if (target === '..') {
+        if (cwd !== 'C:\\') {
+          var parts = cwd.split('\\');
+          parts.pop();
+          cwd = parts.length === 1 ? 'C:\\' : parts.join('\\');
+          updatePrompt();
+        }
+        return;
+      }
+      if (target === '\\' || target === 'C:\\') { cwd = 'C:\\'; updatePrompt(); return; }
+      var dest = normPath(target);
+      if (DIR_LISTINGS[dest]) { cwd = dest; updatePrompt(); }
+      else { print('Invalid directory', 'error'); }
+    },
+    MD: function(args) {
+      if (!args[0]) { print('Required parameter missing', 'error'); return; }
+      print('');
+    },
+    ECHO: function(args) {
+      if (!args.length) { print('ECHO is on.'); return; }
+      print(args.join(' '));
+    },
+    TYPE: function(args) {
+      if (!args[0]) { print('Required parameter missing', 'error'); return; }
+      var key = normPath(args[0]);
+      if (!FILES[key]) { print('File not found - ' + args[0].toUpperCase(), 'error'); return; }
+      blank();
+      FILES[key].forEach(function(l) { print(l); });
+      blank();
+    },
+    CLS: function() {
+      while (output.firstChild) output.removeChild(output.firstChild);
+    },
+    DATE: function() {
+      var d = new Date();
+      var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      blank();
+      print('Current date is ' + days[d.getDay()] + ' ' +
+        padL(d.getMonth()+1,2,'0') + '-' + padL(d.getDate(),2,'0') + '-' + d.getFullYear());
+      print('Enter new date (mm-dd-yy): ', 'muted');
+      blank();
+    },
+    TIME: function() {
+      var d = new Date();
+      blank();
+      print('Current time is ' + padL(d.getHours(),2,'0') + ':' +
+        padL(d.getMinutes(),2,'0') + ':' + padL(d.getSeconds(),2,'0') + '.00');
+      print('Enter new time: ', 'muted');
+      blank();
+    },
+    MEM: function() {
+      blank();
+      print('Memory Type        Total    Used    Free', 'header');
+      print('──────────────  ──────── ──────── ────────', 'muted');
+      print('Conventional      640K     88K     552K');
+      print('Upper              96K     96K       0K');
+      print('Reserved          384K    384K       0K');
+      print('Extended (XMS)  15,360K   4,096K  11,264K');
+      print('──────────────  ──────── ──────── ────────', 'muted');
+      print('Total memory    16,384K   4,664K  11,720K');
+      blank();
+      print('Total under 1MB   736K    184K     552K');
+      blank();
+      print('Largest executable program size     551K (564,256 bytes)', 'info');
+      print('Largest free upper memory block       0K (0 bytes)');
+      blank();
+    },
+    FORMAT: function(args) {
+      var drive = (args[0] || 'A:').toUpperCase();
+      if (drive === 'C:' || drive === 'C:\\') {
+        blank();
+        print('WARNING, ALL DATA ON NON-REMOVABLE DISK', 'error');
+        print('DRIVE C: WILL BE LOST!', 'error');
+        print('Proceed with Format (Y/N)?', 'error');
+        formatStep = 1;
+        blank();
+        return;
+      }
+      blank();
+      print('Insert new diskette for drive ' + drive, 'info');
+      print('and press ENTER when ready...', 'muted');
+      blank();
+      setTimeout(function(){
+        print('Checking existing disk format.', 'muted');
+        setTimeout(function(){
+          print('Formatting 1.44M', 'muted');
+          setTimeout(function(){
+            print('Format complete.', 'info');
+            blank();
+            print('  1,457,664 bytes total disk space');
+            print('  1,457,664 bytes available on disk');
+            blank();
+            print('       512 bytes in each allocation unit.');
+            print('     2,847 allocation units available on disk.');
+            blank();
+            print('Volume label (11 characters, ENTER for none)? ', 'muted');
+            blank();
+          }, 1200);
+        }, 800);
+      }, 600);
+    },
+    CHKDSK: function() {
+      blank();
+      print('C:\\');
+      print('');
+      print('  213,561,344 bytes total disk space', 'muted');
+      print('       65,536 bytes in 2 hidden files', 'muted');
+      print('      360,448 bytes in 32 directories', 'muted');
+      print('   36,679,680 bytes in 614 user files', 'muted');
+      print('  176,455,680 bytes available on disk', 'info');
+      blank();
+      print('       32,768 bytes in each allocation unit');
+      print('        6,511 total allocation units on disk');
+      print('        5,387 available allocation units on disk');
+      blank();
+      print('      655,360 total bytes memory');
+      print('      564,256 bytes free', 'info');
+      blank();
+    },
+    TREE: function() {
+      blank();
+      print('Folder PATH listing for volume MSDOS622', 'header');
+      print('Volume serial number is 1A2B-3C4D');
+      print('C:\\');
+      print('├───DOS');
+      print('├───WINDOWS');
+      print('│   ├───SYSTEM');
+      print('│   └───TEMP');
+      print('├───GAMES');
+      print('│   ├───DOOM');
+      print('│   ├───QUAKE');
+      print('│   ├───WOLF3D');
+      print('│   └───COMMANDER');
+      print('├───UTILS');
+      print('└───TEMP');
+      blank();
+    },
+    SET: function() {
+      blank();
+      print('BLASTER=A220 I5 D1 H5 P330 T6');
+      print('COMSPEC=C:\\DOS\\COMMAND.COM');
+      print('PATH=C:\\DOS;C:\\WINDOWS');
+      print('PROMPT=$P$G');
+      print('TEMP=C:\\TEMP');
+      print('WINDIR=C:\\WINDOWS');
+      blank();
+    },
+    PATH: function(args) {
+      if (!args.length) { print('PATH=C:\\DOS;C:\\WINDOWS'); return; }
+      print('PATH set to: ' + args.join(' '));
+    },
+    COPY: function(args) {
+      if (args.length < 2) { print('Required parameter missing', 'error'); return; }
+      print('        1 file(s) copied', 'info');
+    },
+    DEL: function(args) {
+      if (!args[0]) { print('Required parameter missing', 'error'); return; }
+      print('Are you sure (Y/N)?', 'muted');
+    },
+    DELTREE: function(args) {
+      if (!args[0]) { print('Required parameter missing', 'error'); return; }
+      print('Delete directory "' + args[0].toUpperCase() + '" and all its subdirectories? [yn] ', 'error');
+    },
+    DOSKEY: function() { print('DOSKey installed.', 'info'); },
+    PROMPT: function(args) {
+      if (!args.length) return;
+      print('PROMPT set.', 'muted');
+    },
+    SCANDISK: function() {
+      blank();
+      print('Microsoft ScanDisk', 'header');
+      print('──────────────────────────────────', 'muted');
+      print('ScanDisk is now checking the following areas of drive C:');
+      blank();
+      print('  ✓ Media descriptor                        OK', 'info');
+      print('  ✓ File allocation tables                  OK', 'info');
+      print('  ✓ Directory structure                     OK', 'info');
+      print('  ✓ File system                             OK', 'info');
+      print('  ✓ Surface scan                            OK', 'info');
+      blank();
+      print('All clusters on drive C are OK.', 'info');
+      blank();
+    },
+    DEFRAG: function() {
+      blank();
+      print('MS-DOS Defragmenter', 'header');
+      print('Recommendation for Drive C: Full defragmentation.', 'muted');
+      print('Defragmenting drive C...', 'muted');
+      blank();
+      print('████████████████████████░░░░░░░░  78%', 'info');
+      blank();
+      print('Defragmentation complete.', 'info');
+      blank();
+    },
+    FDISK: function() {
+      blank();
+      print('WARNING! No changes to the current drive', 'error');
+      print('configuration have been made.', 'error');
+      blank();
+      print('FDISK Options — Fixed Disk Setup Program', 'header');
+      print('  1. Create DOS partition or Logical DOS Drive');
+      print('  2. Set active partition');
+      print('  3. Delete partition or Logical DOS Drive');
+      print('  4. Display partition information');
+      blank();
+      print('Enter choice: [1]', 'muted');
+      blank();
+    },
+    EDIT: function(args) {
+      blank();
+      print('MS-DOS Editor — Version 2.0.026', 'header');
+      print('(This is a simulated environment — EDIT is read-only here)', 'muted');
+      if (args[0]) {
+        var key = normPath(args[0]);
+        if (FILES[key]) {
+          blank();
+          FILES[key].forEach(function(l) { print(l); });
+        } else {
+          blank();
+          print('New file: ' + args[0].toUpperCase(), 'muted');
+        }
+      }
+      blank();
+      print('[F1=Help] [Esc=Exit]', 'muted');
+      blank();
+    },
+    DEBUG: function() {
+      blank();
+      print('-', 'prompt');
+      print('Type ? for help, Q to quit', 'muted');
+      blank();
+    },
+    QBASIC: function() {
+      blank();
+      print('Microsoft QuickBASIC 4.5', 'header');
+      print('10 PRINT "Hello, World!"');
+      print('20 FOR I = 1 TO 10');
+      print('30   PRINT I, I*I');
+      print('40 NEXT I');
+      print('50 END');
+      blank();
+      print('[Press any key to continue...]', 'muted');
+      blank();
+    },
+    HELP: function(args) {
+      blank();
+      print('MS-DOS 6.22 Help — Available Commands', 'header');
+      print('─────────────────────────────────────────────────────', 'muted');
+      var cmds = [
+        ['VER',      'Display MS-DOS version'],
+        ['DIR',      'List files in directory'],
+        ['CD',       'Change directory'],
+        ['MD',       'Make directory'],
+        ['TYPE',     'Display file contents (try: TYPE AUTOEXEC.BAT)'],
+        ['ECHO',     'Display a message'],
+        ['CLS',      'Clear the screen'],
+        ['DATE',     'Display or set the date'],
+        ['TIME',     'Display or set the time'],
+        ['MEM',      'Display memory usage'],
+        ['CHKDSK',   'Check disk and report status'],
+        ['TREE',     'Display directory tree'],
+        ['SET',      'Display environment variables'],
+        ['FORMAT',   'Format a disk (try: FORMAT A: or FORMAT C:)'],
+        ['SCANDISK', 'Scan and repair disk'],
+        ['DEFRAG',   'Defragment hard disk'],
+        ['FDISK',    'Fixed disk partition manager'],
+        ['DOSKEY',   'Install DOSKey macro utility'],
+        ['EDIT',     'MS-DOS full-screen text editor'],
+        ['DEBUG',    'Real-mode debugger'],
+        ['QBASIC',   'QuickBASIC interpreter'],
+        ['COPY',     'Copy files'],
+        ['DEL',      'Delete files'],
+        ['DELTREE',  'Delete directory tree'],
+        ['HELP',     'This help screen'],
+        ['CLS',      'Clear screen']
+      ];
+      cmds.forEach(function(c) {
+        print('  ' + padR(c[0], 10) + c[1], 'info');
+      });
+      blank();
+      print('Tip: Type a command and press Enter. Use DIR to explore files.', 'muted');
+      blank();
+    }
+  };
+
+  function padR(s, n, ch) { s = String(s); ch = ch||' '; while(s.length<n) s+=ch; return s; }
+  function padL(s, n, ch) { s = String(s); ch = ch||' '; while(s.length<n) s=ch+s; return s; }
+
+  function runCmd(raw) {
+    var trimmed = raw.trim();
+    if (!trimmed) return;
+    history.unshift(trimmed);
+    histIdx = -1;
+
+    print(cwd + '>' + trimmed, 'prompt');
+
+    if (formatStep === 1) {
+      formatStep = 0;
+      if (trimmed.toUpperCase() === 'Y') {
+        blank();
+        print('Formatting...', 'muted');
+        setTimeout(function(){
+          print('Oh no.', 'error');
+          setTimeout(function(){
+            print('Just kidding — format aborted. (C: is write-protected in this simulator)', 'info');
+            blank();
+          }, 800);
+        }, 500);
+      } else {
+        print('Format aborted.', 'muted');
+      }
+      return;
+    }
+
+    var parts = trimmed.match(/(".*?"|\S+)/g) || [];
+    var cmd = (parts[0] || '').toUpperCase();
+    var args = parts.slice(1).map(function(a){ return a.replace(/^"|"$/g,''); });
+
+    // Aliases
+    if (cmd === 'CHDIR') cmd = 'CD';
+    if (cmd === 'MKDIR') cmd = 'MD';
+    if (cmd === 'ERASE') cmd = 'DEL';
+    if (cmd === 'EXIT')  { print('Cannot exit - already at the command prompt.', 'error'); return; }
+    if (cmd === 'WIN')   { print('Starting Windows 3.11...', 'info'); setTimeout(function(){ print('Just kidding.', 'muted'); blank(); }, 800); return; }
+
+    if (CMDS[cmd]) {
+      CMDS[cmd](args);
+    } else if (trimmed) {
+      print("Bad command or file name", 'error');
+      blank();
+    }
+  }
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      var val = input.value;
+      input.value = '';
+      runCmd(val);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (histIdx < history.length - 1) { histIdx++; input.value = history[histIdx]; }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (histIdx > 0) { histIdx--; input.value = history[histIdx]; }
+      else if (histIdx === 0) { histIdx = -1; input.value = ''; }
+    }
+  });
+
+  // Focus input when simulator section becomes visible
+  document.querySelectorAll('.sub-nav a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      if (a.getAttribute('href') === '#simulator') {
+        setTimeout(function(){ input.focus(); }, 100);
+      }
+    });
+  });
+
+  // Boot message
+  print('MS-DOS Version 6.22', 'header');
+  print('Copyright (C) Microsoft Corp 1981-1994.', 'muted');
+  blank();
+  print('C:\\>VER', 'prompt');
+  blank();
+  print('MS-DOS Version 6.22', 'header');
+  blank();
+  print('Type HELP for available commands.', 'muted');
+  blank();
+})();
 
 // ── Background canvas — CRT scan lines + blue glow ──────────────────────────
 var canvas = document.getElementById('dos-canvas');
