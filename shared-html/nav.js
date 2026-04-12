@@ -153,7 +153,43 @@
     '@media(max-width:768px){' +
     '.nav-group{display:none;}' +
     '.nav-hamburger{display:inline-flex;align-items:center;}' +
-    '}';
+    '}' +
+
+    // Sub-nav horizontal scroll (tablets / narrow desktop)
+    '.sub-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}' +
+    '.sub-nav::-webkit-scrollbar{display:none}' +
+
+    // Content images: zoom cursor + glow on hover
+    'img[loading="lazy"]{cursor:zoom-in;transition:box-shadow .25s,transform .25s}' +
+    'img[loading="lazy"]:hover{box-shadow:0 0 0 2px rgba(0,255,65,.35),0 8px 30px rgba(0,0,0,.6);transform:scale(1.015)}' +
+
+    // Image lightbox
+    '.nav-lb{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.94);' +
+    'display:flex;align-items:center;justify-content:center;cursor:default;' +
+    'animation:nav-lbi .18s ease}' +
+    '@keyframes nav-lbi{from{opacity:0}to{opacity:1}}' +
+    '.nav-lb img{max-width:90vw;max-height:88vh;object-fit:contain;border-radius:10px;' +
+    'box-shadow:0 0 100px rgba(0,255,65,.12),0 30px 80px rgba(0,0,0,.85);' +
+    'animation:nav-lbii .22s cubic-bezier(.34,1.56,.64,1)}' +
+    '@keyframes nav-lbii{from{transform:scale(.88)}to{transform:none}}' +
+    '.nav-lb-x{position:fixed;top:1rem;right:1.2rem;color:#fff;font-size:1.1rem;' +
+    'cursor:pointer;background:rgba(255,255,255,.1);border-radius:50%;' +
+    'width:2.1rem;height:2.1rem;display:flex;align-items:center;justify-content:center;' +
+    'transition:background .15s,transform .15s;user-select:none;font-family:monospace}' +
+    '.nav-lb-x:hover{background:rgba(255,255,255,.22);transform:scale(1.1)}' +
+    '.nav-lb-cap{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);' +
+    'color:rgba(255,255,255,.55);font-size:.78rem;font-family:\'Courier New\',monospace;' +
+    'text-align:center;max-width:80vw;pointer-events:none}' +
+
+    // Copy button on <pre> blocks
+    '.nav-copy{position:absolute;top:.5rem;right:.5rem;font-size:.68rem;font-weight:700;' +
+    'padding:.22rem .55rem;border-radius:5px;cursor:pointer;' +
+    'background:rgba(13,13,22,.95);border:1px solid rgba(255,255,255,.14);' +
+    'color:#8b949e;font-family:\'Courier New\',monospace;transition:all .15s;' +
+    'opacity:0;pointer-events:none}' +
+    'pre:hover .nav-copy{opacity:1;pointer-events:auto}' +
+    '.nav-copy:hover{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.28)}' +
+    '.nav-copy.ok{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07)}';
 
   document.head.appendChild(s);
 
@@ -403,5 +439,161 @@
     }, true); // capture so we run before any stopPropagation
 
   }, 50);
+
+  // ── theme-color + Open Graph / Twitter Card meta tags ─────────────────────
+  (function () {
+    function setMeta(attrs) {
+      var sel = attrs.property
+        ? 'meta[property="' + attrs.property + '"]'
+        : 'meta[name="' + attrs.name + '"]';
+      if (document.querySelector(sel)) return;
+      var m = document.createElement('meta');
+      for (var k in attrs) m.setAttribute(k, attrs[k]);
+      document.head.appendChild(m);
+    }
+
+    setMeta({ name: 'theme-color', content: '#0a0a0f' });
+
+    var title = document.title || 'ximg.app';
+
+    var descEl = document.querySelector('meta[name="description"]');
+    var desc = descEl ? descEl.getAttribute('content') : '';
+    if (!desc) {
+      var candidates = document.querySelectorAll('h1,h2,p');
+      for (var i = 0; i < candidates.length; i++) {
+        var t = (candidates[i].textContent || '').replace(/\s+/g, ' ').trim();
+        if (t.length > 35) { desc = t.slice(0, 200); break; }
+      }
+    }
+    desc = desc || title + ' — interactive app on ximg.app';
+
+    var imgEl = document.querySelector('img[src*="/images/"]');
+    var imgSrc = imgEl ? imgEl.src : '';
+
+    var ogUrl = location.href.split('#')[0];
+
+    setMeta({ property: 'og:type',        content: 'website' });
+    setMeta({ property: 'og:site_name',   content: 'ximg.app' });
+    setMeta({ property: 'og:title',       content: title });
+    setMeta({ property: 'og:description', content: desc });
+    setMeta({ property: 'og:url',         content: ogUrl });
+    if (imgSrc) setMeta({ property: 'og:image', content: imgSrc });
+
+    setMeta({ name: 'twitter:card',        content: imgSrc ? 'summary_large_image' : 'summary' });
+    setMeta({ name: 'twitter:title',       content: title });
+    setMeta({ name: 'twitter:description', content: desc });
+    if (imgSrc) setMeta({ name: 'twitter:image', content: imgSrc });
+  }());
+
+  // ── Scroll-progress bar ────────────────────────────────────────────────────
+  (function () {
+    var bar = document.createElement('div');
+    bar.style.cssText =
+      'position:fixed;top:0;left:0;height:3px;width:0%;z-index:9999;pointer-events:none;' +
+      'background:linear-gradient(90deg,#00ff41 0%,#00d4ff 55%,#a855f7 100%);' +
+      'transition:width .07s linear;box-shadow:0 0 8px rgba(0,255,65,.6)';
+    document.body.appendChild(bar);
+    function upd() {
+      var s = document.documentElement.scrollTop || document.body.scrollTop;
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+      bar.style.width = (h > 0 ? Math.min(100, s / h * 100) : 0) + '%';
+    }
+    window.addEventListener('scroll', upd, { passive: true });
+    upd();
+  }());
+
+  // ── Universal image lightbox ───────────────────────────────────────────────
+  (function () {
+    document.addEventListener('click', function (e) {
+      var img = e.target.tagName === 'IMG' ? e.target : null;
+      if (!img) return;
+      if (img.closest('nav') || img.closest('.nav-mobile-panel')) return;
+      if ((img.naturalWidth || img.width) < 80) return; // skip icons
+
+      var lb = document.createElement('div');
+      lb.className = 'nav-lb';
+
+      var full = document.createElement('img');
+      full.src = img.src;
+      full.alt = img.alt || '';
+
+      var close = document.createElement('div');
+      close.className = 'nav-lb-x';
+      close.innerHTML = '&#x2715;';
+
+      if (img.alt) {
+        var cap = document.createElement('div');
+        cap.className = 'nav-lb-cap';
+        cap.textContent = img.alt;
+        lb.appendChild(cap);
+      }
+
+      lb.appendChild(full);
+      lb.appendChild(close);
+      document.body.appendChild(lb);
+      document.body.style.overflow = 'hidden';
+
+      function dismiss() {
+        lb.remove();
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', onKey);
+      }
+      function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
+      lb.addEventListener('click', function (ev) { if (ev.target === lb) dismiss(); });
+      close.addEventListener('click', dismiss);
+      document.addEventListener('keydown', onKey);
+    });
+  }());
+
+  // ── Copy button on <pre> blocks ────────────────────────────────────────────
+  setTimeout(function () {
+    document.querySelectorAll('pre').forEach(function (pre) {
+      if (pre.querySelector('.nav-copy')) return;
+      var btn = document.createElement('button');
+      btn.className = 'nav-copy';
+      btn.textContent = 'copy';
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var text = (pre.querySelector('code') || pre).textContent;
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'copied!';
+          btn.classList.add('ok');
+          setTimeout(function () { btn.textContent = 'copy'; btn.classList.remove('ok'); }, 2000);
+        }).catch(function () {
+          btn.textContent = 'failed';
+          setTimeout(function () { btn.textContent = 'copy'; }, 2000);
+        });
+      });
+      pre.style.position = 'relative';
+      pre.appendChild(btn);
+    });
+  }, 120);
+
+  // ── Sub-nav keyboard arrow navigation ─────────────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    var tag = (e.target || {}).tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    var tabs = Array.from(document.querySelectorAll(
+      '.tab,.nav-tab,.tab-btn,.sub-nav-btn,.linux-tab,.sub-nav a[href^="#"],[data-tab]'
+    )).filter(function (el) { return el.offsetParent !== null; });
+
+    if (tabs.length < 2) return;
+
+    var activeIdx = -1;
+    tabs.forEach(function (t, i) {
+      if (t.classList.contains('active') || t.getAttribute('aria-selected') === 'true') activeIdx = i;
+    });
+    if (activeIdx === -1) return;
+
+    var next = e.key === 'ArrowRight'
+      ? (activeIdx + 1) % tabs.length
+      : (activeIdx - 1 + tabs.length) % tabs.length;
+
+    tabs[next].click();
+    tabs[next].focus();
+    e.preventDefault();
+  });
 
 })();
