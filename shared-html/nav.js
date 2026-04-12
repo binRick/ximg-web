@@ -337,4 +337,71 @@
   }
   syncSpacer();
   window.addEventListener('resize', syncSpacer);
+
+  // ── Universal sub-nav tab persistence ─────────────────────────────────────
+  // Saves the active tab to localStorage and restores it on refresh.
+  // Skips restore when a URL hash is present — apps that already manage their
+  // own hash navigation (Pattern 1/2) handle restoration themselves.
+  setTimeout(function () {
+    if (window.__tabPersist) return;
+    window.__tabPersist = true;
+
+    var pageKey = 'tab:' + location.hostname + location.pathname;
+
+    // Extract a tab id from a clicked element (handles all sub-nav patterns)
+    function getTabId(el) {
+      if (!el || !el.getAttribute) return null;
+      // data-tab="name" buttons (most common)
+      if (el.dataset && el.dataset.tab) return el.dataset.tab;
+      // href="#name" anchor links
+      var href = el.getAttribute('href');
+      if (href && href[0] === '#' && href.length > 1) return href.slice(1);
+      // onclick="switchTab('name')" / showTab / showSection / showPanel
+      var oc = el.getAttribute('onclick');
+      if (oc) {
+        var m = oc.match(/\(\s*['"]([^'"]+)['"]\s*\)/);
+        if (m) return m[1];
+      }
+      return null;
+    }
+
+    var TAB_SEL = '.tab,.nav-tab,.tab-btn,.sub-nav-btn,.linux-tab,.sub-nav a[href^="#"],[data-tab]';
+
+    // Restore saved tab — but only when there is no URL hash, so we don't
+    // fight apps that already read location.hash on load.
+    if (!location.hash) {
+      var saved = localStorage.getItem(pageKey);
+      if (saved) {
+        var restoreBtn =
+          document.querySelector('[data-tab="' + saved + '"]') ||
+          document.querySelector('a[href="#' + saved + '"]');
+        if (restoreBtn) {
+          restoreBtn.click();
+        } else if (typeof window.switchTab === 'function') {
+          window.switchTab(saved);
+        } else if (typeof window.showTab === 'function') {
+          window.showTab(saved);
+        } else if (typeof window.showSection === 'function') {
+          window.showSection(saved);
+        } else if (typeof window.showPanel === 'function') {
+          window.showPanel(saved);
+        }
+      }
+    }
+
+    // Save to localStorage whenever any tab button is clicked
+    document.addEventListener('click', function (e) {
+      var el = e.target;
+      for (var i = 0; i < 3; i++) {
+        if (!el) break;
+        if (el.matches && el.matches(TAB_SEL)) {
+          var id = getTabId(el);
+          if (id) { localStorage.setItem(pageKey, id); break; }
+        }
+        el = el.parentElement;
+      }
+    }, true); // capture so we run before any stopPropagation
+
+  }, 50);
+
 })();
