@@ -1563,7 +1563,7 @@ const HTML = `<!DOCTYPE html>
         (entry.apps.length ? '<div><div class="md-section">Apps visited</div>' + appsHtml + '</div>' : '') +
         (entry.urls.length  ? '<div><div class="md-section">URLs</div>' + urlsHtml + '</div>' : '') +
         '<button onclick="hideMapDetail()" style="background:none;border:1px solid rgba(255,255,255,.1);' +
-          'border-radius:4px;color:#586069;font-family:\'Courier New\',monospace;font-size:.72rem;' +
+          'border-radius:4px;color:#586069;font-size:.72rem;' +
           'padding:.3rem .55rem;cursor:pointer;align-self:flex-start;margin-top:.25rem">✕ close</button>';
     }
 
