@@ -125,74 +125,171 @@ if('ontouchstart' in window) document.getElementById('mctrl').classList.add('sho
 function clearPressed() { K.jumpP=0; K.startP=0; }
 
 // ═══════════════════════════════════════════════════════
-// AUDIO
+// AUDIO — NES 3-channel synthesis + Web Audio scheduler
 // ═══════════════════════════════════════════════════════
-let AC = null;
-function initAudio() { if(AC) return; AC = new (window.AudioContext||window.webkitAudioContext)(); }
-function mf(n) { return 440*Math.pow(2,(n-69)/12); }
-function beep(freq,dur,vol=0.22,type='square') {
-  if(!AC) return;
-  const o=AC.createOscillator(), g=AC.createGain();
-  o.type=type; o.frequency.value=freq;
-  g.gain.setValueAtTime(vol,AC.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur);
-  o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+dur);
+let AC = null, pulseWave = null;
+
+function initAudio() {
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  // NES 25% duty-cycle pulse wave via Fourier series
+  const real = new Float32Array(64), imag = new Float32Array(64);
+  for (let k = 1; k < 64; k++) imag[k] = (2/(k*Math.PI)) * Math.sin(k*Math.PI*0.25);
+  pulseWave = AC.createPeriodicWave(real, imag, { disableNormalization: false });
 }
-function nz(dur,vol=0.15) {
-  if(!AC) return;
-  const buf=AC.createBuffer(1,AC.sampleRate*dur,AC.sampleRate);
-  const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
-  const s=AC.createBufferSource(), g=AC.createGain();
-  s.buffer=buf; g.gain.setValueAtTime(vol,AC.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur);
+
+function mf(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+// Schedule a note at an exact AudioContext timestamp (no drift)
+function schedNote(freq, dur, vol, chan, at) {
+  if (!AC || !freq) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  if (chan === 'pulse') { o.setPeriodicWave(pulseWave); }
+  else { o.type = chan; }
+  o.frequency.value = freq;
+  // NES-style ADSR: sharp attack, slight decay, sustain, fast release
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(vol, at + 0.004);
+  g.gain.setValueAtTime(vol * 0.85, at + dur * 0.2);
+  g.gain.setValueAtTime(vol * 0.72, at + dur * 0.75);
+  g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(at); o.stop(at + dur + 0.01);
+}
+
+// Immediate one-shot for SFX
+function beep(freq, dur, vol = 0.22, type = 'square') {
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + dur + 0.01);
+}
+
+function nz(dur, vol = 0.15) {
+  if (!AC) return;
+  const buf = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate);
+  const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1;
+  const s = AC.createBufferSource(), g = AC.createGain();
+  s.buffer = buf; g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
   s.connect(g); g.connect(AC.destination); s.start();
 }
+
 const SFX = {
-  jump()   { beep(330,0.05,0.18); setTimeout(()=>beep(440,0.09,0.15),40); },
-  coin()   { beep(mf(77),0.04,0.22); setTimeout(()=>beep(mf(83),0.09,0.18),50); },
-  stomp()  { nz(0.06,0.2); beep(130,0.05,0.12,'sawtooth'); },
-  brick()  { nz(0.05,0.18); beep(210,0.05,0.1); },
-  powerup(){ [72,74,76,77,79,81].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.09,0.2),i*55)); },
-  oneup()  { [76,79,84,88].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.1,0.22),i*70)); },
-  die()    { stopBGM(); [69,64,60,57].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.13,0.2),i*90)); },
-  clear()  { stopBGM(); [64,67,71,72,76].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.15,0.22),i*90)); },
-  bump()   { beep(210,0.04,0.1); },
-  kick()   { nz(0.05,0.18); beep(160,0.05,0.1,'sawtooth'); },
-  flag()   { stopBGM(); [79,76,74,72,71,69,67,64].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.08,0.2),i*65)); },
+  jump()    { beep(330,0.05,0.18); setTimeout(()=>beep(440,0.09,0.15),40); },
+  coin()    { beep(mf(77),0.04,0.22); setTimeout(()=>beep(mf(83),0.09,0.18),50); },
+  stomp()   { nz(0.06,0.2); beep(130,0.05,0.12,'sawtooth'); },
+  brick()   { nz(0.05,0.18); beep(210,0.05,0.1); },
+  powerup() { [72,74,76,77,79,81].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.09,0.2),i*55)); },
+  oneup()   { [76,79,84,88].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.1,0.22),i*70)); },
+  die()     { stopBGM(); [69,64,60,57].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.13,0.2),i*90)); },
+  clear()   { stopBGM(); [64,67,71,72,76].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.15,0.22),i*90)); },
+  bump()    { beep(210,0.04,0.1); },
+  kick()    { nz(0.05,0.18); beep(160,0.05,0.1,'sawtooth'); },
+  flag()    { stopBGM(); [79,76,74,72,71,69,67,64].forEach((n,i)=>setTimeout(()=>beep(mf(n),0.08,0.2),i*65)); },
 };
 
-// SMB1 Overworld BGM
-let BGM_on=false, BGM_h=null, BGM_i=0;
-const BGM_TEMPO = 200;
-// SMB1 iconic overworld theme melody (MIDI)
-const BGM_MEL = [
-  76,0,76,0, 0,76,0,72, 76,0,0,79, 0,0,0,67, 0,0,0,
-  72,0,0,67, 0,0,64,0,  0,69,0,71, 0,70,69,0,
-  65,0,67,0, 0,64,0,60, 62,59,0,0, 0,0,0,0,
-  72,0,0,67, 0,0,64,0,  0,69,0,71, 0,70,69,0,
-  65,0,67,0, 0,64,0,60, 62,59,0,0, 0,0,0,0,
-  79,0,0,77, 0,76,74,0, 0,73,74,0, 65,0,67,0,
-  0,69,0,72, 0,74,0,77, 0,74,0,75, 73,0,0,0,
-  79,0,0,77, 0,76,74,0, 0,73,74,0, 65,0,67,0,
-  0,69,0,72, 0,74,0,77, 0,79,0,0,  0,0,0,0,
+// ── SMB3 World 1 Overworld BGM ─────────────────────────────────────────────
+// 3 channels: Pulse 1 (melody) | Pulse 2 (harmony) | Triangle (bass)
+// 16th-note grid @ 168 BPM, 128-step loop
+
+const SMB3_BPM  = 168;
+const SMB3_S16  = 60 / SMB3_BPM / 4; // 16th note in seconds
+
+// Pulse 1 — melody (MIDI note numbers, 0 = rest)
+const M1 = [
+  // ── A phrase — measures 1-2 ──
+  76,0,74,0, 72,0,71,0,   // E5 D5  C5 B4
+  69,0,68,0, 69,0, 0,0,   // A4 Ab4 A4 —
+  72,0, 0,74, 76,0,72,0,  // C5 — D5 E5 C5 —
+  69,0, 0, 0,  0,0, 0,0,  // A4 — — —
+  // ── A phrase — measures 3-4 ──
+  79,0,77,0, 76,0,74,0,   // G5 F5  E5 D5
+  72,0,71,0, 72,0, 0,0,   // C5 B4  C5 —
+  74,0, 0,76, 79,0,76,0,  // D5 — E5 G5 E5 —
+  72,0, 0, 0,  0,0, 0,0,  // C5 — — —
+  // ── B phrase — measures 5-6 ──
+  84,0, 0,0,  79,0, 0,0,  // C6 —  G5 —
+  81,0, 0,0,  76,0, 0,0,  // A5 —  E5 —
+  79,0,76,0,  74,0,72,71, // G5 E5 D5 C5 B4
+  69,0,68,0,  69,0, 0,0,  // A4 Ab4 A4 —
+  // ── B phrase — measures 7-8 ──
+  84,0, 0,0,  79,0, 0,0,  // C6 —  G5 —
+  81,0, 0,0,  76,0, 0,0,  // A5 —  E5 —
+  79,0,76,0,  74,0,72,71, // G5 E5 D5 C5 B4
+  67,0, 0,0,   0,0, 0,0,  // G4 — — —
 ];
-const BGM_BASS = [
-  48,0,52,55,48,0,52,55,50,0,53,57,50,0,53,57,
-  48,0,52,55,48,0,52,55,50,0,53,57,50,0,53,57,
+
+// Pulse 2 — harmony (third below melody)
+const M2 = [
+  72,0,71,0, 69,0,67,0,
+  65,0,64,0, 65,0, 0,0,
+  69,0, 0,71, 72,0,69,0,
+  65,0, 0, 0,  0,0, 0,0,
+  76,0,74,0, 72,0,71,0,
+  69,0,68,0, 69,0, 0,0,
+  71,0, 0,72, 76,0,72,0,
+  69,0, 0, 0,  0,0, 0,0,
+  79,0, 0,0,  76,0, 0,0,
+  77,0, 0,0,  72,0, 0,0,
+  76,0,72,0,  71,0,69,67,
+  65,0,64,0,  65,0, 0,0,
+  79,0, 0,0,  76,0, 0,0,
+  77,0, 0,0,  72,0, 0,0,
+  76,0,72,0,  71,0,69,67,
+  64,0, 0,0,   0,0, 0,0,
 ];
-function bgmTick() {
-  if(!BGM_on||!AC) return;
-  const n=BGM_MEL[BGM_i%BGM_MEL.length];
-  if(n) beep(mf(n),0.07,0.09,'square');
-  if(BGM_i%4===0) {
-    const b=BGM_BASS[Math.floor(BGM_i/4)%BGM_BASS.length];
-    if(b) beep(mf(b),0.12,0.05,'square');
+
+// Triangle — bass (root + fifth pattern)
+const MB = [
+  60,0,0,0, 60,0,0,0,   // C4
+  65,0,0,0, 64,0,0,0,   // F4 E4
+  60,0,0,0, 67,0,0,0,   // C4 G4
+  65,0,0,0, 64,0,0,0,   // F4 E4
+  67,0,0,0, 67,0,0,0,   // G4
+  62,0,0,0, 60,0,0,0,   // D4 C4
+  60,0,0,0, 67,0,0,0,   // C4 G4
+  65,0,0,0, 60,0,0,0,   // F4 C4
+  60,0,0,0, 67,0,0,0,
+  65,0,0,0, 60,0,0,0,
+  67,0,0,0, 62,0,0,0,
+  65,0,0,0, 64,0,0,0,
+  60,0,0,0, 67,0,0,0,
+  65,0,0,0, 60,0,0,0,
+  67,0,0,0, 62,0,0,0,
+  60,0,0,0, 60,0,0,0,
+];
+
+let BGM_on = false, BGM_sched = null, BGM_step = 0, BGM_t0 = 0;
+
+function bgmSchedule() {
+  if (!BGM_on || !AC) return;
+  const AHEAD = 0.15; // schedule 150 ms ahead
+  const until = AC.currentTime + AHEAD;
+  const len = M1.length;
+  while (BGM_t0 + BGM_step * SMB3_S16 < until) {
+    const t = BGM_t0 + BGM_step * SMB3_S16;
+    const i = BGM_step % len;
+    if (M1[i]) schedNote(mf(M1[i]), SMB3_S16 * 0.80, 0.11,  'pulse',    t);
+    if (M2[i]) schedNote(mf(M2[i]), SMB3_S16 * 0.78, 0.065, 'pulse',    t);
+    if (MB[i]) schedNote(mf(MB[i]), SMB3_S16 * 1.08, 0.058, 'triangle', t);
+    BGM_step++;
   }
-  BGM_i++;
-  BGM_h = setTimeout(bgmTick, 60000/BGM_TEMPO/2);
+  BGM_sched = setTimeout(bgmSchedule, 25);
 }
-function startBGM() { if(!BGM_on){BGM_on=true;BGM_i=0;bgmTick();} }
-function stopBGM()  { BGM_on=false; if(BGM_h) clearTimeout(BGM_h); }
+
+function startBGM() {
+  if (BGM_on) return;
+  BGM_on = true; BGM_step = 0;
+  BGM_t0 = AC.currentTime + 0.05;
+  bgmSchedule();
+}
+function stopBGM() {
+  BGM_on = false;
+  if (BGM_sched) clearTimeout(BGM_sched);
+}
 
 // ═══════════════════════════════════════════════════════
 // TILE TYPES + DRAWING
