@@ -501,6 +501,51 @@ const HTML = `<!DOCTYPE html>
     .connecting{color:var(--dim);padding:1rem;animation:blink2 1s step-end infinite}
     @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
 
+    /* ── Global Map ─────────────────────────────────────────────────────── */
+    #map-container{flex:1;overflow:hidden;display:none;flex-direction:column;position:relative}
+    #map-header{display:flex;align-items:center;gap:.9rem;padding:.4rem .75rem;
+      border-bottom:1px solid rgba(255,255,255,.06);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
+    #map-header .mh-stat{color:var(--text);font-weight:700}
+    #map-refresh{background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;
+      color:var(--dim);font-family:\'Courier New\',monospace;font-size:.72rem;
+      padding:.2rem .55rem;cursor:pointer;margin-left:.25rem}
+    #map-refresh:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
+    #mh-ts{color:var(--dim);font-size:.68rem;margin-left:auto}
+    #map-body{flex:1;display:flex;overflow:hidden;position:relative}
+    #map-canvas{flex:1;cursor:crosshair;display:block;min-width:0}
+    #map-detail{width:300px;flex-shrink:0;border-left:1px solid rgba(0,255,65,.12);
+      overflow-y:auto;padding:1rem .9rem;display:none;flex-direction:column;gap:.8rem;
+      background:rgba(0,0,0,.25)}
+    #map-detail::-webkit-scrollbar{width:4px}
+    #map-detail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+    .md-ip{font-size:1rem;color:var(--green);font-weight:700;margin-bottom:.1rem;word-break:break-all}
+    .md-location{font-size:.8rem;color:#a5b4fc;margin-bottom:.4rem}
+    .md-count{font-size:.75rem;color:var(--dim)}
+    .md-section{font-size:.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;
+      margin-bottom:.35rem;padding-bottom:.25rem;border-bottom:1px solid rgba(255,255,255,.06)}
+    .md-app-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.22rem;font-size:.72rem}
+    .md-app-name{width:84px;flex-shrink:0;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .md-app-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+    .md-app-bar{height:100%;background:var(--green);border-radius:3px}
+    .md-app-count{width:28px;text-align:right;color:var(--dim);font-size:.67rem;flex-shrink:0}
+    .md-url{font-size:.67rem;color:#79c0ff;word-break:break-all;padding:.12rem 0;
+      border-bottom:1px solid rgba(255,255,255,.04)}
+    .md-url:last-child{border-bottom:none}
+    #map-tooltip{position:fixed;pointer-events:none;display:none;
+      background:rgba(5,12,22,.96);border:1px solid rgba(0,255,65,.2);
+      border-radius:8px;padding:.5rem .75rem;font-size:.72rem;z-index:500;
+      max-width:230px;box-shadow:0 8px 32px rgba(0,0,0,.7)}
+    .tt-ip{color:var(--green);font-weight:700;font-size:.76rem}
+    .tt-loc{color:#a5b4fc;margin-top:.1rem}
+    .tt-count{color:var(--dim);margin-top:.1rem;font-size:.68rem}
+    #map-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      color:var(--dim);font-size:.85rem;pointer-events:none;animation:blink2 1.2s step-end infinite}
+    #map-zoom-btns{position:absolute;bottom:12px;right:12px;display:flex;flex-direction:column;gap:4px;z-index:10}
+    .mz-btn{width:28px;height:28px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.12);
+      border-radius:5px;color:var(--dim);cursor:pointer;font-size:1rem;line-height:1;
+      display:flex;align-items:center;justify-content:center}
+    .mz-btn:hover{color:var(--text);border-color:rgba(255,255,255,.25)}
+
     .site-picker{position:relative}
     #site-picker-btn{font-size:.75rem;padding:.25rem .65rem;border-radius:6px;cursor:pointer;
       border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
@@ -752,6 +797,7 @@ const HTML = `<!DOCTYPE html>
     </div>
     <button class="tab" id="ssh-tab">ssh sessions</button>
     <button class="tab" id="dl-tab">docker downloads</button>
+    <button class="tab" id="map-tab">🌍 global map</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>
@@ -796,6 +842,27 @@ const HTML = `<!DOCTYPE html>
       </table>
     </div>
   </div>
+
+  <div id="map-container">
+    <div id="map-header">
+      <span class="mh-label">unique IPs</span> <span class="mh-stat" id="mh-ips">—</span>
+      <span class="mh-label">countries</span> <span class="mh-stat" id="mh-countries">—</span>
+      <span class="mh-label">requests sampled</span> <span class="mh-stat" id="mh-reqs">—</span>
+      <button id="map-refresh" onclick="loadMapData()">↺ refresh</button>
+      <span id="mh-ts"></span>
+    </div>
+    <div id="map-body">
+      <canvas id="map-canvas"></canvas>
+      <div id="map-detail"></div>
+      <div id="map-zoom-btns">
+        <button class="mz-btn" onclick="mapZoomBtn(1.25)" title="Zoom in">+</button>
+        <button class="mz-btn" onclick="mapZoomBtn(0.8)" title="Zoom out">−</button>
+        <button class="mz-btn" onclick="mapResetView()" title="Reset view">⌂</button>
+      </div>
+      <div id="map-loading">Loading…</div>
+    </div>
+  </div>
+  <div id="map-tooltip"></div>
 
   <script>
     const MAX_LINES = 500;
@@ -952,6 +1019,7 @@ const HTML = `<!DOCTYPE html>
     let sshMode = false;
 
     function enterSshMode() {
+      if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       sshMode = true;
       sshTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
@@ -1031,10 +1099,11 @@ const HTML = `<!DOCTYPE html>
       if (dlMode) leaveDlMode();
     });
 
-    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab)').forEach(btn => {
+    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#map-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
         if (sshMode) leaveSshMode();
         if (dlMode) leaveDlMode();
+        if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       });
     });
 
@@ -1045,6 +1114,7 @@ const HTML = `<!DOCTYPE html>
     let dlPollTimer = null;
 
     function enterDlMode() {
+      if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       dlMode = true;
       dlTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
@@ -1125,6 +1195,391 @@ const HTML = `<!DOCTYPE html>
     dlTab.addEventListener('click', () => {
       if (!dlMode) { if (sshMode) leaveSshMode(); enterDlMode(); }
     });
+
+    // ── Global IP Map ─────────────────────────────────────────────────────────
+    const mapTab       = document.getElementById('map-tab');
+    const mapContainer = document.getElementById('map-container');
+    const mapCanvas    = document.getElementById('map-canvas');
+    const mapDetail    = document.getElementById('map-detail');
+    const mapTooltip   = document.getElementById('map-tooltip');
+    const mapLoading   = document.getElementById('map-loading');
+    let mapMode = false;
+    let mapData = [];
+    let landRings = null;
+    let mapAutoRefreshTimer = null;
+    let mapAnimFrame = null;
+    let hoveredIp = null;
+    let selectedIp = null;
+    let pulsePhase = 0;
+    let mapZoom = 1, mapOffX = 0, mapOffY = 0;
+    let dragging = false, dragStart = null, dragOffset = null;
+
+    function enterMapMode() {
+      mapMode = true;
+      mapTab.classList.add('active');
+      document.querySelector('.tab[data-site="all"]').classList.remove('active');
+      pickerBtn.classList.remove('has-selection');
+      pickerBtn.textContent = '☰ app ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
+      document.getElementById('pause-btn').style.display = 'none';
+      document.querySelector('.stats').style.display = 'none';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      logContainer.style.display = 'none';
+      sshContainer.style.display = 'none';
+      dlContainer.style.display = 'none';
+      mapContainer.style.display = 'flex';
+      if (!landRings) loadLand(); else loadMapData();
+      mapAutoRefreshTimer = setInterval(loadMapData, 60000);
+      resizeMapCanvas();
+      startMapAnim();
+    }
+
+    function leaveMapMode() {
+      mapMode = false;
+      mapTab.classList.remove('active');
+      document.getElementById('pause-btn').style.display = '';
+      document.querySelector('.stats').style.display = '';
+      clearInterval(mapAutoRefreshTimer);
+      if (mapAnimFrame) { cancelAnimationFrame(mapAnimFrame); mapAnimFrame = null; }
+      mapContainer.style.display = 'none';
+      mapTooltip.style.display = 'none';
+      logContainer.style.display = '';
+    }
+
+    // ── TopoJSON decoder (no external library) ────────────────────────────────
+    function decodeTopoRings(topo) {
+      const sc = topo.transform.scale, tr = topo.transform.translate;
+      const decoded = topo.arcs.map(arc => {
+        let x = 0, y = 0;
+        return arc.map(p => { x += p[0]; y += p[1]; return [x * sc[0] + tr[0], y * sc[1] + tr[1]]; });
+      });
+      function resolve(refs) {
+        const pts = [];
+        for (const ref of refs) {
+          const rev = ref < 0, arc = decoded[rev ? ~ref : ref];
+          const seg = rev ? arc.slice().reverse() : arc;
+          pts.push(...(pts.length ? seg.slice(1) : seg));
+        }
+        return pts;
+      }
+      function collect(g, out) {
+        if (g.type === 'GeometryCollection') g.geometries.forEach(x => collect(x, out));
+        else if (g.type === 'Polygon') g.arcs.forEach(r => out.push(resolve(r)));
+        else if (g.type === 'MultiPolygon') g.arcs.forEach(p => p.forEach(r => out.push(resolve(r))));
+      }
+      const out = [];
+      collect(topo.objects.land, out);
+      return out;
+    }
+
+    function loadLand() {
+      fetch('/land-110m.json')
+        .then(r => r.json())
+        .then(topo => { landRings = decodeTopoRings(topo); loadMapData(); })
+        .catch(() => { mapLoading.textContent = 'Failed to load land data.'; mapLoading.style.animation = 'none'; });
+    }
+
+    function loadMapData() {
+      mapLoading.style.display = 'flex';
+      mapLoading.textContent = 'Loading…';
+      mapLoading.style.animation = 'blink2 1.2s step-end infinite';
+      fetch('/map-data')
+        .then(r => r.json())
+        .then(data => {
+          mapData = data.ips || [];
+          document.getElementById('mh-ips').textContent = (data.total_ips || 0).toLocaleString();
+          document.getElementById('mh-countries').textContent = data.total_countries || 0;
+          document.getElementById('mh-reqs').textContent = (data.total_requests || 0).toLocaleString();
+          document.getElementById('mh-ts').textContent = 'updated ' + new Date(data.ts).toLocaleTimeString();
+          mapLoading.style.display = 'none';
+        })
+        .catch(() => {
+          mapLoading.textContent = 'Failed to load data.';
+          mapLoading.style.animation = 'none';
+        });
+    }
+
+    // ── Projection ────────────────────────────────────────────────────────────
+    function proj(lon, lat) {
+      const W = mapCanvas.width, H = mapCanvas.height;
+      const x = ((lon + 180) / 360) * W;
+      const y = ((90 - lat) / 180) * H;
+      return [(x - W/2) * mapZoom + W/2 + mapOffX, (y - H/2) * mapZoom + H/2 + mapOffY];
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+    function dotColor(t) {
+      // t in [0,1]: green → yellow → orange → red
+      if (t < 0.33) {
+        const u = t / 0.33;
+        return \`rgb(\${Math.round(u*250)},255,65)\`;
+      } else if (t < 0.66) {
+        const u = (t - 0.33) / 0.33;
+        return \`rgb(255,\${Math.round(255 - u * 51)},65)\`;
+      } else {
+        const u = (t - 0.66) / 0.34;
+        return \`rgb(255,\${Math.round(204 - u * 180)},0)\`;
+      }
+    }
+
+    function dotRadius(count, maxCount) {
+      return 3 + (Math.log(count + 1) / Math.log(maxCount + 1)) * 11;
+    }
+
+    function drawMap() {
+      if (!mapMode) return;
+      const ctx = mapCanvas.getContext('2d');
+      const W = mapCanvas.width, H = mapCanvas.height;
+
+      // Ocean
+      ctx.fillStyle = '#050d1a';
+      ctx.fillRect(0, 0, W, H);
+
+      // Graticule
+      ctx.strokeStyle = 'rgba(0,180,255,0.06)';
+      ctx.lineWidth = 0.5;
+      for (let lon = -180; lon <= 180; lon += 30) {
+        const [x1, y1] = proj(lon, 85), [x2, y2] = proj(lon, -85);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+      for (let lat = -60; lat <= 60; lat += 30) {
+        const [x1, y1] = proj(-180, lat), [x2, y2] = proj(180, lat);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+
+      // Land
+      if (landRings) {
+        ctx.beginPath();
+        for (const ring of landRings) {
+          if (!ring.length) continue;
+          const [sx, sy] = proj(ring[0][0], ring[0][1]);
+          ctx.moveTo(sx, sy);
+          for (let i = 1; i < ring.length; i++) {
+            const [px, py] = proj(ring[i][0], ring[i][1]);
+            ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+        }
+        ctx.fillStyle = '#0d2235';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,200,100,0.15)';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+
+      if (!mapData.length) return;
+      const maxCount = mapData[0].count;
+
+      // Pulse rings for top IPs
+      for (let i = 0; i < Math.min(20, mapData.length); i++) {
+        const e = mapData[i];
+        const [cx, cy] = proj(e.lon, e.lat);
+        const r = dotRadius(e.count, maxCount);
+        const phase = pulsePhase + i * 0.55;
+        const fade = (Math.sin(phase) * 0.5 + 0.5);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 5 + fade * 14, 0, Math.PI * 2);
+        ctx.strokeStyle = \`rgba(0,255,65,\${0.04 + fade * 0.14})\`;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        // second ring offset
+        const fade2 = (Math.sin(phase + 1.5) * 0.5 + 0.5);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 2 + fade2 * 8, 0, Math.PI * 2);
+        ctx.strokeStyle = \`rgba(0,200,255,\${0.03 + fade2 * 0.08})\`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+
+      // All dots (smallest first so largest renders on top)
+      const sorted = [...mapData].sort((a,b) => a.count - b.count);
+      for (const entry of sorted) {
+        const [cx, cy] = proj(entry.lon, entry.lat);
+        const r = dotRadius(entry.count, maxCount);
+        const t = Math.log(entry.count + 1) / Math.log(maxCount + 1);
+        const color = dotColor(t);
+        const isActive = hoveredIp === entry.ip || selectedIp === entry.ip;
+
+        // Glow
+        const gR = r * 2.8;
+        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, gR);
+        const [rr,gg,bb] = color.match(/\\d+/g).map(Number);
+        grd.addColorStop(0, \`rgba(\${rr},\${gg},\${bb},0.45)\`);
+        grd.addColorStop(1, \`rgba(\${rr},\${gg},\${bb},0)\`);
+        ctx.beginPath(); ctx.arc(cx, cy, gR, 0, Math.PI * 2);
+        ctx.fillStyle = grd; ctx.fill();
+
+        // Core dot
+        const dr = r * (isActive ? 1.4 : 1);
+        ctx.beginPath(); ctx.arc(cx, cy, dr, 0, Math.PI * 2);
+        ctx.fillStyle = isActive ? '#ffffff' : color;
+        ctx.fill();
+
+        if (isActive) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    function startMapAnim() {
+      function frame() {
+        if (!mapMode) return;
+        pulsePhase += 0.035;
+        drawMap();
+        mapAnimFrame = requestAnimationFrame(frame);
+      }
+      if (mapAnimFrame) cancelAnimationFrame(mapAnimFrame);
+      mapAnimFrame = requestAnimationFrame(frame);
+    }
+
+    function resizeMapCanvas() {
+      const body = document.getElementById('map-body');
+      const dw = mapDetail.style.display === 'flex' ? mapDetail.offsetWidth : 0;
+      mapCanvas.width  = Math.max(1, body.offsetWidth - dw);
+      mapCanvas.height = Math.max(1, body.offsetHeight);
+    }
+
+    window.addEventListener('resize', () => { if (mapMode) resizeMapCanvas(); });
+
+    // ── Zoom controls ─────────────────────────────────────────────────────────
+    function mapZoomBtn(factor) {
+      const W = mapCanvas.width, H = mapCanvas.height;
+      const cx = W/2, cy = H/2;
+      mapOffX = cx - (cx - mapOffX) * factor;
+      mapOffY = cy - (cy - mapOffY) * factor;
+      mapZoom = Math.max(0.4, Math.min(25, mapZoom * factor));
+    }
+
+    function mapResetView() {
+      mapZoom = 1; mapOffX = 0; mapOffY = 0;
+    }
+
+    // ── Hit testing ───────────────────────────────────────────────────────────
+    function getIpAtPoint(px, py) {
+      if (!mapData.length) return null;
+      const maxCount = mapData[0].count;
+      let best = null, bestDist = Infinity;
+      for (const e of mapData) {
+        const [cx, cy] = proj(e.lon, e.lat);
+        const r = dotRadius(e.count, maxCount);
+        const dist = Math.hypot(px - cx, py - cy);
+        if (dist <= r + 5 && dist < bestDist) { bestDist = dist; best = e; }
+      }
+      return best;
+    }
+
+    // ── Mouse events ──────────────────────────────────────────────────────────
+    mapCanvas.addEventListener('mousemove', e => {
+      const rect = mapCanvas.getBoundingClientRect();
+      const px = e.clientX - rect.left, py = e.clientY - rect.top;
+
+      if (dragging) {
+        mapOffX = dragOffset[0] + (e.clientX - dragStart[0]);
+        mapOffY = dragOffset[1] + (e.clientY - dragStart[1]);
+        mapTooltip.style.display = 'none';
+        hoveredIp = null;
+        return;
+      }
+
+      const hit = getIpAtPoint(px, py);
+      if (hit) {
+        hoveredIp = hit.ip;
+        mapCanvas.style.cursor = 'pointer';
+        const flag = hit.countryCode ? countryFlag(hit.countryCode) + ' ' : '';
+        const loc  = hit.city ? hit.city + ', ' + hit.country : (hit.country || hit.countryCode || 'Unknown');
+        mapTooltip.innerHTML =
+          '<div class="tt-ip">' + esc(hit.ip) + '</div>' +
+          '<div class="tt-loc">' + flag + esc(loc) + '</div>' +
+          '<div class="tt-count">' + hit.count.toLocaleString() + ' requests</div>';
+        mapTooltip.style.display = 'block';
+        mapTooltip.style.left = Math.min(e.clientX + 14, window.innerWidth - 250) + 'px';
+        mapTooltip.style.top  = Math.min(e.clientY - 8,  window.innerHeight - 110) + 'px';
+      } else {
+        hoveredIp = null;
+        mapCanvas.style.cursor = 'crosshair';
+        mapTooltip.style.display = 'none';
+      }
+    });
+
+    mapCanvas.addEventListener('mouseleave', () => {
+      if (!dragging) { hoveredIp = null; mapTooltip.style.display = 'none'; }
+    });
+
+    mapCanvas.addEventListener('mousedown', e => {
+      dragging = true;
+      dragStart  = [e.clientX, e.clientY];
+      dragOffset = [mapOffX, mapOffY];
+      mapCanvas.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mouseup', e => {
+      if (!dragging) return;
+      const dx = Math.abs(e.clientX - dragStart[0]);
+      const dy = Math.abs(e.clientY - dragStart[1]);
+      dragging = false;
+      mapCanvas.style.cursor = 'crosshair';
+      if (dx < 5 && dy < 5 && mapMode) {
+        const rect = mapCanvas.getBoundingClientRect();
+        const hit = getIpAtPoint(e.clientX - rect.left, e.clientY - rect.top);
+        if (hit) showMapDetail(hit); else hideMapDetail();
+      }
+    });
+
+    mapCanvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+      const rect = mapCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      mapOffX = mx - (mx - mapOffX) * factor;
+      mapOffY = my - (my - mapOffY) * factor;
+      mapZoom = Math.max(0.4, Math.min(25, mapZoom * factor));
+    }, { passive: false });
+
+    // ── Detail panel ──────────────────────────────────────────────────────────
+    function showMapDetail(entry) {
+      selectedIp = entry.ip;
+      mapDetail.style.display = 'flex';
+      resizeMapCanvas();
+      const flag = entry.countryCode ? countryFlag(entry.countryCode) + ' ' : '';
+      const loc  = entry.city ? entry.city + ', ' + entry.country : (entry.country || entry.countryCode || 'Unknown');
+      const maxApp = entry.apps.length ? entry.apps[0].count : 1;
+      const appsHtml = entry.apps.map(a =>
+        '<div class="md-app-row">' +
+          '<span class="md-app-name" title="' + esc(a.name) + '">' + esc(a.name) + '</span>' +
+          '<div class="md-app-bar-wrap"><div class="md-app-bar" style="width:' + Math.round(a.count/maxApp*100) + '%"></div></div>' +
+          '<span class="md-app-count">' + a.count + '</span>' +
+        '</div>'
+      ).join('');
+      const urlsHtml = entry.urls.map(u => '<div class="md-url">' + esc(u) + '</div>').join('');
+      mapDetail.innerHTML =
+        '<div>' +
+          '<div class="md-ip">' + esc(entry.ip) + '</div>' +
+          '<div class="md-location">' + flag + esc(loc) + '</div>' +
+          '<div class="md-count">' + entry.count.toLocaleString() + ' requests sampled</div>' +
+        '</div>' +
+        (entry.apps.length ? '<div><div class="md-section">Apps visited</div>' + appsHtml + '</div>' : '') +
+        (entry.urls.length  ? '<div><div class="md-section">URLs</div>' + urlsHtml + '</div>' : '') +
+        '<button onclick="hideMapDetail()" style="background:none;border:1px solid rgba(255,255,255,.1);' +
+          'border-radius:4px;color:#586069;font-family:\'Courier New\',monospace;font-size:.72rem;' +
+          'padding:.3rem .55rem;cursor:pointer;align-self:flex-start;margin-top:.25rem">✕ close</button>';
+    }
+
+    function hideMapDetail() {
+      selectedIp = null;
+      mapDetail.style.display = 'none';
+      resizeMapCanvas();
+    }
+
+    mapTab.addEventListener('click', () => {
+      if (!mapMode) {
+        if (sshMode) leaveSshMode();
+        if (dlMode) leaveDlMode();
+        enterMapMode();
+      }
+    });
   </script>
 </body>
 </html>`;
@@ -1171,6 +1626,44 @@ const server = http.createServer(async (req, res) => {
     } catch (_) { res.writeHead(404); res.end(); }
     return;
   }
+  if (req.url === '/map-data') {
+    const LINES_PER_FILE = 300;
+    const ipMap = new Map();
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      const lines = lastLines(path.join(LOGS_DIR, logFilename), LINES_PER_FILE);
+      for (const line of lines) {
+        const p = parseLine(line);
+        if (!p.ip || p.ip === '172.18.0.1' || p.ip === '127.0.0.1' || p.ip === '::1') continue;
+        if (!ipMap.has(p.ip)) ipMap.set(p.ip, { count: 0, apps: new Map(), urls: new Set() });
+        const e = ipMap.get(p.ip);
+        e.count++;
+        e.apps.set(siteName, (e.apps.get(siteName) || 0) + 1);
+        if (p.path && e.urls.size < 50) e.urls.add(p.path);
+      }
+    }
+    const uniqueIps = [...ipMap.keys()];
+    await Promise.all(uniqueIps.map(ip => lookupGeo(ip)));
+    const ips = [...ipMap.entries()]
+      .map(([ip, d]) => {
+        const g = ipGeoCache.get(ip) || {};
+        return {
+          ip, count: d.count,
+          lat: g.lat || 0, lon: g.lon || 0,
+          countryCode: g.countryCode || '', country: g.country || '', city: g.city || '',
+          apps: [...d.apps.entries()].sort((a,b) => b[1]-a[1]).slice(0,15).map(([name,count]) => ({name,count})),
+          urls: [...d.urls].slice(0, 20),
+        };
+      })
+      .filter(e => e.lat !== 0 || e.lon !== 0)
+      .sort((a,b) => b.count - a.count)
+      .slice(0, 200);
+    const totalCountries = new Set(ips.map(e => e.countryCode).filter(Boolean)).size;
+    const totalRequests  = ips.reduce((s, e) => s + e.count, 0);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ts: new Date().toISOString(), total_ips: ips.length, total_requests: totalRequests, total_countries: totalCountries, ips }));
+    return;
+  }
+
   if (req.url === '/docker-downloads') {
     try {
       const lines = fs.existsSync(DL_LOG_FILE)
