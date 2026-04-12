@@ -112,7 +112,48 @@
     'background:rgba(255,255,255,.2);}' +
     '.nav-dd-item.active .nav-dd-dot{background:#00ff41;box-shadow:0 0 5px #00ff41;' +
     'animation:navpulse 2s ease-in-out infinite;}' +
-    '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.3}}';
+    '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.3}}' +
+
+    // Hamburger button — hidden on desktop
+    '.nav-hamburger{display:none;margin-left:auto;flex-shrink:0;cursor:pointer;' +
+    'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);' +
+    'border-radius:6px;padding:.3rem .55rem;color:#c9d1d9;font-size:1rem;line-height:1;' +
+    'font-family:\'Courier New\',monospace;user-select:none;transition:all .18s;}' +
+    '.nav-hamburger:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);}' +
+    '.nav-hamburger.open{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07);}' +
+
+    // Mobile panel — full-width overlay below nav
+    '.nav-mobile-panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:199;' +
+    'background:rgba(10,10,15,.97);overflow-y:auto;padding-top:2.8rem;}' +
+    '.nav-mobile-panel.open{display:block;}' +
+
+    '.nav-mobile-group{border-bottom:1px solid rgba(255,255,255,.07);}' +
+    '.nav-mobile-label{display:flex;align-items:center;justify-content:space-between;' +
+    'padding:.75rem 1rem;font-size:.85rem;font-weight:700;color:#c9d1d9;cursor:pointer;' +
+    'font-family:\'Courier New\',monospace;user-select:none;}' +
+    '.nav-mobile-label:active{background:rgba(255,255,255,.05);}' +
+    '.nav-mobile-label.active-group{color:#00ff41;}' +
+    '.nav-mobile-caret{font-size:.6rem;opacity:.5;transition:transform .2s;}' +
+    '.nav-mobile-group.open .nav-mobile-caret{transform:rotate(180deg);}' +
+
+    '.nav-mobile-apps{display:none;padding:.25rem .5rem .5rem;' +
+    'display:grid;grid-template-columns:1fr 1fr;gap:.15rem;}' +
+    '.nav-mobile-group:not(.open) .nav-mobile-apps{display:none;}' +
+    '.nav-mobile-group.open .nav-mobile-apps{display:grid;}' +
+
+    '.nav-mobile-app{display:flex;align-items:center;gap:.4rem;padding:.45rem .6rem;' +
+    'border-radius:6px;font-size:.78rem;font-weight:600;color:#c9d1d9;' +
+    'text-decoration:none;font-family:\'Courier New\',monospace;transition:background .1s;}' +
+    '.nav-mobile-app:hover,.nav-mobile-app:active{background:rgba(255,255,255,.08);color:#fff;}' +
+    '.nav-mobile-app.active{color:#00ff41;cursor:default;}' +
+    '.nav-mobile-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;background:rgba(255,255,255,.2);}' +
+    '.nav-mobile-app.active .nav-mobile-dot{background:#00ff41;box-shadow:0 0 5px #00ff41;}' +
+
+    // Responsive breakpoint
+    '@media(max-width:768px){' +
+    '.nav-group{display:none;}' +
+    '.nav-hamburger{display:inline-flex;align-items:center;}' +
+    '}';
 
   document.head.appendChild(s);
 
@@ -131,6 +172,7 @@
       : 'https://' + subdomain + '.ximg.app';
   }
 
+  // ── Desktop dropdowns ──────────────────────────────────────────────────────
   GROUPS.forEach(function (g) {
     var hasActive = g.apps.some(function (a) {
       var sub = a[0];
@@ -166,9 +208,8 @@
       closeAll();
       if (!isOpen || isActiveOnly) {
         dd.classList.add('open');
-        dd.classList.remove('active-only'); // manual open always shows all apps
+        dd.classList.remove('active-only');
         trigger.classList.add('open');
-        // flip left/right if dropdown would overflow viewport
         var rect = dd.getBoundingClientRect();
         if (rect.right > window.innerWidth - 8) {
           dd.style.left = 'auto';
@@ -187,7 +228,7 @@
 
     if (hasActive) {
       group._autoOpen = function () {
-        dd.classList.add('open', 'active-only'); // auto-open shows only the active item
+        dd.classList.add('open', 'active-only');
         trigger.classList.add('open');
         var rect = dd.getBoundingClientRect();
         if (rect.right > window.innerWidth - 8) {
@@ -198,11 +239,76 @@
     }
   });
 
+  // ── Mobile hamburger + panel ───────────────────────────────────────────────
+  var hamburger = document.createElement('div');
+  hamburger.className = 'nav-hamburger';
+  hamburger.textContent = '☰';
+  nav.appendChild(hamburger);
+
+  var mobilePanel = document.createElement('div');
+  mobilePanel.className = 'nav-mobile-panel';
+
+  GROUPS.forEach(function (g) {
+    var hasActive = g.apps.some(function (a) {
+      var sub = a[0];
+      return sub + '.ximg.app' === curHost ||
+             (PATH_APPS[sub] && curHost === 'ximg.app' && curPath === sub);
+    });
+
+    var mGroup = document.createElement('div');
+    mGroup.className = 'nav-mobile-group' + (hasActive ? ' open' : '');
+
+    var mLabel = document.createElement('div');
+    mLabel.className = 'nav-mobile-label' + (hasActive ? ' active-group' : '');
+    mLabel.innerHTML = g.label + ' <span class="nav-mobile-caret">▾</span>';
+
+    var mApps = document.createElement('div');
+    mApps.className = 'nav-mobile-apps';
+
+    g.apps.forEach(function (a) {
+      var subdomain = a[0], label = a[1];
+      var isActive = subdomain + '.ximg.app' === curHost ||
+                     (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
+      var item = document.createElement('a');
+      item.className = 'nav-mobile-app' + (isActive ? ' active' : '');
+      item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
+      if (!isActive) item.href = appHref(subdomain);
+      mApps.appendChild(item);
+    });
+
+    mLabel.addEventListener('click', function () {
+      mGroup.classList.toggle('open');
+    });
+
+    mGroup.appendChild(mLabel);
+    mGroup.appendChild(mApps);
+    mobilePanel.appendChild(mGroup);
+  });
+
+  hamburger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var isOpen = mobilePanel.classList.contains('open');
+    if (isOpen) {
+      mobilePanel.classList.remove('open');
+      hamburger.classList.remove('open');
+      hamburger.textContent = '☰';
+    } else {
+      closeAll();
+      mobilePanel.classList.add('open');
+      hamburger.classList.add('open');
+      hamburger.textContent = '✕';
+    }
+    syncSpacer();
+  });
+
   document.addEventListener('click', closeAll);
 
   function closeAll() {
     nav.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
     nav.querySelectorAll('.nav-trigger.open').forEach(function (t) { t.classList.remove('open'); });
+    mobilePanel.classList.remove('open');
+    hamburger.classList.remove('open');
+    hamburger.textContent = '☰';
     syncSpacer();
   }
 
@@ -215,6 +321,7 @@
   gtmNs.innerHTML = '<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PQQWB7BW" height="0" width="0" style="display:none;visibility:hidden"></iframe>';
 
   document.body.prepend(spacer);
+  document.body.prepend(mobilePanel);
   document.body.prepend(nav);
   document.body.prepend(gtmNs);
 
