@@ -376,6 +376,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && pathname === '/world.json') {
+    const wf = path.join(__dirname, 'world.json');
+    if (!fs.existsSync(wf)) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=86400' });
+    res.end(fs.readFileSync(wf));
+    return;
+  }
+
   if (req.method === 'GET' && pathname.startsWith('/shared/')) {
     const sharedPath = path.join('/app/shared', pathname.slice('/shared/'.length).split('?')[0]);
     try {

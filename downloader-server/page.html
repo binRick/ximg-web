@@ -878,13 +878,76 @@ var CNAMES = {
 };
 
 var _globeData = null;
+var _worldTopo = null;
+
+// Minimal TopoJSON → arcs decoder (no external lib needed)
+function topoArcs(topo, geom) {
+  // returns array of rings, each ring is array of [lon,lat]
+  function decodeArc(arcIdx) {
+    var rev = arcIdx < 0;
+    var arc = topo.arcs[rev ? ~arcIdx : arcIdx];
+    var pts = [], x = 0, y = 0;
+    for (var i = 0; i < arc.length; i++) {
+      x += arc[i][0]; y += arc[i][1];
+      var lon = x * topo.transform.scale[0] + topo.transform.translate[0];
+      var lat = y * topo.transform.scale[1] + topo.transform.translate[1];
+      pts.push([lon, lat]);
+    }
+    if (rev) pts.reverse();
+    return pts;
+  }
+  function decodeRing(ring) {
+    var pts = [];
+    ring.forEach(function(ai) { pts = pts.concat(decodeArc(ai)); });
+    return pts;
+  }
+  if (geom.type === 'Polygon') return geom.arcs.map(decodeRing);
+  if (geom.type === 'MultiPolygon') {
+    var out = [];
+    geom.arcs.forEach(function(poly) { poly.forEach(function(ring) { out.push(decodeRing(ring)); }); });
+    return out;
+  }
+  return [];
+}
+
+// Map numeric TopoJSON country ID to ISO2 code
+var NUMISO = {
+  4:'AF',8:'AL',12:'DZ',24:'AO',32:'AR',51:'AM',36:'AU',40:'AT',31:'AZ',
+  48:'BH',50:'BD',112:'BY',56:'BE',84:'BZ',204:'BJ',64:'BT',68:'BO',70:'BA',
+  72:'BW',76:'BR',96:'BN',100:'BG',854:'BF',108:'BI',116:'KH',120:'CM',
+  124:'CA',140:'CF',148:'TD',152:'CL',156:'CN',170:'CO',180:'CD',188:'CR',
+  191:'HR',192:'CU',196:'CY',203:'CZ',208:'DK',262:'DJ',214:'DO',218:'EC',
+  818:'EG',222:'SV',226:'GQ',232:'ER',233:'EE',748:'SZ',231:'ET',246:'FI',
+  250:'FR',266:'GA',288:'GH',300:'GR',320:'GT',324:'GN',328:'GY',332:'HT',
+  340:'HN',348:'HU',352:'IS',356:'IN',360:'ID',364:'IR',368:'IQ',372:'IE',
+  376:'IL',380:'IT',388:'JM',392:'JP',400:'JO',398:'KZ',404:'KE',408:'KP',
+  410:'KR',414:'KW',417:'KG',418:'LA',428:'LV',422:'LB',426:'LS',430:'LR',
+  434:'LY',440:'LT',442:'LU',450:'MG',454:'MW',458:'MY',466:'ML',470:'MT',
+  478:'MR',484:'MX',498:'MD',496:'MN',499:'ME',504:'MA',508:'MZ',104:'MM',
+  516:'NA',524:'NP',528:'NL',554:'NZ',558:'NI',562:'NE',566:'NG',578:'NO',
+  512:'OM',586:'PK',591:'PA',598:'PG',600:'PY',604:'PE',608:'PH',616:'PL',
+  620:'PT',634:'QA',642:'RO',643:'RU',646:'RW',682:'SA',686:'SN',688:'RS',
+  694:'SL',702:'SG',703:'SK',705:'SI',706:'SO',710:'ZA',724:'ES',144:'LK',
+  729:'SD',740:'SR',752:'SE',756:'CH',760:'SY',158:'TW',762:'TJ',834:'TZ',
+  764:'TH',768:'TG',780:'TT',788:'TN',792:'TR',795:'TM',800:'UG',804:'UA',
+  784:'AE',826:'GB',840:'US',858:'UY',860:'UZ',862:'VE',704:'VN',887:'YE',
+  894:'ZM',716:'ZW',344:'HK',275:'PS',807:'MK',384:'CI',178:'CG',583:'FM',
+  585:'PW',90:'SB',626:'TL',776:'TO',798:'TV',882:'WS',674:'SM',336:'VA',
+  492:'MC',438:'LI',292:'GI',175:'YT',474:'MQ',312:'GP',630:'PR',663:'MF',
+};
 
 function loadGlobal() {
   document.getElementById('global-info').textContent = 'Loading…';
   document.getElementById('gtable-body').innerHTML =
     '<tr><td colspan="5" style="color:#586069;text-align:center;padding:1.5rem">Loading…</td></tr>';
 
-  fetch('/docker-downloads')
+  var topoReady = _worldTopo
+    ? Promise.resolve()
+    : fetch('/world.json').then(function(r){ return r.json(); }).then(function(d){ _worldTopo = d; });
+
+  topoReady.catch(function(){}).then(function(){
+    return fetch('/docker-downloads');
+  })
     .then(function(r){ return r.json(); })
     .then(function(entries) {
       var ipCounts = {};
@@ -927,56 +990,88 @@ function llToXY(lat, lon, W, H) {
   return [(lon+180)/360*W, (90-lat)/180*H];
 }
 
+function drawWorld(ctx, topo, W, H, counts, max) {
+  var countries = topo.objects.countries;
+  countries.geometries.forEach(function(geom) {
+    var iso = NUMISO[geom.id];
+    var count = iso ? (counts[iso] || 0) : 0;
+    var rings = topoArcs(topo, geom);
+
+    // Fill color based on count
+    if (count > 0) {
+      var t = Math.pow(count / max, 0.5);
+      var h = Math.round((1-t)*220); // blue(220)→red(0)
+      var l = Math.round(25 + t*30);
+      ctx.fillStyle = 'hsl('+h+',90%,'+l+'%)';
+    } else {
+      ctx.fillStyle = '#1a1f2e';
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 0.4;
+
+    rings.forEach(function(ring) {
+      if (!ring.length) return;
+      ctx.beginPath();
+      var p0 = llToXY(ring[0][1], ring[0][0], W, H);
+      ctx.moveTo(p0[0], p0[1]);
+      for (var i = 1; i < ring.length; i++) {
+        var p = llToXY(ring[i][1], ring[i][0], W, H);
+        ctx.lineTo(p[0], p[1]);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+  });
+}
+
 function renderGlobe(counts, total) {
   var canvas = document.getElementById('globe-canvas');
-  var W = canvas.parentElement.clientWidth || 800;
-  var H = Math.round(W * 0.48);
+  var W = canvas.parentElement.clientWidth || 900;
+  var H = Math.round(W * 0.5);
   canvas.width = W; canvas.height = H;
   var ctx = canvas.getContext('2d');
 
-  // background
-  ctx.fillStyle = '#090910';
+  ctx.fillStyle = '#090d18';
   ctx.fillRect(0, 0, W, H);
 
   // graticule
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 0.4;
   for (var lat = -90; lat <= 90; lat += 30) {
-    var y = (90-lat)/180*H;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    var gy = (90-lat)/180*H;
+    ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
   }
-  for (var lon = -180; lon <= 180; lon += 30) {
-    var x = (lon+180)/360*W;
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  for (var lon2 = -180; lon2 <= 180; lon2 += 30) {
+    var gx = (lon2+180)/360*W;
+    ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,H); ctx.stroke();
   }
-
-  // equator label
-  ctx.fillStyle = 'rgba(255,255,255,0.1)';
-  ctx.font = '9px Courier New';
-  ctx.fillText('0°', 4, H/2 - 3);
 
   var vals = Object.values(counts);
-  if (!vals.length) return;
-  var max = Math.max.apply(null, vals);
+  var max = vals.length ? Math.max.apply(null, vals) : 1;
 
-  // draw blobs back-to-front (smallest last so big ones don't bury labels)
+  if (_worldTopo) {
+    drawWorld(ctx, _worldTopo, W, H, counts, max);
+  }
+
+  // Glow blobs at centroids for active countries
   var sorted = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   sorted.reverse().forEach(function(code) {
     var c = CENTROIDS[code]; if (!c) return;
     var pos = llToXY(c[0], c[1], W, H);
     var x = pos[0], y = pos[1];
     var t = Math.pow(counts[code]/max, 0.5);
-    var r = (10 + t*55) * (W/900);
-    var hue = Math.round((1-t)*200); // cyan-blue → orange-red
+    var r = (6 + t*28) * (W/900);
+    var hue = Math.round((1-t)*220);
     var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0,   'hsla('+hue+',100%,70%,0.85)');
-    g.addColorStop(0.45,'hsla('+hue+',100%,55%,0.40)');
-    g.addColorStop(1,   'hsla('+hue+',100%,50%,0)');
+    g.addColorStop(0,   'hsla('+hue+',100%,85%,0.9)');
+    g.addColorStop(0.5, 'hsla('+hue+',100%,65%,0.4)');
+    g.addColorStop(1,   'hsla('+hue+',100%,60%,0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
   });
 
-  // tooltip on hover
+  // tooltip
   canvas._meta = { counts: counts, max: max, W: W, H: H };
   canvas.onmousemove = function(ev) {
     var rect = canvas.getBoundingClientRect();
@@ -987,17 +1082,15 @@ function renderGlobe(counts, total) {
       var c = CENTROIDS[code]; if (!c) return;
       var pos = llToXY(c[0], c[1], W, H);
       var d = Math.hypot(pos[0]-mx, pos[1]-my);
-      var t = Math.pow(counts[code]/max, 0.5);
-      var r = (10 + t*55) * (W/900);
-      if (d < r && d < bestD) { bestD = d; best = code; }
+      if (d < 30*(W/900) && d < bestD) { bestD = d; best = code; }
     });
     var tip = document.getElementById('globe-tip');
     if (best) {
       var pct = (counts[best]/total*100).toFixed(1);
       tip.textContent = (CNAMES[best]||best) + ': ' + counts[best] + ' dl (' + pct + '%)';
       tip.style.display = 'block';
-      tip.style.left = Math.min(ev.clientX - canvas.getBoundingClientRect().left + 10, rect.width - 160) + 'px';
-      tip.style.top  = Math.max(ev.clientY - canvas.getBoundingClientRect().top  - 28, 4) + 'px';
+      tip.style.left = Math.min(mx + 10, rect.width - 160) + 'px';
+      tip.style.top  = Math.max(my - 28, 4) + 'px';
     } else {
       tip.style.display = 'none';
     }
