@@ -352,6 +352,19 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && pathname.startsWith('/shared/')) {
+    const sharedPath = path.join('/app/shared', pathname.slice('/shared/'.length).split('?')[0]);
+    try {
+      const data = fs.readFileSync(sharedPath);
+      res.writeHead(200, { 'Content-Type': 'application/javascript' });
+      res.end(data);
+    } catch {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+    return;
+  }
+
   res.writeHead(404);
   res.end('Not found');
 });
