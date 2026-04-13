@@ -635,6 +635,30 @@
     var duration = 5000; // ms to count up
     var glowPhase = 0;
 
+    // Skull particles
+    var skulls = [];
+    var lastSkullTime = 0;
+
+    function spawnSkulls(ts, rate){
+      if(ts - lastSkullTime < rate) return;
+      lastSkullTime = ts;
+      var count = Math.floor(1 + Math.random() * 2);
+      for(var s = 0; s < count; s++){
+        skulls.push({
+          x: W * 0.05 + Math.random() * W * 0.9,
+          y: H * 0.88 + Math.random() * H * 0.1,
+          vy: -(0.4 + Math.random() * 0.8),
+          vx: (Math.random() - 0.5) * 0.4,
+          size: 10 + Math.random() * 18,
+          alpha: 0.7 + Math.random() * 0.3,
+          rot: (Math.random() - 0.5) * 0.4,
+          rotV: (Math.random() - 0.5) * 0.02
+        });
+      }
+      // cap particle count
+      if(skulls.length > 120) skulls.splice(0, skulls.length - 120);
+    }
+
     function easeOut(t){ return 1 - Math.pow(1-t, 3); }
 
     function draw(ts){
@@ -645,6 +669,12 @@
       var current = Math.floor(TOTAL * easedProg);
 
       glowPhase += 0.04;
+
+      // Spawn skulls — faster as count climbs
+      if(progress < 1){
+        var spawnRate = 120 - progress * 90; // 120ms → 30ms
+        spawnSkulls(ts, spawnRate);
+      }
 
       if(W <= 0){ animFrame = requestAnimationFrame(draw); return; }
 
@@ -681,6 +711,27 @@
       ctx.fillText('Estimated deaths under communist regimes', W/2, H * 0.36);
       ctx.fillStyle = '#604040';
       ctx.fillText('(Black Book of Communism, Courtois et al., 1997)', W/2, H * 0.42);
+
+      // Draw & update skull particles
+      ctx.save();
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      for(var si = skulls.length - 1; si >= 0; si--){
+        var sk = skulls[si];
+        sk.x += sk.vx;
+        sk.y += sk.vy;
+        sk.alpha -= 0.004;
+        sk.rot += sk.rotV;
+        if(sk.alpha <= 0 || sk.y < -sk.size){ skulls.splice(si, 1); continue; }
+        ctx.save();
+        ctx.translate(sk.x, sk.y);
+        ctx.rotate(sk.rot);
+        ctx.globalAlpha = sk.alpha;
+        ctx.font = sk.size + 'px serif';
+        ctx.fillText('💀', 0, 0);
+        ctx.restore();
+      }
+      ctx.restore();
 
       // Regime breakdown — animate in sequentially
       var listStartY = H * 0.50;
