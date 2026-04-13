@@ -638,6 +638,7 @@
     // Skull particles
     var skulls = [];
     var lastSkullTime = 0;
+    var falling = false; // true once counter hits total
 
     function spawnSkulls(ts, rate){
       if(ts - lastSkullTime < rate) return;
@@ -659,6 +660,16 @@
       if(skulls.length > 120) skulls.splice(0, skulls.length - 120);
     }
 
+    function triggerFall(){
+      if(falling) return;
+      falling = true;
+      for(var i = 0; i < skulls.length; i++){
+        skulls[i].vy = Math.abs(skulls[i].vy) * 0.5 + 1; // flip upward to downward
+        skulls[i].vx *= 2;
+        skulls[i].gravity = 0.06 + Math.random() * 0.06;
+      }
+    }
+
     function easeOut(t){ return 1 - Math.pow(1-t, 3); }
 
     function draw(ts){
@@ -670,10 +681,12 @@
 
       glowPhase += 0.04;
 
-      // Spawn skulls — faster as count climbs
+      // Spawn skulls — faster as count climbs; trigger fall at end
       if(progress < 1){
         var spawnRate = 120 - progress * 90; // 120ms → 30ms
         spawnSkulls(ts, spawnRate);
+      } else {
+        triggerFall();
       }
 
       if(W <= 0){ animFrame = requestAnimationFrame(draw); return; }
@@ -718,11 +731,12 @@
       ctx.textAlign = 'center';
       for(var si = skulls.length - 1; si >= 0; si--){
         var sk = skulls[si];
+        if(falling && sk.gravity) sk.vy += sk.gravity;
         sk.x += sk.vx;
         sk.y += sk.vy;
-        sk.alpha -= 0.004;
+        sk.alpha -= falling ? 0.018 : 0.004;
         sk.rot += sk.rotV;
-        if(sk.alpha <= 0 || sk.y < -sk.size){ skulls.splice(si, 1); continue; }
+        if(sk.alpha <= 0 || sk.y < -sk.size || sk.y > H + sk.size){ skulls.splice(si, 1); continue; }
         ctx.save();
         ctx.translate(sk.x, sk.y);
         ctx.rotate(sk.rot);
@@ -771,7 +785,7 @@
         ctx.fillText(rangeStr, W * 0.96, y);
       });
 
-      if(progress < 1){
+      if(progress < 1 || skulls.length > 0){
         animFrame = requestAnimationFrame(draw);
       }
     }
