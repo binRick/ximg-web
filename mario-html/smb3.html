@@ -1052,12 +1052,18 @@ class Game {
         const ew=14,eh=14;
         if(p.x+p.w>e.x+2 && p.x<e.x+ew && p.y+p.h>e.y+2 && p.y<e.y+eh) {
           if(p.starTimer>0) { e.stomp?e.stomp(this):null; e.remove=true; this.addScore(200); return; }
-          if(p.vy>0 && p.y < e.y+eh-2) {
+          // Measure overlap on each axis to decide: top hit vs side hit
+          const xOv = Math.min(p.x+p.w, e.x+ew) - Math.max(p.x, e.x+2);
+          const yOv = Math.min(p.y+p.h, e.y+eh) - Math.max(p.y, e.y+2);
+          if(p.vy > 0 && yOv <= xOv + 4) {
+            // Falling and vertical penetration is shallow relative to horizontal → stomp
             e.stomp(this); p.vy=-4; p.onGround=false;
             this.popups.push(new Popup(e.x+8,e.y,'100'));
-          } else {
+          } else if(p.vy >= -1 || xOv > 3) {
+            // Side/bottom hit, or ascending with significant overlap → die
             p.die(this);
           }
+          // else: ascending and barely clipping edge (xOv ≤ 3, vy < -1) → ignore
         }
       } else if(e instanceof Item) {
         if(p.x+p.w>e.x+2 && p.x<e.x+14 && p.y+p.h>e.y+2 && p.y<e.y+14) {
