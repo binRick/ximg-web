@@ -698,14 +698,10 @@ function isPrivateIp(ip) {
 function lookupGeos(ips) {
   var toFetch = ips.filter(function(ip) { return geoCache[ip] === undefined && !isPrivateIp(ip); });
   if (!toFetch.length) { applyFlags(); return; }
-  fetch('https://ip-api.com/batch?fields=query,countryCode', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(toFetch.map(function(ip) { return { query: ip }; }))
-  })
+  fetch('/geo?ips=' + toFetch.join(','))
     .then(function(r) { return r.json(); })
-    .then(function(results) {
-      results.forEach(function(r) { geoCache[r.query] = r.countryCode || ''; });
+    .then(function(data) {
+      Object.keys(data).forEach(function(ip) { geoCache[ip] = data[ip]; });
       applyFlags();
     })
     .catch(function() { applyFlags(); });

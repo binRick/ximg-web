@@ -9,6 +9,26 @@ const PORT     = 3001;
 const LOG_FILE = '/data/dockerimagedownloader.log';
 let imagesCache = null;
 
+// ── Geo lookup (server-side, avoids browser CORS) ─────────────────────────────
+const geoCache = new Map();
+
+function geoLookup(ip) {
+  return new Promise((resolve) => {
+    if (geoCache.has(ip)) { resolve(geoCache.get(ip)); return; }
+    http.get('http://ip-api.com/json/' + encodeURIComponent(ip) + '?fields=countryCode', (r) => {
+      let body = '';
+      r.on('data', d => { body += d; });
+      r.on('end', () => {
+        try {
+          const code = JSON.parse(body).countryCode || '';
+          geoCache.set(ip, code);
+          resolve(code);
+        } catch (_) { geoCache.set(ip, ''); resolve(''); }
+      });
+    }).on('error', () => { geoCache.set(ip, ''); resolve(''); });
+  });
+}
+
 // ── Download log ──────────────────────────────────────────────────────────────
 function appendLog(entry) {
   try {
@@ -366,6 +386,20 @@ const server = http.createServer((req, res) => {
       res.writeHead(404);
       res.end('Not found');
     }
+    return;
+  }
+
+  // ── GET /geo?ips=1.2.3.4,5.6.7.8 ────────────────────────────────────────────
+  if (req.method === 'GET' && pathname === '/geo') {
+    const raw = (query.ips || '').slice(0, 2000);
+    const ips = raw.split(',').map(s => s.trim()).filter(s => /^[0-9a-fA-F.:]+$/.test(s)).slice(0, 50);
+    Promise.all(ips.map(ip => geoLookup(ip).then(code => [ip, code])))
+      .then(pairs => {
+        const result = {};
+        pairs.forEach(([ip, code]) => { if (code) result[ip] = code; });
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=86400' });
+        res.end(JSON.stringify(result));
+      });
     return;
   }
 
