@@ -129,6 +129,13 @@ const PAGE = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
 
+  if (url.pathname === '/favicon.svg') {
+    const f = path.join(__dirname, 'favicon.svg');
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
+    res.end(fs.readFileSync(f));
+    return;
+  }
+
   if (url.pathname === '/shared/nav.js') return serveNav(res);
 
   if (url.pathname === '/api/emails') {

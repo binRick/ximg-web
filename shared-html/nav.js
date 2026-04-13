@@ -64,7 +64,7 @@
       ['rx','RxFitt']
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['status','status'],['video','video'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
     ]},
   ];
 

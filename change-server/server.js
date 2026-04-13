@@ -63,6 +63,17 @@ buildCommits().then(() => console.log('change-server cache warmed')).catch(conso
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
 
+  if (url === '/favicon.svg') {
+    const f = path.join(__dirname, 'favicon.svg');
+    if (fs.existsSync(f)) {
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
+      res.end(fs.readFileSync(f));
+    } else {
+      res.writeHead(404); res.end('not found');
+    }
+    return;
+  }
+
   if (url === '/shared/nav.js') {
     const f = path.join(SHARED, 'nav.js');
     if (fs.existsSync(f)) {
