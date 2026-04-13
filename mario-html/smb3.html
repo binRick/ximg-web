@@ -53,6 +53,7 @@ const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 const VW = 256, VH = 240;
 let SC = 3;
+let hiScore = parseInt(localStorage.getItem('smb3_hi') || '0');
 
 function resize() {
   const navH = 36;
@@ -876,19 +877,23 @@ function drawHUD(game) {
   pr(0,0,VW,16,C.blk);
   const p=game.player;
   // Score
-  pt('MARIO', 8,6, 4, C.wht);
-  pt(String(p.score).padStart(6,'0'), 8, 14, 4, C.wht);
+  pt('MARIO', 2,6, 4, C.wht);
+  pt(String(p.score).padStart(6,'0'), 2, 14, 4, C.wht);
   // Coin indicator
-  pr(82,5,6,8,C.cn1); pr(84,6,2,6,'#C89400'); pr(82,5,1,8,'#FCFC54');
-  pt('x'+String(p.coins).padStart(2,'0'), 90, 14, 4, C.wht);
+  pr(56,5,6,8,C.cn1); pr(58,6,2,6,'#C89400'); pr(56,5,1,8,'#FCFC54');
+  pt('x'+String(p.coins).padStart(2,'0'), 64, 14, 4, C.wht);
+  // Hi-Score
+  pt('HI-SCORE', 88, 6, 4, C.wht);
+  const hiColor = p.score>0 && p.score===hiScore ? '#FCC000' : C.wht;
+  pt(String(hiScore).padStart(6,'0'), 96, 14, 4, hiColor);
   // World
-  pt('WORLD', 112, 6, 4, C.wht);
-  pt('  1-1', 112, 14, 4, C.wht);
+  pt('WORLD', 162, 6, 4, C.wht);
+  pt('  1-1', 162, 14, 4, C.wht);
   // Time
-  pt('TIME', 190, 6, 4, C.wht);
+  pt('TIME', 214, 6, 4, C.wht);
   const t=Math.max(0,Math.floor(game.timer));
   const tc = t<100?'#FC4040':C.wht;
-  pt(String(t).padStart(3,' '), 193, 14, 4, tc);
+  pt(String(t).padStart(3,' '), 214, 14, 4, tc);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -995,6 +1000,10 @@ class Game {
 
   addScore(v) {
     this.player.score+=v;
+    if(this.player.score > hiScore) {
+      hiScore = this.player.score;
+      localStorage.setItem('smb3_hi', hiScore);
+    }
   }
 
   spawnFireball(x,y,dir) {
@@ -1266,10 +1275,13 @@ class Game {
 
   drawGameOver() {
     ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    pt('GAME OVER',VW/2,VH/2-8,8,'#E42020','center');
-    pt('SCORE: '+this.player.score,VW/2,VH/2+10,5,C.wht,'center');
+    pt('GAME OVER',VW/2,VH/2-16,8,'#E42020','center');
+    pt('SCORE:    '+String(this.player.score).padStart(6,'0'),VW/2,VH/2+4,5,C.wht,'center');
+    const isNew = this.player.score>0 && this.player.score===hiScore;
+    pt('HI-SCORE: '+String(hiScore).padStart(6,'0'),VW/2,VH/2+18,5,isNew?'#FCC000':C.wht,'center');
+    if(isNew) pt('NEW RECORD!',VW/2,VH/2+32,4,'#FCC000','center');
     if(Math.floor(this.titleBlink/30)%2===0)
-      pt('Z TO RETRY',VW/2,VH/2+26,4,'#C0C0FC','center');
+      pt('Z TO RETRY',VW/2,VH/2+(isNew?46:32),4,'#C0C0FC','center');
   }
 
   drawClear() {
@@ -1278,8 +1290,10 @@ class Game {
     ctx.fillRect(0,0,canvas.width,canvas.height);
     if(this.clearTimer>50){
       pt('COURSE CLEAR!',VW/2,VH/2-16,7,'#FCC000','center');
-      pt('SCORE: '+this.player.score,VW/2,VH/2+4,5,C.wht,'center');
-      if(this.clearTimer>130) pt('Z TO CONTINUE',VW/2,VH/2+22,4,'#C0C0FC','center');
+      pt('SCORE:    '+String(this.player.score).padStart(6,'0'),VW/2,VH/2+4,5,C.wht,'center');
+      const isNew = this.player.score>0 && this.player.score===hiScore;
+      if(isNew) pt('NEW RECORD!',VW/2,VH/2+18,4,'#FCC000','center');
+      if(this.clearTimer>130) pt('Z TO CONTINUE',VW/2,VH/2+(isNew?32:22),4,'#C0C0FC','center');
     }
   }
 
