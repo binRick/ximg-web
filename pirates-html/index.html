@@ -238,6 +238,26 @@
     .gallery-info { padding: .6rem .85rem .8rem; }
     .gallery-title { font-size: .88rem; color: var(--amber); font-weight: 700; margin-bottom: .2rem; }
     .gallery-caption { font-size: .76rem; color: var(--muted); font-style: italic; line-height: 1.4; }
+
+    /* ── Maps ── */
+    #pirate-map { display: block; width: 100%; border-radius: 8px; cursor: crosshair; border: 2px solid rgba(200,148,26,.25); }
+    .map-legend {
+      display: flex; flex-wrap: wrap; gap: .6rem 1.5rem; margin-top: .75rem;
+      font-size: .8rem; color: var(--muted);
+    }
+    .map-legend-item { display: flex; align-items: center; gap: .4rem; }
+    .leg-haven  { width: 12px; height: 12px; border-radius: 50%; background: #c8941a; border: 1px solid #f0d080; flex-shrink: 0; }
+    .leg-target { width: 12px; height: 12px; border-radius: 50%; background: #8b1a1a; border: 1px solid #f0d080; flex-shrink: 0; }
+    .leg-battle { width: 12px; height: 12px; border-radius: 50%; background: #1a5a8b; border: 1px solid #f0d080; flex-shrink: 0; }
+    .map-info-panel {
+      margin-top: .9rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem 1.2rem; min-height: 5rem;
+    }
+    .map-info-type  { font-size: .75rem; color: var(--gold); letter-spacing: .09em; text-transform: uppercase; margin-bottom: .3rem; }
+    .map-info-title { font-size: 1rem; font-weight: 700; color: var(--amber); margin-bottom: .2rem; }
+    .map-info-years { font-size: .8rem; color: var(--gold); font-style: italic; margin-bottom: .5rem; }
+    .map-info-body  { font-size: .84rem; color: var(--text); line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -254,6 +274,7 @@
     <a href="#tactics">⚔ Tactics</a>
     <a href="#timeline">🗓 Timeline</a>
     <a href="#gallery">📷 Gallery</a>
+    <a href="#maps">🗺 Maps</a>
   </div>
 </nav>
 
@@ -516,6 +537,21 @@
     </div>
   </div>
 
+  <!-- Caribbean Maps -->
+  <div id="maps" class="page-section">
+    <div class="section-title">Caribbean Pirate Havens — c. 1700</div>
+    <canvas id="pirate-map"></canvas>
+    <div class="map-legend">
+      <div class="map-legend-item"><span class="leg-haven"></span> Pirate Haven</div>
+      <div class="map-legend-item"><span class="leg-target"></span> Spanish Port (target)</div>
+      <div class="map-legend-item"><span class="leg-battle"></span> Notable Battle / Incident</div>
+    </div>
+    <div id="map-info" class="map-info-panel">
+      <div class="map-info-title">Click a location on the map</div>
+      <div class="map-info-body">Select any marked haven or hotspot to learn more about its role in the Golden Age of Piracy.</div>
+    </div>
+  </div>
+
   <!-- Timeline -->
   <div id="timeline" class="page-section">
     <div class="section-title">Timeline of the Golden Age</div>
@@ -614,7 +650,7 @@
 
 <script>
 (function() {
-  var sections = ['pirates','ships','code','loot','havens','tactics','gallery','timeline'];
+  var sections = ['pirates','ships','code','loot','havens','tactics','gallery','timeline','maps'];
 
   function showSection(id) {
     sections.forEach(function(s) {
@@ -637,6 +673,404 @@
 
   var hash = location.hash.replace('#', '');
   showSection(sections.indexOf(hash) >= 0 ? hash : sections[0]);
+})();
+</script>
+<script>
+// Caribbean Pirate Map
+(function() {
+  var canvas = document.getElementById('pirate-map');
+  var ctx = canvas.getContext('2d');
+  var W, H;
+
+  // Bounding box: west 93W, east 58W, north 37N, south 7N
+  var LW = 93, LE = 58, LN = 37, LS = 7;
+  function toX(lon) { return (LW - lon) / (LW - LE) * W; }
+  function toY(lat) { return (LN - lat) / (LN - LS) * H; }
+
+  var LANDS = [
+    // Florida peninsula
+    {pts:[[81.8,30.5],[81.5,29.5],[81.0,28.5],[80.5,27.3],[80.0,26.2],[80.2,25.8],[80.7,25.2],[81.2,25.8],[81.6,26.5],[82.0,27.5],[82.5,28.5],[83.0,29.5],[83.5,30.0],[82.5,30.5]]},
+    // Cuba (elongated east-west)
+    {pts:[[84.95,22.40],[84.50,23.10],[83.20,23.18],[81.80,23.05],[80.30,23.20],[79.10,22.95],[77.90,22.40],[76.50,21.10],[75.20,20.45],[74.10,20.10],[74.40,19.90],[75.80,19.98],[77.20,19.85],[78.60,19.95],[79.90,20.15],[81.50,22.30],[83.00,22.60],[84.50,22.20]]},
+    // Hispaniola
+    {pts:[[74.50,19.95],[73.50,19.92],[72.80,19.70],[72.00,18.60],[71.40,18.40],[71.70,17.90],[72.50,18.20],[73.50,18.10],[74.00,18.55],[74.40,19.20]]},
+    // Jamaica
+    {pts:[[78.37,18.50],[77.60,18.53],[76.80,18.32],[76.82,17.92],[77.60,17.82],[78.37,18.05]]},
+    // Puerto Rico
+    {pts:[[67.27,18.52],[66.50,18.52],[65.62,18.22],[65.72,17.95],[66.50,17.92],[67.27,18.22]]},
+    // Tortuga (tiny island off Hispaniola NW coast)
+    {pts:[[73.12,20.12],[72.70,20.07],[72.45,19.88],[72.70,19.80],[73.12,19.92]]},
+    // New Providence / Nassau
+    {pts:[[77.50,25.18],[77.18,25.18],[77.05,25.02],[77.20,24.92],[77.50,25.05]]},
+    // Grand Bahama
+    {pts:[[79.10,26.82],[77.90,26.78],[77.70,26.50],[78.60,26.35],[79.10,26.58]]},
+    // Andros (Bahamas)
+    {pts:[[78.20,24.70],[77.70,24.45],[77.60,23.90],[77.90,23.70],[78.30,24.05],[78.42,24.55]]},
+    // Yucatan Peninsula
+    {pts:[[90.50,21.50],[87.50,21.50],[87.20,20.50],[87.50,19.50],[88.50,18.00],[89.50,16.00],[90.10,16.60],[90.50,18.00],[91.00,19.50],[90.80,21.00]]},
+    // Central America coast
+    {pts:[[83.00,10.50],[84.00,11.00],[85.50,11.05],[86.50,12.50],[87.50,13.50],[89.00,14.50],[89.50,15.50],[90.10,16.60],[89.50,16.00],[88.50,14.50],[87.00,13.00],[85.50,11.50],[84.00,10.50],[83.50,9.50],[83.00,9.50]]},
+    // South America north coast (Colombia/Venezuela)
+    {pts:[[58.00,10.60],[60.00,11.10],[62.00,11.55],[63.50,10.60],[65.00,10.25],[66.50,10.60],[68.00,11.10],[70.00,11.85],[72.00,11.60],[73.50,11.10],[75.50,10.00],[76.50,9.10],[77.50,8.00],[79.00,8.60],[80.00,9.10],[80.50,8.50],[80.00,7.50],[78.00,7.50],[76.00,8.00],[74.00,9.50],[72.00,10.50],[70.00,11.00],[67.50,10.00],[65.00,9.50],[63.00,10.00],[61.00,10.00],[59.00,9.50],[58.00,9.50]]},
+    // Martinique
+    {pts:[[61.15,14.82],[60.88,14.68],[60.83,14.40],[61.10,14.32],[61.27,14.58]]},
+    // Barbados
+    {pts:[[59.62,13.28],[59.45,13.12],[59.45,12.95],[59.62,12.95],[59.68,13.18]]},
+    // Trinidad
+    {pts:[[61.95,10.88],[60.90,10.78],[60.55,10.15],[61.00,9.95],[61.92,10.38]]},
+    // Guadeloupe
+    {pts:[[61.73,16.50],[61.48,16.42],[61.40,16.10],[61.62,15.95],[61.82,16.22]]},
+    // Curacao
+    {pts:[[69.17,12.28],[68.80,12.22],[68.65,12.08],[68.88,11.98],[69.17,12.12]]},
+    // Dominica
+    {pts:[[61.48,15.65],[61.25,15.55],[61.22,15.20],[61.42,15.10],[61.52,15.42]]},
+    // St Lucia
+    {pts:[[61.10,14.12],[60.90,14.05],[60.88,13.72],[61.05,13.68],[61.12,13.95]]},
+    // St Vincent
+    {pts:[[61.32,13.38],[61.12,13.28],[61.10,12.98],[61.28,12.92],[61.35,13.22]]}
+  ];
+
+  var HOTSPOTS = [
+    {
+      id:'nassau', lon:77.35, lat:25.08, type:'haven', label:'Nassau',
+      title:'Nassau, Bahamas — Republic of Pirates', years:'1706 – 1718',
+      body:'With no governor and Britain at war with Spain, Nassau became a lawless pirate republic. Blackbeard, Charles Vane, Calico Jack, and hundreds more made it their base — over 1,000 pirates at its peak. Governor Woodes Rogers arrived in 1718 with a royal pardon and a noose. Those who refused were hanged. Nassau\'s pirate era ended overnight.'
+    },
+    {
+      id:'tortuga', lon:72.90, lat:20.05, type:'haven', label:'Tortuga',
+      title:'Tortuga — Buccaneer Stronghold', years:'1640s – 1680s',
+      body:'The tiny island off Hispaniola\'s north coast was the original buccaneer stronghold. French hunters driven from Hispaniola by the Spanish settled here and raided passing ships. Henry Morgan and François l\'Olonnais launched raids from Tortuga. At its height, hundreds of buccaneers and their ships crowded the harbour at Basse-Terre.'
+    },
+    {
+      id:'portroyal', lon:76.84, lat:17.93, type:'haven', label:'Port Royal',
+      title:'Port Royal, Jamaica — The Wickedest City', years:'1655 – 1692',
+      body:'England captured Jamaica in 1655 and Port Royal became the most prosperous — and depraved — city in the Americas. Privateers like Henry Morgan were openly welcomed. With over 500 taverns in a city of 6,500 it earned "Sodom of the New World." On June 7, 1692, a catastrophic earthquake sank two-thirds of the city into the sea, killing 2,000 instantly. Survivors called it divine judgment.'
+    },
+    {
+      id:'havana', lon:82.37, lat:23.13, type:'target', label:'Havana',
+      title:'Havana, Cuba — Spanish Treasure Hub', years:'1560s – 1730s',
+      body:'The fortified capital of Spanish Cuba was the mustering point for the great treasure fleets (flotas) sailing back to Spain. Galleons loaded with silver from Potosí gathered here before the transatlantic crossing. The approach lanes around Cuba and the Florida Straits were prime hunting ground for pirates who preyed on stragglers and latecomers.'
+    },
+    {
+      id:'portobelo', lon:79.65, lat:9.55, type:'target', label:'Portobelo',
+      title:'Portobelo, Panama — Silver Transfer Point', years:'1597 – 1739',
+      body:'This swampy Caribbean port received the silver of Peru after it crossed the Isthmus of Panama by mule train. Henry Morgan sacked it in 1668 with 400 men, netting 100,000 pieces of eight. Admiral Edward Vernon destroyed its forts in 1739, ending its role as a treasure port and sparking the War of Jenkins\' Ear. The annual fair here was among the richest trading events in the New World.'
+    },
+    {
+      id:'cartagena', lon:75.51, lat:10.39, type:'target', label:'Cartagena',
+      title:'Cartagena, Colombia — Emerald & Silver Port', years:'1550s – 1740s',
+      body:'Cartagena de Indias was the wealthiest port in South America — a hub for emeralds, gold, and silver. Sir Francis Drake sacked it in 1586 for 107,000 ducats ransom. Its massive walls (still standing today) were built in response. Francis L\'Olonnais raided the surrounding coast in 1666. The city survived multiple pirate assaults thanks to its formidable Castillo San Felipe de Barajas fortress.'
+    },
+    {
+      id:'ocracoke', lon:76.01, lat:35.12, type:'battle', label:'Ocracoke',
+      title:'Ocracoke Inlet — Blackbeard\'s Last Stand', years:'22 Nov 1718',
+      body:'Blackbeard made Ocracoke Inlet his final lair — the shallow waters kept naval frigates at bay. On 22 November 1718, Lieutenant Robert Maynard cornered him with two small hired sloops. In a vicious close-quarters battle, Blackbeard received five bullet wounds and over twenty sword cuts before he finally fell dead. Maynard hung his severed head from the bowsprit as he sailed back to Bath, North Carolina.'
+    },
+    {
+      id:'maracaibo', lon:71.60, lat:10.67, type:'battle', label:'Maracaibo',
+      title:'Lake Maracaibo — Morgan\'s Audacious Raid', years:'1669',
+      body:'Henry Morgan led 500 buccaneers deep into Lake Maracaibo, looting the towns of Maracaibo and Gibraltar for weeks. Returning to open sea, he found three Spanish warships blockading the narrow channel. Morgan sent a fire-ship — loaded with gunpowder and tar, crewed by dummies — straight into the Spanish flagship Magdalena. The explosion destroyed the flagship and the other ships fled. Morgan escaped with all his plunder.'
+    }
+  ];
+
+  var selected = null;
+
+  function drawParchment() {
+    // Ocean base — aged blue-grey
+    var og = ctx.createLinearGradient(0, 0, W, H);
+    og.addColorStop(0, '#7ea8c0');
+    og.addColorStop(0.45, '#6d9aae');
+    og.addColorStop(1, '#5c8898');
+    ctx.fillStyle = og;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle wave lines
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    ctx.strokeStyle = '#1a3a50';
+    ctx.lineWidth = 0.8;
+    for (var wy = 10; wy < H; wy += 12) {
+      ctx.beginPath();
+      for (var wx = 0; wx <= W; wx += 5) {
+        var wyo = wy + Math.sin(wx * 0.028 + wy * 0.015) * 2.5;
+        wx === 0 ? ctx.moveTo(wx, wyo) : ctx.lineTo(wx, wyo);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawGrid() {
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.strokeStyle = '#1a2a3a';
+    ctx.lineWidth = 0.7;
+    ctx.setLineDash([3, 7]);
+    for (var glat = 10; glat <= 35; glat += 5) {
+      var gy = toY(glat);
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+      // Lat label
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#2a3a4a';
+      ctx.font = Math.round(W * 0.012) + 'px Georgia';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(glat + '°N', W - 4, gy);
+      ctx.globalAlpha = 0.14;
+    }
+    for (var glon = 60; glon <= 90; glon += 5) {
+      var gx = toX(glon);
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#2a3a4a';
+      ctx.font = Math.round(W * 0.012) + 'px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(glon + '°W', gx, H - Math.round(W * 0.025));
+      ctx.globalAlpha = 0.14;
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawLand() {
+    LANDS.forEach(function(land) {
+      if (!land.pts || land.pts.length < 3) return;
+      ctx.beginPath();
+      land.pts.forEach(function(pt, i) {
+        i === 0 ? ctx.moveTo(toX(pt[0]), toY(pt[1])) : ctx.lineTo(toX(pt[0]), toY(pt[1]));
+      });
+      ctx.closePath();
+      ctx.fillStyle = '#c8aa6e';
+      ctx.fill();
+      ctx.strokeStyle = '#7a5a28';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    });
+  }
+
+  function drawCompassRose(cx, cy, r) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.1, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200,170,110,0.5)';
+    ctx.fill();
+    ctx.strokeStyle = '#6a4a1a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    var cardinals = [['N',0],['E',90],['S',180],['W',270]];
+    var intercards = [['NE',45],['SE',135],['SW',225],['NW',315]];
+
+    intercards.forEach(function(d) {
+      var a = (d[1] - 90) * Math.PI / 180;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * r * 0.65, Math.sin(a) * r * 0.65);
+      ctx.strokeStyle = '#8a6a3a';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    });
+    cardinals.forEach(function(d) {
+      var a = (d[1] - 90) * Math.PI / 180;
+      // Arrow
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * r * 0.88, Math.sin(a) * r * 0.88);
+      ctx.strokeStyle = '#4a2a08';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Label
+      ctx.fillStyle = '#2a1505';
+      ctx.font = 'bold ' + Math.round(r * 0.38) + 'px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(d[0], Math.cos(a) * (r * 1.02 + 4), Math.sin(a) * (r * 1.02 + 4));
+    });
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.12, 0, Math.PI * 2);
+    ctx.fillStyle = '#6a4a1a';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawLabels() {
+    ctx.save();
+    var fsize = Math.max(8, Math.round(W * 0.013));
+
+    // Island names (non-hotspot)
+    var islandLabels = [
+      ['CUBA', 79.5, 21.5],
+      ['HISPANIOLA', 73.0, 17.45],
+      ['JAMAICA', 77.3, 17.45],
+      ['PUERTO RICO', 66.4, 17.5],
+      ['BAHAMAS', 76.5, 26.5],
+      ['FLORIDA', 81.5, 27.5],
+      ['YUCATAN', 89.2, 19.0],
+      ['CARIBBEAN SEA', 74.0, 15.5]
+    ];
+    islandLabels.forEach(function(lb) {
+      var x = toX(lb[1]), y = toY(lb[2]);
+      ctx.fillStyle = 'rgba(255,240,200,0.55)';
+      ctx.font = 'italic ' + fsize + 'px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(lb[0], x, y);
+      ctx.fillStyle = '#2a1a08';
+      ctx.font = 'italic ' + fsize + 'px Georgia';
+      ctx.globalAlpha = 0.7;
+      ctx.fillText(lb[0], x, y);
+      ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+  }
+
+  function drawHotspots() {
+    HOTSPOTS.forEach(function(h) {
+      var hx = toX(h.lon), hy = toY(h.lat);
+      var isSel = selected && selected.id === h.id;
+      var r = isSel ? 10 : 7;
+
+      if (isSel) {
+        ctx.save();
+        ctx.shadowColor = '#e8b030';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(hx, hy, r + 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#e8b030';
+        ctx.fill();
+        ctx.restore();
+      }
+
+      var col = h.type === 'haven' ? '#c8941a' : h.type === 'target' ? '#8b1a1a' : '#1a5a8b';
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.strokeStyle = '#f0d080';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Icon text
+      var icon = h.type === 'haven' ? '☠' : h.type === 'target' ? '⚓' : '⚔';
+      ctx.fillStyle = '#fff8e0';
+      ctx.font = 'bold ' + Math.round(r * 0.95) + 'px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(icon, hx, hy);
+
+      // Label
+      var lblSize = Math.max(8, Math.round(W * 0.011));
+      ctx.fillStyle = '#fff8e0';
+      ctx.font = 'bold ' + lblSize + 'px Georgia';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(h.label, hx, hy + r + 2);
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  function drawCartouche() {
+    // Title banner top-center
+    var cx = W * 0.5, cy = 22, bw = Math.min(W * 0.7, 480), bh = 28;
+    ctx.save();
+    ctx.fillStyle = 'rgba(210,178,108,0.88)';
+    ctx.beginPath();
+    ctx.roundRect(cx - bw/2, cy - bh/2, bw, bh, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#5a3a1a';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.fillStyle = '#1e0f00';
+    ctx.font = 'bold ' + Math.max(9, Math.round(W * 0.016)) + 'px Georgia';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('A CHART OF YE CARIBBEAN SEA & PIRATE HAVENS  c. 1700', cx, cy);
+    ctx.restore();
+  }
+
+  function drawBorder() {
+    ctx.strokeStyle = '#4a2a0a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(3, 3, W - 6, H - 6);
+    ctx.strokeStyle = '#8a6a3a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(7, 7, W - 14, H - 14);
+  }
+
+  function drawMap() {
+    W = canvas.offsetWidth;
+    H = Math.round(W * 0.60);
+    canvas.width = W;
+    canvas.height = H;
+    drawParchment();
+    drawGrid();
+    drawLand();
+    drawCompassRose(toX(88.5), toY(34.0), Math.round(W * 0.038));
+    drawLabels();
+    drawHotspots();
+    drawCartouche();
+    drawBorder();
+  }
+
+  canvas.addEventListener('click', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var sx = canvas.width / rect.width;
+    var sy = canvas.height / rect.height;
+    var mx = (e.clientX - rect.left) * sx;
+    var my = (e.clientY - rect.top) * sy;
+
+    var hit = null;
+    HOTSPOTS.forEach(function(h) {
+      var dx = mx - toX(h.lon), dy = my - toY(h.lat);
+      if (Math.sqrt(dx*dx + dy*dy) < 16) hit = h;
+    });
+    selected = hit;
+    drawMap();
+
+    var panel = document.getElementById('map-info');
+    if (hit) {
+      var typeLabel = hit.type === 'haven' ? '☠ Pirate Haven' :
+                      hit.type === 'target' ? '⚓ Spanish Port' : '⚔ Battle / Incident';
+      panel.innerHTML =
+        '<div class="map-info-type">' + typeLabel + '</div>' +
+        '<div class="map-info-title">' + hit.title + '</div>' +
+        '<div class="map-info-years">' + hit.years + '</div>' +
+        '<div class="map-info-body">' + hit.body + '</div>';
+    } else {
+      panel.innerHTML =
+        '<div class="map-info-title">Click a location on the map</div>' +
+        '<div class="map-info-body">Select any marked haven or hotspot to learn more about its role in the Golden Age of Piracy.</div>';
+    }
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var sx = canvas.width / rect.width;
+    var sy = canvas.height / rect.height;
+    var mx = (e.clientX - rect.left) * sx;
+    var my = (e.clientY - rect.top) * sy;
+    var hit = HOTSPOTS.some(function(h) {
+      var dx = mx - toX(h.lon), dy = my - toY(h.lat);
+      return Math.sqrt(dx*dx + dy*dy) < 16;
+    });
+    canvas.style.cursor = hit ? 'pointer' : 'crosshair';
+  });
+
+  // Draw when section becomes visible
+  var mapsSection = document.getElementById('maps');
+  new MutationObserver(function() {
+    if (mapsSection.classList.contains('visible') && canvas.offsetWidth > 0) {
+      drawMap();
+    }
+  }).observe(mapsSection, {attributes: true, attributeFilter: ['class']});
+
+  window.addEventListener('resize', function() {
+    if (mapsSection.classList.contains('visible')) drawMap();
+  });
 })();
 </script>
 <script src="/shared/nav.js?v=2"></script>
