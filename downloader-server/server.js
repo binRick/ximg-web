@@ -339,7 +339,11 @@ const server = http.createServer((req, res) => {
 
   // ── Serve static files ────────────────────────────────────────────────────
   if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
-    const html = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8');
+    const host = (req.headers['x-forwarded-host'] || req.headers['host'] || '').split(':')[0];
+    const showNav = host === 'dockerimagedownloader.ximg.app';
+    const navScript = showNav ? '<script src="/shared/nav.js?v=2"></script>' : '';
+    const html = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8')
+      .replace('%%NAV_SCRIPT%%', navScript);
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
     return;
