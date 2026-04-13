@@ -4,16 +4,25 @@
 # Usage: sudo bash install/setup.sh   (from repo root)
 #        sudo bash setup.sh           (from install/)
 #
-# What this does (in order):
-#   1. Install Docker CE + Compose plugin
-#   2. Install EPEL, certbot, Suricata
-#   3. Create required runtime directories
-#   4. Install logrotate config
-#   5. Configure Suricata and download community rules
-#   6. Install and enable the systemd unit (ximg-web.service)
-#   7. Obtain the SSL certificate for all subdomains
-#   8. Start Docker Compose stack
-#   9. Verify deployment
+# Prerequisites (complete before running):
+#   • DNS A records for ximg.app, *.ximg.app, dockerimage.dev, www.dockerimage.dev → this server
+#   • GoDaddy API credentials for DNS-01 wildcard cert (https://developer.godaddy.com/keys)
+#       export GD_Key="your_api_key"
+#       export GD_Secret="your_api_secret"
+#
+# Steps:
+#   1.  Docker CE + Compose plugin
+#   2.  System packages  (EPEL · certbot · Suricata)
+#   3.  Runtime directories
+#   4.  Logrotate config
+#   5.  Suricata IDS
+#   6.  Firewall  (firewalld — open 80/443/22/25)
+#   7.  systemd unit  (ximg-web.service)
+#   8a. SSL: *.ximg.app wildcard via acme.sh + GoDaddy DNS-01
+#   8b. SSL: dockerimage.dev via certbot standalone
+#   9.  Start Docker Compose stack
+#  10.  SSH honeypot outbound iptables isolation
+#  11.  Verification
 
 set -euo pipefail
 
@@ -58,7 +67,7 @@ echo -e "  repo:      ${REPO}"
 echo -e "  server IP: ${SERVER_IP}"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "1/8  Docker CE + Compose plugin"
+section "1/11  Docker CE + Compose plugin"
 # ─────────────────────────────────────────────────────────────────────────────
 
 if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
@@ -73,7 +82,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "2/8  System packages  (EPEL · certbot · Suricata)"
+section "2/11  System packages  (EPEL · certbot · Suricata)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 if ! dnf list installed epel-release &>/dev/null 2>&1; then
@@ -83,8 +92,8 @@ fi
 ok "EPEL enabled"
 
 PKGS=()
-command -v certbot   &>/dev/null || PKGS+=(certbot python3-certbot-apache)
-command -v suricata  &>/dev/null || PKGS+=(suricata)
+command -v certbot  &>/dev/null || PKGS+=(certbot)
+command -v suricata &>/dev/null || PKGS+=(suricata)
 
 if [[ ${#PKGS[@]} -gt 0 ]]; then
   info "installing: ${PKGS[*]}"
@@ -94,27 +103,29 @@ ok "certbot $(certbot --version 2>&1 | grep -oP '[\d.]+' | head -1) installed"
 ok "suricata $(suricata --version 2>&1 | grep -oP '[\d.]+' | head -1) installed"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "3/8  Runtime directories"
+section "3/11  Runtime directories"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Directories that are gitignored must be created on fresh clone
 for d in logs ssh-logs mail-data logs-data; do
   install -d -m 755 "$REPO/$d"
   ok "$REPO/$d"
 done
 
-# Touch log files that nginx/services expect on first start
-# (nginx won't start if the log bind-mount is missing)
 touch "$REPO/logs/.keep"
 ok "log stub files created"
 
-# Suricata log dir (package creates it, but ensure correct perms for Docker)
 install -d -m 755 /var/log/suricata
 chmod 755 /var/log/suricata
 ok "/var/log/suricata writable"
 
+# Pre-create cert directories so nginx can start after certs are placed
+for cert_dir in /etc/letsencrypt/live/wildcard.ximg.app /etc/letsencrypt/live/dockerimage.dev; do
+  install -d -m 755 "$cert_dir"
+  ok "$cert_dir"
+done
+
 # ─────────────────────────────────────────────────────────────────────────────
-section "4/8  Log rotation  (logrotate)"
+section "4/11  Log rotation  (logrotate)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 sed "s|__REPO__|$REPO|g" "$REPO/install/ximg-web.logrotate" \
@@ -124,29 +135,25 @@ ok "logrotate config installed → /etc/logrotate.d/ximg-web"
 info "daily rotation, 14-day retention, compressed, nginx reopen signal"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "5/9  Suricata IDS"
+section "5/11  Suricata IDS"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Set HOME_NET to this server's IP
 if grep -q '192\.168\.0\.0/16,10\.0\.0\.0/8,172\.16\.0\.0/12' /etc/suricata/suricata.yaml 2>/dev/null; then
   sed -i "s|HOME_NET: \"\[192\.168\.0\.0/16,10\.0\.0\.0/8,172\.16\.0\.0/12\]\"|HOME_NET: \"[${SERVER_IP}/32,10.0.0.0/8,172.16.0.0/12]\"|" \
       /etc/suricata/suricata.yaml
   ok "HOME_NET set to ${SERVER_IP}/32"
 else
-  # Already customised or different format; just verify HOME_NET is present
   if grep -q "HOME_NET:" /etc/suricata/suricata.yaml 2>/dev/null; then
     warn "HOME_NET already customised — verify /etc/suricata/suricata.yaml manually"
   fi
 fi
 
-# Download / update community rules
 info "running suricata-update (downloads ~50k community rules — takes ~1 min)..."
 suricata-update >/dev/null 2>&1 && ok "community rules downloaded" || warn "suricata-update failed — check network"
 
 systemctl enable --now suricata
 ok "suricata.service enabled and running"
 
-# Wait a moment and confirm EVE log is being written
 sleep 2
 if [[ -f /var/log/suricata/eve.json ]]; then
   ok "eve.json exists — IDS is writing events"
@@ -155,7 +162,29 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "6/9  systemd unit  (ximg-web.service)"
+section "6/11  Firewall  (firewalld)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+if systemctl is-active --quiet firewalld; then
+  firewall-cmd --permanent --add-service=http  &>/dev/null
+  firewall-cmd --permanent --add-service=https &>/dev/null
+  firewall-cmd --permanent --add-service=ssh   &>/dev/null
+  firewall-cmd --permanent --add-port=25/tcp   &>/dev/null  # mail receiver
+  firewall-cmd --reload                        &>/dev/null
+  ok "firewalld: http, https, ssh, smtp(25) opened"
+else
+  warn "firewalld not active — verify ports 80/443/22/25 are reachable manually"
+fi
+
+# SELinux: allow Docker containers to read bind-mounted cert files
+if [[ "$(getenforce 2>/dev/null || echo Disabled)" != "Disabled" ]]; then
+  chcon -Rt container_file_t /etc/letsencrypt/ 2>/dev/null \
+    && ok "SELinux: /etc/letsencrypt context set to container_file_t" \
+    || warn "SELinux: could not set context on /etc/letsencrypt — containers may not read certs"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "7/11  systemd unit  (ximg-web.service)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 sed "s|WorkingDirectory=.*|WorkingDirectory=$REPO|" "$REPO/ximg-web.service" \
@@ -166,127 +195,93 @@ systemctl enable ximg-web.service
 ok "ximg-web.service installed and enabled"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "7/9  SSL certificate  (Let's Encrypt)"
+section "8a/11  SSL: *.ximg.app wildcard  (acme.sh + GoDaddy DNS-01)"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# All subdomains in one cert (must all have DNS A records → this server)
-DOMAINS=(
-  ximg.app www.ximg.app
-  ai.ximg.app america.ximg.app ansible.ximg.app apps.ximg.app
-  ascii.ximg.app bash.ximg.app butterfly.ximg.app change.ximg.app
-  chess.ximg.app chinese.ximg.app claude.ximg.app cnc.ximg.app
-  coldwar.ximg.app computers.ximg.app docker.ximg.app doom.ximg.app
-  fidonet.ximg.app florida.ximg.app git.ximg.app grilling.ximg.app
-  guns.ximg.app ids.ximg.app india.ximg.app internet.ximg.app
-  sushi.ximg.app tacos.ximg.app bbq.ximg.app ramen.ximg.app pasta.ximg.app thai.ximg.app
-  baking.ximg.app smoker.ximg.app knife.ximg.app ferment.ximg.app
-  wine.ximg.app beer.ximg.app cocktails.ximg.app tea.ximg.app
-  calories.ximg.app recipe.ximg.app spice.ximg.app market.ximg.app
-  json.ximg.app kart.ximg.app kombat.ximg.app linux.ximg.app
-  logs.ximg.app mac.ximg.app mail.ximg.app mario.ximg.app
-  monkey.ximg.app moto.ximg.app nav.ximg.app passwords.ximg.app
-  pizza.ximg.app poker.ximg.app programming.ximg.app ps1.ximg.app rx.ximg.app
-  simcity.ximg.app stats.ximg.app systemd.ximg.app tampa.ximg.app
-  tmux.ximg.app trump.ximg.app vr.ximg.app vt101.ximg.app
-  warcraft.ximg.app wargames.ximg.app wood.ximg.app
-  unix.ximg.app bsd.ximg.app
-  ximg.ximg.app yaml.ximg.app zsh.ximg.app
-  nagios.ximg.app status.ximg.app
-  vim.ximg.app http.ximg.app ssh.ximg.app sql.ximg.app
-  space.ximg.app coffee.ximg.app japan.ximg.app quake.ximg.app nintendo.ximg.app
-  pirates.ximg.app medieval.ximg.app rome.ximg.app bbs.ximg.app dos.ximg.app modem.ximg.app commodore.ximg.app
-  egypt.ximg.app greece.ximg.app babylon.ximg.app aztec.ximg.app mongols.ximg.app vikings.ximg.app crusades.ximg.app
-  samurai.ximg.app ottoman.ximg.app ww2.ximg.app ww1.ximg.app cuba.ximg.app revolution.ximg.app industrial.ximg.app
-  civilwar.ximg.app renaissance.ximg.app silkroad.ximg.app colonial.ximg.app
-  physics.ximg.app chemistry.ximg.app biology.ximg.app math.ximg.app evolution.ximg.app
-  dns.ximg.app suricata.ximg.app crypto.ximg.app
-  readme.ximg.app
-  claudemd.ximg.app
-  world.ximg.app
-  sandbox.ximg.app
-  gravity.ximg.app
-  waves.ximg.app
-  chaos.ximg.app
-  epidemic.ximg.app
-  algorithms.ximg.app os.ximg.app security.ximg.app database.ximg.app
-  playground.ximg.app tokens.ximg.app temperature.ximg.app embeddings.ximg.app agents.ximg.app
-  network.ximg.app request.ximg.app
-  visualize.ximg.app statslab.ximg.app regression.ximg.app probability.ximg.app
-  systemdesign.ximg.app loadbalancer.ximg.app cdn.ximg.app queue.ximg.app
-  brain.ximg.app sleep.ximg.app nutrition.ximg.app training.ximg.app
-  terminal.ximg.app
-  circuit.ximg.app logic.ximg.app protocol.ximg.app
-  punch.ximg.app mainframe.ximg.app
-  arpanet.ximg.app
-  regex.ximg.app jwt.ximg.app cron.ximg.app color.ximg.app
-  dna.ximg.app cell.ximg.app immune.ximg.app
-  binary.ximg.app
-  compiler.ximg.app
-  quantum.ximg.app synth.ximg.app
-  compound.ximg.app
-  savings.ximg.app tax.ximg.app stocks.ximg.app
-  options.ximg.app forex.ximg.app dcf.ximg.app
-  mortgage.ximg.app retire.ximg.app inflation.ximg.app debt.ximg.app budget.ximg.app
-  base64.ximg.app hash.ximg.app diff.ximg.app url.ximg.app curl.ximg.app
-  cidr.ximg.app uuid.ximg.app lorem.ximg.app csv.ximg.app markdown.ximg.app
-  password.ximg.app ssl.ximg.app epoch.ximg.app timespan.ximg.app
-  555timer.ximg.app arduino.ximg.app battery.ximg.app capacitor.ximg.app
-  fpga.ximg.app impedance.ximg.app ohms.ximg.app opamp.ximg.app
-  oscilloscope.ximg.app pcb.ximg.app pinout.ximg.app psu.ximg.app
-  pwm.ximg.app resistor.ximg.app spectrum.ximg.app spi.ximg.app
-  uart.ximg.app voltage.ximg.app
-  antenna.ximg.app
-  dockerimage.ximg.app
-  dockerimagedownloader.ximg.app
-  githubstars.ximg.app
-  templeos.ximg.app
-  smtp.ximg.app chmod.ximg.app iptables.ximg.app video.ximg.app
-  tls.ximg.app bgp.ximg.app makefile.ximg.app utf8.ximg.app
-  french.ximg.app
-  russianrev.ximg.app
-  napoleon.ximg.app
-  british.ximg.app
-  cuba.ximg.app
-  spacerace.ximg.app
-  communism.ximg.app
-)
+WILDCARD_CERT="/etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem"
+ACME=/root/.acme.sh/acme.sh
 
-CERT_PATH="/etc/letsencrypt/live/ximg.app/fullchain.pem"
-
-if [[ -f "$CERT_PATH" ]]; then
-  ok "certificate already exists at $CERT_PATH"
-  warn "to expand to new domains:  certbot certonly --expand --webroot -w $REPO/public-html -d \$(paste -sd, install/domains.txt)"
+if [[ -f "$WILDCARD_CERT" ]]; then
+  ok "wildcard cert already exists at $WILDCARD_CERT"
 else
-  echo
-  warn "before running certbot, ALL DNS A records must point to ${SERVER_IP}"
-  warn "domains: ${DOMAINS[*]}"
-  echo
-  if confirm "all DNS records are set — obtain certificate now?"; then
-    # Build -d flags
-    D_FLAGS=()
-    for d in "${DOMAINS[@]}"; do D_FLAGS+=(-d "$d"); done
+  # Prompt for GoDaddy credentials if not exported
+  if [[ -z "${GD_Key:-}" || -z "${GD_Secret:-}" ]]; then
+    echo
+    warn "GoDaddy API credentials required for DNS-01 wildcard cert"
+    warn "Get them at: https://developer.godaddy.com/keys"
+    echo
+    read -rp "$(echo -e "  ${YEL}?${RST}  GD_Key:    ")" GD_Key
+    read -rp "$(echo -e "  ${YEL}?${RST}  GD_Secret: ")" GD_Secret
+    export GD_Key GD_Secret
+  fi
 
-    certbot certonly --webroot \
-      -w "$REPO/public-html" \
-      "${D_FLAGS[@]}" \
-      --cert-name ximg.app \
-      --non-interactive \
-      --agree-tos \
-      --register-unsafely-without-email \
-      2>&1 | tail -10
-    ok "certificate obtained"
+  # Install acme.sh if not present
+  if [[ ! -f "$ACME" ]]; then
+    info "installing acme.sh..."
+    curl -sSL https://get.acme.sh | bash -s -- --home /root/.acme.sh --nocron &>/dev/null
+    ok "acme.sh installed to /root/.acme.sh"
   else
-    warn "skipping certbot — nginx will not start without a cert"
-    warn "run certbot manually when DNS is ready, then: systemctl start ximg-web"
+    ok "acme.sh already installed"
+  fi
+
+  echo
+  warn "DNS A records for ximg.app and *.ximg.app must resolve to ${SERVER_IP}"
+  echo
+  if confirm "DNS is ready — issue wildcard cert now?"; then
+    info "issuing *.ximg.app wildcard via GoDaddy DNS-01 (propagation may take ~30s)..."
+    GD_Key="$GD_Key" GD_Secret="$GD_Secret" \
+      "$ACME" --issue --dns dns_gd \
+        -d ximg.app -d '*.ximg.app' \
+        --server letsencrypt 2>&1 | tail -8
+
+    info "deploying cert to /etc/letsencrypt/live/wildcard.ximg.app/..."
+    "$ACME" --install-cert -d ximg.app \
+      --cert-file      /etc/letsencrypt/live/wildcard.ximg.app/cert.pem \
+      --key-file       /etc/letsencrypt/live/wildcard.ximg.app/privkey.pem \
+      --fullchain-file /etc/letsencrypt/live/wildcard.ximg.app/fullchain.pem \
+      --reloadcmd      "docker compose -f $REPO/compose.yaml exec nginx nginx -s reload"
+
+    "$ACME" --install-cronjob
+    ok "wildcard cert obtained; acme.sh renewal cron installed"
+  else
+    warn "skipping wildcard cert — nginx HTTPS will not start"
+    warn "run manually: GD_Key=... GD_Secret=... $ACME --issue --dns dns_gd -d ximg.app -d '*.ximg.app' --server letsencrypt"
   fi
 fi
 
-# Write domains list for future certbot --expand commands
-printf '%s\n' "${DOMAINS[@]}" > "$REPO/install/domains.txt"
-ok "domain list written to install/domains.txt"
+# Write authoritative domain list from nginx.conf (not the DOMAINS array above)
+grep -oP 'server_name\s+\K[\w.-]+\.ximg\.app' "$REPO/nginx/nginx.conf" | sort -u \
+  > "$REPO/install/domains.txt"
+ok "domain list written to install/domains.txt ($(wc -l < "$REPO/install/domains.txt") subdomains, sourced from nginx.conf)"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "8/9  Start Docker Compose stack"
+section "8b/11  SSL: dockerimage.dev  (certbot standalone)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+DOCKERDEV_CERT="/etc/letsencrypt/live/dockerimage.dev/fullchain.pem"
+
+if [[ -f "$DOCKERDEV_CERT" ]]; then
+  ok "dockerimage.dev cert already exists"
+else
+  echo
+  warn "DNS A records for dockerimage.dev and www.dockerimage.dev must resolve to ${SERVER_IP}"
+  warn "certbot standalone binds to port 80 — nothing else should be listening yet"
+  echo
+  if confirm "DNS is ready — obtain dockerimage.dev cert now?"; then
+    certbot certonly --standalone \
+      -d dockerimage.dev -d www.dockerimage.dev \
+      --non-interactive \
+      --agree-tos \
+      --register-unsafely-without-email 2>&1 | tail -8
+    ok "dockerimage.dev cert obtained"
+  else
+    warn "skipping dockerimage.dev cert — its nginx server block will not start"
+    warn "run manually once DNS is ready: certbot certonly --standalone -d dockerimage.dev -d www.dockerimage.dev"
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "9/11  Start Docker Compose stack"
 # ─────────────────────────────────────────────────────────────────────────────
 
 cd "$REPO"
@@ -297,10 +292,71 @@ docker compose up -d --remove-orphans
 ok "stack started"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "9/9  Verification"
+section "10/11  SSH honeypot — outbound iptables isolation"
 # ─────────────────────────────────────────────────────────────────────────────
 
-sleep 4  # give containers a moment to bind
+# Wait for Docker to create the ssh-net bridge
+sleep 3
+
+SSH_NET_ID=$(docker network inspect ximg-web_ssh-net --format '{{.Id}}' 2>/dev/null || echo '')
+if [[ -n "$SSH_NET_ID" ]]; then
+  SSH_BRIDGE="br-${SSH_NET_ID:0:12}"
+  if ip link show "$SSH_BRIDGE" &>/dev/null; then
+    # Allow return traffic for inbound SSH sessions (attacker → honeypot replies)
+    iptables -I DOCKER-USER -i "$SSH_BRIDGE" -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+    # Drop all other outbound traffic initiated by honeypot containers
+    iptables -I DOCKER-USER -i "$SSH_BRIDGE" ! -o "$SSH_BRIDGE" -j DROP 2>/dev/null || true
+    ok "iptables: outbound blocked from ssh-net bridge ($SSH_BRIDGE)"
+
+    # Write a helper script that can re-apply these rules after reboot
+    # (bridge name is stable as long as the Docker network exists)
+    cat > /usr/local/sbin/ximg-ssh-isolation.sh <<ISOLATION
+#!/usr/bin/env bash
+# Re-apply SSH honeypot outbound iptables isolation
+# Called by ximg-ssh-isolation.service after ximg-web.service starts
+set -euo pipefail
+NET_ID=\$(docker network inspect ximg-web_ssh-net --format '{{.Id}}' 2>/dev/null || echo '')
+[[ -n "\$NET_ID" ]] || { echo "ssh-net not found"; exit 1; }
+BRIDGE="br-\${NET_ID:0:12}"
+ip link show "\$BRIDGE" &>/dev/null || { echo "bridge \$BRIDGE not found"; exit 1; }
+iptables -I DOCKER-USER -i "\$BRIDGE" -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+iptables -I DOCKER-USER -i "\$BRIDGE" ! -o "\$BRIDGE" -j DROP 2>/dev/null || true
+echo "SSH honeypot isolation applied on \$BRIDGE"
+ISOLATION
+    chmod 755 /usr/local/sbin/ximg-ssh-isolation.sh
+
+    # Install a systemd oneshot that runs after ximg-web on every boot
+    cat > /etc/systemd/system/ximg-ssh-isolation.service <<UNIT
+[Unit]
+Description=ximg-web SSH honeypot outbound isolation
+After=ximg-web.service
+Requires=ximg-web.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/local/sbin/ximg-ssh-isolation.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    systemctl daemon-reload
+    systemctl enable ximg-ssh-isolation.service
+    ok "ximg-ssh-isolation.service installed — rules will reapply on each boot"
+  else
+    warn "bridge $SSH_BRIDGE not found — isolation not applied"
+    warn "run manually after stack is up: /usr/local/sbin/ximg-ssh-isolation.sh"
+  fi
+else
+  warn "ximg-web_ssh-net network not found — ssh honeypot isolation not applied"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "11/11  Verification"
+# ─────────────────────────────────────────────────────────────────────────────
+
+sleep 4
 
 PASS=0; FAIL=0
 
@@ -345,11 +401,11 @@ check_container nginx
 check_container logs
 check_container ids
 
-if [[ -f "$CERT_PATH" ]]; then
-  check_http "https://ximg.app"        "ximg.app"
-  check_http "https://ids.ximg.app"    "ids.ximg.app"
-  check_http "https://logs.ximg.app"   "logs.ximg.app"
-  check_http "https://logs.ximg.app/ids-stats"  "ids-stats endpoint"
+if [[ -f "$WILDCARD_CERT" ]]; then
+  check_http "https://ximg.app"               "ximg.app"
+  check_http "https://ids.ximg.app"           "ids.ximg.app"
+  check_http "https://logs.ximg.app"          "logs.ximg.app"
+  check_http "https://logs.ximg.app/ids-stats" "ids-stats endpoint"
 fi
 
 echo
@@ -361,10 +417,12 @@ fi
 
 echo
 echo -e "${DIM}Useful commands:${RST}"
-echo -e "  systemctl status ximg-web          # stack status"
-echo -e "  docker compose ps                  # container status"
-echo -e "  docker compose logs -f logs        # IDS + nginx log stream"
-echo -e "  systemctl status suricata          # IDS engine status"
-echo -e "  journalctl -fu suricata            # IDS live logs"
-echo -e "  suricata-update && systemctl reload suricata  # refresh rules"
+echo -e "  systemctl status ximg-web                          # stack status"
+echo -e "  docker compose ps                                  # container status"
+echo -e "  docker compose logs -f logs                        # IDS + nginx log stream"
+echo -e "  systemctl status suricata                          # IDS engine status"
+echo -e "  journalctl -fu suricata                            # IDS live logs"
+echo -e "  suricata-update && systemctl reload suricata       # refresh rules"
+echo -e "  /root/.acme.sh/acme.sh --renew -d ximg.app        # force cert renewal"
+echo -e "  certbot renew --standalone                         # renew dockerimage.dev cert"
 echo
