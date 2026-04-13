@@ -681,6 +681,44 @@ function usePullImage(name) {
   document.getElementById('img-ref').focus();
 }
 
+var geoCache = {};
+
+function countryFlag(code) {
+  if (!code || code.length !== 2) return '';
+  return String.fromCodePoint(0x1F1E6 + code.charCodeAt(0) - 65) +
+         String.fromCodePoint(0x1F1E6 + code.charCodeAt(1) - 65);
+}
+
+function isPrivateIp(ip) {
+  return !ip || ip === '—' || ip === '127.0.0.1' || ip === '::1' ||
+         /^::/.test(ip) || /^10\./.test(ip) ||
+         /^192\.168\./.test(ip) || /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
+}
+
+function lookupGeos(ips) {
+  var toFetch = ips.filter(function(ip) { return geoCache[ip] === undefined && !isPrivateIp(ip); });
+  if (!toFetch.length) { applyFlags(); return; }
+  fetch('https://ip-api.com/batch?fields=query,countryCode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toFetch.map(function(ip) { return { query: ip }; }))
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(results) {
+      results.forEach(function(r) { geoCache[r.query] = r.countryCode || ''; });
+      applyFlags();
+    })
+    .catch(function() { applyFlags(); });
+}
+
+function applyFlags() {
+  document.querySelectorAll('[data-geo-ip]').forEach(function(el) {
+    var ip = el.getAttribute('data-geo-ip');
+    var code = geoCache[ip];
+    if (code) el.textContent = countryFlag(code) + '\u00a0';
+  });
+}
+
 function loadHistory() {
   var tbody = document.getElementById('hist-tbody');
   var count = document.getElementById('hist-count');
@@ -693,12 +731,17 @@ function loadHistory() {
         tbody.innerHTML = '<tr><td colspan="8" class="h-empty">No downloads recorded yet.</td></tr>';
         return;
       }
+      var uniqueIps = [];
+      entries.forEach(function(e) {
+        if (e.ip && uniqueIps.indexOf(e.ip) === -1) uniqueIps.push(e.ip);
+      });
       tbody.innerHTML = entries.map(function(e) {
         var cls = e.outcome === 'downloaded' ? 'h-ok' : 'h-ttl';
         var lbl = e.outcome === 'downloaded' ? '✓ downloaded' : '⏱ ttl expired';
+        var flagSpan = isPrivateIp(e.ip) ? '' : '<span data-geo-ip="' + esc(e.ip) + '"></span>';
         return '<tr>' +
           '<td class="h-dim">' + esc(fmtTs(e.ts)) + '</td>' +
-          '<td class="h-dim">' + esc(e.ip || '—') + '</td>' +
+          '<td class="h-dim">' + flagSpan + esc(e.ip || '—') + '</td>' +
           '<td class="h-img">' + esc(e.image) + '</td>' +
           '<td class="h-num">' + fmtSecs(e.pullSecs) + '</td>' +
           '<td class="h-num">' + fmtMB(e.sizeMB) + '</td>' +
@@ -707,6 +750,7 @@ function loadHistory() {
           '<td class="' + cls + '">' + lbl + '</td>' +
         '</tr>';
       }).join('');
+      lookupGeos(uniqueIps);
     })
     .catch(function() {
       tbody.innerHTML = '<tr><td colspan="8" class="h-empty">Failed to load download log.</td></tr>';
@@ -723,6 +767,6 @@ function loadHistory() {
   if (btns[idx]) setView(tab, btns[idx]);
 })();
 </script>
-<script src="/shared/nav.js?v=2"></script>
+%%NAV_SCRIPT%%
 </body>
 </html>
