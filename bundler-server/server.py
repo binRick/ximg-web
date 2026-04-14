@@ -279,11 +279,23 @@ echo Done! Activate with:  call venv\\Scripts\\activate.bat
             with open(os.path.join(tmpdir, name), 'w', newline='\n') as fh:
                 fh.write(content)
 
-        safe_pkg = re.sub(r'[^A-Za-z0-9._-]', '_', pkg)
-        zip_name = f'{safe_pkg}-py{ver_nodot}-{plat}.zip'
-        zip_path = os.path.join(tmpdir, zip_name)
+        # Extract the package base name (strip any version specifier)
+        pkg_base = re.split(r'[><=!~\s]', pkg)[0]
+        safe_pkg = re.sub(r'[^A-Za-z0-9._-]', '_', pkg_base)
 
-        bundle_dir = f'{safe_pkg}-py{ver_nodot}-{plat}'
+        # Detect the resolved version from the downloaded wheel for the package
+        pkg_version = ''
+        for f in files:
+            stem = f.split('.whl')[0] if f.endswith('.whl') else f.rsplit('.', 2)[0]
+            parts = stem.split('-')
+            if len(parts) >= 2 and parts[0].lower().replace('-', '_') == pkg_base.lower().replace('-', '_'):
+                pkg_version = parts[1]
+                break
+
+        version_tag = f'-{pkg_version}' if pkg_version else ''
+        bundle_dir = f'ximg-app-py-bundle-{safe_pkg}{version_tag}-py{ver_nodot}-{plat}'
+        zip_name = f'{bundle_dir}.zip'
+        zip_path = os.path.join(tmpdir, zip_name)
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
             for f in files:
                 zf.write(os.path.join(pkg_dir, f), f'{bundle_dir}/packages/{f}')
