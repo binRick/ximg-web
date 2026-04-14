@@ -227,6 +227,8 @@ def _make_demo_sh(pkg_install):
         f'pip install --quiet --no-index --find-links packages/ "{pkg_install}"\n\n'
         'echo "==> Running demo.py..."\n'
         'python demo.py\n'
+        f'echo ""\n'
+        f'echo "✓ demo.py executed successfully — {pkg_install} was loaded by the Python interpreter."\n'
     )
 
 
