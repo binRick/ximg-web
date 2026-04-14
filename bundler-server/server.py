@@ -503,8 +503,8 @@ HTML = r"""<!DOCTYPE html>
   <script>
     /* ── view switching ── */
     function setView(v) {
-      document.getElementById('view-bundle').style.display   = v === 'bundle'   ? '' : 'none';
-      document.getElementById('view-packages').style.display = v === 'packages' ? '' : 'none';
+      document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
+      document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
       if (v === 'packages') renderPkgs();
