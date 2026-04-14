@@ -476,7 +476,11 @@ def bundle():
                 for f in files:
                     zf.write(os.path.join(pkg_dir, f), f'{bundle_dir}/packages/{f}')
                     yield f'data:   + packages/{f}\n\n'
-                zf.write(os.path.join(tmpdir, 'setup.sh'),   f'{bundle_dir}/setup.sh')
+                sh_info = zipfile.ZipInfo(f'{bundle_dir}/setup.sh')
+                sh_info.external_attr = 0o100755 << 16  # -rwxr-xr-x
+                sh_info.compress_type = zipfile.ZIP_DEFLATED
+                with open(os.path.join(tmpdir, 'setup.sh'), 'rb') as fh:
+                    zf.writestr(sh_info, fh.read())
                 zf.write(os.path.join(tmpdir, 'setup.bat'),  f'{bundle_dir}/setup.bat')
                 zf.write(os.path.join(tmpdir, 'README.txt'), f'{bundle_dir}/README.txt')
 
