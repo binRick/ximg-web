@@ -536,7 +536,7 @@ HTML = r"""<!DOCTYPE html>
             <span class="pkg-cat">${p.cat}</span>
           </div>
           <div class="pkg-desc">${p.desc}</div>
-          <button class="pkg-bundle-btn" onclick="pickPkg(${JSON.stringify(p.name)})">Bundle →</button>
+          <button class="pkg-bundle-btn" data-pkg="${p.name}" onclick="pickPkg(this.dataset.pkg)">Bundle →</button>
         </div>`).join('');
     }
 
