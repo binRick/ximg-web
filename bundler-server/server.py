@@ -29,6 +29,19 @@ PLATFORMS = {
     'any':                'Any / Pure Python',
 }
 
+# pip --platform tags to pass for each target.
+# Linux needs the manylinux hierarchy so compiled packages (numpy, etc.) are found.
+# Multiple --platform flags tell pip to treat all listed tags as compatible.
+PLATFORM_TAGS = {
+    'linux_x86_64':       ['manylinux_2_17_x86_64', 'manylinux2014_x86_64',
+                           'manylinux1_x86_64', 'linux_x86_64'],
+    'linux_aarch64':      ['manylinux_2_17_aarch64', 'manylinux2014_aarch64',
+                           'linux_aarch64'],
+    'win_amd64':          ['win_amd64'],
+    'macosx_11_0_arm64':  ['macosx_11_0_arm64'],
+    'macosx_10_9_x86_64': ['macosx_10_9_x86_64'],
+}
+
 # PyPI install name -> Python import name (for packages that differ)
 IMPORT_NAMES = {
     'pillow':                  'PIL',
@@ -699,15 +712,18 @@ def bundle():
     if plat == 'any':
         cmd = ['pip', 'download', '-d', None, pkg]
     else:
-        cmd = [
-            'pip', 'download',
-            '--python-version', ver_nodot,
-            '--platform', plat,
-            '--only-binary', ':all:',
-            '--implementation', 'cp',
-            '-d', None,
-            pkg,
-        ]
+        platform_flags = []
+        for tag in PLATFORM_TAGS[plat]:
+            platform_flags += ['--platform', tag]
+        cmd = (
+            ['pip', 'download',
+             '--python-version', ver_nodot]
+            + platform_flags
+            + ['--only-binary', ':all:',
+               '--implementation', 'cp',
+               '-d', None,
+               pkg]
+        )
 
     @stream_with_context
     def generate():
