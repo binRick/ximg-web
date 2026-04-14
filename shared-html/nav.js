@@ -55,10 +55,15 @@
     ]},
     { label: 'Dev Tools', apps: [
       ['base64','base64'],['binary','binary'],['cidr','cidr'],['color','color'],['cron','cron'],
-      ['csv','csv'],['curl','curl'],['diff','diff'],['dockerimagedownloader','docker image downloader'],['dockerimage','dockerimage'],
+      ['csv','csv'],['curl','curl'],['diff','diff'],['dockerimage','dockerimage'],
       ['epoch','epoch'],['githubstars','github stars'],['hash','hash'],['jwt','JWT'],['lorem','lorem'],
       ['markdown','markdown'],['password','password'],['ps1','ps1'],['regex','regex'],['ssl','ssl'],
-      ['nodejs-bundler','node.js bundler'],['python-bundler','python bundler'],['timespan','timespan'],['url','url'],['uuid','uuid']
+      ['timespan','timespan'],['url','url'],['uuid','uuid']
+    ]},
+    { label: 'Bundlers', apps: [
+      ['dockerimagedownloader','docker image downloader'],
+      ['nodejs-bundler','node.js bundler'],
+      ['python-bundler','python bundler']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
