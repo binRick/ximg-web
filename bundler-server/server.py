@@ -707,17 +707,16 @@ def bundle():
     if plat not in PLATFORMS:
         return jsonify({'error': 'Invalid platform.'}), 400
 
-    ver_nodot = pyver.replace('.', '')
+    pybin = f'python{pyver}'  # e.g. python3.9 — markers evaluate against this interpreter
 
     if plat == 'any':
-        cmd = ['pip', 'download', '-d', None, pkg]
+        cmd = [pybin, '-m', 'pip', 'download', '-d', None, pkg]
     else:
         platform_flags = []
         for tag in PLATFORM_TAGS[plat]:
             platform_flags += ['--platform', tag]
         cmd = (
-            ['pip', 'download',
-             '--python-version', ver_nodot]
+            [pybin, '-m', 'pip', 'download']
             + platform_flags
             + ['--only-binary', ':all:',
                '--implementation', 'cp',
