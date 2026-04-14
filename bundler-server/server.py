@@ -283,12 +283,13 @@ echo Done! Activate with:  call venv\\Scripts\\activate.bat
         zip_name = f'{safe_pkg}-py{ver_nodot}-{plat}.zip'
         zip_path = os.path.join(tmpdir, zip_name)
 
+        bundle_dir = f'{safe_pkg}-py{ver_nodot}-{plat}'
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
             for f in files:
-                zf.write(os.path.join(pkg_dir, f), f'packages/{f}')
-            zf.write(os.path.join(tmpdir, 'setup.sh'),  'setup.sh')
-            zf.write(os.path.join(tmpdir, 'setup.bat'), 'setup.bat')
-            zf.write(os.path.join(tmpdir, 'README.txt'), 'README.txt')
+                zf.write(os.path.join(pkg_dir, f), f'{bundle_dir}/packages/{f}')
+            zf.write(os.path.join(tmpdir, 'setup.sh'),  f'{bundle_dir}/setup.sh')
+            zf.write(os.path.join(tmpdir, 'setup.bat'), f'{bundle_dir}/setup.bat')
+            zf.write(os.path.join(tmpdir, 'README.txt'), f'{bundle_dir}/README.txt')
 
         return send_file(
             zip_path,
