@@ -208,7 +208,7 @@ def _build_scripts(pkg, pyver, plat, files, pkg_base, main_version):
         '  XIMG PYTHON BUNDLE — SOFTWARE BILL OF MATERIALS\n'
         + '═' * 56 + '\n'
         f'Generated:    {generated}\n'
-        f'Source:       https://bundler.ximg.app\n'
+        f'Source:       https://python-bundler.ximg.app\n'
         f'Package:      {pkg_base} {main_version}\n'
         f'Python:       {pyver}\n'
         f'Platform:     {PLATFORMS[plat]} ({plat})\n'
@@ -252,7 +252,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Python Bundler — bundler.ximg.app</title>
+  <title>Python Bundler — python-bundler.ximg.app</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
