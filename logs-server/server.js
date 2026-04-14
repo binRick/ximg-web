@@ -275,6 +275,7 @@ const LOG_FILES = {
   voltage:        'voltage.access.log',
   antenna:        'antenna.access.log',
   'python-bundler': 'python-bundler.access.log',
+  'nodejs-bundler': 'nodejs-bundler.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -792,6 +793,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="voltage">voltage</button>
           <button class="site-opt" data-site="antenna">antenna</button>
           <button class="site-opt" data-site="python-bundler">python-bundler</button>
+          <button class="site-opt" data-site="nodejs-bundler">nodejs-bundler</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

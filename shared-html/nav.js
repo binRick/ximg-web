@@ -58,7 +58,7 @@
       ['csv','csv'],['curl','curl'],['diff','diff'],['dockerimagedownloader','docker image downloader'],['dockerimage','dockerimage'],
       ['epoch','epoch'],['githubstars','github stars'],['hash','hash'],['jwt','JWT'],['lorem','lorem'],
       ['markdown','markdown'],['password','password'],['ps1','ps1'],['regex','regex'],['ssl','ssl'],
-      ['python-bundler','python bundler'],['timespan','timespan'],['url','url'],['uuid','uuid']
+      ['nodejs-bundler','node.js bundler'],['python-bundler','python bundler'],['timespan','timespan'],['url','url'],['uuid','uuid']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
