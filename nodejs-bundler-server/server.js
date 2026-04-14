@@ -663,7 +663,7 @@ app.post('/bundle', async (req, res) => {
       output.on('close', resolve);
       archive.on('error', reject);
       archive.pipe(output);
-      archive.directory(nodeModulesDir,                { name: `${bundleName}/node_modules` });
+      archive.directory(nodeModulesDir,                `${bundleName}/node_modules`);
       archive.file(path.join(tmpdir, 'package.json'), { name: `${bundleName}/package.json` });
       const lockPath = path.join(tmpdir, 'package-lock.json');
       if (fs.existsSync(lockPath)) {
