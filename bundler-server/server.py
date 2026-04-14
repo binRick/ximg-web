@@ -29,6 +29,32 @@ PLATFORMS = {
     'any':                'Any / Pure Python',
 }
 
+# PyPI install name -> Python import name (for packages that differ)
+IMPORT_NAMES = {
+    'pillow':                  'PIL',
+    'scikit-learn':            'sklearn',
+    'pyyaml':                  'yaml',
+    'beautifulsoup4':          'bs4',
+    'opencv-python':           'cv2',
+    'opencv-python-headless':  'cv2',
+    'python-dateutil':         'dateutil',
+    'pyserial':                'serial',
+    'attrs':                   'attr',
+    'typing-extensions':       'typing_extensions',
+    'msgpack-python':          'msgpack',
+    'python-magic':            'magic',
+    'pycryptodome':            'Crypto',
+    'pycryptodomex':           'Cryptodome',
+    'pyzmq':                   'zmq',
+    'py-bcrypt':               'bcrypt',
+    'antlr4-python3-runtime':  'antlr4',
+    'python-jose':             'jose',
+    'python-multipart':        'multipart',
+    'python-slugify':          'slugify',
+    'lxml':                    'lxml',
+    'psutil':                  'psutil',
+}
+
 FAVICON_SVG = open('/app/favicon.svg', 'rb').read()
 
 # Completed bundles waiting to be downloaded: token -> {path, tmpdir, name, ts}
@@ -90,6 +116,57 @@ def _resolve_version(pkg_base, files):
     return ''
 
 
+def _import_name(pkg_base):
+    """Return the Python import name for a PyPI package name."""
+    key = pkg_base.lower().replace('_', '-')
+    if key in IMPORT_NAMES:
+        return IMPORT_NAMES[key]
+    # Normalize: hyphens → underscores (e.g. my-package → my_package)
+    return pkg_base.replace('-', '_')
+
+
+def _make_demo_py(pkg_install, pkg_base, main_version):
+    import_name = _import_name(pkg_base)
+    return (
+        '#!/usr/bin/env python3\n'
+        f'"""Demo — proves that {pkg_install} installed correctly from the offline bundle."""\n'
+        'import sys\n'
+        'import importlib.metadata\n\n'
+        f'PKG_INSTALL = {repr(pkg_base)}\n'
+        f'PKG_IMPORT  = {repr(import_name)}\n\n'
+        'print(f"Python {sys.version}")\n'
+        'print()\n\n'
+        'try:\n'
+        '    mod = __import__(PKG_IMPORT)\n'
+        'except ImportError as e:\n'
+        '    print(f"FAIL  could not import \'{{}}\': {{}}" .format(PKG_IMPORT, e))\n'
+        '    sys.exit(1)\n\n'
+        'try:\n'
+        '    version = importlib.metadata.version(PKG_INSTALL)\n'
+        'except Exception:\n'
+        '    version = getattr(mod, "__version__", "unknown")\n\n'
+        'mod_file = getattr(mod, "__file__", "built-in")\n'
+        'print(f"OK    {PKG_INSTALL}=={version}")\n'
+        'print(f"      {mod_file}")\n'
+    )
+
+
+def _make_demo_sh(pkg_install):
+    return (
+        '#!/bin/bash\n'
+        'set -e\n'
+        'PYTHON="${PYTHON:-python3}"\n'
+        'cd "$(dirname "$0")"\n\n'
+        'echo "==> Setting up virtual environment..."\n'
+        '"$PYTHON" -m venv venv\n'
+        'source venv/bin/activate\n\n'
+        'echo "==> Installing packages from bundle..."\n'
+        f'pip install --quiet --no-index --find-links packages/ "{pkg_install}"\n\n'
+        'echo "==> Running demo.py..."\n'
+        'python demo.py\n'
+    )
+
+
 def _build_scripts(pkg, pyver, plat, files, pkg_base, main_version):
     setup_sh = (
         '#!/bin/bash\n'
@@ -143,12 +220,14 @@ def _build_scripts(pkg, pyver, plat, files, pkg_base, main_version):
         + divider + '\n\n'
         'USAGE (Linux / macOS)\n'
         + divider + '\n'
-        '  ./setup.sh\n'
-        '  source venv/bin/activate   # activate in current shell\n\n'
-        '  Note: setup.sh creates the venv and installs packages, but the\n'
-        '  activated environment only applies to the subprocess it runs in.\n'
-        '  You must run "source venv/bin/activate" yourself afterwards to\n'
-        '  make the packages available in your current shell session.\n\n'
+        '  ./setup.sh                       # create venv + install packages\n'
+        '  source venv/bin/activate         # activate in current shell\n\n'
+        '  # Or run the full demo in one step:\n'
+        '  ./demo.sh\n\n'
+        '  Note: setup.sh and demo.sh create + activate the venv internally,\n'
+        '  but activation does not persist to your calling shell. Run\n'
+        '  "source venv/bin/activate" afterwards to use the packages\n'
+        '  interactively.\n\n'
         'USAGE (Windows)\n'
         + divider + '\n'
         '  setup.bat\n'
@@ -498,23 +577,38 @@ def bundle():
             ver_tag   = f'-{ver}' if ver else ''
 
             setup_sh, setup_bat, readme = _build_scripts(pkg, pyver, plat, files, pkg_base, ver)
-            for fname, content in [('setup.sh', setup_sh), ('setup.bat', setup_bat), ('README.txt', readme)]:
+            demo_py = _make_demo_py(pkg, pkg_base, ver)
+            demo_sh = _make_demo_sh(pkg)
+            for fname, content in [
+                ('setup.sh',  setup_sh),
+                ('setup.bat', setup_bat),
+                ('demo.py',   demo_py),
+                ('demo.sh',   demo_sh),
+                ('README.txt', readme),
+            ]:
                 with open(os.path.join(tmpdir, fname), 'w', newline='\n') as fh:
                     fh.write(content)
+
             bundle_dir = f'ximg-app-py-bundle-{safe_pkg}{ver_tag}-py{ver_nodot}-{plat}'
             zip_name   = f'{bundle_dir}.zip'
             zip_path   = os.path.join(tmpdir, zip_name)
+
+            def _exec_entry(arc_path, src_path):
+                """Add a file to the zip with -rwxr-xr-x permissions."""
+                info = zipfile.ZipInfo(arc_path)
+                info.external_attr = 0o100755 << 16
+                info.compress_type = zipfile.ZIP_DEFLATED
+                with open(src_path, 'rb') as fh:
+                    zf.writestr(info, fh.read())
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for f in files:
                     zf.write(os.path.join(pkg_dir, f), f'{bundle_dir}/packages/{f}')
                     yield f'data:   + packages/{f}\n\n'
-                sh_info = zipfile.ZipInfo(f'{bundle_dir}/setup.sh')
-                sh_info.external_attr = 0o100755 << 16  # -rwxr-xr-x
-                sh_info.compress_type = zipfile.ZIP_DEFLATED
-                with open(os.path.join(tmpdir, 'setup.sh'), 'rb') as fh:
-                    zf.writestr(sh_info, fh.read())
+                _exec_entry(f'{bundle_dir}/setup.sh',  os.path.join(tmpdir, 'setup.sh'))
+                _exec_entry(f'{bundle_dir}/demo.sh',   os.path.join(tmpdir, 'demo.sh'))
                 zf.write(os.path.join(tmpdir, 'setup.bat'),  f'{bundle_dir}/setup.bat')
+                zf.write(os.path.join(tmpdir, 'demo.py'),    f'{bundle_dir}/demo.py')
                 zf.write(os.path.join(tmpdir, 'README.txt'), f'{bundle_dir}/README.txt')
 
             token = uuid.uuid4().hex
