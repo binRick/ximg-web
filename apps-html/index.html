@@ -203,6 +203,38 @@
     .badge-new { background: rgba(0,255,65,.12); color: var(--green); border: 1px solid rgba(0,255,65,.25); }
     .badge-infra { background: rgba(6,182,212,.12); color: var(--accent2); border: 1px solid rgba(6,182,212,.25); }
 
+    .date-filter {
+      display: flex;
+      gap: .4rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .date-filter-label {
+      font-size: .68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-right: .2rem;
+      white-space: nowrap;
+    }
+    .date-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .72rem;
+      padding: .3rem .65rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .date-btn:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+    .date-btn.active { color: var(--green); border-color: rgba(0,255,65,.35); background: rgba(0,255,65,.06); }
+    .date-btn .dc { margin-left: .3rem; font-size: .65rem; opacity: .6; }
+    .date-btn.active .dc { opacity: .8; }
+
     .no-results {
       padding: 3rem;
       text-align: center;
@@ -223,6 +255,11 @@
       <input id="search" type="text" placeholder="search apps…" autocomplete="off">
     </div>
     <div class="count">showing <span id="vis-count">0</span> of <span id="total-count">0</span> apps</div>
+  </div>
+
+  <div class="date-filter" id="date-filter">
+    <span class="date-filter-label">added:</span>
+    <!-- injected by JS -->
   </div>
 
   <div class="table-wrap">
@@ -466,9 +503,11 @@ var APPS = [
 var sortCol = 2; // date by default
 var sortAsc = true;
 var searchVal = '';
+var dateFilter = '';
 
 function renderTable() {
   var filtered = APPS.filter(function(a) {
+    if (dateFilter && a.date !== dateFilter) return false;
     if (!searchVal) return true;
     var q = searchVal.toLowerCase();
     return (a.name + a.domain + a.date + a.desc).toLowerCase().indexOf(q) !== -1;
@@ -504,6 +543,41 @@ function renderTable() {
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Build date filter tabs
+(function() {
+  var counts = {};
+  APPS.forEach(function(a) { counts[a.date] = (counts[a.date] || 0) + 1; });
+  var dates = Object.keys(counts).sort();
+  var wrap = document.getElementById('date-filter');
+
+  function makeBtn(label, val, count) {
+    var b = document.createElement('button');
+    b.className = 'date-btn' + (val === dateFilter ? ' active' : '');
+    b.innerHTML = label + (count !== undefined ? '<span class="dc">(' + count + ')</span>' : '');
+    b.addEventListener('click', function() {
+      dateFilter = (dateFilter === val) ? '' : val;
+      wrap.querySelectorAll('.date-btn').forEach(function(x) { x.classList.remove('active'); });
+      if (dateFilter) b.classList.add('active');
+      else wrap.querySelector('.date-btn[data-val=""]').classList.add('active');
+      renderTable();
+    });
+    b.setAttribute('data-val', val);
+    return b;
+  }
+
+  // "All" button
+  wrap.appendChild(makeBtn('all', '', undefined));
+  wrap.querySelector('.date-btn[data-val=""]').classList.add('active');
+
+  dates.forEach(function(d) {
+    // Format as "Mar 28" style
+    var parts = d.split('-');
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var label = months[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10);
+    wrap.appendChild(makeBtn(label, d, counts[d]));
+  });
+})();
 
 // Sort headers
 document.querySelectorAll('thead th').forEach(function(th) {
