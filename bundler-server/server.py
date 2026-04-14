@@ -57,6 +57,69 @@ IMPORT_NAMES = {
 
 FAVICON_SVG = open('/app/favicon.svg', 'rb').read()
 
+# Top PyPI packages shown in the Packages tab
+PACKAGES = [
+    # HTTP / Networking
+    {'name':'requests',       'label':'Requests',       'cat':'HTTP',       'color':'#e8412c', 'desc':'Simple, elegant HTTP requests for humans.'},
+    {'name':'httpx',          'label':'HTTPX',          'cat':'HTTP',       'color':'#009688', 'desc':'Async-capable next-generation HTTP client.'},
+    {'name':'aiohttp',        'label':'aiohttp',        'cat':'HTTP',       'color':'#2c5364', 'desc':'Async HTTP client/server framework.'},
+    {'name':'urllib3',        'label':'urllib3',        'cat':'HTTP',       'color':'#4a90d9', 'desc':'HTTP client with connection pooling and retries.'},
+    {'name':'websockets',     'label':'websockets',     'cat':'HTTP',       'color':'#1a6b3c', 'desc':'WebSocket client and server library.'},
+    # Web Frameworks
+    {'name':'flask',          'label':'Flask',          'cat':'Web',        'color':'#2b2d30', 'desc':'Lightweight WSGI micro web framework.'},
+    {'name':'django',         'label':'Django',         'cat':'Web',        'color':'#092e20', 'desc':'High-level Python web framework.'},
+    {'name':'fastapi',        'label':'FastAPI',        'cat':'Web',        'color':'#059669', 'desc':'Fast async framework with auto OpenAPI docs.'},
+    {'name':'starlette',      'label':'Starlette',      'cat':'Web',        'color':'#395ca3', 'desc':'Lightweight ASGI framework and toolkit.'},
+    {'name':'uvicorn',        'label':'Uvicorn',        'cat':'Server',     'color':'#7c3aed', 'desc':'Lightning-fast ASGI server implementation.'},
+    {'name':'gunicorn',       'label':'Gunicorn',       'cat':'Server',     'color':'#499848', 'desc':'Python WSGI HTTP server for UNIX.'},
+    # Science / Data
+    {'name':'numpy',          'label':'NumPy',          'cat':'Science',    'color':'#013243', 'desc':'Fundamental package for array computing.'},
+    {'name':'pandas',         'label':'Pandas',         'cat':'Data',       'color':'#150458', 'desc':'Powerful DataFrame-based data analysis.'},
+    {'name':'scipy',          'label':'SciPy',          'cat':'Science',    'color':'#0054a6', 'desc':'Scientific computing algorithms and tools.'},
+    {'name':'matplotlib',     'label':'Matplotlib',     'cat':'Viz',        'color':'#11557c', 'desc':'Comprehensive 2D/3D plotting library.'},
+    {'name':'scikit-learn',   'label':'scikit-learn',   'cat':'ML',         'color':'#f89939', 'desc':'Machine learning built on NumPy and SciPy.'},
+    {'name':'Pillow',         'label':'Pillow',         'cat':'Image',      'color':'#cc5c00', 'desc':'Friendly fork of the Python Imaging Library.'},
+    # Dev / Testing
+    {'name':'pytest',         'label':'pytest',         'cat':'Testing',    'color':'#0a9edc', 'desc':'Feature-rich, easy-to-use testing framework.'},
+    {'name':'black',          'label':'Black',          'cat':'Dev',        'color':'#2b2d30', 'desc':'The uncompromising Python code formatter.'},
+    {'name':'mypy',           'label':'mypy',           'cat':'Dev',        'color':'#2a6db5', 'desc':'Optional static type checker for Python.'},
+    {'name':'ruff',           'label':'Ruff',           'cat':'Dev',        'color':'#cc5200', 'desc':'Extremely fast Python linter and formatter.'},
+    {'name':'rich',           'label':'Rich',           'cat':'CLI',        'color':'#b5179e', 'desc':'Rich text and beautiful formatting in the terminal.'},
+    {'name':'click',          'label':'Click',          'cat':'CLI',        'color':'#2b2d30', 'desc':'Composable command line interface toolkit.'},
+    {'name':'typer',          'label':'Typer',          'cat':'CLI',        'color':'#059669', 'desc':'Build CLIs using Python type hints.'},
+    # Storage / Cloud
+    {'name':'sqlalchemy',     'label':'SQLAlchemy',     'cat':'Database',   'color':'#ca0c0c', 'desc':'SQL toolkit and ORM for Python.'},
+    {'name':'redis',          'label':'Redis',          'cat':'Cache',      'color':'#dc382d', 'desc':'Redis database client library.'},
+    {'name':'boto3',          'label':'Boto3',          'cat':'Cloud',      'color':'#ff9900', 'desc':'AWS SDK — S3, Lambda, EC2, and more.'},
+    {'name':'celery',         'label':'Celery',         'cat':'Tasks',      'color':'#37814a', 'desc':'Distributed task queue and job scheduler.'},
+    # Parsing / Formats
+    {'name':'pydantic',       'label':'Pydantic',       'cat':'Validation', 'color':'#e92063', 'desc':'Data validation via Python type annotations.'},
+    {'name':'PyYAML',         'label':'PyYAML',         'cat':'Format',     'color':'#cc1f1f', 'desc':'YAML parser and emitter for Python.'},
+    {'name':'cryptography',   'label':'cryptography',   'cat':'Security',   'color':'#7c3aed', 'desc':'Cryptographic recipes and primitives.'},
+    {'name':'paramiko',       'label':'Paramiko',       'cat':'SSH',        'color':'#4a90d9', 'desc':'SSHv2 protocol library for Python.'},
+    {'name':'python-dotenv',  'label':'dotenv',         'cat':'Config',     'color':'#eab308', 'desc':'Load environment variables from .env files.'},
+    {'name':'pydantic-settings','label':'pydantic-settings','cat':'Config', 'color':'#e92063', 'desc':'Settings management using Pydantic models.'},
+]
+
+
+def _logo_svg(pkg):
+    """Generate a branded SVG icon for a package."""
+    color  = pkg['color']
+    # Use up to 2 chars: first char of each word, or first 2 chars
+    words  = re.split(r'[-_ .]', pkg['label'])
+    if len(words) >= 2:
+        abbrev = (words[0][0] + words[1][0]).upper()
+    else:
+        abbrev = pkg['label'][:2].upper()
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">'
+        f'<rect width="40" height="40" rx="9" fill="{color}"/>'
+        f'<text x="20" y="27" font-size="15" font-weight="700" text-anchor="middle" '
+        f'fill="white" font-family="system-ui,ui-sans-serif,sans-serif" letter-spacing="-0.5">'
+        f'{abbrev}</text>'
+        '</svg>'
+    )
+
 # Completed bundles waiting to be downloaded: token -> {path, tmpdir, name, ts}
 _bundles = {}
 _bundles_lock = threading.Lock()
@@ -259,10 +322,23 @@ HTML = r"""<!DOCTYPE html>
     body{background:#0a0e1a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;
          min-height:100vh;display:flex;flex-direction:column;align-items:center;
          padding:3rem 1rem 4rem}
-    .hero{text-align:center;margin-bottom:2.5rem}
+    .hero{text-align:center;margin-bottom:1.8rem}
     .hero-icon{font-size:3rem;line-height:1;margin-bottom:.5rem}
     h1{font-size:1.9rem;font-weight:800;color:#f8fafc;letter-spacing:-.02em}
     .subtitle{color:#94a3b8;font-size:.9rem;margin-top:.4rem}
+
+    /* ── sub-nav ── */
+    .snav{display:flex;gap:.25rem;margin-bottom:1.6rem;
+          background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.07);
+          border-radius:10px;padding:.3rem}
+    .snav-btn{flex:1;background:none;border:none;color:#64748b;font-size:.82rem;
+              font-weight:600;padding:.5rem 1.2rem;border-radius:7px;cursor:pointer;
+              transition:all .15s;letter-spacing:.01em;width:auto;margin-top:0}
+    .snav-btn.active{background:#1e293b;color:#f1f5f9;
+                     box-shadow:0 1px 4px rgba(0,0,0,.4)}
+    .snav-btn:hover:not(.active){color:#cbd5e1}
+
+    /* ── bundle form card ── */
     .card{background:rgba(30,41,59,.7);border:1px solid rgba(255,255,255,.07);
           border-radius:14px;padding:2rem;width:100%;max-width:560px;backdrop-filter:blur(8px)}
     label{display:block;color:#94a3b8;font-size:.75rem;font-weight:700;
@@ -308,6 +384,37 @@ HTML = r"""<!DOCTYPE html>
                   border:1px solid rgba(239,68,68,.25);display:block}
     #status.ok{background:rgba(34,197,94,.12);color:#86efac;
                border:1px solid rgba(34,197,94,.25);display:block}
+
+    /* ── packages panel ── */
+    #view-packages{display:none;width:100%;max-width:900px}
+    .pkg-search-wrap{position:relative;margin-bottom:1.2rem}
+    .pkg-search-wrap input{background:rgba(15,23,42,.8);border:1px solid rgba(255,255,255,.1);
+                           border-radius:9px;color:#e2e8f0;font-size:.9rem;
+                           padding:.65rem 1rem .65rem 2.4rem;outline:none;
+                           transition:border-color .15s;width:100%}
+    .pkg-search-wrap input:focus{border-color:#3b82f6}
+    .pkg-search-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);
+                     color:#475569;font-size:.9rem;pointer-events:none}
+    .pkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.75rem}
+    .pkg-card{background:rgba(15,23,42,.7);border:1px solid rgba(255,255,255,.07);
+              border-radius:11px;padding:1rem 1.1rem;display:flex;flex-direction:column;
+              gap:.5rem;transition:border-color .15s,background .15s;cursor:default}
+    .pkg-card:hover{border-color:rgba(59,130,246,.35);background:rgba(30,41,59,.8)}
+    .pkg-card-top{display:flex;align-items:center;gap:.7rem}
+    .pkg-logo{width:36px;height:36px;border-radius:8px;flex-shrink:0;object-fit:contain}
+    .pkg-name{font-weight:700;font-size:.88rem;color:#f1f5f9}
+    .pkg-cat{font-size:.65rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+             background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+             border-radius:4px;padding:.1em .45em;color:#94a3b8;margin-left:auto;
+             white-space:nowrap;flex-shrink:0}
+    .pkg-desc{font-size:.75rem;color:#64748b;line-height:1.45;flex:1}
+    .pkg-bundle-btn{margin-top:.3rem;background:none;border:1px solid rgba(56,189,248,.25);
+                    border-radius:6px;color:#38bdf8;font-size:.75rem;font-weight:600;
+                    padding:.35rem .8rem;cursor:pointer;transition:all .15s;
+                    text-align:center;width:100%}
+    .pkg-bundle-btn:hover{background:rgba(56,189,248,.1);border-color:#38bdf8}
+    .pkg-none{color:#475569;text-align:center;padding:3rem;font-size:.88rem;
+              grid-column:1/-1}
   </style>
 </head>
 <body>
@@ -317,50 +424,114 @@ HTML = r"""<!DOCTYPE html>
     <p class="subtitle">Bundle any PyPI package + dependencies for offline installation</p>
   </div>
 
-  <div class="card">
-    <label for="pkg">Package Name</label>
-    <input type="text" id="pkg" placeholder="e.g. requests, numpy, flask==3.0.0"
-           autocomplete="off" spellcheck="false">
-    <p class="hint">PyPI package name. Version pinning supported: <code>requests==2.31.0</code>, <code>flask&gt;=3.0</code></p>
+  <!-- sub-nav -->
+  <div class="snav">
+    <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
+    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Packages</button>
+  </div>
 
-    <label for="pyver">Python Version</label>
-    <select id="pyver">
-      <option value="3.13">Python 3.13</option>
-      <option value="3.12" selected>Python 3.12</option>
-      <option value="3.11">Python 3.11</option>
-      <option value="3.10">Python 3.10</option>
-      <option value="3.9">Python 3.9</option>
-    </select>
+  <!-- ── Bundle view ── -->
+  <div id="view-bundle">
+    <div class="card">
+      <label for="pkg">Package Name</label>
+      <input type="text" id="pkg" placeholder="e.g. requests, numpy, flask==3.0.0"
+             autocomplete="off" spellcheck="false">
+      <p class="hint">PyPI package name. Version pinning supported: <code>requests==2.31.0</code>, <code>flask&gt;=3.0</code></p>
 
-    <label for="plat">Target Platform</label>
-    <select id="plat">
-      <option value="linux_x86_64" selected>Linux x86-64</option>
-      <option value="linux_aarch64">Linux ARM64</option>
-      <option value="win_amd64">Windows x64</option>
-      <option value="macosx_11_0_arm64">macOS ARM64 (Apple Silicon)</option>
-      <option value="macosx_10_9_x86_64">macOS x86-64 (Intel)</option>
-      <option value="any">Any / Pure Python</option>
-    </select>
-    <p class="hint">Platform builds require binary wheels on PyPI. Use <code>Any / Pure Python</code>
-      for pure-Python packages or if the platform-specific download fails.</p>
+      <label for="pyver">Python Version</label>
+      <select id="pyver">
+        <option value="3.13">Python 3.13</option>
+        <option value="3.12" selected>Python 3.12</option>
+        <option value="3.11">Python 3.11</option>
+        <option value="3.10">Python 3.10</option>
+        <option value="3.9">Python 3.9</option>
+      </select>
 
-    <button id="btn" onclick="go()">Bundle &amp; Download</button>
+      <label for="plat">Target Platform</label>
+      <select id="plat">
+        <option value="linux_x86_64" selected>Linux x86-64</option>
+        <option value="linux_aarch64">Linux ARM64</option>
+        <option value="win_amd64">Windows x64</option>
+        <option value="macosx_11_0_arm64">macOS ARM64 (Apple Silicon)</option>
+        <option value="macosx_10_9_x86_64">macOS x86-64 (Intel)</option>
+        <option value="any">Any / Pure Python</option>
+      </select>
+      <p class="hint">Platform builds require binary wheels on PyPI. Use <code>Any / Pure Python</code>
+        for pure-Python packages or if the platform-specific download fails.</p>
 
-    <!-- terminal -->
-    <div id="terminal">
-      <div class="term-bar">
-        <span class="dot dot-r"></span>
-        <span class="dot dot-y"></span>
-        <span class="dot dot-g"></span>
-        <span class="term-title" id="term-title">bundler</span>
+      <button id="btn" onclick="go()">Bundle &amp; Download</button>
+
+      <div id="terminal">
+        <div class="term-bar">
+          <span class="dot dot-r"></span>
+          <span class="dot dot-y"></span>
+          <span class="dot dot-g"></span>
+          <span class="term-title" id="term-title">bundler</span>
+        </div>
+        <div id="term-out"></div>
       </div>
-      <div id="term-out"></div>
-    </div>
 
-    <div id="status"></div>
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <!-- ── Packages view ── -->
+  <div id="view-packages">
+    <div class="pkg-search-wrap">
+      <span class="pkg-search-icon">🔍</span>
+      <input type="text" id="pkg-search" placeholder="Filter packages…"
+             autocomplete="off" spellcheck="false" oninput="renderPkgs()">
+    </div>
+    <div class="pkg-grid" id="pkg-grid"></div>
   </div>
 
   <script>
+    /* ── view switching ── */
+    function setView(v) {
+      document.getElementById('view-bundle').style.display   = v === 'bundle'   ? '' : 'none';
+      document.getElementById('view-packages').style.display = v === 'packages' ? '' : 'none';
+      document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
+      document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
+      if (v === 'packages') renderPkgs();
+    }
+
+    /* ── packages data (injected server-side) ── */
+    const PKGS = PACKAGES_JSON;
+
+    function renderPkgs() {
+      const q    = (document.getElementById('pkg-search').value || '').toLowerCase();
+      const grid = document.getElementById('pkg-grid');
+      const filtered = q
+        ? PKGS.filter(p => p.name.toLowerCase().includes(q) ||
+                           p.cat.toLowerCase().includes(q)  ||
+                           p.desc.toLowerCase().includes(q))
+        : PKGS;
+
+      if (!filtered.length) {
+        grid.innerHTML = '<div class="pkg-none">No packages match your search.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(p => `
+        <div class="pkg-card">
+          <div class="pkg-card-top">
+            <img class="pkg-logo" src="/logo/${encodeURIComponent(p.name)}.svg" alt="${p.name}"
+                 onerror="this.style.display='none'">
+            <span class="pkg-name">${p.label}</span>
+            <span class="pkg-cat">${p.cat}</span>
+          </div>
+          <div class="pkg-desc">${p.desc}</div>
+          <button class="pkg-bundle-btn" onclick="pickPkg(${JSON.stringify(p.name)})">Bundle →</button>
+        </div>`).join('');
+    }
+
+    function pickPkg(name) {
+      document.getElementById('pkg').value = name;
+      setView('bundle');
+      document.getElementById('pkg').focus();
+    }
+
+    /* ── terminal ── */
     const termEl  = document.getElementById('terminal');
     const outEl   = document.getElementById('term-out');
     const titleEl = document.getElementById('term-title');
@@ -374,7 +545,6 @@ HTML = r"""<!DOCTYPE html>
       cursorEl.className = 'cursor';
       outEl.appendChild(cursorEl);
     }
-
     function termLine(text, cls) {
       if (cursorEl) outEl.removeChild(cursorEl);
       const d = document.createElement('div');
@@ -384,21 +554,20 @@ HTML = r"""<!DOCTYPE html>
       if (cursorEl) outEl.appendChild(cursorEl);
       outEl.scrollTop = outEl.scrollHeight;
     }
-
     function termDone() {
       if (cursorEl) { outEl.removeChild(cursorEl); cursorEl = null; }
     }
-
     function lineClass(text) {
-      if (text.startsWith('$'))                          return 'line-cmd';
+      if (text.startsWith('$'))                                              return 'line-cmd';
       if (/^(Collecting|Downloading|Installing|Saved|Successfully)/i.test(text)) return 'line-ok';
-      if (/error|warning/i.test(text))                  return 'line-err';
-      if (/^\s*(Looking|Processing|Requirement|Using)/i.test(text)) return 'line-dim';
+      if (/error|warning/i.test(text))                                      return 'line-err';
+      if (/^\s*(Looking|Processing|Requirement|Using)/i.test(text))         return 'line-dim';
       return '';
     }
 
+    /* ── bundle & download ── */
     async function go() {
-      const pkg  = document.getElementById('pkg').value.trim();
+      const pkg   = document.getElementById('pkg').value.trim();
       const pyver = document.getElementById('pyver').value;
       const plat  = document.getElementById('plat').value;
       const btn   = document.getElementById('btn');
@@ -417,7 +586,6 @@ HTML = r"""<!DOCTYPE html>
         fd.append('platform', plat);
 
         const resp = await fetch('/bundle', { method: 'POST', body: fd });
-
         if (!resp.ok) {
           const j = await resp.json().catch(() => ({ error: resp.statusText }));
           termDone();
@@ -427,39 +595,31 @@ HTML = r"""<!DOCTYPE html>
 
         const reader  = resp.body.getReader();
         const decoder = new TextDecoder();
-        let   buf     = '';
-        let   token   = null;
-        let   errMsg  = null;
+        let   buf = '', token = null, errMsg = null;
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           buf += decoder.decode(value, { stream: true });
-
           const events = buf.split('\n\n');
           buf = events.pop();
-
           for (const raw of events) {
             let evtType = 'message', evtData = '';
             for (const line of raw.split('\n')) {
               if (line.startsWith('event: ')) evtType = line.slice(7).trim();
-              else if (line.startsWith('data: '))  evtData = line.slice(6);
+              else if (line.startsWith('data: ')) evtData = line.slice(6);
             }
-            if (evtType === 'done')    { token  = evtData; }
-            else if (evtType === 'error') { errMsg = evtData; }
-            else if (evtData !== '')   { termLine(evtData, lineClass(evtData)); }
+            if (evtType === 'done')        token  = evtData;
+            else if (evtType === 'error')  errMsg = evtData;
+            else if (evtData !== '')       termLine(evtData, lineClass(evtData));
           }
         }
 
         termDone();
-
-        if (errMsg) {
-          show('error', errMsg);
-          return;
-        }
+        if (errMsg) { show('error', errMsg); return; }
         if (token) {
           window.location.href = `/download/${token}`;
-          show('ok', '✓ Download started — check your downloads folder.\n\nInstall:\n  Linux/macOS:  chmod +x setup.sh && ./setup.sh\n  Windows:      setup.bat');
+          show('ok', '✓ Download started — check your downloads folder.\n\nInstall:\n  Linux/macOS:  ./setup.sh && source venv/bin/activate\n  Windows:      setup.bat && call venv\\Scripts\\activate.bat');
         }
       } catch (e) {
         termDone();
@@ -496,9 +656,27 @@ def favicon():
     return Response(FAVICON_SVG, mimetype='image/svg+xml')
 
 
+@app.route('/logo/<name>.svg')
+def logo(name):
+    pkg = next((p for p in PACKAGES if p['name'].lower() == name.lower()), None)
+    if not pkg:
+        # Generic gray icon for unknown packages
+        pkg = {'label': name[:2], 'color': '#334155'}
+    return Response(_logo_svg(pkg), mimetype='image/svg+xml',
+                    headers={'Cache-Control': 'public, max-age=86400'})
+
+
+import json as _json
+
 @app.route('/')
 def index():
-    return HTML
+    # Inject package list as JSON into the page
+    pkgs_json = _json.dumps([
+        {'name': p['name'], 'label': p['label'], 'cat': p['cat'],
+         'color': p['color'], 'desc': p['desc']}
+        for p in PACKAGES
+    ])
+    return HTML.replace('PACKAGES_JSON', pkgs_json)
 
 
 @app.route('/bundle', methods=['POST'])
