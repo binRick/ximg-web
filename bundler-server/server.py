@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 import uuid
 import zipfile
@@ -32,14 +33,37 @@ FAVICON_SVG = open('/app/favicon.svg', 'rb').read()
 
 # Completed bundles waiting to be downloaded: token -> {path, tmpdir, name, ts}
 _bundles = {}
+_bundles_lock = threading.Lock()
+
+BUNDLE_TTL = 300  # seconds before an uncollected bundle is deleted
 
 
 def _cleanup_old():
-    cutoff = time.time() - 300
-    for token in list(_bundles):
-        if _bundles[token]['ts'] < cutoff:
-            shutil.rmtree(_bundles[token]['tmpdir'], ignore_errors=True)
-            del _bundles[token]
+    cutoff = time.time() - BUNDLE_TTL
+    with _bundles_lock:
+        for token in list(_bundles):
+            if _bundles[token]['ts'] < cutoff:
+                shutil.rmtree(_bundles[token]['tmpdir'], ignore_errors=True)
+                del _bundles[token]
+
+
+def _cleanup_loop():
+    """Background thread: sweep every minute."""
+    while True:
+        time.sleep(60)
+        _cleanup_old()
+
+
+def _cleanup_orphans():
+    """On startup, remove any bundler_ tmpdirs left over from a previous run."""
+    tmp = tempfile.gettempdir()
+    for entry in os.listdir(tmp):
+        if entry.startswith('bundler_'):
+            shutil.rmtree(os.path.join(tmp, entry), ignore_errors=True)
+
+
+_cleanup_orphans()
+threading.Thread(target=_cleanup_loop, daemon=True).start()
 
 
 def _parse_wheel_versions(files):
@@ -423,7 +447,6 @@ def bundle():
 
     @stream_with_context
     def generate():
-        _cleanup_old()
         tmpdir = tempfile.mkdtemp(prefix='bundler_')
         pkg_dir = os.path.join(tmpdir, 'packages')
         os.makedirs(pkg_dir)
@@ -490,7 +513,8 @@ def bundle():
                 zf.write(os.path.join(tmpdir, 'README.txt'), f'{bundle_dir}/README.txt')
 
             token = uuid.uuid4().hex
-            _bundles[token] = {'path': zip_path, 'tmpdir': tmpdir, 'name': zip_name, 'ts': time.time()}
+            with _bundles_lock:
+                _bundles[token] = {'path': zip_path, 'tmpdir': tmpdir, 'name': zip_name, 'ts': time.time()}
 
             yield 'data: \n\n'
             yield f'data: ✓ Bundle ready: {zip_name}\n\n'
@@ -509,7 +533,8 @@ def bundle():
 
 @app.route('/download/<token>')
 def download(token):
-    info = _bundles.pop(token, None)
+    with _bundles_lock:
+        info = _bundles.pop(token, None)
     if not info:
         return 'Bundle not found or already downloaded', 404
 
