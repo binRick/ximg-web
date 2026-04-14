@@ -126,9 +126,14 @@ def _build_scripts(pkg, pyver, plat, files, pkg_base, main_version):
         '  setup.bat\n\n'
         'MANUAL INSTALL\n'
         + divider + '\n'
-        '  python -m venv venv\n'
-        '  source venv/bin/activate          # Windows: venv\\Scripts\\activate.bat\n'
-        f'  pip install --no-index --find-links packages/ "{pkg}"\n'
+        '  Linux / macOS:\n'
+        '    python3 -m venv venv\n'
+        '    source venv/bin/activate\n'
+        f'    pip install --no-index --find-links packages/ "{pkg}"\n\n'
+        '  Windows:\n'
+        '    python -m venv venv\n'
+        '    venv\\Scripts\\activate.bat\n'
+        f'    pip install --no-index --find-links packages/ "{pkg}"\n'
         + '═' * 56 + '\n'
     )
     return setup_sh, setup_bat, readme
