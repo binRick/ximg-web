@@ -1,20 +1,33 @@
 'use strict';
-const express  = require('express');
+const express   = require('express');
 const { spawn } = require('child_process');
 const fs        = require('fs');
 const fsp       = fs.promises;
 const path      = require('path');
 const os        = require('os');
 const crypto    = require('crypto');
+const https     = require('https');
+const http      = require('http');
 const archiver  = require('archiver');
+const tar       = require('tar');
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // npm package name + optional @version specifier
-// Handles plain names (lodash), scoped (@babel/core), versioned (express@4.x)
 const PACKAGE_RE = /^(@[a-z0-9][a-z0-9\-._]*(\/[a-z0-9][a-z0-9\-._]*)?(@[A-Za-z0-9._~^>=<!*()\-+]+)?|[a-z0-9_][a-z0-9\-._]*(@[A-Za-z0-9._~^>=<!*()\-+]+)?)$/;
+
+// Node.js embed platforms: ext is the archive type, bin is the in-archive binary path
+const NODE_PLATFORMS = {
+  'linux-x64':    { label: 'Linux x86-64',              ext: 'tar.gz', bin: 'node',     sizeMB: 28 },
+  'linux-arm64':  { label: 'Linux ARM64',                ext: 'tar.gz', bin: 'node',     sizeMB: 26 },
+  'darwin-arm64': { label: 'macOS ARM64 (Apple Silicon)', ext: 'tar.gz', bin: 'node',    sizeMB: 25 },
+  'darwin-x64':   { label: 'macOS x86-64 (Intel)',       ext: 'tar.gz', bin: 'node',     sizeMB: 26 },
+  'win-x64':      { label: 'Windows x64',                ext: 'zip',    bin: 'node.exe', sizeMB: 32 },
+};
+
+const VALID_NODE_MAJORS = new Set(['18', '20', '22', '23']);
 
 const PACKAGES = [
   // HTTP
@@ -76,8 +89,8 @@ const PACKAGES = [
 
 const FAVICON_SVG = fs.readFileSync('/app/favicon.svg');
 
-// In-memory store of completed bundles: token -> {zipPath, tmpdir, name, ts}
-const bundles = new Map();
+// ── Bundle store ──────────────────────────────────────────
+const bundles    = new Map();
 const BUNDLE_TTL = 300_000; // 5 minutes
 
 function cleanupBundles() {
@@ -91,7 +104,6 @@ function cleanupBundles() {
 }
 setInterval(cleanupBundles, 60_000);
 
-// Remove any leftover tmp dirs from a previous run
 (function cleanupOrphans() {
   const tmp = os.tmpdir();
   try {
@@ -103,50 +115,41 @@ setInterval(cleanupBundles, 60_000);
   } catch {}
 })();
 
+// ── Helpers ───────────────────────────────────────────────
+
 function logoSVG(pkg) {
-  const words = pkg.label.split(/[-_ .]/);
+  const words  = pkg.label.split(/[-_ .]/);
   const abbrev = words.length >= 2
     ? (words[0][0] + words[1][0]).toUpperCase()
     : pkg.label.slice(0, 2).toUpperCase();
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="${pkg.color}"/><text x="20" y="27" font-size="15" font-weight="700" text-anchor="middle" fill="white" font-family="system-ui,ui-sans-serif,sans-serif" letter-spacing="-0.5">${abbrev}</text></svg>`;
 }
 
-// Parse an npm package spec: returns { base, version }
-// Handles: lodash, lodash@4.17.21, @babel/core, @babel/core@7.24.0
+// Parse npm package spec → { base, version }
 function parsePackageSpec(spec) {
   if (spec.startsWith('@')) {
-    // @scope/name or @scope/name@ver
-    const rest = spec.slice(1);
+    const rest     = spec.slice(1);
     const slashIdx = rest.indexOf('/');
     if (slashIdx < 0) return { base: spec, version: null };
     const afterSlash = rest.slice(slashIdx + 1);
-    const atIdx = afterSlash.indexOf('@');
+    const atIdx      = afterSlash.indexOf('@');
     if (atIdx < 0) return { base: spec, version: null };
-    return {
-      base: `@${rest.slice(0, slashIdx + 1 + atIdx)}`,
-      version: afterSlash.slice(atIdx + 1),
-    };
-  } else {
-    const atIdx = spec.indexOf('@');
-    if (atIdx < 0) return { base: spec, version: null };
-    return { base: spec.slice(0, atIdx), version: spec.slice(atIdx + 1) };
+    return { base: `@${rest.slice(0, slashIdx + 1 + atIdx)}`, version: afterSlash.slice(atIdx + 1) };
   }
+  const atIdx = spec.indexOf('@');
+  if (atIdx < 0) return { base: spec, version: null };
+  return { base: spec.slice(0, atIdx), version: spec.slice(atIdx + 1) };
 }
 
-// Walk node_modules and collect { name, version } for all installed packages
+// Walk node_modules → [{ name, version }]
 async function readNodeModules(nodeModulesDir) {
   const result = [];
   let entries;
-  try {
-    entries = await fsp.readdir(nodeModulesDir, { withFileTypes: true });
-  } catch {
-    return result;
-  }
+  try { entries = await fsp.readdir(nodeModulesDir, { withFileTypes: true }); }
+  catch { return result; }
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    if (entry.name.startsWith('.')) continue;
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
     if (entry.name.startsWith('@')) {
-      // scoped scope directory
       const scopeDir = path.join(nodeModulesDir, entry.name);
       let subs;
       try { subs = await fsp.readdir(scopeDir, { withFileTypes: true }); } catch { continue; }
@@ -169,13 +172,112 @@ async function readNodeModules(nodeModulesDir) {
 
 async function getMainVersion(nodeModulesDir, base) {
   try {
-    const pkgPath = path.join(nodeModulesDir, ...base.split('/'), 'package.json');
-    const pkg = JSON.parse(await fsp.readFile(pkgPath, 'utf8'));
+    const pkg = JSON.parse(await fsp.readFile(path.join(nodeModulesDir, ...base.split('/'), 'package.json'), 'utf8'));
     return pkg.version || '?';
-  } catch {
-    return '?';
-  }
+  } catch { return '?'; }
 }
+
+// ── Node.js embed helpers ─────────────────────────────────
+
+// Resolve latest Node.js version for a given major (e.g. "22" → "v22.14.0")
+function resolveNodeVersion(major) {
+  return new Promise((resolve, reject) => {
+    const doGet = (url) => {
+      const lib = url.startsWith('https') ? https : http;
+      lib.get(url, res => {
+        if (res.statusCode === 301 || res.statusCode === 302) { doGet(res.headers.location); return; }
+        let data = '';
+        res.on('data', c => { data += c; });
+        res.on('end', () => {
+          const m = data.match(/node-(v[\d.]+)/);
+          resolve(m ? m[1] : null);
+        });
+        res.on('error', reject);
+      }).on('error', reject);
+    };
+    doGet(`https://nodejs.org/dist/latest-v${major}.x/SHASUMS256.txt`);
+  });
+}
+
+// Download a URL to a file, calling onProgress(received, total) every ~10%
+function downloadToFile(url, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    const doGet = (url) => {
+      const lib = url.startsWith('https') ? https : http;
+      lib.get(url, res => {
+        if (res.statusCode === 301 || res.statusCode === 302) { doGet(res.headers.location); return; }
+        if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode} from ${url}`)); return; }
+        const total   = parseInt(res.headers['content-length'] || '0', 10);
+        let received  = 0, lastPct = -1;
+        const file    = fs.createWriteStream(destPath);
+        res.on('data', chunk => {
+          file.write(chunk);
+          received += chunk.length;
+          if (total && onProgress) {
+            const pct = Math.floor(received / total * 100);
+            if (pct >= lastPct + 10) { lastPct = pct - (pct % 10); onProgress(received, total); }
+          }
+        });
+        res.on('end',   () => file.close(resolve));
+        res.on('error', err => { file.close(); fs.unlink(destPath, () => {}); reject(err); });
+        file.on('error', reject);
+      }).on('error', reject);
+    };
+    doGet(url);
+  });
+}
+
+// Download + extract just the node binary into nodeRuntimeDir.
+// Returns the resolved version string (e.g. "v22.14.0").
+async function embedNodeRuntime(major, platform, nodeRuntimeDir, tmpdir, send) {
+  const plat = NODE_PLATFORMS[platform];
+  if (!plat) throw new Error(`Unknown platform: ${platform}`);
+
+  send(`$ Resolving Node.js v${major} latest version...`);
+  const version = await resolveNodeVersion(major);
+  if (!version) throw new Error(`Could not resolve Node.js v${major}.x version`);
+  send(`  Found: Node.js ${version}`);
+
+  const fileName = `node-${version}-${platform}.${plat.ext}`;
+  const dlUrl    = `https://nodejs.org/dist/${version}/${fileName}`;
+  const dlPath   = path.join(tmpdir, fileName);
+
+  send(`$ Downloading ${fileName} (~${plat.sizeMB} MB)...`);
+  await downloadToFile(dlUrl, dlPath, (recv, total) => {
+    const mb  = (recv / 1048576).toFixed(1);
+    const tot = (total / 1048576).toFixed(0);
+    const pct = Math.floor(recv / total * 100);
+    send(`  ${mb} MB / ${tot} MB  (${pct}%)`);
+  });
+  send(`  Download complete`);
+
+  await fsp.mkdir(nodeRuntimeDir, { recursive: true });
+
+  send(`$ Extracting Node.js binary...`);
+  if (plat.ext === 'tar.gz') {
+    // Use the 'tar' npm package — extract only the node binary, strip the first 2 path
+    // components so node-vX.Y.Z-platform/bin/node lands as nodeRuntimeDir/node
+    await tar.extract({
+      file:   dlPath,
+      cwd:    nodeRuntimeDir,
+      strip:  2,
+      filter: (p) => p.endsWith('/bin/node'),
+    });
+    await fsp.chmod(path.join(nodeRuntimeDir, 'node'), 0o755);
+  } else {
+    // Windows zip: use unzip -j to flatten and extract node.exe
+    await new Promise((resolve, reject) => {
+      const proc = spawn('unzip', ['-j', dlPath, '*/node.exe', '-d', nodeRuntimeDir]);
+      proc.on('close', code => (code === 0 || code === 1) ? resolve() : reject(new Error(`unzip failed: ${code}`)));
+    });
+  }
+
+  fs.unlink(dlPath, () => {}); // remove downloaded archive
+  send(`  Node.js ${version} ready  →  node-runtime/${plat.bin}`);
+  return version;
+}
+
+// ── HTML ──────────────────────────────────────────────────
 
 const HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -201,22 +303,43 @@ const HTML = `<!DOCTYPE html>
     .snav-btn{flex:1;background:none;border:none;color:#64748b;font-size:.82rem;
               font-weight:600;padding:.5rem 1.2rem;border-radius:7px;cursor:pointer;
               transition:all .15s;letter-spacing:.01em;width:auto;margin-top:0}
-    .snav-btn.active{background:#1e293b;color:#f1f5f9;
-                     box-shadow:0 1px 4px rgba(0,0,0,.4)}
+    .snav-btn.active{background:#1e293b;color:#f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,.4)}
     .snav-btn:hover:not(.active){color:#cbd5e1}
 
-    /* bundle form card */
+    /* form card */
     .card{background:rgba(30,41,59,.7);border:1px solid rgba(255,255,255,.07);
           border-radius:14px;padding:2rem;width:100%;max-width:560px;backdrop-filter:blur(8px)}
     label{display:block;color:#94a3b8;font-size:.75rem;font-weight:700;
           letter-spacing:.07em;text-transform:uppercase;margin-bottom:.4rem;margin-top:1.3rem}
     label:first-of-type{margin-top:0}
-    input{width:100%;background:#0f172a;border:1px solid rgba(255,255,255,.1);
+    input[type=text]{width:100%;background:#0f172a;border:1px solid rgba(255,255,255,.1);
           border-radius:7px;color:#e2e8f0;font-size:.95rem;padding:.6rem .85rem;
           outline:none;transition:border-color .15s}
-    input:focus{border-color:#026e00}
+    input[type=text]:focus{border-color:#026e00}
+    select{width:100%;background:#0f172a;border:1px solid rgba(255,255,255,.1);
+           border-radius:7px;color:#e2e8f0;font-size:.95rem;padding:.6rem .85rem;
+           outline:none;transition:border-color .15s;appearance:none;
+           background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+           background-repeat:no-repeat;background-position:right .8rem center;padding-right:2rem}
+    select:focus{border-color:#026e00}
+    select option{background:#1e293b}
     .hint{color:#475569;font-size:.75rem;margin-top:.35rem;line-height:1.5}
     code{background:rgba(255,255,255,.07);border-radius:3px;padding:.1em .3em;font-size:.85em}
+
+    /* embed toggle */
+    .embed-row{display:flex;align-items:center;gap:.55rem;margin-top:1.3rem;
+               background:rgba(2,110,0,.07);border:1px solid rgba(2,110,0,.18);
+               border-radius:8px;padding:.65rem .85rem;cursor:pointer}
+    .embed-row:hover{background:rgba(2,110,0,.12)}
+    .embed-row input[type=checkbox]{width:15px;height:15px;accent-color:#026e00;
+               cursor:pointer;flex-shrink:0;margin:0}
+    .embed-label-text{color:#94a3b8;font-size:.82rem;font-weight:600;
+                      letter-spacing:.01em;line-height:1.3}
+    .embed-label-text small{display:block;color:#475569;font-size:.72rem;
+                            font-weight:400;margin-top:.1rem}
+    .embed-opts{margin-top:.5rem;padding:.1rem 0 0 0;
+                border-top:1px solid rgba(255,255,255,.05);padding-top:.9rem}
+
     button{width:100%;margin-top:1.8rem;background:#026e00;color:#fff;border:none;
            border-radius:7px;font-size:1rem;font-weight:700;padding:.8rem;
            cursor:pointer;transition:background .15s,opacity .15s;letter-spacing:.01em}
@@ -231,7 +354,7 @@ const HTML = `<!DOCTYPE html>
     .dot-r{background:#ef4444}.dot-y{background:#eab308}.dot-g{background:#22c55e}
     .term-title{flex:1;text-align:center;font-size:.72rem;color:#64748b;
                 font-family:monospace;letter-spacing:.03em;margin-right:28px}
-    #term-out{background:#0d1117;padding:.85rem 1rem;height:260px;overflow-y:auto;
+    #term-out{background:#0d1117;padding:.85rem 1rem;height:280px;overflow-y:auto;
               font-family:'Fira Code','Cascadia Code','Consolas',monospace;
               font-size:.78rem;line-height:1.55;color:#c9d1d9}
     #term-out .line-cmd{color:#79c0ff;font-weight:600}
@@ -244,8 +367,6 @@ const HTML = `<!DOCTYPE html>
 
     #status{margin-top:1rem;padding:.75rem 1rem;border-radius:7px;font-size:.88rem;
             line-height:1.5;display:none;white-space:pre-wrap;word-break:break-word}
-    #status.info{background:rgba(2,110,0,.12);color:#86efac;
-                 border:1px solid rgba(2,110,0,.3);display:block}
     #status.error{background:rgba(239,68,68,.12);color:#fca5a5;
                   border:1px solid rgba(239,68,68,.25);display:block}
     #status.ok{background:rgba(34,197,94,.12);color:#86efac;
@@ -279,8 +400,7 @@ const HTML = `<!DOCTYPE html>
                     padding:.35rem .8rem;cursor:pointer;transition:all .15s;
                     text-align:center;width:100%}
     .pkg-bundle-btn:hover{background:rgba(2,110,0,.15);border-color:#4ade80}
-    .pkg-none{color:#475569;text-align:center;padding:3rem;font-size:.88rem;
-              grid-column:1/-1}
+    .pkg-none{color:#475569;text-align:center;padding:3rem;font-size:.88rem;grid-column:1/-1}
   </style>
 </head>
 <body>
@@ -295,7 +415,6 @@ const HTML = `<!DOCTYPE html>
     <p class="subtitle">Bundle any npm package + dependencies for offline installation</p>
   </div>
 
-  <!-- sub-nav -->
   <div class="snav">
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Packages</button>
@@ -308,6 +427,33 @@ const HTML = `<!DOCTYPE html>
       <input type="text" id="pkg" placeholder="e.g. express, lodash, @babel/core@7.24.0"
              autocomplete="off" spellcheck="false">
       <p class="hint">npm package name. Version pinning supported: <code>express@4.18.2</code>, <code>lodash@^4.17</code>, <code>@babel/core@7.24.0</code></p>
+
+      <!-- Embed Node.js toggle -->
+      <div class="embed-row" onclick="document.getElementById('embed-node').click()">
+        <input type="checkbox" id="embed-node" onclick="event.stopPropagation()" onchange="toggleEmbed()">
+        <div class="embed-label-text">
+          Embed Node.js runtime
+          <small>For hosts without Node.js installed — adds ~25 MB to the bundle</small>
+        </div>
+      </div>
+
+      <div id="embed-opts" style="display:none" class="embed-opts">
+        <label for="node-platform">Target Platform</label>
+        <select id="node-platform">
+          <option value="linux-x64">Linux x86-64</option>
+          <option value="linux-arm64">Linux ARM64</option>
+          <option value="darwin-arm64">macOS ARM64 (Apple Silicon)</option>
+          <option value="darwin-x64">macOS x86-64 (Intel)</option>
+          <option value="win-x64">Windows x64</option>
+        </select>
+
+        <label for="node-major">Node.js Version</label>
+        <select id="node-major">
+          <option value="22">Node.js 22 LTS</option>
+          <option value="20">Node.js 20 LTS</option>
+          <option value="18">Node.js 18</option>
+        </select>
+      </div>
 
       <button id="btn" onclick="go()">Bundle &amp; Download</button>
 
@@ -329,14 +475,13 @@ const HTML = `<!DOCTYPE html>
   <div id="view-packages">
     <div class="pkg-search-wrap">
       <span class="pkg-search-icon">🔍</span>
-      <input type="text" id="pkg-search" placeholder="Filter packages…"
+      <input type="text" id="pkg-search" placeholder="Filter packages\u2026"
              autocomplete="off" spellcheck="false" oninput="renderPkgs()">
     </div>
     <div class="pkg-grid" id="pkg-grid"></div>
   </div>
 
   <script>
-    /* view switching */
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
@@ -345,7 +490,11 @@ const HTML = `<!DOCTYPE html>
       if (v === 'packages') renderPkgs();
     }
 
-    /* packages data (injected server-side) */
+    function toggleEmbed() {
+      const show = document.getElementById('embed-node').checked;
+      document.getElementById('embed-opts').style.display = show ? 'block' : 'none';
+    }
+
     const PKGS = PACKAGES_JSON;
 
     function renderPkgs() {
@@ -369,7 +518,7 @@ const HTML = `<!DOCTYPE html>
             <span class="pkg-cat">\${p.cat}</span>
           </div>
           <div class="pkg-desc">\${p.desc}</div>
-          <button class="pkg-bundle-btn" data-pkg="\${p.name}" onclick="pickPkg(this.dataset.pkg)">Bundle →</button>
+          <button class="pkg-bundle-btn" data-pkg="\${p.name}" onclick="pickPkg(this.dataset.pkg)">Bundle \u2192</button>
         </div>\`).join('');
     }
 
@@ -379,7 +528,6 @@ const HTML = `<!DOCTYPE html>
       document.getElementById('pkg').focus();
     }
 
-    /* terminal */
     const termEl  = document.getElementById('terminal');
     const outEl   = document.getElementById('term-out');
     const titleEl = document.getElementById('term-title');
@@ -406,19 +554,25 @@ const HTML = `<!DOCTYPE html>
       if (cursorEl) { outEl.removeChild(cursorEl); cursorEl = null; }
     }
     function lineClass(text) {
-      if (text.startsWith('$'))                                          return 'line-cmd';
-      if (/^(added|updated|found|packages|npm warn lockfile)/i.test(text)) return 'line-ok';
-      if (/error|ERR!/i.test(text))                                      return 'line-err';
-      if (/^(npm notice|npm warn|http|timing)/i.test(text))             return 'line-dim';
+      if (text.startsWith('$'))                                              return 'line-cmd';
+      if (/^(added|updated|found|packages|  Found|  Download|  Node)/i.test(text)) return 'line-ok';
+      if (/error|ERR!/i.test(text))                                          return 'line-err';
+      if (/^(npm notice|npm warn|http|timing|  [\d.]+\sMB)/i.test(text))   return 'line-dim';
       return '';
     }
 
-    /* bundle & download */
     async function go() {
       const pkg = document.getElementById('pkg').value.trim();
       const btn = document.getElementById('btn');
-
       if (!pkg) { show('error', 'Enter a package name.'); return; }
+
+      const embedNode = document.getElementById('embed-node').checked;
+      const params    = new URLSearchParams({ package: pkg });
+      if (embedNode) {
+        params.set('embed_node',    'true');
+        params.set('node_platform', document.getElementById('node-platform').value);
+        params.set('node_major',    document.getElementById('node-major').value);
+      }
 
       btn.disabled = true;
       btn.textContent = 'Bundling\u2026';
@@ -426,10 +580,11 @@ const HTML = `<!DOCTYPE html>
       termShow(pkg);
 
       try {
-        const fd = new FormData();
-        fd.append('package', pkg);
-
-        const resp = await fetch('/bundle', { method: 'POST', body: fd });
+        const resp = await fetch('/bundle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
         if (!resp.ok) {
           const j = await resp.json().catch(() => ({ error: resp.statusText }));
           termDone();
@@ -450,8 +605,8 @@ const HTML = `<!DOCTYPE html>
           for (const raw of events) {
             let evtType = 'message', evtData = '';
             for (const line of raw.split('\\n')) {
-              if (line.startsWith('event: '))      evtType = line.slice(7).trim();
-              else if (line.startsWith('data: '))  evtData = line.slice(6);
+              if (line.startsWith('event: '))     evtType = line.slice(7).trim();
+              else if (line.startsWith('data: ')) evtData = line.slice(6);
             }
             if (evtType === 'done')       token  = evtData;
             else if (evtType === 'error') errMsg = evtData;
@@ -463,7 +618,10 @@ const HTML = `<!DOCTYPE html>
         if (errMsg) { show('error', errMsg); return; }
         if (token) {
           window.location.href = '/download/' + token;
-          show('ok', '\\u2713 Download started \\u2014 check your downloads folder.\\n\\nThe zip contains pre-installed node_modules.\\nExtract and copy node_modules/ into your project.');
+          const msg = embedNode
+            ? '\u2713 Download started \u2014 check your downloads folder.\n\nThe zip includes Node.js runtime + pre-installed node_modules.\nRun setup.sh to verify, then use node-runtime/node to run scripts.'
+            : '\u2713 Download started \u2014 check your downloads folder.\n\nThe zip contains pre-installed node_modules.\nExtract and copy node_modules/ into your project.';
+          show('ok', msg);
         }
       } catch (e) {
         termDone();
@@ -514,25 +672,19 @@ app.get('/', (req, res) => {
 });
 
 app.post('/bundle', async (req, res) => {
-  // Support both urlencoded form and multipart (FormData)
-  let pkg = '';
-  const ct = req.headers['content-type'] || '';
-  if (ct.includes('application/x-www-form-urlencoded') || ct.includes('application/json')) {
-    pkg = (req.body.package || '').trim();
-  } else {
-    // multipart/form-data — read raw body manually (simple extraction)
-    pkg = await new Promise(resolve => {
-      let body = '';
-      req.on('data', c => { body += c; });
-      req.on('end', () => {
-        const m = body.match(/name="package"[\r\n]+([^\r\n-][^\r\n]*)/);
-        resolve(m ? m[1].trim() : '');
-      });
-    });
-  }
+  const pkg         = (req.body.package      || '').trim();
+  const embedNode   = req.body.embed_node    === 'true';
+  const nodePlatform= (req.body.node_platform|| 'linux-x64').trim();
+  const nodeMajor   = (req.body.node_major   || '22').trim();
 
   if (!pkg || !PACKAGE_RE.test(pkg)) {
     return res.status(400).json({ error: 'Invalid package name.' });
+  }
+  if (embedNode && !NODE_PLATFORMS[nodePlatform]) {
+    return res.status(400).json({ error: 'Invalid node platform.' });
+  }
+  if (embedNode && !VALID_NODE_MAJORS.has(nodeMajor)) {
+    return res.status(400).json({ error: 'Invalid node major version.' });
   }
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -550,24 +702,19 @@ app.post('/bundle', async (req, res) => {
     tmpdir = await fsp.mkdtemp(path.join(os.tmpdir(), 'nodejs-bundler-'));
     const { base: pkgBase, version: pkgVer } = parsePackageSpec(pkg);
 
-    // Write package.json with explicit dependency
-    const depVersion = pkgVer || '*';
+    // ── Step 1: npm install ──────────────────────────────
     const pkgJson = {
-      name: 'ximg-offline-bundle',
-      version: '1.0.0',
-      private: true,
+      name: 'ximg-offline-bundle', version: '1.0.0', private: true,
       description: `Offline bundle for ${pkgBase}`,
-      dependencies: { [pkgBase]: depVersion },
+      dependencies: { [pkgBase]: pkgVer || '*' },
     };
     await fsp.writeFile(path.join(tmpdir, 'package.json'), JSON.stringify(pkgJson, null, 2));
 
-    // Stream npm install output
     send(`$ npm install --ignore-scripts --no-audit --no-fund`);
     send('');
 
-    const installArgs = ['install', '--ignore-scripts', '--no-audit', '--no-fund'];
     await new Promise((resolve, reject) => {
-      const proc = spawn('npm', installArgs, { cwd: tmpdir });
+      const proc = spawn('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: tmpdir });
       const onData = chunk => {
         for (const line of chunk.toString().split('\n')) {
           const l = line.trim();
@@ -576,38 +723,55 @@ app.post('/bundle', async (req, res) => {
       };
       proc.stdout.on('data', onData);
       proc.stderr.on('data', onData);
-      proc.on('close', code => {
-        if (code !== 0) reject(new Error(`npm install exited with code ${code}`));
-        else resolve();
-      });
+      proc.on('close', code => code !== 0 ? reject(new Error(`npm install exited with code ${code}`)) : resolve());
     });
 
     const nodeModulesDir = path.join(tmpdir, 'node_modules');
-    const installed = await readNodeModules(nodeModulesDir);
+    const installed      = await readNodeModules(nodeModulesDir);
 
     if (!installed.length) {
-      send('', 'error');
       send('No packages were installed — check the package name', 'error');
       return;
     }
 
     send('');
-    send(`Installed ${installed.length} package(s). Creating bundle zip...`);
+    send(`Installed ${installed.length} package(s).`);
 
     const mainVersion = await getMainVersion(nodeModulesDir, pkgBase);
-    const generated   = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-    const colW        = Math.max(...installed.map(p => p.name.length), 10) + 2;
-    const divider     = '─'.repeat(56);
-    const sbomLines   = installed.map(p => `  ${p.name.padEnd(colW)} ${p.version}`).join('\n');
+
+    // ── Step 2: Optionally embed Node.js runtime ─────────
+    let nodeRuntimeDir = null;
+    let nodeVersion    = null;
+
+    if (embedNode) {
+      send('');
+      nodeRuntimeDir = path.join(tmpdir, 'node-runtime');
+      nodeVersion    = await embedNodeRuntime(nodeMajor, nodePlatform, nodeRuntimeDir, tmpdir, send);
+    }
+
+    // ── Step 3: Generate scripts + README ────────────────
+    send('');
+    send('Creating bundle zip...');
+
+    const generated  = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    const colW       = Math.max(...installed.map(p => p.name.length), 10) + 2;
+    const divider    = '\u2500'.repeat(56);
+    const sbomLines  = installed.map(p => `  ${p.name.padEnd(colW)} ${p.version}`).join('\n');
+    const platInfo   = embedNode ? NODE_PLATFORMS[nodePlatform] : null;
+    const nodeLabel  = embedNode ? `${nodeVersion} (${nodePlatform})` : null;
+
+    const nodeUsageSh  = embedNode ? `./node-runtime/${platInfo.bin}` : 'node';
+    const nodeUsageBat = embedNode ? `.\\node-runtime\\${platInfo.bin}` : 'node';
 
     const readme = [
-      '═'.repeat(56),
-      '  XIMG NODE.JS BUNDLE — SOFTWARE BILL OF MATERIALS',
-      '═'.repeat(56),
+      '\u2550'.repeat(56),
+      '  XIMG NODE.JS BUNDLE \u2014 SOFTWARE BILL OF MATERIALS',
+      '\u2550'.repeat(56),
       `Generated:    ${generated}`,
       `Source:       https://nodejs-bundler.ximg.app`,
       `Package:      ${pkgBase} ${mainVersion}`,
       `Components:   ${installed.length}`,
+      ...(embedNode ? [`Node.js:      ${nodeVersion} (${nodePlatform})`] : []),
       divider,
       'COMPONENTS',
       divider,
@@ -617,24 +781,44 @@ app.post('/bundle', async (req, res) => {
       'USAGE',
       divider,
       '  This bundle contains pre-installed node_modules.',
-      '  Run setup.sh to verify, then copy node_modules/ into your project.',
-      '',
-      '  Linux / macOS:',
-      '    unzip <bundle>.zip',
-      `    cd <bundle>`,
-      '    ./setup.sh',
-      `    cp -r node_modules/ /path/to/your/project/`,
-      '',
-      '  Windows (PowerShell):',
-      '    Expand-Archive <bundle>.zip',
-      `    cd <bundle>`,
-      `    Copy-Item -Recurse node_modules\\ C:\\path\\to\\project\\`,
-      '',
-      '  Or use the bundle directory as your project root directly.',
-      '═'.repeat(56),
+      ...(embedNode ? [
+        `  Node.js ${nodeVersion} is bundled in node-runtime/.`,
+        '',
+        '  Linux / macOS:',
+        '    ./setup.sh',
+        `    ./node-runtime/node yourscript.js`,
+        '',
+        '  Windows:',
+        `    .\\node-runtime\\node.exe yourscript.js`,
+      ] : [
+        '  Run setup.sh to verify, then copy node_modules/ into your project.',
+        '',
+        '  Linux / macOS:',
+        `    ./setup.sh`,
+        `    cp -r node_modules/ /path/to/your/project/`,
+        '',
+        '  Windows (PowerShell):',
+        `    Copy-Item -Recurse node_modules\\ C:\\path\\to\\project\\`,
+      ]),
+      '\u2550'.repeat(56),
     ].join('\n');
 
-    const setupSh = [
+    const setupSh = embedNode ? [
+      '#!/bin/bash',
+      `# Offline bundle: ${pkgBase} ${mainVersion} (${installed.length} packages) + Node.js ${nodeVersion} (${nodePlatform})`,
+      `# Source: https://nodejs-bundler.ximg.app`,
+      'set -e',
+      'BUNDLE_DIR="$(cd "$(dirname "$0")" && pwd)"',
+      `NODE="$BUNDLE_DIR/node-runtime/node"`,
+      'chmod +x "$NODE" 2>/dev/null || true',
+      'echo "==> Node.js: $($NODE --version) [bundled]"',
+      'echo "==> Verifying bundle..."',
+      `$NODE -e "require('${pkgBase}'); console.log('OK  ${pkgBase} loaded successfully')" 2>/dev/null || \\`,
+      `  echo "NOTE: ${pkgBase} is a CLI/framework \u2014 import it from your project code"`,
+      'echo ""',
+      `echo "\u2713 Bundle ready \u2014 Node.js ${nodeVersion} + ${pkgBase} ${mainVersion} (${installed.length} packages)"`,
+      `echo "  Run scripts: \$BUNDLE_DIR/node-runtime/node yourscript.js"`,
+    ].join('\n') : [
       '#!/bin/bash',
       `# Offline bundle: ${pkgBase} ${mainVersion} (${installed.length} packages)`,
       `# Source: https://nodejs-bundler.ximg.app`,
@@ -642,18 +826,19 @@ app.post('/bundle', async (req, res) => {
       'cd "$(dirname "$0")"',
       'echo "==> Verifying bundle..."',
       `node -e "require('${pkgBase}'); console.log('OK  ${pkgBase} loaded successfully')" 2>/dev/null || \\`,
-      `  echo "NOTE: ${pkgBase} is a CLI/framework — import it from your project code"`,
+      `  echo "NOTE: ${pkgBase} is a CLI/framework \u2014 import it from your project code"`,
       'echo ""',
-      `echo "\u2713 Bundle ready \u2014 ${pkgBase} ${mainVersion} with ${installed.length} packages"`,
+      `echo "\u2713 Bundle ready \u2014 ${pkgBase} ${mainVersion} (${installed.length} packages)"`,
       `echo "  Copy node_modules/ to your project: cp -r node_modules/ /your/project/"`,
     ].join('\n');
 
     await fsp.writeFile(path.join(tmpdir, 'README.txt'), readme);
     await fsp.writeFile(path.join(tmpdir, 'setup.sh'),   setupSh, { mode: 0o755 });
 
-    // Create zip
+    // ── Step 4: Create zip ────────────────────────────────
     const safePkg    = pkgBase.replace(/[^A-Za-z0-9._-]/g, '_');
-    const bundleName = `ximg-app-js-bundle-${safePkg}-${mainVersion}`;
+    const nodeSuffix = embedNode ? `-node${nodeMajor}-${nodePlatform}` : '';
+    const bundleName = `ximg-app-js-bundle-${safePkg}-${mainVersion}${nodeSuffix}`;
     const zipName    = `${bundleName}.zip`;
     const zipPath    = path.join(tmpdir, zipName);
 
@@ -663,6 +848,7 @@ app.post('/bundle', async (req, res) => {
       output.on('close', resolve);
       archive.on('error', reject);
       archive.pipe(output);
+
       archive.directory(nodeModulesDir,                `${bundleName}/node_modules`);
       archive.file(path.join(tmpdir, 'package.json'), { name: `${bundleName}/package.json` });
       const lockPath = path.join(tmpdir, 'package-lock.json');
@@ -671,6 +857,12 @@ app.post('/bundle', async (req, res) => {
       }
       archive.file(path.join(tmpdir, 'setup.sh'),   { name: `${bundleName}/setup.sh` });
       archive.file(path.join(tmpdir, 'README.txt'), { name: `${bundleName}/README.txt` });
+
+      if (embedNode && nodeRuntimeDir) {
+        // Add just the extracted binary under node-runtime/
+        archive.directory(nodeRuntimeDir, `${bundleName}/node-runtime`);
+      }
+
       archive.finalize();
     });
 
