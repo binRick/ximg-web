@@ -114,6 +114,82 @@ document.querySelectorAll('.subnav a').forEach(a => {
 });
 ```
 
+## Sub-Nav Pages (Multi-Page Apps)
+
+When an app has enough content to warrant multiple pages, split it into separate HTML files with a sticky sub-nav bar. Each sub-page is its own `.html` file in the `*-html/` directory. **Do not use anchor-based single-page navigation — each tab must be a real page load.**
+
+### Pattern
+
+Every sub-page must include:
+
+1. **The same `<style>` block** as the main page (CSS variables, layout, component classes). Copy it in full — no shared CSS file.
+
+2. **A `<nav id="subnav">` sticky bar** positioned below the main nav:
+```html
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="chapter2.html">Chapter 2</a>
+  <!-- ... -->
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/appname') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+```
+
+3. **Sub-nav CSS** (add to the `<style>` block of every page):
+```css
+#subnav {
+  position: sticky;
+  top: 52px;          /* sits flush under the main nav */
+  z-index: 150;
+  background: rgba(8,11,14,.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .2rem;
+  padding: .4rem 1rem;
+}
+#subnav a {
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #5a6070;
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: color .2s, background .2s;
+  font-family: 'Courier New', monospace;
+}
+#subnav a:hover, #subnav a.active {
+  color: var(--accent);          /* use the app's accent color */
+  background: rgba(255,255,255,.06);
+}
+```
+
+4. **All links use relative paths** — `href="index.html"`, `href="chapter2.html"` — not absolute URLs.
+
+5. **Shared nav at end of body**: `<script src="/shared/nav.js?v=2"></script>`
+
+### index.html for multi-page apps
+
+The `index.html` of a multi-page app should serve as a **landing/overview page** that introduces the topic and shows a preview grid linking to each sub-page. It should NOT contain all the content — that goes in the sub-pages.
+
+### Real examples
+
+- `cia-html/` — 9 pages: index, origins, coups, spying, mkultra, jfk, reckoning, endgame, directors
+- `bourbon-html/` — multiple pages: index, law, process, mashbill, distilleries, etc.
+- `moto-html/` — index + individual bike pages
+
+---
+
 ## Adding a New App (Canonical Checklist)
 
 This is the single authoritative checklist. Follow every step in order.
