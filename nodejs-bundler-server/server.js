@@ -418,6 +418,7 @@ const HTML = `<!DOCTYPE html>
   <div class="snav">
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
+    <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
   </div>
 
   <!-- Bundle view -->
@@ -481,12 +482,43 @@ const HTML = `<!DOCTYPE html>
     <div class="pkg-grid" id="pkg-grid"></div>
   </div>
 
+  <!-- Install instructions view -->
+  <div id="view-install" style="display:none;width:100%;max-width:560px">
+    <div class="card">
+      <h2 style="font-size:1.1rem;font-weight:700;color:#f1f5f9;margin-bottom:1.4rem">After Downloading the Zip</h2>
+      <ol style="list-style:none;padding:0;display:flex;flex-direction:column;gap:1.1rem">
+        <li style="display:flex;gap:.85rem;align-items:flex-start">
+          <span style="background:#026e00;color:#fff;border-radius:50%;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;margin-top:.1rem">1</span>
+          <div><strong style="color:#f1f5f9">Locate the file</strong><br><span style="color:#94a3b8;font-size:.85rem">Open your Downloads folder and find the <code>.zip</code> file.</span></div>
+        </li>
+        <li style="display:flex;gap:.85rem;align-items:flex-start">
+          <span style="background:#026e00;color:#fff;border-radius:50%;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;margin-top:.1rem">2</span>
+          <div><strong style="color:#f1f5f9">Extract it</strong><br><span style="color:#94a3b8;font-size:.85rem">Double-click the zip to extract, or run:</span><br><code style="display:block;margin-top:.35rem;background:#0d1117;padding:.45rem .7rem;border-radius:6px;font-size:.82rem;color:#c9d1d9">unzip &lt;filename&gt;.zip</code></div>
+        </li>
+        <li style="display:flex;gap:.85rem;align-items:flex-start">
+          <span style="background:#026e00;color:#fff;border-radius:50%;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;margin-top:.1rem">3</span>
+          <div><strong style="color:#f1f5f9">Copy node_modules into your project</strong><br><span style="color:#94a3b8;font-size:.85rem">Move the <code>node_modules/</code> folder from the extracted zip into your project's root folder — right next to your <code>package.json</code>.</span></div>
+        </li>
+        <li style="display:flex;gap:.85rem;align-items:flex-start">
+          <span style="background:#026e00;color:#fff;border-radius:50%;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;margin-top:.1rem">4</span>
+          <div><strong style="color:#f1f5f9">Run your project</strong><br><code style="display:block;margin-top:.35rem;background:#0d1117;padding:.45rem .7rem;border-radius:6px;font-size:.82rem;color:#c9d1d9">node app.js</code><span style="color:#94a3b8;font-size:.85rem;display:block;margin-top:.4rem">Your packages are ready — no internet or <code>npm install</code> needed.</span></div>
+        </li>
+      </ol>
+      <div style="margin-top:1.4rem;padding:.8rem 1rem;background:#0d1117;border-radius:8px;border:1px solid rgba(255,255,255,.07)">
+        <span style="color:#64748b;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em">If Node.js runtime was bundled</span>
+        <p style="color:#94a3b8;font-size:.83rem;margin-top:.4rem">Run <code>./setup.sh</code> (Linux/Mac) or <code>setup.bat</code> (Windows) to configure it, then use <code>node-runtime/node</code> to run scripts on machines without Node.js installed.</p>
+      </div>
+    </div>
+  </div>
+
   <script>
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
+      document.getElementById('view-install').style.display  = v === 'install'  ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
+      document.getElementById('nav-install').classList.toggle('active',  v === 'install');
       if (v === 'packages') renderPkgs();
     }
 
