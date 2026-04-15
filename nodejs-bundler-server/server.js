@@ -1,6 +1,6 @@
 'use strict';
 const express   = require('express');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const fs        = require('fs');
 const fsp       = fs.promises;
 const path      = require('path');
@@ -353,6 +353,38 @@ const HTML = `<!DOCTYPE html>
     .snav-btn.active{background:#1e293b;color:#f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,.4)}
     .snav-btn:hover:not(.active){color:#cbd5e1}
 
+    /* test cases */
+    .pkg-snav{display:flex;gap:.35rem;margin-bottom:1.2rem;flex-wrap:wrap}
+    .pkg-snav-btn{background:rgba(15,23,42,.7);border:1px solid rgba(255,255,255,.08);
+                  color:#64748b;font-size:.72rem;font-weight:600;letter-spacing:.07em;
+                  text-transform:uppercase;padding:.3rem .75rem;border-radius:5px;
+                  cursor:pointer;transition:all .15s}
+    .pkg-snav-btn.active{background:#026e00;border-color:#026e00;color:#fff}
+    .test-list{width:100%;border-collapse:collapse;margin-bottom:1rem}
+    .test-list th{font-size:.67rem;letter-spacing:.09em;text-transform:uppercase;
+                  color:#475569;font-weight:700;padding:.4rem .7rem;text-align:left;
+                  border-bottom:1px solid rgba(255,255,255,.06)}
+    .test-row td{padding:.45rem .7rem;font-size:.78rem;border-bottom:1px solid rgba(255,255,255,.04);
+                 vertical-align:middle}
+    .test-row:last-child td{border-bottom:none}
+    .test-id{font-family:monospace;color:#475569;width:3rem;font-size:.72rem}
+    .test-name{color:#94a3b8;font-weight:600}
+    .test-desc{color:#475569;font-size:.72rem}
+    .test-detail{color:#64748b;font-size:.72rem;font-family:monospace;max-width:320px;
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .test-badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.07em;
+                text-transform:uppercase;padding:.18rem .5rem;border-radius:4px;
+                width:5.5rem;text-align:center}
+    .test-badge.pending{background:rgba(100,116,139,.15);color:#64748b}
+    .test-badge.running{background:rgba(234,179,8,.15);color:#eab308;
+                        animation:pulse .8s ease-in-out infinite}
+    .test-badge.pass{background:rgba(34,197,94,.15);color:#22c55e}
+    .test-badge.fail{background:rgba(239,68,68,.15);color:#ef4444}
+    .test-badge.skip{background:rgba(100,116,139,.1);color:#475569}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    #test-summary{display:none;padding:.75rem 1rem;border-radius:7px;
+                  font-size:.85rem;font-weight:600;margin-top:.75rem;text-align:center}
+
     /* form card */
     .card{background:rgba(30,41,59,.7);border:1px solid rgba(255,255,255,.07);
           border-radius:14px;padding:2rem;width:100%;max-width:680px;backdrop-filter:blur(8px)}
@@ -466,6 +498,7 @@ const HTML = `<!DOCTYPE html>
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
     <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
+    <button class="snav-btn"        id="nav-tests"    onclick="setView('tests')">Test Cases</button>
   </div>
 
   <!-- Bundle view -->
@@ -563,15 +596,81 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Test Cases view -->
+  <div id="view-tests" style="display:none;width:100%;max-width:860px">
+    <div class="card" style="max-width:none">
+      <div style="margin-bottom:1rem">
+        <div style="font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;
+                    color:#475569;font-weight:700;margin-bottom:.5rem">Test Package</div>
+        <div class="pkg-snav" id="tpkg-nav">
+          <button class="pkg-snav-btn active" id="tpkg-nodemon"
+                  onclick="selectTestPkg('nodemon')">nodemon</button>
+        </div>
+      </div>
+
+      <div id="test-list-wrap">
+        <table class="test-list" id="test-table">
+          <thead><tr>
+            <th>ID</th><th>Test</th><th>Description</th><th>Status</th><th>Detail</th>
+          </tr></thead>
+          <tbody id="test-tbody"></tbody>
+        </table>
+      </div>
+
+      <button id="run-btn" onclick="runTests()" style="margin-top:.5rem">&#9654; Run</button>
+
+      <div id="test-log-wrap" style="display:none;margin-top:.75rem">
+        <div style="background:#1e2433;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                    display:flex;align-items:center;gap:.35rem;
+                    border:1px solid rgba(255,255,255,.08);border-bottom:none">
+          <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+          <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+          <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+          <span style="flex:1;text-align:center;font-size:.72rem;color:#64748b;
+                       font-family:monospace;margin-right:22px">bundle stream</span>
+        </div>
+        <div id="test-log"
+             style="background:#0d1117;border:1px solid rgba(255,255,255,.07);
+                    border-radius:0 0 10px 10px;padding:.75rem 1rem;height:240px;
+                    overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                    font-size:.76rem;line-height:1.6;color:#c9d1d9;
+                    white-space:pre-wrap;word-break:break-all"></div>
+      </div>
+
+      <div id="test-install-log-wrap" style="display:none;margin-top:.75rem">
+        <div style="background:#1a2438;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                    display:flex;align-items:center;gap:.35rem;
+                    border:1px solid rgba(34,197,94,.2);border-bottom:none">
+          <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+          <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+          <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+          <span style="flex:1;text-align:center;font-size:.72rem;color:#22c55e;
+                       font-family:monospace;margin-right:22px">install test — nodemon functionality</span>
+        </div>
+        <div id="test-install-log"
+             style="background:#060d10;border:1px solid rgba(34,197,94,.15);
+                    border-radius:0 0 10px 10px;padding:.75rem 1rem;height:220px;
+                    overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                    font-size:.76rem;line-height:1.6;color:#86efac;
+                    white-space:pre-wrap;word-break:break-all"></div>
+      </div>
+
+      <div id="test-summary"></div>
+    </div>
+  </div>
+
   <script>
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
       document.getElementById('view-install').style.display  = v === 'install'  ? 'block' : 'none';
+      document.getElementById('view-tests').style.display    = v === 'tests'    ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
       document.getElementById('nav-install').classList.toggle('active',  v === 'install');
+      document.getElementById('nav-tests').classList.toggle('active',    v === 'tests');
       if (v === 'packages') renderPkgs();
+      if (v === 'tests') initTestList();
     }
 
     function toggleEmbed() {
@@ -730,6 +829,307 @@ const HTML = `<!DOCTYPE html>
     document.getElementById('pkg').addEventListener('keydown', e => {
       if (e.key === 'Enter') go();
     });
+
+    // ── Test Cases ──────────────────────────────────────────────────────────
+    const TEST_DEFS = [
+      { id:'T01', name:'Reject invalid package name',      desc:'POST with "!!bad!!" → 400 JSON error' },
+      { id:'T02', name:'Bundle stream accepted',            desc:'POST nodemon → 200 text/event-stream' },
+      { id:'T03', name:'npm install output in stream',      desc:'Stream contains "added" or "packages" line' },
+      { id:'T04', name:'ClamAV scan clean',                 desc:'No INFECTED line in stream' },
+      { id:'T05', name:'Bundle completes without error',    desc:'event:done received (not event:error)' },
+      { id:'T06', name:'Download token is valid UUID',      desc:'event:done data matches UUID format' },
+      { id:'T07', name:'bundle-meta endpoint responds',     desc:'GET /bundle-meta/<token> → 200 JSON' },
+      { id:'T08', name:'Bundle filename is a .zip',         desc:'Metadata name field ends with .zip' },
+      { id:'T09', name:'Bundle size > 10 KB',               desc:'Metadata size field > 10,240 bytes' },
+      { id:'T10', name:'Zip extracts cleanly',              desc:'Server unzips bundle without error' },
+      { id:'T11', name:'setup.sh present',                  desc:'setup.sh found in extracted bundle' },
+      { id:'T12', name:'nodemon in node_modules',           desc:'node_modules/nodemon/package.json exists' },
+      { id:'T13', name:'nodemon version readable',          desc:'Version field present in package.json' },
+      { id:'T14', name:'nodemon binary exists',             desc:'node_modules/.bin/nodemon present' },
+      { id:'T15', name:'nodemon --version succeeds',        desc:'node nodemon --version exits 0' },
+      { id:'T16', name:'Version output is semver',          desc:'Output matches \\d+.\\d+.\\d+ format' },
+      { id:'T17', name:"require('nodemon') loads",          desc:'node -e "require(\'nodemon\')" exits 0' },
+      { id:'T18', name:'nodemon --help exits 0',            desc:'node nodemon --help returns exit code 0' },
+    ];
+
+    let activeTestPkg = 'nodemon';
+    let testsRunning  = false;
+
+    function selectTestPkg(pkg) {
+      activeTestPkg = pkg;
+      document.querySelectorAll('.pkg-snav-btn').forEach(b => b.classList.remove('active'));
+      const el = document.getElementById('tpkg-' + pkg);
+      if (el) el.classList.add('active');
+      initTestList();
+    }
+
+    function setTestStatus(id, status, detail) {
+      const row = document.getElementById('trow-' + id);
+      if (!row) return;
+      const badge = row.querySelector('.test-badge');
+      const detEl = row.querySelector('.test-detail');
+      badge.className = 'test-badge ' + status;
+      const labels = { pending:'—', running:'running…', pass:'✓ PASS', fail:'✗ FAIL', skip:'SKIP' };
+      badge.textContent = labels[status] || status;
+      if (detEl && detail !== undefined) detEl.textContent = detail;
+    }
+
+    function initTestList() {
+      const tbody = document.getElementById('test-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = TEST_DEFS.map(t => \`
+        <tr class="test-row" id="trow-\${t.id}">
+          <td class="test-id">\${t.id}</td>
+          <td class="test-name">\${t.name}</td>
+          <td class="test-desc">\${t.desc}</td>
+          <td><span class="test-badge pending">—</span></td>
+          <td class="test-detail"></td>
+        </tr>\`).join('');
+
+      const sumEl = document.getElementById('test-summary');
+      if (sumEl) sumEl.style.display = 'none';
+      const logEl = document.getElementById('test-log');
+      if (logEl) logEl.textContent = '';
+      const wrapEl = document.getElementById('test-log-wrap');
+      if (wrapEl) wrapEl.style.display = 'none';
+      const ilogEl = document.getElementById('test-install-log');
+      if (ilogEl) ilogEl.textContent = '';
+      const iwrapEl = document.getElementById('test-install-log-wrap');
+      if (iwrapEl) iwrapEl.style.display = 'none';
+      const btn = document.getElementById('run-btn');
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+    }
+
+    async function runTests() {
+      if (testsRunning) return;
+      testsRunning = true;
+
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running…';
+      initTestList();
+      document.getElementById('test-log-wrap').style.display = 'block';
+
+      const pkg   = activeTestPkg;
+      let passed  = 0, failed = 0;
+      let stopped = false;
+
+      function pass(id, detail) { setTestStatus(id, 'pass', detail); passed++; }
+      function fail(id, detail) { setTestStatus(id, 'fail', detail); failed++; }
+      function skip(id, detail) { setTestStatus(id, 'skip', detail); }
+      function abort(fromId, reason) {
+        const all = TEST_DEFS.map(t => t.id);
+        const idx = all.indexOf(fromId);
+        if (idx >= 0) all.slice(idx).forEach(id => skip(id, reason || 'skipped — prior step failed'));
+        stopped = true;
+      }
+
+      const logEl = document.getElementById('test-log');
+      function appendTestLog(text) {
+        logEl.textContent += text + '\\n';
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      // T01 — Reject invalid package name
+      setTestStatus('T01', 'running');
+      try {
+        const f = new FormData();
+        f.append('package', '!!bad!!');
+        const r = await fetch('/bundle', { method:'POST', body: new URLSearchParams({ package:'!!bad!!' }) });
+        const j = await r.json().catch(() => null);
+        if (r.status === 400 && j && j.error) { pass('T01', 'HTTP 400 — ' + j.error); }
+        else { fail('T01', 'Expected 400, got HTTP ' + r.status); abort('T02'); }
+      } catch(e) { fail('T01', e.message); abort('T02'); }
+
+      // T02–T06 — SSE bundle stream
+      let token = null;
+      if (!stopped) {
+        setTestStatus('T02', 'running');
+        setTestStatus('T03', 'running');
+        setTestStatus('T04', 'running');
+        setTestStatus('T05', 'running');
+        setTestStatus('T06', 'running');
+
+        let streamFailed = false;
+        try {
+          const resp = await fetch('/bundle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ package: pkg }),
+          });
+          const rct = resp.headers.get('content-type') || '';
+
+          if (!resp.ok || !rct.includes('event-stream')) {
+            fail('T02', 'Expected 200 event-stream, got HTTP ' + resp.status);
+            abort('T03');
+            streamFailed = true;
+          } else {
+            pass('T02', 'HTTP 200 text/event-stream');
+            const reader = resp.body.getReader();
+            const dec    = new TextDecoder();
+            let buf = '', T03done = false, T04done = false, streamDone = false;
+
+            while (!streamDone) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, { stream: true });
+              const blocks = buf.split('\\n\\n');
+              buf = blocks.pop();
+
+              for (const block of blocks) {
+                let et = '', ed = '';
+                for (const line of block.split('\\n')) {
+                  if (line.startsWith('event: ')) et = line.slice(7).trim();
+                  else if (line.startsWith('data: ')) ed = line.slice(6);
+                }
+
+                if (ed) {
+                  appendTestLog(ed);
+                  if (!T03done && /added|packages|npm install/i.test(ed)) {
+                    T03done = true;
+                    pass('T03', 'npm install output detected');
+                  }
+                  if (!T04done && ed.includes('INFECTED')) {
+                    T04done = true;
+                    fail('T04', ed.slice(0, 80));
+                  }
+                }
+
+                if (et === 'done') {
+                  token = ed;
+                  if (!T03done) { fail('T03', 'No npm install output seen'); streamFailed = true; }
+                  if (!T04done && !streamFailed) pass('T04', 'No INFECTED — ClamAV clean');
+                  else if (!T04done) skip('T04', 'skipped — prior step failed');
+                  if (!streamFailed) {
+                    pass('T05', 'event:done received');
+                    if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(token)) { pass('T06', token); }
+                    else { fail('T06', 'Unexpected format: ' + token); streamFailed = true; token = null; }
+                  } else {
+                    skip('T05', 'skipped — prior step failed');
+                    skip('T06', 'skipped — prior step failed');
+                    token = null;
+                  }
+                  streamDone = true; break;
+                }
+                if (et === 'error') {
+                  if (!T03done) fail('T03', 'Bundle failed');
+                  if (!T04done) skip('T04', 'Bundle failed');
+                  fail('T05', 'event:error — ' + ed.slice(0, 80));
+                  skip('T06', 'skipped — prior step failed');
+                  streamFailed = true; streamDone = true; break;
+                }
+              }
+            }
+          }
+        } catch(e) {
+          fail('T02', 'Error: ' + e.message);
+          abort('T03');
+          streamFailed = true;
+        }
+        if (streamFailed) abort('T07');
+      }
+
+      // T07–T09 — Bundle metadata (non-consuming)
+      if (!stopped && token) {
+        setTestStatus('T07', 'running');
+        setTestStatus('T08', 'running');
+        setTestStatus('T09', 'running');
+        try {
+          const mr = await fetch('/bundle-meta/' + token);
+          if (mr.ok) {
+            pass('T07', 'HTTP ' + mr.status);
+            const meta = await mr.json();
+            if (meta.name && meta.name.endsWith('.zip')) { pass('T08', meta.name); }
+            else { fail('T08', 'name: ' + (meta.name || '(none)')); abort('T09'); }
+            if (!stopped) {
+              meta.size > 10240
+                ? pass('T09', meta.size.toLocaleString() + ' bytes (' + (meta.size/1048576).toFixed(1) + ' MB)')
+                : (fail('T09', (meta.size || 0) + ' bytes — too small'), abort('T10'));
+            }
+          } else {
+            fail('T07', 'HTTP ' + mr.status); abort('T08');
+          }
+        } catch(e) { fail('T07', e.message); abort('T08'); }
+      }
+
+      // T10–T18 — Server-side tests via /test-run
+      if (!stopped && token) {
+        ['T10','T11','T12','T13','T14','T15','T16','T17','T18'].forEach(id => setTestStatus(id, 'running'));
+        document.getElementById('test-install-log-wrap').style.display = 'block';
+        const ilog = document.getElementById('test-install-log');
+        function appendInstallLog(text) {
+          ilog.textContent += text + '\\n';
+          ilog.scrollTop = ilog.scrollHeight;
+        }
+        try {
+          const ir = await fetch('/test-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ token }),
+          });
+          if (!ir.ok) {
+            ['T10','T11','T12','T13','T14','T15','T16','T17','T18'].forEach(id => fail(id, 'HTTP ' + ir.status));
+          } else {
+            const reader2 = ir.body.getReader();
+            const dec2    = new TextDecoder();
+            let ibuf = '';
+            while (true) {
+              const { done, value } = await reader2.read();
+              if (done) break;
+              ibuf += dec2.decode(value, { stream: true });
+              const blocks = ibuf.split('\\n\\n');
+              ibuf = blocks.pop();
+              for (const block of blocks) {
+                let et = '', ed = '';
+                for (const line of block.split('\\n')) {
+                  if (line.startsWith('event:')) et = line.slice(6).trim();
+                  else if (line.startsWith('data:')) ed = line.slice(5).trim();
+                }
+                if (et === 'step') {
+                  try {
+                    const s = JSON.parse(ed);
+                    setTestStatus(s.test, s.status, s.detail || '');
+                    if (s.status === 'pass') passed++;
+                    else if (s.status === 'fail') failed++;
+                  } catch(_) {}
+                } else if (!et && ed) {
+                  appendInstallLog(ed);
+                } else if (et === 'error') {
+                  ['T10','T11','T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+                    const row = document.getElementById('trow-' + id);
+                    if (row && row.querySelector('.test-badge').classList.contains('running'))
+                      skip(id, 'aborted: ' + ed.slice(0, 60));
+                  });
+                  appendInstallLog('ERROR: ' + ed);
+                }
+              }
+            }
+          }
+        } catch(e) {
+          ['T10','T11','T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+            const row = document.getElementById('trow-' + id);
+            if (row && row.querySelector('.test-badge').classList.contains('running'))
+              fail(id, e.message);
+          });
+        }
+      }
+
+      // Summary
+      const total = TEST_DEFS.length;
+      const sumEl = document.getElementById('test-summary');
+      sumEl.style.display = 'block';
+      if (failed === 0) {
+        sumEl.style.cssText += ';background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac';
+        sumEl.textContent = passed + '/' + total + ' passed — all tests pass';
+      } else {
+        sumEl.style.cssText += ';background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5';
+        sumEl.textContent = passed + '/' + total + ' passed · ' + failed + ' failed';
+      }
+
+      btn.disabled = false;
+      btn.textContent = '↺ Re-run';
+      testsRunning = false;
+    }
   </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
@@ -1030,6 +1430,157 @@ app.get('/download/:token', (req, res) => {
       fs.rm(info.tmpdir, { recursive: true, force: true }, () => {});
     }
   });
+});
+
+// ── Non-consuming bundle metadata (for test cases) ───────────────────────────
+app.get('/bundle-meta/:token', (req, res) => {
+  const info = bundles.get(req.params.token);
+  if (!info) return res.status(404).json({ error: 'Bundle not found or expired' });
+  let size = 0;
+  try { size = fs.statSync(info.zipPath).size; } catch (_) {}
+  res.json({ name: info.name, size, package: info.package || '', extra: info.extra || '' });
+});
+
+// ── Test-run endpoint — SSE, server-side nodemon tests ───────────────────────
+app.post('/test-run', async (req, res) => {
+  const token = (req.body.token || '').trim();
+  const info  = bundles.get(token);
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const sstep = (test, status, detail) =>
+    res.write(`event: step\ndata: ${JSON.stringify({ test, status, detail: detail || '' })}\n\n`);
+  const slog  = (msg) => res.write(`data: ${msg}\n\n`);
+  const sskip = (test, reason) => sstep(test, 'skip', reason || 'skipped — prior step failed');
+  const sdone = () => { res.write('event: done\ndata: ok\n\n'); res.end(); };
+  const serr  = (msg) => { res.write(`event: error\ndata: ${msg}\n\n`); res.end(); };
+
+  const remaining = (fromIdx, all) => all.slice(fromIdx);
+  const ALL = ['T10','T11','T12','T13','T14','T15','T16','T17','T18'];
+
+  if (!info) { serr('Bundle not found or expired'); return; }
+
+  let workdir = null;
+  try {
+    workdir = await fsp.mkdtemp(path.join(os.tmpdir(), 'nodejs-test-'));
+
+    // T10: extract zip
+    slog(`$ unzip ${info.name}`);
+    const unzip = spawnSync('unzip', ['-q', info.zipPath, '-d', workdir], { encoding: 'utf8' });
+    if (unzip.status !== 0) {
+      sstep('T10', 'fail', 'unzip failed: ' + (unzip.stderr || '').slice(0, 80));
+      ALL.slice(1).forEach(t => sskip(t));
+      sdone(); return;
+    }
+    const topEntries = fs.readdirSync(workdir).filter(e => !e.startsWith('.'));
+    if (!topEntries.length) { sstep('T10', 'fail', 'empty zip'); ALL.slice(1).forEach(t => sskip(t)); sdone(); return; }
+    sstep('T10', 'pass', `Extracted — ${topEntries[0]}`);
+
+    const bundleDir    = path.join(workdir, topEntries[0]);
+    const nodeModDir   = path.join(bundleDir, 'node_modules');
+
+    // T11: setup.sh present
+    const setupSh = path.join(bundleDir, 'setup.sh');
+    if (fs.existsSync(setupSh)) {
+      sstep('T11', 'pass', 'setup.sh found');
+    } else {
+      sstep('T11', 'fail', 'setup.sh not found');
+      ALL.slice(2).forEach(t => sskip(t));
+      sdone(); return;
+    }
+
+    // T12: nodemon package.json in node_modules
+    const nodemonPkg = path.join(nodeModDir, 'nodemon', 'package.json');
+    if (fs.existsSync(nodemonPkg)) {
+      sstep('T12', 'pass', 'node_modules/nodemon/package.json exists');
+    } else {
+      sstep('T12', 'fail', 'node_modules/nodemon/ not found');
+      ALL.slice(3).forEach(t => sskip(t));
+      sdone(); return;
+    }
+
+    // T13: nodemon version readable
+    let nodemonVer = null;
+    try { nodemonVer = JSON.parse(fs.readFileSync(nodemonPkg, 'utf8')).version; } catch (_) {}
+    if (nodemonVer) {
+      sstep('T13', 'pass', `version: ${nodemonVer}`);
+    } else {
+      sstep('T13', 'fail', 'Could not read version from package.json');
+      ALL.slice(4).forEach(t => sskip(t));
+      sdone(); return;
+    }
+
+    // T14: node_modules/.bin/nodemon exists
+    const binPath = path.join(nodeModDir, '.bin', 'nodemon');
+    if (fs.existsSync(binPath)) {
+      sstep('T14', 'pass', 'node_modules/.bin/nodemon exists');
+    } else {
+      sstep('T14', 'fail', 'node_modules/.bin/nodemon not found');
+      ALL.slice(5).forEach(t => sskip(t));
+      sdone(); return;
+    }
+
+    // T15: nodemon --version runs
+    slog(`$ node ${binPath} --version`);
+    const verRun = spawnSync('node', [binPath, '--version'],
+      { encoding: 'utf8', timeout: 15000, cwd: bundleDir });
+    const verOut = (verRun.stdout || '').trim();
+    slog(verOut || (verRun.stderr || '').trim() || '(no output)');
+    if (verRun.status === 0 && verOut) {
+      sstep('T15', 'pass', `nodemon --version → ${verOut}`);
+    } else {
+      sstep('T15', 'fail', `exit ${verRun.status}: ${(verRun.stderr||'').slice(0,60)}`);
+      ALL.slice(6).forEach(t => sskip(t));
+      sdone(); return;
+    }
+
+    // T16: version output is semver
+    if (/^\d+\.\d+\.\d+/.test(verOut)) {
+      sstep('T16', 'pass', `${verOut} matches semver`);
+    } else {
+      sstep('T16', 'fail', `"${verOut}" is not semver`);
+      ALL.slice(7).forEach(t => sskip(t));
+      sdone(); return;
+    }
+
+    // T17: require('nodemon') loads without error
+    slog(`$ node -e "require('nodemon')"`);
+    const reqRun = spawnSync('node', ['-e', "require('nodemon')"],
+      { encoding: 'utf8', timeout: 15000, cwd: bundleDir });
+    if (reqRun.stdout) slog(reqRun.stdout.trim());
+    if (reqRun.status === 0) {
+      sstep('T17', 'pass', "require('nodemon') loaded successfully");
+    } else {
+      const errOut = (reqRun.stderr || '').slice(0, 120);
+      slog(errOut);
+      sstep('T17', 'fail', `exit ${reqRun.status}: ${errOut.slice(0,60)}`);
+      sskip('T18');
+      sdone(); return;
+    }
+
+    // T18: nodemon --help exits 0
+    slog(`$ node ${binPath} --help`);
+    const helpRun = spawnSync('node', [binPath, '--help'],
+      { encoding: 'utf8', timeout: 15000, cwd: bundleDir });
+    const helpFirst = ((helpRun.stdout || '') + (helpRun.stderr || '')).split('\n').find(l => l.trim());
+    if (helpFirst) slog(helpFirst.trim());
+    if (helpRun.status === 0) {
+      sstep('T18', 'pass', 'nodemon --help exited 0');
+    } else {
+      sstep('T18', 'fail', `nodemon --help exited ${helpRun.status}`);
+    }
+
+    sdone();
+  } catch (err) {
+    serr(err.message);
+  } finally {
+    if (workdir) fs.rm(workdir, { recursive: true, force: true }, () => {});
+    bundles.delete(token);
+    if (info) fs.rm(info.tmpdir, { recursive: true, force: true }, () => {});
+  }
 });
 
 app.listen(3005, '0.0.0.0', () => {
