@@ -442,7 +442,7 @@ HTML = r"""<!DOCTYPE html>
   <!-- sub-nav -->
   <div class="snav">
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
-    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Packages</button>
+    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
   </div>
 
   <!-- ── Bundle view ── -->
