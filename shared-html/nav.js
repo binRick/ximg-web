@@ -63,6 +63,7 @@
     { label: 'Bundlers', apps: [
       ['apt-bundler','apt bundler'],
       ['dockerimagedownloader','docker image'],
+      ['go-bundler','go'],
       ['nodejs-bundler','node.js'],
       ['python-bundler','python'],
       ['rpm-bundler','rpm bundler']

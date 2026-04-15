@@ -276,6 +276,10 @@ const LOG_FILES = {
   antenna:        'antenna.access.log',
   'python-bundler': 'python-bundler.access.log',
   'nodejs-bundler': 'nodejs-bundler.access.log',
+  'go-bundler':     'go-bundler.access.log',
+  'apt-bundler':    'apt-bundler.access.log',
+  'rpm-bundler':    'rpm-bundler.access.log',
+  honeypot:         'honeypot.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -794,6 +798,10 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="antenna">antenna</button>
           <button class="site-opt" data-site="python-bundler">python-bundler</button>
           <button class="site-opt" data-site="nodejs-bundler">nodejs-bundler</button>
+          <button class="site-opt" data-site="go-bundler">go-bundler</button>
+          <button class="site-opt" data-site="apt-bundler">apt-bundler</button>
+          <button class="site-opt" data-site="rpm-bundler">rpm-bundler</button>
+          <button class="site-opt" data-site="honeypot">honeypot</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>
