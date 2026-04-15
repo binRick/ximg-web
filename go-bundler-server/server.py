@@ -336,7 +336,8 @@ HTML = r"""<!DOCTYPE html>
 
   <div class="snav">
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
-    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Packages</button>
+    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
+    <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
   </div>
 
   <div id="view-bundle">
