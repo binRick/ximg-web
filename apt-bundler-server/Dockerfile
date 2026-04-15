@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-venv && \
     python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install flask && \
+    /opt/venv/bin/pip install flask clamd && \
     rm -rf /var/lib/apt/lists/*
 
 # Register foreign architectures — needed at runtime for cross-arch apt downloads

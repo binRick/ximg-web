@@ -17,7 +17,7 @@ RUN apt-get update && \
     python3.12 -m ensurepip --upgrade && \
     python3.13 -m ensurepip --upgrade && \
     python3.12 -m venv /opt/venv && \
-    /opt/venv/bin/pip install flask && \
+    /opt/venv/bin/pip install flask clamd && \
     rm -rf /var/lib/apt/lists/* /tmp/get-pip.py
 
 WORKDIR /app

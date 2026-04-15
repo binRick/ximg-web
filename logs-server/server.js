@@ -4,10 +4,11 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const geoip = require('geoip-lite');
 
-const LOGS_DIR    = '/logs';
-const SSH_DIR     = '/ssh-logs';
-const DL_LOG_FILE = '/data/dockerimagedownloader.log';
-const PORT        = 3000;
+const LOGS_DIR       = '/logs';
+const SSH_DIR        = '/ssh-logs';
+const DL_LOG_FILE    = '/data/dockerimagedownloader.log';
+const BUNDLER_LOG_FILE = '/data/bundler-downloads.log';
+const PORT           = 3000;
 
 function stripAnsi(s) {
   return s.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '')
@@ -864,7 +865,7 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
     <button class="tab" id="ssh-tab">honeypot sessions</button>
-    <button class="tab" id="dl-tab">docker downloads</button>
+    <button class="tab" id="dl-tab">bundler downloads</button>
     <button class="tab" id="map-tab">🌍 global map</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
@@ -890,7 +891,7 @@ const HTML = `<!DOCTYPE html>
   <div id="dl-container">
     <div id="dl-toolbar">
       <span id="dl-count">—</span>
-      <button onclick="loadDockerDownloads()" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:\'Courier New\',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">↺ refresh</button>
+      <button onclick="loadBundlerDownloads()" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:\'Courier New\',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">↺ refresh</button>
     </div>
     <div id="dl-table-wrap">
       <table class="dl-table">
@@ -898,15 +899,13 @@ const HTML = `<!DOCTYPE html>
           <tr>
             <th>Time</th>
             <th>IP</th>
-            <th>Image</th>
-            <th class="dl-num-h">Pull&nbsp;time</th>
+            <th>Bundler</th>
+            <th>Package</th>
+            <th>Platform / Distro</th>
             <th class="dl-num-h">Size</th>
-            <th class="dl-num-h">Wait</th>
-            <th class="dl-num-h">Download&nbsp;time</th>
-            <th>Outcome</th>
           </tr>
         </thead>
-        <tbody id="dl-tbody"><tr><td colspan="8" class="dl-empty">Loading…</td></tr></tbody>
+        <tbody id="dl-tbody"><tr><td colspan="6" class="dl-empty">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1196,8 +1195,8 @@ const HTML = `<!DOCTYPE html>
       logContainer.style.display = 'none';
       sshContainer.style.display = 'none';
       dlContainer.style.display = 'flex';
-      loadDockerDownloads();
-      dlPollTimer = setInterval(loadDockerDownloads, 15000);
+      loadBundlerDownloads();
+      dlPollTimer = setInterval(loadBundlerDownloads, 15000);
     }
 
     function leaveDlMode() {
@@ -1228,35 +1227,31 @@ const HTML = `<!DOCTYPE html>
       } catch(_) { return ts; }
     }
 
-    function loadDockerDownloads() {
-      fetch('/docker-downloads')
+    function loadBundlerDownloads() {
+      fetch('/bundler-downloads')
         .then(r => r.json())
         .then(entries => {
           const tbody = document.getElementById('dl-tbody');
           const count = document.getElementById('dl-count');
           count.textContent = entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies');
           if (!entries.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="dl-empty">No downloads recorded yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="dl-empty">No bundler downloads recorded yet.</td></tr>';
             return;
           }
           tbody.innerHTML = entries.map(e => {
-            const outcomeClass = e.outcome === 'downloaded' ? 'dl-outcome-downloaded' : 'dl-outcome-ttl';
-            const outcomeLabel = e.outcome === 'downloaded' ? '✓ downloaded' : '⏱ ttl expired';
             return '<tr>' +
               '<td class="dl-ip">' + esc(fmtTs(e.ts)) + '</td>' +
               '<td class="dl-ip">' + esc(e.ip || '—') + '</td>' +
-              '<td class="dl-img">' + esc(e.image) + '</td>' +
-              '<td class="dl-num">' + fmtSecs(e.pullSecs) + '</td>' +
+              '<td class="dl-img">' + esc(e.bundler || '—') + '</td>' +
+              '<td>' + esc(e.package || '—') + '</td>' +
+              '<td class="dl-ip">' + esc(e.extra || '—') + '</td>' +
               '<td class="dl-num">' + fmtMB(e.sizeMB) + '</td>' +
-              '<td class="dl-num">' + fmtSecs(e.waitSecs) + '</td>' +
-              '<td class="dl-num">' + fmtSecs(e.downloadSecs) + '</td>' +
-              '<td class="' + outcomeClass + '">' + outcomeLabel + '</td>' +
             '</tr>';
           }).join('');
         })
         .catch(() => {
           document.getElementById('dl-tbody').innerHTML =
-            '<tr><td colspan="8" class="dl-empty">Failed to load download log.</td></tr>';
+            '<tr><td colspan="6" class="dl-empty">Failed to load bundler download log.</td></tr>';
         });
     }
 
@@ -1736,6 +1731,23 @@ const server = http.createServer(async (req, res) => {
     try {
       const lines = fs.existsSync(DL_LOG_FILE)
         ? fs.readFileSync(DL_LOG_FILE, 'utf8').trim().split('\n').filter(Boolean)
+        : [];
+      const entries = lines.map(l => { try { return JSON.parse(l); } catch(_) { return null; } })
+                           .filter(Boolean)
+                           .reverse(); // newest first
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(entries));
+    } catch(e) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('[]');
+    }
+    return;
+  }
+
+  if (req.url === '/bundler-downloads') {
+    try {
+      const lines = fs.existsSync(BUNDLER_LOG_FILE)
+        ? fs.readFileSync(BUNDLER_LOG_FILE, 'utf8').trim().split('\n').filter(Boolean)
         : [];
       const entries = lines.map(l => { try { return JSON.parse(l); } catch(_) { return null; } })
                            .filter(Boolean)

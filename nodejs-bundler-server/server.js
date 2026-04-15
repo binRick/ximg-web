@@ -8,8 +8,55 @@ const os        = require('os');
 const crypto    = require('crypto');
 const https     = require('https');
 const http      = require('http');
+const net       = require('net');
 const archiver  = require('archiver');
 const tar       = require('tar');
+
+const BUNDLE_LOG = '/data/bundler-downloads.log';
+
+function logBundleDownload(bundler, ip, pkg, extra, sizeMB) {
+  const entry = JSON.stringify({ ts: new Date().toISOString(), bundler, ip,
+                                  package: pkg, extra, sizeMB: Math.round(sizeMB * 10) / 10 });
+  try { fs.appendFileSync(BUNDLE_LOG, entry + '\n'); } catch (_) {}
+}
+
+// ── ClamAV helpers ──────────────────────────────────────────────────
+function clamavScanFile(filePath) {
+  return new Promise((resolve) => {
+    const sock = net.createConnection({ host: 'clamav', port: 3310 });
+    sock.setTimeout(30000);
+    let response = '';
+    sock.on('connect', () => {
+      sock.write('zINSTREAM\0');
+      const fStream = fs.createReadStream(filePath, { highWaterMark: 8192 });
+      fStream.on('data', (chunk) => {
+        const len = Buffer.allocUnsafe(4);
+        len.writeUInt32BE(chunk.length);
+        sock.write(Buffer.concat([len, chunk]));
+      });
+      fStream.on('end', () => { sock.write(Buffer.alloc(4)); });
+      fStream.on('error', () => { sock.destroy(); resolve(null); });
+    });
+    sock.on('data', (data) => { response += data.toString(); });
+    sock.on('end', () => {
+      const r = response.trim().replace(/\0$/, '');
+      if (r.endsWith(' FOUND')) resolve(r.slice('stream: '.length, -' FOUND'.length));
+      else resolve('CLEAN');
+    });
+    sock.on('error', () => resolve(null));
+    sock.on('timeout', () => { sock.destroy(); resolve(null); });
+  });
+}
+
+function walkDir(dir) {
+  const results = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) results.push(...walkDir(full));
+    else results.push(full);
+  }
+  return results;
+}
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -458,6 +505,11 @@ const HTML = `<!DOCTYPE html>
 
       <button id="btn" onclick="go()">Bundle &amp; Download</button>
 
+      <div style="margin-top:.75rem;padding:.6rem .85rem;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:6px;font-size:.78rem;color:#94a3b8;display:flex;align-items:flex-start;gap:.5rem">
+        <span style="color:#00ff88;flex-shrink:0">&#x1F6E1;</span>
+        <span>Every bundle is scanned with <strong style="color:#00ff88">ClamAV</strong> before download. If malware or a virus signature is detected, the bundle is <strong style="color:#ff4444">blocked</strong> and never served. A <code>scan_results.txt</code> report is included in every zip.</span>
+      </div>
+
       <div id="terminal">
         <div class="term-bar">
           <span class="dot dot-r"></span>
@@ -781,6 +833,40 @@ app.post('/bundle', async (req, res) => {
       nodeVersion    = await embedNodeRuntime(nodeMajor, nodePlatform, nodeRuntimeDir, tmpdir, send);
     }
 
+    // ── ClamAV scan ──────────────────────────────────────
+    send('');
+    send('🛡 Scanning with ClamAV...');
+    const allFiles   = walkDir(nodeModulesDir);
+    let clamavOk     = true;
+    const infected   = [];
+    let cleanCount   = 0;
+    for (const filePath of allFiles) {
+      const result = await clamavScanFile(filePath);
+      if (result === null) {
+        send('  ⚠ ClamAV unavailable — skipping scan');
+        clamavOk = false;
+        break;
+      } else if (result === 'CLEAN') {
+        cleanCount++;
+      } else {
+        const rel = path.relative(tmpdir, filePath);
+        send(`  ✗ ${rel} — INFECTED: ${result}`);
+        infected.push({ file: rel, virus: result });
+      }
+    }
+    if (infected.length > 0) {
+      send('');
+      for (const { file, virus } of infected) send(`✗ BLOCKED: ${file} — ${virus}`);
+      send('Bundle blocked — malware detected in downloaded packages', 'error');
+      return;
+    }
+    if (clamavOk) send(`✓ ${cleanCount} file(s) scanned — all clean`);
+    const scanTs     = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    const scanReport = clamavOk
+      ? `ClamAV Scan Report\nGenerated: ${scanTs}\n\nResult: ${cleanCount} file(s) scanned — CLEAN\n`
+      : `ClamAV Scan Report\nGenerated: ${scanTs}\n\nResult: SKIPPED (ClamAV unavailable)\n`;
+    await fsp.writeFile(path.join(tmpdir, 'scan_results.txt'), scanReport);
+
     // ── Step 3: Generate scripts + README ────────────────
     send('');
     send('Creating bundle zip...');
@@ -904,8 +990,9 @@ app.post('/bundle', async (req, res) => {
       if (fs.existsSync(lockPath)) {
         archive.file(lockPath, { name: `${bundleName}/package-lock.json` });
       }
-      archive.file(path.join(tmpdir, 'setup.sh'),   { name: `${bundleName}/setup.sh` });
-      archive.file(path.join(tmpdir, 'README.txt'), { name: `${bundleName}/README.txt` });
+      archive.file(path.join(tmpdir, 'setup.sh'),        { name: `${bundleName}/setup.sh` });
+      archive.file(path.join(tmpdir, 'README.txt'),       { name: `${bundleName}/README.txt` });
+      archive.file(path.join(tmpdir, 'scan_results.txt'), { name: `${bundleName}/scan_results.txt` });
 
       if (embedNode && nodeRuntimeDir) {
         // Add just the extracted binary under node-runtime/
@@ -916,7 +1003,9 @@ app.post('/bundle', async (req, res) => {
     });
 
     const token = crypto.randomUUID();
-    bundles.set(token, { zipPath, tmpdir, name: zipName, ts: Date.now() });
+    bundles.set(token, { zipPath, tmpdir, name: zipName, ts: Date.now(),
+                         ip: req.ip || '', package: pkg,
+                         extra: embedNode ? `${nodePlatform}-${nodeMajor}` : '' });
 
     send(`\u2713 Bundle ready: ${zipName}`);
     send(token, 'done');
@@ -932,6 +1021,9 @@ app.post('/bundle', async (req, res) => {
 app.get('/download/:token', (req, res) => {
   const info = bundles.get(req.params.token);
   if (!info) return res.status(404).send('Bundle expired or not found.');
+  let sizeMB = 0;
+  try { sizeMB = fs.statSync(info.zipPath).size / 1048576; } catch (_) {}
+  logBundleDownload('nodejs', info.ip || '', info.package || '', info.extra || '', sizeMB);
   res.download(info.zipPath, info.name, err => {
     if (!err) {
       bundles.delete(req.params.token);

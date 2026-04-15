@@ -138,6 +138,8 @@ This is the single authoritative checklist. Follow every step in order.
 9. **Landing page** — add a card to `public-html/index.html` (ximg.app)
 10. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` with name, domain, date added, and description
 11. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` (both the log file map and the button list in the HTML)
+
+> **If the new app is a bundler** (i.e. serves downloadable zip bundles): add `./logs-data:/data` to its service in `compose.yaml`, add `_log_bundle_download()` logging to its `/download/<token>` endpoint (writing JSON lines to `/data/bundler-downloads.log`), and store `ip`, `package`, and `extra` (platform/distro/arch) in the bundle token dict. This feeds the "bundler downloads" tab in `logs.ximg.app`.
 12. **Nagios** — add the subdomain to the `members` list in `nagios-server/ximg-hosts.cfg` and add a `define host {}` entry in the same file
 13. **README** — add a row to the `## Live Sites` table in `README.md`
 14. **Install script** — add the subdomain to the `DOMAINS` array in `install/setup.sh`

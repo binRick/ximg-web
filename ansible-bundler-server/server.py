@@ -13,8 +13,53 @@ from flask import Flask, request, send_file, Response, stream_with_context
 
 app = Flask(__name__)
 
+BUNDLE_LOG = '/data/bundler-downloads.log'
+_blog_lock = threading.Lock()
+
+def _log_bundle_download(bundler, ip, package, extra, size_mb):
+    entry = _json.dumps({'ts': datetime.datetime.utcnow().isoformat() + 'Z',
+                         'bundler': bundler, 'ip': ip, 'package': package,
+                         'extra': extra, 'sizeMB': round(size_mb, 1)})
+    try:
+        with _blog_lock:
+            with open(BUNDLE_LOG, 'a') as fh:
+                fh.write(entry + '\n')
+    except Exception:
+        pass
+
 COLLECTION_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*\.[a-zA-Z][a-zA-Z0-9_]*$')
 FAVICON_SVG   = open('/app/favicon.svg', 'rb').read()
+
+# ── ClamAV helpers ───────────────────────────────────────────────────
+import socket as _socket
+import struct as _struct
+
+def _clam_scan_file(filepath, host='clamav', port=3310, timeout=30):
+    """Scan one file via clamd INSTREAM. Returns 'CLEAN', virus name, or None if unavailable."""
+    try:
+        with _socket.create_connection((host, port), timeout=timeout) as _s:
+            _s.sendall(b'zINSTREAM\0')
+            with open(filepath, 'rb') as fh:
+                while True:
+                    chunk = fh.read(8192)
+                    if not chunk:
+                        break
+                    _s.sendall(_struct.pack('>I', len(chunk)) + chunk)
+            _s.sendall(b'\x00\x00\x00\x00')
+            resp = b''
+            while True:
+                data = _s.recv(4096)
+                if not data:
+                    break
+                resp += data
+                if b'\0' in data or b'\n' in data:
+                    break
+        text = resp.decode('utf-8', errors='replace').strip().rstrip('\0')
+        if text.endswith(' FOUND'):
+            return text[len('stream: '):-len(' FOUND')]
+        return 'CLEAN'
+    except Exception:
+        return None
 
 COLLECTIONS = [
     # Core
@@ -52,10 +97,10 @@ def _cleanup():
         time.sleep(60)
         cutoff = time.time() - 300
         with _token_lock:
-            stale = [t for t, (p, ts) in _tokens.items() if ts < cutoff]
+            stale = [t for t, info in _tokens.items() if info['ts'] < cutoff]
             for t in stale:
-                p, _ = _tokens.pop(t)
-                shutil.rmtree(os.path.dirname(p), ignore_errors=True)
+                info = _tokens.pop(t)
+                shutil.rmtree(os.path.dirname(info['path']), ignore_errors=True)
 
 threading.Thread(target=_cleanup, daemon=True).start()
 
@@ -124,6 +169,7 @@ def logo(name):
 @app.route('/bundle', methods=['POST'])
 def bundle():
     collection = request.form.get('collection', '').strip()
+    client_ip  = request.remote_addr or ''
 
     if not collection:
         return Response('data: ✗ No collection specified\n\ndata: __DONE_ERROR__\n\n',
@@ -177,6 +223,37 @@ def bundle():
             return
 
         yield f'data: ==> Downloaded {len(files)} archive(s): {", ".join(files)}\n\n'
+
+        # ── ClamAV scan ───────────────────────────────────────────
+        yield 'data: 🛡 Scanning with ClamAV...\n\n'
+        _scan_results = []
+        _clam_ok = True
+        for _f in files:
+            _res = _clam_scan_file(os.path.join(dl_path, _f))
+            _scan_results.append((_f, _res))
+            if _res is None:
+                yield f'data:   ⚠ {_f} — ClamAV unavailable, skipping\n\n'
+                _clam_ok = False
+            elif _res == 'CLEAN':
+                yield f'data:   ✓ {_f}\n\n'
+            else:
+                yield f'data:   ✗ {_f} — INFECTED: {_res}\n\n'
+        _infected = [(_f, _r) for _f, _r in _scan_results if _r is not None and _r != 'CLEAN']
+        if _infected:
+            yield 'data: \n\n'
+            for _fn, _vn in _infected:
+                yield f'data: ✗ BLOCKED: {_fn} — {_vn}\n\n'
+            yield 'data: __DONE_ERROR__\n\n'
+            shutil.rmtree(tmp, ignore_errors=True)
+            return
+        if _clam_ok:
+            yield f'data: ✓ All {len(_scan_results)} file(s) clean\n\n'
+        _scan_ts = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        _scan_report = 'ClamAV Scan Report\nGenerated: ' + _scan_ts + '\n\n' + (
+            '\n'.join(f'{_f}: {_r or "SKIPPED (unavailable)"}' for _f, _r in _scan_results)
+            if _scan_results else 'Scan skipped — ClamAV unavailable'
+        ) + '\n'
+
         yield 'data: ==> Building bundle zip...\n\n'
 
         install_sh, readme = _build_scripts(collection, files)
@@ -198,10 +275,12 @@ def bundle():
             zf.write(readme_path,  f'{prefix}/README.txt')
             for fname in files:
                 zf.write(os.path.join(dl_path, fname), f'{prefix}/collections/{fname}')
+            zf.writestr(f'{prefix}/scan_results.txt', _scan_report)
 
         token = str(uuid.uuid4())
         with _token_lock:
-            _tokens[token] = (zip_path, time.time())
+            _tokens[token] = {'path': zip_path, 'ts': time.time(),
+                               'ip': client_ip, 'package': collection}
 
         size_mb = os.path.getsize(zip_path) / 1_048_576
         yield f'data: ✓ Bundle ready — {len(files)} archive(s), {size_mb:.1f} MB\n\n'
@@ -217,9 +296,11 @@ def download(token):
         entry = _tokens.get(token)
     if not entry:
         return 'Not found or expired', 404
-    zip_path, _ = entry
+    zip_path = entry['path']
     if not os.path.exists(zip_path):
         return 'File not found', 404
+    _log_bundle_download('ansible', entry.get('ip', ''), entry.get('package', ''), '',
+                          os.path.getsize(zip_path) / 1_048_576)
     return send_file(zip_path, as_attachment=True, download_name=os.path.basename(zip_path))
 
 
@@ -336,6 +417,11 @@ PAGE = r'''<!doctype html>
       <p class="hint">Collection name in <code>namespace.name</code> format — as used in <code>ansible-galaxy collection install &lt;name&gt;</code></p>
 
       <button id="btn" onclick="go()">Bundle &amp; Download</button>
+
+      <div style="margin-top:.75rem;padding:.6rem .85rem;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:6px;font-size:.78rem;color:#94a3b8;display:flex;align-items:flex-start;gap:.5rem">
+        <span style="color:#00ff88;flex-shrink:0">&#x1F6E1;</span>
+        <span>Every bundle is scanned with <strong style="color:#00ff88">ClamAV</strong> before download. If malware or a virus signature is detected, the bundle is <strong style="color:#ff4444">blocked</strong> and never served. A <code>scan_results.txt</code> report is included in every zip.</span>
+      </div>
 
       <div class="terminal" id="terminal">
         <div class="term-bar">

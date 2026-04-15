@@ -13,6 +13,20 @@ from flask import Flask, after_this_request, request, send_file, jsonify, Respon
 
 app = Flask(__name__)
 
+BUNDLE_LOG = '/data/bundler-downloads.log'
+_blog_lock = threading.Lock()
+
+def _log_bundle_download(bundler, ip, package, extra, size_mb):
+    entry = _json.dumps({'ts': datetime.datetime.utcnow().isoformat() + 'Z',
+                         'bundler': bundler, 'ip': ip, 'package': package,
+                         'extra': extra, 'sizeMB': round(size_mb, 1)})
+    try:
+        with _blog_lock:
+            with open(BUNDLE_LOG, 'a') as fh:
+                fh.write(entry + '\n')
+    except Exception:
+        pass
+
 # apt package names: lowercase, alphanumeric + hyphens/dots/plus
 PACKAGE_RE = re.compile(r'^[a-z0-9][a-z0-9+\-.]*$')
 
@@ -31,6 +45,37 @@ ARCHES = {
 }
 
 FAVICON_SVG = open('/app/favicon.svg', 'rb').read()
+
+# ── ClamAV helpers ───────────────────────────────────────────────────
+import socket as _socket
+import struct as _struct
+
+def _clam_scan_file(filepath, host='clamav', port=3310, timeout=30):
+    """Scan one file via clamd INSTREAM. Returns 'CLEAN', virus name, or None if unavailable."""
+    try:
+        with _socket.create_connection((host, port), timeout=timeout) as _s:
+            _s.sendall(b'zINSTREAM\0')
+            with open(filepath, 'rb') as fh:
+                while True:
+                    chunk = fh.read(8192)
+                    if not chunk:
+                        break
+                    _s.sendall(_struct.pack('>I', len(chunk)) + chunk)
+            _s.sendall(b'\x00\x00\x00\x00')
+            resp = b''
+            while True:
+                data = _s.recv(4096)
+                if not data:
+                    break
+                resp += data
+                if b'\0' in data or b'\n' in data:
+                    break
+        text = resp.decode('utf-8', errors='replace').strip().rstrip('\0')
+        if text.endswith(' FOUND'):
+            return text[len('stream: '):-len(' FOUND')]
+        return 'CLEAN'
+    except Exception:
+        return None
 
 PACKAGES = [
     # Web servers
@@ -388,6 +433,11 @@ HTML = r"""<!DOCTYPE html>
 
       <button id="btn" onclick="go()">Bundle &amp; Download</button>
 
+      <div style="margin-top:.75rem;padding:.6rem .85rem;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:6px;font-size:.78rem;color:#94a3b8;display:flex;align-items:flex-start;gap:.5rem">
+        <span style="color:#00ff88;flex-shrink:0">&#x1F6E1;</span>
+        <span>Every bundle is scanned with <strong style="color:#00ff88">ClamAV</strong> before download. If malware or a virus signature is detected, the bundle is <strong style="color:#ff4444">blocked</strong> and never served. A <code>scan_results.txt</code> report is included in every zip.</span>
+      </div>
+
       <div id="terminal">
         <div class="term-bar">
           <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
@@ -636,6 +686,8 @@ def bundle():
     if arch not in ARCHES:
         return jsonify({'error': 'Invalid architecture.'}), 400
 
+    client_ip = request.remote_addr or ''
+
     @stream_with_context
     def generate():
         tmpdir    = tempfile.mkdtemp(prefix='aptbundle_')
@@ -718,7 +770,40 @@ def bundle():
                 return
 
             yield 'data: \n\n'
-            yield f'data: Downloaded {len(files)} package(s). Zipping...\n\n'
+            yield f'data: Downloaded {len(files)} package(s).\n\n'
+
+            # ── ClamAV scan ───────────────────────────────────────────
+            yield 'data: 🛡 Scanning with ClamAV...\n\n'
+            _scan_results = []
+            _clam_ok = True
+            for _f in files:
+                _res = _clam_scan_file(os.path.join(pkg_dir, _f))
+                _scan_results.append((_f, _res))
+                if _res is None:
+                    yield f'data:   ⚠ {_f} — ClamAV unavailable, skipping\n\n'
+                    _clam_ok = False
+                elif _res == 'CLEAN':
+                    yield f'data:   ✓ {_f}\n\n'
+                else:
+                    yield f'data:   ✗ {_f} — INFECTED: {_res}\n\n'
+            _infected = [(_f, _r) for _f, _r in _scan_results if _r is not None and _r != 'CLEAN']
+            if _infected:
+                yield 'data: \n\n'
+                for _fn, _vn in _infected:
+                    yield f'data: ✗ BLOCKED: {_fn} — {_vn}\n\n'
+                yield 'event: error\ndata: Bundle blocked — malware detected in downloaded packages\n\n'
+                shutil.rmtree(tmpdir, ignore_errors=True)
+                return
+            if _clam_ok:
+                yield f'data: ✓ All {len(_scan_results)} file(s) clean\n\n'
+            _scan_ts = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            _scan_report = 'ClamAV Scan Report\nGenerated: ' + _scan_ts + '\n\n' + (
+                '\n'.join(f'{_f}: {_r or "SKIPPED (unavailable)"}' for _f, _r in _scan_results)
+                if _scan_results else 'Scan skipped — ClamAV unavailable'
+            ) + '\n'
+
+            yield 'data: \n\n'
+            yield 'data: Zipping...\n\n'
 
             # ── Step 3: build zip ──────────────────────────────────────────
             ver = _resolve_deb_version(pkg, files)
@@ -747,10 +832,12 @@ def bundle():
                     yield f'data:   + packages/{f}\n\n'
                 _exec_entry(f'{bundle_dir}/install.sh', os.path.join(tmpdir, 'install.sh'))
                 zf.write(os.path.join(tmpdir, 'README.txt'), f'{bundle_dir}/README.txt')
+                zf.writestr(f'{bundle_dir}/scan_results.txt', _scan_report)
 
             token = uuid.uuid4().hex
             with _bundles_lock:
-                _bundles[token] = {'path': zip_path, 'tmpdir': tmpdir, 'name': zip_name, 'ts': time.time()}
+                _bundles[token] = {'path': zip_path, 'tmpdir': tmpdir, 'name': zip_name, 'ts': time.time(),
+                                   'ip': client_ip, 'package': pkg, 'extra': f'{distro}-{arch}'}
 
             yield 'data: \n\n'
             yield f'data: ✓ Bundle ready: {zip_name}\n\n'
@@ -773,6 +860,10 @@ def download(token):
         info = _bundles.pop(token, None)
     if not info:
         return 'Bundle not found or already downloaded', 404
+
+    _log_bundle_download('apt', info.get('ip', ''), info.get('package', ''),
+                          info.get('extra', ''),
+                          os.path.getsize(info['path']) / 1_048_576)
 
     @after_this_request
     def cleanup(response):

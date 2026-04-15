@@ -2,7 +2,7 @@ FROM python:3.12-alpine
 
 RUN apk add --no-cache go git tar
 
-RUN pip install --no-cache-dir flask
+RUN pip install --no-cache-dir flask clamd
 
 WORKDIR /app
 COPY server.py .

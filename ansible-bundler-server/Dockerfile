@@ -1,6 +1,6 @@
 FROM python:3.12-alpine
 
-RUN pip install --no-cache-dir flask ansible-core
+RUN pip install --no-cache-dir flask clamd ansible-core
 
 WORKDIR /app
 COPY server.py .
