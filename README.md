@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-220 virtual hosts (root + 219 subdomains), all static sites served by a single nginx container.
+221 virtual hosts (root + 220 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -233,6 +233,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [cuba.ximg.app](https://cuba.ximg.app) | Cuban Missile Crisis — 13 Days to Nuclear War (October 1962): Bay of Pigs, ExComm, Black Saturday, Vasili Arkhipov, interactive NORAD radar. |
 | [python-bundler.ximg.app](https://python-bundler.ximg.app) | Python Bundler — select Python version and target platform, enter a package name, download a zip with all wheels + setup.sh/setup.bat for offline venv install. |
 | [nodejs-bundler.ximg.app](https://nodejs-bundler.ximg.app) | Node.js Bundler — enter an npm package name, download a zip with pre-installed node_modules for offline use. |
+| [go-bundler.ximg.app](https://go-bundler.ximg.app) | Go Bundler — enter a Go module path, download a zip with the module cache for offline builds; optionally embed the Go toolchain. |
 | [apt-bundler.ximg.app](https://apt-bundler.ximg.app) | APT Bundler — select Debian/Ubuntu distro and arch, enter a package name, download a zip of .deb files with all dependencies for offline install. |
 | [rpm-bundler.ximg.app](https://rpm-bundler.ximg.app) | RPM Bundler — select Fedora/Rocky/Alma distro and arch, enter a package name, download a zip of .rpm files with all dependencies for offline install. |
 | [honeypot.ximg.app](https://honeypot.ximg.app) | SSH Honeypot Terminal — live simulation of the actual SSH honeypot: watch 9 auth failures then break in on attempt 10, interactive Ubuntu shell with ps, find, cat, sudo. |

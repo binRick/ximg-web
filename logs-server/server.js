@@ -279,6 +279,7 @@ const LOG_FILES = {
   'go-bundler':     'go-bundler.access.log',
   'apt-bundler':    'apt-bundler.access.log',
   'rpm-bundler':    'rpm-bundler.access.log',
+  iso:              'iso.access.log',
   honeypot:         'honeypot.access.log',
 };
 
