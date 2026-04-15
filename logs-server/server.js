@@ -281,6 +281,23 @@ const LOG_FILES = {
   'rpm-bundler':    'rpm-bundler.access.log',
   iso:              'iso.access.log',
   honeypot:         'honeypot.access.log',
+  aztec:            'aztec.access.log',
+  babylon:          'babylon.access.log',
+  civilwar:         'civilwar.access.log',
+  colonial:         'colonial.access.log',
+  crusades:         'crusades.access.log',
+  egypt:            'egypt.access.log',
+  greece:           'greece.access.log',
+  industrial:       'industrial.access.log',
+  mongols:          'mongols.access.log',
+  ottoman:          'ottoman.access.log',
+  renaissance:      'renaissance.access.log',
+  revolution:       'revolution.access.log',
+  samurai:          'samurai.access.log',
+  silkroad:         'silkroad.access.log',
+  vikings:          'vikings.access.log',
+  ww1:              'ww1.access.log',
+  ww2:              'ww2.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -593,6 +610,8 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="ansible">ansible</button>
           <button class="site-opt" data-site="apps">apps</button>
           <button class="site-opt" data-site="ascii">ascii</button>
+          <button class="site-opt" data-site="aztec">aztec</button>
+          <button class="site-opt" data-site="babylon">babylon</button>
           <button class="site-opt" data-site="bash">bash</button>
           <button class="site-opt" data-site="biology">biology</button>
           <button class="site-opt" data-site="bsd">bsd</button>
@@ -797,6 +816,28 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="uart">uart</button>
           <button class="site-opt" data-site="voltage">voltage</button>
           <button class="site-opt" data-site="antenna">antenna</button>
+          <button class="site-opt" data-site="aztec">aztec</button>
+          <button class="site-opt" data-site="babylon">babylon</button>
+          <button class="site-opt" data-site="bbs">bbs</button>
+          <button class="site-opt" data-site="civilwar">civilwar</button>
+          <button class="site-opt" data-site="colonial">colonial</button>
+          <button class="site-opt" data-site="commodore">commodore</button>
+          <button class="site-opt" data-site="crusades">crusades</button>
+          <button class="site-opt" data-site="dos">dos</button>
+          <button class="site-opt" data-site="egypt">egypt</button>
+          <button class="site-opt" data-site="greece">greece</button>
+          <button class="site-opt" data-site="industrial">industrial</button>
+          <button class="site-opt" data-site="modem">modem</button>
+          <button class="site-opt" data-site="mongols">mongols</button>
+          <button class="site-opt" data-site="ottoman">ottoman</button>
+          <button class="site-opt" data-site="renaissance">renaissance</button>
+          <button class="site-opt" data-site="revolution">revolution</button>
+          <button class="site-opt" data-site="rome">rome</button>
+          <button class="site-opt" data-site="samurai">samurai</button>
+          <button class="site-opt" data-site="silkroad">silkroad</button>
+          <button class="site-opt" data-site="vikings">vikings</button>
+          <button class="site-opt" data-site="ww1">ww1</button>
+          <button class="site-opt" data-site="ww2">ww2</button>
           <button class="site-opt" data-site="python-bundler">python-bundler</button>
           <button class="site-opt" data-site="nodejs-bundler">nodejs-bundler</button>
           <button class="site-opt" data-site="go-bundler">go-bundler</button>
@@ -809,7 +850,7 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
     </div>
-    <button class="tab" id="ssh-tab">ssh sessions</button>
+    <button class="tab" id="ssh-tab">honeypot sessions</button>
     <button class="tab" id="dl-tab">docker downloads</button>
     <button class="tab" id="map-tab">🌍 global map</button>
     <div class="stats">
