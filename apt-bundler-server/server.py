@@ -392,6 +392,30 @@ HTML = r"""<!DOCTYPE html>
                     text-align:center;width:100%}
     .pkg-bundle-btn:hover{background:rgba(233,84,32,.1);border-color:#e95420}
     .pkg-none{color:#475569;text-align:center;padding:3rem;font-size:.88rem;grid-column:1/-1}
+
+    /* ── Test runner ─────────────────────────────────────────────── */
+    .pkg-snav{display:flex;gap:.5rem;margin-bottom:1.4rem;flex-wrap:wrap}
+    .pkg-snav-btn{background:rgba(15,23,42,.7);border:1px solid rgba(255,255,255,.07);
+                  color:#64748b;font-size:.8rem;font-weight:600;padding:.35rem .85rem;
+                  border-radius:6px;cursor:pointer;transition:all .15s;letter-spacing:.03em}
+    .pkg-snav-btn.active{background:#e95420;border-color:#e95420;color:#fff}
+    .pkg-snav-btn:hover:not(.active){color:#cbd5e1;border-color:rgba(255,255,255,.15)}
+    .test-row{display:grid;grid-template-columns:42px 1fr 82px;gap:.5rem;align-items:start;
+              padding:.55rem .4rem;border-bottom:1px solid rgba(255,255,255,.04)}
+    .test-row:last-child{border-bottom:none}
+    .test-id{font-family:monospace;color:#475569;font-size:.72rem;padding-top:.15rem}
+    .test-name{color:#e2e8f0;font-weight:500;font-size:.83rem}
+    .test-desc{color:#475569;font-size:.72rem;margin-top:.12rem}
+    .test-detail{color:#64748b;font-size:.7rem;margin-top:.1rem;font-family:monospace;
+                 word-break:break-all}
+    .test-badge{text-align:right;font-size:.72rem;font-weight:700;white-space:nowrap;padding-top:.15rem}
+    .test-badge.pending{color:#475569}
+    .test-badge.running{color:#f59e0b}
+    .test-badge.pass{color:#22c55e}
+    .test-badge.fail{color:#ef4444}
+    .test-badge.skip{color:#64748b}
+    @keyframes tpulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .test-badge.running{animation:tpulse .9s ease-in-out infinite}
   </style>
 </head>
 <body>
@@ -405,6 +429,7 @@ HTML = r"""<!DOCTYPE html>
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
     <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
+    <button class="snav-btn"        id="nav-tests"    onclick="setView('tests')">Test Cases</button>
   </div>
 
   <div id="view-bundle">
@@ -486,15 +511,56 @@ HTML = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="view-tests" style="display:none;width:100%;max-width:780px">
+    <div class="pkg-snav">
+      <button class="pkg-snav-btn active" id="tpkg-openssh-server"
+              onclick="selectTestPkg('openssh-server')">openssh-server</button>
+    </div>
+    <div style="color:#64748b;font-size:.8rem;margin-bottom:1.2rem;text-align:center">
+      ubuntu-24.04 LTS (Noble) &nbsp;·&nbsp; amd64 / x86-64 &nbsp;·&nbsp; end-to-end bundle test
+    </div>
+    <div class="card" style="padding:1.2rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+        <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
+        <button id="run-btn" onclick="runTests()"
+                style="width:auto;margin:0;padding:.35rem 1.1rem;font-size:.8rem">&#9654; Run</button>
+      </div>
+      <div id="test-list"></div>
+      <div id="test-summary"
+           style="display:none;margin-top:1rem;padding:.65rem .85rem;border-radius:7px;
+                  font-size:.85rem;font-weight:600"></div>
+    </div>
+    <div id="test-log-wrap" style="display:none;margin-top:.75rem">
+      <div style="background:#1e2433;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                  display:flex;align-items:center;gap:.35rem;
+                  border:1px solid rgba(255,255,255,.07);border-bottom:none">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+        <span style="flex:1;text-align:center;font-size:.72rem;color:#64748b;
+                     font-family:monospace;margin-right:22px">build log</span>
+      </div>
+      <div id="test-log"
+           style="background:#0d1117;border:1px solid rgba(255,255,255,.07);
+                  border-radius:0 0 10px 10px;padding:.75rem 1rem;height:240px;
+                  overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                  font-size:.76rem;line-height:1.6;color:#c9d1d9;
+                  white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+  </div>
+
   <script>
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
       document.getElementById('view-install').style.display  = v === 'install'  ? 'block' : 'none';
+      document.getElementById('view-tests').style.display    = v === 'tests'    ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
       document.getElementById('nav-install').classList.toggle('active',  v === 'install');
+      document.getElementById('nav-tests').classList.toggle('active',    v === 'tests');
       if (v === 'packages') renderPkgs();
+      if (v === 'tests') initTestList();
     }
 
     const PKGS = PACKAGES_JSON;
@@ -641,6 +707,259 @@ HTML = r"""<!DOCTYPE html>
     document.getElementById('pkg').addEventListener('keydown', e => {
       if (e.key === 'Enter') go();
     });
+
+    // ── Test Cases ────────────────────────────────────────────────────────────
+
+    const TEST_DEFS = [
+      { id:'T01', name:'Reject invalid package name',    desc:'POST with "!!bad!!" → 400 JSON error' },
+      { id:'T02', name:'Reject unknown distro',           desc:'POST with distro="windows-11" → 400 JSON error' },
+      { id:'T03', name:'Bundle request accepted',         desc:'POST → 200 text/event-stream' },
+      { id:'T04', name:'APT index fetch in stream',       desc:'Stream contains "Get:" or "Fetching" line' },
+      { id:'T05', name:'Package .deb files appear',       desc:'ClamAV scan output shows .deb filenames' },
+      { id:'T06', name:'ClamAV scan clean',               desc:'No INFECTED line in stream' },
+      { id:'T07', name:'Bundle completes without error',  desc:'event:done received (not event:error)' },
+      { id:'T08', name:'Download token is valid',         desc:'event:done data matches UUID format' },
+      { id:'T09', name:'Download endpoint responds',      desc:'GET /download/<token> → 200 OK' },
+      { id:'T10', name:'Content-Type: application/zip',  desc:'Response Content-Type header contains "zip"' },
+      { id:'T11', name:'Bundle size > 10 KB',             desc:'Downloaded zip is at least 10,240 bytes' },
+    ];
+
+    let activeTestPkg = 'openssh-server';
+    let testsRunning  = false;
+
+    function selectTestPkg(pkg) {
+      activeTestPkg = pkg;
+      document.querySelectorAll('.pkg-snav-btn').forEach(b => b.classList.remove('active'));
+      const el = document.getElementById('tpkg-' + pkg);
+      if (el) el.classList.add('active');
+      initTestList();
+    }
+
+    function setTestStatus(id, status, detail) {
+      const row = document.getElementById('trow-' + id);
+      if (!row) return;
+      const badge  = row.querySelector('.test-badge');
+      const detEl  = row.querySelector('.test-detail');
+      badge.className = 'test-badge ' + status;
+      const labels = { pending:'—', running:'running…', pass:'✓ PASS', fail:'✗ FAIL', skip:'SKIP' };
+      badge.textContent = labels[status] || status;
+      if (detEl && detail !== undefined) detEl.textContent = detail;
+    }
+
+    function appendTestLog(text) {
+      const log = document.getElementById('test-log');
+      if (!log) return;
+      log.textContent += text + '\n';
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function initTestList() {
+      const list = document.getElementById('test-list');
+      if (!list) return;
+      list.innerHTML = TEST_DEFS.map(t =>
+        '<div class="test-row" id="trow-' + t.id + '">' +
+          '<span class="test-id">' + t.id + '</span>' +
+          '<div><div class="test-name">' + t.name + '</div>' +
+              '<div class="test-desc">' + t.desc + '</div>' +
+              '<div class="test-detail"></div></div>' +
+          '<span class="test-badge pending">—</span>' +
+        '</div>'
+      ).join('');
+      const sumEl = document.getElementById('test-summary');
+      if (sumEl) sumEl.style.display = 'none';
+      const logEl = document.getElementById('test-log');
+      if (logEl) { logEl.textContent = ''; }
+      const wrapEl = document.getElementById('test-log-wrap');
+      if (wrapEl) wrapEl.style.display = 'none';
+      const btn = document.getElementById('run-btn');
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+    }
+
+    async function runTests() {
+      if (testsRunning) return;
+      testsRunning = true;
+
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running…';
+
+      initTestList();
+      document.getElementById('test-log-wrap').style.display = 'block';
+
+      const pkg    = activeTestPkg;
+      const distro = 'ubuntu-24.04';
+      const arch   = 'amd64';
+      let passed = 0, failed = 0;
+
+      function pass(id, detail) { setTestStatus(id, 'pass', detail); passed++; }
+      function fail(id, detail) { setTestStatus(id, 'fail', detail); failed++; }
+      function skip(id, detail) { setTestStatus(id, 'skip', detail); }
+
+      // T01 — Reject invalid package name
+      setTestStatus('T01', 'running');
+      try {
+        const f = new FormData();
+        f.append('package', '!!bad!!');
+        f.append('distro', distro);
+        f.append('arch', arch);
+        const r = await fetch('/bundle', { method:'POST', body:f });
+        const j = await r.json().catch(() => null);
+        r.status === 400 && j && j.error
+          ? pass('T01', 'HTTP 400 — ' + j.error)
+          : fail('T01', 'Expected 400, got HTTP ' + r.status);
+      } catch(e) { fail('T01', 'Network error: ' + e.message); }
+
+      // T02 — Reject unknown distro
+      setTestStatus('T02', 'running');
+      try {
+        const f = new FormData();
+        f.append('package', pkg);
+        f.append('distro', 'windows-11');
+        f.append('arch', arch);
+        const r = await fetch('/bundle', { method:'POST', body:f });
+        const j = await r.json().catch(() => null);
+        r.status === 400 && j && j.error
+          ? pass('T02', 'HTTP 400 — ' + j.error)
+          : fail('T02', 'Expected 400, got HTTP ' + r.status);
+      } catch(e) { fail('T02', 'Network error: ' + e.message); }
+
+      // T03–T08 — SSE bundle stream
+      setTestStatus('T03', 'running');
+      setTestStatus('T04', 'running');
+      setTestStatus('T05', 'running');
+      setTestStatus('T06', 'running');
+      setTestStatus('T07', 'running');
+      setTestStatus('T08', 'running');
+
+      let token = null;
+
+      try {
+        const form = new FormData();
+        form.append('package', pkg);
+        form.append('distro', distro);
+        form.append('arch', arch);
+
+        const resp = await fetch('/bundle', { method:'POST', body:form });
+        const rct  = resp.headers.get('content-type') || '';
+
+        if (!resp.ok || !rct.includes('event-stream')) {
+          fail('T03', 'Expected 200 text/event-stream, got HTTP ' + resp.status);
+          fail('T04'); fail('T05'); fail('T06'); fail('T07'); fail('T08');
+        } else {
+          pass('T03', 'HTTP 200 text/event-stream');
+
+          const reader = resp.body.getReader();
+          const dec = new TextDecoder();
+          let buf = '';
+          let T04done = false, T05done = false, T06done = false, streamDone = false;
+
+          while (!streamDone) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+
+            const blocks = buf.split('\n\n');
+            buf = blocks.pop();
+
+            for (const block of blocks) {
+              let evtType = '', evtData = '';
+              for (const line of block.split('\n')) {
+                if (line.startsWith('event:')) evtType = line.slice(6).trim();
+                else if (line.startsWith('data:')) evtData = line.slice(5).trim();
+              }
+
+              if (evtData) {
+                appendTestLog(evtData);
+                if (!T04done && (evtData.includes('Get:') || evtData.includes('Ign:') ||
+                                  evtData.includes('Fetched') || evtData.includes('==> Fetching'))) {
+                  T04done = true;
+                  pass('T04', 'APT index fetch detected');
+                }
+                if (!T05done && evtData.includes('.deb')) {
+                  T05done = true;
+                  pass('T05', '.deb filename seen in stream');
+                }
+                if (!T06done && evtData.includes('INFECTED')) {
+                  T06done = true;
+                  fail('T06', evtData.slice(0, 80));
+                }
+              }
+
+              if (evtType === 'done') {
+                token = evtData;
+                if (!T04done) fail('T04', 'No APT fetch output in stream');
+                if (!T05done) fail('T05', 'No .deb filename in stream');
+                if (!T06done) pass('T06', 'No INFECTED lines — scan clean');
+                pass('T07', 'event:done received');
+                /^[0-9a-f\-]{32,}$/i.test(token)
+                  ? pass('T08', token)
+                  : fail('T08', 'Unexpected format: ' + token);
+                streamDone = true;
+                break;
+              }
+
+              if (evtType === 'error') {
+                if (!T04done) fail('T04', 'Bundle failed');
+                if (!T05done) fail('T05', 'Bundle failed');
+                if (!T06done) skip('T06', 'Bundle failed');
+                fail('T07', 'event:error — ' + evtData.slice(0, 80));
+                skip('T08', 'No token (bundle failed)');
+                streamDone = true;
+                break;
+              }
+            }
+          }
+        }
+      } catch(e) {
+        fail('T03', 'Error: ' + e.message);
+        fail('T04'); fail('T05'); fail('T06'); fail('T07'); fail('T08');
+      }
+
+      // T09–T11 — Download
+      setTestStatus('T09', 'running');
+      setTestStatus('T10', 'running');
+      setTestStatus('T11', 'running');
+
+      if (!token) {
+        skip('T09', 'No token — bundle did not complete');
+        skip('T10', 'No token');
+        skip('T11', 'No token');
+      } else {
+        try {
+          const dr = await fetch('/download/' + token);
+          dr.ok ? pass('T09', 'HTTP ' + dr.status) : fail('T09', 'HTTP ' + dr.status);
+
+          const dct = dr.headers.get('content-type') || '';
+          dct.toLowerCase().includes('zip')
+            ? pass('T10', dct)
+            : fail('T10', 'Content-Type: ' + dct);
+
+          const blob = await dr.blob();
+          blob.size > 10240
+            ? pass('T11', blob.size.toLocaleString() + ' bytes (' + (blob.size/1048576).toFixed(1) + ' MB)')
+            : fail('T11', blob.size + ' bytes — too small');
+        } catch(e) {
+          fail('T09', e.message);
+          skip('T10'); skip('T11');
+        }
+      }
+
+      // Summary
+      const total = TEST_DEFS.length;
+      const sumEl = document.getElementById('test-summary');
+      sumEl.style.display = 'block';
+      if (failed === 0) {
+        sumEl.style.cssText += ';background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac';
+        sumEl.textContent = passed + '/' + total + ' passed — all tests pass';
+      } else {
+        sumEl.style.cssText += ';background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5';
+        sumEl.textContent = passed + '/' + total + ' passed · ' + failed + ' failed';
+      }
+
+      btn.disabled = false;
+      btn.textContent = '↺ Re-run';
+      testsRunning = false;
+    }
   </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
