@@ -28,7 +28,7 @@
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
     { label: 'History', apps: [
-      ['aztec','aztec'],['babylon','babylon'],['british','british empire'],['civilwar','civilwar'],['coldwar','coldwar'],['colonial','colonial'],['communism','communism'],['crusades','crusades'],
+      ['aztec','aztec'],['babylon','babylon'],['british','british empire'],['cia','CIA'],['civilwar','civilwar'],['coldwar','coldwar'],['colonial','colonial'],['communism','communism'],['crusades','crusades'],
       ['cuba','cuba crisis'],['egypt','egypt'],['french','french rev.'],['greece','greece'],['industrial','industrial'],['medieval','medieval'],['mongols','mongols'],['napoleon','napoleon'],
       ['ottoman','ottoman'],['pirates','pirates'],['renaissance','renaissance'],['revolution','revolution'],['rome','rome'],['russianrev','russian rev.'],['samurai','samurai'],
       ['silkroad','silkroad'],['spacerace','space race'],['vikings','vikings'],['ww1','ww1'],['ww2','ww2'],

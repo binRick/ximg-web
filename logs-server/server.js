@@ -114,6 +114,7 @@ const LOG_FILES = {
   mail:      'mail.access.log',
   internet:  'internet.access.log',
   fidonet:   'fidonet.access.log',
+  cia:       'cia.access.log',
   coldwar:   'coldwar.access.log',
   cuba:      'cuba.access.log',
   communism: 'communism.access.log',
@@ -629,6 +630,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="claude">claude</button>
           <button class="site-opt" data-site="cnc">cnc</button>
           <button class="site-opt" data-site="coffee">coffee</button>
+          <button class="site-opt" data-site="cia">cia</button>
           <button class="site-opt" data-site="coldwar">coldwar</button>
           <button class="site-opt" data-site="cuba">cuba</button>
           <button class="site-opt" data-site="communism">communism</button>

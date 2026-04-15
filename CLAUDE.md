@@ -33,7 +33,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, nagios, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 225+ is in `README.md` and `apps-html/index.html`.
+All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, nagios, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 226+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|
@@ -79,6 +79,40 @@ Use the right command for the situation:
 | Dockerfile or build context change | `docker compose up -d --build <service>` |
 
 After any nginx config change, always test first: `docker compose exec nginx nginx -t`
+
+## Sub-Navigation Pattern
+
+Apps with multiple sections **must use separate HTML pages per section**, not anchor links within a single page. Each sub-nav item links to its own `.html` file (e.g., `process.html`, `history.html`). The sub-nav is reproduced identically on every page of the app, with the current page's link highlighted as active.
+
+**Do NOT use `href="#section"` anchor jumps for sub-nav.** Each tab is a real page load.
+
+Example structure for a multi-section app at `bourbon.ximg.app`:
+```
+bourbon-html/
+  index.html        ← hero / overview (default landing)
+  process.html      ← Production tab
+  distilleries.html ← Distilleries tab
+  tasting.html      ← Tasting tab
+  history.html      ← History tab
+```
+
+Sub-nav HTML pattern (repeat on every page, mark active with a class):
+```html
+<nav class="subnav">
+  <a href="index.html">Overview</a>
+  <a href="process.html" class="active">Production</a>
+  <a href="distilleries.html">Distilleries</a>
+</nav>
+```
+
+Use a JS snippet or inline logic to auto-detect the active page from `location.pathname` so you don't have to hard-code the active class per-page:
+```js
+document.querySelectorAll('.subnav a').forEach(a => {
+  if (a.href === location.href || location.pathname.endsWith(a.getAttribute('href'))) {
+    a.classList.add('active');
+  }
+});
+```
 
 ## Adding a New App (Canonical Checklist)
 

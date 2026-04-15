@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-227 virtual hosts (root + 226 subdomains), all static sites served by a single nginx container.
+228 virtual hosts (root + 227 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -86,6 +86,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [change.ximg.app](https://change.ximg.app) | Full git commit history — every change to this project, live from git, searchable by message, hash, or author. |
 | [fidonet.ximg.app](https://fidonet.ximg.app) | The Internet Before the Internet — history, how it worked, BBS culture, and the volunteer network that connected 40,000 nodes worldwide. |
 | [tmux.ximg.app](https://tmux.ximg.app) | Terminal multiplexer reference — full cheatsheet, interactive pane simulator, annotated .tmux.conf, and 17-year history. |
+| [cia.ximg.app](https://cia.ximg.app) | The full hidden history of the CIA — OSS origins, Cold War coups (Iran, Guatemala), JFK, MKUltra, Bay of Pigs, U-2 incident, Church Committee, spy games, Bush as DCI, Iran-Contra, and the War on Terror. |
 | [coldwar.ximg.app](https://coldwar.ximg.app) | The 45-year standoff — nuclear arms race, proxy wars, space race, CIA vs KGB espionage, leaders, and the Soviet collapse. |
 | [arpanet.ximg.app](https://arpanet.ximg.app) | Animated ARPANET history — watch the network grow from 4 nodes in 1969 to 213 nodes, packet routing animation, the first "LO" message, and the origin story of the Internet. |
 | [passwords.ximg.app](https://passwords.ximg.app) | Generate strong random passwords and passphrases, test password strength, see crack times by attack type, and learn best practices. |
