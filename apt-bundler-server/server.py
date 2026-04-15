@@ -547,6 +547,23 @@ HTML = r"""<!DOCTYPE html>
                   font-size:.76rem;line-height:1.6;color:#c9d1d9;
                   white-space:pre-wrap;word-break:break-all"></div>
     </div>
+    <div id="test-install-log-wrap" style="display:none;margin-top:.75rem">
+      <div style="background:#1a2438;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                  display:flex;align-items:center;gap:.35rem;
+                  border:1px solid rgba(34,197,94,.2);border-bottom:none">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+        <span style="flex:1;text-align:center;font-size:.72rem;color:#22c55e;
+                     font-family:monospace;margin-right:22px">install test — isolated dpkg root</span>
+      </div>
+      <div id="test-install-log"
+           style="background:#060d10;border:1px solid rgba(34,197,94,.15);
+                  border-radius:0 0 10px 10px;padding:.75rem 1rem;height:220px;
+                  overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                  font-size:.76rem;line-height:1.6;color:#86efac;
+                  white-space:pre-wrap;word-break:break-all"></div>
+    </div>
   </div>
 
   <script>
@@ -719,9 +736,16 @@ HTML = r"""<!DOCTYPE html>
       { id:'T06', name:'ClamAV scan clean',               desc:'No INFECTED line in stream' },
       { id:'T07', name:'Bundle completes without error',  desc:'event:done received (not event:error)' },
       { id:'T08', name:'Download token is valid',         desc:'event:done data matches UUID format' },
-      { id:'T09', name:'Download endpoint responds',      desc:'GET /download/<token> → 200 OK' },
-      { id:'T10', name:'Content-Type: application/zip',  desc:'Response Content-Type header contains "zip"' },
-      { id:'T11', name:'Bundle size > 10 KB',             desc:'Downloaded zip is at least 10,240 bytes' },
+      { id:'T09', name:'Bundle metadata endpoint responds', desc:'GET /bundle-meta/<token> → 200 JSON' },
+      { id:'T10', name:'Bundle filename is a .zip',        desc:'Metadata name field ends with .zip' },
+      { id:'T11', name:'Bundle size > 10 KB',              desc:'Metadata size field > 10,240 bytes' },
+      { id:'T12', name:'Zip extracts cleanly',             desc:'Server extracts bundle without error' },
+      { id:'T13', name:'install.sh present',               desc:'install.sh found in extracted bundle' },
+      { id:'T14', name:'.deb files are valid',             desc:'dpkg --info passes on every .deb' },
+      { id:'T15', name:'Target package .deb present',      desc:'At least one .deb named after the package' },
+      { id:'T16', name:'Packages unpack into isolated root', desc:'dpkg --unpack into fresh chroot succeeds' },
+      { id:'T17', name:'Package registered in dpkg DB',   desc:'dpkg --status finds package in isolated root' },
+      { id:'T18', name:'Package binary installed',         desc:'Package file list exists in isolated root' },
     ];
 
     let activeTestPkg = 'openssh-server';
@@ -771,6 +795,10 @@ HTML = r"""<!DOCTYPE html>
       if (logEl) { logEl.textContent = ''; }
       const wrapEl = document.getElementById('test-log-wrap');
       if (wrapEl) wrapEl.style.display = 'none';
+      const ilogEl = document.getElementById('test-install-log');
+      if (ilogEl) { ilogEl.textContent = ''; }
+      const iwrapEl = document.getElementById('test-install-log-wrap');
+      if (iwrapEl) iwrapEl.style.display = 'none';
       const btn = document.getElementById('run-btn');
       if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
     }
@@ -915,32 +943,93 @@ HTML = r"""<!DOCTYPE html>
         fail('T04'); fail('T05'); fail('T06'); fail('T07'); fail('T08');
       }
 
-      // T09–T11 — Download
+      // T09–T11 — Bundle metadata (non-consuming)
       setTestStatus('T09', 'running');
       setTestStatus('T10', 'running');
       setTestStatus('T11', 'running');
 
       if (!token) {
         skip('T09', 'No token — bundle did not complete');
-        skip('T10', 'No token');
-        skip('T11', 'No token');
+        skip('T10', 'No token'); skip('T11', 'No token');
       } else {
         try {
-          const dr = await fetch('/download/' + token);
-          dr.ok ? pass('T09', 'HTTP ' + dr.status) : fail('T09', 'HTTP ' + dr.status);
+          const mr = await fetch('/bundle-meta/' + token);
+          mr.ok ? pass('T09', 'HTTP ' + mr.status) : fail('T09', 'HTTP ' + mr.status);
+          if (mr.ok) {
+            const meta = await mr.json();
+            meta.name && meta.name.endsWith('.zip')
+              ? pass('T10', meta.name)
+              : fail('T10', 'name: ' + (meta.name || '(none)'));
+            meta.size > 10240
+              ? pass('T11', meta.size.toLocaleString() + ' bytes (' + (meta.size/1048576).toFixed(1) + ' MB)')
+              : fail('T11', (meta.size || 0) + ' bytes — too small');
+          } else { skip('T10', 'meta fetch failed'); skip('T11', 'meta fetch failed'); }
+        } catch(e) { fail('T09', e.message); skip('T10'); skip('T11'); }
+      }
 
-          const dct = dr.headers.get('content-type') || '';
-          dct.toLowerCase().includes('zip')
-            ? pass('T10', dct)
-            : fail('T10', 'Content-Type: ' + dct);
+      // T12–T18 — Install in isolated dpkg root (server-side)
+      ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => setTestStatus(id, 'running'));
 
-          const blob = await dr.blob();
-          blob.size > 10240
-            ? pass('T11', blob.size.toLocaleString() + ' bytes (' + (blob.size/1048576).toFixed(1) + ' MB)')
-            : fail('T11', blob.size + ' bytes — too small');
+      if (!token) {
+        ['T12','T13','T14','T15','T16','T17','T18'].forEach(id =>
+          skip(id, 'No token'));
+      } else {
+        document.getElementById('test-install-log-wrap').style.display = 'block';
+        const ilog = document.getElementById('test-install-log');
+        function appendInstallLog(text) {
+          ilog.textContent += text + '\n';
+          ilog.scrollTop = ilog.scrollHeight;
+        }
+
+        try {
+          const form2 = new FormData();
+          form2.append('token', token);
+          const ir = await fetch('/test-install', { method:'POST', body:form2 });
+          if (!ir.ok) {
+            ['T12','T13','T14','T15','T16','T17','T18'].forEach(id =>
+              fail(id, 'HTTP ' + ir.status));
+          } else {
+            const reader2 = ir.body.getReader();
+            const dec2 = new TextDecoder();
+            let ibuf = '';
+            while (true) {
+              const { done, value } = await reader2.read();
+              if (done) break;
+              ibuf += dec2.decode(value, { stream: true });
+              const blocks = ibuf.split('\n\n');
+              ibuf = blocks.pop();
+              for (const block of blocks) {
+                let et = '', ed = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) et = line.slice(6).trim();
+                  else if (line.startsWith('data:')) ed = line.slice(5).trim();
+                }
+                if (et === 'step') {
+                  try {
+                    const s = JSON.parse(ed);
+                    setTestStatus(s.test, s.status, s.detail || '');
+                    if (s.status === 'pass') passed++;
+                    else if (s.status === 'fail') failed++;
+                  } catch(_) {}
+                } else if (et === 'log' && ed) {
+                  appendInstallLog(ed);
+                } else if (et === 'error') {
+                  ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+                    const row = document.getElementById('trow-' + id);
+                    if (row && row.querySelector('.test-badge').classList.contains('running'))
+                      skip(id, 'aborted: ' + ed.slice(0, 60));
+                  });
+                  appendInstallLog('ERROR: ' + ed);
+                }
+              }
+            }
+          }
         } catch(e) {
-          fail('T09', e.message);
-          skip('T10'); skip('T11');
+          ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+            const row = document.getElementById('trow-' + id);
+            if (row && row.querySelector('.test-badge').classList.contains('running'))
+              fail(id, e.message);
+          });
         }
       }
 
@@ -1195,6 +1284,172 @@ def download(token):
         as_attachment=True,
         download_name=info['name'],
     )
+
+
+@app.route('/bundle-meta/<token>')
+def bundle_meta(token):
+    """Return metadata about a pending bundle without consuming the token."""
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return jsonify({'error': 'not found or expired'}), 404
+    size = 0
+    try:
+        size = os.path.getsize(info['path'])
+    except Exception:
+        pass
+    return jsonify({'name': info.get('name', ''), 'size': size,
+                    'package': info.get('package', ''), 'extra': info.get('extra', '')})
+
+
+@app.route('/test-install', methods=['POST'])
+def test_install():
+    """Run install-verification tests against a pending bundle in an isolated dpkg root."""
+    token = request.form.get('token', '').strip()
+
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return Response('event: error\ndata: Bundle not found or expired\n\n',
+                        mimetype='text/event-stream')
+
+    @stream_with_context
+    def generate():
+        import zipfile as _zip
+
+        work = tempfile.mkdtemp(prefix='aptinsttest_')
+        try:
+            zip_path  = info['path']
+            pkg_name  = info.get('package', '')
+
+            def step(test, status, detail=''):
+                entry = _json.dumps({'test': test, 'status': status, 'detail': detail})
+                return 'event: step\ndata: ' + entry + '\n\n'
+
+            def log(msg):
+                return 'event: log\ndata: ' + msg + '\n\n'
+
+            # ── T12: Extract zip ─────────────────────────────────────────────
+            extract_dir = os.path.join(work, 'extracted')
+            try:
+                with _zip.ZipFile(zip_path) as zf:
+                    zf.extractall(extract_dir)
+                deb_files = []
+                for root_d, _, files in os.walk(extract_dir):
+                    for f in files:
+                        if f.endswith('.deb'):
+                            deb_files.append(os.path.join(root_d, f))
+                yield step('T12', 'pass',
+                           f'Extracted {len(deb_files)} .deb file(s) + ancillary files')
+            except Exception as e:
+                yield step('T12', 'fail', str(e))
+                yield 'event: error\ndata: extraction failed\n\n'
+                return
+
+            # ── T13: install.sh present ──────────────────────────────────────
+            install_sh = None
+            for root_d, _, files in os.walk(extract_dir):
+                if 'install.sh' in files:
+                    install_sh = os.path.join(root_d, 'install.sh')
+                    break
+            if install_sh and os.access(install_sh, os.X_OK):
+                yield step('T13', 'pass', 'install.sh found and executable')
+            elif install_sh:
+                yield step('T13', 'pass', 'install.sh found (not executable bit set)')
+            else:
+                yield step('T13', 'fail', 'install.sh not found in bundle')
+
+            # ── T14: .deb files valid ────────────────────────────────────────
+            if not deb_files:
+                yield step('T14', 'fail', 'No .deb files in bundle')
+            else:
+                all_valid = True
+                for df in deb_files:
+                    r = subprocess.run(['dpkg', '--info', df],
+                                       capture_output=True, text=True)
+                    if r.returncode != 0:
+                        all_valid = False
+                        yield log(f'dpkg --info FAILED on {os.path.basename(df)}')
+                    else:
+                        yield log(f'dpkg --info OK: {os.path.basename(df)}')
+                yield step('T14', 'pass' if all_valid else 'fail',
+                           f'{len(deb_files)} .deb file(s) checked')
+
+            # ── T15: Target package .deb present ────────────────────────────
+            target_debs = [f for f in deb_files if pkg_name in os.path.basename(f)]
+            if target_debs:
+                yield step('T15', 'pass', os.path.basename(target_debs[0]))
+            else:
+                yield step('T15', 'fail', f'No .deb file matching "{pkg_name}"')
+
+            # ── T16: Unpack into isolated dpkg root ──────────────────────────
+            dpkg_root = os.path.join(work, 'dpkg_root')
+            for d in ['var/lib/dpkg/info', 'var/lib/dpkg/updates',
+                      'var/lib/dpkg/triggers', 'var/cache/apt/archives']:
+                os.makedirs(os.path.join(dpkg_root, d), exist_ok=True)
+            open(os.path.join(dpkg_root, 'var/lib/dpkg/status'),    'w').close()
+            open(os.path.join(dpkg_root, 'var/lib/dpkg/available'), 'w').close()
+
+            yield log(f'$ dpkg --root={dpkg_root} --force-not-root --force-depends --unpack <debs>')
+            proc = subprocess.Popen(
+                ['dpkg', f'--root={dpkg_root}', '--force-not-root',
+                 '--force-depends', '--unpack'] + deb_files,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            )
+            for line in proc.stdout:
+                line = line.rstrip()
+                if line:
+                    yield log(line)
+            proc.wait()
+
+            if proc.returncode == 0:
+                yield step('T16', 'pass', f'dpkg --unpack returned 0')
+            else:
+                yield step('T16', 'fail', f'dpkg --unpack returned {proc.returncode}')
+
+            # ── T17: Package registered in dpkg DB ───────────────────────────
+            status_r = subprocess.run(
+                ['dpkg', f'--root={dpkg_root}', '--status', pkg_name],
+                capture_output=True, text=True,
+            )
+            if status_r.returncode == 0:
+                ver = next((l for l in status_r.stdout.splitlines()
+                            if l.startswith('Version:')), '')
+                yield step('T17', 'pass', ver or 'found in dpkg database')
+            else:
+                yield step('T17', 'fail', f'dpkg --status returned {status_r.returncode}')
+
+            # ── T18: Package files on disk in isolated root ──────────────────
+            list_r = subprocess.run(
+                ['dpkg', f'--root={dpkg_root}', '-L', pkg_name],
+                capture_output=True, text=True,
+            )
+            if list_r.returncode == 0:
+                pkg_files_on_disk = [
+                    p.strip() for p in list_r.stdout.splitlines()
+                    if p.strip() and not p.startswith('.')
+                ]
+                found = [p for p in pkg_files_on_disk
+                         if os.path.exists(os.path.join(dpkg_root, p.lstrip('/')))]
+                if found:
+                    yield step('T18', 'pass',
+                               f'{len(found)}/{len(pkg_files_on_disk)} files on disk — e.g. {found[0]}')
+                else:
+                    yield step('T18', 'fail', 'No package files found in isolated root')
+            else:
+                yield step('T18', 'fail', f'dpkg -L returned {list_r.returncode}')
+
+            yield 'event: done\ndata: ok\n\n'
+
+        except Exception as e:
+            yield f'event: error\ndata: {e}\n\n'
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+            with _bundles_lock:
+                _bundles.pop(token, None)
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 if __name__ == '__main__':
