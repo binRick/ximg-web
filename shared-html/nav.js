@@ -23,7 +23,7 @@
       ['embeddings','embeddings'],['git','git'],['http','http'],['internet','internet'],['iptables','iptables'],['json','json'],['linux','linux'],['loadbalancer','loadbalancer'],['mac','mac'],['makefile','makefile'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tls','tls'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['utf8','utf8'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
-      ['america','america'],['coffee','coffee'],['florida','florida'],
+      ['america','america'],['architecture','architecture'],['bourbon','bourbon'],['coffee','coffee'],['florida','florida'],
       ['guns','guns'],['japan','japan'],['moto','moto'],
       ['tampa','tampa'],['trump','trump'],['wargames','wargames'],['wood','wood']
     ]},
@@ -48,7 +48,7 @@
     ]},
     { label: 'Games', apps: [
       ['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
-      ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['warcraft','warcraft']
+      ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['tetris','tetris'],['warcraft','warcraft']
     ]},
     { label: 'Electronics', apps: [
       ['555timer','555 Timer'],['antenna','antenna'],['arduino','arduino'],['battery','battery'],['capacitor','capacitor'],['circuit','circuit'],['compiler','compiler'],['fpga','fpga'],['impedance','impedance'],['logic','logic'],['ohms','ohms'],['opamp','opamp'],['oscilloscope','oscilloscope'],['pcb','pcb'],['pinout','pinout'],['protocol','protocol'],['psu','psu'],['pwm','pwm'],['resistor','resistor'],['spectrum','spectrum'],['spi','spi'],['uart','uart'],['voltage','voltage']
@@ -61,6 +61,7 @@
       ['timespan','timespan'],['url','url'],['uuid','uuid']
     ]},
     { label: 'Bundlers', apps: [
+      ['ansible-bundler','ansible'],
       ['apt-bundler','apt'],
       ['dockerimagedownloader','docker image'],
       ['go-bundler','go'],

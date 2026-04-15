@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-223 virtual hosts (root + 222 subdomains), all static sites served by a single nginx container.
+226 virtual hosts (root + 225 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -45,6 +45,9 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [grilling.ximg.app](https://grilling.ximg.app) | The art of grilling — grill types, regional BBQ styles, temp guide, wood &amp; smoke pairings, rubs, sauces, and tools. |
 | [pizza.ximg.app](https://pizza.ximg.app) | Top pizza chains and regional styles across America — history, stats, and fun facts for each. |
 | [kombat.ximg.app](https://kombat.ximg.app) | Full Mortal Kombat character roster with photos, bios, and fighting stats for every fighter in the franchise. |
+| [architecture.ximg.app](https://architecture.ximg.app) | 10,000 years of human building — ancient wonders, Gothic cathedrals, Modernist icons, and the architects who shaped civilization. |
+| [bourbon.ximg.app](https://bourbon.ximg.app) | America's native spirit — distilleries, mash bills, legendary bottles, and the Kentucky tradition behind every great pour. |
+| [tetris.ximg.app](https://tetris.ximg.app) | Classic block-stacking game — all 7 tetrominos, SRS wall kicks, ghost piece, hold queue, 3-piece preview, scoring, levels, and mobile touch controls. |
 | [wargames.ximg.app](https://wargames.ximg.app) | 1983 cold-war thriller guide — cast, plot, WOPR terminal Easter egg, and "Shall we play a game?" lore. |
 | [moto.ximg.app](https://moto.ximg.app) | Motorcycle culture — types, iconic brands, notable bikes, and the art of riding. |
 | [india.ximg.app](https://india.ximg.app) | India explorer — culture, food, landmarks, history, and the subcontinent's incredible diversity. |

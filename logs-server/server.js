@@ -277,6 +277,7 @@ const LOG_FILES = {
   'python-bundler': 'python-bundler.access.log',
   'nodejs-bundler': 'nodejs-bundler.access.log',
   'go-bundler':     'go-bundler.access.log',
+  'ansible-bundler':'ansible-bundler.access.log',
   'apt-bundler':    'apt-bundler.access.log',
   'rpm-bundler':    'rpm-bundler.access.log',
   iso:              'iso.access.log',
@@ -299,6 +300,9 @@ const LOG_FILES = {
   vikings:          'vikings.access.log',
   ww1:              'ww1.access.log',
   ww2:              'ww2.access.log',
+  architecture:     'architecture.access.log',
+  bourbon:          'bourbon.access.log',
+  tetris:           'tetris.access.log',
 };
 
 // ── IDS (Suricata EVE JSON) data layer ───────────────────────────────────────
@@ -839,9 +843,13 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="vikings">vikings</button>
           <button class="site-opt" data-site="ww1">ww1</button>
           <button class="site-opt" data-site="ww2">ww2</button>
+          <button class="site-opt" data-site="architecture">architecture</button>
+          <button class="site-opt" data-site="bourbon">bourbon</button>
+          <button class="site-opt" data-site="tetris">tetris</button>
           <button class="site-opt" data-site="python-bundler">python-bundler</button>
           <button class="site-opt" data-site="nodejs-bundler">nodejs-bundler</button>
           <button class="site-opt" data-site="go-bundler">go-bundler</button>
+          <button class="site-opt" data-site="ansible-bundler">ansible-bundler</button>
           <button class="site-opt" data-site="apt-bundler">apt-bundler</button>
           <button class="site-opt" data-site="rpm-bundler">rpm-bundler</button>
           <button class="site-opt" data-site="iso">iso</button>
