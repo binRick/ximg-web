@@ -609,6 +609,11 @@ const HTML = `<!DOCTYPE html>
       </div>
 
       <div id="test-list-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
+          <button id="run-btn" onclick="runTests()"
+                  style="width:auto;margin:0;padding:.35rem 1.1rem;font-size:.8rem">&#9654; Run</button>
+        </div>
         <table class="test-list" id="test-table">
           <thead><tr>
             <th>ID</th><th>Test</th><th>Description</th><th>Status</th><th>Detail</th>
@@ -616,8 +621,6 @@ const HTML = `<!DOCTYPE html>
           <tbody id="test-tbody"></tbody>
         </table>
       </div>
-
-      <button id="run-btn" onclick="runTests()" style="margin-top:.5rem">&#9654; Run</button>
 
       <div id="test-log-wrap" style="display:none;margin-top:.75rem">
         <div style="background:#1e2433;border-radius:10px 10px 0 0;padding:.4rem .75rem;
