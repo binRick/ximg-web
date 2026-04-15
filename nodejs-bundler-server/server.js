@@ -847,8 +847,8 @@ const HTML = `<!DOCTYPE html>
       { id:'T13', name:'nodemon version readable',          desc:'Version field present in package.json' },
       { id:'T14', name:'nodemon binary exists',             desc:'node_modules/.bin/nodemon present' },
       { id:'T15', name:'nodemon --version succeeds',        desc:'node nodemon --version exits 0' },
-      { id:'T16', name:'Version output is semver',          desc:'Output matches \\d+.\\d+.\\d+ format' },
-      { id:'T17', name:"require('nodemon') loads",          desc:'node -e "require(\'nodemon\')" exits 0' },
+      { id:'T16', name:'Version output is semver',          desc:'Output matches N.N.N semver format' },
+      { id:'T17', name:'nodemon require() loads',           desc:'Module loads cleanly via require without error' },
       { id:'T18', name:'nodemon --help exits 0',            desc:'node nodemon --help returns exit code 0' },
     ];
 
