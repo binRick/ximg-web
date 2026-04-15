@@ -396,6 +396,23 @@ PAGE = r'''<!doctype html>
     #term-out{padding:.75rem 1rem;font-family:ui-monospace,monospace;font-size:.78rem;
               line-height:1.6;color:#c9d1d9;max-height:320px;overflow-y:auto;
               white-space:pre-wrap;word-break:break-all}
+
+    /* ── test runner ── */
+    .test-list{display:flex;flex-direction:column;gap:.3rem;margin-bottom:1rem}
+    .test-row{display:flex;align-items:center;gap:.6rem;padding:.35rem .5rem;border-radius:5px;background:rgba(15,23,42,.5)}
+    .test-badge{font-size:.68rem;font-weight:700;letter-spacing:.05em;padding:.15rem .45rem;border-radius:3px;min-width:52px;text-align:center;text-transform:uppercase;font-family:'Courier New',monospace}
+    .badge-wait{background:rgba(100,116,139,.15);color:#64748b}
+    .badge-run{background:rgba(251,191,36,.15);color:#fbbf24;animation:tpulse .8s ease-in-out infinite}
+    .badge-pass{background:rgba(34,197,94,.15);color:#4ade80}
+    .badge-fail{background:rgba(239,68,68,.15);color:#f87171}
+    .badge-skip{background:rgba(100,116,139,.10);color:#475569}
+    @keyframes tpulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .test-name{font-size:.8rem;font-weight:600;color:#cbd5e1;font-family:'Courier New',monospace;white-space:nowrap}
+    .test-desc{font-size:.72rem;color:#475569;flex:1}
+    .test-note{font-size:.7rem;color:#64748b;font-family:'Courier New',monospace;margin-left:auto;white-space:nowrap}
+    .pkg-snav{display:flex;gap:.25rem;margin-bottom:1rem;flex-wrap:wrap}
+    .pkg-snav-btn{background:rgba(238,0,0,.10);border:1px solid rgba(238,0,0,.25);color:#fca5a5;font-size:.78rem;font-weight:600;padding:.3rem .75rem;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;width:auto;margin-top:0}
+    .pkg-snav-btn.active{background:rgba(238,0,0,.25);border-color:#ee0000;color:#fff}
   </style>
 </head>
 <body>
@@ -408,6 +425,7 @@ PAGE = r'''<!doctype html>
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Collections</button>
     <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
+    <button class="snav-btn"        id="nav-tests"    onclick="setView('tests')">Test Cases</button>
   </div>
 
   <div id="view-bundle">
@@ -465,15 +483,49 @@ PAGE = r'''<!doctype html>
     </div>
   </div>
 
+  <div id="view-tests" style="display:none;width:100%;max-width:780px">
+    <div class="card" style="max-width:none">
+      <div class="pkg-snav">
+        <button class="pkg-snav-btn active" data-col="community.vmware"
+                onclick="selectTestCol('community.vmware')">community.vmware</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
+        <button id="run-btn" onclick="runTests()"
+                style="width:auto;margin:0;padding:.35rem 1.1rem;font-size:.8rem;background:linear-gradient(135deg,#ee0000,#cc0000)">&#9654; Run</button>
+      </div>
+      <div class="test-list" id="test-list"></div>
+      <div style="display:flex;gap:1rem;margin-top:.75rem">
+        <div style="flex:1">
+          <div style="font-size:.7rem;color:#475569;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.3rem">Bundle Log</div>
+          <div class="term-bar" style="border-radius:6px 6px 0 0">
+            <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+            <span class="term-title">ansible-galaxy download</span>
+          </div>
+          <div id="tbundle-out" style="background:#0d1117;border-radius:0 0 6px 6px;padding:.65rem .75rem;height:200px;overflow-y:auto;font-family:ui-monospace,monospace;font-size:.72rem;line-height:1.5;color:#c9d1d9;border:1px solid rgba(255,255,255,.06);border-top:none"></div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:.7rem;color:#475569;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.3rem">Install Log</div>
+          <div class="term-bar" style="border-radius:6px 6px 0 0">
+            <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+            <span class="term-title">ansible-galaxy install</span>
+          </div>
+          <div id="tinstall-out" style="background:#0d1117;border-radius:0 0 6px 6px;padding:.65rem .75rem;height:200px;overflow-y:auto;font-family:ui-monospace,monospace;font-size:.72rem;line-height:1.5;color:#c9d1d9;border:1px solid rgba(255,255,255,.06);border-top:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const COLS = COLLECTIONS_JSON;
 
     function setView(v) {
-      ['bundle','packages','install'].forEach(n => {
+      ['bundle','packages','install','tests'].forEach(n => {
         document.getElementById('view-' + n).style.display = n === v ? 'block' : 'none';
         document.getElementById('nav-' + n).classList.toggle('active', n === v);
       });
       if (v === 'packages' && !document.getElementById('pkg-list').children.length) renderPkgs('');
+      if (v === 'tests') initTestList();
     }
 
     function renderPkgs(q) {
@@ -586,10 +638,406 @@ PAGE = r'''<!doctype html>
         status.textContent  = '\u2717 Network error: ' + e.message;
       }
     }
+    // ── Test runner ──────────────────────────────────────────────
+    var TEST_DEFS = [
+      {id:'T01', desc:'POST /bundle returns 200 stream'},
+      {id:'T02', desc:'SSE stream ends with __DONE__:token'},
+      {id:'T03', desc:'GET /bundle-meta/:token returns 200'},
+      {id:'T04', desc:'Zip opens without error'},
+      {id:'T05', desc:'Root dir matches community-vmware-bundle'},
+      {id:'T06', desc:'install.sh is a zip member'},
+      {id:'T07', desc:'README.txt is a zip member'},
+      {id:'T08', desc:'collections/ directory present in zip'},
+      {id:'T09', desc:'community.vmware .tar.gz in collections/'},
+      {id:'T10', desc:'Multiple archives present (collection + deps)'},
+      {id:'T11', desc:'unzip extracts successfully'},
+      {id:'T12', desc:'install.sh has +x permission in zip'},
+      {id:'T13', desc:'install.sh contains ansible-galaxy install command'},
+      {id:'T14', desc:'ansible-galaxy collection install from local .tar.gz exits 0'},
+      {id:'T15', desc:'community.vmware dir exists in installed path'},
+      {id:'T16', desc:'MANIFEST.json present in installed collection'},
+      {id:'T17', desc:'collection version in MANIFEST.json is semver'},
+      {id:'T18', desc:'vmware_vm_info plugin file exists in collection'},
+    ];
+
+    var _testCol = 'community.vmware';
+    var _testsRunning = false;
+
+    function selectTestCol(col) {
+      _testCol = col;
+      document.querySelectorAll('.pkg-snav-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.col === col);
+      });
+      initTestList();
+    }
+
+    function setTestStatus(id, status, note) {
+      var row = document.getElementById('trow-' + id);
+      if (!row) return;
+      var badge = row.querySelector('.test-badge');
+      var noteEl = row.querySelector('.test-note');
+      badge.className = 'test-badge badge-' + status;
+      var labels = {wait:'WAIT', run:'RUN ', pass:'PASS', fail:'FAIL', skip:'SKIP'};
+      badge.textContent = labels[status] || status.toUpperCase();
+      if (noteEl) noteEl.textContent = note || '';
+    }
+
+    function initTestList() {
+      var list = document.getElementById('test-list');
+      if (!list) return;
+      list.innerHTML = TEST_DEFS.map(function(t) {
+        return '<div class="test-row" id="trow-' + t.id + '">' +
+               '<span class="test-badge badge-wait">WAIT</span>' +
+               '<span class="test-name">' + t.id + '</span>' +
+               '<span class="test-desc">' + t.desc + '</span>' +
+               '<span class="test-note"></span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function termAppendTest(elId, text) {
+      var el = document.getElementById(elId);
+      if (!el) return;
+      var d = document.createElement('div');
+      d.textContent = text;
+      el.appendChild(d);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function runTests() {
+      if (_testsRunning) return;
+      _testsRunning = true;
+      var btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = 'Running\u2026';
+      document.getElementById('tbundle-out').innerHTML = '';
+      document.getElementById('tinstall-out').innerHTML = '';
+      TEST_DEFS.forEach(function(t) { setTestStatus(t.id, 'wait', ''); });
+
+      var stopped = false;
+      function abort(fromId, reason) {
+        var all = TEST_DEFS.map(function(t) { return t.id; });
+        var idx = all.indexOf(fromId);
+        if (idx >= 0) all.slice(idx).forEach(function(id) { setTestStatus(id, 'skip', reason || 'skipped'); });
+        stopped = true;
+      }
+
+      try {
+        // T01: Bundle endpoint reachable
+        setTestStatus('T01', 'run');
+        var fd = new FormData();
+        fd.append('collection', _testCol);
+        var bundleResp = await fetch('/bundle', {method:'POST', body:fd});
+        if (!bundleResp.ok) {
+          setTestStatus('T01', 'fail', 'HTTP ' + bundleResp.status);
+          abort('T02');
+          return;
+        }
+        setTestStatus('T01', 'pass', 'HTTP 200');
+
+        // T02: Bundle completes with token
+        setTestStatus('T02', 'run');
+        var reader = bundleResp.body.getReader();
+        var dec = new TextDecoder();
+        var buf = '', token = null, bundleErr = false;
+        while (true) {
+          var ch = await reader.read();
+          if (ch.done) break;
+          buf += dec.decode(ch.value, {stream:true});
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          for (var i = 0; i < parts.length; i++) {
+            var line = parts[i].replace(/^data: ?/, '');
+            if (line.startsWith('__DONE__:')) { token = line.split(':')[1]; }
+            else if (line === '__DONE_ERROR__') { bundleErr = true; }
+            else if (line) termAppendTest('tbundle-out', line);
+          }
+        }
+        if (!token || bundleErr) {
+          setTestStatus('T02', 'fail', bundleErr ? 'bundle error' : 'no token');
+          abort('T03');
+          return;
+        }
+        setTestStatus('T02', 'pass', token.slice(0, 8) + '\u2026');
+
+        // T03: Bundle meta peek
+        if (!stopped) {
+          setTestStatus('T03', 'run');
+          var metaResp = await fetch('/bundle-meta/' + token);
+          if (!metaResp.ok) {
+            setTestStatus('T03', 'fail', 'HTTP ' + metaResp.status);
+            abort('T04');
+            return;
+          }
+          var meta = await metaResp.json();
+          setTestStatus('T03', 'pass', (meta.name || 'ok').slice(0, 32));
+        }
+
+        // T04-T18: server-side streaming
+        if (!stopped) {
+          var testResp = await fetch('/test-run', {
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:'token=' + encodeURIComponent(token)
+          });
+          if (!testResp.ok) { abort('T04', 'test-run server error'); return; }
+          var r2 = testResp.body.getReader();
+          var dec2 = new TextDecoder(), buf2 = '';
+          while (true) {
+            var ch2 = await r2.read();
+            if (ch2.done) break;
+            buf2 += dec2.decode(ch2.value, {stream:true});
+            var evts = buf2.split('\n\n');
+            buf2 = evts.pop();
+            for (var k = 0; k < evts.length; k++) {
+              var et = 'message', ed = '';
+              evts[k].split('\n').forEach(function(ln) {
+                if (ln.startsWith('event: ')) et = ln.slice(7).trim();
+                else if (ln.startsWith('data: ')) ed = ln.slice(6);
+              });
+              if (et === 'step') {
+                try { var d = JSON.parse(ed); setTestStatus(d.id, d.status, d.note || ''); } catch(e) {}
+              } else if (et === 'install') {
+                termAppendTest('tinstall-out', ed);
+              } else if (et === 'log') {
+                termAppendTest('tbundle-out', ed);
+              }
+            }
+          }
+        }
+      } catch(e) {
+        abort('T01', 'error: ' + e.message);
+      } finally {
+        _testsRunning = false;
+        btn.disabled = false;
+        btn.textContent = '\u25b6 Run';
+      }
+    }
   </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
 </html>'''
+
+
+@app.route('/bundle-meta/<token>')
+def bundle_meta(token):
+    with _token_lock:
+        info = _tokens.get(token)
+    if not info:
+        from flask import jsonify
+        return jsonify({'error': 'not found'}), 404
+    from flask import jsonify
+    return jsonify({'name': os.path.basename(info['path']),
+                    'package': info.get('package', '')})
+
+
+@app.route('/test-run', methods=['POST'])
+def test_run():
+    from flask import jsonify
+    token = request.form.get('token', '').strip()
+    with _token_lock:
+        info = _tokens.get(token)
+    if not info or not os.path.exists(info.get('path', '')):
+        return jsonify({'error': 'Bundle not found or expired'}), 404
+    zip_path = info['path']
+
+    @stream_with_context
+    def generate():
+        def step(tid, status, note=''):
+            return f'event: step\ndata: {_json.dumps({"id": tid, "status": status, "note": note})}\n\n'
+        def ilog(msg):
+            return f'event: install\ndata: {msg}\n\n'
+
+        all_ids = ['T04','T05','T06','T07','T08','T09','T10','T11','T12','T13','T14','T15','T16','T17','T18']
+
+        def skip_from(from_id, reason='skipped — prior step failed'):
+            idx = all_ids.index(from_id) if from_id in all_ids else 0
+            for tid in all_ids[idx:]:
+                yield step(tid, 'skip', reason)
+
+        tmpdir = tempfile.mkdtemp(prefix='ansible-testrun-')
+        try:
+            # T04: zip readable
+            yield step('T04', 'run')
+            try:
+                with zipfile.ZipFile(zip_path) as zf:
+                    names = zf.namelist()
+            except Exception as e:
+                yield step('T04', 'fail', str(e)[:60])
+                yield from skip_from('T05')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T04', 'pass', f'{len(names)} entries')
+
+            # T05: correct top-level dir
+            yield step('T05', 'run')
+            bundle_root = names[0].split('/')[0] if names else ''
+            if not bundle_root.endswith('-bundle'):
+                yield step('T05', 'fail', f'unexpected root: {bundle_root[:40]}')
+                yield from skip_from('T06')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T05', 'pass', bundle_root)
+
+            # T06: install.sh present
+            yield step('T06', 'run')
+            install_arc = f'{bundle_root}/install.sh'
+            if install_arc not in names:
+                yield step('T06', 'fail', 'install.sh missing')
+                yield from skip_from('T07')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T06', 'pass', 'found')
+
+            # T07: README.txt present
+            yield step('T07', 'run')
+            if f'{bundle_root}/README.txt' not in names:
+                yield step('T07', 'fail', 'README.txt missing')
+            else:
+                yield step('T07', 'pass', 'found')
+
+            # T08: collections/ dir
+            yield step('T08', 'run')
+            col_prefix = f'{bundle_root}/collections/'
+            col_entries = [n for n in names if n.startswith(col_prefix) and n.endswith('.tar.gz')]
+            if not col_entries:
+                yield step('T08', 'fail', 'collections/*.tar.gz not found')
+                yield from skip_from('T09')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T08', 'pass', f'{len(col_entries)} archives')
+
+            # T09: community.vmware archive present
+            yield step('T09', 'run')
+            vmware_arcs = [n for n in col_entries if 'community-vmware' in os.path.basename(n)]
+            if not vmware_arcs:
+                yield step('T09', 'fail', 'community-vmware-*.tar.gz not found')
+                yield from skip_from('T10')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T09', 'pass', os.path.basename(vmware_arcs[0]))
+
+            # T10: multiple archives (collection + deps)
+            yield step('T10', 'run')
+            if len(col_entries) > 1:
+                yield step('T10', 'pass', f'{len(col_entries)} archives (incl deps)')
+            else:
+                yield step('T10', 'fail', 'only 1 archive — deps may be missing')
+
+            # T11: extract zip
+            yield step('T11', 'run')
+            extract_dir = os.path.join(tmpdir, 'extracted')
+            os.makedirs(extract_dir, exist_ok=True)
+            r = subprocess.run(['unzip', '-q', zip_path, '-d', extract_dir],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                yield step('T11', 'fail', (r.stderr or r.stdout).strip()[:60])
+                yield from skip_from('T12')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T11', 'pass', 'ok')
+
+            bundle_dir = os.path.join(extract_dir, bundle_root)
+
+            # T12: install.sh is executable
+            yield step('T12', 'run')
+            with zipfile.ZipFile(zip_path) as zf:
+                zi = zf.getinfo(install_arc)
+                mode = (zi.external_attr >> 16) & 0o777
+            if mode & 0o111:
+                yield step('T12', 'pass', oct(mode))
+            else:
+                yield step('T12', 'fail', f'mode {oct(mode)} not executable')
+
+            # T13: install.sh contains ansible-galaxy install
+            yield step('T13', 'run')
+            install_content = open(os.path.join(bundle_dir, 'install.sh')).read()
+            if 'ansible-galaxy collection install' in install_content:
+                yield step('T13', 'pass', 'ansible-galaxy collection install found')
+            else:
+                yield step('T13', 'fail', 'install command missing from install.sh')
+
+            # T14: ansible-galaxy collection install from local archives
+            yield step('T14', 'run')
+            install_path = os.path.join(tmpdir, 'collections_installed')
+            os.makedirs(install_path, exist_ok=True)
+            col_files = sorted(
+                os.path.join(bundle_dir, 'collections', f)
+                for f in os.listdir(os.path.join(bundle_dir, 'collections'))
+                if f.endswith('.tar.gz')
+            )
+            cmd = ['ansible-galaxy', 'collection', 'install', '--offline',
+                   '-p', install_path] + col_files
+            yield ilog('$ ansible-galaxy collection install --offline -p <installpath> collections/*.tar.gz')
+            try:
+                r = subprocess.run(cmd, capture_output=True, text=True,
+                                   env={**os.environ, 'HOME': tmpdir}, timeout=120)
+            except subprocess.TimeoutExpired:
+                yield step('T14', 'fail', 'timed out (120s)')
+                yield from skip_from('T15')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            for ln in (r.stdout + r.stderr).strip().splitlines()[:20]:
+                yield ilog(f'  {ln}')
+            if r.returncode != 0:
+                yield step('T14', 'fail', f'exit {r.returncode}')
+                yield from skip_from('T15')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T14', 'pass', f'installed {len(col_files)} archives')
+
+            # T15: community.vmware dir exists
+            yield step('T15', 'run')
+            vmware_dir = os.path.join(install_path, 'ansible_collections', 'community', 'vmware')
+            if os.path.isdir(vmware_dir):
+                yield step('T15', 'pass', 'community/vmware/ found')
+            else:
+                yield step('T15', 'fail', 'community/vmware/ missing')
+                yield from skip_from('T16')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # T16: MANIFEST.json present
+            yield step('T16', 'run')
+            manifest_path = os.path.join(vmware_dir, 'MANIFEST.json')
+            if not os.path.exists(manifest_path):
+                yield step('T16', 'fail', 'MANIFEST.json missing')
+                yield from skip_from('T17')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T16', 'pass', 'found')
+
+            # T17: version in MANIFEST.json is semver
+            yield step('T17', 'run')
+            try:
+                manifest = _json.loads(open(manifest_path).read())
+                version = manifest.get('collection_info', {}).get('version', '')
+            except Exception:
+                version = ''
+            semver_m = re.search(r'\d+\.\d+\.\d+', version)
+            if semver_m:
+                yield step('T17', 'pass', version)
+            else:
+                yield step('T17', 'fail', f'no semver: {version[:40]}')
+
+            # T18: vmware_vm_info plugin file exists
+            yield step('T18', 'run')
+            vm_info = os.path.join(vmware_dir, 'plugins', 'modules', 'vmware_vm_info.py')
+            if os.path.exists(vm_info):
+                yield step('T18', 'pass', 'plugins/modules/vmware_vm_info.py found')
+            else:
+                yield step('T18', 'fail', 'vmware_vm_info.py not found')
+
+        except Exception as e:
+            import traceback
+            yield ilog(f'ERROR: {traceback.format_exc()[:200]}')
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+        yield 'event: done\ndata: ok\n\n'
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 
 @app.route('/')
