@@ -2,6 +2,7 @@ import datetime
 import json as _json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -9,6 +10,7 @@ import threading
 import time
 import uuid
 import zipfile
+from shlex import quote as _shlex_quote
 from flask import Flask, after_this_request, request, send_file, jsonify, Response, stream_with_context
 
 app = Flask(__name__)
@@ -381,6 +383,31 @@ HTML = r"""<!DOCTYPE html>
     .snav-btn.active{background:#1e293b;color:#f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,.4)}
     .snav-btn:hover:not(.active){color:#cbd5e1}
 
+    .pkg-snav{display:flex;gap:.35rem;margin-bottom:1.2rem;flex-wrap:wrap}
+    .pkg-snav-btn{background:rgba(15,23,42,.7);border:1px solid rgba(255,255,255,.08);
+                  color:#64748b;font-size:.72rem;font-weight:600;letter-spacing:.07em;
+                  text-transform:uppercase;padding:.3rem .75rem;border-radius:5px;
+                  cursor:pointer;transition:all .15s;width:auto;margin-top:0}
+    .pkg-snav-btn.active{background:#294172;border-color:#294172;color:#fff}
+
+    .test-row{display:grid;grid-template-columns:3rem 1fr auto;align-items:start;
+              gap:.5rem .75rem;padding:.55rem .2rem;border-bottom:1px solid rgba(255,255,255,.05)}
+    .test-row:last-child{border-bottom:none}
+    .test-id{font-size:.7rem;font-weight:700;color:#475569;font-family:monospace;padding-top:.15rem}
+    .test-name{font-size:.82rem;font-weight:600;color:#e2e8f0}
+    .test-desc{font-size:.72rem;color:#475569;margin-top:.15rem}
+    .test-detail{font-size:.7rem;color:#64748b;margin-top:.2rem;font-family:monospace;word-break:break-all}
+    .test-badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.07em;
+                text-transform:uppercase;padding:.18rem .5rem;border-radius:4px;
+                width:5.5rem;text-align:center;flex-shrink:0;margin-top:.1rem}
+    .test-badge.pending{background:rgba(100,116,139,.15);color:#64748b}
+    .test-badge.running{background:rgba(234,179,8,.15);color:#eab308;
+                        animation:pulse .8s ease-in-out infinite}
+    .test-badge.pass{background:rgba(34,197,94,.15);color:#22c55e}
+    .test-badge.fail{background:rgba(239,68,68,.15);color:#ef4444}
+    .test-badge.skip{background:rgba(100,116,139,.1);color:#475569}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
     .card{background:rgba(30,41,59,.7);border:1px solid rgba(255,255,255,.07);
           border-radius:14px;padding:2rem;width:100%;max-width:680px;backdrop-filter:blur(8px)}
     label{display:block;color:#94a3b8;font-size:.75rem;font-weight:700;
@@ -467,6 +494,7 @@ HTML = r"""<!DOCTYPE html>
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
     <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
+    <button class="snav-btn"        id="nav-tests"    onclick="setView('tests')">Test Cases</button>
   </div>
 
   <div id="view-bundle">
@@ -553,15 +581,73 @@ HTML = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="view-tests" style="display:none;width:100%;max-width:780px">
+    <div class="pkg-snav">
+      <button class="pkg-snav-btn active" id="tpkg-httpd"
+              onclick="selectTestPkg('httpd')">httpd</button>
+    </div>
+    <div style="color:#64748b;font-size:.8rem;margin-bottom:1.2rem;text-align:center">
+      Rocky Linux 9 &nbsp;·&nbsp; x86_64 &nbsp;·&nbsp; end-to-end bundle test
+    </div>
+    <div class="card" style="padding:1.2rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+        <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
+        <button id="run-btn" onclick="runTests()"
+                style="width:auto;margin:0;padding:.35rem 1.1rem;font-size:.8rem">&#9654; Run</button>
+      </div>
+      <div id="test-list"></div>
+      <div id="test-summary"
+           style="display:none;margin-top:1rem;padding:.65rem .85rem;border-radius:7px;
+                  font-size:.85rem;font-weight:600"></div>
+    </div>
+    <div id="test-log-wrap" style="display:none;margin-top:.75rem">
+      <div style="background:#1e2433;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                  display:flex;align-items:center;gap:.35rem;
+                  border:1px solid rgba(255,255,255,.07);border-bottom:none">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+        <span style="flex:1;text-align:center;font-size:.72rem;color:#64748b;
+                     font-family:monospace;margin-right:22px">build log</span>
+      </div>
+      <div id="test-log"
+           style="background:#0d1117;border:1px solid rgba(255,255,255,.07);
+                  border-radius:0 0 10px 10px;padding:.75rem 1rem;height:240px;
+                  overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                  font-size:.76rem;line-height:1.6;color:#c9d1d9;
+                  white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+    <div id="test-install-log-wrap" style="display:none;margin-top:.75rem">
+      <div style="background:#1a2438;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                  display:flex;align-items:center;gap:.35rem;
+                  border:1px solid rgba(41,65,114,.4);border-bottom:none">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+        <span style="flex:1;text-align:center;font-size:.72rem;color:#93c5fd;
+                     font-family:monospace;margin-right:22px">install test — isolated rpm root</span>
+      </div>
+      <div id="test-install-log"
+           style="background:#060d10;border:1px solid rgba(41,65,114,.25);
+                  border-radius:0 0 10px 10px;padding:.75rem 1rem;height:220px;
+                  overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                  font-size:.76rem;line-height:1.6;color:#93c5fd;
+                  white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+  </div>
+
   <script>
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
       document.getElementById('view-install').style.display  = v === 'install'  ? 'block' : 'none';
+      document.getElementById('view-tests').style.display    = v === 'tests'    ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
       document.getElementById('nav-install').classList.toggle('active',  v === 'install');
+      document.getElementById('nav-tests').classList.toggle('active',    v === 'tests');
       if (v === 'packages') renderPkgs();
+      if (v === 'tests') initTestList();
     }
 
     const PKGS = PACKAGES_JSON;
@@ -708,6 +794,349 @@ HTML = r"""<!DOCTYPE html>
     document.getElementById('pkg').addEventListener('keydown', e => {
       if (e.key === 'Enter') go();
     });
+
+    // ── Test Cases ────────────────────────────────────────────────────────────
+
+    const TEST_DEFS = [
+      { id:'T01', name:'Reject invalid package name',      desc:'POST with "!!bad!!" → 400 JSON error' },
+      { id:'T02', name:'Reject unknown distro',             desc:'POST with distro="windows-11" → 400 JSON error' },
+      { id:'T03', name:'Bundle request accepted',           desc:'POST → 200 text/event-stream' },
+      { id:'T04', name:'DNF download output in stream',    desc:'Stream contains "Downloading" or "Downloaded" line' },
+      { id:'T05', name:'Package .rpm files appear',         desc:'.rpm filename seen in stream output' },
+      { id:'T06', name:'ClamAV scan clean',                 desc:'No INFECTED line in stream' },
+      { id:'T07', name:'Bundle completes without error',   desc:'event:done received (not event:error)' },
+      { id:'T08', name:'Download token is valid',           desc:'event:done data matches UUID format' },
+      { id:'T09', name:'Bundle metadata endpoint responds', desc:'GET /bundle-meta/<token> → 200 JSON' },
+      { id:'T10', name:'Bundle filename is a .zip',         desc:'Metadata name field ends with .zip' },
+      { id:'T11', name:'Bundle size > 10 KB',               desc:'Metadata size field > 10,240 bytes' },
+      { id:'T12', name:'Zip extracts cleanly',              desc:'Server extracts bundle without error' },
+      { id:'T13', name:'install.sh present',                desc:'install.sh found in extracted bundle' },
+      { id:'T14', name:'.rpm files are valid',              desc:'rpm -qp passes on every .rpm' },
+      { id:'T15', name:'Target package .rpm present',       desc:'At least one .rpm named after the package' },
+      { id:'T16', name:'Packages extract into isolated root', desc:'rpm2cpio | cpio into fresh root succeeds' },
+      { id:'T17', name:'Package version readable',          desc:'rpm -qp --queryformat reads VERSION from .rpm' },
+      { id:'T18', name:'Package files present in root',     desc:'Files from package list exist in isolated root' },
+    ];
+
+    let activeTestPkg = 'httpd';
+    let testsRunning  = false;
+
+    function selectTestPkg(pkg) {
+      activeTestPkg = pkg;
+      document.querySelectorAll('.pkg-snav-btn').forEach(b => b.classList.remove('active'));
+      const el = document.getElementById('tpkg-' + pkg);
+      if (el) el.classList.add('active');
+      initTestList();
+    }
+
+    function setTestStatus(id, status, detail) {
+      const row = document.getElementById('trow-' + id);
+      if (!row) return;
+      const badge  = row.querySelector('.test-badge');
+      const detEl  = row.querySelector('.test-detail');
+      badge.className = 'test-badge ' + status;
+      const labels = { pending:'—', running:'running…', pass:'✓ PASS', fail:'✗ FAIL', skip:'SKIP' };
+      badge.textContent = labels[status] || status;
+      if (detEl && detail !== undefined) detEl.textContent = detail;
+    }
+
+    function appendTestLog(text) {
+      const log = document.getElementById('test-log');
+      if (!log) return;
+      log.textContent += text + '\n';
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function initTestList() {
+      const list = document.getElementById('test-list');
+      if (!list) return;
+      list.innerHTML = TEST_DEFS.map(t =>
+        '<div class="test-row" id="trow-' + t.id + '">' +
+          '<span class="test-id">' + t.id + '</span>' +
+          '<div><div class="test-name">' + t.name + '</div>' +
+              '<div class="test-desc">' + t.desc + '</div>' +
+              '<div class="test-detail"></div></div>' +
+          '<span class="test-badge pending">—</span>' +
+        '</div>'
+      ).join('');
+      const sumEl = document.getElementById('test-summary');
+      if (sumEl) sumEl.style.display = 'none';
+      const logEl = document.getElementById('test-log');
+      if (logEl) logEl.textContent = '';
+      const wrapEl = document.getElementById('test-log-wrap');
+      if (wrapEl) wrapEl.style.display = 'none';
+      const ilogEl = document.getElementById('test-install-log');
+      if (ilogEl) ilogEl.textContent = '';
+      const iwrapEl = document.getElementById('test-install-log-wrap');
+      if (iwrapEl) iwrapEl.style.display = 'none';
+      const btn = document.getElementById('run-btn');
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+    }
+
+    async function runTests() {
+      if (testsRunning) return;
+      testsRunning = true;
+
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running…';
+
+      initTestList();
+      document.getElementById('test-log-wrap').style.display = 'block';
+
+      const pkg    = activeTestPkg;
+      const distro = 'rocky-9';
+      const arch   = 'x86_64';
+      let passed = 0, failed = 0;
+      let stopped = false;
+
+      function pass(id, detail) { setTestStatus(id, 'pass', detail); passed++; }
+      function fail(id, detail) { setTestStatus(id, 'fail', detail); failed++; }
+      function skip(id, detail) { setTestStatus(id, 'skip', detail); }
+      function abort(fromId, reason) {
+        const all = TEST_DEFS.map(t => t.id);
+        const idx = all.indexOf(fromId);
+        if (idx >= 0) all.slice(idx).forEach(id => skip(id, reason || 'skipped — prior step failed'));
+        stopped = true;
+      }
+
+      // T01 — Reject invalid package name
+      setTestStatus('T01', 'running');
+      try {
+        const f = new FormData();
+        f.append('package', '!!bad!!');
+        f.append('distro', distro);
+        f.append('arch', arch);
+        const r = await fetch('/bundle', { method:'POST', body:f });
+        const j = await r.json().catch(() => null);
+        if (r.status === 400 && j && j.error) { pass('T01', 'HTTP 400 — ' + j.error); }
+        else { fail('T01', 'Expected 400, got HTTP ' + r.status); abort('T02'); }
+      } catch(e) { fail('T01', 'Network error: ' + e.message); abort('T02'); }
+
+      // T02 — Reject unknown distro
+      if (!stopped) {
+        setTestStatus('T02', 'running');
+        try {
+          const f = new FormData();
+          f.append('package', pkg);
+          f.append('distro', 'windows-11');
+          f.append('arch', arch);
+          const r = await fetch('/bundle', { method:'POST', body:f });
+          const j = await r.json().catch(() => null);
+          if (r.status === 400 && j && j.error) { pass('T02', 'HTTP 400 — ' + j.error); }
+          else { fail('T02', 'Expected 400, got HTTP ' + r.status); abort('T03'); }
+        } catch(e) { fail('T02', 'Network error: ' + e.message); abort('T03'); }
+      }
+
+      // T03–T08 — SSE bundle stream
+      let token = null;
+      if (!stopped) {
+        setTestStatus('T03', 'running');
+        setTestStatus('T04', 'running');
+        setTestStatus('T05', 'running');
+        setTestStatus('T06', 'running');
+        setTestStatus('T07', 'running');
+        setTestStatus('T08', 'running');
+
+        let streamFailed = false;
+        try {
+          const form = new FormData();
+          form.append('package', pkg);
+          form.append('distro', distro);
+          form.append('arch', arch);
+
+          const resp = await fetch('/bundle', { method:'POST', body:form });
+          const rct  = resp.headers.get('content-type') || '';
+
+          if (!resp.ok || !rct.includes('event-stream')) {
+            fail('T03', 'Expected 200 text/event-stream, got HTTP ' + resp.status);
+            abort('T04');
+            streamFailed = true;
+          } else {
+            pass('T03', 'HTTP 200 text/event-stream');
+
+            const reader = resp.body.getReader();
+            const dec = new TextDecoder();
+            let buf = '';
+            let T04done = false, T05done = false, T06done = false, streamDone = false;
+
+            while (!streamDone) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, { stream: true });
+
+              const blocks = buf.split('\n\n');
+              buf = blocks.pop();
+
+              for (const block of blocks) {
+                let evtType = '', evtData = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) evtType = line.slice(6).trim();
+                  else if (line.startsWith('data:')) evtData = line.slice(5).trim();
+                }
+
+                if (evtData) {
+                  appendTestLog(evtData);
+                  if (!T04done && /Downloading|Downloaded/i.test(evtData)) {
+                    T04done = true;
+                    pass('T04', 'DNF download detected in stream');
+                  }
+                  if (!T05done && evtData.includes('.rpm')) {
+                    T05done = true;
+                    pass('T05', '.rpm filename seen in stream');
+                  }
+                  if (!T06done && evtData.includes('INFECTED')) {
+                    T06done = true;
+                    fail('T06', evtData.slice(0, 80));
+                  }
+                }
+
+                if (evtType === 'done') {
+                  token = evtData;
+                  if (!T04done) { fail('T04', 'No DNF download output in stream'); streamFailed = true; }
+                  if (!T05done && !streamFailed) { fail('T05', 'No .rpm filename in stream'); streamFailed = true; }
+                  else if (!T05done) skip('T05', 'skipped — prior step failed');
+                  if (!T06done && !streamFailed) pass('T06', 'No INFECTED lines — scan clean');
+                  else if (!T06done) skip('T06', 'skipped — prior step failed');
+                  if (!streamFailed) {
+                    pass('T07', 'event:done received');
+                    if (/^[0-9a-f\-]{32,}$/i.test(token)) { pass('T08', token); }
+                    else { fail('T08', 'Unexpected format: ' + token); streamFailed = true; }
+                  } else {
+                    skip('T07', 'skipped — prior step failed');
+                    skip('T08', 'skipped — prior step failed');
+                    token = null;
+                  }
+                  streamDone = true;
+                  break;
+                }
+
+                if (evtType === 'error') {
+                  if (!T04done) fail('T04', 'Bundle failed');
+                  if (!T05done) skip('T05', 'Bundle failed');
+                  if (!T06done) skip('T06', 'Bundle failed');
+                  fail('T07', 'event:error — ' + evtData.slice(0, 80));
+                  skip('T08', 'skipped — prior step failed');
+                  streamFailed = true;
+                  streamDone = true;
+                  break;
+                }
+              }
+            }
+          }
+        } catch(e) {
+          fail('T03', 'Error: ' + e.message);
+          abort('T04');
+          streamFailed = true;
+        }
+
+        if (streamFailed) abort('T09');
+      }
+
+      // T09–T11 — Bundle metadata
+      if (!stopped && token) {
+        setTestStatus('T09', 'running');
+        setTestStatus('T10', 'running');
+        setTestStatus('T11', 'running');
+        try {
+          const mr = await fetch('/bundle-meta/' + token);
+          if (mr.ok) {
+            pass('T09', 'HTTP ' + mr.status);
+            const meta = await mr.json();
+            if (meta.name && meta.name.endsWith('.zip')) { pass('T10', meta.name); }
+            else { fail('T10', 'name: ' + (meta.name || '(none)')); abort('T11'); }
+            if (!stopped) {
+              meta.size > 10240
+                ? pass('T11', meta.size.toLocaleString() + ' bytes (' + (meta.size/1048576).toFixed(1) + ' MB)')
+                : (fail('T11', (meta.size || 0) + ' bytes — too small'), abort('T12'));
+            }
+          } else {
+            fail('T09', 'HTTP ' + mr.status);
+            abort('T10');
+          }
+        } catch(e) { fail('T09', e.message); abort('T10'); }
+      }
+
+      // T12–T18 — Install in isolated rpm root (server-side)
+      if (!stopped && token) {
+        ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => setTestStatus(id, 'running'));
+        document.getElementById('test-install-log-wrap').style.display = 'block';
+        const ilog = document.getElementById('test-install-log');
+        function appendInstallLog(text) {
+          ilog.textContent += text + '\n';
+          ilog.scrollTop = ilog.scrollHeight;
+        }
+
+        try {
+          const form2 = new FormData();
+          form2.append('token', token);
+          const ir = await fetch('/test-install', { method:'POST', body:form2 });
+          if (!ir.ok) {
+            ['T12','T13','T14','T15','T16','T17','T18'].forEach(id =>
+              fail(id, 'HTTP ' + ir.status));
+          } else {
+            const reader2 = ir.body.getReader();
+            const dec2 = new TextDecoder();
+            let ibuf = '';
+            while (true) {
+              const { done, value } = await reader2.read();
+              if (done) break;
+              ibuf += dec2.decode(value, { stream: true });
+              const blocks = ibuf.split('\n\n');
+              ibuf = blocks.pop();
+              for (const block of blocks) {
+                let et = '', ed = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) et = line.slice(6).trim();
+                  else if (line.startsWith('data:')) ed = line.slice(5).trim();
+                }
+                if (et === 'step') {
+                  try {
+                    const s = JSON.parse(ed);
+                    setTestStatus(s.test, s.status, s.detail || '');
+                    if (s.status === 'pass') passed++;
+                    else if (s.status === 'fail') failed++;
+                  } catch(_) {}
+                } else if (et === 'log' && ed) {
+                  appendInstallLog(ed);
+                } else if (et === 'error') {
+                  ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+                    const row = document.getElementById('trow-' + id);
+                    if (row && row.querySelector('.test-badge').classList.contains('running'))
+                      skip(id, 'aborted: ' + ed.slice(0, 60));
+                  });
+                  appendInstallLog('ERROR: ' + ed);
+                }
+              }
+            }
+          }
+        } catch(e) {
+          ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+            const row = document.getElementById('trow-' + id);
+            if (row && row.querySelector('.test-badge').classList.contains('running'))
+              fail(id, 'Error: ' + e.message);
+          });
+        }
+      }
+
+      // Summary
+      const sumEl = document.getElementById('test-summary');
+      sumEl.style.display = 'block';
+      if (failed === 0 && passed > 0) {
+        sumEl.style.background = 'rgba(34,197,94,.12)';
+        sumEl.style.color = '#86efac';
+        sumEl.style.border = '1px solid rgba(34,197,94,.25)';
+        sumEl.textContent = '✓ All ' + passed + ' tests passed';
+      } else {
+        sumEl.style.background = 'rgba(239,68,68,.12)';
+        sumEl.style.color = '#fca5a5';
+        sumEl.style.border = '1px solid rgba(239,68,68,.25)';
+        sumEl.textContent = passed + ' passed · ' + failed + ' failed';
+      }
+      btn.disabled = false;
+      btn.textContent = '↺ Re-run';
+      testsRunning = false;
+    }
   </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
@@ -897,6 +1326,191 @@ def download(token):
         as_attachment=True,
         download_name=info['name'],
     )
+
+
+@app.route('/bundle-meta/<token>')
+def bundle_meta(token):
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return jsonify({'error': 'not found'}), 404
+    size = 0
+    try:
+        size = os.path.getsize(info['path'])
+    except Exception:
+        pass
+    return jsonify({'name': info.get('name', ''), 'size': size})
+
+
+@app.route('/test-install', methods=['POST'])
+def test_install():
+    """Run install-verification tests against a pending bundle in an isolated rpm root."""
+    token = request.form.get('token', '').strip()
+
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return Response('event: error\ndata: Bundle not found or expired\n\n',
+                        mimetype='text/event-stream')
+
+    @stream_with_context
+    def generate():
+        import zipfile as _zip
+
+        work = tempfile.mkdtemp(prefix='rpminsttest_')
+        try:
+            zip_path = info['path']
+            pkg_name = info.get('package', '')
+
+            def step(test, status, detail=''):
+                entry = _json.dumps({'test': test, 'status': status, 'detail': detail})
+                return 'event: step\ndata: ' + entry + '\n\n'
+
+            def log(msg):
+                return 'event: log\ndata: ' + msg + '\n\n'
+
+            # ── T12: Extract zip ─────────────────────────────────────────────
+            extract_dir = os.path.join(work, 'extracted')
+            rpm_files = []
+            try:
+                with _zip.ZipFile(zip_path) as zf:
+                    zf.extractall(extract_dir)
+                for root_d, _, files in os.walk(extract_dir):
+                    for f in files:
+                        if f.endswith('.rpm'):
+                            rpm_files.append(os.path.join(root_d, f))
+                yield step('T12', 'pass',
+                           f'Extracted {len(rpm_files)} .rpm file(s) + ancillary files')
+            except Exception as e:
+                yield step('T12', 'fail', str(e))
+                yield 'event: error\ndata: extraction failed\n\n'
+                return
+
+            # ── T13: install.sh present ──────────────────────────────────────
+            install_sh = None
+            for root_d, _, files in os.walk(extract_dir):
+                if 'install.sh' in files:
+                    install_sh = os.path.join(root_d, 'install.sh')
+                    break
+            if install_sh:
+                yield step('T13', 'pass', 'install.sh found')
+            else:
+                yield step('T13', 'fail', 'install.sh not found in bundle')
+                for tid in ['T14','T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T14: .rpm files valid ────────────────────────────────────────
+            if not rpm_files:
+                yield step('T14', 'fail', 'No .rpm files in bundle')
+                for tid in ['T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            all_valid = True
+            for rf in rpm_files:
+                r = subprocess.run(['rpm', '-qp', '--nosignature', rf],
+                                   capture_output=True, text=True)
+                if r.returncode != 0:
+                    all_valid = False
+                    yield log(f'FAILED: {os.path.basename(rf)}: {r.stderr.strip()}')
+                else:
+                    yield log(f'OK: {r.stdout.strip()}')
+            if all_valid:
+                yield step('T14', 'pass', f'{len(rpm_files)} .rpm file(s) valid')
+            else:
+                yield step('T14', 'fail', 'Some .rpm files failed rpm -qp check')
+                for tid in ['T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T15: Target package .rpm present ────────────────────────────
+            target_rpms = [f for f in rpm_files if pkg_name in os.path.basename(f)]
+            if target_rpms:
+                yield step('T15', 'pass', os.path.basename(target_rpms[0]))
+            else:
+                yield step('T15', 'fail', f'No .rpm file matching "{pkg_name}"')
+                for tid in ['T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T16: Extract all rpms into isolated root ─────────────────────
+            extract_root = os.path.join(work, 'extract_root')
+            os.makedirs(extract_root, exist_ok=True)
+            failed_extracts = []
+            for rf in rpm_files:
+                r = subprocess.run(
+                    f'rpm2cpio {_shlex_quote(rf)} | cpio -idm --quiet',
+                    shell=True, capture_output=True, text=True,
+                    cwd=extract_root,
+                )
+                if r.returncode != 0:
+                    yield log(f'FAILED: {os.path.basename(rf)}: {r.stderr.strip()[:120]}')
+                    failed_extracts.append(rf)
+                else:
+                    yield log(f'OK: {os.path.basename(rf)}')
+
+            primary_failed = any(pkg_name in os.path.basename(d) for d in failed_extracts)
+            if primary_failed:
+                yield step('T16', 'fail', f'Primary package failed to extract: {pkg_name}')
+                for tid in ['T17', 'T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            else:
+                n = len(failed_extracts)
+                detail = (f'All {len(rpm_files)} RPMs extracted to isolated root'
+                          if n == 0 else
+                          f'Primary OK; {n} dep(s) failed extraction')
+                yield step('T16', 'pass', detail)
+
+            # ── T17: Package version readable ────────────────────────────────
+            primary_rpm = target_rpms[0]
+            ver_r = subprocess.run(
+                ['rpm', '-qp', '--nosignature', '--queryformat', '%{VERSION}\n', primary_rpm],
+                capture_output=True, text=True,
+            )
+            if ver_r.returncode == 0 and ver_r.stdout.strip():
+                yield step('T17', 'pass', f'Version: {ver_r.stdout.strip()}')
+            else:
+                yield step('T17', 'fail', 'Could not read VERSION from rpm metadata')
+                yield step('T18', 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T18: Package files present in isolated root ──────────────────
+            list_r = subprocess.run(
+                ['rpm', '-qp', '--nosignature', '--list', primary_rpm],
+                capture_output=True, text=True,
+            )
+            if list_r.returncode == 0:
+                all_files = [p.lstrip('/') for p in list_r.stdout.splitlines()
+                             if p and not p.endswith('/')]
+                found = [p for p in all_files
+                         if os.path.exists(os.path.join(extract_root, p))]
+                if found:
+                    yield step('T18', 'pass',
+                               f'{len(found)}/{len(all_files)} files on disk — e.g. /{found[0]}')
+                else:
+                    yield step('T18', 'fail', 'No files from primary package found in isolated root')
+            else:
+                yield step('T18', 'fail', 'rpm -qp --list failed')
+
+            yield 'event: done\ndata: ok\n\n'
+
+        except Exception as e:
+            yield f'event: error\ndata: {e}\n\n'
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+            with _bundles_lock:
+                _bundles.pop(token, None)
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 FROM fedora:41
 
 # Install dnf plugins (for dnf download) + Flask
-RUN dnf install -y dnf-plugins-core python3 python3-pip && \
+RUN dnf install -y dnf-plugins-core python3 python3-pip cpio && \
     pip3 install flask clamd && \
     dnf clean all
 
