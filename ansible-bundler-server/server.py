@@ -485,10 +485,7 @@ PAGE = r'''<!doctype html>
 
   <div id="view-tests" style="display:none;width:100%;max-width:780px">
     <div class="card" style="max-width:none">
-      <div class="pkg-snav">
-        <button class="pkg-snav-btn active" data-col="community.vmware"
-                onclick="selectTestCol('community.vmware')">community.vmware</button>
-      </div>
+      <div class="pkg-snav" id="test-pkg-snav"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
         <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
         <button id="run-btn" onclick="runTests()"
@@ -525,7 +522,7 @@ PAGE = r'''<!doctype html>
         document.getElementById('nav-' + n).classList.toggle('active', n === v);
       });
       if (v === 'packages' && !document.getElementById('pkg-list').children.length) renderPkgs('');
-      if (v === 'tests') initTestList();
+      if (v === 'tests') { renderTestPkgSnav(); initTestList(); }
     }
 
     function renderPkgs(q) {
@@ -644,28 +641,38 @@ PAGE = r'''<!doctype html>
       {id:'T02', desc:'SSE stream ends with __DONE__:token'},
       {id:'T03', desc:'GET /bundle-meta/:token returns 200'},
       {id:'T04', desc:'Zip opens without error'},
-      {id:'T05', desc:'Root dir matches community-vmware-bundle'},
+      {id:'T05', desc:'Root dir matches <collection>-bundle pattern'},
       {id:'T06', desc:'install.sh is a zip member'},
       {id:'T07', desc:'README.txt is a zip member'},
       {id:'T08', desc:'collections/ directory present in zip'},
-      {id:'T09', desc:'community.vmware .tar.gz in collections/'},
+      {id:'T09', desc:'Collection .tar.gz archive in collections/'},
       {id:'T10', desc:'Multiple archives present (collection + deps)'},
       {id:'T11', desc:'unzip extracts successfully'},
       {id:'T12', desc:'install.sh has +x permission in zip'},
       {id:'T13', desc:'install.sh contains ansible-galaxy install command'},
-      {id:'T14', desc:'ansible-galaxy collection install from local .tar.gz exits 0'},
-      {id:'T15', desc:'community.vmware dir exists in installed path'},
+      {id:'T14', desc:'ansible-galaxy collection install --offline exits 0'},
+      {id:'T15', desc:'Collection dir exists in installed path'},
       {id:'T16', desc:'MANIFEST.json present in installed collection'},
-      {id:'T17', desc:'collection version in MANIFEST.json is semver'},
-      {id:'T18', desc:'vmware_vm_info plugin file exists in collection'},
+      {id:'T17', desc:'Collection version in MANIFEST.json is semver'},
+      {id:'T18', desc:'Plugin files present in collection plugins/'},
     ];
 
     var _testCol = 'community.vmware';
     var _testsRunning = false;
 
+    function renderTestPkgSnav() {
+      var snav = document.getElementById('test-pkg-snav');
+      if (!snav) return;
+      snav.innerHTML = COLS.map(function(c) {
+        return '<button class="pkg-snav-btn' + (c.name === _testCol ? ' active' : '') + '" ' +
+               'data-col="' + c.name + '" onclick="selectTestCol(this.dataset.col)">' +
+               c.name + '</button>';
+      }).join('');
+    }
+
     function selectTestCol(col) {
       _testCol = col;
-      document.querySelectorAll('.pkg-snav-btn').forEach(function(b) {
+      document.querySelectorAll('#test-pkg-snav .pkg-snav-btn').forEach(function(b) {
         b.classList.toggle('active', b.dataset.col === col);
       });
       initTestList();
@@ -840,6 +847,11 @@ def test_run():
     if not info or not os.path.exists(info.get('path', '')):
         return jsonify({'error': 'Bundle not found or expired'}), 404
     zip_path = info['path']
+    collection = info.get('package', '')
+    col_parts = collection.split('.', 1)
+    col_namespace = col_parts[0] if len(col_parts) > 0 else ''
+    col_name_part = col_parts[1] if len(col_parts) > 1 else ''
+    col_archive_prefix = collection.replace('.', '-') + '-'
 
     @stream_with_context
     def generate():
@@ -872,7 +884,8 @@ def test_run():
             # T05: correct top-level dir
             yield step('T05', 'run')
             bundle_root = names[0].split('/')[0] if names else ''
-            if not bundle_root.endswith('-bundle'):
+            expected_root = collection.replace('.', '-') + '-bundle'
+            if bundle_root != expected_root:
                 yield step('T05', 'fail', f'unexpected root: {bundle_root[:40]}')
                 yield from skip_from('T06')
                 yield 'event: done\ndata: ok\n\n'
@@ -907,15 +920,15 @@ def test_run():
                 return
             yield step('T08', 'pass', f'{len(col_entries)} archives')
 
-            # T09: community.vmware archive present
+            # T09: collection archive present
             yield step('T09', 'run')
-            vmware_arcs = [n for n in col_entries if 'community-vmware' in os.path.basename(n)]
-            if not vmware_arcs:
-                yield step('T09', 'fail', 'community-vmware-*.tar.gz not found')
+            col_arcs = [n for n in col_entries if os.path.basename(n).startswith(col_archive_prefix)]
+            if not col_arcs:
+                yield step('T09', 'fail', f'{col_archive_prefix}*.tar.gz not found')
                 yield from skip_from('T10')
                 yield 'event: done\ndata: ok\n\n'
                 return
-            yield step('T09', 'pass', os.path.basename(vmware_arcs[0]))
+            yield step('T09', 'pass', os.path.basename(col_arcs[0]))
 
             # T10: multiple archives (collection + deps)
             yield step('T10', 'run')
@@ -986,20 +999,20 @@ def test_run():
                 return
             yield step('T14', 'pass', f'installed {len(col_files)} archives')
 
-            # T15: community.vmware dir exists
+            # T15: collection dir exists
             yield step('T15', 'run')
-            vmware_dir = os.path.join(install_path, 'ansible_collections', 'community', 'vmware')
-            if os.path.isdir(vmware_dir):
-                yield step('T15', 'pass', 'community/vmware/ found')
+            col_dir = os.path.join(install_path, 'ansible_collections', col_namespace, col_name_part)
+            if os.path.isdir(col_dir):
+                yield step('T15', 'pass', f'{col_namespace}/{col_name_part}/ found')
             else:
-                yield step('T15', 'fail', 'community/vmware/ missing')
+                yield step('T15', 'fail', f'{col_namespace}/{col_name_part}/ missing')
                 yield from skip_from('T16')
                 yield 'event: done\ndata: ok\n\n'
                 return
 
             # T16: MANIFEST.json present
             yield step('T16', 'run')
-            manifest_path = os.path.join(vmware_dir, 'MANIFEST.json')
+            manifest_path = os.path.join(col_dir, 'MANIFEST.json')
             if not os.path.exists(manifest_path):
                 yield step('T16', 'fail', 'MANIFEST.json missing')
                 yield from skip_from('T17')
@@ -1020,13 +1033,19 @@ def test_run():
             else:
                 yield step('T17', 'fail', f'no semver: {version[:40]}')
 
-            # T18: vmware_vm_info plugin file exists
+            # T18: plugin files exist in collection
             yield step('T18', 'run')
-            vm_info = os.path.join(vmware_dir, 'plugins', 'modules', 'vmware_vm_info.py')
-            if os.path.exists(vm_info):
-                yield step('T18', 'pass', 'plugins/modules/vmware_vm_info.py found')
+            plugins_dir = os.path.join(col_dir, 'plugins')
+            if os.path.isdir(plugins_dir):
+                py_files = []
+                for _r, _d, _fs in os.walk(plugins_dir):
+                    py_files.extend(f for f in _fs if f.endswith('.py'))
+                if py_files:
+                    yield step('T18', 'pass', f'{len(py_files)} plugin file(s) in plugins/')
+                else:
+                    yield step('T18', 'fail', 'no .py files in plugins/')
             else:
-                yield step('T18', 'fail', 'vmware_vm_info.py not found')
+                yield step('T18', 'fail', 'plugins/ dir not found')
 
         except Exception as e:
             import traceback
