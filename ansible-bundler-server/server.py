@@ -384,7 +384,7 @@ PAGE = r'''<!doctype html>
 
     function setView(v) {
       ['bundle','packages','install'].forEach(n => {
-        document.getElementById('view-' + n).style.display = n === v ? '' : 'none';
+        document.getElementById('view-' + n).style.display = n === v ? 'block' : 'none';
         document.getElementById('nav-' + n).classList.toggle('active', n === v);
       });
       if (v === 'packages' && !document.getElementById('pkg-list').children.length) renderPkgs('');
