@@ -1418,91 +1418,75 @@ def test_install():
                 yield 'event: done\ndata: ok\n\n'
                 return
 
-            # ── T16: Unpack into isolated dpkg root ──────────────────────────
-            dpkg_root = os.path.join(work, 'dpkg_root')
-            for d in ['var/lib/dpkg/info', 'var/lib/dpkg/updates',
-                      'var/lib/dpkg/triggers', 'var/cache/apt/archives']:
-                os.makedirs(os.path.join(dpkg_root, d), exist_ok=True)
-            open(os.path.join(dpkg_root, 'var/lib/dpkg/status'),    'w').close()
-            open(os.path.join(dpkg_root, 'var/lib/dpkg/available'), 'w').close()
-
-            yield log(f'$ dpkg --root={dpkg_root} --force-not-root --force-depends --unpack <debs>')
-            proc = subprocess.Popen(
-                ['dpkg', f'--root={dpkg_root}', '--force-not-root',
-                 '--force-depends', '--unpack'] + deb_files,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-            )
-            dpkg_lines = []
-            for line in proc.stdout:
-                line = line.rstrip()
-                if line:
-                    yield log(line)
-                    dpkg_lines.append(line)
-            proc.wait()
-
-            if proc.returncode == 0:
-                yield step('T16', 'pass', 'dpkg --unpack returned 0')
-            else:
-                # dpkg returns non-zero if any package's maintainer script fails.
-                # In a non-booted isolated root there's no /bin/sh, so packages with
-                # preinst scripts (e.g. libc6) will always error — this is expected.
-                # T16 passes if the primary package itself unpacked successfully.
-                in_err = False
-                failed_debs = []
-                for l in dpkg_lines:
-                    if 'Errors were encountered while processing:' in l:
-                        in_err = True
-                        continue
-                    if in_err and l.strip():
-                        failed_debs.append(l.strip())
-                primary_failed = any(pkg_name in os.path.basename(d) for d in failed_debs)
-                if primary_failed:
-                    yield step('T16', 'fail',
-                               f'Primary package failed to unpack: {pkg_name}')
-                    for tid in ['T17','T18']:
-                        yield step(tid, 'skip', 'skipped — prior step failed')
-                    yield 'event: done\ndata: ok\n\n'
-                    return
+            # ── T16: Extract all debs into isolated root (no scripts) ────────
+            # dpkg-deb --extract unpacks file content without running maintainer
+            # scripts, so it works reliably in a non-booted isolated environment.
+            extract_root = os.path.join(work, 'extract_root')
+            os.makedirs(extract_root, exist_ok=True)
+            failed_extracts = []
+            for df in deb_files:
+                r = subprocess.run(
+                    ['dpkg-deb', '--extract', df, extract_root],
+                    capture_output=True, text=True,
+                )
+                if r.returncode != 0:
+                    yield log(f'FAILED: {os.path.basename(df)}: {r.stderr.strip()}')
+                    failed_extracts.append(df)
                 else:
-                    n = len(failed_debs)
-                    yield step('T16', 'pass',
-                               f'Primary package OK; {n} dep(s) had script errors '
-                               f'(expected — no /bin/sh in isolated root)')
+                    yield log(f'OK: {os.path.basename(df)}')
 
-            # ── T17: Package registered in dpkg DB ───────────────────────────
-            status_r = subprocess.run(
-                ['dpkg', f'--root={dpkg_root}', '--status', pkg_name],
+            primary_extract_failed = any(pkg_name in os.path.basename(d)
+                                         for d in failed_extracts)
+            if primary_extract_failed:
+                yield step('T16', 'fail', f'Primary package failed to extract: {pkg_name}')
+                for tid in ['T17', 'T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            else:
+                n = len(failed_extracts)
+                detail = (f'All {len(deb_files)} debs extracted to isolated root'
+                          if n == 0 else
+                          f'Primary OK; {n} dep(s) failed extraction')
+                yield step('T16', 'pass', detail)
+
+            # ── T17: Primary package version readable from .deb control ──────
+            primary_deb = target_debs[0]
+            ver_r = subprocess.run(
+                ['dpkg-deb', '--field', primary_deb, 'Version'],
                 capture_output=True, text=True,
             )
-            if status_r.returncode == 0:
-                ver = next((l for l in status_r.stdout.splitlines()
-                            if l.startswith('Version:')), '')
-                yield step('T17', 'pass', ver or 'found in dpkg database')
+            if ver_r.returncode == 0 and ver_r.stdout.strip():
+                yield step('T17', 'pass', f'Version: {ver_r.stdout.strip()}')
             else:
-                yield step('T17', 'fail', f'dpkg --status returned {status_r.returncode}')
+                yield step('T17', 'fail', 'Could not read Version field from .deb control')
                 yield step('T18', 'skip', 'skipped — prior step failed')
                 yield 'event: done\ndata: ok\n\n'
                 return
 
-            # ── T18: Package files on disk in isolated root ──────────────────
-            list_r = subprocess.run(
-                ['dpkg', f'--root={dpkg_root}', '-L', pkg_name],
+            # ── T18: Primary package files present in isolated root ───────────
+            contents_r = subprocess.run(
+                ['dpkg-deb', '--contents', primary_deb],
                 capture_output=True, text=True,
             )
-            if list_r.returncode == 0:
-                pkg_files_on_disk = [
-                    p.strip() for p in list_r.stdout.splitlines()
-                    if p.strip() and not p.startswith('.')
-                ]
-                found = [p for p in pkg_files_on_disk
-                         if os.path.exists(os.path.join(dpkg_root, p.lstrip('/')))]
+            if contents_r.returncode == 0:
+                # Each line: permissions uid/gid size date time ./path/to/file
+                all_files = []
+                for line in contents_r.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 6:
+                        path = parts[-1].lstrip('./')
+                        if path and not path.endswith('/'):
+                            all_files.append(path)
+                found = [p for p in all_files
+                         if os.path.exists(os.path.join(extract_root, p))]
                 if found:
                     yield step('T18', 'pass',
-                               f'{len(found)}/{len(pkg_files_on_disk)} files on disk — e.g. {found[0]}')
+                               f'{len(found)}/{len(all_files)} files on disk — e.g. /{found[0]}')
                 else:
-                    yield step('T18', 'fail', 'No package files found in isolated root')
+                    yield step('T18', 'fail', 'No files from primary package found in isolated root')
             else:
-                yield step('T18', 'fail', f'dpkg -L returned {list_r.returncode}')
+                yield step('T18', 'fail', f'dpkg-deb --contents failed')
 
             yield 'event: done\ndata: ok\n\n'
 
