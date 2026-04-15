@@ -308,7 +308,7 @@ const HTML = `<!DOCTYPE html>
 
     /* form card */
     .card{background:rgba(30,41,59,.7);border:1px solid rgba(255,255,255,.07);
-          border-radius:14px;padding:2rem;width:100%;max-width:560px;backdrop-filter:blur(8px)}
+          border-radius:14px;padding:2rem;width:100%;max-width:680px;backdrop-filter:blur(8px)}
     label{display:block;color:#94a3b8;font-size:.75rem;font-weight:700;
           letter-spacing:.07em;text-transform:uppercase;margin-bottom:.4rem;margin-top:1.3rem}
     label:first-of-type{margin-top:0}
