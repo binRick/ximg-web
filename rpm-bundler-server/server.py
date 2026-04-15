@@ -61,6 +61,28 @@ DISTROS = {
             'appstream': 'https://mirror.stream.centos.org/9-stream/AppStream/{arch}/os/',
         },
     },
+    'centos-stream-10': {
+        'label': 'CentOS Stream 10',
+        'repos': {
+            'baseos':    'https://mirror.stream.centos.org/10-stream/BaseOS/{arch}/os/',
+            'appstream': 'https://mirror.stream.centos.org/10-stream/AppStream/{arch}/os/',
+        },
+    },
+    'centos-8': {
+        'label': 'CentOS 8 (EOL — vault)',
+        'repos': {
+            'baseos':    'https://vault.centos.org/centos/8/BaseOS/{arch}/os/',
+            'appstream': 'https://vault.centos.org/centos/8/AppStream/{arch}/os/',
+        },
+    },
+    'centos-7': {
+        'label': 'CentOS 7 (EOL — vault)',
+        'repos': {
+            'base':    'https://vault.centos.org/centos/7/os/{arch}/',
+            'updates': 'https://vault.centos.org/centos/7/updates/{arch}/',
+            'extras':  'https://vault.centos.org/centos/7/extras/{arch}/',
+        },
+    },
 }
 
 ARCHES = {
@@ -385,7 +407,7 @@ HTML = r"""<!DOCTYPE html>
 
   <div class="snav">
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
-    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Packages</button>
+    <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
   </div>
 
   <div id="view-bundle">
@@ -403,6 +425,9 @@ HTML = r"""<!DOCTYPE html>
         <option value="rocky-8">Rocky Linux 8</option>
         <option value="alma-9">AlmaLinux 9</option>
         <option value="centos-stream-9">CentOS Stream 9</option>
+        <option value="centos-stream-10">CentOS Stream 10</option>
+        <option value="centos-8">CentOS 8 (EOL)</option>
+        <option value="centos-7">CentOS 7 (EOL)</option>
       </select>
 
       <label for="arch">Architecture</label>
