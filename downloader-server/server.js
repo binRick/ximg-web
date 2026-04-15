@@ -362,8 +362,11 @@ const server = http.createServer((req, res) => {
     const host = (req.headers['x-forwarded-host'] || req.headers['host'] || '').split(':')[0];
     const showNav = host === 'dockerimagedownloader.ximg.app';
     const navScript = showNav ? '<script src="/shared/nav.js?v=2"></script>' : '';
+    const isDockerImageDev = host === 'dockerimage.dev' || host === 'www.dockerimage.dev';
+    const xref = isDockerImageDev ? '' : ' &mdash; also check out <a href="https://dockerimage.dev/" target="_blank" rel="noopener" style="color:#38bdf8;text-decoration:none">dockerimage.dev</a>';
     const html = fs.readFileSync(path.join(__dirname, 'page.html'), 'utf8')
-      .replace('%%NAV_SCRIPT%%', navScript);
+      .replace('%%NAV_SCRIPT%%', navScript)
+      .replace('%%XREF%%', xref);
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
     return;
