@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline Bundlers — What &amp; Why | ximg.app</title>
+  <meta name="description" content="Learn what offline package bundlers are, why they matter, and how to use them for air-gapped servers, corporate firewalls, and reproducible deployments.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07080f;
+      --bg2:      #0d0f1a;
+      --border:   rgba(255,255,255,.07);
+      --text:     #c8cde8;
+      --muted:    #5a5f7a;
+      --accent:   #7c3aed;
+      --accent2:  #a78bfa;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    #nav-spacer { height: 40px; }
+
+    /* ── Particles canvas ── */
+    #particles {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .35;
+    }
+
+    section, .hero-wrap { position: relative; z-index: 1; }
+
+    /* ════════════════════════════════════════
+       HERO
+    ════════════════════════════════════════ */
+    .hero-wrap {
+      padding: 64px 24px 72px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,.13) 0%, transparent 70%);
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(124,58,237,.4);
+      border-radius: 999px;
+      padding: 5px 16px;
+      font-size: 11px; font-weight: 600; letter-spacing: .12em;
+      color: var(--accent2);
+      background: rgba(124,58,237,.08);
+      margin-bottom: 28px;
+      text-transform: uppercase;
+    }
+    .hero-badge::before { content: '📦'; font-size: 13px; }
+
+    .hero-wrap h1 {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    .hero-wrap h1 .grad {
+      background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #34d399 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      max-width: 640px; margin: 0 auto 36px;
+      font-size: 1.15rem; color: #8892b0; line-height: 1.7;
+    }
+
+    .hero-problem {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: rgba(239,68,68,.07);
+      border: 1px solid rgba(239,68,68,.25);
+      border-radius: 12px;
+      padding: 14px 24px;
+      font-size: .95rem; color: #fca5a5;
+    }
+    .hero-problem::before { content: '⚠️'; font-size: 1.1rem; }
+
+    /* ════════════════════════════════════════
+       SECTION COMMON
+    ════════════════════════════════════════ */
+    .section {
+      max-width: 1100px; margin: 0 auto;
+      padding: 64px 24px;
+    }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .15em;
+      color: var(--accent2); text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700; color: #fff;
+      letter-spacing: -.02em;
+      margin-bottom: 12px;
+    }
+
+    .section-sub {
+      color: var(--muted); font-size: 1rem;
+      margin-bottom: 48px; max-width: 560px;
+    }
+
+    /* ════════════════════════════════════════
+       PAIN POINTS
+    ════════════════════════════════════════ */
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .pain-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      transition: border-color .2s, transform .2s;
+    }
+    .pain-card:hover {
+      border-color: rgba(124,58,237,.3);
+      transform: translateY(-2px);
+    }
+
+    .pain-icon {
+      font-size: 2rem; margin-bottom: 12px;
+      display: block;
+    }
+
+    .pain-card h3 {
+      font-size: 1rem; font-weight: 600; color: #e2e8f0;
+      margin-bottom: 8px;
+    }
+    .pain-card p { font-size: .88rem; color: var(--muted); line-height: 1.6; }
+
+    /* ════════════════════════════════════════
+       HOW IT WORKS
+    ════════════════════════════════════════ */
+    .how-bg {
+      background: linear-gradient(180deg, transparent 0%, rgba(124,58,237,.04) 50%, transparent 100%);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .steps {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+      padding: 0 24px;
+      position: relative;
+    }
+
+    .step-num {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #6025c0);
+      color: #fff; font-size: 1.2rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 0 24px rgba(124,58,237,.4);
+    }
+
+    .step h3 { font-size: 1rem; font-weight: 600; color: #e2e8f0; margin-bottom: 8px; }
+    .step p  { font-size: .85rem; color: var(--muted); }
+    .step code {
+      background: rgba(124,58,237,.15);
+      border: 1px solid rgba(124,58,237,.25);
+      border-radius: 4px; padding: 1px 6px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: .82rem; color: var(--accent2);
+    }
+
+    .step-connector {
+      padding-top: 24px;
+      font-size: 1.4rem; color: var(--muted);
+      flex-shrink: 0; align-self: flex-start;
+    }
+
+    @media (max-width: 680px) {
+      .steps { flex-direction: column; align-items: center; }
+      .step-connector { transform: rotate(90deg); padding: 0; margin: 8px 0; }
+    }
+
+    /* ════════════════════════════════════════
+       BUNDLER CARDS
+    ════════════════════════════════════════ */
+    .bundlers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .bcard {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      text-decoration: none;
+      color: inherit;
+      display: flex; flex-direction: column;
+      transition: border-color .2s, transform .25s, box-shadow .25s;
+      position: relative; overflow: hidden;
+    }
+
+    .bcard::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--card-accent, #7c3aed);
+      opacity: 0; transition: opacity .2s;
+    }
+
+    .bcard:hover {
+      border-color: var(--card-accent, rgba(124,58,237,.4));
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.4);
+    }
+    .bcard:hover::before { opacity: 1; }
+
+    .bcard-logo {
+      width: 56px; height: 56px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px; padding: 8px;
+      flex-shrink: 0;
+    }
+    .bcard-logo img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+    }
+
+    .bcard-top {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 10px;
+    }
+
+    .bcard-name {
+      font-size: 1.1rem; font-weight: 700; color: #f0f4ff;
+    }
+
+    .bcard-pkg {
+      font-size: .75rem; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--card-accent, var(--accent2));
+      background: color-mix(in srgb, var(--card-accent, var(--accent)) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 25%, transparent);
+      border-radius: 999px;
+      padding: 2px 10px; margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .bcard-desc {
+      font-size: .87rem; color: #6b7595; line-height: 1.65;
+      flex: 1;
+    }
+
+    .bcard-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 20px;
+      font-size: .85rem; font-weight: 600;
+      color: var(--card-accent, var(--accent2));
+      border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 35%, transparent);
+      border-radius: 8px; padding: 7px 16px;
+      background: color-mix(in srgb, var(--card-accent, var(--accent)) 8%, transparent);
+      transition: all .15s; align-self: flex-start;
+    }
+    .bcard:hover .bcard-cta {
+      background: color-mix(in srgb, var(--card-accent, var(--accent)) 16%, transparent);
+    }
+
+    /* ════════════════════════════════════════
+       ECOSYSTEM TAG STRIP
+    ════════════════════════════════════════ */
+    .eco-strip {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-top: 48px; justify-content: center;
+    }
+
+    .eco-tag {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 999px; padding: 5px 16px;
+      font-size: .8rem; color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .eco-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--eco-color, #555);
+    }
+
+    /* ════════════════════════════════════════
+       CTA FOOTER
+    ════════════════════════════════════════ */
+    .cta-section {
+      text-align: center;
+      padding: 72px 24px;
+      background: radial-gradient(ellipse 60% 80% at 50% 100%, rgba(124,58,237,.1) 0%, transparent 70%);
+      border-top: 1px solid var(--border);
+    }
+
+    .cta-section h2 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 700; color: #fff; margin-bottom: 12px;
+    }
+    .cta-section p { color: var(--muted); margin-bottom: 36px; }
+
+    .cta-buttons {
+      display: flex; flex-wrap: wrap;
+      gap: 14px; justify-content: center;
+    }
+
+    .cta-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      text-decoration: none;
+      font-size: .9rem; font-weight: 600;
+      border-radius: 10px; padding: 11px 22px;
+      transition: all .15s;
+    }
+    .cta-btn.primary {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 0 20px rgba(124,58,237,.35);
+    }
+    .cta-btn.primary:hover {
+      background: #6d28d9;
+      box-shadow: 0 0 28px rgba(124,58,237,.5);
+    }
+    .cta-btn.ghost {
+      background: var(--bg2); color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .cta-btn.ghost:hover {
+      border-color: rgba(124,58,237,.4); color: #fff;
+    }
+
+    @media (max-width: 500px) {
+      .hero-wrap h1 { font-size: 2rem; }
+      .bcard { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+<div id="nav-spacer"></div>
+
+<!-- ── HERO ─────────────────────────────────────────────────────────── -->
+<div class="hero-wrap">
+  <div class="hero-badge">Offline Package Bundlers</div>
+  <h1>Install anything,<br><span class="grad">anywhere.</span></h1>
+  <p class="hero-sub">
+    Bundle software packages with <em>all</em> their dependencies into a single
+    zip file — then install on any machine, even one with zero internet access.
+  </p>
+  <div class="hero-problem">
+    You can't always run <code style="background:rgba(255,255,255,.1);border-radius:4px;padding:1px 6px;font-family:monospace">pip install</code> or <code style="background:rgba(255,255,255,.1);border-radius:4px;padding:1px 6px;font-family:monospace">apt-get</code> on a production server.
+  </div>
+</div>
+
+<!-- ── WHY YOU NEED THIS ─────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-label">The Problem</div>
+  <h2 class="section-title">The internet isn't always there</h2>
+  <p class="section-sub">Modern package managers assume you have a reliable outbound connection. In the real world, that assumption breaks all the time.</p>
+
+  <div class="pain-grid">
+    <div class="pain-card">
+      <span class="pain-icon">🏢</span>
+      <h3>Air-gapped servers</h3>
+      <p>Secure production servers block outbound traffic entirely. You literally cannot download packages at runtime — even if you wanted to.</p>
+    </div>
+    <div class="pain-card">
+      <span class="pain-icon">🔒</span>
+      <h3>Corporate firewalls</h3>
+      <p>Many enterprises block PyPI, npm, pkg.go.dev, and apt mirrors by policy. <code style="font-family:monospace;font-size:.82em">pip install requests</code> just hangs forever.</p>
+    </div>
+    <div class="pain-card">
+      <span class="pain-icon">📡</span>
+      <h3>Metered / slow links</h3>
+      <p>Bundle once on a fast connection, then copy the zip to a hundred machines without downloading anything twice.</p>
+    </div>
+    <div class="pain-card">
+      <span class="pain-icon">🔄</span>
+      <h3>Reproducible deploys</h3>
+      <p>Lock an exact snapshot of a library and all its transitive deps. Re-deploy the same versions six months later, guaranteed.</p>
+    </div>
+    <div class="pain-card">
+      <span class="pain-icon">✈️</span>
+      <h3>Offline development</h3>
+      <p>Working on a plane, a ship, or a remote site? Bundle what you need before you leave and code without connectivity.</p>
+    </div>
+    <div class="pain-card">
+      <span class="pain-icon">🚀</span>
+      <h3>Faster CI/CD</h3>
+      <p>Eliminate network round-trips in build pipelines. Serve pre-bundled packages from an internal mirror for near-instant installs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────────────────── -->
+<div class="how-bg">
+  <section class="section">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Three steps, zero hassle</h2>
+    <p class="section-sub">Every bundler on this site works the same way — paste, click, download.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Enter a package name</h3>
+        <p>Type what you need — e.g. <code>requests</code>, <code>express</code>, <code>cobra</code>, <code>nginx</code></p>
+      </div>
+      <div class="step-connector">→</div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>We fetch everything</h3>
+        <p>The bundler pulls the package plus every transitive dependency, for your chosen version and platform</p>
+      </div>
+      <div class="step-connector">→</div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Download &amp; install offline</h3>
+        <p>Get a <code>.zip</code> containing all files and an install script. Copy it anywhere and run it — no internet needed</p>
+      </div>
+    </div>
+
+    <div class="eco-strip">
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#3776AB"></div>Python wheels + venv</div>
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#339933"></div>npm node_modules</div>
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#00ADD8"></div>Go module cache</div>
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#d70751"></div>.deb packages + install.sh</div>
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#3C6EB4"></div>.rpm packages + install.sh</div>
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#2496ED"></div>Docker image tarballs</div>
+      <div class="eco-tag"><div class="eco-dot" style="--eco-color:#FCC624"></div>Linux ISO images</div>
+    </div>
+  </section>
+</div>
+
+<!-- ── BUNDLERS GRID ────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-label">The Bundlers</div>
+  <h2 class="section-title">Pick your ecosystem</h2>
+  <p class="section-sub">Seven bundlers covering the most-used package managers and deployment formats.</p>
+
+  <div class="bundlers-grid">
+
+    <!-- Python -->
+    <a href="https://python-bundler.ximg.app" class="bcard" style="--card-accent:#3776AB">
+      <div class="bcard-top">
+        <div class="bcard-logo">
+          <img src="/logos/python.svg" alt="Python">
+        </div>
+        <div>
+          <div class="bcard-name">Python Bundler</div>
+          <div class="bcard-pkg">pip · PyPI · wheels</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Select a Python version and target platform, enter a package name, and get a zip
+        containing all wheels plus a <code style="font-family:monospace;font-size:.82em">setup.sh</code> that builds a venv and installs everything
+        offline. Works on any architecture.
+      </div>
+      <div class="bcard-cta">Open bundler →</div>
+    </a>
+
+    <!-- Node.js -->
+    <a href="https://nodejs-bundler.ximg.app" class="bcard" style="--card-accent:#339933">
+      <div class="bcard-top">
+        <div class="bcard-logo">
+          <img src="/logos/nodejs.svg" alt="Node.js">
+        </div>
+        <div>
+          <div class="bcard-name">Node.js Bundler</div>
+          <div class="bcard-pkg">npm · node_modules</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Enter an npm package name and download a zip with a pre-populated
+        <code style="font-family:monospace;font-size:.82em">node_modules/</code> folder ready to drop straight into any project.
+        Includes an optional embedded Node.js runtime for truly self-contained deploys.
+      </div>
+      <div class="bcard-cta">Open bundler →</div>
+    </a>
+
+    <!-- Go -->
+    <a href="https://go-bundler.ximg.app" class="bcard" style="--card-accent:#00ADD8">
+      <div class="bcard-top">
+        <div class="bcard-logo">
+          <img src="/logos/go.svg" alt="Go">
+        </div>
+        <div>
+          <div class="bcard-name">Go Bundler</div>
+          <div class="bcard-pkg">go modules · GOPATH cache</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Enter a Go module path and get a zip containing the full module cache for
+        offline builds. Optionally embed the Go toolchain itself for fully air-gapped
+        compilation on any target platform.
+      </div>
+      <div class="bcard-cta">Open bundler →</div>
+    </a>
+
+    <!-- APT / Debian -->
+    <a href="https://apt-bundler.ximg.app" class="bcard" style="--card-accent:#d70751">
+      <div class="bcard-top">
+        <div class="bcard-logo">
+          <img src="/logos/debian.svg" alt="Debian / APT">
+        </div>
+        <div>
+          <div class="bcard-name">APT Bundler</div>
+          <div class="bcard-pkg">Debian · Ubuntu · .deb</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Select a Debian or Ubuntu release and CPU architecture, enter a package name,
+        and download a zip of <code style="font-family:monospace;font-size:.82em">.deb</code> files with all dependencies plus a one-command
+        install script for offline <code style="font-family:monospace;font-size:.82em">dpkg</code> installation.
+      </div>
+      <div class="bcard-cta">Open bundler →</div>
+    </a>
+
+    <!-- RPM / Fedora -->
+    <a href="https://rpm-bundler.ximg.app" class="bcard" style="--card-accent:#3C6EB4">
+      <div class="bcard-top">
+        <div class="bcard-logo">
+          <img src="/logos/fedora.svg" alt="Fedora / RPM">
+        </div>
+        <div>
+          <div class="bcard-name">RPM Bundler</div>
+          <div class="bcard-pkg">Fedora · Rocky · Alma · .rpm</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Select a Fedora, Rocky Linux, or AlmaLinux release, enter a package name,
+        and get a zip of <code style="font-family:monospace;font-size:.82em">.rpm</code> files with all dependencies plus an install script for
+        offline <code style="font-family:monospace;font-size:.82em">rpm</code> / <code style="font-family:monospace;font-size:.82em">dnf</code> installation.
+      </div>
+      <div class="bcard-cta">Open bundler →</div>
+    </a>
+
+    <!-- Docker -->
+    <a href="https://dockerimagedownloader.ximg.app" class="bcard" style="--card-accent:#2496ED">
+      <div class="bcard-top">
+        <div class="bcard-logo">
+          <img src="/logos/docker.svg" alt="Docker">
+        </div>
+        <div>
+          <div class="bcard-name">Docker Image Downloader</div>
+          <div class="bcard-pkg">Docker Hub · OCI images</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Pull any Docker image from Docker Hub or another registry and download it
+        as a <code style="font-family:monospace;font-size:.82em">.tar</code> archive ready for
+        <code style="font-family:monospace;font-size:.82em">docker load</code>. Ship containers to environments that can't reach the internet.
+      </div>
+      <div class="bcard-cta">Open downloader →</div>
+    </a>
+
+    <!-- Linux ISOs -->
+    <a href="https://iso.ximg.app" class="bcard" style="--card-accent:#FCC624">
+      <div class="bcard-top">
+        <div class="bcard-logo" style="background:rgba(252,198,36,.06);border-color:rgba(252,198,36,.2)">
+          <img src="/logos/linux.svg" alt="Linux">
+        </div>
+        <div>
+          <div class="bcard-name">Linux ISO Browser</div>
+          <div class="bcard-pkg">Ubuntu · Debian · Fedora · +more</div>
+        </div>
+      </div>
+      <div class="bcard-desc">
+        Browse and download official ISO images for the most popular Linux
+        distributions. Get direct links to the latest releases of Ubuntu, Debian,
+        Fedora, Arch, AlmaLinux, Rocky, and many more.
+      </div>
+      <div class="bcard-cta">Browse ISOs →</div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ── CTA ──────────────────────────────────────────────────────────── -->
+<div class="cta-section">
+  <h2>Ready to bundle something?</h2>
+  <p>Pick a bundler above, enter a package name, and download in seconds.</p>
+  <div class="cta-buttons">
+    <a href="https://python-bundler.ximg.app" class="cta-btn primary">🐍 Python Bundler</a>
+    <a href="https://nodejs-bundler.ximg.app" class="cta-btn ghost">⬡ Node.js Bundler</a>
+    <a href="https://apt-bundler.ximg.app"    class="cta-btn ghost">📦 APT Bundler</a>
+    <a href="https://apps.ximg.app"           class="cta-btn ghost">All apps →</a>
+  </div>
+</div>
+
+<script>
+// Subtle floating particles
+(function () {
+  const canvas = document.getElementById('particles');
+  const ctx    = canvas.getContext('2d');
+  let W, H, pts;
+
+  function resize () {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function init () {
+    resize();
+    pts = Array.from({ length: 55 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.4 + .4,
+      dx: (Math.random() - .5) * .18,
+      dy: (Math.random() - .5) * .18,
+      a: Math.random() * .5 + .1,
+    }));
+  }
+
+  function draw () {
+    ctx.clearRect(0, 0, W, H);
+    pts.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(167,139,250,${p.a})`;
+      ctx.fill();
+      p.x += p.dx; p.y += p.dy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  init(); draw();
+})();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

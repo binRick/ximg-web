@@ -281,6 +281,7 @@ const LOG_FILES = {
   'rpm-bundler':    'rpm-bundler.access.log',
   iso:              'iso.access.log',
   honeypot:         'honeypot.access.log',
+  'bundler-info':   'bundler-info.access.log',
   aztec:            'aztec.access.log',
   babylon:          'babylon.access.log',
   civilwar:         'civilwar.access.log',
@@ -845,6 +846,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="rpm-bundler">rpm-bundler</button>
           <button class="site-opt" data-site="iso">iso</button>
           <button class="site-opt" data-site="honeypot">honeypot</button>
+          <button class="site-opt" data-site="bundler-info">bundler-info</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>

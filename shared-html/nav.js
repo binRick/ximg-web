@@ -67,7 +67,8 @@
       ['iso','linux isos'],
       ['nodejs-bundler','node.js'],
       ['python-bundler','python'],
-      ['rpm-bundler','rpm']
+      ['rpm-bundler','rpm'],
+      ['bundler-info','what & why']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
