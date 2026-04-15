@@ -818,10 +818,18 @@ HTML = r"""<!DOCTYPE html>
       const distro = 'ubuntu-24.04';
       const arch   = 'amd64';
       let passed = 0, failed = 0;
+      let stopped = false;
 
       function pass(id, detail) { setTestStatus(id, 'pass', detail); passed++; }
       function fail(id, detail) { setTestStatus(id, 'fail', detail); failed++; }
       function skip(id, detail) { setTestStatus(id, 'skip', detail); }
+      // abort: skip every test from fromId to end and set stopped flag
+      function abort(fromId, reason) {
+        const all = TEST_DEFS.map(t => t.id);
+        const idx = all.indexOf(fromId);
+        if (idx >= 0) all.slice(idx).forEach(id => skip(id, reason || 'skipped — prior step failed'));
+        stopped = true;
+      }
 
       // T01 — Reject invalid package name
       setTestStatus('T01', 'running');
@@ -832,148 +840,158 @@ HTML = r"""<!DOCTYPE html>
         f.append('arch', arch);
         const r = await fetch('/bundle', { method:'POST', body:f });
         const j = await r.json().catch(() => null);
-        r.status === 400 && j && j.error
-          ? pass('T01', 'HTTP 400 — ' + j.error)
-          : fail('T01', 'Expected 400, got HTTP ' + r.status);
-      } catch(e) { fail('T01', 'Network error: ' + e.message); }
+        if (r.status === 400 && j && j.error) { pass('T01', 'HTTP 400 — ' + j.error); }
+        else { fail('T01', 'Expected 400, got HTTP ' + r.status); abort('T02'); }
+      } catch(e) { fail('T01', 'Network error: ' + e.message); abort('T02'); }
 
       // T02 — Reject unknown distro
-      setTestStatus('T02', 'running');
-      try {
-        const f = new FormData();
-        f.append('package', pkg);
-        f.append('distro', 'windows-11');
-        f.append('arch', arch);
-        const r = await fetch('/bundle', { method:'POST', body:f });
-        const j = await r.json().catch(() => null);
-        r.status === 400 && j && j.error
-          ? pass('T02', 'HTTP 400 — ' + j.error)
-          : fail('T02', 'Expected 400, got HTTP ' + r.status);
-      } catch(e) { fail('T02', 'Network error: ' + e.message); }
+      if (!stopped) {
+        setTestStatus('T02', 'running');
+        try {
+          const f = new FormData();
+          f.append('package', pkg);
+          f.append('distro', 'windows-11');
+          f.append('arch', arch);
+          const r = await fetch('/bundle', { method:'POST', body:f });
+          const j = await r.json().catch(() => null);
+          if (r.status === 400 && j && j.error) { pass('T02', 'HTTP 400 — ' + j.error); }
+          else { fail('T02', 'Expected 400, got HTTP ' + r.status); abort('T03'); }
+        } catch(e) { fail('T02', 'Network error: ' + e.message); abort('T03'); }
+      }
 
       // T03–T08 — SSE bundle stream
-      setTestStatus('T03', 'running');
-      setTestStatus('T04', 'running');
-      setTestStatus('T05', 'running');
-      setTestStatus('T06', 'running');
-      setTestStatus('T07', 'running');
-      setTestStatus('T08', 'running');
-
       let token = null;
+      if (!stopped) {
+        setTestStatus('T03', 'running');
+        setTestStatus('T04', 'running');
+        setTestStatus('T05', 'running');
+        setTestStatus('T06', 'running');
+        setTestStatus('T07', 'running');
+        setTestStatus('T08', 'running');
 
-      try {
-        const form = new FormData();
-        form.append('package', pkg);
-        form.append('distro', distro);
-        form.append('arch', arch);
+        let streamFailed = false;
+        try {
+          const form = new FormData();
+          form.append('package', pkg);
+          form.append('distro', distro);
+          form.append('arch', arch);
 
-        const resp = await fetch('/bundle', { method:'POST', body:form });
-        const rct  = resp.headers.get('content-type') || '';
+          const resp = await fetch('/bundle', { method:'POST', body:form });
+          const rct  = resp.headers.get('content-type') || '';
 
-        if (!resp.ok || !rct.includes('event-stream')) {
-          fail('T03', 'Expected 200 text/event-stream, got HTTP ' + resp.status);
-          fail('T04'); fail('T05'); fail('T06'); fail('T07'); fail('T08');
-        } else {
-          pass('T03', 'HTTP 200 text/event-stream');
+          if (!resp.ok || !rct.includes('event-stream')) {
+            fail('T03', 'Expected 200 text/event-stream, got HTTP ' + resp.status);
+            abort('T04');
+            streamFailed = true;
+          } else {
+            pass('T03', 'HTTP 200 text/event-stream');
 
-          const reader = resp.body.getReader();
-          const dec = new TextDecoder();
-          let buf = '';
-          let T04done = false, T05done = false, T06done = false, streamDone = false;
+            const reader = resp.body.getReader();
+            const dec = new TextDecoder();
+            let buf = '';
+            let T04done = false, T05done = false, T06done = false, streamDone = false;
 
-          while (!streamDone) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += dec.decode(value, { stream: true });
+            while (!streamDone) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, { stream: true });
 
-            const blocks = buf.split('\n\n');
-            buf = blocks.pop();
+              const blocks = buf.split('\n\n');
+              buf = blocks.pop();
 
-            for (const block of blocks) {
-              let evtType = '', evtData = '';
-              for (const line of block.split('\n')) {
-                if (line.startsWith('event:')) evtType = line.slice(6).trim();
-                else if (line.startsWith('data:')) evtData = line.slice(5).trim();
-              }
-
-              if (evtData) {
-                appendTestLog(evtData);
-                if (!T04done && (evtData.includes('Get:') || evtData.includes('Ign:') ||
-                                  evtData.includes('Fetched') || evtData.includes('==> Fetching'))) {
-                  T04done = true;
-                  pass('T04', 'APT index fetch detected');
+              for (const block of blocks) {
+                let evtType = '', evtData = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) evtType = line.slice(6).trim();
+                  else if (line.startsWith('data:')) evtData = line.slice(5).trim();
                 }
-                if (!T05done && evtData.includes('.deb')) {
-                  T05done = true;
-                  pass('T05', '.deb filename seen in stream');
-                }
-                if (!T06done && evtData.includes('INFECTED')) {
-                  T06done = true;
-                  fail('T06', evtData.slice(0, 80));
-                }
-              }
 
-              if (evtType === 'done') {
-                token = evtData;
-                if (!T04done) fail('T04', 'No APT fetch output in stream');
-                if (!T05done) fail('T05', 'No .deb filename in stream');
-                if (!T06done) pass('T06', 'No INFECTED lines — scan clean');
-                pass('T07', 'event:done received');
-                /^[0-9a-f\-]{32,}$/i.test(token)
-                  ? pass('T08', token)
-                  : fail('T08', 'Unexpected format: ' + token);
-                streamDone = true;
-                break;
-              }
+                if (evtData) {
+                  appendTestLog(evtData);
+                  if (!T04done && (evtData.includes('Get:') || evtData.includes('Ign:') ||
+                                    evtData.includes('Fetched') || evtData.includes('==> Fetching'))) {
+                    T04done = true;
+                    pass('T04', 'APT index fetch detected');
+                  }
+                  if (!T05done && evtData.includes('.deb')) {
+                    T05done = true;
+                    pass('T05', '.deb filename seen in stream');
+                  }
+                  if (!T06done && evtData.includes('INFECTED')) {
+                    T06done = true;
+                    fail('T06', evtData.slice(0, 80));
+                  }
+                }
 
-              if (evtType === 'error') {
-                if (!T04done) fail('T04', 'Bundle failed');
-                if (!T05done) fail('T05', 'Bundle failed');
-                if (!T06done) skip('T06', 'Bundle failed');
-                fail('T07', 'event:error — ' + evtData.slice(0, 80));
-                skip('T08', 'No token (bundle failed)');
-                streamDone = true;
-                break;
+                if (evtType === 'done') {
+                  token = evtData;
+                  if (!T04done) { fail('T04', 'No APT fetch output in stream'); streamFailed = true; }
+                  if (!T05done && !streamFailed) { fail('T05', 'No .deb filename in stream'); streamFailed = true; }
+                  else if (!T05done) skip('T05', 'skipped — prior step failed');
+                  if (!T06done && !streamFailed) pass('T06', 'No INFECTED lines — scan clean');
+                  else if (!T06done) skip('T06', 'skipped — prior step failed');
+                  if (!streamFailed) {
+                    pass('T07', 'event:done received');
+                    if (/^[0-9a-f\-]{32,}$/i.test(token)) { pass('T08', token); }
+                    else { fail('T08', 'Unexpected format: ' + token); streamFailed = true; }
+                  } else {
+                    skip('T07', 'skipped — prior step failed');
+                    skip('T08', 'skipped — prior step failed');
+                    token = null;
+                  }
+                  streamDone = true;
+                  break;
+                }
+
+                if (evtType === 'error') {
+                  if (!T04done) fail('T04', 'Bundle failed');
+                  if (!T05done) skip('T05', 'Bundle failed');
+                  if (!T06done) skip('T06', 'Bundle failed');
+                  fail('T07', 'event:error — ' + evtData.slice(0, 80));
+                  skip('T08', 'skipped — prior step failed');
+                  streamFailed = true;
+                  streamDone = true;
+                  break;
+                }
               }
             }
           }
+        } catch(e) {
+          fail('T03', 'Error: ' + e.message);
+          abort('T04');
+          streamFailed = true;
         }
-      } catch(e) {
-        fail('T03', 'Error: ' + e.message);
-        fail('T04'); fail('T05'); fail('T06'); fail('T07'); fail('T08');
+
+        if (streamFailed) abort('T09');
       }
 
       // T09–T11 — Bundle metadata (non-consuming)
-      setTestStatus('T09', 'running');
-      setTestStatus('T10', 'running');
-      setTestStatus('T11', 'running');
-
-      if (!token) {
-        skip('T09', 'No token — bundle did not complete');
-        skip('T10', 'No token'); skip('T11', 'No token');
-      } else {
+      if (!stopped && token) {
+        setTestStatus('T09', 'running');
+        setTestStatus('T10', 'running');
+        setTestStatus('T11', 'running');
         try {
           const mr = await fetch('/bundle-meta/' + token);
-          mr.ok ? pass('T09', 'HTTP ' + mr.status) : fail('T09', 'HTTP ' + mr.status);
           if (mr.ok) {
+            pass('T09', 'HTTP ' + mr.status);
             const meta = await mr.json();
-            meta.name && meta.name.endsWith('.zip')
-              ? pass('T10', meta.name)
-              : fail('T10', 'name: ' + (meta.name || '(none)'));
-            meta.size > 10240
-              ? pass('T11', meta.size.toLocaleString() + ' bytes (' + (meta.size/1048576).toFixed(1) + ' MB)')
-              : fail('T11', (meta.size || 0) + ' bytes — too small');
-          } else { skip('T10', 'meta fetch failed'); skip('T11', 'meta fetch failed'); }
-        } catch(e) { fail('T09', e.message); skip('T10'); skip('T11'); }
+            if (meta.name && meta.name.endsWith('.zip')) { pass('T10', meta.name); }
+            else { fail('T10', 'name: ' + (meta.name || '(none)')); abort('T11'); }
+            if (!stopped) {
+              meta.size > 10240
+                ? pass('T11', meta.size.toLocaleString() + ' bytes (' + (meta.size/1048576).toFixed(1) + ' MB)')
+                : (fail('T11', (meta.size || 0) + ' bytes — too small'), abort('T12'));
+            }
+          } else {
+            fail('T09', 'HTTP ' + mr.status);
+            abort('T10');
+          }
+        } catch(e) { fail('T09', e.message); abort('T10'); }
       }
 
-      // T12–T18 — Install in isolated dpkg root (server-side)
-      ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => setTestStatus(id, 'running'));
-
-      if (!token) {
-        ['T12','T13','T14','T15','T16','T17','T18'].forEach(id =>
-          skip(id, 'No token'));
-      } else {
+      // T12–T18 — Install in isolated dpkg root (server-side handles stop-on-fail)
+      if (!stopped && token) {
+        ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => setTestStatus(id, 'running'));
         document.getElementById('test-install-log-wrap').style.display = 'block';
         const ilog = document.getElementById('test-install-log');
         function appendInstallLog(text) {
@@ -1358,10 +1376,18 @@ def test_install():
                 yield step('T13', 'pass', 'install.sh found (not executable bit set)')
             else:
                 yield step('T13', 'fail', 'install.sh not found in bundle')
+                for tid in ['T14','T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
 
             # ── T14: .deb files valid ────────────────────────────────────────
             if not deb_files:
                 yield step('T14', 'fail', 'No .deb files in bundle')
+                for tid in ['T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
             else:
                 all_valid = True
                 for df in deb_files:
@@ -1372,8 +1398,14 @@ def test_install():
                         yield log(f'dpkg --info FAILED on {os.path.basename(df)}')
                     else:
                         yield log(f'dpkg --info OK: {os.path.basename(df)}')
-                yield step('T14', 'pass' if all_valid else 'fail',
-                           f'{len(deb_files)} .deb file(s) checked')
+                if all_valid:
+                    yield step('T14', 'pass', f'{len(deb_files)} .deb file(s) checked')
+                else:
+                    yield step('T14', 'fail', f'{len(deb_files)} .deb file(s) checked — some invalid')
+                    for tid in ['T15','T16','T17','T18']:
+                        yield step(tid, 'skip', 'skipped — prior step failed')
+                    yield 'event: done\ndata: ok\n\n'
+                    return
 
             # ── T15: Target package .deb present ────────────────────────────
             target_debs = [f for f in deb_files if pkg_name in os.path.basename(f)]
@@ -1381,6 +1413,10 @@ def test_install():
                 yield step('T15', 'pass', os.path.basename(target_debs[0]))
             else:
                 yield step('T15', 'fail', f'No .deb file matching "{pkg_name}"')
+                for tid in ['T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
 
             # ── T16: Unpack into isolated dpkg root ──────────────────────────
             dpkg_root = os.path.join(work, 'dpkg_root')
@@ -1423,6 +1459,10 @@ def test_install():
                 if primary_failed:
                     yield step('T16', 'fail',
                                f'Primary package failed to unpack: {pkg_name}')
+                    for tid in ['T17','T18']:
+                        yield step(tid, 'skip', 'skipped — prior step failed')
+                    yield 'event: done\ndata: ok\n\n'
+                    return
                 else:
                     n = len(failed_debs)
                     yield step('T16', 'pass',
@@ -1440,6 +1480,9 @@ def test_install():
                 yield step('T17', 'pass', ver or 'found in dpkg database')
             else:
                 yield step('T17', 'fail', f'dpkg --status returned {status_r.returncode}')
+                yield step('T18', 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
 
             # ── T18: Package files on disk in isolated root ──────────────────
             list_r = subprocess.run(
