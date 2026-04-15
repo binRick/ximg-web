@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ClamAV — clamav.ximg.app — open-source antivirus toolkit: commands, signatures, detection engine, and mail server integration">
+  <title>ClamAV — clamav.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d1117;--green:#00ff88;--red:#ff4444;--orange:#ff8800;
+      --yellow:#facc15;--dim:#484f58;--text:#c9d1d9;--border:rgba(255,255,255,.08);
+      --card:rgba(255,255,255,.03);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;overflow-x:hidden}
+    a{color:var(--green);text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    /* ── header ── */
+    .hdr{display:flex;align-items:center;gap:1rem;padding:.6rem 1rem;
+      background:rgba(10,10,15,.95);border-bottom:1px solid var(--border);
+      position:sticky;top:0;z-index:50;flex-wrap:wrap}
+    .hdr-icon{font-size:1.4rem}
+    .hdr-title{font-size:1rem;font-weight:700;color:var(--green);letter-spacing:.05em}
+    .hdr-sub{font-size:.72rem;color:var(--dim)}
+    .hdr-right{margin-left:auto;display:flex;align-items:center;gap:.75rem;font-size:.72rem}
+    .badge{padding:.15rem .45rem;border-radius:4px;font-size:.68rem;font-weight:700;white-space:nowrap}
+    .badge-green{background:rgba(0,255,136,.12);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+    .badge-orange{background:rgba(255,136,0,.12);color:var(--orange);border:1px solid rgba(255,136,0,.3)}
+    .badge-red{background:rgba(255,68,68,.12);color:var(--red);border:1px solid rgba(255,68,68,.3)}
+    .badge-dim{background:rgba(255,255,255,.06);color:var(--dim);border:1px solid var(--border)}
+
+    /* ── sub-nav ── */
+    .subnav{display:flex;justify-content:center;gap:.35rem;padding:.45rem .75rem;
+      background:rgba(10,10,15,.8);border-bottom:1px solid var(--border);overflow-x:auto;flex-wrap:wrap}
+    .tab{padding:.3rem .75rem;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--dim);
+      font-family:'Courier New',monospace;transition:all .15s;white-space:nowrap;user-select:none}
+    .tab:hover:not(.active){border-color:rgba(255,255,255,.18);color:var(--text)}
+    .tab.active{color:var(--green);border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.07)}
+
+    /* ── layout ── */
+    .page{display:none;padding:1rem;max-width:1000px;margin:0 auto}
+    .page.active{display:block}
+
+    /* ── cards / grid ── */
+    .grid{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-bottom:1.25rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+    .card-title{font-size:.78rem;font-weight:700;color:var(--green);margin-bottom:.5rem;letter-spacing:.04em}
+    .card-body{font-size:.74rem;line-height:1.6;color:var(--text)}
+    .card-body b{color:var(--green)}
+
+    /* ── section headings ── */
+    .sh{font-size:.8rem;font-weight:700;color:var(--green);letter-spacing:.06em;
+      border-bottom:1px solid rgba(0,255,136,.2);padding-bottom:.3rem;margin:1.25rem 0 .75rem}
+    .sh:first-child{margin-top:0}
+
+    /* ── hero banner ── */
+    .hero{background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.15);border-radius:10px;
+      padding:1.25rem 1.5rem;margin-bottom:1.25rem}
+    .hero-name{font-size:1.5rem;font-weight:700;color:var(--green);margin-bottom:.4rem}
+    .hero-tagline{font-size:.82rem;color:var(--text);line-height:1.6;margin-bottom:.75rem}
+    .hero-meta{display:flex;gap:.5rem;flex-wrap:wrap}
+
+    /* ── command blocks ── */
+    .cmd-section{margin-bottom:1.25rem}
+    .cmd-label{font-size:.72rem;color:var(--dim);margin-bottom:.4rem;font-weight:600;letter-spacing:.04em}
+    .cmd-desc{font-size:.73rem;color:var(--text);margin-bottom:.5rem;line-height:1.5}
+    pre{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:6px;
+      padding:.65rem .85rem;font-size:.73rem;line-height:1.55;overflow-x:auto;margin-bottom:.5rem;
+      font-family:'Courier New',monospace}
+    .kw{color:var(--green)}
+    .flag{color:#60a5fa}
+    .arg{color:var(--orange)}
+    .cmt{color:var(--dim)}
+    .str{color:var(--yellow)}
+
+    /* ── table ── */
+    .tbl{width:100%;border-collapse:collapse;font-size:.73rem;margin-bottom:1.25rem}
+    .tbl th{padding:.4rem .6rem;text-align:left;color:var(--green);border-bottom:1px solid rgba(0,255,136,.2);font-size:.69rem;letter-spacing:.05em}
+    .tbl td{padding:.38rem .6rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;line-height:1.45}
+    .tbl tr:hover td{background:rgba(255,255,255,.02)}
+    .tbl code{background:rgba(0,0,0,.4);padding:.05rem .3rem;border-radius:3px;font-size:.7rem;color:var(--yellow)}
+    .tbl .dim{color:var(--dim)}
+    .tbl .grn{color:var(--green)}
+    .tbl .red{color:var(--red)}
+    .tbl .org{color:var(--orange)}
+
+    /* ── scan demo ── */
+    .scan-box{background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem;margin-bottom:1rem}
+    .scan-line{font-size:.73rem;line-height:1.7;font-family:'Courier New',monospace}
+    .s-ok{color:var(--green)}
+    .s-inf{color:var(--red);font-weight:700}
+    .s-dim{color:var(--dim)}
+    .s-bold{color:var(--text);font-weight:600}
+    .scan-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .85rem;
+      border-radius:5px;font-size:.73rem;font-weight:600;cursor:pointer;
+      border:1px solid rgba(0,255,136,.35);background:rgba(0,255,136,.07);color:var(--green);
+      font-family:'Courier New',monospace;transition:all .15s;margin-bottom:.75rem}
+    .scan-btn:hover{background:rgba(0,255,136,.13);border-color:rgba(0,255,136,.6)}
+    .scan-btn:active{transform:scale(.97)}
+
+    /* ── sig format ── */
+    .sig-block{background:rgba(0,0,0,.45);border:1px solid var(--border);border-radius:6px;
+      padding:.7rem .9rem;font-size:.72rem;margin-bottom:.75rem;line-height:1.6}
+    .sig-field{display:inline-block;padding:.06rem .28rem;border-radius:3px;font-size:.69rem;margin-right:.15rem}
+    .sf-name{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.25)}
+    .sf-type{background:rgba(255,136,0,.1);color:var(--orange);border:1px solid rgba(255,136,0,.25)}
+    .sf-off{background:rgba(96,165,250,.1);color:#60a5fa;border:1px solid rgba(96,165,250,.25)}
+    .sf-hex{background:rgba(250,204,21,.08);color:var(--yellow);border:1px solid rgba(250,204,21,.2)}
+
+    /* ── stat pills ── */
+    .stat-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.5rem .8rem;text-align:center;min-width:100px}
+    .stat-val{font-size:1.1rem;font-weight:700;color:var(--green)}
+    .stat-lbl{font-size:.62rem;color:var(--dim);margin-top:.15rem}
+
+    /* ── timeline ── */
+    .tl{border-left:2px solid rgba(0,255,136,.3);padding-left:1rem;margin-bottom:1rem}
+    .tl-item{position:relative;margin-bottom:.75rem;font-size:.73rem}
+    .tl-item::before{content:'';position:absolute;left:-1.3rem;top:.35rem;width:8px;height:8px;
+      border-radius:50%;background:var(--green);border:2px solid var(--bg)}
+    .tl-year{color:var(--green);font-weight:700;margin-right:.5rem}
+    .tl-text{color:var(--text);line-height:1.5}
+
+    @media(max-width:600px){
+      .grid{grid-template-columns:1fr}
+      .hdr-right{gap:.4rem}
+    }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-icon">🛡️</span>
+  <div>
+    <div class="hdr-title">ClamAV</div>
+    <div class="hdr-sub">clamav.ximg.app</div>
+  </div>
+  <div class="hdr-right">
+    <span class="badge badge-green">Open Source</span>
+    <span class="badge badge-orange">GPL-2.0</span>
+    <span class="badge badge-dim">v1.4.x</span>
+  </div>
+</div>
+
+<div class="subnav">
+  <div class="tab active" onclick="show('overview',this)">Overview</div>
+  <div class="tab" onclick="show('commands',this)">Commands</div>
+  <div class="tab" onclick="show('signatures',this)">Signatures</div>
+  <div class="tab" onclick="show('integration',this)">Integration</div>
+  <div class="tab" onclick="show('config',this)">Config</div>
+</div>
+
+<!-- ═══════════════════════════════ OVERVIEW ═══════════════════════════════ -->
+<div id="overview" class="page active">
+
+  <div class="hero">
+    <div class="hero-name">ClamAV</div>
+    <div class="hero-tagline">
+      ClamAV is the world's most widely deployed open-source antivirus toolkit. Originally created by Tomasz Kojm in 2001, it is now maintained by Cisco Talos. It provides on-access and on-demand scanning, a signature database updated multiple times daily, and deep integration with email gateways including Postfix, Sendmail, and Exim.
+    </div>
+    <div class="hero-meta">
+      <span class="badge badge-green">Since 2001</span>
+      <span class="badge badge-orange">Cisco Talos</span>
+      <span class="badge badge-dim">Linux · macOS · Windows</span>
+      <span class="badge badge-dim">Email · Files · Archives</span>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat"><div class="stat-val">9M+</div><div class="stat-lbl">Signatures</div></div>
+    <div class="stat"><div class="stat-val">24/7</div><div class="stat-lbl">DB Updates</div></div>
+    <div class="stat"><div class="stat-val">100+</div><div class="stat-lbl">File Formats</div></div>
+    <div class="stat"><div class="stat-val">2001</div><div class="stat-lbl">Founded</div></div>
+    <div class="stat"><div class="stat-val">GPL</div><div class="stat-lbl">License</div></div>
+  </div>
+
+  <div class="sh">Core Components</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">clamscan</div>
+      <div class="card-body">Command-line virus scanner. Loads the signature database at startup, scans files/directories, and reports results. Best for one-off scans; use <b>clamdscan</b> for repeated scanning to avoid DB reload overhead.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">clamd</div>
+      <div class="card-body">On-demand scanning daemon. Keeps signatures loaded in memory and accepts scan requests over a Unix socket or TCP. Required for mail filter integration (clamav-milter, amavisd) and high-throughput scanning.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">freshclam</div>
+      <div class="card-body">Signature database updater. Runs as a daemon or from cron, pulling incremental CVD/CLD patches from <b>database.clamav.net</b>. Verifies digital signatures on every update.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">clamdscan</div>
+      <div class="card-body">Client for <b>clamd</b>. Sends file paths to the running daemon via socket — no DB reload, dramatically faster than clamscan for bulk scanning. Supports <code>--multiscan</code> for parallel threads.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">sigtool</div>
+      <div class="card-body">Signature tool for DB inspection and creation. Unpack CVD files, compute checksums, create custom <b>.ndb</b>/<b>.hdb</b>/<b>.ldb</b> signatures, and test them against samples.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">clamav-milter</div>
+      <div class="card-body">Sendmail/Postfix milter plugin that hooks into the SMTP conversation. Scans email attachments before delivery and can reject, quarantine, or tag infected messages in real time.</div>
+    </div>
+  </div>
+
+  <div class="sh">Detection Capabilities</div>
+  <table class="tbl">
+    <tr><th>Category</th><th>What It Catches</th><th>Method</th></tr>
+    <tr><td class="grn">Viruses &amp; Malware</td><td>Traditional file-infecting viruses, worms, trojans</td><td class="dim">Hash + byte signature</td></tr>
+    <tr><td class="grn">Phishing</td><td>Phishing URLs in email bodies and HTML</td><td class="dim">URL blocklist / heuristic</td></tr>
+    <tr><td class="grn">Packed Executables</td><td>UPX, FSG, MEW, and 40+ other packers</td><td class="dim">Unpacker + scan</td></tr>
+    <tr><td class="grn">Archives</td><td>ZIP, RAR, 7z, TAR, CAB, BZ2, XZ, ISO, OLE2</td><td class="dim">Recursive extraction</td></tr>
+    <tr><td class="grn">Office Macros</td><td>VBA macros in DOCX, XLSX, PPTX, ODF</td><td class="dim">Macro extraction</td></tr>
+    <tr><td class="grn">Email (MIME)</td><td>Multipart MIME, Base64/QP-encoded attachments</td><td class="dim">MIME decode + scan</td></tr>
+    <tr><td class="grn">PDF</td><td>Embedded JS, malicious streams, embedded executables</td><td class="dim">PDF parser</td></tr>
+    <tr><td class="grn">Android APK</td><td>Malicious APKs — dex bytecode signatures</td><td class="dim">DEX parser</td></tr>
+    <tr><td class="grn">Scripts</td><td>Obfuscated JS, PowerShell, shell scripts</td><td class="dim">Heuristic + signature</td></tr>
+    <tr><td class="grn">HTML</td><td>Browser exploits, iframe injections, malicious redirects</td><td class="dim">HTML normalizer</td></tr>
+  </table>
+
+  <div class="sh">History</div>
+  <div class="tl">
+    <div class="tl-item"><span class="tl-year">2001</span><span class="tl-text">Tomasz Kojm releases ClamAV 0.01 as an open-source project. Initial focus: Unix mail gateway scanning.</span></div>
+    <div class="tl-item"><span class="tl-year">2004</span><span class="tl-text">ClamAV Foundation formed; project gains commercial sponsorship. First Windows port released.</span></div>
+    <div class="tl-item"><span class="tl-year">2007</span><span class="tl-text">Sourcefire acquires ClamAV. Development accelerates; clamd daemon and milter integration mature.</span></div>
+    <div class="tl-item"><span class="tl-year">2013</span><span class="tl-text">Cisco acquires Sourcefire for $2.7B. ClamAV moves under Cisco's Talos Intelligence group.</span></div>
+    <div class="tl-item"><span class="tl-year">2018</span><span class="tl-text">ClamAV 0.100 — major performance improvements, YARA rule support, JSON metadata output.</span></div>
+    <div class="tl-item"><span class="tl-year">2022</span><span class="tl-text">ClamAV 1.0.0 — first stable major release; CVE-2023-20032 heap overflow patch drives rapid adoption of 1.x.</span></div>
+    <div class="tl-item"><span class="tl-year">2024</span><span class="tl-text">ClamAV 1.4.x — improved memory safety, bytecode engine updates, extended container scanning support.</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ COMMANDS ═══════════════════════════════ -->
+<div id="commands" class="page">
+
+  <div class="sh">clamscan — Standalone Scanner</div>
+
+  <div class="cmd-section">
+    <div class="cmd-label">BASIC USAGE</div>
+    <div class="cmd-desc">Scan a single file, directory, or the whole filesystem. clamscan loads the DB each run.</div>
+    <pre><span class="cmt"># Scan a single file</span>
+<span class="kw">clamscan</span> <span class="arg">/path/to/file.exe</span>
+
+<span class="cmt"># Recursively scan a directory</span>
+<span class="kw">clamscan</span> <span class="flag">-r</span> <span class="arg">/home/user/downloads</span>
+
+<span class="cmt"># Scan and move infected files to quarantine</span>
+<span class="kw">clamscan</span> <span class="flag">-r --move=</span><span class="arg">/quarantine</span> <span class="arg">/var/www</span>
+
+<span class="cmt"># Scan only infected, suppress OK lines</span>
+<span class="kw">clamscan</span> <span class="flag">-r --infected</span> <span class="arg">/home</span>
+
+<span class="cmt"># Scan a stream from stdin</span>
+<span class="kw">cat</span> <span class="arg">suspicious.pdf</span> | <span class="kw">clamscan</span> <span class="flag">--stdin</span></pre>
+  </div>
+
+  <div class="cmd-section">
+    <div class="cmd-label">USEFUL FLAGS</div>
+    <table class="tbl">
+      <tr><th>Flag</th><th>Description</th></tr>
+      <tr><td><code>-r, --recursive</code></td><td>Scan directories recursively</td></tr>
+      <tr><td><code>-i, --infected</code></td><td>Print only infected files</td></tr>
+      <tr><td><code>--remove</code></td><td>Delete infected files (use with caution)</td></tr>
+      <tr><td><code>--move=DIR</code></td><td>Move infected files to DIR</td></tr>
+      <tr><td><code>--copy=DIR</code></td><td>Copy infected files to DIR (keep original)</td></tr>
+      <tr><td><code>--max-filesize=N</code></td><td>Max file size to scan (MB)</td></tr>
+      <tr><td><code>--max-scansize=N</code></td><td>Max data scanned per file (MB)</td></tr>
+      <tr><td><code>--bell</code></td><td>Sound alert on detection</td></tr>
+      <tr><td><code>--log=FILE</code></td><td>Write scan report to FILE</td></tr>
+      <tr><td><code>--no-summary</code></td><td>Suppress scan summary at end</td></tr>
+      <tr><td><code>--bytecode=no</code></td><td>Disable bytecode interpreter</td></tr>
+      <tr><td><code>--exclude=REGEX</code></td><td>Skip files matching pattern</td></tr>
+      <tr><td><code>--include=REGEX</code></td><td>Only scan files matching pattern</td></tr>
+      <tr><td><code>--detect-pua</code></td><td>Enable PUA (Potentially Unwanted App) detection</td></tr>
+    </table>
+  </div>
+
+  <div class="sh">clamdscan — Daemon Client</div>
+  <div class="cmd-section">
+    <div class="cmd-desc">Sends scan requests to a running clamd instance. Much faster than clamscan — no DB reload per scan.</div>
+    <pre><span class="cmt"># Scan file via daemon (clamd must be running)</span>
+<span class="kw">clamdscan</span> <span class="arg">/path/to/file</span>
+
+<span class="cmt"># Parallel scan with all available threads</span>
+<span class="kw">clamdscan</span> <span class="flag">--multiscan --fdpass</span> <span class="arg">/var/uploads</span>
+
+<span class="cmt"># Reload signatures without restarting clamd</span>
+<span class="kw">clamdscan</span> <span class="flag">--reload</span>
+
+<span class="cmt"># Stream to daemon (useful in scripts / pipes)</span>
+<span class="kw">clamdscan</span> <span class="flag">--stream</span> <span class="arg">/tmp/suspect.zip</span></pre>
+  </div>
+
+  <div class="sh">freshclam — Database Updater</div>
+  <div class="cmd-section">
+    <pre><span class="cmt"># Manual update</span>
+<span class="kw">freshclam</span>
+
+<span class="cmt"># Verbose update with progress</span>
+<span class="kw">freshclam</span> <span class="flag">-v</span>
+
+<span class="cmt"># Run as daemon (checks every N hours per config)</span>
+<span class="kw">freshclam</span> <span class="flag">-d</span>
+
+<span class="cmt"># Show current database version</span>
+<span class="kw">sigtool</span> <span class="flag">--info</span> <span class="arg">/var/lib/clamav/main.cvd</span></pre>
+  </div>
+
+  <div class="sh">clamd — Daemon Management</div>
+  <div class="cmd-section">
+    <pre><span class="cmt"># Start via systemd</span>
+<span class="kw">systemctl</span> start clamav-daemon
+
+<span class="cmt"># Enable on boot</span>
+<span class="kw">systemctl</span> enable clamav-daemon clamav-freshclam
+
+<span class="cmt"># Check daemon status</span>
+<span class="kw">systemctl</span> status clamav-daemon
+
+<span class="cmt"># Test clamd is responding (PING → PONG)</span>
+<span class="kw">echo</span> <span class="str">PING</span> | <span class="kw">nc</span> <span class="flag">-U</span> <span class="arg">/var/run/clamav/clamd.ctl</span>
+
+<span class="cmt"># Get clamd version over socket</span>
+<span class="kw">echo</span> <span class="str">VERSION</span> | <span class="kw">nc</span> <span class="flag">-U</span> <span class="arg">/var/run/clamav/clamd.ctl</span></pre>
+  </div>
+
+  <div class="sh">sigtool — Signature Utilities</div>
+  <div class="cmd-section">
+    <pre><span class="cmt"># Unpack a CVD database file</span>
+<span class="kw">sigtool</span> <span class="flag">-u</span> <span class="arg">daily.cvd</span>
+
+<span class="cmt"># Show database info (version, sigs, builder)</span>
+<span class="kw">sigtool</span> <span class="flag">--info</span> <span class="arg">daily.cvd</span>
+
+<span class="cmt"># List all signatures in a DB</span>
+<span class="kw">sigtool</span> <span class="flag">-l</span> <span class="arg">daily.cvd</span>
+
+<span class="cmt"># Generate MD5 hash of a file (for .hdb signatures)</span>
+<span class="kw">sigtool</span> <span class="flag">--md5</span> <span class="arg">malware_sample.exe</span>
+
+<span class="cmt"># Generate SHA-256 hash (for .hsb signatures)</span>
+<span class="kw">sigtool</span> <span class="flag">--sha256</span> <span class="arg">malware_sample.exe</span>
+
+<span class="cmt"># Find which signature detected a file</span>
+<span class="kw">clamscan</span> <span class="flag">--debug</span> <span class="arg">sample.exe</span> 2&gt;&amp;1 | <span class="kw">grep</span> <span class="str">"Detected"</span></pre>
+  </div>
+
+  <div class="sh">Interactive Scan Demo</div>
+  <button class="scan-btn" onclick="runScan()">▶ Run Demo Scan</button>
+  <div class="scan-box" id="scan-output">
+    <div class="scan-line s-dim"># Click "Run Demo Scan" to simulate a clamscan run</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ SIGNATURES ═══════════════════════════════ -->
+<div id="signatures" class="page">
+
+  <div class="sh">Signature Database Files</div>
+  <table class="tbl">
+    <tr><th>File</th><th>Format</th><th>Contents</th><th>Size</th></tr>
+    <tr><td><code>main.cvd</code></td><td class="dim">CVD</td><td>Core signature set — stable, rarely changes</td><td class="dim">~160 MB</td></tr>
+    <tr><td><code>daily.cvd</code></td><td class="dim">CVD/CLD</td><td>Daily incremental updates — new threats</td><td class="dim">~60 MB</td></tr>
+    <tr><td><code>bytecode.cvd</code></td><td class="dim">CVD</td><td>Bytecode programs for complex detection logic</td><td class="dim">~400 KB</td></tr>
+    <tr><td><code>*.ndb</code></td><td class="dim">Text</td><td>Hex-pattern signatures (custom)</td><td class="dim">varies</td></tr>
+    <tr><td><code>*.hdb</code></td><td class="dim">Text</td><td>MD5 file hash signatures</td><td class="dim">varies</td></tr>
+    <tr><td><code>*.hsb</code></td><td class="dim">Text</td><td>SHA-256 file hash signatures</td><td class="dim">varies</td></tr>
+    <tr><td><code>*.ldb</code></td><td class="dim">Text</td><td>Logical signatures (boolean rules)</td><td class="dim">varies</td></tr>
+    <tr><td><code>*.yar</code></td><td class="dim">YARA</td><td>YARA rules (supported natively)</td><td class="dim">varies</td></tr>
+  </table>
+
+  <div class="sh">CVD File Format</div>
+  <div class="sig-block">
+    <div style="margin-bottom:.5rem;color:var(--dim);font-size:.7rem">CVD (ClamAV Virus Database) — tar.gz archive with a 512-byte header</div>
+    <div><span class="sig-field sf-name">Header (512 B)</span> Metadata: version, sigcount, build date, MD5, signature</div>
+    <div style="margin-top:.35rem"><span class="sig-field sf-type">tar.gz body</span> Contains .db / .ndb / .hdb / .ldb files + CHANGES</div>
+    <div style="margin-top:.35rem"><span class="sig-field sf-off">CLD variant</span> Patch-based incremental update — applied over existing CVD</div>
+  </div>
+
+  <div class="sh">Signature Types</div>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">NDB — Hex-pattern signature</div>
+  <div class="sig-block">
+    <div><span class="sig-field sf-name">MalwareName</span><span style="color:var(--dim)">:</span><span class="sig-field sf-type">TargetType</span><span style="color:var(--dim)">:</span><span class="sig-field sf-off">Offset</span><span style="color:var(--dim)">:</span><span class="sig-field sf-hex">HexSignature</span></div>
+    <div style="margin-top:.6rem;color:var(--yellow)">Win.Trojan.Eicar-1:0:*:58354f2149352150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e44415244</div>
+    <div style="margin-top:.4rem;color:var(--dim);font-size:.69rem">
+      TargetType: 0=any, 1=PE, 2=OLE2, 3=HTML, 4=Mail, 5=Graphic, 6=ELF, 7=ASCII, 10=PDF, 12=ZIP<br>
+      Offset: * = anywhere, 0 = file start, EP+n = entry point + n bytes
+    </div>
+  </div>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">HDB — MD5 hash signature</div>
+  <div class="sig-block">
+    <div><span class="sig-field sf-hex">MD5hash</span><span style="color:var(--dim)">:</span><span class="sig-field sf-off">FileSize</span><span style="color:var(--dim)">:</span><span class="sig-field sf-name">MalwareName</span></div>
+    <div style="margin-top:.6rem;color:var(--yellow)">44d88612fea8a8f36de82e1278abb02f:68:Eicar-Test-Signature</div>
+    <div style="margin-top:.4rem;color:var(--dim);font-size:.69rem">Size in bytes. Fast — hash lookup only, no pattern scanning needed.</div>
+  </div>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">LDB — Logical signature</div>
+  <div class="sig-block">
+    <div><span class="sig-field sf-name">SigName</span><span style="color:var(--dim)">;</span><span class="sig-field sf-type">TargetDescriptions</span><span style="color:var(--dim)">;</span><span class="sig-field sf-off">LogicalExpression</span><span style="color:var(--dim)">;</span><span class="sig-field sf-hex">Subs...</span></div>
+    <div style="margin-top:.6rem;color:var(--yellow)">Win.Backdoor.Example;Target:1;(0&amp;1)&amp;2;deadbeef*cafebabe;68656c6c6f;776f726c64</div>
+    <div style="margin-top:.4rem;color:var(--dim);font-size:.69rem">
+      LogicalExpression uses &amp; (AND), | (OR), ! (NOT) — combine multiple sub-patterns for precision.<br>
+      Greatly reduces false positives compared to single-pattern matching.
+    </div>
+  </div>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">HSB — SHA-256 hash signature</div>
+  <div class="sig-block">
+    <div><span class="sig-field sf-hex">SHA256hash</span><span style="color:var(--dim)">:</span><span class="sig-field sf-off">FileSize</span><span style="color:var(--dim)">:</span><span class="sig-field sf-name">MalwareName</span></div>
+    <div style="margin-top:.6rem;color:var(--yellow)">275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f:68:Eicar-Test-Signature</div>
+  </div>
+
+  <div class="sh">Creating Custom Signatures</div>
+  <pre><span class="cmt"># 1. Get hex bytes of a known-bad string</span>
+<span class="kw">echo</span> <span class="flag">-n</span> <span class="str">"eval(base64_decode"</span> | <span class="kw">xxd</span> <span class="flag">-p</span>
+<span class="cmt"># → 6576616c28626173653634_6465636f6465</span>
+
+<span class="cmt"># 2. Create .ndb file</span>
+<span class="kw">echo</span> <span class="str">"PHP.Obfuscated.Base64Eval:7:*:6576616c28626173653634"</span> > <span class="arg">custom.ndb</span>
+
+<span class="cmt"># 3. Test signature</span>
+<span class="kw">clamscan</span> <span class="flag">--database=</span><span class="arg">custom.ndb</span> <span class="arg">testfile.php</span>
+
+<span class="cmt"># 4. Deploy — copy to ClamAV DB dir</span>
+<span class="kw">cp</span> <span class="arg">custom.ndb</span> <span class="arg">/var/lib/clamav/</span>
+<span class="kw">clamdscan</span> <span class="flag">--reload</span></pre>
+
+  <div class="sh">EICAR Test File</div>
+  <div class="sig-block">
+    <div style="color:var(--dim);font-size:.7rem;margin-bottom:.5rem">The EICAR standard test string — safe, non-malicious, detected by all AV engines as "EICAR-Test-Signature"</div>
+    <div style="color:var(--yellow);word-break:break-all">X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*</div>
+    <div style="margin-top:.5rem;color:var(--dim);font-size:.69rem">Save as eicar.com and scan — ClamAV should report: <span style="color:var(--red)">Eicar-Test-Signature FOUND</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ INTEGRATION ═══════════════════════════════ -->
+<div id="integration" class="page">
+
+  <div class="sh">Mail Server Integration</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Postfix + amavisd-new</div>
+      <div class="card-body">The standard production stack. Amavisd acts as a content filter between Postfix instances, calling ClamAV via clamd socket. <b>Re-injects</b> clean mail at port 10025.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">clamav-milter</div>
+      <div class="card-body">Native milter — hooks into Sendmail/Postfix <b>smtpd_milters</b> at the protocol level. Simpler than amavisd for AV-only setups; no spam scoring.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Exim + ClamAV</div>
+      <div class="card-body">Exim has native <b>malware = clamav</b> condition in ACLs. No helper daemon needed — Exim calls clamd directly via its built-in malware scanner interface.</div>
+    </div>
+  </div>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">POSTFIX + AMAVISD FLOW</div>
+  <pre><span class="cmt">
+  SMTP in (25)
+       │
+  [Postfix smtpd]
+       │ content_filter = amavis:[127.0.0.1]:10024
+       ▼
+  [amavisd-new :10024]
+       │
+       ├── calls clamd → scan for viruses
+       ├── calls spamassassin → spam scoring
+       │
+       ▼
+  clean mail re-injected at :10025
+       │
+  [Postfix smtpd :10025] → local delivery / relay
+</span></pre>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">POSTFIX main.cf SNIPPET</div>
+  <pre><span class="cmt"># /etc/postfix/main.cf</span>
+content_filter = <span class="str">amavis:[127.0.0.1]:10024</span>
+receive_override_options = <span class="str">no_address_mappings</span></pre>
+
+  <div class="cmd-label" style="margin-bottom:.5rem">AMAVISD @av_scanners SNIPPET</div>
+  <pre><span class="cmt"># /etc/amavis/conf.d/50-user</span>
+@av_scanners = (
+  [<span class="str">'ClamAV-clamd'</span>,
+   \&amp;ask_daemon, [<span class="str">"CONTSCAN {}\n"</span>, <span class="str">"/var/run/clamav/clamd.ctl"</span>],
+   <span class="str">qr/\bOK$/</span>, <span class="str">qr/\bFOUND$/</span>,
+   <span class="str">qr/^.*?: (?!Infected Archive)(.*) FOUND$/</span> ],
+);</pre>
+
+  <div class="sh">Docker Integration</div>
+  <pre><span class="cmt"># Minimal ClamAV Docker setup</span>
+<span class="cmt"># docker-compose.yml</span>
+services:
+  clamav:
+    image: <span class="str">clamav/clamav:stable</span>
+    ports:
+      - <span class="str">"3310:3310"</span>    <span class="cmt"># clamd TCP port</span>
+    volumes:
+      - clamav-db:<span class="str">/var/lib/clamav</span>    <span class="cmt"># persist signatures</span>
+    environment:
+      - <span class="str">CLAMAV_NO_FRESHCLAM=false</span>
+
+volumes:
+  clamav-db:</pre>
+
+  <pre><span class="cmt"># Scan a file via TCP clamd in Docker</span>
+<span class="kw">clamdscan</span> <span class="flag">--config-file=-</span> <span class="flag">--stream</span> <span class="arg">/path/to/file</span> <span class="str">&lt;&lt;EOF
+TCPSocket 3310
+TCPAddr 127.0.0.1
+EOF</span></pre>
+
+  <div class="sh">REST API Wrappers</div>
+  <table class="tbl">
+    <tr><th>Project</th><th>Language</th><th>Description</th></tr>
+    <tr><td class="grn">clamav-rest</td><td class="dim">Java</td><td>REST wrapper around clamd — POST a file, get JSON result back</td></tr>
+    <tr><td class="grn">python-clamd</td><td class="dim">Python</td><td>Pure Python client for clamd Unix/TCP socket</td></tr>
+    <tr><td class="grn">go-clamav</td><td class="dim">Go</td><td>Go bindings for libclamav + clamd socket client</td></tr>
+    <tr><td class="grn">node-clamscan</td><td class="dim">Node.js</td><td>Async Node.js wrapper — scans buffers, streams, and local paths</td></tr>
+  </table>
+
+  <div class="cmd-label" style="margin-bottom:.4rem">PYTHON EXAMPLE</div>
+  <pre><span class="kw">import</span> clamd
+
+<span class="cmt"># Connect to clamd via Unix socket</span>
+cd = clamd.ClamdUnixSocket(<span class="str">'/var/run/clamav/clamd.ctl'</span>)
+
+<span class="cmt"># Ping daemon</span>
+<span class="kw">print</span>(cd.ping())  <span class="cmt"># → 'PONG'</span>
+
+<span class="cmt"># Scan a file path</span>
+result = cd.scan(<span class="str">'/tmp/suspect.pdf'</span>)
+<span class="kw">print</span>(result)
+<span class="cmt"># → {'/tmp/suspect.pdf': ('FOUND', 'Win.Trojan.Example-1')}</span>
+
+<span class="cmt"># Scan an in-memory buffer (stream)</span>
+<span class="kw">with</span> <span class="kw">open</span>(<span class="str">'file.exe'</span>, <span class="str">'rb'</span>) <span class="kw">as</span> f:
+    result = cd.instream(f)
+<span class="kw">print</span>(result[<span class="str">'stream'</span>])  <span class="cmt"># → ('OK', None) or ('FOUND', 'SigName')</span></pre>
+</div>
+
+<!-- ═══════════════════════════════ CONFIG ═══════════════════════════════ -->
+<div id="config" class="page">
+
+  <div class="sh">clamd.conf — Key Settings</div>
+  <pre><span class="cmt"># /etc/clamav/clamd.conf</span>
+
+<span class="cmt"># Socket</span>
+<span class="kw">LocalSocket</span>         <span class="arg">/var/run/clamav/clamd.ctl</span>
+<span class="kw">LocalSocketMode</span>     <span class="arg">660</span>
+<span class="kw">TCPSocket</span>           <span class="arg">3310</span>          <span class="cmt"># enable for TCP (disable for Unix-only)</span>
+<span class="kw">TCPAddr</span>             <span class="arg">127.0.0.1</span>     <span class="cmt"># listen address</span>
+
+<span class="cmt"># Database</span>
+<span class="kw">DatabaseDirectory</span>   <span class="arg">/var/lib/clamav</span>
+<span class="kw">DatabaseAutoReload</span>  <span class="arg">yes</span>           <span class="cmt"># reload sigs when freshclam updates them</span>
+
+<span class="cmt"># Scan limits</span>
+<span class="kw">MaxScanSize</span>         <span class="arg">400M</span>          <span class="cmt"># max data scanned per file</span>
+<span class="kw">MaxFileSize</span>         <span class="arg">100M</span>          <span class="cmt"># skip files larger than this</span>
+<span class="kw">MaxRecursion</span>        <span class="arg">10</span>            <span class="cmt"># max archive nesting depth</span>
+<span class="kw">MaxFiles</span>            <span class="arg">10000</span>         <span class="cmt"># max files extracted from archive</span>
+<span class="kw">MaxEmbeddedPE</span>       <span class="arg">10M</span>           <span class="cmt"># max PE in HTML/OLE2</span>
+<span class="kw">MaxHTMLNormalize</span>    <span class="arg">40M</span>
+
+<span class="cmt"># Performance</span>
+<span class="kw">MaxThreads</span>          <span class="arg">4</span>             <span class="cmt"># parallel scan threads</span>
+<span class="kw">ReadTimeout</span>         <span class="arg">60</span>            <span class="cmt"># seconds to wait for client data</span>
+<span class="kw">MaxQueue</span>            <span class="arg">200</span>           <span class="cmt"># max queued connections</span>
+
+<span class="cmt"># Detection options</span>
+<span class="kw">ScanPE</span>              <span class="arg">yes</span>
+<span class="kw">ScanELF</span>             <span class="arg">yes</span>
+<span class="kw">ScanOLE2</span>            <span class="arg">yes</span>           <span class="cmt"># MS Office documents</span>
+<span class="kw">ScanPDF</span>             <span class="arg">yes</span>
+<span class="kw">ScanHTML</span>            <span class="arg">yes</span>
+<span class="kw">ScanMail</span>            <span class="arg">yes</span>
+<span class="kw">ScanArchive</span>         <span class="arg">yes</span>
+<span class="kw">DetectPUA</span>           <span class="arg">no</span>            <span class="cmt"># potentially unwanted applications</span>
+<span class="kw">HeuristicAlerts</span>     <span class="arg">yes</span>
+<span class="kw">Bytecode</span>            <span class="arg">yes</span>           <span class="cmt"># enable bytecode engine</span>
+
+<span class="cmt"># User/group (must match socket perms)</span>
+<span class="kw">User</span>                <span class="arg">clamav</span>
+<span class="kw">AllowSupplementaryGroups</span> <span class="arg">yes</span></pre>
+
+  <div class="sh">freshclam.conf — Update Settings</div>
+  <pre><span class="cmt"># /etc/clamav/freshclam.conf</span>
+<span class="kw">DatabaseDirectory</span>   <span class="arg">/var/lib/clamav</span>
+<span class="kw">DatabaseOwner</span>       <span class="arg">clamav</span>
+
+<span class="cmt"># Update servers (round-robin)</span>
+<span class="kw">DatabaseMirror</span>      <span class="arg">database.clamav.net</span>
+
+<span class="cmt"># Check N times per day (max 12 per policy)</span>
+<span class="kw">Checks</span>              <span class="arg">12</span>
+
+<span class="cmt"># Notify clamd after update</span>
+<span class="kw">NotifyClamd</span>         <span class="arg">/etc/clamav/clamd.conf</span>
+
+<span class="cmt"># Log</span>
+<span class="kw">UpdateLogFile</span>       <span class="arg">/var/log/clamav/freshclam.log</span>
+<span class="kw">LogVerbose</span>          <span class="arg">no</span></pre>
+
+  <div class="sh">Exit Codes</div>
+  <table class="tbl">
+    <tr><th>Code</th><th>Meaning</th></tr>
+    <tr><td class="grn">0</td><td>No viruses found</td></tr>
+    <tr><td class="red">1</td><td>Virus(es) found</td></tr>
+    <tr><td class="org">2</td><td>Error / some files could not be scanned</td></tr>
+  </table>
+
+  <div class="sh">Installation</div>
+  <pre><span class="cmt"># Debian / Ubuntu</span>
+<span class="kw">apt-get</span> install clamav clamav-daemon clamav-freshclam
+
+<span class="cmt"># RHEL / Rocky / AlmaLinux</span>
+<span class="kw">dnf</span> install clamav clamd clamav-update
+
+<span class="cmt"># macOS (Homebrew)</span>
+<span class="kw">brew</span> install clamav
+<span class="kw">cp</span> /opt/homebrew/etc/clamav/freshclam.conf.sample /opt/homebrew/etc/clamav/freshclam.conf
+
+<span class="cmt"># Docker</span>
+<span class="kw">docker</span> pull clamav/clamav:stable
+
+<span class="cmt"># First run — download signatures</span>
+<span class="kw">freshclam</span></pre>
+</div>
+
+<script>
+function show(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── Scan Demo ──
+var scanLines = [
+  ['s-dim',  '$ clamscan -r --infected /tmp/uploads'],
+  ['s-dim',  'Loading signatures from /var/lib/clamav...'],
+  ['s-dim',  'Loaded 9,247,812 signatures.'],
+  ['s-dim',  ''],
+  ['s-dim',  '/tmp/uploads/report.pdf: OK'],
+  ['s-dim',  '/tmp/uploads/invoice_march.xlsx: OK'],
+  ['s-dim',  '/tmp/uploads/update.exe: OK'],
+  ['s-inf',  '/tmp/uploads/crack_v2.exe: Win.Trojan.Stealer-1.FOUND'],
+  ['s-dim',  '/tmp/uploads/photo.jpg: OK'],
+  ['s-dim',  '/tmp/uploads/readme.txt: OK'],
+  ['s-inf',  '/tmp/uploads/archive.zip: Win.Dropper.Agent-3.FOUND'],
+  ['s-dim',  '/tmp/uploads/notes.docx: OK'],
+  ['s-dim',  ''],
+  ['s-bold', '----------- SCAN SUMMARY -----------'],
+  ['s-dim',  'Known viruses:       9247812'],
+  ['s-dim',  'Engine version:      1.4.1'],
+  ['s-dim',  'Scanned directories: 1'],
+  ['s-dim',  'Scanned files:       8'],
+  ['s-dim',  'Infected files:      2'],
+  ['s-dim',  'Data scanned:        14.32 MB'],
+  ['s-dim',  'Data read:           14.32 MB (ratio 1.00:1)'],
+  ['s-dim',  'Time:                1.283 sec (0 m 1 s)'],
+  ['s-dim',  'Start Date:          2026:04:14 12:00:00'],
+  ['s-dim',  'End Date:            2026:04:14 12:00:01'],
+];
+
+function runScan() {
+  var box = document.getElementById('scan-output');
+  box.innerHTML = '';
+  var i = 0;
+  function nextLine() {
+    if (i >= scanLines.length) return;
+    var d = document.createElement('div');
+    d.className = 'scan-line ' + scanLines[i][0];
+    d.textContent = scanLines[i][1];
+    box.appendChild(d);
+    i++;
+    setTimeout(nextLine, scanLines[i-1][0] === 's-inf' ? 80 : 45);
+  }
+  nextLine();
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-226 virtual hosts (root + 225 subdomains), all static sites served by a single nginx container.
+227 virtual hosts (root + 226 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -18,6 +18,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [githubstars.ximg.app](https://githubstars.ximg.app) | GitHub Stars — browse, search, sort, and filter all starred repositories; synced hourly from the GitHub API. |
 | [video.ximg.app](https://video.ximg.app) | Video player and media reference — codec comparison, container formats, and streaming protocols. |
 | [smtp.ximg.app](https://smtp.ximg.app) | Simple Mail Transfer Protocol — full session flow, all commands and ESMTP extensions, response codes, ports 25/465/587, TLS/STARTTLS, SPF, DKIM, DMARC, and diagnostic commands. |
+| [clamav.ximg.app](https://clamav.ximg.app) | Open-source antivirus toolkit — clamscan/clamd/freshclam commands, signature formats (NDB/HDB/LDB/YARA), detection capabilities, Postfix+amavisd mail integration, Docker setup, and clamd.conf reference. |
 | [chmod.ximg.app](https://chmod.ximg.app) | Linux file permissions calculator — toggle owner/group/other bits, special modes (setuid/setgid/sticky), octal and symbolic output, chmod commands, ls -la preview, quick presets, and permission reference table. |
 | [iptables.ximg.app](https://iptables.ximg.app) | Linux firewall rule visualizer — animated netfilter packet flow diagram, table/chain reference, interactive rule builder with live iptables and nftables output, templates, and quick reference cheatsheet. |
 | [tls.ximg.app](https://tls.ximg.app) | TLS/SSL handshake visualizer — animated step-by-step TLS 1.2 and 1.3 handshake diagrams with RTT comparison, cipher suite breakdown, certificate chain viewer, and key concepts reference. |

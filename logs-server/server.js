@@ -107,6 +107,7 @@ const LOG_FILES = {
   tampa:     'tampa.access.log',
   computers: 'computers.access.log',
   trump:     'trump.access.log',
+  clamav:    'clamav.access.log',
   cnc:       'cnc.access.log',
   simcity:   'simcity.access.log',
   rx:        'rx.access.log',

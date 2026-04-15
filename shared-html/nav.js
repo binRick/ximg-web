@@ -19,7 +19,7 @@
   var GROUPS = [
     { label: 'Tech', apps: [
       ['agents','agents'],['ai','ai'],['algorithms','algorithms'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bgp','bgp'],['bsd','bsd'],
-      ['cdn','cdn'],['chmod','chmod'],['claude','claude'],['computers','computers'],['crypto','crypto'],['database','database'],['dns','dns'],['docker','docker'],
+      ['cdn','cdn'],['chmod','chmod'],['clamav','clamav'],['claude','claude'],['computers','computers'],['crypto','crypto'],['database','database'],['dns','dns'],['docker','docker'],
       ['embeddings','embeddings'],['git','git'],['http','http'],['internet','internet'],['iptables','iptables'],['json','json'],['linux','linux'],['loadbalancer','loadbalancer'],['mac','mac'],['makefile','makefile'],['network','network'],['os','os'],['passwords','passwords'],['playground','playground'],['programming','programming'],['queue','queue'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tls','tls'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['utf8','utf8'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
     ]},
     { label: 'Culture', apps: [
