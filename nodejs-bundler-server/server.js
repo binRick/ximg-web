@@ -619,8 +619,8 @@ const HTML = `<!DOCTYPE html>
         if (token) {
           window.location.href = '/download/' + token;
           const msg = embedNode
-            ? '\u2713 Download started \u2014 check your downloads folder.\n\nThe zip includes Node.js runtime + pre-installed node_modules.\nRun setup.sh to verify, then use node-runtime/node to run scripts.'
-            : '\u2713 Download started \u2014 check your downloads folder.\n\nThe zip contains pre-installed node_modules.\nExtract and copy node_modules/ into your project.';
+            ? '\u2713 Download started \u2014 check your downloads folder.\\n\\nThe zip includes Node.js runtime + pre-installed node_modules.\\nRun setup.sh to verify, then use node-runtime/node to run scripts.'
+            : '\u2713 Download started \u2014 check your downloads folder.\\n\\nThe zip contains pre-installed node_modules.\\nExtract and copy node_modules/ into your project.';
           show('ok', msg);
         }
       } catch (e) {
