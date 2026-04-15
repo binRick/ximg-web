@@ -79,22 +79,137 @@
     ]},
   ];
 
-  var s = document.createElement('style');
-  s.textContent =
-    // Win95 menu bar
+  // ── Theme CSS ────────────────────────────────────────────────────────────────
+
+  var CSS_DARK =
+    'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
+    'gap:.35rem;padding:.4rem .75rem;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);' +
+    'border-bottom:1px solid rgba(255,255,255,.06);font-family:\'Courier New\',monospace;}' +
+
+    '.nav-brand{font-weight:700;font-size:.88rem;color:#f1f5f9;margin-right:.5rem;' +
+    'letter-spacing:-.02em;text-decoration:none;flex-shrink:0}' +
+
+    '.nav-group{position:relative;flex-shrink:0}' +
+
+    '.nav-trigger{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;' +
+    'padding:.3rem .65rem;border-radius:6px;cursor:pointer;white-space:nowrap;' +
+    'color:#c9d1d9;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);' +
+    'font-family:\'Courier New\',monospace;user-select:none;transition:all .18s;}' +
+    '.nav-trigger:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18);}' +
+    '.nav-trigger.open{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);}' +
+    '.nav-trigger.has-active{color:#00ff41;border-color:rgba(0,255,65,.4);background:rgba(0,255,65,.07);}' +
+    '.nav-trigger.has-active:hover{background:rgba(0,255,65,.12);}' +
+
+    '.nav-caret{font-size:.55rem;opacity:.7;line-height:1}' +
+    '.nav-trigger.open .nav-caret{transform:none}' +
+
+    '.nav-dropdown{position:absolute;top:calc(100% + 4px);left:0;' +
+    'background:rgba(10,10,18,.97);border:1px solid rgba(255,255,255,.12);border-radius:6px;' +
+    'box-shadow:0 8px 32px rgba(0,0,0,.7);padding:4px;z-index:300;' +
+    'opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;transform:translateY(-4px);}' +
+    '.nav-dropdown.open{opacity:1;pointer-events:all;transform:none;}' +
+    '.nav-dropdown.wide{display:grid;grid-template-columns:1fr 1fr;gap:0;min-width:200px;}' +
+    '.nav-dropdown.wider{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;min-width:300px;}' +
+    '.nav-dropdown.active-only .nav-dd-item:not(.active){display:none;}' +
+    '.nav-dropdown.active-only{display:block;min-width:0;width:auto;}' +
+
+    '.nav-dd-item{display:flex;align-items:center;gap:6px;font-size:.73rem;font-weight:400;' +
+    'color:#8b949e;padding:4px 10px;border-radius:4px;white-space:nowrap;' +
+    'text-decoration:none;font-family:\'Courier New\',monospace;cursor:default;}' +
+    '.nav-dd-item:hover{background:rgba(255,255,255,.07);color:#f1f5f9;}' +
+    '.nav-dd-item.active{color:#00ff41;font-weight:600;}' +
+
+    '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
+    '.nav-dd-item.active .nav-dd-dot{background:#00ff41;}' +
+    '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+
+    '.nav-hamburger{display:none;margin-left:auto;flex-shrink:0;cursor:pointer;' +
+    'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;' +
+    'padding:.3rem .6rem;color:#c9d1d9;font-size:.9rem;line-height:1;' +
+    'font-family:\'Courier New\',monospace;user-select:none;transition:background .18s;}' +
+    '.nav-hamburger:hover,.nav-hamburger.open{background:rgba(255,255,255,.1);}' +
+
+    '.nav-mobile-panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:199;' +
+    'background:rgba(10,10,15,.97);backdrop-filter:blur(16px);overflow-y:auto;padding-top:2.8rem;}' +
+    '.nav-mobile-panel.open{display:block;}' +
+
+    '.nav-mobile-group{border-bottom:1px solid rgba(255,255,255,.07);}' +
+    '.nav-mobile-label{display:flex;align-items:center;justify-content:space-between;' +
+    'padding:8px 14px;font-size:.82rem;font-weight:600;color:#c9d1d9;cursor:pointer;' +
+    'font-family:\'Courier New\',monospace;user-select:none;}' +
+    '.nav-mobile-label:active{color:#00ff41;}' +
+    '.nav-mobile-label.active-group{color:#00ff41;}' +
+    '.nav-mobile-caret{font-size:.6rem;opacity:.6;transition:transform .15s;}' +
+    '.nav-mobile-group.open .nav-mobile-caret{transform:rotate(180deg);}' +
+
+    '.nav-mobile-apps{display:none;padding:4px 8px 8px;' +
+    'display:grid;grid-template-columns:1fr 1fr;gap:2px;}' +
+    '.nav-mobile-group:not(.open) .nav-mobile-apps{display:none;}' +
+    '.nav-mobile-group.open .nav-mobile-apps{display:grid;}' +
+
+    '.nav-mobile-app{display:flex;align-items:center;gap:.4rem;padding:5px 8px;' +
+    'border-radius:4px;font-size:.76rem;font-weight:400;color:#8b949e;' +
+    'text-decoration:none;font-family:\'Courier New\',monospace;transition:color .12s;}' +
+    '.nav-mobile-app:hover,.nav-mobile-app:active{color:#f1f5f9;background:rgba(255,255,255,.05);}' +
+    '.nav-mobile-app.active{color:#00ff41;font-weight:600;}' +
+    '.nav-mobile-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
+    '.nav-mobile-app.active .nav-mobile-dot{background:#00ff41;}' +
+
+    '@media(max-width:768px){' +
+    '.nav-group{display:none;}' +
+    '.nav-hamburger{display:inline-flex;align-items:center;}' +
+    '}' +
+
+    '.sub-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}' +
+    '.sub-nav::-webkit-scrollbar{display:none}' +
+
+    'img[loading="lazy"]{cursor:zoom-in;transition:box-shadow .15s}' +
+    'img[loading="lazy"]:hover{box-shadow:0 0 0 2px #00ff41,0 0 12px rgba(0,255,65,.2)}' +
+
+    '.nav-lb{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.88);' +
+    'display:flex;align-items:center;justify-content:center;cursor:default;' +
+    'animation:nav-lbi .1s ease}' +
+    '@keyframes nav-lbi{from{opacity:0}to{opacity:1}}' +
+    '.nav-lb img{max-width:90vw;max-height:88vh;object-fit:contain;' +
+    'border:1px solid rgba(255,255,255,.18);border-radius:4px;' +
+    'box-shadow:0 8px 40px rgba(0,0,0,.8);animation:nav-lbii .15s ease}' +
+    '@keyframes nav-lbii{from{transform:scale(.95)}to{transform:none}}' +
+    '.nav-lb-x{position:fixed;top:1rem;right:1.2rem;color:#c9d1d9;font-size:.75rem;font-weight:700;' +
+    'cursor:pointer;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);' +
+    'border-radius:6px;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;' +
+    'transition:background .15s;user-select:none;font-family:\'Courier New\',monospace}' +
+    '.nav-lb-x:hover{background:rgba(255,255,255,.16);}' +
+    '.nav-lb-cap{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);' +
+    'color:rgba(255,255,255,.6);font-size:.78rem;font-family:\'Courier New\',monospace;' +
+    'text-align:center;max-width:80vw;pointer-events:none}' +
+
+    '.nav-copy{position:absolute;top:.5rem;right:.5rem;font-size:.68rem;font-weight:600;' +
+    'padding:2px 7px;border-radius:4px;cursor:pointer;' +
+    'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);' +
+    'color:#8b949e;font-family:\'Courier New\',monospace;transition:all .15s;' +
+    'opacity:0;pointer-events:none}' +
+    'pre:hover .nav-copy{opacity:1;pointer-events:auto}' +
+    '.nav-copy:hover{background:rgba(255,255,255,.12);color:#c9d1d9;}' +
+    '.nav-copy.ok{background:rgba(0,255,65,.1);color:#00ff41;border-color:rgba(0,255,65,.3);}' +
+
+    '.nav-theme-btn{display:inline-flex;align-items:center;font-size:.65rem;font-weight:600;' +
+    'padding:.25rem .55rem;border-radius:6px;cursor:pointer;white-space:nowrap;margin-left:auto;' +
+    'color:#555e6b;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);' +
+    'font-family:\'Courier New\',monospace;user-select:none;transition:all .18s;flex-shrink:0;}' +
+    '.nav-theme-btn:hover{color:#c9d1d9;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.15);}';
+
+  var CSS_WIN95 =
     'nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;' +
     'gap:2px;padding:2px 4px;background:#c0c0c0;' +
     'border-bottom:2px solid #808080;box-shadow:inset 0 -1px 0 #000;' +
     'font-family:"MS Sans Serif",Arial,sans-serif;}' +
 
-    // Brand — Win95 titlebar strip
     '.nav-brand{font-weight:700;font-size:.8rem;color:#fff;margin-right:6px;' +
     'background:#000080;padding:2px 8px;text-decoration:none;flex-shrink:0;' +
     'font-family:"MS Sans Serif",Arial,sans-serif;white-space:nowrap;}' +
 
     '.nav-group{position:relative;flex-shrink:0}' +
 
-    // Win95 raised 3D button
     '.nav-trigger{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;font-weight:400;' +
     'padding:3px 8px;border-radius:0;cursor:pointer;white-space:nowrap;' +
     'color:#000;background:#c0c0c0;' +
@@ -103,7 +218,6 @@
     'box-shadow:inset 1px 1px 0 #dfdfdf,inset -1px -1px 0 #808080;' +
     'font-family:"MS Sans Serif",Arial,sans-serif;user-select:none;transition:none;}' +
     '.nav-trigger:hover{background:#c0c0c0;}' +
-    // Pressed — invert 3D
     '.nav-trigger.open{border-top-color:#000;border-left-color:#000;border-bottom-color:#fff;border-right-color:#fff;' +
     'box-shadow:inset 1px 1px 0 #808080,inset -1px -1px 0 #dfdfdf;padding:4px 7px 2px 9px;}' +
     '.nav-trigger.has-active{font-weight:700;color:#000080;}' +
@@ -112,7 +226,6 @@
     '.nav-caret{font-size:.55rem;opacity:.7;line-height:1}' +
     '.nav-trigger.open .nav-caret{transform:none}' +
 
-    // Win95 popup menu
     '.nav-dropdown{position:absolute;top:calc(100% + 2px);left:0;' +
     'background:#c0c0c0;' +
     'border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
@@ -135,7 +248,6 @@
     '.nav-dd-item.active .nav-dd-dot{background:#000080;}' +
     '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
 
-    // Hamburger — hidden on desktop
     '.nav-hamburger{display:none;margin-left:auto;flex-shrink:0;cursor:pointer;' +
     'background:#c0c0c0;' +
     'border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
@@ -147,7 +259,6 @@
     '.nav-hamburger.open{border-top-color:#000;border-left-color:#000;border-bottom-color:#fff;border-right-color:#fff;' +
     'box-shadow:inset 1px 1px 0 #808080,inset -1px -1px 0 #dfdfdf;}' +
 
-    // Mobile panel — Win95 grey dialog
     '.nav-mobile-panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:199;' +
     'background:#c0c0c0;overflow-y:auto;padding-top:2.8rem;}' +
     '.nav-mobile-panel.open{display:block;}' +
@@ -174,21 +285,17 @@
     '.nav-mobile-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
     '.nav-mobile-app.active .nav-mobile-dot{background:#000080;}' +
 
-    // Responsive breakpoint
     '@media(max-width:768px){' +
     '.nav-group{display:none;}' +
     '.nav-hamburger{display:inline-flex;align-items:center;}' +
     '}' +
 
-    // Sub-nav horizontal scroll
     '.sub-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}' +
     '.sub-nav::-webkit-scrollbar{display:none}' +
 
-    // Content images: navy blue border on hover
     'img[loading="lazy"]{cursor:zoom-in;transition:box-shadow .15s}' +
     'img[loading="lazy"]:hover{box-shadow:0 0 0 2px #000080,2px 2px 4px rgba(0,0,0,.4)}' +
 
-    // Image lightbox — Win95 beveled border
     '.nav-lb{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.88);' +
     'display:flex;align-items:center;justify-content:center;cursor:default;' +
     'animation:nav-lbi .1s ease}' +
@@ -210,7 +317,6 @@
     'color:rgba(255,255,255,.7);font-size:.78rem;font-family:"MS Sans Serif",Arial,sans-serif;' +
     'text-align:center;max-width:80vw;pointer-events:none}' +
 
-    // Copy button on <pre> blocks — Win95 button
     '.nav-copy{position:absolute;top:.5rem;right:.5rem;font-size:.68rem;font-weight:400;' +
     'padding:2px 6px;border-radius:0;cursor:pointer;' +
     'background:#c0c0c0;' +
@@ -222,9 +328,45 @@
     'pre:hover .nav-copy{opacity:1;pointer-events:auto}' +
     '.nav-copy:hover{background:#c0c0c0;}' +
     '.nav-copy.ok{background:#000080;color:#fff;border-top-color:#000;border-left-color:#000;' +
-    'border-bottom-color:#fff;border-right-color:#fff;box-shadow:inset 1px 1px 0 #808080}';
+    'border-bottom-color:#fff;border-right-color:#fff;box-shadow:inset 1px 1px 0 #808080}' +
 
-  document.head.appendChild(s);
+    '.nav-theme-btn{display:inline-flex;align-items:center;font-size:.7rem;font-weight:400;' +
+    'padding:3px 8px;border-radius:0;cursor:pointer;white-space:nowrap;margin-left:auto;' +
+    'color:#000;background:#c0c0c0;' +
+    'border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
+    'border-bottom-color:#000;border-right-color:#000;' +
+    'box-shadow:inset 1px 1px 0 #dfdfdf,inset -1px -1px 0 #808080;' +
+    'font-family:"MS Sans Serif",Arial,sans-serif;user-select:none;transition:none;flex-shrink:0;}' +
+    '.nav-theme-btn:hover{background:#c0c0c0;}' +
+    '.nav-theme-btn:active{border-top-color:#000;border-left-color:#000;border-bottom-color:#fff;border-right-color:#fff;' +
+    'box-shadow:inset 1px 1px 0 #808080,inset -1px -1px 0 #dfdfdf;}';
+
+  // ── Theme state ──────────────────────────────────────────────────────────────
+
+  var THEME_KEY = 'ximg-nav-theme';
+  var currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
+
+  var styleEl = document.createElement('style');
+  document.head.appendChild(styleEl);
+
+  var scrollBar; // set below
+
+  function applyTheme(theme) {
+    currentTheme = theme;
+    styleEl.textContent = theme === 'win95' ? CSS_WIN95 : CSS_DARK;
+    localStorage.setItem(THEME_KEY, theme);
+    // scroll bar color
+    if (scrollBar) scrollBar.style.background = theme === 'win95' ? '#000080' : '#00ff41';
+    // theme-color meta
+    var tc = document.querySelector('meta[name="theme-color"]');
+    if (tc) tc.setAttribute('content', theme === 'win95' ? '#c0c0c0' : '#0a0a0f');
+    // update button label
+    if (themeBtn) themeBtn.textContent = theme === 'win95' ? '◐ dark' : '⊞ win95';
+  }
+
+  applyTheme(currentTheme);
+
+  // ── Nav element ──────────────────────────────────────────────────────────────
 
   var nav = document.createElement('nav');
   nav.innerHTML = '<a class="nav-brand" href="https://ximg.app">ximg.app</a>';
@@ -307,6 +449,17 @@
       };
     }
   });
+
+  // ── Theme switcher button ────────────────────────────────────────────────────
+  var themeBtn = document.createElement('div');
+  themeBtn.className = 'nav-theme-btn';
+  themeBtn.title = 'Switch nav theme';
+  themeBtn.textContent = currentTheme === 'win95' ? '◐ dark' : '⊞ win95';
+  themeBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    applyTheme(currentTheme === 'win95' ? 'dark' : 'win95');
+  });
+  nav.appendChild(themeBtn);
 
   // ── Mobile hamburger + panel ───────────────────────────────────────────────
   var hamburger = document.createElement('div');
@@ -408,24 +561,17 @@
   window.addEventListener('resize', syncSpacer);
 
   // ── Universal sub-nav tab persistence ─────────────────────────────────────
-  // Saves the active tab to localStorage and restores it on refresh.
-  // Skips restore when a URL hash is present — apps that already manage their
-  // own hash navigation (Pattern 1/2) handle restoration themselves.
   setTimeout(function () {
     if (window.__tabPersist) return;
     window.__tabPersist = true;
 
     var pageKey = 'tab:' + location.hostname + location.pathname;
 
-    // Extract a tab id from a clicked element (handles all sub-nav patterns)
     function getTabId(el) {
       if (!el || !el.getAttribute) return null;
-      // data-tab="name" buttons (most common)
       if (el.dataset && el.dataset.tab) return el.dataset.tab;
-      // href="#name" anchor links
       var href = el.getAttribute('href');
       if (href && href[0] === '#' && href.length > 1) return href.slice(1);
-      // onclick="switchTab('name')" / showTab / showSection / showPanel
       var oc = el.getAttribute('onclick');
       if (oc) {
         var m = oc.match(/\(\s*['"]([^'"]+)['"]\s*\)/);
@@ -436,8 +582,6 @@
 
     var TAB_SEL = '.tab,.nav-tab,.tab-btn,.sub-nav-btn,.linux-tab,.sub-nav a[href^="#"],[data-tab]';
 
-    // Restore saved tab — but only when there is no URL hash, so we don't
-    // fight apps that already read location.hash on load.
     if (!location.hash) {
       var saved = localStorage.getItem(pageKey);
       if (saved) {
@@ -458,7 +602,6 @@
       }
     }
 
-    // Save to localStorage whenever any tab button is clicked
     document.addEventListener('click', function (e) {
       var el = e.target;
       for (var i = 0; i < 3; i++) {
@@ -469,7 +612,7 @@
         }
         el = el.parentElement;
       }
-    }, true); // capture so we run before any stopPropagation
+    }, true);
 
   }, 50);
 
@@ -485,7 +628,7 @@
       document.head.appendChild(m);
     }
 
-    setMeta({ name: 'theme-color', content: '#c0c0c0' });
+    setMeta({ name: 'theme-color', content: currentTheme === 'win95' ? '#c0c0c0' : '#0a0a0f' });
 
     var title = document.title || 'ximg.app';
 
@@ -520,15 +663,16 @@
 
   // ── Scroll-progress bar ────────────────────────────────────────────────────
   (function () {
-    var bar = document.createElement('div');
-    bar.style.cssText =
+    scrollBar = document.createElement('div');
+    scrollBar.style.cssText =
       'position:fixed;top:0;left:0;height:3px;width:0%;z-index:9999;pointer-events:none;' +
-      'background:#000080;transition:width .07s linear';
-    document.body.appendChild(bar);
+      'transition:width .07s linear';
+    scrollBar.style.background = currentTheme === 'win95' ? '#000080' : '#00ff41';
+    document.body.appendChild(scrollBar);
     function upd() {
       var s = document.documentElement.scrollTop || document.body.scrollTop;
       var h = document.documentElement.scrollHeight - window.innerHeight;
-      bar.style.width = (h > 0 ? Math.min(100, s / h * 100) : 0) + '%';
+      scrollBar.style.width = (h > 0 ? Math.min(100, s / h * 100) : 0) + '%';
     }
     window.addEventListener('scroll', upd, { passive: true });
     upd();
@@ -540,7 +684,7 @@
       var img = e.target.tagName === 'IMG' ? e.target : null;
       if (!img) return;
       if (img.closest('nav') || img.closest('.nav-mobile-panel')) return;
-      if ((img.naturalWidth || img.width) < 80) return; // skip icons
+      if ((img.naturalWidth || img.width) < 80) return;
 
       var lb = document.createElement('div');
       lb.className = 'nav-lb';
