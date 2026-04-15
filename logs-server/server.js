@@ -802,6 +802,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="go-bundler">go-bundler</button>
           <button class="site-opt" data-site="apt-bundler">apt-bundler</button>
           <button class="site-opt" data-site="rpm-bundler">rpm-bundler</button>
+          <button class="site-opt" data-site="iso">iso</button>
           <button class="site-opt" data-site="honeypot">honeypot</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
