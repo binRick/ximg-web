@@ -483,7 +483,7 @@ const HTML = `<!DOCTYPE html>
   </div>
 
   <!-- Install instructions view -->
-  <div id="view-install" style="display:none;width:100%;max-width:560px">
+  <div id="view-install" style="display:none;width:100%;max-width:780px">
     <div class="card">
       <h2 style="font-size:1.1rem;font-weight:700;color:#f1f5f9;margin-bottom:1.4rem">After Downloading the Zip</h2>
       <ol style="list-style:none;padding:0;display:flex;flex-direction:column;gap:1.1rem">

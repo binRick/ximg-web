@@ -83,6 +83,20 @@ DISTROS = {
             'extras':  'https://vault.centos.org/centos/7/extras/{arch}/',
         },
     },
+    'rhel-9': {
+        'label': 'RHEL 9 (UBI — public)',
+        'repos': {
+            'baseos':    'https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/{arch}/baseos/os/',
+            'appstream': 'https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/{arch}/appstream/os/',
+        },
+    },
+    'rhel-8': {
+        'label': 'RHEL 8 (UBI — public)',
+        'repos': {
+            'baseos':    'https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/{arch}/baseos/os/',
+            'appstream': 'https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/{arch}/appstream/os/',
+        },
+    },
 }
 
 ARCHES = {
@@ -429,6 +443,8 @@ HTML = r"""<!DOCTYPE html>
         <option value="centos-stream-10">CentOS Stream 10</option>
         <option value="centos-8">CentOS 8 (EOL)</option>
         <option value="centos-7">CentOS 7 (EOL)</option>
+        <option value="rhel-9">RHEL 9 (UBI — public)</option>
+        <option value="rhel-8">RHEL 8 (UBI — public)</option>
       </select>
 
       <label for="arch">Architecture</label>
@@ -460,7 +476,7 @@ HTML = r"""<!DOCTYPE html>
     <div class="pkg-grid" id="pkg-grid"></div>
   </div>
 
-  <div id="view-install" style="display:none;width:100%;max-width:560px">
+  <div id="view-install" style="display:none;width:100%;max-width:780px">
     <div class="card">
       <h2 style="font-size:1.1rem;font-weight:700;color:#f1f5f9;margin-bottom:1.4rem">After Downloading the Zip</h2>
       <ol style="list-style:none;padding:0;display:flex;flex-direction:column;gap:1.1rem">
