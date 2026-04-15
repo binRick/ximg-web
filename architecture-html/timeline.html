@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline — Architecture</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>
+    :root {
+      --bg:        #0a0906;
+      --bg2:       #100d08;
+      --card-bg:   rgba(20,16,10,.85);
+      --gold:      #c9a84c;
+      --gold-dim:  #8b6d2a;
+      --tan:       #8b7355;
+      --parchment: #f0ead8;
+      --parchment-dim: #b5aa95;
+      --border:    rgba(201,168,76,.18);
+      --radius:    4px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--parchment);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      line-height: 1.7;
+      padding-top: 44px;
+      background-image:
+        linear-gradient(rgba(201,168,76,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,168,76,.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+
+    h1, h2, h3, h4 { font-family: 'Georgia', serif; font-weight: normal; letter-spacing: .04em; }
+    h2 { font-size: clamp(1.6rem, 4vw, 2.6rem); }
+
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .parchment-dim { color: var(--parchment-dim); }
+    .section-label {
+      display: inline-block;
+      font-size: .7rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      border: 1px solid var(--border);
+      padding: .25em .9em;
+      margin-bottom: 1.2rem;
+      border-radius: 2px;
+    }
+    .divider {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      margin: 1rem 0 1.5rem;
+    }
+
+    /* ── Sticky Sub-Nav ── */
+    #subnav {
+      position: sticky;
+      top: 44px;
+      z-index: 900;
+      background: rgba(10,9,6,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      white-space: nowrap;
+      padding: 0 1rem;
+    }
+    #subnav a {
+      display: inline-block;
+      padding: .75rem .9rem;
+      font-family: sans-serif;
+      font-size: .75rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--parchment-dim);
+      transition: color .2s;
+      text-decoration: none;
+    }
+    #subnav a:hover,
+    #subnav a.active { color: var(--gold); text-decoration: none; }
+
+    /* ── Sections ── */
+    section {
+      padding: 5rem clamp(1.5rem, 6vw, 6rem);
+      max-width: 1400px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+    .section-header { margin-bottom: 3rem; }
+
+    /* ── Timeline ── */
+    .timeline-scroll {
+      overflow-x: auto;
+      padding-bottom: 1.5rem;
+      cursor: grab;
+    }
+    .timeline-scroll:active { cursor: grabbing; }
+    .timeline-scroll::-webkit-scrollbar { height: 4px; }
+    .timeline-track {
+      display: flex;
+      gap: 0;
+      position: relative;
+      min-width: max-content;
+      padding: 3rem 2rem 1rem;
+    }
+    .timeline-track::before {
+      content: '';
+      position: absolute;
+      top: calc(3rem + 14px);
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    }
+    .timeline-era {
+      position: relative;
+      min-width: 160px;
+      padding: 0 1rem;
+      text-align: center;
+    }
+    .era-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--gold);
+      margin: 0 auto 1.5rem;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 0 0 4px rgba(201,168,76,.15);
+      transition: transform .2s;
+    }
+    .timeline-era:hover .era-dot { transform: scale(1.4); }
+    .era-year {
+      font-family: sans-serif;
+      font-size: .65rem;
+      letter-spacing: .12em;
+      color: var(--gold);
+      margin-bottom: .35rem;
+    }
+    .era-name {
+      font-size: .95rem;
+      color: var(--parchment);
+      margin-bottom: .5rem;
+    }
+    .era-desc {
+      font-family: sans-serif;
+      font-size: .68rem;
+      color: var(--parchment-dim);
+      line-height: 1.5;
+      max-width: 140px;
+      margin: 0 auto;
+    }
+    .timeline-drag-hint {
+      text-align: center;
+      font-family: sans-serif;
+      font-size: .68rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--parchment-dim);
+      opacity: .5;
+      margin-top: 1.5rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border);
+      font-family: sans-serif;
+      font-size: .75rem;
+      color: var(--parchment-dim);
+      opacity: .6;
+      letter-spacing: .05em;
+    }
+
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 600px) {
+      section { padding: 3rem 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────── SUB-NAV ─────────────────── -->
+<nav id="subnav" aria-label="Page sections">
+  <a href="index.html">Overview</a>
+  <a href="ancient.html">Ancient</a>
+  <a href="sacred.html">Sacred</a>
+  <a href="baroque.html">Renaissance</a>
+  <a href="modern.html">Modern</a>
+  <a href="gallery.html">Gallery</a>
+  <a href="timeline.html">Timeline</a>
+  <a href="orders.html">The Orders</a>
+  <a href="innovations.html">Innovations</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/architecture') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+
+<!-- ─────────────────── TIMELINE ─────────────────── -->
+<section id="timeline">
+  <div class="section-header reveal">
+    <span class="section-label">Chronology</span>
+    <h2>Architectural Styles Timeline</h2>
+    <div class="divider"></div>
+    <p class="parchment-dim" style="max-width:680px;">10,000 years of building compressed into a single scroll. Drag to explore.</p>
+  </div>
+
+  <div class="timeline-scroll reveal" id="timelineScroll">
+    <div class="timeline-track">
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#6b5a3a;"></div>
+        <div class="era-year">~3500 BCE</div>
+        <div class="era-name">Pre-Historic</div>
+        <div class="era-desc">Megalithic structures — Stonehenge, Göbekli Tepe — raised before writing</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#9b8a5a;"></div>
+        <div class="era-year">~3000 BCE</div>
+        <div class="era-name">Mesopotamian</div>
+        <div class="era-desc">Ziggurats of Ur and Babylon; mud-brick stepped temples approaching the divine</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#b8a060;"></div>
+        <div class="era-year">~2700 BCE</div>
+        <div class="era-name">Egyptian</div>
+        <div class="era-desc">Pyramid complexes, hypostyle halls, obelisks — eternity expressed in limestone</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#c9a84c;"></div>
+        <div class="era-year">~800 BCE</div>
+        <div class="era-name">Greek Classical</div>
+        <div class="era-desc">The three Orders; mathematical proportion; the Parthenon as canonical ideal</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#a08030;"></div>
+        <div class="era-year">~300 BCE</div>
+        <div class="era-name">Hellenistic</div>
+        <div class="era-desc">Greek forms spread across Alexander's empire; more ornate, emotionally dynamic</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#c9a84c;"></div>
+        <div class="era-year">~200 BCE</div>
+        <div class="era-name">Roman</div>
+        <div class="era-desc">Concrete revolution; the arch, vault, and dome; infrastructure at imperial scale</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#7a8a9a;"></div>
+        <div class="era-year">~330 CE</div>
+        <div class="era-name">Byzantine</div>
+        <div class="era-desc">Pendentive dome; gold mosaics; Eastern Christianity's sacred architecture</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#6a7550;"></div>
+        <div class="era-year">~650 CE</div>
+        <div class="era-name">Romanesque</div>
+        <div class="era-desc">Thick walls, round arches, massive piers — the heavy backbone of medieval Europe</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#8090a0;"></div>
+        <div class="era-year">~700 CE</div>
+        <div class="era-name">Islamic</div>
+        <div class="era-desc">Geometric abstraction, muqarnas, arabesque, the mosque as divine geometry</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#5a7090;"></div>
+        <div class="era-year">~1100 CE</div>
+        <div class="era-name">Gothic</div>
+        <div class="era-desc">Flying buttresses free walls to become glass; pointed arches reach for heaven</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#c9a84c;"></div>
+        <div class="era-year">~1420 CE</div>
+        <div class="era-name">Renaissance</div>
+        <div class="era-desc">Classical revival; mathematical perspective; Brunelleschi's dome; Palladian villa</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#a07848;"></div>
+        <div class="era-year">~1600 CE</div>
+        <div class="era-name">Baroque</div>
+        <div class="era-desc">Theatrical drama; curved forms; light as material; Bernini and Versailles</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#909080;"></div>
+        <div class="era-year">~1750 CE</div>
+        <div class="era-name">Neoclassical</div>
+        <div class="era-desc">Enlightenment rationalism; Greek Revival; government buildings as temples</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#70906a;"></div>
+        <div class="era-year">~1890 CE</div>
+        <div class="era-name">Art Nouveau</div>
+        <div class="era-desc">Nature as ornament; sinuous lines; Gaudí's organic masonry; total artwork</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#a0b0c0;"></div>
+        <div class="era-year">~1920 CE</div>
+        <div class="era-name">Modernism</div>
+        <div class="era-desc">Ornament as crime; honest structure; form follows function; Le Corbusier, Mies</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#807060;"></div>
+        <div class="era-year">~1950 CE</div>
+        <div class="era-name">Brutalism</div>
+        <div class="era-desc">Raw béton brut; exposed concrete; social housing as monument; honest material</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#c09070;"></div>
+        <div class="era-year">~1970 CE</div>
+        <div class="era-name">Postmodern</div>
+        <div class="era-desc">Historical allusion returns; irony; ornament allowed; Venturi's complexity</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#90a8c0;"></div>
+        <div class="era-year">~1990 CE</div>
+        <div class="era-name">Deconstructivism</div>
+        <div class="era-desc">Fragmented forms; Gehry's titanium curves; Hadid's fluid planes; computer-aided</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#70c080;"></div>
+        <div class="era-year">~2000 CE</div>
+        <div class="era-name">Parametric</div>
+        <div class="era-desc">Algorithm-driven form; computational optimization; biomorphic structures</div>
+      </div>
+
+      <div class="timeline-era">
+        <div class="era-dot" style="background:#60b090;"></div>
+        <div class="era-year">~2015 CE</div>
+        <div class="era-name">Sustainable</div>
+        <div class="era-desc">Net-zero energy; living walls; circular materials; architecture for climate</div>
+      </div>
+
+    </div>
+  </div>
+  <div class="timeline-drag-hint reveal">← Drag to explore the full timeline →</div>
+</section>
+
+<!-- ─────────────────── FOOTER ─────────────────── -->
+<footer>
+  <p>Architecture · 10,000 Years of Human Building · <a href="https://ximg.app">ximg.app</a></p>
+  <p style="margin-top:.5rem;font-size:.68rem;">Images via Wikimedia Commons — CC-BY-SA unless noted. Information compiled from Banister Fletcher, Kenneth Frampton, and Sigfried Giedion.</p>
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  const revealObs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(function(el) { revealObs.observe(el); });
+
+  /* ── Timeline drag-to-scroll ── */
+  const tl = document.getElementById('timelineScroll');
+  if (tl) {
+    let isDown = false, startX, scrollLeft;
+    tl.addEventListener('mousedown', function(e) {
+      isDown = true;
+      tl.style.cursor = 'grabbing';
+      startX     = e.pageX - tl.offsetLeft;
+      scrollLeft = tl.scrollLeft;
+    });
+    tl.addEventListener('mouseleave', function() { isDown = false; tl.style.cursor = 'grab'; });
+    tl.addEventListener('mouseup',    function() { isDown = false; tl.style.cursor = 'grab'; });
+    tl.addEventListener('mousemove',  function(e) {
+      if (!isDown) return;
+      e.preventDefault();
+      const x    = e.pageX - tl.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      tl.scrollLeft = scrollLeft - walk;
+    });
+  }
+})();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
