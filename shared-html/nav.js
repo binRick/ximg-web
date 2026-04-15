@@ -61,9 +61,11 @@
       ['timespan','timespan'],['url','url'],['uuid','uuid']
     ]},
     { label: 'Bundlers', apps: [
-      ['dockerimagedownloader','docker image downloader'],
+      ['apt-bundler','apt bundler'],
+      ['dockerimagedownloader','docker image'],
       ['nodejs-bundler','node.js bundler'],
-      ['python-bundler','python bundler']
+      ['python-bundler','python bundler'],
+      ['rpm-bundler','rpm bundler']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
