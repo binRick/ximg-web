@@ -61,12 +61,13 @@
       ['timespan','timespan'],['url','url'],['uuid','uuid']
     ]},
     { label: 'Bundlers', apps: [
-      ['apt-bundler','apt bundler'],
+      ['apt-bundler','apt'],
       ['dockerimagedownloader','docker image'],
       ['go-bundler','go'],
+      ['iso','linux isos'],
       ['nodejs-bundler','node.js'],
       ['python-bundler','python'],
-      ['rpm-bundler','rpm bundler']
+      ['rpm-bundler','rpm']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
