@@ -838,7 +838,7 @@ HTML = r"""<!DOCTYPE html>
       { id:'T02', name:'Reject unknown Python version',     desc:'POST with python_version="2.6" → 400 JSON error' },
       { id:'T03', name:'Bundle request accepted',            desc:'POST → 200 text/event-stream' },
       { id:'T04', name:'pip download output in stream',     desc:'Stream contains "Collecting" or "Downloading" line' },
-      { id:'T05', name:'Package .whl files appear',          desc:'.whl filename seen in stream output' },
+      { id:'T05', name:'Package dist files appear',           desc:'.whl or .tar.gz filename seen in stream output' },
       { id:'T06', name:'ClamAV scan clean',                  desc:'No INFECTED line in stream' },
       { id:'T07', name:'Bundle completes without error',    desc:'event:done received (not event:error)' },
       { id:'T08', name:'Download token is valid',            desc:'event:done data matches UUID format' },
@@ -847,8 +847,8 @@ HTML = r"""<!DOCTYPE html>
       { id:'T11', name:'Bundle size > 10 KB',                desc:'Metadata size field > 10,240 bytes' },
       { id:'T12', name:'Zip extracts cleanly',               desc:'Server extracts bundle without error' },
       { id:'T13', name:'setup.sh present',                   desc:'setup.sh found in extracted bundle' },
-      { id:'T14', name:'.whl files are valid zip archives',  desc:'Every .whl opens cleanly as a zip' },
-      { id:'T15', name:'Target package .whl present',        desc:'At least one .whl named after the package' },
+      { id:'T14', name:'Dist files are valid archives',       desc:'Every .whl (zip) and .tar.gz opens cleanly' },
+      { id:'T15', name:'Target package dist file present',   desc:'At least one dist file named after the package' },
       { id:'T16', name:'Install into isolated venv',         desc:'pip install --no-index --find-links succeeds' },
       { id:'T17', name:'Package version readable',           desc:'pip show reports installed version' },
       { id:'T18', name:'Package importable',                 desc:'python -c "import <pkg>" exits 0' },
@@ -1022,9 +1022,9 @@ HTML = r"""<!DOCTYPE html>
                     T04done = true;
                     pass('T04', 'pip output detected in stream');
                   }
-                  if (!T05done && evtData.includes('.whl')) {
+                  if (!T05done && (evtData.includes('.whl') || evtData.includes('.tar.gz'))) {
                     T05done = true;
-                    pass('T05', '.whl filename seen in stream');
+                    pass('T05', 'dist file seen in stream');
                   }
                   if (!T06done && evtData.includes('INFECTED')) {
                     T06done = true;
@@ -1035,7 +1035,7 @@ HTML = r"""<!DOCTYPE html>
                 if (evtType === 'done') {
                   token = evtData;
                   if (!T04done) { fail('T04', 'No pip output in stream'); streamFailed = true; }
-                  if (!T05done && !streamFailed) { fail('T05', 'No .whl filename in stream'); streamFailed = true; }
+                  if (!T05done && !streamFailed) { fail('T05', 'No dist file in stream'); streamFailed = true; }
                   else if (!T05done) skip('T05', 'skipped — prior step failed');
                   if (!T06done && !streamFailed) pass('T06', 'No INFECTED lines — scan clean');
                   else if (!T06done) skip('T06', 'skipped — prior step failed');
@@ -1446,16 +1446,16 @@ def test_install():
 
             # ── T12: Extract zip ─────────────────────────────────────────────
             extract_dir = os.path.join(work, 'extracted')
-            whl_files = []
+            pkg_files = []
             try:
                 with _zip.ZipFile(zip_path) as zf:
                     zf.extractall(extract_dir)
                 for root_d, _, files in os.walk(extract_dir):
                     for f in files:
-                        if f.endswith('.whl'):
-                            whl_files.append(os.path.join(root_d, f))
+                        if f.endswith('.whl') or f.endswith('.tar.gz') or f.endswith('.zip'):
+                            pkg_files.append(os.path.join(root_d, f))
                 yield step('T12', 'pass',
-                           f'Extracted {len(whl_files)} .whl file(s) + ancillary files')
+                           f'Extracted {len(pkg_files)} dist file(s) + ancillary files')
             except Exception as e:
                 yield step('T12', 'fail', str(e))
                 yield 'event: error\ndata: extraction failed\n\n'
@@ -1476,41 +1476,48 @@ def test_install():
                 yield 'event: done\ndata: ok\n\n'
                 return
 
-            # ── T14: .whl files are valid zip archives ───────────────────────
-            if not whl_files:
-                yield step('T14', 'fail', 'No .whl files in bundle')
+            # ── T14: dist files are valid archives ──────────────────────────
+            import tarfile as _tarfile
+            if not pkg_files:
+                yield step('T14', 'fail', 'No dist files in bundle')
                 for tid in ['T15','T16','T17','T18']:
                     yield step(tid, 'skip', 'skipped — prior step failed')
                 yield 'event: done\ndata: ok\n\n'
                 return
 
             all_valid = True
-            for wf in whl_files:
+            for pf in pkg_files:
+                fname = os.path.basename(pf)
                 try:
-                    with _zip.ZipFile(wf) as wz:
-                        names = wz.namelist()
-                    yield log(f'OK: {os.path.basename(wf)} ({len(names)} entries)')
+                    if pf.endswith('.whl') or pf.endswith('.zip'):
+                        with _zip.ZipFile(pf) as wz:
+                            count = len(wz.namelist())
+                        yield log(f'OK (zip): {fname} ({count} entries)')
+                    elif pf.endswith('.tar.gz'):
+                        with _tarfile.open(pf, 'r:gz') as tf:
+                            count = len(tf.getnames())
+                        yield log(f'OK (tar.gz): {fname} ({count} entries)')
                 except Exception as e:
                     all_valid = False
-                    yield log(f'FAILED: {os.path.basename(wf)}: {e}')
+                    yield log(f'FAILED: {fname}: {e}')
             if all_valid:
-                yield step('T14', 'pass', f'{len(whl_files)} .whl file(s) valid')
+                yield step('T14', 'pass', f'{len(pkg_files)} dist file(s) valid')
             else:
-                yield step('T14', 'fail', 'Some .whl files are not valid zip archives')
+                yield step('T14', 'fail', 'Some dist files failed archive validation')
                 for tid in ['T15','T16','T17','T18']:
                     yield step(tid, 'skip', 'skipped — prior step failed')
                 yield 'event: done\ndata: ok\n\n'
                 return
 
-            # ── T15: Target package .whl present ────────────────────────────
+            # ── T15: Target package dist file present ────────────────────────
             norm = pkg_name.lower().replace('-', '_')
-            target_whls = [f for f in whl_files
+            target_pkgs = [f for f in pkg_files
                            if os.path.basename(f).lower().startswith(norm + '-') or
                               os.path.basename(f).lower().startswith(norm.replace('_', '-') + '-')]
-            if target_whls:
-                yield step('T15', 'pass', os.path.basename(target_whls[0]))
+            if target_pkgs:
+                yield step('T15', 'pass', os.path.basename(target_pkgs[0]))
             else:
-                yield step('T15', 'fail', f'No .whl file matching "{pkg_name}"')
+                yield step('T15', 'fail', f'No dist file matching "{pkg_name}"')
                 for tid in ['T16','T17','T18']:
                     yield step(tid, 'skip', 'skipped — prior step failed')
                 yield 'event: done\ndata: ok\n\n'
@@ -1518,7 +1525,7 @@ def test_install():
 
             # ── T16: Install into isolated venv ─────────────────────────────
             venv_dir = os.path.join(work, 'venv')
-            pkg_dir  = os.path.dirname(target_whls[0])
+            pkg_dir  = os.path.dirname(target_pkgs[0])
             r = subprocess.run(
                 ['python3.12', '-m', 'venv', venv_dir],
                 capture_output=True, text=True,
