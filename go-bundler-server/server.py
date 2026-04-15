@@ -365,6 +365,23 @@ HTML = r"""<!DOCTYPE html>
                     text-align:center;width:100%}
     .pkg-bundle-btn:hover{background:rgba(0,173,216,.15);border-color:#67e8f9}
     .pkg-none{color:#475569;text-align:center;padding:3rem;font-size:.88rem;grid-column:1/-1}
+
+    /* ── test runner ── */
+    .test-list{display:flex;flex-direction:column;gap:.3rem;margin-bottom:1rem}
+    .test-row{display:flex;align-items:center;gap:.6rem;padding:.35rem .5rem;border-radius:5px;background:rgba(15,23,42,.5)}
+    .test-badge{font-size:.68rem;font-weight:700;letter-spacing:.05em;padding:.15rem .45rem;border-radius:3px;min-width:52px;text-align:center;text-transform:uppercase;font-family:'Courier New',monospace}
+    .badge-wait{background:rgba(100,116,139,.15);color:#64748b}
+    .badge-run{background:rgba(251,191,36,.15);color:#fbbf24;animation:tpulse .8s ease-in-out infinite}
+    .badge-pass{background:rgba(34,197,94,.15);color:#4ade80}
+    .badge-fail{background:rgba(239,68,68,.15);color:#f87171}
+    .badge-skip{background:rgba(100,116,139,.10);color:#475569}
+    @keyframes tpulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .test-name{font-size:.8rem;font-weight:600;color:#cbd5e1;font-family:'Courier New',monospace;white-space:nowrap}
+    .test-desc{font-size:.72rem;color:#475569;flex:1}
+    .test-note{font-size:.7rem;color:#64748b;font-family:'Courier New',monospace;margin-left:auto;white-space:nowrap}
+    .pkg-snav{display:flex;gap:.25rem;margin-bottom:1rem;flex-wrap:wrap}
+    .pkg-snav-btn{background:rgba(0,173,216,.12);border:1px solid rgba(0,173,216,.25);color:#67e8f9;font-size:.78rem;font-weight:600;padding:.3rem .75rem;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;width:auto;margin-top:0}
+    .pkg-snav-btn.active{background:rgba(0,173,216,.3);border-color:#00ADD8;color:#fff}
   </style>
 </head>
 <body>
@@ -384,6 +401,7 @@ HTML = r"""<!DOCTYPE html>
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
     <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
+    <button class="snav-btn"        id="nav-tests"    onclick="setView('tests')">Test Cases</button>
   </div>
 
   <div id="view-bundle">
@@ -466,15 +484,52 @@ HTML = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="view-tests" style="display:none;width:100%;max-width:780px">
+    <div class="card" style="max-width:none">
+      <div class="pkg-snav">
+        <button class="pkg-snav-btn active"
+                data-pkg="github.com/google/go-containerregistry/cmd/crane"
+                onclick="selectTestPkg('github.com/google/go-containerregistry/cmd/crane')">crane</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
+        <button id="run-btn" onclick="runTests()"
+                style="width:auto;margin:0;padding:.35rem 1.1rem;font-size:.8rem">&#9654; Run</button>
+      </div>
+      <div class="test-list" id="test-list"></div>
+      <div style="display:flex;gap:1rem;margin-top:.75rem">
+        <div style="flex:1">
+          <div style="font-size:.7rem;color:#475569;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.3rem">Bundle Log</div>
+          <div class="term-bar" style="border-radius:6px 6px 0 0">
+            <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+            <span class="term-title">go mod download</span>
+          </div>
+          <div id="tbundle-out" style="background:#0d1117;border-radius:0 0 6px 6px;padding:.65rem .75rem;height:200px;overflow-y:auto;font-family:'Fira Code','Cascadia Code','Consolas',monospace;font-size:.72rem;line-height:1.5;color:#c9d1d9;border:1px solid rgba(255,255,255,.06);border-top:none"></div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:.7rem;color:#475569;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.3rem">Build Log</div>
+          <div class="term-bar" style="border-radius:6px 6px 0 0">
+            <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+            <span class="term-title">go build</span>
+          </div>
+          <div id="tbuild-out" style="background:#0d1117;border-radius:0 0 6px 6px;padding:.65rem .75rem;height:200px;overflow-y:auto;font-family:'Fira Code','Cascadia Code','Consolas',monospace;font-size:.72rem;line-height:1.5;color:#c9d1d9;border:1px solid rgba(255,255,255,.06);border-top:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
       document.getElementById('view-install').style.display  = v === 'install'  ? 'block' : 'none';
+      document.getElementById('view-tests').style.display    = v === 'tests'    ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
       document.getElementById('nav-install').classList.toggle('active',  v === 'install');
+      document.getElementById('nav-tests').classList.toggle('active',    v === 'tests');
       if (v === 'packages') renderPkgs();
+      if (v === 'tests') initTestList();
     }
 
     function toggleEmbed() {
@@ -633,6 +688,192 @@ HTML = r"""<!DOCTYPE html>
     document.getElementById('pkg').addEventListener('keydown', e => {
       if (e.key === 'Enter') go_bundle();
     });
+
+    // ── Test runner ──────────────────────────────────────────────
+    var TEST_DEFS = [
+      {id:'T01', name:'T01', desc:'POST /bundle returns 200 stream'},
+      {id:'T02', name:'T02', desc:'SSE stream ends with done event and token'},
+      {id:'T03', name:'T03', desc:'GET /bundle-meta/:token returns 200'},
+      {id:'T04', name:'T04', desc:'Zip opens without error'},
+      {id:'T05', name:'T05', desc:'Root dir matches ximg-go-bundle-* pattern'},
+      {id:'T06', name:'T06', desc:'setup.sh is a zip member'},
+      {id:'T07', name:'T07', desc:'go.mod is a zip member'},
+      {id:'T08', name:'T08', desc:'pkg/mod/cache/download/ present in zip'},
+      {id:'T09', name:'T09', desc:'go-containerregistry present in module cache'},
+      {id:'T10', name:'T10', desc:'go-containerregistry .zip archives in cache'},
+      {id:'T11', name:'T11', desc:'unzip extracts successfully'},
+      {id:'T12', name:'T12', desc:'setup.sh has +x permission in zip'},
+      {id:'T13', name:'T13', desc:'setup.sh exports GOPROXY to bundle cache'},
+      {id:'T14', name:'T14', desc:'go build -o crane cmd/crane exits 0 offline'},
+      {id:'T15', name:'T15', desc:'crane binary exists after build'},
+      {id:'T16', name:'T16', desc:'crane version exits 0'},
+      {id:'T17', name:'T17', desc:'crane version output matches vN.N.N semver'},
+      {id:'T18', name:'T18', desc:'crane --help exits 0 or prints help text'},
+    ];
+
+    var _testPkg = 'github.com/google/go-containerregistry/cmd/crane';
+    var _testsRunning = false;
+
+    function selectTestPkg(pkg) {
+      _testPkg = pkg;
+      document.querySelectorAll('.pkg-snav-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.pkg === pkg);
+      });
+      initTestList();
+    }
+
+    function setTestStatus(id, status, note) {
+      var row = document.getElementById('trow-' + id);
+      if (!row) return;
+      var badge = row.querySelector('.test-badge');
+      var noteEl = row.querySelector('.test-note');
+      badge.className = 'test-badge badge-' + status;
+      var labels = {wait:'WAIT', run:'RUN ', pass:'PASS', fail:'FAIL', skip:'SKIP'};
+      badge.textContent = labels[status] || status.toUpperCase();
+      if (noteEl) noteEl.textContent = note || '';
+    }
+
+    function initTestList() {
+      var list = document.getElementById('test-list');
+      if (!list) return;
+      list.innerHTML = TEST_DEFS.map(function(t) {
+        return '<div class="test-row" id="trow-' + t.id + '">' +
+               '<span class="test-badge badge-wait">WAIT</span>' +
+               '<span class="test-name">' + t.id + '</span>' +
+               '<span class="test-desc">' + t.desc + '</span>' +
+               '<span class="test-note"></span>' +
+               '</div>';
+      }).join('');
+    }
+
+    function termAppendTest(elId, text) {
+      var el = document.getElementById(elId);
+      if (!el) return;
+      var d = document.createElement('div');
+      d.textContent = text;
+      el.appendChild(d);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function runTests() {
+      if (_testsRunning) return;
+      _testsRunning = true;
+      var btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = 'Running\u2026';
+      document.getElementById('tbundle-out').innerHTML = '';
+      document.getElementById('tbuild-out').innerHTML = '';
+      TEST_DEFS.forEach(function(t) { setTestStatus(t.id, 'wait', ''); });
+
+      var stopped = false;
+      function abort(fromId, reason) {
+        var all = TEST_DEFS.map(function(t) { return t.id; });
+        var idx = all.indexOf(fromId);
+        if (idx >= 0) all.slice(idx).forEach(function(id) { setTestStatus(id, 'skip', reason || 'skipped'); });
+        stopped = true;
+      }
+
+      try {
+        // T01: Bundle endpoint reachable
+        setTestStatus('T01', 'run');
+        var bundleResp = await fetch('/bundle', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'module=' + encodeURIComponent(_testPkg)
+        });
+        if (!bundleResp.ok) {
+          setTestStatus('T01', 'fail', 'HTTP ' + bundleResp.status);
+          abort('T02');
+          return;
+        }
+        setTestStatus('T01', 'pass', 'HTTP 200');
+
+        // T02: Bundle completes with token
+        setTestStatus('T02', 'run');
+        var reader = bundleResp.body.getReader();
+        var dec = new TextDecoder();
+        var buf = '', token = null, errMsg = null;
+        while (true) {
+          var ch = await reader.read();
+          if (ch.done) break;
+          buf += dec.decode(ch.value, {stream: true});
+          var evts = buf.split('\n\n');
+          buf = evts.pop();
+          for (var i = 0; i < evts.length; i++) {
+            var raw = evts[i], et = 'message', ed = '';
+            evts[i].split('\n').forEach(function(ln) {
+              if (ln.startsWith('event: ')) et = ln.slice(7).trim();
+              else if (ln.startsWith('data: ')) ed = ln.slice(6);
+            });
+            if (et === 'done') token = ed;
+            else if (et === 'error') errMsg = ed;
+            else if (ed) termAppendTest('tbundle-out', ed);
+          }
+        }
+        if (!token || errMsg) {
+          setTestStatus('T02', 'fail', errMsg || 'no token');
+          abort('T03');
+          return;
+        }
+        setTestStatus('T02', 'pass', token.slice(0, 8) + '\u2026');
+
+        // T03: Bundle meta peek
+        if (!stopped) {
+          setTestStatus('T03', 'run');
+          var metaResp = await fetch('/bundle-meta/' + token);
+          if (!metaResp.ok) {
+            setTestStatus('T03', 'fail', 'HTTP ' + metaResp.status);
+            abort('T04');
+            return;
+          }
+          var meta = await metaResp.json();
+          setTestStatus('T03', 'pass', (meta.name || 'ok').slice(0, 32));
+        }
+
+        // T04-T18: server-side streaming
+        if (!stopped) {
+          var testResp = await fetch('/test-run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'token=' + encodeURIComponent(token)
+          });
+          if (!testResp.ok) {
+            abort('T04', 'test-run server error');
+            return;
+          }
+          var r2 = testResp.body.getReader();
+          var dec2 = new TextDecoder();
+          var buf2 = '';
+          while (true) {
+            var ch2 = await r2.read();
+            if (ch2.done) break;
+            buf2 += dec2.decode(ch2.value, {stream: true});
+            var evts2 = buf2.split('\n\n');
+            buf2 = evts2.pop();
+            for (var k = 0; k < evts2.length; k++) {
+              var et2 = 'message', ed2 = '';
+              evts2[k].split('\n').forEach(function(ln) {
+                if (ln.startsWith('event: ')) et2 = ln.slice(7).trim();
+                else if (ln.startsWith('data: ')) ed2 = ln.slice(6);
+              });
+              if (et2 === 'step') {
+                try { var d = JSON.parse(ed2); setTestStatus(d.id, d.status, d.note || ''); } catch(e) {}
+              } else if (et2 === 'build') {
+                termAppendTest('tbuild-out', ed2);
+              } else if (et2 === 'log') {
+                termAppendTest('tbundle-out', ed2);
+              }
+            }
+          }
+        }
+      } catch(e) {
+        abort('T01', 'error: ' + e.message);
+      } finally {
+        _testsRunning = false;
+        btn.disabled = false;
+        btn.textContent = '\u25b6 Run';
+      }
+    }
   </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
@@ -662,6 +903,237 @@ def index():
         for p in PACKAGES
     ])
     return HTML.replace('PACKAGES_JSON', pkgs_json)
+
+
+@app.route('/bundle-meta/<token>')
+def bundle_meta(token):
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return jsonify({'error': 'not found'}), 404
+    return jsonify({'name': info.get('name', ''), 'package': info.get('package', '')})
+
+
+@app.route('/test-run', methods=['POST'])
+def test_run():
+    token = request.form.get('token', '').strip()
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info or not os.path.exists(info.get('path', '')):
+        return jsonify({'error': 'Bundle not found or expired'}), 404
+    zip_path = info['path']
+
+    @stream_with_context
+    def generate():
+        def step(tid, status, note=''):
+            return f'event: step\ndata: {_json.dumps({"id": tid, "status": status, "note": note})}\n\n'
+        def blog(msg):
+            return f'event: build\ndata: {msg}\n\n'
+
+        all_ids = ['T04','T05','T06','T07','T08','T09','T10','T11','T12','T13','T14','T15','T16','T17','T18']
+
+        def skip_from(from_id, reason='skipped — prior step failed'):
+            idx = all_ids.index(from_id) if from_id in all_ids else 0
+            for tid in all_ids[idx:]:
+                yield step(tid, 'skip', reason)
+
+        tmpdir = tempfile.mkdtemp(prefix='go-testrun-')
+        try:
+            # T04: zip readable
+            yield step('T04', 'run')
+            try:
+                with zipfile.ZipFile(zip_path) as zf:
+                    names = zf.namelist()
+            except Exception as e:
+                yield step('T04', 'fail', str(e)[:60])
+                yield from skip_from('T05')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T04', 'pass', f'{len(names)} entries')
+
+            # T05: correct top-level dir
+            yield step('T05', 'run')
+            bundle_root = names[0].split('/')[0] if names else ''
+            if not bundle_root.startswith('ximg-go-bundle-'):
+                yield step('T05', 'fail', f'unexpected root: {bundle_root[:40]}')
+                yield from skip_from('T06')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T05', 'pass', bundle_root[:50])
+
+            # T06: setup.sh present
+            yield step('T06', 'run')
+            setup_sh_arc = f'{bundle_root}/setup.sh'
+            if setup_sh_arc not in names:
+                yield step('T06', 'fail', 'setup.sh missing from zip')
+                yield from skip_from('T07')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T06', 'pass', 'found')
+
+            # T07: go.mod present
+            yield step('T07', 'run')
+            if f'{bundle_root}/go.mod' not in names:
+                yield step('T07', 'fail', 'go.mod missing from zip')
+                yield from skip_from('T08')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T07', 'pass', 'found')
+
+            # T08: module cache dir
+            yield step('T08', 'run')
+            cache_prefix = f'{bundle_root}/pkg/mod/cache/download/'
+            cache_entries = [n for n in names if n.startswith(cache_prefix)]
+            if not cache_entries:
+                yield step('T08', 'fail', 'pkg/mod/cache/download/ not found')
+                yield from skip_from('T09')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T08', 'pass', f'{len(cache_entries)} files')
+
+            # T09: go-containerregistry in cache
+            yield step('T09', 'run')
+            gcr_entries = [n for n in cache_entries if 'go-containerregistry' in n]
+            if not gcr_entries:
+                yield step('T09', 'fail', 'go-containerregistry not in cache')
+                yield from skip_from('T10')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T09', 'pass', f'{len(gcr_entries)} entries')
+
+            # T10: go-containerregistry zip archives
+            yield step('T10', 'run')
+            gcr_zips = [n for n in gcr_entries if n.endswith('.zip')]
+            if not gcr_zips:
+                yield step('T10', 'fail', 'no .zip archives for go-containerregistry')
+                yield from skip_from('T11')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T10', 'pass', f'{len(gcr_zips)} archive(s)')
+
+            # T11: extract zip
+            yield step('T11', 'run')
+            extract_dir = os.path.join(tmpdir, 'extracted')
+            os.makedirs(extract_dir, exist_ok=True)
+            r = subprocess.run(['unzip', '-q', zip_path, '-d', extract_dir],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                yield step('T11', 'fail', (r.stderr or r.stdout).strip()[:60])
+                yield from skip_from('T12')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T11', 'pass', 'ok')
+
+            bundle_dir = os.path.join(extract_dir, bundle_root)
+
+            # T12: setup.sh is executable
+            yield step('T12', 'run')
+            with zipfile.ZipFile(zip_path) as zf:
+                zi = zf.getinfo(setup_sh_arc)
+                mode = (zi.external_attr >> 16) & 0o777
+            if mode & 0o111:
+                yield step('T12', 'pass', oct(mode))
+            else:
+                yield step('T12', 'fail', f'mode {oct(mode)} not executable')
+
+            # T13: GOPROXY in setup.sh
+            yield step('T13', 'run')
+            setup_content = open(os.path.join(bundle_dir, 'setup.sh')).read()
+            if 'GOPROXY' in setup_content and 'pkg/mod/cache/download' in setup_content:
+                yield step('T13', 'pass', 'GOPROXY set to bundle cache')
+            else:
+                yield step('T13', 'fail', 'GOPROXY missing or wrong')
+
+            # T14: go build crane from bundle cache
+            yield step('T14', 'run')
+            crane_bin = os.path.join(tmpdir, 'crane')
+            build_env = {**os.environ,
+                         'GOMODCACHE': os.path.join(bundle_dir, 'pkg', 'mod'),
+                         'GOPROXY': f'file://{bundle_dir}/pkg/mod/cache/download,off',
+                         'GONOSUMDB': '*',
+                         'GOFLAGS': '',
+                         'GOCACHE': os.path.join(tmpdir, 'gocache'),
+                         'HOME': tmpdir}
+            yield blog('$ go build -o crane github.com/google/go-containerregistry/cmd/crane')
+            yield blog(f'  GOPROXY=file://{bundle_dir}/pkg/mod/cache/download,off')
+            try:
+                r = subprocess.run(
+                    ['go', 'build', '-o', crane_bin,
+                     'github.com/google/go-containerregistry/cmd/crane'],
+                    capture_output=True, text=True, env=build_env,
+                    cwd=bundle_dir, timeout=180)
+            except subprocess.TimeoutExpired:
+                yield step('T14', 'fail', 'build timed out (180s)')
+                yield from skip_from('T15')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            if r.stderr:
+                for ln in r.stderr.strip().splitlines()[:15]:
+                    yield blog(f'  {ln}')
+            if r.returncode != 0:
+                yield step('T14', 'fail', f'exit {r.returncode} — see build log')
+                yield from skip_from('T15')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield blog('  Build successful')
+            yield step('T14', 'pass', 'exit 0')
+
+            # T15: crane binary exists
+            yield step('T15', 'run')
+            if os.path.exists(crane_bin) and os.path.getsize(crane_bin) > 0:
+                size_mb = os.path.getsize(crane_bin) / 1_048_576
+                yield step('T15', 'pass', f'{size_mb:.1f} MB')
+            else:
+                yield step('T15', 'fail', 'binary missing')
+                yield from skip_from('T16')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # T16: crane version runs
+            yield step('T16', 'run')
+            r = subprocess.run([crane_bin, 'version'],
+                               capture_output=True, text=True, timeout=10)
+            ver_out = (r.stdout + r.stderr).strip()
+            yield blog('$ crane version')
+            yield blog(f'  {ver_out}')
+            if r.returncode != 0:
+                yield step('T16', 'fail', f'exit {r.returncode}')
+                yield from skip_from('T17')
+                yield 'event: done\ndata: ok\n\n'
+                return
+            yield step('T16', 'pass', f'exit 0')
+
+            # T17: version is semver
+            yield step('T17', 'run')
+            semver_m = re.search(r'v?\d+\.\d+\.\d+', ver_out)
+            if semver_m:
+                yield step('T17', 'pass', semver_m.group(0))
+            else:
+                yield step('T17', 'fail', f'no semver in: {ver_out[:40]}')
+
+            # T18: crane --help runs
+            yield step('T18', 'run')
+            r = subprocess.run([crane_bin, '--help'],
+                               capture_output=True, text=True, timeout=10)
+            help_out = (r.stdout + r.stderr).strip()
+            yield blog('$ crane --help')
+            for ln in help_out.splitlines()[:6]:
+                yield blog(f'  {ln}')
+            if r.returncode == 0 or len(help_out) > 20:
+                yield step('T18', 'pass', f'exit {r.returncode}')
+            else:
+                yield step('T18', 'fail', f'no output, exit {r.returncode}')
+
+        except Exception as e:
+            import traceback
+            yield blog(f'ERROR: {traceback.format_exc()[:200]}')
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+        yield 'event: done\ndata: ok\n\n'
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'X-Accel-Buffering': 'no', 'Cache-Control': 'no-cache'})
 
 
 @app.route('/bundle', methods=['POST'])
