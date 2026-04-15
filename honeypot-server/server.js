@@ -142,8 +142,8 @@ wss.on('connection', (ws, req) => {
     for (const chunk of ptyBuf) sendB(chunk);
     ptyBuf = [];
 
-    sshStream.on('data',  data => sendB(data));
-    sshStream.stderr?.on('data', data => sendB(data));
+    // onReady already has stream.on('data') that checks phase === 'shell';
+    // no second listener needed — adding one would double-send every byte.
     sshStream.on('close', ()   => ws.close());
     sshConn.on('error',   ()   => ws.close());
   }
