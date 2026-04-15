@@ -63,15 +63,15 @@
     { label: 'Bundlers', apps: [
       ['apt-bundler','apt bundler'],
       ['dockerimagedownloader','docker image'],
-      ['nodejs-bundler','node.js bundler'],
-      ['python-bundler','python bundler'],
+      ['nodejs-bundler','node.js'],
+      ['python-bundler','python'],
       ['rpm-bundler','rpm bundler']
     ]},
     { label: 'More', apps: [
       ['rx','RxFitt']
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
     ]},
   ];
 
