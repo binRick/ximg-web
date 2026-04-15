@@ -169,7 +169,7 @@ def logo(name):
 @app.route('/bundle', methods=['POST'])
 def bundle():
     collection = request.form.get('collection', '').strip()
-    client_ip  = request.remote_addr or ''
+    client_ip  = request.headers.get('X-Real-IP') or request.remote_addr or ''
 
     if not collection:
         return Response('data: ✗ No collection specified\n\ndata: __DONE_ERROR__\n\n',

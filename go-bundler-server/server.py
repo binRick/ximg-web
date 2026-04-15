@@ -675,7 +675,7 @@ def bundle():
     if embed_go and go_platform not in GO_PLATFORMS:
         return jsonify({'error': 'Invalid platform.'}), 400
 
-    client_ip = request.remote_addr or ''
+    client_ip = request.headers.get('X-Real-IP') or request.remote_addr or ''
     mod_base, mod_ver = _split_module_version(module)
     pkg_spec = f'{mod_base}@{mod_ver}'
 

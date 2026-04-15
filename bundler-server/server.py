@@ -788,7 +788,7 @@ def bundle():
     if plat not in PLATFORMS:
         return jsonify({'error': 'Invalid platform.'}), 400
 
-    client_ip = request.remote_addr or ''
+    client_ip = request.headers.get('X-Real-IP') or request.remote_addr or ''
     pybin = f'python{pyver}'  # e.g. python3.9 — markers evaluate against this interpreter
 
     if plat == 'any':

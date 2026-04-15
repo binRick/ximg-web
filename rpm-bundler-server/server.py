@@ -753,7 +753,7 @@ def bundle():
     if arch not in ARCHES:
         return jsonify({'error': 'Invalid architecture.'}), 400
 
-    client_ip = request.remote_addr or ''
+    client_ip = request.headers.get('X-Real-IP') or request.remote_addr or ''
 
     @stream_with_context
     def generate():
