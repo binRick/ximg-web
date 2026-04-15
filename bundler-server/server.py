@@ -1538,11 +1538,22 @@ def test_install():
                 return
 
             pip = os.path.join(venv_dir, 'bin', 'pip')
-            r2 = subprocess.run(
-                [pip, 'install', '--quiet', '--no-index',
-                 '--find-links', pkg_dir, pkg_name],
-                capture_output=True, text=True,
-            )
+
+            # Seed build tools so sdists can be built with --no-build-isolation
+            has_sdist = any(f.endswith('.tar.gz') for f in pkg_files)
+            if has_sdist:
+                yield log('Seeding build tools (setuptools, wheel) for sdist build...')
+                subprocess.run(
+                    [pip, 'install', '--quiet', 'setuptools', 'wheel'],
+                    capture_output=True,
+                )
+
+            install_cmd = [pip, 'install', '--quiet', '--no-index', '--find-links', pkg_dir]
+            if has_sdist:
+                install_cmd.append('--no-build-isolation')
+            install_cmd.append(pkg_name)
+
+            r2 = subprocess.run(install_cmd, capture_output=True, text=True)
             for line in (r2.stdout + r2.stderr).splitlines():
                 if line.strip():
                     yield log(line)
