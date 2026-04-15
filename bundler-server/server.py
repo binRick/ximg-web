@@ -399,6 +399,31 @@ HTML = r"""<!DOCTYPE html>
                      box-shadow:0 1px 4px rgba(0,0,0,.4)}
     .snav-btn:hover:not(.active){color:#cbd5e1}
 
+    .pkg-snav{display:flex;gap:.35rem;margin-bottom:1.2rem;flex-wrap:wrap}
+    .pkg-snav-btn{background:rgba(15,23,42,.7);border:1px solid rgba(255,255,255,.08);
+                  color:#64748b;font-size:.72rem;font-weight:600;letter-spacing:.07em;
+                  text-transform:uppercase;padding:.3rem .75rem;border-radius:5px;
+                  cursor:pointer;transition:all .15s;width:auto;margin-top:0}
+    .pkg-snav-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
+
+    .test-row{display:grid;grid-template-columns:3rem 1fr auto;align-items:start;
+              gap:.5rem .75rem;padding:.55rem .2rem;border-bottom:1px solid rgba(255,255,255,.05)}
+    .test-row:last-child{border-bottom:none}
+    .test-id{font-size:.7rem;font-weight:700;color:#475569;font-family:monospace;padding-top:.15rem}
+    .test-name{font-size:.82rem;font-weight:600;color:#e2e8f0}
+    .test-desc{font-size:.72rem;color:#475569;margin-top:.15rem}
+    .test-detail{font-size:.7rem;color:#64748b;margin-top:.2rem;font-family:monospace;word-break:break-all}
+    .test-badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.07em;
+                text-transform:uppercase;padding:.18rem .5rem;border-radius:4px;
+                width:5.5rem;text-align:center;flex-shrink:0;margin-top:.1rem}
+    .test-badge.pending{background:rgba(100,116,139,.15);color:#64748b}
+    .test-badge.running{background:rgba(234,179,8,.15);color:#eab308;
+                        animation:pulse .8s ease-in-out infinite}
+    .test-badge.pass{background:rgba(34,197,94,.15);color:#22c55e}
+    .test-badge.fail{background:rgba(239,68,68,.15);color:#ef4444}
+    .test-badge.skip{background:rgba(100,116,139,.1);color:#475569}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
     /* ── bundle form card ── */
     .card{background:rgba(30,41,59,.7);border:1px solid rgba(255,255,255,.07);
           border-radius:14px;padding:2rem;width:100%;max-width:680px;backdrop-filter:blur(8px)}
@@ -490,6 +515,7 @@ HTML = r"""<!DOCTYPE html>
     <button class="snav-btn active" id="nav-bundle"   onclick="setView('bundle')">Bundle</button>
     <button class="snav-btn"        id="nav-packages" onclick="setView('packages')">Top Packages</button>
     <button class="snav-btn"        id="nav-install"  onclick="setView('install')">How to Install</button>
+    <button class="snav-btn"        id="nav-tests"    onclick="setView('tests')">Test Cases</button>
   </div>
 
   <!-- ── Bundle view ── -->
@@ -581,16 +607,78 @@ HTML = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <div id="view-tests" style="display:none;width:100%;max-width:780px">
+    <div class="pkg-snav">
+      <button class="pkg-snav-btn active" id="tpkg-yml2json"
+              onclick="selectTestPkg('yml2json')">yml2json</button>
+      <button class="pkg-snav-btn" id="tpkg-flask"
+              onclick="selectTestPkg('flask')">flask</button>
+      <button class="pkg-snav-btn" id="tpkg-numpy"
+              onclick="selectTestPkg('numpy')">numpy</button>
+    </div>
+    <div style="color:#64748b;font-size:.8rem;margin-bottom:1.2rem;text-align:center">
+      Python 3.12 &nbsp;·&nbsp; Linux x86-64 &nbsp;·&nbsp; end-to-end bundle test
+    </div>
+    <div class="card" style="padding:1.2rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+        <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
+        <button id="run-btn" onclick="runTests()"
+                style="width:auto;margin:0;padding:.35rem 1.1rem;font-size:.8rem">&#9654; Run</button>
+      </div>
+      <div id="test-list"></div>
+      <div id="test-summary"
+           style="display:none;margin-top:1rem;padding:.65rem .85rem;border-radius:7px;
+                  font-size:.85rem;font-weight:600"></div>
+    </div>
+    <div id="test-log-wrap" style="display:none;margin-top:.75rem">
+      <div style="background:#1e2433;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                  display:flex;align-items:center;gap:.35rem;
+                  border:1px solid rgba(255,255,255,.07);border-bottom:none">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+        <span style="flex:1;text-align:center;font-size:.72rem;color:#64748b;
+                     font-family:monospace;margin-right:22px">build log</span>
+      </div>
+      <div id="test-log"
+           style="background:#0d1117;border:1px solid rgba(255,255,255,.07);
+                  border-radius:0 0 10px 10px;padding:.75rem 1rem;height:240px;
+                  overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                  font-size:.76rem;line-height:1.6;color:#c9d1d9;
+                  white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+    <div id="test-install-log-wrap" style="display:none;margin-top:.75rem">
+      <div style="background:#1a2438;border-radius:10px 10px 0 0;padding:.4rem .75rem;
+                  display:flex;align-items:center;gap:.35rem;
+                  border:1px solid rgba(59,130,246,.3);border-bottom:none">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ef4444"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308"></span>
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e"></span>
+        <span style="flex:1;text-align:center;font-size:.72rem;color:#93c5fd;
+                     font-family:monospace;margin-right:22px">install test — isolated venv</span>
+      </div>
+      <div id="test-install-log"
+           style="background:#060d10;border:1px solid rgba(59,130,246,.2);
+                  border-radius:0 0 10px 10px;padding:.75rem 1rem;height:220px;
+                  overflow-y:auto;font-family:'Fira Code','Consolas',monospace;
+                  font-size:.76rem;line-height:1.6;color:#93c5fd;
+                  white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+  </div>
+
   <script>
     /* ── view switching ── */
     function setView(v) {
       document.getElementById('view-bundle').style.display   = v === 'bundle'   ? 'block' : 'none';
       document.getElementById('view-packages').style.display = v === 'packages' ? 'block' : 'none';
       document.getElementById('view-install').style.display  = v === 'install'  ? 'block' : 'none';
+      document.getElementById('view-tests').style.display    = v === 'tests'    ? 'block' : 'none';
       document.getElementById('nav-bundle').classList.toggle('active',   v === 'bundle');
       document.getElementById('nav-packages').classList.toggle('active', v === 'packages');
       document.getElementById('nav-install').classList.toggle('active',  v === 'install');
+      document.getElementById('nav-tests').classList.toggle('active',    v === 'tests');
       if (v === 'packages') renderPkgs();
+      if (v === 'tests') initTestList();
     }
 
     /* ── packages data (injected server-side) ── */
@@ -742,6 +830,354 @@ HTML = r"""<!DOCTYPE html>
     document.getElementById('pkg').addEventListener('keydown', e => {
       if (e.key === 'Enter') go();
     });
+
+    // ── Test Cases ────────────────────────────────────────────────────────────
+
+    const TEST_DEFS = [
+      { id:'T01', name:'Reject invalid package name',       desc:'POST with "!!bad!!" → 400 JSON error' },
+      { id:'T02', name:'Reject unknown Python version',     desc:'POST with python_version="2.6" → 400 JSON error' },
+      { id:'T03', name:'Bundle request accepted',            desc:'POST → 200 text/event-stream' },
+      { id:'T04', name:'pip download output in stream',     desc:'Stream contains "Collecting" or "Downloading" line' },
+      { id:'T05', name:'Package .whl files appear',          desc:'.whl filename seen in stream output' },
+      { id:'T06', name:'ClamAV scan clean',                  desc:'No INFECTED line in stream' },
+      { id:'T07', name:'Bundle completes without error',    desc:'event:done received (not event:error)' },
+      { id:'T08', name:'Download token is valid',            desc:'event:done data matches UUID format' },
+      { id:'T09', name:'Bundle metadata endpoint responds',  desc:'GET /bundle-meta/<token> → 200 JSON' },
+      { id:'T10', name:'Bundle filename is a .zip',          desc:'Metadata name field ends with .zip' },
+      { id:'T11', name:'Bundle size > 10 KB',                desc:'Metadata size field > 10,240 bytes' },
+      { id:'T12', name:'Zip extracts cleanly',               desc:'Server extracts bundle without error' },
+      { id:'T13', name:'setup.sh present',                   desc:'setup.sh found in extracted bundle' },
+      { id:'T14', name:'.whl files are valid zip archives',  desc:'Every .whl opens cleanly as a zip' },
+      { id:'T15', name:'Target package .whl present',        desc:'At least one .whl named after the package' },
+      { id:'T16', name:'Install into isolated venv',         desc:'pip install --no-index --find-links succeeds' },
+      { id:'T17', name:'Package version readable',           desc:'pip show reports installed version' },
+      { id:'T18', name:'Package importable',                 desc:'python -c "import <pkg>" exits 0' },
+    ];
+
+    const TEST_PKGS = [
+      { id: 'yml2json', label: 'yml2json', pyver: '3.12', plat: 'any' },
+      { id: 'flask',    label: 'flask',    pyver: '3.12', plat: 'linux_x86_64' },
+      { id: 'numpy',    label: 'numpy',    pyver: '3.12', plat: 'linux_x86_64' },
+    ];
+
+    let activeTestPkg = TEST_PKGS[0];
+    let testsRunning  = false;
+
+    function selectTestPkg(id) {
+      activeTestPkg = TEST_PKGS.find(p => p.id === id) || TEST_PKGS[0];
+      document.querySelectorAll('.pkg-snav-btn').forEach(b => b.classList.remove('active'));
+      const el = document.getElementById('tpkg-' + id);
+      if (el) el.classList.add('active');
+      initTestList();
+    }
+
+    function setTestStatus(id, status, detail) {
+      const row = document.getElementById('trow-' + id);
+      if (!row) return;
+      const badge  = row.querySelector('.test-badge');
+      const detEl  = row.querySelector('.test-detail');
+      badge.className = 'test-badge ' + status;
+      const labels = { pending:'—', running:'running…', pass:'✓ PASS', fail:'✗ FAIL', skip:'SKIP' };
+      badge.textContent = labels[status] || status;
+      if (detEl && detail !== undefined) detEl.textContent = detail;
+    }
+
+    function appendTestLog(text) {
+      const log = document.getElementById('test-log');
+      if (!log) return;
+      log.textContent += text + '\n';
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function initTestList() {
+      const list = document.getElementById('test-list');
+      if (!list) return;
+      list.innerHTML = TEST_DEFS.map(t =>
+        '<div class="test-row" id="trow-' + t.id + '">' +
+          '<span class="test-id">' + t.id + '</span>' +
+          '<div><div class="test-name">' + t.name + '</div>' +
+              '<div class="test-desc">' + t.desc + '</div>' +
+              '<div class="test-detail"></div></div>' +
+          '<span class="test-badge pending">—</span>' +
+        '</div>'
+      ).join('');
+      const sumEl = document.getElementById('test-summary');
+      if (sumEl) sumEl.style.display = 'none';
+      const logEl = document.getElementById('test-log');
+      if (logEl) logEl.textContent = '';
+      const wrapEl = document.getElementById('test-log-wrap');
+      if (wrapEl) wrapEl.style.display = 'none';
+      const ilogEl = document.getElementById('test-install-log');
+      if (ilogEl) ilogEl.textContent = '';
+      const iwrapEl = document.getElementById('test-install-log-wrap');
+      if (iwrapEl) iwrapEl.style.display = 'none';
+      const btn = document.getElementById('run-btn');
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+    }
+
+    async function runTests() {
+      if (testsRunning) return;
+      testsRunning = true;
+
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running…';
+
+      initTestList();
+      document.getElementById('test-log-wrap').style.display = 'block';
+
+      const pkg   = activeTestPkg.id;
+      const pyver = activeTestPkg.pyver;
+      const plat  = activeTestPkg.plat;
+      let passed = 0, failed = 0;
+      let stopped = false;
+
+      function pass(id, detail) { setTestStatus(id, 'pass', detail); passed++; }
+      function fail(id, detail) { setTestStatus(id, 'fail', detail); failed++; }
+      function skip(id, detail) { setTestStatus(id, 'skip', detail); }
+      function abort(fromId, reason) {
+        const all = TEST_DEFS.map(t => t.id);
+        const idx = all.indexOf(fromId);
+        if (idx >= 0) all.slice(idx).forEach(id => skip(id, reason || 'skipped — prior step failed'));
+        stopped = true;
+      }
+
+      // T01 — Reject invalid package name
+      setTestStatus('T01', 'running');
+      try {
+        const f = new FormData();
+        f.append('package', '!!bad!!');
+        f.append('python_version', pyver);
+        f.append('platform', plat);
+        const r = await fetch('/bundle', { method:'POST', body:f });
+        const j = await r.json().catch(() => null);
+        if (r.status === 400 && j && j.error) { pass('T01', 'HTTP 400 — ' + j.error); }
+        else { fail('T01', 'Expected 400, got HTTP ' + r.status); abort('T02'); }
+      } catch(e) { fail('T01', 'Network error: ' + e.message); abort('T02'); }
+
+      // T02 — Reject unknown Python version
+      if (!stopped) {
+        setTestStatus('T02', 'running');
+        try {
+          const f = new FormData();
+          f.append('package', pkg);
+          f.append('python_version', '2.6');
+          f.append('platform', plat);
+          const r = await fetch('/bundle', { method:'POST', body:f });
+          const j = await r.json().catch(() => null);
+          if (r.status === 400 && j && j.error) { pass('T02', 'HTTP 400 — ' + j.error); }
+          else { fail('T02', 'Expected 400, got HTTP ' + r.status); abort('T03'); }
+        } catch(e) { fail('T02', 'Network error: ' + e.message); abort('T03'); }
+      }
+
+      // T03–T08 — SSE bundle stream
+      let token = null;
+      if (!stopped) {
+        setTestStatus('T03', 'running');
+        setTestStatus('T04', 'running');
+        setTestStatus('T05', 'running');
+        setTestStatus('T06', 'running');
+        setTestStatus('T07', 'running');
+        setTestStatus('T08', 'running');
+
+        let streamFailed = false;
+        try {
+          const form = new FormData();
+          form.append('package', pkg);
+          form.append('python_version', pyver);
+          form.append('platform', plat);
+
+          const resp = await fetch('/bundle', { method:'POST', body:form });
+          const rct  = resp.headers.get('content-type') || '';
+
+          if (!resp.ok || !rct.includes('event-stream')) {
+            fail('T03', 'Expected 200 text/event-stream, got HTTP ' + resp.status);
+            abort('T04');
+            streamFailed = true;
+          } else {
+            pass('T03', 'HTTP 200 text/event-stream');
+
+            const reader = resp.body.getReader();
+            const dec = new TextDecoder();
+            let buf = '';
+            let T04done = false, T05done = false, T06done = false, streamDone = false;
+
+            while (!streamDone) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, { stream: true });
+              const blocks = buf.split('\n\n');
+              buf = blocks.pop();
+
+              for (const block of blocks) {
+                let evtType = '', evtData = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) evtType = line.slice(6).trim();
+                  else if (line.startsWith('data:')) evtData = line.slice(5).trim();
+                }
+
+                if (evtData) {
+                  appendTestLog(evtData);
+                  if (!T04done && /Collecting|Downloading/i.test(evtData)) {
+                    T04done = true;
+                    pass('T04', 'pip output detected in stream');
+                  }
+                  if (!T05done && evtData.includes('.whl')) {
+                    T05done = true;
+                    pass('T05', '.whl filename seen in stream');
+                  }
+                  if (!T06done && evtData.includes('INFECTED')) {
+                    T06done = true;
+                    fail('T06', evtData.slice(0, 80));
+                  }
+                }
+
+                if (evtType === 'done') {
+                  token = evtData;
+                  if (!T04done) { fail('T04', 'No pip output in stream'); streamFailed = true; }
+                  if (!T05done && !streamFailed) { fail('T05', 'No .whl filename in stream'); streamFailed = true; }
+                  else if (!T05done) skip('T05', 'skipped — prior step failed');
+                  if (!T06done && !streamFailed) pass('T06', 'No INFECTED lines — scan clean');
+                  else if (!T06done) skip('T06', 'skipped — prior step failed');
+                  if (!streamFailed) {
+                    pass('T07', 'event:done received');
+                    if (/^[0-9a-f\-]{32,}$/i.test(token)) { pass('T08', token); }
+                    else { fail('T08', 'Unexpected format: ' + token); streamFailed = true; }
+                  } else {
+                    skip('T07', 'skipped — prior step failed');
+                    skip('T08', 'skipped — prior step failed');
+                    token = null;
+                  }
+                  streamDone = true;
+                  break;
+                }
+
+                if (evtType === 'error') {
+                  if (!T04done) fail('T04', 'Bundle failed');
+                  if (!T05done) skip('T05', 'Bundle failed');
+                  if (!T06done) skip('T06', 'Bundle failed');
+                  fail('T07', 'event:error — ' + evtData.slice(0, 80));
+                  skip('T08', 'skipped — prior step failed');
+                  streamFailed = true;
+                  streamDone = true;
+                  break;
+                }
+              }
+            }
+          }
+        } catch(e) {
+          fail('T03', 'Error: ' + e.message);
+          abort('T04');
+          streamFailed = true;
+        }
+
+        if (streamFailed) abort('T09');
+      }
+
+      // T09–T11 — Bundle metadata
+      if (!stopped && token) {
+        setTestStatus('T09', 'running');
+        setTestStatus('T10', 'running');
+        setTestStatus('T11', 'running');
+        try {
+          const mr = await fetch('/bundle-meta/' + token);
+          if (mr.ok) {
+            pass('T09', 'HTTP ' + mr.status);
+            const meta = await mr.json();
+            if (meta.name && meta.name.endsWith('.zip')) { pass('T10', meta.name); }
+            else { fail('T10', 'name: ' + (meta.name || '(none)')); abort('T11'); }
+            if (!stopped) {
+              meta.size > 10240
+                ? pass('T11', meta.size.toLocaleString() + ' bytes (' + (meta.size/1048576).toFixed(1) + ' MB)')
+                : (fail('T11', (meta.size || 0) + ' bytes — too small'), abort('T12'));
+            }
+          } else {
+            fail('T09', 'HTTP ' + mr.status);
+            abort('T10');
+          }
+        } catch(e) { fail('T09', e.message); abort('T10'); }
+      }
+
+      // T12–T18 — Install in isolated venv (server-side)
+      if (!stopped && token) {
+        ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => setTestStatus(id, 'running'));
+        document.getElementById('test-install-log-wrap').style.display = 'block';
+        const ilog = document.getElementById('test-install-log');
+        function appendInstallLog(text) {
+          ilog.textContent += text + '\n';
+          ilog.scrollTop = ilog.scrollHeight;
+        }
+
+        try {
+          const form2 = new FormData();
+          form2.append('token', token);
+          const ir = await fetch('/test-install', { method:'POST', body:form2 });
+          if (!ir.ok) {
+            ['T12','T13','T14','T15','T16','T17','T18'].forEach(id =>
+              fail(id, 'HTTP ' + ir.status));
+          } else {
+            const reader2 = ir.body.getReader();
+            const dec2 = new TextDecoder();
+            let ibuf = '';
+            while (true) {
+              const { done, value } = await reader2.read();
+              if (done) break;
+              ibuf += dec2.decode(value, { stream: true });
+              const blocks = ibuf.split('\n\n');
+              ibuf = blocks.pop();
+              for (const block of blocks) {
+                let et = '', ed = '';
+                for (const line of block.split('\n')) {
+                  if (line.startsWith('event:')) et = line.slice(6).trim();
+                  else if (line.startsWith('data:')) ed = line.slice(5).trim();
+                }
+                if (et === 'step') {
+                  try {
+                    const s = JSON.parse(ed);
+                    setTestStatus(s.test, s.status, s.detail || '');
+                    if (s.status === 'pass') passed++;
+                    else if (s.status === 'fail') failed++;
+                  } catch(_) {}
+                } else if (et === 'log' && ed) {
+                  appendInstallLog(ed);
+                } else if (et === 'error') {
+                  ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+                    const row = document.getElementById('trow-' + id);
+                    if (row && row.querySelector('.test-badge').classList.contains('running'))
+                      skip(id, 'aborted: ' + ed.slice(0, 60));
+                  });
+                  appendInstallLog('ERROR: ' + ed);
+                }
+              }
+            }
+          }
+        } catch(e) {
+          ['T12','T13','T14','T15','T16','T17','T18'].forEach(id => {
+            const row = document.getElementById('trow-' + id);
+            if (row && row.querySelector('.test-badge').classList.contains('running'))
+              fail(id, 'Error: ' + e.message);
+          });
+        }
+      }
+
+      // Summary
+      const sumEl = document.getElementById('test-summary');
+      sumEl.style.display = 'block';
+      if (failed === 0 && passed > 0) {
+        sumEl.style.background = 'rgba(34,197,94,.12)';
+        sumEl.style.color = '#86efac';
+        sumEl.style.border = '1px solid rgba(34,197,94,.25)';
+        sumEl.textContent = '✓ All ' + passed + ' tests passed';
+      } else {
+        sumEl.style.background = 'rgba(239,68,68,.12)';
+        sumEl.style.color = '#fca5a5';
+        sumEl.style.border = '1px solid rgba(239,68,68,.25)';
+        sumEl.textContent = passed + ' passed · ' + failed + ' failed';
+      }
+      btn.disabled = false;
+      btn.textContent = '↺ Re-run';
+      testsRunning = false;
+    }
   </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
@@ -965,6 +1401,198 @@ def download(token):
         as_attachment=True,
         download_name=info['name'],
     )
+
+
+@app.route('/bundle-meta/<token>')
+def bundle_meta(token):
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return jsonify({'error': 'not found'}), 404
+    size = 0
+    try:
+        size = os.path.getsize(info['path'])
+    except Exception:
+        pass
+    return jsonify({'name': info.get('name', ''), 'size': size})
+
+
+@app.route('/test-install', methods=['POST'])
+def test_install():
+    """Run install-verification tests against a pending bundle in an isolated venv."""
+    token = request.form.get('token', '').strip()
+
+    with _bundles_lock:
+        info = _bundles.get(token)
+    if not info:
+        return Response('event: error\ndata: Bundle not found or expired\n\n',
+                        mimetype='text/event-stream')
+
+    @stream_with_context
+    def generate():
+        import zipfile as _zip
+
+        work = tempfile.mkdtemp(prefix='pyinsttest_')
+        try:
+            zip_path = info['path']
+            pkg_name = info.get('package', '').split('==')[0].split('>=')[0].split('<=')[0].strip()
+
+            def step(test, status, detail=''):
+                entry = _json.dumps({'test': test, 'status': status, 'detail': detail})
+                return 'event: step\ndata: ' + entry + '\n\n'
+
+            def log(msg):
+                return 'event: log\ndata: ' + msg + '\n\n'
+
+            # ── T12: Extract zip ─────────────────────────────────────────────
+            extract_dir = os.path.join(work, 'extracted')
+            whl_files = []
+            try:
+                with _zip.ZipFile(zip_path) as zf:
+                    zf.extractall(extract_dir)
+                for root_d, _, files in os.walk(extract_dir):
+                    for f in files:
+                        if f.endswith('.whl'):
+                            whl_files.append(os.path.join(root_d, f))
+                yield step('T12', 'pass',
+                           f'Extracted {len(whl_files)} .whl file(s) + ancillary files')
+            except Exception as e:
+                yield step('T12', 'fail', str(e))
+                yield 'event: error\ndata: extraction failed\n\n'
+                return
+
+            # ── T13: setup.sh present ────────────────────────────────────────
+            setup_sh = None
+            for root_d, _, files in os.walk(extract_dir):
+                if 'setup.sh' in files:
+                    setup_sh = os.path.join(root_d, 'setup.sh')
+                    break
+            if setup_sh:
+                yield step('T13', 'pass', 'setup.sh found')
+            else:
+                yield step('T13', 'fail', 'setup.sh not found in bundle')
+                for tid in ['T14','T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T14: .whl files are valid zip archives ───────────────────────
+            if not whl_files:
+                yield step('T14', 'fail', 'No .whl files in bundle')
+                for tid in ['T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            all_valid = True
+            for wf in whl_files:
+                try:
+                    with _zip.ZipFile(wf) as wz:
+                        names = wz.namelist()
+                    yield log(f'OK: {os.path.basename(wf)} ({len(names)} entries)')
+                except Exception as e:
+                    all_valid = False
+                    yield log(f'FAILED: {os.path.basename(wf)}: {e}')
+            if all_valid:
+                yield step('T14', 'pass', f'{len(whl_files)} .whl file(s) valid')
+            else:
+                yield step('T14', 'fail', 'Some .whl files are not valid zip archives')
+                for tid in ['T15','T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T15: Target package .whl present ────────────────────────────
+            norm = pkg_name.lower().replace('-', '_')
+            target_whls = [f for f in whl_files
+                           if os.path.basename(f).lower().startswith(norm + '-') or
+                              os.path.basename(f).lower().startswith(norm.replace('_', '-') + '-')]
+            if target_whls:
+                yield step('T15', 'pass', os.path.basename(target_whls[0]))
+            else:
+                yield step('T15', 'fail', f'No .whl file matching "{pkg_name}"')
+                for tid in ['T16','T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T16: Install into isolated venv ─────────────────────────────
+            venv_dir = os.path.join(work, 'venv')
+            pkg_dir  = os.path.dirname(target_whls[0])
+            r = subprocess.run(
+                ['python3.12', '-m', 'venv', venv_dir],
+                capture_output=True, text=True,
+            )
+            if r.returncode != 0:
+                yield step('T16', 'fail', 'python3.12 -m venv failed: ' + r.stderr.strip()[:100])
+                for tid in ['T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            pip = os.path.join(venv_dir, 'bin', 'pip')
+            r2 = subprocess.run(
+                [pip, 'install', '--quiet', '--no-index',
+                 '--find-links', pkg_dir, pkg_name],
+                capture_output=True, text=True,
+            )
+            for line in (r2.stdout + r2.stderr).splitlines():
+                if line.strip():
+                    yield log(line)
+            if r2.returncode == 0:
+                yield step('T16', 'pass', f'pip install --no-index succeeded')
+            else:
+                yield step('T16', 'fail', 'pip install failed')
+                for tid in ['T17','T18']:
+                    yield step(tid, 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T17: Package version readable ────────────────────────────────
+            r3 = subprocess.run(
+                [pip, 'show', pkg_name],
+                capture_output=True, text=True,
+            )
+            version = ''
+            for line in r3.stdout.splitlines():
+                if line.startswith('Version:'):
+                    version = line.split(':', 1)[1].strip()
+                    break
+            if version:
+                yield step('T17', 'pass', f'Version: {version}')
+            else:
+                yield step('T17', 'fail', 'pip show did not return a Version field')
+                yield step('T18', 'skip', 'skipped — prior step failed')
+                yield 'event: done\ndata: ok\n\n'
+                return
+
+            # ── T18: Package importable ──────────────────────────────────────
+            python = os.path.join(venv_dir, 'bin', 'python')
+            import_name = _import_name(pkg_name)
+            r4 = subprocess.run(
+                [python, '-c', f'import {import_name}; print({import_name}.__file__)'],
+                capture_output=True, text=True,
+            )
+            yield log(f'python -c "import {import_name}"')
+            if r4.stdout.strip():
+                yield log(r4.stdout.strip())
+            if r4.returncode == 0:
+                yield step('T18', 'pass', f'import {import_name} OK — {r4.stdout.strip()[:80]}')
+            else:
+                err = (r4.stderr or r4.stdout).strip()[:120]
+                yield step('T18', 'fail', err or f'import {import_name} failed (exit {r4.returncode})')
+
+            yield 'event: done\ndata: ok\n\n'
+
+        except Exception as e:
+            yield f'event: error\ndata: {e}\n\n'
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+            with _bundles_lock:
+                _bundles.pop(token, None)
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 if __name__ == '__main__':
