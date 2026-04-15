@@ -899,6 +899,7 @@ def bundle():
                 with open(os.path.join(tmpdir, fname), 'w', newline='\n') as fh:
                     fh.write(content)
 
+            ver_nodot  = pyver.replace('.', '')
             bundle_dir = f'ximg-app-py-bundle-{safe_pkg}{ver_tag}-py{ver_nodot}-{plat}'
             zip_name   = f'{bundle_dir}.zip'
             zip_path   = os.path.join(tmpdir, zip_name)
