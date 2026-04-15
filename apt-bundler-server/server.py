@@ -269,8 +269,8 @@ HTML = r"""<!DOCTYPE html>
           background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.07);
           border-radius:10px;padding:.3rem}
     .snav-btn{flex:1;background:none;border:none;color:#64748b;font-size:.82rem;
-              font-weight:600;padding:.5rem 1.2rem;border-radius:7px;cursor:pointer;
-              transition:all .15s;letter-spacing:.01em;width:auto;margin-top:0}
+              font-weight:600;padding:.5rem .75rem;border-radius:7px;cursor:pointer;
+              transition:all .15s;letter-spacing:.01em;width:auto;margin-top:0;white-space:nowrap}
     .snav-btn.active{background:#1e293b;color:#f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,.4)}
     .snav-btn:hover:not(.active){color:#cbd5e1}
 
