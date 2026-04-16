@@ -372,6 +372,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Serve additional static HTML pages
+  if (req.method === 'GET' && /^\/page-[a-z]+\.html$/.test(pathname)) {
+    const filename = pathname.slice(1); // remove leading /
+    const htmlPath = path.join(__dirname, filename);
+    try {
+      const html = fs.readFileSync(htmlPath, 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+    return;
+  }
+
   if (req.method === 'GET' && pathname === '/favicon.png') {
     const ico = fs.readFileSync(path.join(__dirname, 'favicon.png'));
     res.writeHead(200, { 'Content-Type': 'image/png' });

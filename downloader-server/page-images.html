@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="📦 Docker Image Downloader — Images">
+  <title>dockerimage.dev — Images</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0d0d16;color:#c9d1d9;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
+    .page{flex:1;max-width:1200px;width:100%;margin:0 auto;padding:1.5rem 1rem 2rem}
+
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:#586069;margin-bottom:1.6rem}
+
+    /* sub-nav */
+    .subnav{display:flex;gap:.4rem;margin-bottom:1.4rem;flex-wrap:wrap;justify-content:center}
+    .snav-btn{display:inline-block;background:none;border:1px solid rgba(255,255,255,.1);border-radius:5px;
+      color:#586069;font-family:'Courier New',monospace;font-size:.75rem;padding:.3rem .75rem;
+      cursor:pointer;transition:all .15s;text-decoration:none}
+    .snav-btn:hover{border-color:rgba(56,189,248,.4);color:#38bdf8}
+    .snav-btn.active{border-color:#38bdf8;color:#38bdf8;background:rgba(56,189,248,.08)}
+
+    /* images view */
+    .imgs-toolbar{display:flex;gap:.6rem;align-items:center;margin-bottom:.9rem;flex-wrap:wrap}
+    .imgs-search{flex:1;min-width:180px;background:#0d1117;border:1px solid rgba(255,255,255,.12);
+      border-radius:6px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.85rem;
+      padding:.5rem .85rem;outline:none;transition:border-color .2s}
+    .imgs-search:focus{border-color:rgba(56,189,248,.5)}
+    .imgs-search::placeholder{color:#3a4453}
+    .cat-select{background:#0d1117;border:1px solid rgba(255,255,255,.12);border-radius:6px;
+      color:#c9d1d9;font-family:'Courier New',monospace;font-size:.8rem;padding:.5rem .7rem;
+      outline:none;cursor:pointer}
+    .imgs-status{font-size:.72rem;color:#586069;margin-bottom:.6rem;min-height:1rem}
+    .imgs-wrap{overflow-x:auto}
+    .imgs-table{width:100%;border-collapse:collapse;font-size:.76rem}
+    .imgs-table th{color:#586069;font-weight:600;padding:.35rem .6rem;
+      border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap;text-align:left;
+      cursor:pointer;user-select:none}
+    .imgs-table th:hover{color:#38bdf8}
+    .imgs-table th.sort-asc::after{content:' ↑'}
+    .imgs-table th.sort-desc::after{content:' ↓'}
+    .imgs-table th.num{text-align:right}
+    .imgs-table td{padding:.4rem .6rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    .imgs-table tr:hover td{background:rgba(255,255,255,.025)}
+    .img-name{color:#38bdf8;font-family:'Courier New',monospace;font-weight:700;white-space:nowrap}
+    .img-official{display:inline-block;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);
+      border-radius:3px;color:#38bdf8;font-size:.62rem;padding:.05rem .35rem;margin-left:.4rem;vertical-align:middle}
+    .img-desc{color:#8b949e;max-width:340px}
+    .img-cat{display:inline-block;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+      border-radius:3px;color:#586069;font-size:.65rem;padding:.08rem .35rem;white-space:nowrap}
+    .img-num{color:#ffa657;text-align:right;white-space:nowrap}
+    .img-stars{color:#e3b341;text-align:right;white-space:nowrap}
+    .use-btn{background:none;border:1px solid rgba(56,189,248,.3);border-radius:4px;
+      color:#38bdf8;font-family:'Courier New',monospace;font-size:.68rem;padding:.2rem .55rem;
+      cursor:pointer;white-space:nowrap;transition:all .15s}
+    .use-btn:hover{background:rgba(56,189,248,.1);border-color:#38bdf8}
+    .imgs-empty{color:#586069;text-align:center;padding:2.5rem;font-size:.82rem}
+    .img-logo{width:24px;height:24px;object-fit:contain;filter:brightness(0) invert(.8);vertical-align:middle;opacity:.85}
+    .img-logo-cell{width:32px;text-align:center}
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <h1>📦 Docker Image Downloader</h1>
+  <p class="subtitle">Pull any Docker image to this server and download it as a compressed <code>.tar.gz</code> archive &mdash; also check out <a href="https://dockerimage.dev/" target="_blank" rel="noopener" style="color:#38bdf8;text-decoration:none">dockerimage.dev</a></p>
+
+  <!-- sub-nav -->
+  <div class="subnav">
+    <a class="snav-btn" href="/">Pull &amp; Download</a>
+    <a class="snav-btn" href="/page-images.html">Images</a>
+    <a class="snav-btn" href="/page-how.html">How it works</a>
+    <a class="snav-btn" href="/page-history.html">History</a>
+    <a class="snav-btn" href="/page-video.html">Video</a>
+    <a class="snav-btn" href="/page-global.html">Global</a>
+  </div>
+  <script>
+    (function() {
+      var path = location.pathname;
+      document.querySelectorAll('.subnav .snav-btn').forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href === '/' && (path === '/' || path === '/index.html')) {
+          a.classList.add('active');
+        } else if (href !== '/' && path.endsWith(href.replace('/', ''))) {
+          a.classList.add('active');
+        }
+      });
+    })();
+  </script>
+
+  <!-- ── Images view ───────────────────────────────────────────────────────── -->
+  <div id="view-images">
+    <div class="imgs-toolbar">
+      <input class="imgs-search" id="imgs-search" type="text" placeholder="Search images…" oninput="renderImages()">
+      <select class="cat-select" id="cat-select" onchange="renderImages()">
+        <option value="">All categories</option>
+        <option>OS / Base</option>
+        <option>Languages</option>
+        <option>Databases</option>
+        <option>Web Servers</option>
+        <option>Cache</option>
+        <option>Message Queue</option>
+        <option>Monitoring</option>
+        <option>CI/CD</option>
+        <option>Dev Tools</option>
+        <option>Security</option>
+        <option>Storage</option>
+        <option>Networking</option>
+      </select>
+    </div>
+    <div class="imgs-status" id="imgs-status"></div>
+    <div class="imgs-wrap">
+      <table class="imgs-table">
+        <thead>
+          <tr>
+            <th class="img-logo-cell"></th>
+            <th onclick="setImgSort('name')">Image</th>
+            <th onclick="setImgSort('cat')">Category</th>
+            <th class="num" onclick="setImgSort('pulls')">Pulls</th>
+            <th class="num" onclick="setImgSort('stars')">Stars</th>
+            <th>Description</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="imgs-tbody"><tr><td colspan="6" class="imgs-empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var FALLBACK_IMAGES = [
+  // OS / Base
+  {name:'alpine',      cat:'OS / Base',      pulls:5000000000, stars:12000, official:true,  desc:'A minimal Docker image based on Alpine Linux.'},
+  {name:'ubuntu',      cat:'OS / Base',      pulls:2000000000, stars:16000, official:true,  desc:'Ubuntu is a Debian-based Linux operating system.'},
+  {name:'debian',      cat:'OS / Base',      pulls:1500000000, stars:4500,  official:true,  desc:'Debian is a Linux distribution composed of free software.'},
+  {name:'busybox',     cat:'OS / Base',      pulls:800000000,  stars:3800,  official:true,  desc:'Busybox base image.'},
+  {name:'centos',      cat:'OS / Base',      pulls:600000000,  stars:7000,  official:true,  desc:'The official build of CentOS.'},
+  {name:'fedora',      cat:'OS / Base',      pulls:200000000,  stars:1200,  official:true,  desc:'Official Docker builds of Fedora.'},
+  {name:'amazonlinux', cat:'OS / Base',      pulls:150000000,  stars:800,   official:true,  desc:'Amazon Linux 2 image.'},
+  {name:'scratch',     cat:'OS / Base',      pulls:100000000,  stars:1000,  official:true,  desc:'An explicitly empty image for building FROM scratch.'},
+  // Languages
+  {name:'node',        cat:'Languages',      pulls:5000000000, stars:13000, official:true,  desc:'Node.js is a JavaScript-based platform for server-side applications.'},
+  {name:'python',      cat:'Languages',      pulls:4000000000, stars:9500,  official:true,  desc:'Python is an interpreted, interactive, object-oriented language.'},
+  {name:'golang',      cat:'Languages',      pulls:2000000000, stars:9000,  official:true,  desc:'Go (golang) is a general purpose, higher-level, imperative programming language.'},
+  {name:'php',         cat:'Languages',      pulls:1800000000, stars:7500,  official:true,  desc:'PHP is a server-side scripting language designed for web development.'},
+  {name:'ruby',        cat:'Languages',      pulls:900000000,  stars:2200,  official:true,  desc:'Ruby is a dynamic, reflective, object-oriented, general-purpose, open-source programming language.'},
+  {name:'openjdk',     cat:'Languages',      pulls:800000000,  stars:3800,  official:true,  desc:'OpenJDK is an open-source implementation of the Java Platform.'},
+  {name:'rust',        cat:'Languages',      pulls:400000000,  stars:3000,  official:true,  desc:'Rust is a systems programming language focused on safety and performance.'},
+  {name:'swift',       cat:'Languages',      pulls:200000000,  stars:1800,  official:true,  desc:'Swift is a general-purpose, multi-paradigm, compiled programming language.'},
+  {name:'perl',        cat:'Languages',      pulls:180000000,  stars:600,   official:true,  desc:'Perl is a high-level, general-purpose, interpreted, dynamic programming language.'},
+  {name:'erlang',      cat:'Languages',      pulls:120000000,  stars:700,   official:true,  desc:'Erlang is a programming language for distributed, fault-tolerant systems.'},
+  {name:'elixir',      cat:'Languages',      pulls:100000000,  stars:1100,  official:true,  desc:'Elixir is a dynamic, functional language designed for scalable applications.'},
+  {name:'haskell',     cat:'Languages',      pulls:50000000,   stars:900,   official:true,  desc:'Haskell is a purely functional programming language.'},
+  {name:'clojure',     cat:'Languages',      pulls:40000000,   stars:700,   official:true,  desc:'Clojure is a dialect of the Lisp programming language.'},
+  {name:'r-base',      cat:'Languages',      pulls:80000000,   stars:500,   official:true,  desc:'R is a system for statistical computation and graphics.'},
+  // Databases
+  {name:'postgres',    cat:'Databases',      pulls:3000000000, stars:14000, official:true,  desc:'PostgreSQL is a powerful, open source object-relational database.'},
+  {name:'mysql',       cat:'Databases',      pulls:2500000000, stars:14500, official:true,  desc:'MySQL is the world\'s most popular open source database.'},
+  {name:'mongo',       cat:'Databases',      pulls:2000000000, stars:10000, official:true,  desc:'MongoDB document databases provide high availability and easy scalability.'},
+  {name:'mariadb',     cat:'Databases',      pulls:800000000,  stars:5500,  official:true,  desc:'MariaDB is a community-developed fork of MySQL.'},
+  {name:'redis',       cat:'Cache',          pulls:3000000000, stars:13000, official:true,  desc:'Redis is an open source key-value store that functions as a cache and message broker.'},
+  {name:'memcached',   cat:'Cache',          pulls:600000000,  stars:2000,  official:true,  desc:'Memcached is a free & open source, high-performance, distributed memory object caching system.'},
+  {name:'cassandra',   cat:'Databases',      pulls:200000000,  stars:1800,  official:true,  desc:'Apache Cassandra is an open source distributed database management system.'},
+  {name:'couchdb',     cat:'Databases',      pulls:100000000,  stars:800,   official:true,  desc:'CouchDB is a database that uses JSON for documents and JavaScript for queries.'},
+  {name:'neo4j',       cat:'Databases',      pulls:120000000,  stars:1300,  official:true,  desc:'Neo4j is the world\'s leading graph database.'},
+  {name:'influxdb',    cat:'Databases',      pulls:300000000,  stars:1700,  official:true,  desc:'InfluxDB is a time series database for metrics, events, and analytics.'},
+  {name:'elasticsearch',cat:'Databases',     pulls:700000000,  stars:3600,  official:false, desc:'Elasticsearch provides a distributed, multi-tenant-capable full-text search engine.'},
+  // Web Servers
+  {name:'nginx',       cat:'Web Servers',    pulls:5000000000, stars:20000, official:true,  desc:'Official build of Nginx.'},
+  {name:'httpd',       cat:'Web Servers',    pulls:800000000,  stars:4200,  official:true,  desc:'The Apache HTTP Server Project.'},
+  {name:'caddy',       cat:'Web Servers',    pulls:200000000,  stars:2200,  official:true,  desc:'Caddy 2 is a powerful, enterprise-ready, open source web server.'},
+  {name:'haproxy',     cat:'Networking',     pulls:400000000,  stars:2400,  official:true,  desc:'HAProxy is a free, very fast and reliable solution offering HA, load balancing, and proxying.'},
+  {name:'traefik',     cat:'Networking',     pulls:500000000,  stars:3000,  official:false, desc:'A modern reverse proxy and load balancer for microservices.'},
+  {name:'tomcat',      cat:'Web Servers',    pulls:400000000,  stars:2800,  official:true,  desc:'Apache Tomcat is an open source implementation of Java Servlet and JavaServer Pages.'},
+  // Message Queue
+  {name:'rabbitmq',    cat:'Message Queue',  pulls:800000000,  stars:5000,  official:true,  desc:'RabbitMQ is an open source multi-protocol messaging broker.'},
+  {name:'nats',        cat:'Message Queue',  pulls:200000000,  stars:1500,  official:true,  desc:'NATS is an open-source, cloud-native messaging system.'},
+  {name:'eclipse-mosquitto', cat:'Message Queue', pulls:100000000, stars:900, official:true, desc:'Eclipse Mosquitto is an open source MQTT broker.'},
+  // Monitoring
+  {name:'grafana/grafana', cat:'Monitoring', pulls:800000000,  stars:4000,  official:false, desc:'Grafana is an open source metric analytics and visualization suite.'},
+  {name:'prom/prometheus', cat:'Monitoring', pulls:600000000,  stars:5000,  official:false, desc:'The Prometheus monitoring system and time series database.'},
+  {name:'kibana',      cat:'Monitoring',     pulls:300000000,  stars:2200,  official:false, desc:'Kibana lets you visualize your Elasticsearch data.'},
+  {name:'logstash',    cat:'Monitoring',     pulls:250000000,  stars:1800,  official:false, desc:'Logstash is a server-side data processing pipeline.'},
+  {name:'prom/alertmanager', cat:'Monitoring', pulls:100000000, stars:1200, official:false, desc:'Prometheus Alertmanager handles alerts sent by Prometheus server.'},
+  // CI/CD
+  {name:'jenkins/jenkins', cat:'CI/CD',      pulls:500000000,  stars:5000,  official:false, desc:'Jenkins automates the non-human part of the software development process.'},
+  {name:'gitlab/gitlab-ce', cat:'CI/CD',     pulls:200000000,  stars:3500,  official:false, desc:'GitLab Community Edition docker image.'},
+  {name:'drone/drone', cat:'CI/CD',          pulls:50000000,   stars:1000,  official:false, desc:'Drone is a Container-Native, Continuous Delivery Platform.'},
+  {name:'gitea/gitea', cat:'Dev Tools',      pulls:150000000,  stars:2000,  official:false, desc:'Git with a cup of tea! Painless self-hosted all-in-one software development service.'},
+  // Dev Tools
+  {name:'docker',      cat:'Dev Tools',      pulls:600000000,  stars:3000,  official:true,  desc:'Docker in Docker — build and run Docker containers inside Docker.'},
+  {name:'sonarqube',   cat:'Dev Tools',      pulls:300000000,  stars:2000,  official:true,  desc:'SonarQube is an open source platform for continuous inspection of code quality.'},
+  {name:'portainer/portainer-ce', cat:'Dev Tools', pulls:200000000, stars:2500, official:false, desc:'Making Docker management easy.'},
+  {name:'registry',    cat:'Dev Tools',      pulls:400000000,  stars:3200,  official:true,  desc:'Distributes container images — the Docker Registry.'},
+  {name:'wordpress',   cat:'Dev Tools',      pulls:800000000,  stars:4500,  official:true,  desc:'WordPress is open source software you can use to create a beautiful website.'},
+  // Security
+  {name:'vault',       cat:'Security',       pulls:400000000,  stars:3000,  official:true,  desc:'HashiCorp Vault — secrets management, encryption as a service, and privileged access management.'},
+  // Storage
+  {name:'nextcloud',   cat:'Storage',        pulls:200000000,  stars:2500,  official:true,  desc:'Nextcloud is a safe home for all your data.'},
+  {name:'minio/minio', cat:'Storage',        pulls:300000000,  stars:2000,  official:false, desc:'MinIO is a High Performance Object Storage compatible with Amazon S3.'},
+];
+
+var imgsData = null;
+var imgSort = {col:'pulls', dir:-1};
+var imgsLoaded = false;
+
+function fmtPulls(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(n>=10e9?0:1) + 'B+';
+  if (n >= 1e6) return (n/1e6).toFixed(n>=100e6?0:1) + 'M+';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K+';
+  return String(n);
+}
+function fmtStars(n) {
+  if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function setImgsStatus(msg) {
+  document.getElementById('imgs-status').textContent = msg;
+}
+
+function logoTag(name) {
+  var base = name.split('/').pop().split(':')[0].toLowerCase();
+  return '<img class="img-logo" src="/logos/' + encodeURIComponent(base) + '.svg" ' +
+    'onerror="this.style.display=\'none\'" alt="" loading="lazy" decoding="async">';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function initImages() {
+  if (imgsLoaded) { renderImages(); return; }
+  imgsLoaded = true;
+  setImgsStatus('Fetching images…');
+
+  fetch('/api/images')
+    .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(data) {
+      if (!data.length) throw new Error('empty');
+      imgsData = data.map(function(img) {
+        return {
+          name: img.name,
+          cat: guessCategory(img.name, []),
+          pulls: img.pulls || 0,
+          stars: img.stars || 0,
+          official: img.official,
+          desc: img.desc || ''
+        };
+      });
+      setImgsStatus('Showing ' + imgsData.length + ' images from Docker Hub');
+      renderImages();
+    })
+    .catch(function() {
+      imgsData = FALLBACK_IMAGES.slice();
+      setImgsStatus('Showing ' + imgsData.length + ' popular images (cached data)');
+      renderImages();
+    });
+}
+
+function guessCategory(name, apiCats) {
+  if (apiCats && apiCats.length) return apiCats[0].name || apiCats[0];
+  var m = {
+    alpine:'OS / Base', ubuntu:'OS / Base', debian:'OS / Base', centos:'OS / Base',
+    fedora:'OS / Base', busybox:'OS / Base', scratch:'OS / Base', amazonlinux:'OS / Base',
+    node:'Languages', python:'Languages', golang:'Languages', php:'Languages', ruby:'Languages',
+    openjdk:'Languages', rust:'Languages', swift:'Languages', perl:'Languages', erlang:'Languages',
+    elixir:'Languages', haskell:'Languages', clojure:'Languages', 'r-base':'Languages',
+    postgres:'Databases', mysql:'Databases', mongo:'Databases', mariadb:'Databases',
+    cassandra:'Databases', couchdb:'Databases', neo4j:'Databases', influxdb:'Databases',
+    redis:'Cache', memcached:'Cache',
+    nginx:'Web Servers', httpd:'Web Servers', caddy:'Web Servers', tomcat:'Web Servers',
+    haproxy:'Networking', traefik:'Networking',
+    rabbitmq:'Message Queue', nats:'Message Queue',
+    jenkins:'CI/CD', gitlab:'CI/CD', drone:'CI/CD',
+    grafana:'Monitoring', prometheus:'Monitoring', kibana:'Monitoring', logstash:'Monitoring',
+    vault:'Security',
+    docker:'Dev Tools', wordpress:'Dev Tools', registry:'Dev Tools', sonarqube:'Dev Tools',
+    nextcloud:'Storage'
+  };
+  for (var k in m) { if (name.toLowerCase().indexOf(k) !== -1) return m[k]; }
+  return 'Dev Tools';
+}
+
+function setImgSort(col) {
+  if (imgSort.col === col) {
+    imgSort.dir *= -1;
+  } else {
+    imgSort.col = col;
+    imgSort.dir = col === 'name' || col === 'cat' ? 1 : -1;
+  }
+  var ths = document.querySelectorAll('.imgs-table th');
+  ths.forEach(function(th) { th.className = th.className.replace(/\s*(sort-asc|sort-desc)/g,''); });
+  var idx = {name:0, cat:1, pulls:2, stars:3}[col];
+  if (idx !== undefined) {
+    var th = ths[idx];
+    th.className += imgSort.dir === 1 ? ' sort-asc' : ' sort-desc';
+  }
+  renderImages();
+}
+
+function renderImages() {
+  if (!imgsData) return;
+  var q = (document.getElementById('imgs-search').value || '').toLowerCase();
+  var cat = document.getElementById('cat-select').value;
+
+  var rows = imgsData.filter(function(img) {
+    var matchQ = !q || img.name.toLowerCase().indexOf(q) !== -1 || (img.desc||'').toLowerCase().indexOf(q) !== -1;
+    var matchCat = !cat || img.cat === cat;
+    return matchQ && matchCat;
+  });
+
+  rows.sort(function(a, b) {
+    var av = a[imgSort.col] || 0, bv = b[imgSort.col] || 0;
+    if (typeof av === 'string') return av.localeCompare(bv) * imgSort.dir;
+    return (av - bv) * imgSort.dir;
+  });
+
+  var tbody = document.getElementById('imgs-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="imgs-empty">No images match your search.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(function(img) {
+    var officialBadge = img.official ? '<span class="img-official">official</span>' : '';
+    return '<tr>' +
+      '<td class="img-logo-cell">' + logoTag(img.name) + '</td>' +
+      '<td><span class="img-name">' + esc(img.name) + '</span>' + officialBadge + '</td>' +
+      '<td><span class="img-cat">' + esc(img.cat) + '</span></td>' +
+      '<td class="img-num">' + fmtPulls(img.pulls) + '</td>' +
+      '<td class="img-stars">★ ' + fmtStars(img.stars) + '</td>' +
+      '<td class="img-desc">' + esc(img.desc) + '</td>' +
+      '<td><button class="use-btn" onclick="usePullImage(\'' + img.name.replace(/'/g,"\\'") + '\')">Pull →</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function usePullImage(name) {
+  // Navigate to the pull page with the image pre-filled in the URL
+  window.location.href = '/?image=' + encodeURIComponent(name + ':latest');
+}
+
+window.onload = initImages;
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
