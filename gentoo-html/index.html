@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gentoo Linux — the source-based distro where you compile everything. Learn how Portage, emerge, and USE flags give you ultimate control over your OS.">
+  <title>Gentoo Linux — ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:  #a074c4;
+      --purple2: #c8a8e8;
+      --violet:  #7c4daa;
+      --cyan:    #06b6d4;
+      --gold:    #facc15;
+      --green:   #3fb950;
+      --red:     #f87171;
+      --bg:      #0b080f;
+      --card:    #130d1a;
+      --border:  rgba(160,116,196,0.18);
+      --text:    #e8ddf5;
+      --muted:   #8a7a9a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      padding-top: 88px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(124,77,170,.07) 0%, transparent 60%),
+                  radial-gradient(ellipse at bottom right, rgba(160,116,196,.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── sub nav ── */
+    .subnav {
+      position: fixed;
+      top: 44px;
+      left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      gap: .35rem;
+      padding: .4rem .75rem;
+      background: rgba(11,8,15,.96);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stab {
+      padding: .28rem .75rem;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+      transition: all .15s;
+    }
+    .stab:hover  { background: rgba(160,116,196,.1); color: var(--purple2); border-color: var(--border); }
+    .stab.active { background: rgba(160,116,196,.15); color: var(--purple2); border-color: rgba(160,116,196,.4); }
+
+    /* ── layout ── */
+    .page { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 4rem; position: relative; z-index: 1; }
+    section { display: none; }
+    section.active { display: block; }
+
+    h1 { font-size: 2rem; font-weight: 700; color: var(--purple2); margin-bottom: .4rem; letter-spacing: -.02em; }
+    h2 { font-size: 1.2rem; color: var(--purple); margin: 2rem 0 .75rem; border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+    h3 { font-size: .95rem; color: var(--gold); margin: 1.25rem 0 .4rem; }
+    p  { color: var(--muted); font-size: .88rem; line-height: 1.7; margin-bottom: .75rem; }
+    .lead { color: var(--text); font-size: .95rem; line-height: 1.7; margin-bottom: 1.5rem; }
+
+    /* ── cards ── */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; }
+    .card-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; }
+    .card-sub   { font-size: .78rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── hero logo ── */
+    .hero {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .hero img {
+      width: 110px;
+      height: 110px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 18px rgba(160,116,196,.35));
+    }
+    .hero-text h1 { margin-bottom: .3rem; }
+
+    /* ── emerge terminal ── */
+    .terminal {
+      background: #0a0a0a;
+      border: 1px solid rgba(160,116,196,.25);
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .terminal .prompt { color: #a074c4; }
+    .terminal .cmd    { color: #e8ddf5; }
+    .terminal .out    { color: #6a8a6a; }
+    .terminal .info   { color: #5a8a9a; }
+    .terminal .warn   { color: #facc15; }
+    .terminal .ok     { color: #3fb950; }
+
+    /* ── command reference ── */
+    .cmd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .6rem; margin-bottom: 1.5rem; }
+    .cmd-card { background: var(--card); border: 1px solid rgba(255,255,255,.05); border-radius: 8px; padding: .7rem .9rem; }
+    .cmd-name { font-size: .85rem; font-weight: 700; color: var(--purple2); font-family: monospace; margin-bottom: .15rem; }
+    .cmd-desc { font-size: .75rem; color: var(--muted); }
+    .cmd-ex   { font-size: .72rem; color: var(--cyan); font-family: monospace; margin-top: .1rem; }
+
+    /* ── USE flags ── */
+    .use-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .5rem; margin-bottom: 1.5rem; }
+    .use-flag {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 6px;
+      padding: .55rem .8rem;
+    }
+    .use-name { font-size: .82rem; font-weight: 700; color: var(--purple2); font-family: monospace; }
+    .use-desc { font-size: .73rem; color: var(--muted); margin-top: .15rem; }
+    .use-on  { border-left: 3px solid var(--green); }
+    .use-off { border-left: 3px solid var(--red); }
+
+    /* ── timeline ── */
+    .timeline { border-left: 2px solid var(--border); padding-left: 1.5rem; }
+    .tl-entry { position: relative; margin-bottom: 1.4rem; }
+    .tl-entry::before {
+      content: '';
+      position: absolute;
+      left: -1.6rem; top: .35rem;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--purple);
+      box-shadow: 0 0 6px var(--purple);
+    }
+    .tl-year  { font-size: .78rem; color: var(--purple2); font-weight: 700; margin-bottom: .25rem; }
+    .tl-title { font-size: .9rem; color: var(--text); font-weight: 700; margin-bottom: .2rem; }
+    .tl-desc  { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── comparison table ── */
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 1.5rem; }
+    .cmp-table th { text-align: left; padding: .65rem .8rem; background: rgba(160,116,196,.1); color: var(--purple2); border-bottom: 2px solid var(--border); }
+    .cmp-table td { padding: .6rem .8rem; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--muted); }
+    .cmp-table tr:hover td { background: rgba(255,255,255,.02); }
+    .cmp-table td:first-child { color: var(--text); font-weight: 700; }
+    .yes { color: var(--green); }
+    .no  { color: rgba(255,255,255,.25); }
+    .partial { color: var(--gold); }
+
+    /* ── make.conf block ── */
+    pre {
+      background: #080808;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-size: .8rem;
+      overflow-x: auto;
+      margin-bottom: 1.25rem;
+      line-height: 1.6;
+      color: #c8b8e0;
+      position: relative;
+    }
+    .kw  { color: var(--purple2); }
+    .val { color: #a8e8a8; }
+    .cmt { color: #5a5a6a; }
+
+    /* ── step list ── */
+    .steps { list-style: none; counter-reset: steps; margin-bottom: 1.5rem; }
+    .steps li {
+      counter-increment: steps;
+      position: relative;
+      padding: .6rem .8rem .6rem 3rem;
+      margin-bottom: .5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .85rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .steps li::before {
+      content: counter(steps);
+      position: absolute;
+      left: .9rem;
+      top: .65rem;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--purple);
+      min-width: 1.2rem;
+    }
+    .steps li span { color: var(--muted); font-size: .78rem; display: block; margin-top: .15rem; }
+    .steps li code { color: var(--cyan); font-family: monospace; font-size: .8rem; }
+
+    /* ── badge ── */
+    .badge {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 700;
+      padding: .18rem .5rem;
+      border-radius: 4px;
+      margin-right: .35rem;
+      margin-bottom: .35rem;
+      vertical-align: middle;
+    }
+    .badge-purple { background: rgba(160,116,196,.2); color: var(--purple2); }
+    .badge-green  { background: rgba(63,185,80,.2);   color: var(--green); }
+    .badge-gold   { background: rgba(250,204,21,.2);  color: var(--gold); }
+    .badge-cyan   { background: rgba(6,182,212,.2);   color: var(--cyan); }
+    .badge-red    { background: rgba(248,113,113,.2); color: var(--red); }
+
+    /* ── popularity banner ── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: .75rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-num  { font-size: 1.6rem; font-weight: 700; color: var(--purple2); line-height: 1; }
+    .stat-label { font-size: .72rem; color: var(--muted); margin-top: .3rem; }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 1.4rem; }
+      .hero { gap: 1rem; }
+      .hero img { width: 80px; height: 80px; }
+      .cmp-table { font-size: .72rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="subnav">
+    <button class="stab active" data-tab="overview">overview</button>
+    <button class="stab" data-tab="portage">portage</button>
+    <button class="stab" data-tab="useflags">use flags</button>
+    <button class="stab" data-tab="install">install</button>
+    <button class="stab" data-tab="compare">compare</button>
+    <button class="stab" data-tab="history">history</button>
+  </nav>
+
+  <div class="page">
+
+    <!-- ── OVERVIEW ── -->
+    <section id="tab-overview" class="active">
+      <div class="hero">
+        <img src="images/gentoo-logo.svg" alt="Gentoo Linux logo" loading="lazy">
+        <div class="hero-text">
+          <h1>Gentoo Linux</h1>
+          <p class="lead" style="margin-bottom:.5rem">The source-based Linux distribution where <em>you</em> compile everything — optimized exactly for your hardware and needs.</p>
+          <span class="badge badge-purple">Source-Based</span>
+          <span class="badge badge-green">Portage</span>
+          <span class="badge badge-gold">USE Flags</span>
+          <span class="badge badge-cyan">Rolling Release</span>
+        </div>
+      </div>
+
+      <h2>What is Gentoo?</h2>
+      <p>Gentoo is a Linux distribution named after the <strong>gentoo penguin</strong> — the fastest swimming penguin, chosen to reflect performance as a core value. Founded by Daniel Robbins in 1999, Gentoo takes a radically different approach: instead of installing pre-compiled binaries, you compile software from source code directly on your machine.</p>
+      <p>This means every package is built with optimizations tuned for your exact CPU, with only the features you actually want enabled via USE flags. The result is a system that is simultaneously highly customized, deeply understood by its owner, and often faster than equivalent binary distributions.</p>
+
+      <h2>Why Was Gentoo So Popular?</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Performance by Compilation</div>
+          <div class="card-sub">Compiling with <code style="color:var(--cyan)">-march=native</code> lets GCC/Clang generate CPU-specific instructions — SSE4, AVX2, whatever your chip supports. Binaries built for your exact hardware, not a generic x86-64 baseline.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Minimal &amp; Lean Systems</div>
+          <div class="card-sub">USE flags let you strip unwanted features at compile time. No GTK support compiled into a CLI tool. No Bluetooth stack on a server. Every package is exactly what you need, nothing more.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Deep Learning Tool</div>
+          <div class="card-sub">Gentoo users understand their systems deeply. Installing Gentoo forces you to configure the kernel, understand init systems, manage libraries, and learn how Linux actually works. It's a Linux PhD in a box.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Rolling Release</div>
+          <div class="card-sub">There are no "releases" of Gentoo — it's a continuous rolling distribution. Packages update when upstream releases new versions. Your system is always current without a full reinstall.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Total Flexibility</div>
+          <div class="card-sub">Choose your init system (OpenRC or systemd), your libc (glibc or musl), your compiler (GCC or Clang), your kernel (vanilla, hardened, zen), your bootloader. Gentoo has no opinions — you do.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Portage is Powerful</div>
+          <div class="card-sub">The Portage package manager is written in Python and is remarkably capable: dependency resolution, slot-based parallel version support, live ebuilds from git HEAD, binary package creation, and full reproducibility.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Community &amp; Documentation</div>
+          <div class="card-sub">The Gentoo Wiki is arguably the most thorough Linux documentation on the internet. The Gentoo Handbook walks through a full installation step-by-step. Community knowledge is deep and freely shared.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Security-Hardened Profile</div>
+          <div class="card-sub">Gentoo Hardened provides PaX patches, PIE binaries, SSP stack protection, and RELRO. Used extensively in security-sensitive environments where custom-compiled hardened binaries are required.</div>
+        </div>
+      </div>
+
+      <h2>Who Uses Gentoo?</h2>
+      <p>Gentoo has historically attracted three groups: <strong>power users</strong> who want maximum control, <strong>sysadmins</strong> who need custom lean server builds, and <strong>developers</strong> who want to understand the stack they build on. It has a smaller but intensely loyal user base compared to Ubuntu or Fedora.</p>
+      <p>Famous Gentoo users have included Linus Torvalds himself (who used Gentoo on one of his machines), various kernel developers, and Google engineers who used Gentoo-based tooling internally. ChromeOS is built on a Gentoo-derived base called Portage, and Google still uses Portage heavily in Chromium OS development.</p>
+
+      <h2>Gentoo Today</h2>
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="stat-num">~20K</div>
+          <div class="stat-label">packages in main tree</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">2000</div>
+          <div class="stat-label">year of first release</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">1999</div>
+          <div class="stat-label">Enoch Linux founded</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">∞</div>
+          <div class="stat-label">possible configurations</div>
+        </div>
+      </div>
+      <p>Gentoo remains actively developed with frequent package updates, new profiles for ARM and RISC-V architectures, binary package support via <code style="color:var(--cyan)">emerge --getbinpkg</code>, and an active community on IRC and forums. It is no longer the dominant hobbyist distro it was in 2003–2008, but it retains a dedicated base of expert users.</p>
+    </section>
+
+    <!-- ── PORTAGE ── -->
+    <section id="tab-portage">
+      <h1>Portage &amp; emerge</h1>
+      <p class="lead">Portage is Gentoo's package management system — a collection of ~20,000 "ebuilds" (shell scripts) that describe how to fetch, configure, compile, and install software. The <code style="color:var(--cyan)">emerge</code> command is your interface to Portage.</p>
+
+      <h2>How emerge Works</h2>
+      <div class="terminal">
+        <div><span class="prompt">root@gentoo # </span><span class="cmd">emerge --ask sys-apps/htop</span></div>
+        <div class="info"><br>These are the packages that would be merged, in order:</div>
+        <div class="info"><br>Calculating dependencies... done!</div>
+        <div class="out">[ebuild  N    ] sys-apps/htop-3.3.0::gentoo  USE="lm-sensors unicode -debug -hwloc" 420 KiB</div>
+        <div class="info"><br>Total: 1 package (1 new), Size of downloads: 420 KiB</div>
+        <div><br><span class="prompt">Would you like to merge these packages? [Yes/No] </span><span class="cmd">Yes</span></div>
+        <div class="info"><br>&gt;&gt;&gt; Emerging (1 of 1) sys-apps/htop-3.3.0::gentoo</div>
+        <div class="info">&gt;&gt;&gt; Unpacking source...</div>
+        <div class="out">&gt;&gt;&gt; Source unpacked in /var/tmp/portage/sys-apps/htop-3.3.0/work</div>
+        <div class="info">&gt;&gt;&gt; Configuring source in /var/tmp/portage/sys-apps/htop-3.3.0/work/htop-3.3.0</div>
+        <div class="info">&gt;&gt;&gt; Compiling source in /var/tmp/portage/sys-apps/htop-3.3.0/work/htop-3.3.0</div>
+        <div class="ok">&gt;&gt;&gt; Installation successful.</div>
+      </div>
+
+      <h2>emerge Command Reference</h2>
+      <div class="cmd-grid">
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --sync</div>
+          <div class="cmd-desc">Sync the Portage tree with the latest ebuilds from the Gentoo mirrors.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --ask &lt;pkg&gt;</div>
+          <div class="cmd-desc">Show what will be installed/changed and prompt before proceeding.</div>
+          <div class="cmd-ex">emerge --ask www-client/firefox</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --update --deep --newuse @world</div>
+          <div class="cmd-desc">Update all packages in your world set, respecting new USE flags.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --pretend &lt;pkg&gt;</div>
+          <div class="cmd-desc">Show what would be installed without actually doing it. (-p shorthand)</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --depclean</div>
+          <div class="cmd-desc">Remove packages no longer needed as dependencies. Run after a world update.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --oneshot &lt;pkg&gt;</div>
+          <div class="cmd-desc">Install without adding to the world set (won't be updated automatically).</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --search &lt;term&gt;</div>
+          <div class="cmd-desc">Search the Portage tree for packages matching the term.</div>
+          <div class="cmd-ex">emerge --search vim</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --info</div>
+          <div class="cmd-desc">Show system-wide Portage configuration: CFLAGS, USE flags, features.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --unmerge &lt;pkg&gt;</div>
+          <div class="cmd-desc">Remove a package. Does not check reverse dependencies — use with care.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --fetchonly &lt;pkg&gt;</div>
+          <div class="cmd-desc">Only download source tarballs; don't compile. Useful before going offline.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --verbose &lt;pkg&gt;</div>
+          <div class="cmd-desc">Show verbose output including package size and USE flag details.</div>
+        </div>
+        <div class="cmd-card">
+          <div class="cmd-name">emerge --resume</div>
+          <div class="cmd-desc">Resume a failed emerge run from where it stopped.</div>
+        </div>
+      </div>
+
+      <h2>The Portage Tree Structure</h2>
+      <p>The Portage tree lives at <code style="color:var(--cyan)">/var/db/repos/gentoo/</code> and contains ebuilds organized by category:</p>
+      <div class="terminal">
+        <div class="out">/var/db/repos/gentoo/</div>
+        <div class="out">├── app-editors/</div>
+        <div class="out">│   ├── vim/</div>
+        <div class="out">│   │   ├── vim-9.1.ebuild</div>
+        <div class="out">│   │   ├── metadata.xml</div>
+        <div class="out">│   │   └── Manifest</div>
+        <div class="out">│   └── emacs/</div>
+        <div class="out">├── sys-apps/</div>
+        <div class="out">├── dev-lang/</div>
+        <div class="out">├── www-client/</div>
+        <div class="out">└── ...~20,000 packages total</div>
+      </div>
+
+      <h2>Ebuilds</h2>
+      <p>An ebuild is a bash script that tells Portage everything about a package: where to fetch the source, what to configure, how to compile, and where to install. Here's a simplified example:</p>
+      <pre><span class="cmt"># dev-libs/hello/hello-2.12.1.ebuild</span>
+<span class="kw">DESCRIPTION</span>=<span class="val">"GNU Hello — classic hello world program"</span>
+<span class="kw">HOMEPAGE</span>=<span class="val">"https://www.gnu.org/software/hello/"</span>
+<span class="kw">SRC_URI</span>=<span class="val">"mirror://gnu/hello/${P}.tar.gz"</span>
+
+<span class="kw">LICENSE</span>=<span class="val">"GPL-3+"</span>
+<span class="kw">SLOT</span>=<span class="val">"0"</span>
+<span class="kw">KEYWORDS</span>=<span class="val">"~amd64 ~arm64 ~x86"</span>
+<span class="kw">IUSE</span>=<span class="val">"nls"</span>
+
+<span class="kw">DEPEND</span>=<span class="val">"nls? ( sys-devel/gettext )"</span>
+
+<span class="kw">src_configure</span>() {
+    econf $(use_enable nls)
+}
+
+<span class="kw">src_compile</span>() {
+    emake
+}
+
+<span class="kw">src_install</span>() {
+    emake DESTDIR=<span class="val">"${D}"</span> install
+}</pre>
+
+      <h2>Slots</h2>
+      <p>Gentoo's slot system allows multiple versions of the same package to coexist. For example, <code style="color:var(--cyan)">dev-lang/python:3.11</code> and <code style="color:var(--cyan)">dev-lang/python:3.12</code> can both be installed simultaneously. This is critical for systems that need multiple Python or Ruby versions without conflicts.</p>
+
+      <h2>Binary Packages (Binpkgs)</h2>
+      <p>Since Gentoo 23.0, official binary packages are available for common configurations. You can mix binary and source packages: install Firefox as a binary but compile your kernel by hand. Use <code style="color:var(--cyan)">emerge --getbinpkg</code> or set <code style="color:var(--cyan)">FEATURES="getbinpkg"</code> in make.conf to enable this.</p>
+    </section>
+
+    <!-- ── USE FLAGS ── -->
+    <section id="tab-useflags">
+      <h1>USE Flags</h1>
+      <p class="lead">USE flags are Gentoo's most powerful feature. They are keywords that tell Portage which optional features to compile into packages. Setting USE flags is how you build a system that does exactly what you want — no more, no less.</p>
+
+      <h2>How USE Flags Work</h2>
+      <p>Every package declares what USE flags it supports in its ebuild via the <code style="color:var(--cyan)">IUSE</code> variable. When you enable a USE flag, the package is compiled with that feature. Disable it, and the dependency and feature are omitted entirely from the binary.</p>
+
+      <div class="terminal">
+        <div class="out"># /etc/portage/make.conf</div>
+        <div><span class="kw" style="color:var(--purple2)">USE</span>=<span class="val" style="color:#a8e8a8">"X alsa bluetooth -gnome -kde pulseaudio python vim-syntax"</span></div>
+        <div><br></div>
+        <div class="out"># Prefix + to explicitly enable, - to explicitly disable</div>
+        <div class="out"># Flags without a sign default to the profile's setting</div>
+      </div>
+
+      <h2>Global vs. Package-Specific Flags</h2>
+      <p>Global USE flags in <code style="color:var(--cyan)">/etc/portage/make.conf</code> apply to all packages. Package-specific flags in <code style="color:var(--cyan)">/etc/portage/package.use</code> override them per-package:</p>
+      <pre><span class="cmt"># /etc/portage/package.use</span>
+<span class="kw">www-client/firefox</span>       <span class="val">pgo lto -telemetry</span>
+<span class="kw">media-video/mpv</span>          <span class="val">dvd bluray cdda lua</span>
+<span class="kw">dev-lang/python:3.12</span>     <span class="val">sqlite tk</span>
+<span class="kw">sys-libs/zlib</span>            <span class="val">minizip</span></pre>
+
+      <h2>Viewing Available USE Flags</h2>
+      <div class="terminal">
+        <div><span class="prompt">root@gentoo # </span><span class="cmd">equery uses www-client/firefox</span></div>
+        <div class="out">[ Legend : U - final flag setting for installation]</div>
+        <div class="out">[         : I - package is installed with flag     ]</div>
+        <div class="out">[ Colors : set, unset                              ]</div>
+        <div class="out"><br> * Found these USE flags for www-client/firefox-121.0:</div>
+        <div class="ok"> U I</div>
+        <div class="ok"> + + alsa          : Enable ALSA (Advanced Linux Sound Architecture) support</div>
+        <div class="out"> + - dbus          : Enable dbus support</div>
+        <div class="out"> - - debug         : Enable extra debug codepaths</div>
+        <div class="ok"> + + ffmpeg         : Enable ffmpeg/libav-based codec support</div>
+        <div class="out"> - - gnome          : Add GNOME support</div>
+        <div class="ok"> + + lto            : Enable link-time optimisation</div>
+        <div class="out"> - - pgo            : Enable profile-guided optimisation</div>
+      </div>
+
+      <h2>Common USE Flags</h2>
+      <div class="use-grid">
+        <div class="use-flag use-on">
+          <div class="use-name">X</div>
+          <div class="use-desc">Enable X Window System (Xorg) support. Disable on headless servers.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">alsa</div>
+          <div class="use-desc">ALSA (Advanced Linux Sound Architecture) audio support.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">ssl</div>
+          <div class="use-desc">Enable SSL/TLS support via OpenSSL or LibreSSL.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">python</div>
+          <div class="use-desc">Build Python bindings or support for the package.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">lto</div>
+          <div class="use-desc">Link-time optimization — produces faster but slower-to-compile binaries.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">unicode</div>
+          <div class="use-desc">Enable Unicode/UTF-8 support. Strongly recommended.</div>
+        </div>
+        <div class="use-flag use-off">
+          <div class="use-name">-gnome</div>
+          <div class="use-desc">Disable GNOME dependencies on a KDE or minimal system.</div>
+        </div>
+        <div class="use-flag use-off">
+          <div class="use-name">-kde</div>
+          <div class="use-desc">Disable KDE/Qt dependencies on a GNOME or minimal system.</div>
+        </div>
+        <div class="use-flag use-off">
+          <div class="use-name">-doc</div>
+          <div class="use-desc">Skip building documentation to save compile time and disk space.</div>
+        </div>
+        <div class="use-flag use-off">
+          <div class="use-name">-debug</div>
+          <div class="use-desc">Disable debug symbols and assertions for leaner production builds.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">bluetooth</div>
+          <div class="use-desc">Enable Bluetooth support in relevant packages.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">vaapi</div>
+          <div class="use-desc">VA-API hardware video acceleration (Intel/AMD GPUs).</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">cuda</div>
+          <div class="use-desc">Enable NVIDIA CUDA GPU computing support.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">pulseaudio</div>
+          <div class="use-desc">Use PulseAudio as the audio server.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">ipv6</div>
+          <div class="use-desc">Enable IPv6 networking support.</div>
+        </div>
+        <div class="use-flag use-off">
+          <div class="use-name">-nls</div>
+          <div class="use-desc">Disable Native Language Support (translations) on English-only systems.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">vim-syntax</div>
+          <div class="use-desc">Install Vim syntax highlighting files for this package.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">threads</div>
+          <div class="use-desc">Enable POSIX threading support for parallel processing.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">systemd</div>
+          <div class="use-desc">Build systemd integration/units. Disable if using OpenRC.</div>
+        </div>
+        <div class="use-flag use-on">
+          <div class="use-name">ffmpeg</div>
+          <div class="use-desc">Enable FFmpeg codec support for audio/video applications.</div>
+        </div>
+      </div>
+
+      <h2>CFLAGS — Compile Flags</h2>
+      <p>Beyond USE flags, <code style="color:var(--cyan)">CFLAGS</code> and <code style="color:var(--cyan)">CXXFLAGS</code> in make.conf control GCC optimization settings:</p>
+      <pre><span class="cmt"># /etc/portage/make.conf — aggressive optimization example</span>
+<span class="kw">CFLAGS</span>=<span class="val">"-march=native -O2 -pipe"</span>
+<span class="kw">CXXFLAGS</span>=<span class="val">"${CFLAGS}"</span>
+<span class="kw">MAKEOPTS</span>=<span class="val">"-j$(nproc)"</span>  <span class="cmt"># parallel compile jobs = CPU core count</span>
+
+<span class="cmt"># USE flags</span>
+<span class="kw">USE</span>=<span class="val">"X alsa bluetooth lto -doc -debug -gnome -kde"</span>
+
+<span class="cmt"># CPU features (Portage auto-detects from CPU)</span>
+<span class="kw">CPU_FLAGS_X86</span>=<span class="val">"aes avx avx2 f16c fma3 mmx mmxext pclmul popcnt rdrand sse sse2 sse3 sse4_1 sse4_2 ssse3"</span></pre>
+    </section>
+
+    <!-- ── INSTALL ── -->
+    <section id="tab-install">
+      <h1>Installing Gentoo</h1>
+      <p class="lead">Gentoo's installation is famously involved. There is no graphical installer — you do everything by hand in a terminal. This is intentional: the process teaches you exactly how a Linux system is built.</p>
+
+      <h2>Why Gentoo Install is Legendary</h2>
+      <p>The Gentoo installation process is a rite of passage in the Linux community. A typical install takes anywhere from 3 hours (on modern hardware with binary packages) to several days (compiling everything on a slow machine, including the kernel). The Gentoo Handbook covers every step in meticulous detail.</p>
+
+      <h2>Installation Steps</h2>
+      <ol class="steps">
+        <li>Boot a live environment (minimal install CD, or any Linux live USB)
+          <span>Verify the ISO signature: <code>gpg --verify install-amd64-minimal.iso.asc</code></span>
+        </li>
+        <li>Prepare the disks with <code>fdisk</code> or <code>parted</code>
+          <span>Typical layout: EFI partition (512MB), swap (optional), root ext4/btrfs/xfs</span>
+        </li>
+        <li>Format and mount the partitions
+          <span><code>mkfs.fat -F32 /dev/sda1 &amp;&amp; mkfs.ext4 /dev/sda3 &amp;&amp; mount /dev/sda3 /mnt/gentoo</code></span>
+        </li>
+        <li>Download the Stage 3 tarball
+          <span>Choose your profile: openrc, systemd, hardened, musl, desktop, or server</span>
+        </li>
+        <li>Verify and extract Stage 3
+          <span><code>tar xpvf stage3-*.tar.xz --xattrs-include='*.*' --numeric-owner -C /mnt/gentoo</code></span>
+        </li>
+        <li>Configure <code>/mnt/gentoo/etc/portage/make.conf</code>
+          <span>Set CFLAGS, USE flags, MAKEOPTS, mirrors, CPU_FLAGS_X86</span>
+        </li>
+        <li>Mount and chroot into the new system
+          <span><code>mount --bind /proc /mnt/gentoo/proc &amp;&amp; chroot /mnt/gentoo /bin/bash</code></span>
+        </li>
+        <li>Sync the Portage tree
+          <span><code>emerge-webrsync</code> (bootstrap) then <code>emerge --sync</code> for latest</span>
+        </li>
+        <li>Choose a profile
+          <span><code>eselect profile list</code> — pick desktop/gnome, server, hardened, etc.</span>
+        </li>
+        <li>Update the @world set
+          <span><code>emerge --ask --verbose --update --deep --newuse @world</code> — rebuilds everything against new USE flags</span>
+        </li>
+        <li>Configure timezone and locale
+          <span><code>echo "America/New_York" &gt; /etc/timezone &amp;&amp; emerge --config sys-libs/timezone-data</code></span>
+        </li>
+        <li>Configure the Linux kernel
+          <span><code>emerge sys-kernel/gentoo-sources</code>, then <code>make menuconfig</code> — the most complex step</span>
+        </li>
+        <li>Compile and install the kernel
+          <span><code>make -j$(nproc) &amp;&amp; make modules_install &amp;&amp; make install</code></span>
+        </li>
+        <li>Generate the initramfs (if needed)
+          <span><code>emerge sys-kernel/dracut &amp;&amp; dracut --kver $(uname -r)</code></span>
+        </li>
+        <li>Configure <code>/etc/fstab</code>
+          <span>Map partitions by UUID to mountpoints: root, boot, swap</span>
+        </li>
+        <li>Configure networking
+          <span>hostname, /etc/hosts, netifrc or NetworkManager depending on profile</span>
+        </li>
+        <li>Install a bootloader
+          <span><code>emerge sys-boot/grub &amp;&amp; grub-install /dev/sda &amp;&amp; grub-mkconfig -o /boot/grub/grub.cfg</code></span>
+        </li>
+        <li>Set the root password and create a user
+          <span><code>passwd &amp;&amp; useradd -m -G wheel,audio,video yourusername</code></span>
+        </li>
+        <li>Reboot into your new Gentoo system
+          <span>Remove the live USB, cross fingers, and enjoy your custom-compiled OS</span>
+        </li>
+      </ol>
+
+      <h2>Stage 3 Tarball</h2>
+      <p>The Stage 3 is a minimal pre-compiled Gentoo base system — the starting point for every installation. It contains the C library, compiler, shell, and basic tools needed to bootstrap Portage. From Stage 3, you build everything else. Historically Gentoo also had Stage 1 and Stage 2 (compiling the C library and compiler from scratch), but these were dropped in favor of Stage 3 for all normal installations.</p>
+
+      <h2>genkernel</h2>
+      <p>For those who don't want to configure the kernel manually, <code style="color:var(--cyan)">genkernel</code> automates the process — building a generic kernel with most drivers enabled, similar to what binary distros ship. Hardcore Gentoo users consider this "cheating," but it works perfectly well for most systems.</p>
+
+      <h2>Portage Profiles</h2>
+      <p>A profile is a collection of pre-set USE flags, CFLAGS, and package masks designed for a particular use case. Switching profiles is how you tell Portage what kind of system you're building:</p>
+      <table class="cmp-table">
+        <tr><th>Profile</th><th>Use Case</th></tr>
+        <tr><td>default/linux/amd64/23.0</td><td>Base profile — minimal, server-suitable</td></tr>
+        <tr><td>default/linux/amd64/23.0/desktop</td><td>Desktop system with Xorg and sound</td></tr>
+        <tr><td>default/linux/amd64/23.0/desktop/gnome</td><td>GNOME desktop environment</td></tr>
+        <tr><td>default/linux/amd64/23.0/desktop/kde</td><td>KDE Plasma desktop environment</td></tr>
+        <tr><td>default/linux/amd64/23.0/hardened</td><td>Security-hardened with PIE/SSP/RELRO</td></tr>
+        <tr><td>default/linux/amd64/23.0/musl</td><td>musl libc instead of glibc</td></tr>
+        <tr><td>default/linux/amd64/23.0/llvm</td><td>Clang/LLVM as default compiler</td></tr>
+      </table>
+    </section>
+
+    <!-- ── COMPARE ── -->
+    <section id="tab-compare">
+      <h1>Gentoo vs. Other Distros</h1>
+      <p class="lead">Every Linux distribution makes trade-offs. Gentoo trades installation time and complexity for control, customization, and understanding. Here's how it compares.</p>
+
+      <h2>Feature Comparison</h2>
+      <table class="cmp-table">
+        <tr>
+          <th>Feature</th>
+          <th>Gentoo</th>
+          <th>Arch</th>
+          <th>Ubuntu</th>
+          <th>NixOS</th>
+        </tr>
+        <tr>
+          <td>Package format</td>
+          <td>Source (+ optional binpkg)</td>
+          <td>Binary (AUR: source)</td>
+          <td>Binary .deb</td>
+          <td>Nix derivations</td>
+        </tr>
+        <tr>
+          <td>Rolling release</td>
+          <td class="yes">Yes</td>
+          <td class="yes">Yes</td>
+          <td class="no">No (LTS)</td>
+          <td class="yes">Yes (unstable)</td>
+        </tr>
+        <tr>
+          <td>Init system</td>
+          <td>OpenRC or systemd</td>
+          <td>systemd</td>
+          <td>systemd</td>
+          <td>systemd</td>
+        </tr>
+        <tr>
+          <td>Install difficulty</td>
+          <td class="partial">Very high</td>
+          <td class="partial">Medium-high</td>
+          <td class="yes">Low</td>
+          <td class="partial">Medium-high</td>
+        </tr>
+        <tr>
+          <td>Customization</td>
+          <td class="yes">Extreme</td>
+          <td class="yes">High</td>
+          <td class="partial">Medium</td>
+          <td class="yes">Extreme</td>
+        </tr>
+        <tr>
+          <td>Performance</td>
+          <td class="yes">Highest (native)</td>
+          <td class="partial">Good</td>
+          <td class="partial">Generic</td>
+          <td class="partial">Good</td>
+        </tr>
+        <tr>
+          <td>Package count</td>
+          <td>~20,000</td>
+          <td>~14,000 + AUR</td>
+          <td>~70,000</td>
+          <td>~80,000</td>
+        </tr>
+        <tr>
+          <td>Learning curve</td>
+          <td class="partial">Steep</td>
+          <td class="partial">Moderate</td>
+          <td class="yes">Gentle</td>
+          <td class="partial">Steep</td>
+        </tr>
+        <tr>
+          <td>Security hardening</td>
+          <td class="yes">Excellent (Hardened)</td>
+          <td class="partial">Manual</td>
+          <td class="partial">Moderate</td>
+          <td class="partial">Good</td>
+        </tr>
+        <tr>
+          <td>Reproducibility</td>
+          <td class="partial">Partial</td>
+          <td class="no">Poor</td>
+          <td class="partial">Partial</td>
+          <td class="yes">Excellent</td>
+        </tr>
+        <tr>
+          <td>ARM/embedded</td>
+          <td class="yes">Excellent</td>
+          <td class="partial">Limited</td>
+          <td class="yes">Good</td>
+          <td class="partial">Growing</td>
+        </tr>
+        <tr>
+          <td>Time to install</td>
+          <td class="partial">Hours–days</td>
+          <td class="yes">30–60 min</td>
+          <td class="yes">15–30 min</td>
+          <td class="partial">30–90 min</td>
+        </tr>
+      </table>
+
+      <h2>Package Manager Comparison</h2>
+      <table class="cmp-table">
+        <tr>
+          <th>Manager</th>
+          <th>Distro</th>
+          <th>Language</th>
+          <th>Key Feature</th>
+        </tr>
+        <tr><td>Portage / emerge</td><td>Gentoo</td><td>Python</td><td>USE flags, source builds, slots</td></tr>
+        <tr><td>pacman</td><td>Arch</td><td>C</td><td>Speed, simplicity, AUR</td></tr>
+        <tr><td>apt / dpkg</td><td>Debian/Ubuntu</td><td>C++</td><td>Stability, massive repo, .deb</td></tr>
+        <tr><td>nix</td><td>NixOS</td><td>Nix lang</td><td>Reproducibility, rollbacks, flakes</td></tr>
+        <tr><td>rpm / dnf</td><td>Fedora/RHEL</td><td>Python/C</td><td>Enterprise stability, modularity</td></tr>
+        <tr><td>Homebrew</td><td>macOS/Linux</td><td>Ruby</td><td>Formulae, user-space install</td></tr>
+      </table>
+
+      <h2>Portage vs. Nix</h2>
+      <p>Gentoo and NixOS represent two opposite philosophies of ultimate Linux customization. Portage optimizes through compilation and USE flags — you build what you need for your hardware. Nix optimizes through functional package management and reproducibility — every build is deterministic and rollback is trivial. Both are used by Linux power users who want total control; they just take different routes to get there.</p>
+    </section>
+
+    <!-- ── HISTORY ── -->
+    <section id="tab-history">
+      <h1>Gentoo History</h1>
+      <p class="lead">From a personal project called Enoch Linux to one of the most influential Linux distributions ever made, Gentoo's history is a story of radical ideas, community growth, and lasting impact.</p>
+
+      <div class="timeline">
+        <div class="tl-entry">
+          <div class="tl-year">1999</div>
+          <div class="tl-title">Enoch Linux</div>
+          <div class="tl-desc">Daniel Robbins, a developer frustrated with existing distributions, starts Enoch Linux — a source-based distro focused on optimization and cleanliness. The name comes from the biblical figure Enoch. Robbins was heavily influenced by CRUX and BSD.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2000</div>
+          <div class="tl-title">Renamed to Gentoo Linux</div>
+          <div class="tl-desc">After encountering a naming conflict, Robbins renames the project Gentoo Linux, after the gentoo penguin — the fastest swimmer of all penguin species. The name captures the performance philosophy. Portage (based on BSD ports) is developed as the package system.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2002</div>
+          <div class="tl-title">Version 1.4 — mainstream attention</div>
+          <div class="tl-desc">Gentoo 1.4 is released and begins attracting serious Linux enthusiasts worldwide. The combination of source-based builds, USE flags, and the Gentoo Handbook's quality documentation creates a passionate community. Forums and IRC channels grow rapidly.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2003–2004</div>
+          <div class="tl-title">Peak popularity era</div>
+          <div class="tl-desc">Gentoo becomes the most talked-about "power user" distro. Distrowatch rankings place it consistently in the top 5. The phrase "Gentoo user" becomes synonymous with deep Linux knowledge. Compiling Firefox from source for hours becomes a community badge of honor.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2004</div>
+          <div class="tl-title">Robbins leaves, joins Microsoft</div>
+          <div class="tl-desc">In a shocking move, Daniel Robbins joins Microsoft — stunning the open source community. He publicly says it was a financial decision and that he still supports open source. Gentoo transitions to community governance via the Gentoo Foundation.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2004–2008</div>
+          <div class="tl-title">Governance troubles</div>
+          <div class="tl-desc">Gentoo struggles with organizational issues — leadership conflicts, slow decision-making, and infrastructure problems. Several core developers leave. The Gentoo Foundation faces legal and financial complications. Meanwhile, Ubuntu rises and captures the "easy Linux" market.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2008</div>
+          <div class="tl-title">Robbins attempts to return</div>
+          <div class="tl-desc">Daniel Robbins proposes to take back the reins at Gentoo, citing the project's governance problems. The community debates whether to accept. Ultimately the community declines structured handback, and Robbins moves on to other projects.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2006</div>
+          <div class="tl-title">ChromeOS connection</div>
+          <div class="tl-desc">Google begins developing ChromeOS using a Gentoo-derived base with Portage as the package manager. Gentoo's technology proves its value at enterprise scale. Many Google engineers are (or were) Gentoo users. The Portage influence on ChromeOS endures to this day.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2010s</div>
+          <div class="tl-title">Stable community niche</div>
+          <div class="tl-desc">Gentoo settles into a smaller but dedicated community. It remains the go-to distro for kernel developers, embedded Linux work, security researchers, and anyone who wants to understand Linux deeply. Musl libc support, Hardened profiles, and ARM support expand.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2017</div>
+          <div class="tl-title">GitHub Infrastructure Hack</div>
+          <div class="tl-desc">Gentoo's GitHub organization is compromised. The attacker modifies ebuilds to include malicious code. Gentoo detects and reverts the compromise within hours. No users are affected due to Portage's Manifest verification system — all ebuilds have cryptographic checksums.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2023</div>
+          <div class="tl-title">Binary packages for all</div>
+          <div class="tl-desc">Gentoo officially launches a binary package host. Users can now install Gentoo packages as pre-compiled binaries for common configurations, dramatically reducing install times. Gentoo is no longer exclusively a source-based distro — it's both.</div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-year">2024–present</div>
+          <div class="tl-title">Gentoo today</div>
+          <div class="tl-desc">Gentoo remains actively developed with ~200 active developers and thousands of contributors. The tree has ~20,000 packages. RISC-V, ARM64, and exotic architectures are well-supported. The Gentoo philosophy — choice, control, and understanding — is as relevant as ever.</div>
+        </div>
+      </div>
+
+      <h2>Daniel Robbins</h2>
+      <p>Daniel Robbins is the creator of Gentoo Linux. After leaving Gentoo and briefly joining Microsoft (2004), he went on to co-found Funtoo Linux in 2008 — a Gentoo fork with opinionated defaults and git-based ebuilds. Funtoo later pivoted to "Macaroni OS" as a binary-focused Funtoo spin. Robbins has remained active in open source throughout, writing tutorials and documenting Linux systems.</p>
+
+      <h2>Legacy</h2>
+      <p>Gentoo's lasting contributions to Linux:</p>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">USE Flags → Flexibility</div>
+          <div class="card-sub">The concept of compile-time feature flags influenced how other package managers think about optional dependencies and minimal builds.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">ChromeOS / Portage</div>
+          <div class="card-sub">Google's ChromeOS uses Portage as its package manager, running on hundreds of millions of Chromebooks worldwide.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">The Gentoo Handbook</div>
+          <div class="card-sub">One of the finest pieces of Linux documentation ever written — detailed, accurate, and complete. A model for how OS documentation should be written.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Slot System</div>
+          <div class="card-sub">Portage's slot system for co-installing multiple package versions influenced similar features in other package managers.</div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /.page -->
+
+  <script>
+    var tabs = document.querySelectorAll('.stab');
+    var sections = document.querySelectorAll('section');
+
+    function switchTab(id) {
+      tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.tab === id); });
+      sections.forEach(function(s) { s.classList.toggle('active', s.id === 'tab-' + id); });
+    }
+
+    tabs.forEach(function(t) {
+      t.addEventListener('click', function() { switchTab(t.dataset.tab); });
+    });
+  </script>
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-228 virtual hosts (root + 227 subdomains), all static sites served by a single nginx container.
+229 virtual hosts (root + 228 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -28,6 +28,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [templeos.ximg.app](https://templeos.ximg.app) | TempleOS — a shrine to Terry A. Davis (1969–2018): HolyC oracle, 16-color VGA palette, annotated code snippets, 15-year timeline, and reverence for the greatest solo programmer in history. |
 | [bash.ximg.app](https://bash.ximg.app) | Bash scripting reference — variables, arrays, control flow, functions, I/O redirection, arithmetic, and common patterns. |
 | [bsd.ximg.app](https://bsd.ximg.app) | Berkeley Software Distribution — the OS that gave the internet TCP/IP, OpenSSH, and ZFS. FreeBSD, OpenBSD, NetBSD, DragonFly, history, and the BSD in every Mac and PlayStation. |
+| [gentoo.ximg.app](https://gentoo.ximg.app) | Gentoo Linux — the source-based distro where you compile everything. Portage, emerge, USE flags, kernel configuration, and why Gentoo shaped ChromeOS and power-user Linux culture. |
 | [zsh.ximg.app](https://zsh.ximg.app) | Z Shell reference — extended globbing, parameter flags, oh-my-zsh plugins, Powerlevel10k themes, and differences from Bash. |
 | [vt101.ximg.app](https://vt101.ximg.app) | DEC VT101 terminal history and ANSI escape code reference — SGR colors, cursor sequences, and the hardware legacy behind every modern terminal. |
 | [mac.ximg.app](https://mac.ximg.app) | Apple Silicon, macOS history (Cheetah to Sequoia), Mach microkernel deep dive, Mac hardware lineup, and M1–M4 chip analysis. |
