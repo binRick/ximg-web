@@ -81,6 +81,8 @@ IMPORT_NAMES = {
     'python-slugify':          'slugify',
     'lxml':                    'lxml',
     'psutil':                  'psutil',
+    'python-dotenv':           'dotenv',
+    'pydantic-settings':       'pydantic_settings',
 }
 
 FAVICON_SVG = open('/app/favicon.svg', 'rb').read()
@@ -607,18 +609,9 @@ HTML = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <div id="view-tests" style="display:none;width:100%;max-width:780px">
-    <div class="pkg-snav">
-      <button class="pkg-snav-btn active" id="tpkg-yml2json"
-              onclick="selectTestPkg('yml2json')">yml2json</button>
-      <button class="pkg-snav-btn" id="tpkg-flask"
-              onclick="selectTestPkg('flask')">flask</button>
-      <button class="pkg-snav-btn" id="tpkg-numpy"
-              onclick="selectTestPkg('numpy')">numpy</button>
-    </div>
-    <div style="color:#64748b;font-size:.8rem;margin-bottom:1.2rem;text-align:center">
-      Python 3.12 &nbsp;·&nbsp; Linux x86-64 &nbsp;·&nbsp; end-to-end bundle test
-    </div>
+  <div id="view-tests" style="display:none;width:100%;max-width:860px">
+    <div class="pkg-snav" id="tpkg-nav"></div>
+    <div id="tpkg-subtitle" style="color:#64748b;font-size:.8rem;margin-bottom:1.2rem;text-align:center"></div>
     <div class="card" style="padding:1.2rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
         <span style="font-weight:700;font-size:.95rem;color:#f1f5f9">Test Suite</span>
@@ -855,19 +848,69 @@ HTML = r"""<!DOCTYPE html>
     ];
 
     const TEST_PKGS = [
-      { id: 'yml2json', label: 'yml2json', pyver: '3.12', plat: 'any' },
-      { id: 'flask',    label: 'flask',    pyver: '3.12', plat: 'linux_x86_64' },
-      { id: 'numpy',    label: 'numpy',    pyver: '3.12', plat: 'linux_x86_64' },
+      { id:'requests',          label:'Requests',          pyver:'3.12', plat:'any' },
+      { id:'httpx',             label:'HTTPX',             pyver:'3.12', plat:'any' },
+      { id:'aiohttp',           label:'aiohttp',           pyver:'3.12', plat:'linux_x86_64' },
+      { id:'urllib3',           label:'urllib3',           pyver:'3.12', plat:'any' },
+      { id:'websockets',        label:'websockets',        pyver:'3.12', plat:'linux_x86_64' },
+      { id:'flask',             label:'Flask',             pyver:'3.12', plat:'any' },
+      { id:'django',            label:'Django',            pyver:'3.12', plat:'any' },
+      { id:'fastapi',           label:'FastAPI',           pyver:'3.12', plat:'any' },
+      { id:'starlette',         label:'Starlette',         pyver:'3.12', plat:'any' },
+      { id:'uvicorn',           label:'Uvicorn',           pyver:'3.12', plat:'any' },
+      { id:'gunicorn',          label:'Gunicorn',          pyver:'3.12', plat:'any' },
+      { id:'numpy',             label:'NumPy',             pyver:'3.12', plat:'linux_x86_64' },
+      { id:'pandas',            label:'Pandas',            pyver:'3.12', plat:'linux_x86_64' },
+      { id:'scipy',             label:'SciPy',             pyver:'3.12', plat:'linux_x86_64' },
+      { id:'matplotlib',        label:'Matplotlib',        pyver:'3.12', plat:'linux_x86_64' },
+      { id:'scikit-learn',      label:'scikit-learn',      pyver:'3.12', plat:'linux_x86_64' },
+      { id:'Pillow',            label:'Pillow',            pyver:'3.12', plat:'linux_x86_64' },
+      { id:'pytest',            label:'pytest',            pyver:'3.12', plat:'any' },
+      { id:'black',             label:'Black',             pyver:'3.12', plat:'any' },
+      { id:'mypy',              label:'mypy',              pyver:'3.12', plat:'any' },
+      { id:'ruff',              label:'Ruff',              pyver:'3.12', plat:'linux_x86_64' },
+      { id:'rich',              label:'Rich',              pyver:'3.12', plat:'any' },
+      { id:'click',             label:'Click',             pyver:'3.12', plat:'any' },
+      { id:'typer',             label:'Typer',             pyver:'3.12', plat:'any' },
+      { id:'sqlalchemy',        label:'SQLAlchemy',        pyver:'3.12', plat:'linux_x86_64' },
+      { id:'redis',             label:'Redis',             pyver:'3.12', plat:'any' },
+      { id:'boto3',             label:'Boto3',             pyver:'3.12', plat:'any' },
+      { id:'celery',            label:'Celery',            pyver:'3.12', plat:'any' },
+      { id:'pydantic',          label:'Pydantic',          pyver:'3.12', plat:'linux_x86_64' },
+      { id:'PyYAML',            label:'PyYAML',            pyver:'3.12', plat:'linux_x86_64' },
+      { id:'cryptography',      label:'cryptography',      pyver:'3.12', plat:'linux_x86_64' },
+      { id:'paramiko',          label:'Paramiko',          pyver:'3.12', plat:'any' },
+      { id:'python-dotenv',     label:'dotenv',            pyver:'3.12', plat:'any' },
+      { id:'pydantic-settings', label:'pydantic-settings', pyver:'3.12', plat:'linux_x86_64' },
+      { id:'yml2json',          label:'yml2json',          pyver:'3.12', plat:'any' },
     ];
+
+    const PLAT_LABELS = {
+      'linux_x86_64': 'Linux x86-64',
+      'any': 'Pure Python / Any',
+    };
 
     let activeTestPkg = TEST_PKGS[0];
     let testsRunning  = false;
 
+    function renderPkgNav() {
+      const nav = document.getElementById('tpkg-nav');
+      if (!nav) return;
+      nav.innerHTML = TEST_PKGS.map(p =>
+        '<button class="pkg-snav-btn' + (p.id === activeTestPkg.id ? ' active' : '') + '"' +
+        ' onclick="selectTestPkg(\'' + p.id + '\')">' + p.label + '</button>'
+      ).join('');
+      const sub = document.getElementById('tpkg-subtitle');
+      if (sub) {
+        sub.textContent = 'Python ' + activeTestPkg.pyver +
+          '\u00a0\u00b7\u00a0' + (PLAT_LABELS[activeTestPkg.plat] || activeTestPkg.plat) +
+          '\u00a0\u00b7\u00a0end-to-end bundle test';
+      }
+    }
+
     function selectTestPkg(id) {
       activeTestPkg = TEST_PKGS.find(p => p.id === id) || TEST_PKGS[0];
-      document.querySelectorAll('.pkg-snav-btn').forEach(b => b.classList.remove('active'));
-      const el = document.getElementById('tpkg-' + id);
-      if (el) el.classList.add('active');
+      renderPkgNav();
       initTestList();
     }
 
@@ -890,6 +933,7 @@ HTML = r"""<!DOCTYPE html>
     }
 
     function initTestList() {
+      renderPkgNav();
       const list = document.getElementById('test-list');
       if (!list) return;
       list.innerHTML = TEST_DEFS.map(t =>
