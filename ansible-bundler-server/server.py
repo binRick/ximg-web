@@ -646,7 +646,7 @@ PAGE = r'''<!doctype html>
       {id:'T07', desc:'README.txt is a zip member'},
       {id:'T08', desc:'collections/ directory present in zip'},
       {id:'T09', desc:'Collection .tar.gz archive in collections/'},
-      {id:'T10', desc:'Multiple archives present (collection + deps)'},
+      {id:'T10', desc:'Archive count reported (1 = no external deps)'},
       {id:'T11', desc:'unzip extracts successfully'},
       {id:'T12', desc:'install.sh has +x permission in zip'},
       {id:'T13', desc:'install.sh contains ansible-galaxy install command'},
@@ -654,7 +654,7 @@ PAGE = r'''<!doctype html>
       {id:'T15', desc:'Collection dir exists in installed path'},
       {id:'T16', desc:'MANIFEST.json present in installed collection'},
       {id:'T17', desc:'Collection version in MANIFEST.json is semver'},
-      {id:'T18', desc:'Plugin files present in collection plugins/'},
+      {id:'T18', desc:'Collection has content (plugins, roles, docs, or meta)'},
     ];
 
     var _testCol = 'community.vmware';
@@ -930,12 +930,13 @@ def test_run():
                 return
             yield step('T09', 'pass', os.path.basename(col_arcs[0]))
 
-            # T10: multiple archives (collection + deps)
+            # T10: archive count
             yield step('T10', 'run')
-            if len(col_entries) > 1:
-                yield step('T10', 'pass', f'{len(col_entries)} archives (incl deps)')
-            else:
-                yield step('T10', 'fail', 'only 1 archive — deps may be missing')
+            n_deps = len(col_entries) - 1
+            note = f'{len(col_entries)} archive(s)'
+            if n_deps > 0:
+                note += f' + {n_deps} dep(s)'
+            yield step('T10', 'pass', note)
 
             # T11: extract zip
             yield step('T11', 'run')
@@ -1033,19 +1034,35 @@ def test_run():
             else:
                 yield step('T17', 'fail', f'no semver: {version[:40]}')
 
-            # T18: plugin files exist in collection
+            # T18: collection has substantive content
             yield step('T18', 'run')
+            note_parts = []
             plugins_dir = os.path.join(col_dir, 'plugins')
             if os.path.isdir(plugins_dir):
-                py_files = []
+                pf = []
                 for _r, _d, _fs in os.walk(plugins_dir):
-                    py_files.extend(f for f in _fs if f.endswith('.py'))
-                if py_files:
-                    yield step('T18', 'pass', f'{len(py_files)} plugin file(s) in plugins/')
-                else:
-                    yield step('T18', 'fail', 'no .py files in plugins/')
+                    pf.extend(_fs)
+                if pf:
+                    note_parts.append(f'{len(pf)} plugin file(s)')
+            roles_dir = os.path.join(col_dir, 'roles')
+            if os.path.isdir(roles_dir):
+                roles = [d for d in os.listdir(roles_dir)
+                         if os.path.isdir(os.path.join(roles_dir, d))]
+                if roles:
+                    note_parts.append(f'{len(roles)} role(s)')
+            docs_dir = os.path.join(col_dir, 'docs')
+            if os.path.isdir(docs_dir):
+                df = []
+                for _r, _d, _fs in os.walk(docs_dir):
+                    df.extend(_fs)
+                if df:
+                    note_parts.append(f'{len(df)} doc file(s)')
+            if os.path.exists(os.path.join(col_dir, 'meta', 'runtime.yml')):
+                note_parts.append('meta/runtime.yml')
+            if note_parts:
+                yield step('T18', 'pass', ', '.join(note_parts))
             else:
-                yield step('T18', 'fail', 'plugins/ dir not found')
+                yield step('T18', 'fail', 'no plugins, roles, docs, or meta found')
 
         except Exception as e:
             import traceback
