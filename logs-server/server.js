@@ -153,6 +153,7 @@ const LOG_FILES = {
   bsd:         'bsd.access.log',
   gentoo:      'gentoo.access.log',
   esp32:       'esp32.access.log',
+  'ca-fetcher': 'ca-fetcher.access.log',
   vim:         'vim.access.log',
   http:        'http.access.log',
   ssh:         'ssh.access.log',
@@ -627,6 +628,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="bsd">bsd</button>
           <button class="site-opt" data-site="gentoo">gentoo</button>
           <button class="site-opt" data-site="esp32">esp32</button>
+          <button class="site-opt" data-site="ca-fetcher">ca-fetcher</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>
           <button class="site-opt" data-site="chemistry">chemistry</button>

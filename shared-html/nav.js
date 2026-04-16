@@ -58,7 +58,7 @@
       ['csv','csv'],['curl','curl'],['diff','diff'],['dockerimage','dockerimage'],
       ['epoch','epoch'],['githubstars','github stars'],['hash','hash'],['jwt','JWT'],['lorem','lorem'],
       ['markdown','markdown'],['password','password'],['ps1','ps1'],['regex','regex'],['ssl','ssl'],
-      ['timespan','timespan'],['url','url'],['uuid','uuid']
+      ['timespan','timespan'],['url','url'],['uuid','uuid'],['ca-fetcher','CA fetcher']
     ]},
     { label: 'Bundlers', apps: [
       ['ansible-bundler','ansible'],
