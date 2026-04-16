@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Technology — PTY, ANSI, GPU — terminal.ximg.app</title>
+  <meta name="description" content="How terminals actually work: PTY architecture, ANSI escape codes, kernel TTY layer, GPU rendering, Unicode, and the engineering that makes the terminal fast.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070b07;
+      --surface: #0d150d;
+      --surface2: #111d11;
+      --border: #1e301e;
+      --accent: #00e676;
+      --accent2: #69f0ae;
+      --accent-dim: rgba(0,230,118,.1);
+      --text: #ddf0de;
+      --muted: #6a8a6c;
+      --danger: #ff5252;
+      --info: #64b5f6;
+      --warn: #ffb300;
+      --green-glow: rgba(0,230,118,.3);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      padding-top: 52px;
+    }
+
+    #subnav {
+      position: sticky;
+      top: 52px; z-index: 150;
+      background: rgba(7,11,7,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,230,118,.12);
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted); padding: .3rem .65rem; border-radius: 3px;
+      text-decoration: none; transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active {
+      color: var(--accent); background: rgba(0,230,118,.08);
+    }
+
+    .page-hero { padding: 3.5rem 2rem 2.5rem; max-width: 800px; margin: 0 auto; }
+    .hero-eyebrow {
+      font-family: 'Courier New', monospace; font-size: .72rem;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: .8rem;
+    }
+    .page-hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 900;
+      color: #fff; line-height: 1.1; margin-bottom: 1rem;
+    }
+    .page-hero p { font-size: 1.1rem; color: var(--muted); max-width: 640px; }
+
+    /* ── section ── */
+    .tech-section {
+      max-width: 960px; margin: 0 auto;
+      padding: 3rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .tech-section:last-child { border-bottom: none; }
+    .section-num {
+      font-family: 'Courier New', monospace; font-size: .65rem;
+      letter-spacing: .2em; color: var(--accent); text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+    .section-title {
+      font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800;
+      color: #fff; margin-bottom: .8rem; line-height: 1.2;
+    }
+    .section-lead {
+      font-size: 1rem; color: var(--muted); margin-bottom: 2rem;
+      max-width: 680px; line-height: 1.7;
+    }
+    .section-lead strong { color: var(--text); }
+
+    /* ── diagram boxes ── */
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      overflow-x: auto;
+      margin-bottom: 2rem;
+    }
+    .diagram-title {
+      font-size: .65rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 1rem;
+    }
+    .box {
+      display: inline-block;
+      border: 1px solid;
+      border-radius: 5px;
+      padding: .4rem .8rem;
+      text-align: center;
+      font-size: .75rem;
+      line-height: 1.3;
+    }
+    .box-green  { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .box-blue   { border-color: #64b5f6; color: #64b5f6; background: rgba(100,181,246,.1); }
+    .box-yellow { border-color: #ffb300; color: #ffb300; background: rgba(255,179,0,.1); }
+    .box-purple { border-color: #ce93d8; color: #ce93d8; background: rgba(206,147,216,.1); }
+    .box-red    { border-color: #ff5252; color: #ff5252; background: rgba(255,82,82,.1); }
+    .box-dim    { border-color: var(--border); color: var(--muted); }
+    .arrow { color: var(--muted); padding: 0 .4rem; font-size: .9rem; }
+
+    /* ── code block ── */
+    .code-block {
+      background: #020402;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+    .code-block .comment { color: #3a6a3a; }
+    .code-block .keyword { color: #69f0ae; }
+    .code-block .string  { color: #a5d6a7; }
+    .code-block .number  { color: #ffb300; }
+    .code-block .func    { color: #64b5f6; }
+    .code-block .output  { color: #00e676; }
+    .code-block .prompt  { color: #00e676; font-weight: bold; }
+
+    /* ── ANSI color grid ── */
+    .ansi-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .ansi-cell {
+      padding: .5rem .2rem;
+      border-radius: 4px;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+      font-size: .6rem;
+      color: rgba(255,255,255,.8);
+      font-weight: bold;
+    }
+
+    /* ── 256 color swatch ── */
+    .color-256 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      margin-bottom: 1.5rem;
+    }
+    .c256 {
+      width: 18px; height: 18px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ── feature cards ── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.3rem;
+    }
+    .feature-card h3 {
+      font-size: .85rem;
+      color: var(--accent2);
+      font-family: 'Courier New', monospace;
+      margin-bottom: .5rem;
+    }
+    .feature-card p {
+      font-size: .82rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .feature-card code {
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: .78rem;
+      color: var(--accent2);
+    }
+
+    /* ── term window ── */
+    .term-window {
+      background: #0a0a0a; border-radius: 8px; overflow: hidden;
+      border: 1px solid #2a2a2a;
+      box-shadow: 0 8px 30px rgba(0,0,0,.5), 0 0 30px rgba(0,230,118,.04);
+      font-family: 'Courier New', monospace; font-size: .78rem;
+      margin-bottom: 1.5rem;
+    }
+    .term-titlebar {
+      background: #1a1a1a; padding: 8px 12px;
+      display: flex; align-items: center; gap: 6px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .term-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green { background: #28c840; }
+    .term-title { color: #555; font-size: .7rem; margin-left: 6px; }
+    .term-body { padding: .8rem 1rem; line-height: 1.6; }
+    .t-g { color: #00e676; } .t-b { color: #69f0ae; }
+    .t-w { color: #e2e8f0; } .t-d { color: #4a6a4a; }
+    .t-y { color: #ffb300; } .t-r { color: #ff5252; }
+    .t-c { color: #64b5f6; } .t-p { color: #ce93d8; }
+
+    /* bold / italic escape demo */
+    .esc-demo span { font-family: 'Courier New', monospace; font-size: .82rem; }
+
+    /* layer stack diagram */
+    .layer-stack { display: flex; flex-direction: column; gap: .5rem; max-width: 500px; }
+    .layer {
+      padding: .8rem 1.2rem; border-radius: 6px;
+      font-family: 'Courier New', monospace; font-size: .8rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .layer-name { font-weight: 700; }
+    .layer-desc { font-size: .7rem; opacity: .7; }
+    .layer-arrow { text-align: center; color: var(--muted); font-size: .8rem; margin: -.2rem 0; }
+
+    footer {
+      text-align: center; padding: 2rem;
+      color: var(--muted); font-size: .8rem;
+      border-top: 1px solid var(--border);
+      font-family: 'Courier New', monospace;
+    }
+
+    @media (max-width: 640px) {
+      .tech-section { padding: 2rem 1.2rem; }
+      .ansi-grid { grid-template-columns: repeat(4, 1fr); }
+      .layer-stack { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="history.html">History</a>
+  <a href="technology.html">Technology</a>
+  <a href="companies.html">Companies</a>
+  <a href="demo.html">Demo</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/terminal') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+
+<div class="page-hero">
+  <p class="hero-eyebrow">Terminal · Technology</p>
+  <h1>How the Terminal<br>Actually Works</h1>
+  <p>From keypress to pixel: the PTY layer, escape codes, GPU rendering, and the engineering stack that makes a 60-year-old interface screamingly fast in 2025.</p>
+</div>
+
+<!-- 1. PTY Architecture -->
+<section class="tech-section">
+  <p class="section-num">01 / Architecture</p>
+  <h2 class="section-title">The PTY — Pseudo-Terminal Layer</h2>
+  <p class="section-lead">
+    When you type in a terminal emulator, you're not talking directly to bash. A kernel abstraction called a <strong>Pseudo-Terminal (PTY)</strong> sits between them, emulating a physical serial line. Understanding PTY is understanding the entire terminal stack.
+  </p>
+
+  <div class="diagram">
+    <div class="diagram-title">Full Terminal Stack — Keypress to Process</div>
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: 1rem;">
+      <span class="box box-green">You<br><span style="font-size:.65rem;">keyboard</span></span>
+      <span class="arrow">→</span>
+      <span class="box box-blue">Terminal Emulator<br><span style="font-size:.65rem;">Alacritty / iTerm2 / etc</span></span>
+      <span class="arrow">→</span>
+      <span class="box box-yellow">PTY Master<br><span style="font-size:.65rem;">/dev/ptmx</span></span>
+      <span class="arrow">↕</span>
+      <span class="box box-yellow">PTY Slave<br><span style="font-size:.65rem;">/dev/pts/N</span></span>
+      <span class="arrow">→</span>
+      <span class="box box-purple">Shell<br><span style="font-size:.65rem;">bash / zsh / fish</span></span>
+      <span class="arrow">→</span>
+      <span class="box box-red">Child Process<br><span style="font-size:.65rem;">vim / git / etc</span></span>
+    </div>
+    <div style="color: var(--muted); font-size: .72rem; margin-top: .5rem;">
+      ← Output travels back: Process → Shell → PTY Slave → Kernel TTY Line Discipline → PTY Master → Terminal Emulator → GPU Render → Screen
+    </div>
+  </div>
+
+  <div class="section-lead" style="margin-bottom: 1rem;">
+    The <strong>TTY line discipline</strong> in the kernel handles canonical mode processing — buffering lines, processing backspace, Ctrl+C signals, and flow control (XON/XOFF). This is why pressing Backspace deletes a character <em>before</em> your shell sees the input: the kernel handles it transparently.
+  </div>
+
+  <div class="code-block">
+<span class="comment"># Inspect open PTY devices on your system</span>
+<span class="prompt">$</span> ls /dev/pts/
+0  1  2  3  ptmx
+
+<span class="comment"># See which process owns each PTY</span>
+<span class="prompt">$</span> ps aux | grep pts
+user   1234  bash    pts/0
+user   5678  vim     pts/0
+user   9012  bash    pts/1
+
+<span class="comment"># The PTY slave is just a file — write to it directly</span>
+<span class="prompt">$</span> echo "hello other terminal" > /dev/pts/1
+<span class="output">hello other terminal  ← appears in the other window</span>
+
+<span class="comment"># Check terminal settings (line discipline config)</span>
+<span class="prompt">$</span> stty -a
+speed 38400 baud; rows 40; columns 200
+intr = ^C; quit = ^\; erase = ^?; kill = ^U;
+eof = ^D; eol = undef; eol2 = undef; swtch = undef;
+<span class="output">...</span>
+  </div>
+
+  <div class="layer-stack">
+    <div class="layer" style="background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2);">
+      <span class="layer-name" style="color:var(--accent);">Terminal Emulator</span>
+      <span class="layer-desc">Renders pixels, handles input, speaks VT100</span>
+    </div>
+    <div class="layer-arrow">↕ reads/writes PTY master fd</div>
+    <div class="layer" style="background:rgba(255,179,0,.08);border:1px solid rgba(255,179,0,.2);">
+      <span class="layer-name" style="color:#ffb300;">Kernel: PTY + TTY Line Discipline</span>
+      <span class="layer-desc">Buffers, signals, echo, flow control</span>
+    </div>
+    <div class="layer-arrow">↕ file descriptor /dev/pts/N</div>
+    <div class="layer" style="background:rgba(206,147,216,.08);border:1px solid rgba(206,147,216,.2);">
+      <span class="layer-name" style="color:#ce93d8;">Shell (bash / zsh / fish)</span>
+      <span class="layer-desc">Job control, readline, completion</span>
+    </div>
+    <div class="layer-arrow">↕ fork/exec, pipe, dup2</div>
+    <div class="layer" style="background:rgba(100,181,246,.08);border:1px solid rgba(100,181,246,.2);">
+      <span class="layer-name" style="color:#64b5f6;">Child Process (vim, git, curl…)</span>
+      <span class="layer-desc">stdin/stdout/stderr → PTY slave</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. ANSI Escape Codes -->
+<section class="tech-section">
+  <p class="section-num">02 / Protocol</p>
+  <h2 class="section-title">ANSI Escape Codes — The Terminal's Language</h2>
+  <p class="section-lead">
+    Everything you see in a terminal — colors, bold text, cursor movement, clearing the screen — is controlled by <strong>ANSI escape sequences</strong>: printable bytes starting with <code>ESC</code> (<code>\x1b</code>, byte 27). Standardized by ANSI X3.64 in 1979 based on the DEC VT100, these sequences are understood by every terminal emulator ever made.
+  </p>
+
+  <div class="code-block">
+<span class="comment"># ESC = \x1b = \e = byte 0x1B = octal \033</span>
+
+<span class="comment"># SGR: Select Graphic Rendition — colors and styles</span>
+<span class="prompt">$</span> printf '\e[1mBOLD\e[0m \e[3mITALIC\e[0m \e[4mUNDERLINE\e[0m\n'
+<span class="output" style="font-weight:bold;">BOLD</span> <span class="output" style="font-style:italic;">ITALIC</span> <span class="output" style="text-decoration:underline;">UNDERLINE</span>
+
+<span class="comment"># 3-bit colors (original 8)</span>
+<span class="prompt">$</span> printf '\e[31mRED\e[0m \e[32mGREEN\e[0m \e[34mBLUE\e[0m\n'
+<span class="output" style="color:#f44336;">RED</span> <span class="output" style="color:#4caf50;">GREEN</span> <span class="output" style="color:#2196f3;">BLUE</span>
+
+<span class="comment"># 256-color mode (since xterm 88, 1999)</span>
+<span class="prompt">$</span> printf '\e[38;5;196mBRIGHT RED\e[0m \e[38;5;46mBRIGHT GREEN\e[0m\n'
+
+<span class="comment"># 24-bit truecolor (since ~2012, ~16 million colors)</span>
+<span class="prompt">$</span> printf '\e[38;2;255;100;0mORANGE\e[0m \e[38;2;130;80;255mPURPLE\e[0m\n'
+
+<span class="comment"># Cursor movement</span>
+<span class="prompt">$</span> printf '\e[2J'        <span class="comment"># clear entire screen</span>
+<span class="prompt">$</span> printf '\e[H'         <span class="comment"># move cursor to top-left (row 1, col 1)</span>
+<span class="prompt">$</span> printf '\e[10;20H'    <span class="comment"># move cursor to row 10, column 20</span>
+<span class="prompt">$</span> printf '\e[5A'        <span class="comment"># move cursor 5 rows up</span>
+<span class="prompt">$</span> printf '\e[?25l'      <span class="comment"># hide cursor</span>
+<span class="prompt">$</span> printf '\e[?25h'      <span class="comment"># show cursor</span>
+
+<span class="comment"># Window title (xterm extension, widely supported)</span>
+<span class="prompt">$</span> printf '\e]0;My Terminal Title\a'
+  </div>
+
+  <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;">The 16 standard ANSI colors (8 normal + 8 bright). Every terminal emulator supports these — they've been standard since 1979:</p>
+
+  <div class="ansi-grid">
+    <div class="ansi-cell" style="background:#1a1a1a;">000<br>Black</div>
+    <div class="ansi-cell" style="background:#cc0000;">001<br>Red</div>
+    <div class="ansi-cell" style="background:#4e9a06;">002<br>Green</div>
+    <div class="ansi-cell" style="background:#c4a000;">003<br>Yellow</div>
+    <div class="ansi-cell" style="background:#3465a4;">004<br>Blue</div>
+    <div class="ansi-cell" style="background:#75507b;">005<br>Magenta</div>
+    <div class="ansi-cell" style="background:#06989a;">006<br>Cyan</div>
+    <div class="ansi-cell" style="background:#d3d7cf;color:#333;">007<br>White</div>
+    <div class="ansi-cell" style="background:#555753;">008<br>Br.Black</div>
+    <div class="ansi-cell" style="background:#ef2929;">009<br>Br.Red</div>
+    <div class="ansi-cell" style="background:#8ae234;">010<br>Br.Green</div>
+    <div class="ansi-cell" style="background:#fce94f;color:#333;">011<br>Br.Yellow</div>
+    <div class="ansi-cell" style="background:#729fcf;">012<br>Br.Blue</div>
+    <div class="ansi-cell" style="background:#ad7fa8;">013<br>Br.Magenta</div>
+    <div class="ansi-cell" style="background:#34e2e2;color:#333;">014<br>Br.Cyan</div>
+    <div class="ansi-cell" style="background:#eeeeec;color:#333;">015<br>Br.White</div>
+  </div>
+</section>
+
+<!-- 3. Shell Layer -->
+<section class="tech-section">
+  <p class="section-num">03 / Shell</p>
+  <h2 class="section-title">The Shell — The Terminal's Brain</h2>
+  <p class="section-lead">
+    The terminal emulator is just a window. The <strong>shell</strong> is where the intelligence lives: command parsing, job control, tab completion, history, variables, scripting, and the most powerful text-processing pipeline ever designed.
+  </p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>bash (1989)</h3>
+      <p>GNU Bourne-Again Shell. The universal default. <code>~/.bashrc</code> runs on a billion machines. POSIX-compliant, array support, arithmetic expansion, and 35 years of tribal knowledge baked in.</p>
+    </div>
+    <div class="feature-card">
+      <h3>zsh (1990)</h3>
+      <p>The power user's shell. Better tab completion, theme support (oh-my-zsh), spelling correction, right-side prompts, and the default on macOS since 10.15 Catalina. <code>~/.zshrc</code></p>
+    </div>
+    <div class="feature-card">
+      <h3>fish (2005)</h3>
+      <p>Friendly Interactive Shell. Autosuggestions out of the box, web-based config, no POSIX compatibility (intentionally). Makes the terminal approachable for newcomers without sacrificing power.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Pipelines</h3>
+      <p>The terminal's superpower. <code>ps aux | grep nginx | awk '{print $2}' | xargs kill</code>. Chain any command to any other. One-liners that would take 100 lines of Python. Unix philosophy: do one thing well.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Readline / Editing</h3>
+      <p><code>Ctrl+R</code> reverse history search. <code>Ctrl+A/E</code> line start/end. <code>Alt+.</code> last argument. <code>!!</code> last command. The keyboard shortcuts that make terminal experts 10× faster than anyone else.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Job Control</h3>
+      <p><code>Ctrl+Z</code> suspends. <code>bg</code> backgrounds. <code>fg</code> foregrounds. <code>&amp;</code> runs in background. <code>nohup</code> survives logout. <code>disown</code> detaches from shell. Run 20 things at once.</p>
+    </div>
+  </div>
+
+  <div class="code-block" style="margin-top: 1.5rem;">
+<span class="comment"># The pipeline: the terminal's killer feature</span>
+<span class="comment"># "Who are my top 10 most-requested URLs today?"</span>
+<span class="prompt">$</span> cat /var/log/nginx/access.log \
+  | grep "$(date +%d/%b/%Y)" \
+  | awk '{print $7}' \
+  | sort | uniq -c | sort -rn \
+  | head -10
+
+<span class="output">   4821 /api/v2/users</span>
+<span class="output">   2134 /</span>
+<span class="output">    987 /static/app.js</span>
+<span class="output">    ...one line of shell. zero lines of Python.</span>
+  </div>
+</section>
+
+<!-- 4. GPU Rendering -->
+<section class="tech-section">
+  <p class="section-num">04 / Rendering</p>
+  <h2 class="section-title">GPU Rendering — The Terminal Meets Modern Hardware</h2>
+  <p class="section-lead">
+    Traditional terminal emulators render on the CPU: measure each glyph, paint pixels in a software framebuffer, copy to the screen. At 4K resolution with a 144Hz display, this is a bottleneck. GPU-accelerated terminals changed everything.
+  </p>
+
+  <div class="diagram">
+    <div class="diagram-title">CPU Rendering (xterm, GNOME Terminal) vs GPU Rendering (Alacritty, Kitty)</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: .5rem;">
+      <div>
+        <div style="color:var(--danger);margin-bottom:.5rem;font-size:.72rem;">CPU PATH (SLOW)</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;">
+          <span class="box box-dim">Character data</span>
+          <span style="color:var(--muted);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-dim">Font rasterizer (FreeType)</span>
+          <span style="color:var(--muted);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-dim">Cairo / Pango software draw</span>
+          <span style="color:var(--muted);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-dim">X11 / Wayland compositor</span>
+          <span style="color:var(--muted);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-red">Screen (10–20ms lag)</span>
+        </div>
+      </div>
+      <div>
+        <div style="color:var(--accent);margin-bottom:.5rem;font-size:.72rem;">GPU PATH (FAST)</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;">
+          <span class="box box-green">Character data</span>
+          <span style="color:var(--accent);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-green">Glyph atlas (GPU texture)</span>
+          <span style="color:var(--accent);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-green">GLSL instanced rendering</span>
+          <span style="color:var(--accent);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-green">GPU → display direct</span>
+          <span style="color:var(--accent);text-align:center;font-size:.7rem;">↓</span>
+          <span class="box box-green">Screen (&lt;1ms lag)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>Glyph Atlas</h3>
+      <p>GPU terminals pre-rasterize every character into a texture atlas on the GPU. Rendering a character means sampling a texture — a single GPU instruction, not a full font render. Entire screens render in microseconds.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Instanced Rendering</h3>
+      <p>One draw call renders thousands of glyphs by sending instance data (position, color, glyph index) to a GLSL shader. Modern GPUs do this in parallel across thousands of shader cores simultaneously.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Subpixel Rendering</h3>
+      <p>LCD panels have R, G, B subpixels. Subpixel antialiasing addresses each independently, tripling effective horizontal resolution. At 4K on a Retina display, text is indistinguishable from print.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Ligature Fonts</h3>
+      <p>Fonts like <em>Fira Code</em>, <em>JetBrains Mono</em>, and <em>Cascadia Code</em> combine character sequences (<code>-&gt;</code> → →, <code>!=</code> → ≠) into single glyphs. GPU rendering makes this free. Code becomes readable at a glance.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Unicode -->
+<section class="tech-section">
+  <p class="section-num">05 / Encoding</p>
+  <h2 class="section-title">Unicode — The Terminal Goes Global</h2>
+  <p class="section-lead">
+    The original terminal was ASCII: 128 characters, English only. <strong>Unicode</strong> (1991) assigned a code point to every character in every writing system — over <strong>150,000 characters</strong> across 161 scripts. <strong>UTF-8</strong> (Ken Thompson &amp; Rob Pike, 1992) made it backward-compatible with ASCII while encoding the full Unicode range.
+  </p>
+
+  <div class="term-window">
+    <div class="term-titlebar">
+      <span class="term-dot dot-red"></span><span class="term-dot dot-yellow"></span><span class="term-dot dot-green"></span>
+      <span class="term-title">Unicode in the terminal — 2025</span>
+    </div>
+    <div class="term-body">
+      <span style="display:block;color:var(--accent);">$ echo "Unicode works everywhere now"</span>
+      <span style="display:block;color:#e2e8f0;margin-top:.3rem;">
+        Japanese: <span style="color:#69f0ae;">日本語でターミナル</span><br>
+        Arabic:   <span style="color:#64b5f6;">الطرفية الحديثة</span><br>
+        Emoji:    <span>🖥️  💻  ⌨️  🐧  🦀  🐍  ☁️  🚀</span><br>
+        Math:     <span style="color:#ffb300;">∀x ∈ ℝ: x² ≥ 0 · ∫₀^∞ e⁻ˣ dx = 1</span><br>
+        Braille:  <span style="color:#ce93d8;">⠓⠑⠇⠇⠕ ⠺⠕⠗⠇⠙</span><br>
+        Box art:  <span style="color:#00e676;">╔══╤══╗ ║ A│ B║ ╠══╪══╣</span>
+      </span>
+      <span style="display:block;margin-top:.5rem;color:var(--accent);">$ file encoding_test.txt</span>
+      <span style="display:block;color:#4a6a4a;">encoding_test.txt: UTF-8 Unicode text</span>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>UTF-8 Encoding</h3>
+      <p>Variable-width: ASCII characters use 1 byte (backward compatible), most European characters use 2 bytes, CJK use 3 bytes, emoji use 4 bytes. Designed by Ken Thompson on a napkin at a diner in 1992.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Wide Characters</h3>
+      <p>CJK characters (Chinese, Japanese, Korean) are "double-width" — they occupy 2 terminal columns. The terminal emulator must account for this when calculating cursor positions and line wrapping.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Combining Characters</h3>
+      <p>Some characters modify the character before them (accents, diacritics). <code>e</code> + <code>◌́</code> = <code>é</code>. Modern terminals handle combining characters correctly; older ones garble them.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Nerd Fonts</h3>
+      <p>Programmer fonts patched with thousands of icons: git branch (), language icons, Powerline separators (), folder symbols. A Nerd Font turns your shell prompt from text into an information dashboard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Multiplexers -->
+<section class="tech-section">
+  <p class="section-num">06 / Multiplexing</p>
+  <h2 class="section-title">tmux — Terminal Superpowers</h2>
+  <p class="section-lead">
+    A terminal multiplexer manages multiple terminal sessions inside a single window. Sessions, windows, and panes. Detach and reattach. Survive SSH disconnects. The operational model of every serious backend engineer.
+  </p>
+
+  <div class="code-block">
+<span class="comment"># tmux survival cheatsheet</span>
+<span class="comment"># Prefix key is Ctrl+B by default</span>
+
+<span class="keyword">tmux new-session -s work</span>     <span class="comment"># new named session</span>
+<span class="keyword">tmux attach -t work</span>          <span class="comment"># reattach from anywhere</span>
+<span class="keyword">tmux ls</span>                      <span class="comment"># list all sessions</span>
+
+<span class="comment"># Inside tmux:</span>
+Ctrl+B c          <span class="comment"># new window</span>
+Ctrl+B %          <span class="comment"># vertical split</span>
+Ctrl+B "          <span class="comment"># horizontal split</span>
+Ctrl+B ←→↑↓       <span class="comment"># navigate panes</span>
+Ctrl+B z          <span class="comment"># zoom current pane</span>
+Ctrl+B d          <span class="comment"># detach (session stays running)</span>
+Ctrl+B [          <span class="comment"># scroll mode (vi keys)</span>
+Ctrl+B :resize-pane -R 10   <span class="comment"># resize right by 10 cols</span>
+
+<span class="comment"># Sessions survive SSH disconnect. Come back tomorrow:</span>
+<span class="prompt">$</span> ssh server.example.com
+<span class="prompt">$</span> tmux attach -t work
+<span class="output">→ All your panes exactly as you left them.</span>
+  </div>
+</section>
+
+<footer>
+  terminal.ximg.app · Technology · PTY · ANSI · GPU · Unicode · The complete engineering story
+</footer>
+
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

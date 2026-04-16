@@ -3,960 +3,590 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terminal — terminal.ximg.app</title>
-  <meta name="description" content="Interactive retro Unix terminal — classic commands, VAX-11/780 BSD simulation, cowsay, fortune, and more">
+  <title>Terminal — The Interface That Runs the World</title>
+  <meta name="description" content="The terminal: 60+ years of computing history, technology, and the companies that shaped how humanity talks to machines.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --green: #00ff41;
-      --green-dim: #00cc33;
-      --green-dark: #003d10;
-      --bg: #050a05;
-      --scanline: rgba(0, 0, 0, 0.25);
+      --bg: #070b07;
+      --surface: #0d150d;
+      --surface2: #111d11;
+      --border: #1e301e;
+      --accent: #00e676;
+      --accent2: #69f0ae;
+      --accent-dim: rgba(0,230,118,.1);
+      --text: #ddf0de;
+      --muted: #6a8a6c;
+      --danger: #ff5252;
+      --info: #64b5f6;
+      --warn: #ffb300;
+      --green-glow: rgba(0,230,118,.4);
     }
-
-    html, body {
-      height: 100%;
-      background: #000;
-      font-family: 'Courier New', Courier, monospace;
-      color: var(--green);
-    }
-
+    html { scroll-behavior: smooth; }
     body {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      /* CRT outer glow */
-      background: radial-gradient(ellipse at center, #0a1a0a 0%, #020602 60%, #000 100%);
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      padding-top: 52px;
     }
 
-    /* CRT screen container */
-    #screen {
-      flex: 1;
+    /* ── subnav ── */
+    #subnav {
+      position: sticky;
+      top: 52px;
+      z-index: 150;
+      background: rgba(7,11,7,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,230,118,.12);
       display: flex;
-      flex-direction: column;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: .2rem;
+      padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: .3rem .65rem;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active {
+      color: var(--accent);
+      background: rgba(0,230,118,.08);
+    }
+
+    /* ── hero ── */
+    .hero {
+      position: relative;
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,230,118,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      font-family: 'Courier New', monospace;
+      font-size: .75rem;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 7vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.0;
+      letter-spacing: -.02em;
+      color: #fff;
+      margin-bottom: 1.2rem;
+    }
+    .hero h1 .cursor {
+      display: inline-block;
+      width: .6em;
+      height: 1em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+      box-shadow: 0 0 20px var(--green-glow);
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.4rem);
+      color: var(--muted);
+      max-width: 680px;
+      margin: 0 auto 2.5rem;
+    }
+    .hero-sub em {
+      color: var(--accent2);
+      font-style: normal;
+    }
+
+    /* ── stats bar ── */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 900px;
+      margin: 0 auto 4rem;
+      background: var(--surface);
+    }
+    .stat-item {
+      flex: 1;
+      min-width: 140px;
+      padding: 1.4rem 1rem;
+      text-align: center;
+      border-right: 1px solid var(--border);
+      transition: background .2s;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-item:hover { background: var(--accent-dim); }
+    .stat-num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+      margin-bottom: .3rem;
+      text-shadow: 0 0 20px var(--green-glow);
+    }
+    .stat-label {
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── section grid ── */
+    .section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-title {
+      font-size: .7rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      margin-bottom: .6rem;
+    }
+    .section-heading {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+    .section-body {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 700px;
+      margin-bottom: 3rem;
+    }
+
+    /* ── page cards ── */
+    .page-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.2rem;
+    }
+    .page-card {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.6rem;
+      text-decoration: none;
+      transition: border-color .2s, transform .2s, background .2s;
       position: relative;
       overflow: hidden;
-      /* phosphor green inner glow */
-      box-shadow: inset 0 0 80px rgba(0, 255, 65, 0.04);
-      /* nav pushdown */
-      padding-top: 38px;
     }
-
-    /* Scanline overlay */
-    #screen::before {
+    .page-card::before {
       content: '';
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: repeating-linear-gradient(
-        to bottom,
-        transparent 0px,
-        transparent 2px,
-        var(--scanline) 2px,
-        var(--scanline) 4px
-      );
-      pointer-events: none;
-      z-index: 100;
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform .2s;
+      transform-origin: left;
+    }
+    .page-card:hover {
+      border-color: var(--accent);
+      background: var(--surface2);
+      transform: translateY(-3px);
+    }
+    .page-card:hover::before { transform: scaleX(1); }
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: .8rem;
+      display: block;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: .4rem;
+    }
+    .card-desc {
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.5;
     }
 
-    /* CRT flicker */
-    #screen::after {
-      content: '';
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 255, 65, 0.015);
-      pointer-events: none;
-      z-index: 99;
-      animation: flicker 8s infinite;
+    /* ── big terminal mockup ── */
+    .term-window {
+      background: #0a0a0a;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+      box-shadow:
+        0 40px 80px rgba(0,0,0,.7),
+        0 0 0 1px rgba(255,255,255,.04),
+        0 0 60px rgba(0,230,118,.06);
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      max-width: 900px;
+      margin: 0 auto;
     }
-
-    @keyframes flicker {
-      0%   { opacity: 1; }
-      92%  { opacity: 1; }
-      93%  { opacity: 0.85; }
-      94%  { opacity: 1; }
-      96%  { opacity: 0.9; }
-      97%  { opacity: 1; }
-      100% { opacity: 1; }
-    }
-
-    /* Terminal output area */
-    #output {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0.75rem 1rem 0.5rem;
-      line-height: 1.45;
-      font-size: 0.875rem;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: var(--green);
-      text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
-      scroll-behavior: smooth;
-    }
-
-    #output::-webkit-scrollbar { width: 6px; }
-    #output::-webkit-scrollbar-track { background: #000; }
-    #output::-webkit-scrollbar-thumb { background: var(--green-dark); border-radius: 3px; }
-
-    /* Input row */
-    #input-row {
+    .term-titlebar {
+      background: #1a1a1a;
+      padding: 10px 14px;
       display: flex;
       align-items: center;
-      padding: 0.4rem 1rem 0.6rem;
-      border-top: 1px solid rgba(0, 255, 65, 0.15);
-      background: rgba(0, 5, 0, 0.6);
-      gap: 0;
+      gap: 7px;
+      border-bottom: 1px solid #2a2a2a;
     }
-
-    #prompt-label {
-      color: var(--green);
-      text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
-      font-size: 0.875rem;
-      white-space: nowrap;
+    .term-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
       flex-shrink: 0;
     }
+    .dot-red    { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green  { background: #28c840; }
+    .term-title { color: #555; font-size: .75rem; margin-left: auto; margin-right: auto; }
+    .term-body {
+      padding: 1.2rem 1.4rem;
+      line-height: 1.55;
+      min-height: 220px;
+    }
+    .t-dim    { color: #4a6a4a; }
+    .t-green  { color: #00e676; }
+    .t-bright { color: #69f0ae; }
+    .t-white  { color: #e2e8f0; }
+    .t-blue   { color: #64b5f6; }
+    .t-yellow { color: #ffb300; }
+    .t-red    { color: #ff5252; }
+    .t-purple { color: #ce93d8; }
+    .t-dir    { color: #64b5f6; font-weight: bold; }
+    .t-exec   { color: #00e676; font-weight: bold; }
+    .t-line   { display: block; }
 
-    #cmd-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--green);
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 0.875rem;
-      caret-color: var(--green);
-      text-shadow: 0 0 6px rgba(0, 255, 65, 0.6);
-      padding: 0 0 0 2px;
+    /* ── scanline mockup variant ── */
+    .crt-wrap {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .crt-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0, transparent 2px,
+        rgba(0,0,0,.15) 2px, rgba(0,0,0,.15) 4px
+      );
+      pointer-events: none;
+      border-radius: 10px;
     }
 
-    /* Blinking cursor on the input */
-    #cursor-block {
-      width: 0.55em;
-      height: 1.1em;
-      background: var(--green);
-      display: inline-block;
-      animation: blink 1s step-end infinite;
-      vertical-align: text-bottom;
-      margin-left: 1px;
-      box-shadow: 0 0 6px var(--green);
+    /* ── quote block ── */
+    .quote-section {
+      background: var(--surface);
+      border-left: 4px solid var(--accent);
+      padding: 2.5rem 2rem 2.5rem 2.5rem;
+      border-radius: 0 10px 10px 0;
+      max-width: 800px;
+      margin: 0 auto 4rem;
+    }
+    .quote-text {
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      font-style: italic;
+      color: #fff;
+      line-height: 1.5;
+      margin-bottom: .8rem;
+    }
+    .quote-attr {
+      font-size: .8rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+    /* ── impact section ── */
+    .impact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .impact-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.8rem;
+    }
+    .impact-card h3 {
+      font-size: 1.05rem;
+      color: var(--accent2);
+      margin-bottom: .7rem;
+      font-family: 'Courier New', monospace;
+    }
+    .impact-card p {
+      font-size: .9rem;
+      color: var(--muted);
+      line-height: 1.6;
     }
 
-    /* Output line colors */
-    .line-cmd   { color: #00ff41; }
-    .line-out   { color: #00dd38; }
-    .line-err   { color: #ff4422; text-shadow: 0 0 6px rgba(255,68,34,0.5); }
-    .line-dim   { color: #009922; }
-    .line-bold  { color: #44ff77; font-weight: bold; }
-    .line-head  { color: #00ff41; text-decoration: underline; text-underline-offset: 3px; }
-    .line-boot  { color: #007722; animation: bootfade 0.6s ease-in; }
-
-    @keyframes bootfade {
-      from { opacity: 0; transform: translateX(-4px); }
-      to   { opacity: 1; transform: none; }
+    /* ── footer ── */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: .8rem;
+      border-top: 1px solid var(--border);
+      font-family: 'Courier New', monospace;
     }
 
-    /* Mobile tap target */
-    @media (max-width: 600px) {
-      #output { font-size: 0.78rem; padding: 0.5rem 0.6rem 0.3rem; }
-      #input-row { padding: 0.3rem 0.6rem 0.5rem; }
-      #cmd-input, #prompt-label { font-size: 0.78rem; }
+    @media (max-width: 640px) {
+      .hero { padding: 3rem 1.2rem 2.5rem; }
+      .stats-bar { border-radius: 0; border-left: none; border-right: none; }
+      .stat-item { padding: 1rem .6rem; }
+      .stat-num { font-size: 1.5rem; }
+      .section { padding: 2.5rem 1.2rem; }
     }
   </style>
 </head>
 <body>
 
-<div id="screen">
-  <div id="output"></div>
-  <div id="input-row">
-    <span id="prompt-label">user@vax11780:~$ </span>
-    <input id="cmd-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="terminal input">
-    <span id="cursor-block"></span>
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="history.html">History</a>
+  <a href="technology.html">Technology</a>
+  <a href="companies.html">Companies</a>
+  <a href="demo.html">Demo</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/terminal') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+
+<!-- HERO -->
+<section class="hero">
+  <p class="hero-eyebrow">terminal.ximg.app</p>
+  <h1>THE TERMINAL<span class="cursor"></span></h1>
+  <p class="hero-sub">
+    The most powerful interface ever built. Six decades of history.
+    Every server on Earth. Every developer who ever shipped code.
+    It all runs through <em>a blinking cursor</em>.
+  </p>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num">1963</div>
+    <div class="stat-label">First Unix TTY</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">60+</div>
+    <div class="stat-label">Years of Dominance</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">500M+</div>
+    <div class="stat-label">Daily Users</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Of the Internet</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">∞</div>
+    <div class="stat-label">Commands Typed</div>
   </div>
 </div>
 
-<script>
-(function () {
-  'use strict';
-
-  // ── DOM refs ──────────────────────────────────────────────────────────────
-  const output   = document.getElementById('output');
-  const input    = document.getElementById('cmd-input');
-  const screen   = document.getElementById('screen');
-
-  // ── State ─────────────────────────────────────────────────────────────────
-  let cmdHistory   = [];
-  let historyIdx   = -1;
-  let typedHistory = []; // commands the user actually typed this session (for `history`)
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function esc(s) {
-    return String(s)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;');
-  }
-
-  function addLine(text, cls) {
-    const div = document.createElement('div');
-    if (cls) div.className = cls;
-    div.innerHTML = esc(text);
-    output.appendChild(div);
-  }
-
-  function addHTML(html, cls) {
-    const div = document.createElement('div');
-    if (cls) div.className = cls;
-    div.innerHTML = html;
-    output.appendChild(div);
-  }
-
-  function blank() { addLine(''); }
-
-  function scrollBottom() {
-    output.scrollTop = output.scrollHeight;
-  }
-
-  // ── Date helpers ──────────────────────────────────────────────────────────
-  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const MONTHS = ['January','February','March','April','May','June',
-                  'July','August','September','October','November','December'];
-  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun',
-                        'Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  // ── ASCII calendar ────────────────────────────────────────────────────────
-  function buildCal(year, month) { // month 0-based
-    const today  = new Date();
-    const isThisMonth = (today.getFullYear() === year && today.getMonth() === month);
-    const first  = new Date(year, month, 1).getDay(); // 0=Sun
-    const daysIn = new Date(year, month + 1, 0).getDate();
-    const header = `   ${MONTHS[month]} ${year}`;
-    let lines = [header, 'Su Mo Tu We Th Fr Sa'];
-    let row = '   '.repeat(first);
-    for (let d = 1; d <= daysIn; d++) {
-      const pad = d < 10 ? ' ' + d : String(d);
-      const hi  = isThisMonth && d === today.getDate();
-      row += (hi ? '[' + pad + ']' : ' ' + pad + ' ').slice(0,3);
-      if ((first + d) % 7 === 0 || d === daysIn) {
-        lines.push(row.trimEnd());
-        row = '';
-      }
-    }
-    return lines.join('\n');
-  }
-
-  // ── Banner / block letters ────────────────────────────────────────────────
-  const BANNER_CHARS = {
-    'A': ['  #  ','#####','#   #','#   #','#   #'],
-    'B': ['#### ','#   #','#### ','#   #','#### '],
-    'C': [' ####','#    ','#    ','#    ',' ####'],
-    'D': ['#### ','#   #','#   #','#   #','#### '],
-    'E': ['#####','#    ','#### ','#    ','#####'],
-    'F': ['#####','#    ','#### ','#    ','#    '],
-    'G': [' ####','#    ','# ###','#   #',' ####'],
-    'H': ['#   #','#   #','#####','#   #','#   #'],
-    'I': ['#####','  #  ','  #  ','  #  ','#####'],
-    'J': ['#####','    #','    #','#   #',' ### '],
-    'K': ['#   #','#  # ','###  ','#  # ','#   #'],
-    'L': ['#    ','#    ','#    ','#    ','#####'],
-    'M': ['#   #','## ##','# # #','#   #','#   #'],
-    'N': ['#   #','##  #','# # #','#  ##','#   #'],
-    'O': [' ### ','#   #','#   #','#   #',' ### '],
-    'P': ['#### ','#   #','#### ','#    ','#    '],
-    'Q': [' ### ','#   #','# # #','#  ##',' ####'],
-    'R': ['#### ','#   #','#### ','#  # ','#   #'],
-    'S': [' ####','#    ',' ### ','    #','#### '],
-    'T': ['#####','  #  ','  #  ','  #  ','  #  '],
-    'U': ['#   #','#   #','#   #','#   #',' ### '],
-    'V': ['#   #','#   #','#   #',' # # ','  #  '],
-    'W': ['#   #','#   #','# # #','## ##','#   #'],
-    'X': ['#   #',' # # ','  #  ',' # # ','#   #'],
-    'Y': ['#   #',' # # ','  #  ','  #  ','  #  '],
-    'Z': ['#####','   # ','  #  ',' #   ','#####'],
-    '0': [' ### ','#  ##','# # #','##  #',' ### '],
-    '1': ['  #  ',' ##  ','  #  ','  #  ','#####'],
-    '2': [' ### ','#   #','  ## ',' #   ','#####'],
-    '3': ['#### ','    #',' ### ','    #','#### '],
-    '4': ['#  # ','#  # ','#####','   # ','   # '],
-    '5': ['#####','#    ','#### ','    #','#### '],
-    '6': [' ### ','#    ','#### ','#   #',' ### '],
-    '7': ['#####','   # ','  #  ',' #   ','#    '],
-    '8': [' ### ','#   #',' ### ','#   #',' ### '],
-    '9': [' ### ','#   #',' ####','    #',' ### '],
-    ' ': ['     ','     ','     ','     ','     '],
-    '!': ['  #  ','  #  ','  #  ','     ','  #  '],
-    '?': [' ### ','#   #','   # ','     ','  #  '],
-    '.': ['     ','     ','     ','     ','  #  '],
-  };
-
-  function buildBanner(text) {
-    const chars = text.toUpperCase().split('').slice(0, 16); // limit length
-    const rows = ['','','','',''];
-    chars.forEach(ch => {
-      const g = BANNER_CHARS[ch] || BANNER_CHARS[' '];
-      for (let r = 0; r < 5; r++) rows[r] += g[r] + ' ';
-    });
-    return rows.join('\n');
-  }
-
-  // ── Fortunes ──────────────────────────────────────────────────────────────
-  const FORTUNES = [
-    '"Any sufficiently advanced technology is indistinguishable from magic."\n   — Arthur C. Clarke',
-    '"The best way to predict the future is to invent it."\n   — Alan Kay',
-    '"Programs must be written for people to read, and only incidentally for machines to execute."\n   — Harold Abelson',
-    '"There are only two hard things in Computer Science: cache invalidation and naming things."\n   — Phil Karlton',
-    '"Walking on water and developing software from a specification are easy if both are frozen."\n   — Edward V. Berard',
-    '"The first 90 percent of the code accounts for the first 90 percent of the development time.\n The remaining 10 percent of the code accounts for the other 90 percent."\n   — Tom Cargill',
-    '"If debugging is the process of removing software bugs, then programming must be the process\n of putting them in."\n   — Edsger W. Dijkstra',
-    '"Controlling complexity is the essence of computer programming."\n   — Brian Kernighan',
-    '"UNIX is very simple, it just needs a genius to understand its simplicity."\n   — Dennis Ritchie',
-    '"The most dangerous thought you can have as a creative person is to think you know\n what you\'re doing."\n   — Bret Victor',
-    '"C is quirky, flawed, and an enormous success."\n   — Dennis Ritchie',
-    '"Those who don\'t understand UNIX are condemned to reinvent it, poorly."\n   — Henry Spencer',
-    '"Real programmers don\'t comment their code. If it was hard to write,\n it should be hard to understand."\n   — Anonymous',
-    '"The computer was born to solve problems that did not exist before."\n   — Bill Gates',
-    '"It\'s not a bug — it\'s an undocumented feature."\n   — Anonymous sysadmin, circa 1978',
-  ];
-
-  // ── Fake process list ─────────────────────────────────────────────────────
-  const FAKE_PS =
-`  PID TTY          TIME CMD
-    1 ?        00:00:02 init
-  134 ?        00:00:00 syslogd
-  138 ?        00:00:00 klogd
-  210 ?        00:00:01 cron
-  314 ?        00:00:00 inetd
-  401 ttyp0    00:00:00 bash
-  402 ttyp1    00:00:00 sendmail
-  419 ttyp2    00:00:00 more
-  512 ttyp0    00:00:00 ps`;
-
-  const FAKE_TOP =
-`top - 23:59:47 up 42 days, 11:07,  3 users,  load average: 0.12, 0.08, 0.05
-Tasks:  38 total,   1 running,  37 sleeping,   0 stopped,   0 zombie
-%Cpu(s):  1.2 us,  0.4 sy,  0.0 ni, 98.2 id,  0.1 wa
-MiB Mem:    2048.0 total,   1456.3 free,    312.5 used,    279.2 buff/cache
-MiB Swap:   1024.0 total,   1024.0 free,      0.0 used.   1612.4 avail Mem
-
-  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-    1 root      20   0    1552    512    448 S   0.0   0.0   0:02.11 init
-  134 root      20   0    4312   1024    896 S   0.0   0.0   0:00.44 syslogd
-  210 root      20   0    6144   1536   1024 S   0.0   0.0   0:01.22 cron
-  314 root      20   0    3108    768    512 S   0.0   0.0   0:00.08 inetd
-  401 user      20   0   12288   3072   2048 S   0.3   0.1   0:00.33 bash
-  512 user      20   0    8196   1280    896 R   0.3   0.1   0:00.01 top`;
-
-  const FAKE_WHO =
-`user     ttyp0        Apr  4 23:44  (192.168.1.42)
-root     ttyp1        Apr  4 22:01  (localhost)
-daemon   ttyp2        Apr  4 18:30  (:0)`;
-
-  const FAKE_LAST =
-`user     ttyp0        192.168.1.42     Fri Apr  4 23:44   still logged in
-root     ttyp1        localhost        Fri Apr  4 22:01   still logged in
-user     ttyp0        192.168.1.42     Fri Apr  4 14:12 - 18:55  (04:43)
-user     ttyp0        10.0.0.7         Thu Apr  3 09:22 - 17:45  (08:23)
-root     console      local            Wed Apr  2 02:00 - 02:01  (00:00)
-reboot   system boot  2.11BSD          Mon Mar 24 12:52
-user     ttyp0        192.168.1.42     Mon Mar 24 08:30 - 10:11  (01:41)
-
-wtmp begins Mon Mar 24 08:30`;
-
-  const FAKE_FINGER =
-`Login: user                             Name: V. A. Xeris
-Directory: /home/user                   Shell: /bin/csh
-On since Fri Apr  4 23:44 (PDT) on ttyp0 from 192.168.1.42
-Mail last read Fri Apr  4 14:22 1982 (PDT)
-No Plan.`;
-
-  const MOTD =
-`BSD UNIX Version 4.2
-Digital Equipment Corporation VAX-11/780
-University of California, Berkeley
-
-                   *** NOTICE TO ALL USERS ***
-
-Welcome to the VAX-11/780 timesharing system.  This machine
-is running 4.2BSD UNIX, released September 1983.
-
-System maintenance is scheduled Sunday mornings, 02:00-06:00 PDT.
-Please log off before that time to avoid losing your work.
-
-New this week:
-  - sendmail(8) updated to version 5.55
-  - vi(1) bugfix: ctrl-L redraws correctly on VT100
-  - Disk quotas enforced on /usr/users starting Monday
-
-Questions? Contact the system administrator: root@ucbvax.ARPA
-
-"Share and enjoy." — The HHGTTG, 1979
-
-`;
-
-  const HISTORY_TXT =
-`unix_history.txt — A Brief History of Computing Terminals
-----------------------------------------------------------
-1. 1964: IBM System/360 introduces the concept of the batch-processing
-   mainframe. Users submit punched-card decks and wait hours for output.
-
-2. 1969: UNIX is born at Bell Labs on a PDP-7. Ken Thompson writes the
-   first version in three weeks while his wife is on vacation. Dennis
-   Ritchie invents the C language to port it.
-
-3. 1971: The first email is sent by Ray Tomlinson on ARPANET. He chooses
-   the @ symbol to separate user from machine — "it was the only character
-   that wasn't already used in a name."
-
-4. 1973: The DEC VT05 is among the first widely used video display terminals,
-   replacing the noisy teletype. Green phosphor glows for the first time.
-
-5. 1975: The Altair 8800 ignites the microcomputer revolution. Bill Gates
-   and Paul Allen write BASIC for it in a hotel room, having never touched
-   the actual hardware.
-
-6. 1978: The VAX-11/780 — this very machine — ships. At 1 MIPS, DEC
-   advertises it as a "MicroVAX." Unix 3BSD is ported to it by Berkeley.
-
-7. 1982: BSD 4.2 introduces TCP/IP sockets. The internet as we know it
-   becomes possible. One VAX-11/780 at BBN serves as an early ARPANET node.
-
-8. 1983: The GNU Project is announced by Richard Stallman on this very
-   system's successor. "Free as in freedom," he writes on net.unix-wizards.
-
-9. 1984: The Macintosh ships. Steve Jobs borrows the GUI from Xerox PARC.
-   The terminal era is not over — it just goes underground.
-
-10. Today, millions of developers work in terminal emulators faithfully
-    reproducing the look and feel of hardware that costs $150,000 in 1978.
-`;
-
-  const MAN_LS =
-`LS(1)                      BSD Reference Manual                      LS(1)
-
-NAME
-     ls -- list directory contents
-
-SYNOPSIS
-     ls [-1ACFRacdfilqrstu] [file ...]
-
-DESCRIPTION
-     For each operand that names a file of a type other than directory, ls
-     displays its name as well as any requested, associated information.
-     For each operand that names a file of type directory, ls displays the
-     names of files contained within that directory.
-
-     The following options are available:
-
-     -a      List all entries; do not hide entries starting with a dot (.).
-
-     -l      List in long format.  (See below.)  If the output is to a
-             terminal, a total sum for all the file sizes is output on a
-             line before the long listing.
-
-     -F      Display a slash (/) immediately after each pathname that is a
-             directory, an asterisk (*) after each that is executable, an
-             at sign (@) after each symbolic link, and a percent sign (%)
-             after each whiteout.
-
-     -r      Reverse the order of the sort to get reverse lexicographical
-             order or the oldest entries first.
-
-     -t      Sort by time modified (most recently modified first) before
-             sorting the operands by lexicographical order.
-
-     -R      Recursively list subdirectories encountered.
-
-LONG FORMAT
-     If the -l option is given, the following information is displayed for
-     each file: file mode, number of links, owner name, group name, number
-     of bytes in the file, abbreviated month, day-of-month file was last
-     modified, hour file last modified, minute file last modified, and the
-     pathname.
-
-SEE ALSO
-     chmod(1), chown(8), find(1), stat(2)
-
-HISTORY
-     An ls command appeared in Version 1 AT&T UNIX (1969).
-
-BSD                           September 21, 1982`;
-
-  const LS_OUTPUT =
-`total 128
-drwxr-xr-x  8 user  users   512 Apr  4 23:44 .
-drwxr-xr-x 24 root  wheel  1024 Apr  4 12:00 ..
--rw-------  1 user  users   342 Apr  4 23:41 .cshrc
--rw-------  1 user  users    89 Mar 24 08:30 .login
--rw-------  1 user  users   214 Mar 24 08:30 .profile
--rw-r--r--  1 user  users  4096 Apr  4 14:22 history.txt
--rw-r--r--  1 user  users   512 Apr  2 09:15 motd
--rw-r--r--  1 user  users  8192 Apr  3 16:44 notes.txt
--rwxr-xr-x  1 user  users  2048 Mar 31 10:02 backup.sh
-drwxr-xr-x  2 user  users   512 Apr  1 11:00 mail
-drwxr-xr-x  3 user  users   512 Apr  3 14:18 src
-drwx------  2 user  users   512 Apr  4 22:00 tmp`;
-
-  // ── Cowsay ────────────────────────────────────────────────────────────────
-  function cowsay(text) {
-    const words = text.trim() || 'Moo!';
-    const maxW = 36;
-    // word-wrap
-    const lines = [];
-    let cur = '';
-    words.split(' ').forEach(w => {
-      if ((cur + (cur ? ' ' : '') + w).length > maxW) {
-        if (cur) lines.push(cur);
-        cur = w.slice(0, maxW);
-      } else {
-        cur = cur ? cur + ' ' + w : w;
-      }
-    });
-    if (cur) lines.push(cur);
-    const width = Math.max(...lines.map(l => l.length));
-    const top    = ' ' + '_'.repeat(width + 2);
-    const bottom = ' ' + '-'.repeat(width + 2);
-    const body = lines.map((l, i) => {
-      const pad = ' '.repeat(width - l.length);
-      if (lines.length === 1) return `< ${l}${pad} >`;
-      if (i === 0)            return `/ ${l}${pad} \\`;
-      if (i === lines.length - 1) return `\\ ${l}${pad} /`;
-      return `| ${l}${pad} |`;
-    });
-    return [top, ...body, bottom,
-      '        \\   ^__^',
-      '         \\  (oo)\\_______',
-      '            (__)\\       )\\/\\',
-      '                ||----w |',
-      '                ||     ||'
-    ].join('\n');
-  }
-
-  // ── Uptime ────────────────────────────────────────────────────────────────
-  function fakeUptime() {
-    const now = new Date();
-    const h = now.getHours().toString().padStart(2,'0');
-    const m = now.getMinutes().toString().padStart(2,'0');
-    return ` ${h}:${m}  up 42 days, 11:07,  3 users,  load average: 0.12, 0.08, 0.05`;
-  }
-
-  // ── Date ──────────────────────────────────────────────────────────────────
-  function fakeDate() {
-    const d = new Date();
-    const dow = DAYS[d.getDay()];
-    const mon = MONTHS_SHORT[d.getMonth()];
-    const day = String(d.getDate()).padStart(2,' ');
-    const hh  = String(d.getHours()).padStart(2,'0');
-    const mm  = String(d.getMinutes()).padStart(2,'0');
-    const ss  = String(d.getSeconds()).padStart(2,'0');
-    const yr  = d.getFullYear();
-    return `${dow} ${mon} ${day} ${hh}:${mm}:${ss} PDT ${yr}`;
-  }
-
-  // ── Command dispatch ──────────────────────────────────────────────────────
-  function runCommand(raw) {
-    const line = raw.trim();
-    if (!line) return;
-
-    typedHistory.push(line);
-
-    // echo command prompt
-    addLine('user@vax11780:~$ ' + line, 'line-cmd');
-
-    const parts  = line.split(/\s+/);
-    const cmd    = parts[0].toLowerCase();
-    const args   = parts.slice(1).join(' ');
-    const args1  = parts[1] || '';
-
-    switch (cmd) {
-
-      case 'help': {
-        addLine('');
-        addLine('Available commands:', 'line-bold');
-        addLine('');
-        const cmds = [
-          ['help',         'Show this help message'],
-          ['ls',           'List directory contents'],
-          ['ls -la',       'List with details and hidden files'],
-          ['pwd',          'Print working directory'],
-          ['date',         'Display current date and time'],
-          ['whoami',       'Print current user'],
-          ['uname -a',     'Print system information'],
-          ['uptime',       'Show system uptime'],
-          ['cal',          'Display calendar for current month'],
-          ['clear',        'Clear the terminal'],
-          ['echo [text]',  'Echo text to terminal'],
-          ['cat motd',     'Display message of the day'],
-          ['cat history.txt', 'Brief history of Unix/computing'],
-          ['man ls',       'Manual page for ls'],
-          ['fortune',      'Print a computing fortune or quote'],
-          ['cowsay [text]','ASCII cow saying your text'],
-          ['banner [text]','Large ASCII text banner'],
-          ['ps',           'List running processes'],
-          ['top',          'Dynamic process viewer (static snapshot)'],
-          ['history',      'Show command history'],
-          ['finger',       'User information lookup'],
-          ['write',        'Send message to another user'],
-          ['talk',         'Two-way communication with another user'],
-          ['ping arpanet', 'Send ICMP echo to ARPANET'],
-          ['telnet',       'Connect to remote host'],
-          ['rlogin',       'Remote login'],
-          ['who',          'Show who is logged in'],
-          ['last',         'Show login history'],
-        ];
-        cmds.forEach(([c, d]) => {
-          addLine(`  ${c.padEnd(22)} ${d}`, 'line-out');
-        });
-        addLine('');
-        break;
-      }
-
-      case 'ls': {
-        if (args === '-la' || args === '-al' || args === '-a') {
-          addLine(LS_OUTPUT, 'line-out');
-        } else {
-          addLine('backup.sh   history.txt   mail/   motd   notes.txt   src/   tmp/', 'line-out');
-        }
-        break;
-      }
-
-      case 'pwd': {
-        addLine('/home/user', 'line-out');
-        break;
-      }
-
-      case 'date': {
-        addLine(fakeDate(), 'line-out');
-        break;
-      }
-
-      case 'whoami': {
-        addLine('user', 'line-out');
-        break;
-      }
-
-      case 'uname': {
-        addLine('VAX-11/780 UNIX 4.2BSD #1: Tue Sep 21 23:59:59 PDT 1982', 'line-out');
-        break;
-      }
-
-      case 'uptime': {
-        addLine(fakeUptime(), 'line-out');
-        break;
-      }
-
-      case 'cal': {
-        const d = new Date();
-        addLine(buildCal(d.getFullYear(), d.getMonth()), 'line-out');
-        break;
-      }
-
-      case 'clear': {
-        output.innerHTML = '';
-        break;
-      }
-
-      case 'echo': {
-        addLine(args || '', 'line-out');
-        break;
-      }
-
-      case 'cat': {
-        if (args1 === 'motd' || args === 'motd') {
-          addLine(MOTD, 'line-out');
-        } else if (args1 === 'history.txt' || args === 'history.txt') {
-          addLine(HISTORY_TXT, 'line-out');
-        } else if (args1 === '.cshrc' || args1 === '.login' || args1 === '.profile') {
-          addLine(`cat: ${args1}: Permission denied`, 'line-err');
-        } else if (!args1) {
-          // wait for input — simplified: just say so
-          addLine('(cat: reading from stdin — use Ctrl-D to end)', 'line-dim');
-        } else {
-          addLine(`cat: ${args}: No such file or directory`, 'line-err');
-        }
-        break;
-      }
-
-      case 'man': {
-        if (args1 === 'ls' || args === 'ls') {
-          addLine(MAN_LS, 'line-out');
-        } else if (!args1) {
-          addLine('What manual page do you want?', 'line-err');
-        } else {
-          addLine(`No manual entry for ${args1}`, 'line-err');
-        }
-        break;
-      }
-
-      case 'fortune': {
-        const f = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
-        addLine('');
-        addLine(f, 'line-out');
-        addLine('');
-        break;
-      }
-
-      case 'cowsay': {
-        addLine(cowsay(args || 'Moo!'), 'line-out');
-        break;
-      }
-
-      case 'banner': {
-        if (!args) {
-          addLine('Usage: banner <text>', 'line-err');
-        } else {
-          addLine(buildBanner(args), 'line-out');
-        }
-        break;
-      }
-
-      case 'ps': {
-        addLine(FAKE_PS, 'line-out');
-        break;
-      }
-
-      case 'top': {
-        addLine(FAKE_TOP, 'line-out');
-        break;
-      }
-
-      case 'history': {
-        if (typedHistory.length === 0) {
-          addLine('(no commands in history)', 'line-dim');
-        } else {
-          const recent = typedHistory.slice(-20);
-          recent.forEach((c, i) => {
-            const n = (typedHistory.length - recent.length + i + 1).toString().padStart(4,' ');
-            addLine(`  ${n}  ${c}`, 'line-out');
-          });
-        }
-        break;
-      }
-
-      case 'finger': {
-        addLine(FAKE_FINGER, 'line-out');
-        break;
-      }
-
-      case 'write': {
-        addLine('write: ' + (args || 'user') + ' not logged in', 'line-err');
-        break;
-      }
-
-      case 'talk': {
-        addLine('talk: connection refused', 'line-err');
-        break;
-      }
-
-      case 'ping': {
-        const host = args || 'localhost';
-        if (host === 'arpanet' || host === 'arpanet.ximg.app') {
-          addLine(`PING arpanet.ximg.app (1969.10.29): 56 data bytes`, 'line-out');
-          addLine(`64 bytes from 1969-10-29 (ARPANET node 1): icmp_seq=0 ttl=64 time=13.7 ms`, 'line-out');
-          addLine(`64 bytes from 1969-10-29 (ARPANET node 1): icmp_seq=1 ttl=64 time=14.1 ms`, 'line-out');
-          addLine(`64 bytes from 1969-10-29 (ARPANET node 1): icmp_seq=2 ttl=64 time=13.9 ms`, 'line-out');
-          addLine(``, 'line-out');
-          addLine(`--- arpanet.ximg.app ping statistics ---`, 'line-out');
-          addLine(`3 packets transmitted, 3 received, 0% packet loss, time 2002ms`, 'line-out');
-          addLine(`rtt min/avg/max = 13.7/13.9/14.1 ms`, 'line-out');
-        } else {
-          addLine(`PING ${host}: 56 data bytes`, 'line-out');
-          addLine(`Request timeout for icmp_seq 0`, 'line-dim');
-          addLine(`Request timeout for icmp_seq 1`, 'line-dim');
-        }
-        break;
-      }
-
-      case 'telnet': {
-        const dest = args || '192.168.1.1';
-        addLine(`Trying ${dest}...`, 'line-dim');
-        addLine(`telnet: Unable to connect to remote host: Connection refused`, 'line-err');
-        break;
-      }
-
-      case 'rlogin': {
-        addLine('rlogin: Permission denied', 'line-err');
-        break;
-      }
-
-      case 'who': {
-        addLine(FAKE_WHO, 'line-out');
-        break;
-      }
-
-      case 'last': {
-        addLine(FAKE_LAST, 'line-out');
-        break;
-      }
-
-      case 'exit':
-      case 'logout': {
-        addLine('');
-        addLine('logout', 'line-dim');
-        addLine('');
-        addLine('Connection to vax11780 closed.', 'line-dim');
-        addLine('');
-        addLine('[Session terminated. Refresh to reconnect.]', 'line-dim');
-        input.disabled = true;
-        document.getElementById('prompt-label').style.opacity = '0.3';
-        document.getElementById('cursor-block').style.display = 'none';
-        break;
-      }
-
-      case 'ssh':
-      case 'ftp': {
-        addLine(`${cmd}: command not found`, 'line-err');
-        addLine(`(Hint: try telnet or rlogin — it\'s 1982)`, 'line-dim');
-        break;
-      }
-
-      case 'sudo': {
-        addLine('sudo: command not found', 'line-err');
-        addLine('(This is BSD Unix. We use su here.)', 'line-dim');
-        break;
-      }
-
-      case 'su': {
-        addLine('Password:', 'line-dim');
-        setTimeout(() => {
-          addLine('su: Sorry', 'line-err');
-          scrollBottom();
-        }, 800);
-        break;
-      }
-
-      default: {
-        // alternate between two bash-style not-found messages for variety
-        if (Math.random() > 0.5) {
-          addLine(`bash: ${esc(cmd)}: command not found`, 'line-err');
-        } else {
-          addLine(`-bash: ${esc(cmd)}: command not found`, 'line-err');
-        }
-        break;
-      }
-    }
-
-    scrollBottom();
-  }
-
-  // ── Boot sequence ─────────────────────────────────────────────────────────
-  const BOOT_LINES = [
-    { text: '', delay: 0 },
-    { text: 'KA780 V1.3, VMB V2.2', delay: 80 },
-    { text: '' , delay: 120 },
-    { text: '?BIOS-I-COLDSTART', delay: 160 },
-    { text: 'Total Memory: 8 Megabytes', delay: 220 },
-    { text: 'Testing memory ... Done.', delay: 350 },
-    { text: '' , delay: 400 },
-    { text: 'Bootstrapping from DU0: (RA81 disk)...', delay: 480 },
-    { text: 'BSD UNIX -- Copyright (c) 1982 Regents of the University of California', delay: 700 },
-    { text: '                   All rights reserved.', delay: 800 },
-    { text: '' , delay: 850 },
-    { text: 'vax11780 boot, auto-config', delay: 950 },
-    { text: 'uba0 at nexus0', delay: 1050 },
-    { text: 'uda0 at uba0 csr 172150 vec 774 ipl 15', delay: 1150 },
-    { text: 'ra0 at uda0 drive 0: RA81', delay: 1250 },
-    { text: 'ra1 at uda0 drive 1: RA81', delay: 1350 },
-    { text: 'le0 at uba0 csr 174510: address 08:00:2b:xx:xx:xx', delay: 1450 },
-    { text: '' , delay: 1500 },
-    { text: '/dev/ra0b: 131072 sectors', delay: 1600 },
-    { text: 'Checking file systems:', delay: 1700 },
-    { text: '/dev/ra0a: 8192 files, 74210 blocks, 12438 free', delay: 1820 },
-    { text: '/dev/ra1g: 41002 files, 286440 blocks, 195210 free', delay: 1950 },
-    { text: '' , delay: 2000 },
-    { text: 'Starting services: syslogd inetd cron sendmail lpd ...', delay: 2100 },
-    { text: '' , delay: 2200 },
-    { text: 'VAX/VMS V4.2 (VAX-11/780)  System uptime: 42 days', delay: 2300 },
-    { text: '' , delay: 2500 },
-    { text: 'login: user', delay: 2700 },
-    { text: 'Password:', delay: 3000 },
-    { text: '' , delay: 3400 },
-  ];
-
-  const WELCOME_LINES = [
-    { text: 'Last login: Fri Apr  4 14:12:44 from 192.168.1.42', delay: 3500 },
-    { text: '' , delay: 3560 },
-    { text: 'BSD UNIX (vax11780)', delay: 3620 },
-    { text: '' , delay: 3680 },
-    { text: 'Type "help" to see available commands.', delay: 3740 },
-    { text: '' , delay: 3800 },
-  ];
-
-  const ALL_BOOT = [...BOOT_LINES, ...WELCOME_LINES];
-
-  function doBootSequence() {
-    input.disabled = true;
-    ALL_BOOT.forEach(({ text, delay }) => {
-      setTimeout(() => {
-        addLine(text, 'line-boot');
-        scrollBottom();
-      }, delay);
-    });
-    const totalDelay = ALL_BOOT[ALL_BOOT.length - 1].delay + 200;
-    setTimeout(() => {
-      input.disabled = false;
-      input.focus();
-      scrollBottom();
-    }, totalDelay);
-  }
-
-  // ── Input / keyboard ──────────────────────────────────────────────────────
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      const val = input.value;
-      input.value = '';
-      historyIdx = -1;
-      if (val.trim()) {
-        cmdHistory.unshift(val);
-        if (cmdHistory.length > 100) cmdHistory.length = 100;
-      }
-      runCommand(val);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (historyIdx < cmdHistory.length - 1) {
-        historyIdx++;
-        input.value = cmdHistory[historyIdx];
-        // move cursor to end
-        setTimeout(() => input.setSelectionRange(input.value.length, input.value.length), 0);
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (historyIdx > 0) {
-        historyIdx--;
-        input.value = cmdHistory[historyIdx];
-      } else {
-        historyIdx = -1;
-        input.value = '';
-      }
-    } else if (e.key === 'l' && e.ctrlKey) {
-      e.preventDefault();
-      output.innerHTML = '';
-    } else if (e.key === 'c' && e.ctrlKey) {
-      e.preventDefault();
-      addLine('user@vax11780:~$ ' + input.value + '^C', 'line-cmd');
-      input.value = '';
-      historyIdx = -1;
-      scrollBottom();
-    }
-  });
-
-  // Tap anywhere to focus input (mobile)
-  screen.addEventListener('click', function (e) {
-    if (!window.getSelection().toString()) {
-      input.focus();
-    }
-  });
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  doBootSequence();
-
-})();
-</script>
+<!-- LIVE TERMINAL MOCKUP -->
+<section class="section" style="padding-bottom: 0;">
+  <div class="crt-wrap">
+    <div class="term-window">
+      <div class="term-titlebar">
+        <span class="term-dot dot-red"></span>
+        <span class="term-dot dot-yellow"></span>
+        <span class="term-dot dot-green"></span>
+        <span class="term-title">bash — 120×40 — terminal.ximg.app</span>
+      </div>
+      <div class="term-body">
+        <span class="t-line"><span class="t-dim">Last login: Thu Apr 17 00:00:01 2025 on ttys001</span></span>
+        <span class="t-line"></span>
+        <span class="t-line"><span class="t-green">╔══════════════════════════════════════════════════════════════╗</span></span>
+        <span class="t-line"><span class="t-green">║</span>  <span class="t-bright">THE TERMINAL</span> — The Interface That Runs the World           <span class="t-green">║</span></span>
+        <span class="t-line"><span class="t-green">║</span>  <span class="t-dim">Since 1963 · Phosphor to Pixel · Still Undefeated</span>          <span class="t-green">║</span></span>
+        <span class="t-line"><span class="t-green">╚══════════════════════════════════════════════════════════════╝</span></span>
+        <span class="t-line"></span>
+        <span class="t-line"><span class="t-green">user@earth</span><span class="t-white">:</span><span class="t-blue">~</span><span class="t-white">$</span> uptime</span>
+        <span class="t-line"><span class="t-white"> 00:00:01 up 22640 days, 0:00, 500000000 users, load average: 42.00, 42.00, 42.00</span></span>
+        <span class="t-line"></span>
+        <span class="t-line"><span class="t-green">user@earth</span><span class="t-white">:</span><span class="t-blue">~</span><span class="t-white">$</span> ls /technologies/that/changed/the/world/</span>
+        <span class="t-line"><span class="t-dir">fire/</span>   <span class="t-dir">printing-press/</span>   <span class="t-dir">electricity/</span>   <span class="t-dir">internet/</span>   <span class="t-exec">terminal*</span></span>
+        <span class="t-line"></span>
+        <span class="t-line"><span class="t-green">user@earth</span><span class="t-white">:</span><span class="t-blue">~</span><span class="t-white">$</span> cat /proc/terminal/status</span>
+        <span class="t-line"><span class="t-yellow">STATUS:</span>   <span class="t-bright">DOMINANT · IRREPLACEABLE · ETERNAL</span></span>
+        <span class="t-line"><span class="t-yellow">USERS:</span>    <span class="t-white">Every developer. Every sysadmin. Every DevOps engineer.</span></span>
+        <span class="t-line"><span class="t-yellow">RUNS_ON:</span>  <span class="t-white">Linux, macOS, BSD, Windows, embedded, cloud, space</span></span>
+        <span class="t-line"><span class="t-yellow">KILLED:</span>  <span class="t-red">never</span></span>
+        <span class="t-line"></span>
+        <span class="t-line"><span class="t-green">user@earth</span><span class="t-white">:</span><span class="t-blue">~</span><span class="t-white">$</span> <span class="t-dim" style="animation:blink 1s step-end infinite;display:inline-block;background:#00e676;width:.55em;height:1em;vertical-align:text-bottom;"></span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTIONS GRID -->
+<section class="section">
+  <p class="section-title">Explore</p>
+  <h2 class="section-heading">Everything You Need to Know</h2>
+  <p class="section-body">From phosphor green to GPU-accelerated ligatures — the complete story of the most enduring interface in computing history.</p>
+
+  <div class="page-grid">
+    <a class="page-card" href="history.html">
+      <span class="card-icon">📜</span>
+      <div class="card-title">History</div>
+      <div class="card-desc">From the 1840s telegraph to the AI terminal. Teleprinters, the VT100, the birth of Unix, and how a blinking cursor outlived every attempt to kill it.</div>
+    </a>
+    <a class="page-card" href="technology.html">
+      <span class="card-icon">⚙️</span>
+      <div class="card-title">Technology</div>
+      <div class="card-desc">PTY internals, ANSI escape codes, the kernel TTY layer, GPU rendering, ligature fonts, and the engineering that makes the terminal screamingly fast.</div>
+    </a>
+    <a class="page-card" href="companies.html">
+      <span class="card-icon">🏢</span>
+      <div class="card-title">Companies</div>
+      <div class="card-desc">DEC's VT100, Apple's Terminal.app, iTerm2, Alacritty, Kitty, Windows Terminal, Warp — the products that defined and redefined the terminal experience.</div>
+    </a>
+    <a class="page-card" href="demo.html">
+      <span class="card-icon">💻</span>
+      <div class="card-title">Demo</div>
+      <div class="card-desc">Step inside a 1982 VAX-11/780 running 4.2BSD. Complete with CRT scanlines, phosphor green glow, boot sequence, and 25+ classic Unix commands.</div>
+    </a>
+  </div>
+</section>
+
+<!-- QUOTE -->
+<section class="section" style="padding-top: 0;">
+  <div class="quote-section">
+    <p class="quote-text">"UNIX is very simple — it just needs a genius to understand its simplicity."</p>
+    <p class="quote-attr">— Dennis Ritchie, co-creator of Unix and C, Bell Labs, 1970s</p>
+  </div>
+</section>
+
+<!-- WHY IT MATTERS -->
+<section class="section" style="padding-top: 0;">
+  <p class="section-title">Why It Matters</p>
+  <h2 class="section-heading">The Terminal Changed Everything</h2>
+  <p class="section-body">The GUI was supposed to kill it. The web was supposed to replace it. The cloud was supposed to abstract it away. None of them did.</p>
+
+  <div class="impact-grid">
+    <div class="impact-card">
+      <h3>// The Internet Runs Here</h3>
+      <p>Every web server, database, router, and cloud instance is configured, deployed, and maintained through a terminal. nginx, Apache, PostgreSQL, Docker — all started from a command prompt. The GUI is the storefront; the terminal is the factory floor.</p>
+    </div>
+    <div class="impact-card">
+      <h3>// Born on a Teletype</h3>
+      <p>Unix was designed around terminals because terminals were all they had. That constraint became a superpower: pipes, redirection, and composable tools emerged directly from the limitations of serial I/O. The philosophy that shaped all of software.</p>
+    </div>
+    <div class="impact-card">
+      <h3>// The Keyboard is Faster</h3>
+      <p>An expert typist in a terminal can perform in 10 seconds what takes 2 minutes in a GUI. No mouse travel, no menu hunting, no click targets. Shell scripting turns any task you do twice into something you never do manually again.</p>
+    </div>
+    <div class="impact-card">
+      <h3>// 60 Years and Counting</h3>
+      <p>The VT100 was released in 1978. Its escape sequences are still the standard in every terminal emulator today. No UI paradigm in history has lasted this long. Not the desktop, not the web app — the terminal endures.</p>
+    </div>
+    <div class="impact-card">
+      <h3>// The Developer's Native Tongue</h3>
+      <p>Git, npm, cargo, pip, make, kubectl, terraform — the entire modern development toolchain lives in the terminal. Learn to master it and you hold a universal key to every operating system ever made.</p>
+    </div>
+    <div class="impact-card">
+      <h3>// Unlimited Power</h3>
+      <p>One shell one-liner can process a billion log lines, rename ten thousand files, or query a remote database across a flaky satellite link. No amount of GUI design ever catches up to a well-crafted pipeline. The terminal is not limited — your imagination is.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECOND QUOTE -->
+<section class="section" style="padding-top: 0;">
+  <div class="quote-section">
+    <p class="quote-text">"Those who don't understand Unix are condemned to reinvent it, poorly."</p>
+    <p class="quote-attr">— Henry Spencer, UTZOO USENET, 1987</p>
+  </div>
+</section>
+
+<!-- SECOND TERMINAL MOCKUP: modern neofetch-style -->
+<section class="section" style="padding-top: 0;">
+  <p class="section-title">The Modern Terminal</p>
+  <h2 class="section-heading">More Powerful Than Ever</h2>
+  <p class="section-body">GPU-rendered glyphs, 24-bit color, ligature fonts, AI completion, multiplexing, and remote sessions — the terminal of 2025 would seem like science fiction to the engineers of 1978. And yet, the same fundamental interface.</p>
+
+  <div class="term-window" style="max-width: 700px; margin-top: 2rem;">
+    <div class="term-titlebar">
+      <span class="term-dot dot-red"></span>
+      <span class="term-dot dot-yellow"></span>
+      <span class="term-dot dot-green"></span>
+      <span class="term-title">neofetch — alacritty</span>
+    </div>
+    <div class="term-body" style="display: flex; gap: 2rem; flex-wrap: wrap;">
+      <div style="color: #00e676; font-size: .9rem; line-height: 1.4; flex-shrink: 0;">
+        <div>        #####</div>
+        <div>       #######</div>
+        <div>       ##O#O##</div>
+        <div>       #VVVVV#</div>
+        <div>     ##  VVV  ##</div>
+        <div>    #          ##</div>
+        <div>    #    /\    ##</div>
+        <div>    ##  /  \  ##</div>
+        <div>     ##/    \##</div>
+      </div>
+      <div style="font-size: .82rem; line-height: 1.7;">
+        <div><span class="t-green">user</span><span class="t-white">@</span><span class="t-green">arch-linux</span></div>
+        <div><span class="t-dim">──────────────────────</span></div>
+        <div><span class="t-bright">OS:</span> <span class="t-white">Arch Linux x86_64</span></div>
+        <div><span class="t-bright">Shell:</span> <span class="t-white">zsh 5.9 (fish-like)</span></div>
+        <div><span class="t-bright">Terminal:</span> <span class="t-white">Alacritty 0.13</span></div>
+        <div><span class="t-bright">Font:</span> <span class="t-white">JetBrains Mono NF 13pt</span></div>
+        <div><span class="t-bright">Colors:</span> <span class="t-white">Catppuccin Mocha</span></div>
+        <div><span class="t-bright">Multiplexer:</span> <span class="t-white">tmux 3.4</span></div>
+        <div><span class="t-bright">Uptime:</span> <span class="t-yellow">42 days, 11:07</span></div>
+        <div><span class="t-bright">CPU:</span> <span class="t-white">AMD Ryzen 9 7950X (32)</span></div>
+        <div><span class="t-bright">Memory:</span> <span class="t-white">3.2GiB / 64.0GiB</span></div>
+        <div style="margin-top: .4rem;">
+          <span style="background:#1a1a2e;padding:2px 8px;border-radius:3px;">⬛</span>
+          <span style="background:#ff5252;padding:2px 8px;border-radius:3px;">🟥</span>
+          <span style="background:#00e676;padding:2px 8px;border-radius:3px;">🟩</span>
+          <span style="background:#ffb300;padding:2px 8px;border-radius:3px;">🟨</span>
+          <span style="background:#64b5f6;padding:2px 8px;border-radius:3px;">🟦</span>
+          <span style="background:#ce93d8;padding:2px 8px;border-radius:3px;">🟪</span>
+          <span style="background:#00e5ff;padding:2px 8px;border-radius:3px;">🩵</span>
+          <span style="background:#e2e8f0;padding:2px 8px;border-radius:3px;">⬜</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  terminal.ximg.app &nbsp;·&nbsp; 60+ years of computing history &nbsp;·&nbsp; still the most powerful interface ever built
+</footer>
 
 <script src="/shared/nav.js?v=3"></script>
 </body>
