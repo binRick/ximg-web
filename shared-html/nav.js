@@ -72,7 +72,8 @@
       ['bundler-info','what & why']
     ]},
     { label: 'More', apps: [
-      ['rx','RxFitt']
+      ['rx','RxFitt'],
+      ['esp32','ESP32']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
