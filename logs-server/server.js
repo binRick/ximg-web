@@ -286,6 +286,7 @@ const LOG_FILES = {
   'ansible-bundler':'ansible-bundler.access.log',
   'apt-bundler':    'apt-bundler.access.log',
   'rpm-bundler':    'rpm-bundler.access.log',
+  'nuget-bundler':  'nuget-bundler.access.log',
   iso:              'iso.access.log',
   honeypot:         'honeypot.access.log',
   'bundler-info':   'bundler-info.access.log',
@@ -862,6 +863,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="ansible-bundler">ansible-bundler</button>
           <button class="site-opt" data-site="apt-bundler">apt-bundler</button>
           <button class="site-opt" data-site="rpm-bundler">rpm-bundler</button>
+          <button class="site-opt" data-site="nuget-bundler">nuget-bundler</button>
           <button class="site-opt" data-site="iso">iso</button>
           <button class="site-opt" data-site="honeypot">honeypot</button>
           <button class="site-opt" data-site="bundler-info">bundler-info</button>

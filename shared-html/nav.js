@@ -67,6 +67,7 @@
       ['go-bundler','go'],
       ['iso','linux isos'],
       ['nodejs-bundler','node.js'],
+      ['nuget-bundler','nuget'],
       ['python-bundler','python'],
       ['rpm-bundler','rpm'],
       ['bundler-info','what & why']

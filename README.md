@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-231 virtual hosts (root + 230 subdomains), all static sites served by a single nginx container.
+232 virtual hosts (root + 231 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -242,6 +242,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [go-bundler.ximg.app](https://go-bundler.ximg.app) | Go Bundler — enter a Go module path, download a zip with the module cache for offline builds; optionally embed the Go toolchain. |
 | [apt-bundler.ximg.app](https://apt-bundler.ximg.app) | APT Bundler — select Debian/Ubuntu distro and arch, enter a package name, download a zip of .deb files with all dependencies for offline install. |
 | [rpm-bundler.ximg.app](https://rpm-bundler.ximg.app) | RPM Bundler — select Fedora/Rocky/Alma distro and arch, enter a package name, download a zip of .rpm files with all dependencies for offline install. |
+| [nuget-bundler.ximg.app](https://nuget-bundler.ximg.app) | NuGet Bundler — enter a package name and target framework, download a zip of .nupkg files with all transitive dependencies for offline dotnet restore on air-gapped machines. |
 | [iso.ximg.app](https://iso.ximg.app) | Linux ISO Downloads — curated directory of 32 top Linux ISOs (Ubuntu, Debian, Fedora, Arch, Kali, NixOS, Void, MX Linux, Garuda, Oracle, Whonix, and more) with direct links to official mirrors, filterable by type. |
 | [honeypot.ximg.app](https://honeypot.ximg.app) | SSH Honeypot Terminal — live simulation of the actual SSH honeypot: watch 9 auth failures then break in on attempt 10, interactive Ubuntu shell with ps, find, cat, sudo. |
 | [bundler-info.ximg.app](https://bundler-info.ximg.app) | Bundlers — What & Why — newbie explainer for offline package bundlers: why you need them, how they work, and cards for every bundler (Python, Node.js, Go, APT, RPM, Docker, Linux ISO). |
