@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-234 virtual hosts (root + 233 subdomains), all static sites served by a single nginx container.
+235 virtual hosts (root + 234 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -257,6 +257,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [silkroad.ximg.app](https://silkroad.ximg.app) | The Silk Road — oasis cities, trade goods, caravans, interactive camel caravan canvas. |
 | [colonial.ximg.app](https://colonial.ximg.app) | Age of Exploration — navigators, colonial empires, interactive 3D spinning globe with route lines. |
 | [proc-trace-exec.ximg.app](https://proc-trace-exec.ximg.app) | See every exec() call on your Linux system in real time — process tree, exit status, timing, user, cwd. Static Go binary using the Linux netlink proc connector. |
+| [tls-ca-fetch.ximg.app](https://tls-ca-fetch.ximg.app) | Extract CA certificates from any TLS server — walks the cert chain, chases AIA to fetch the root CA, writes PEM to disk. Zero deps, static Go binary. |
 ## Architecture
 
 ```

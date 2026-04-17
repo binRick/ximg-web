@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tls-ca-fetch — extract CA certs from any TLS server</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+  <style>
+    :root {
+      --bg: #080d12;
+      --surface: #0f1923;
+      --surface2: #172030;
+      --border: #1e2d3d;
+      --accent: #22d3ee;
+      --accent2: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --code-bg: #040810;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding-top: 48px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,13,18,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+      color: #4b5563; padding: .3rem .65rem; border-radius: 3px;
+      text-decoration: none; transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(34,211,238,.07); }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* Hero */
+    .hero {
+      padding: 5rem 1.5rem 3rem; text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34,211,238,.07) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.22);
+      color: var(--accent); font-family: 'Courier New', monospace;
+      font-size: .72rem; letter-spacing: .12em;
+      padding: .3rem .9rem; border-radius: 2rem; margin-bottom: 1.75rem;
+    }
+    .hero-badge::before { content:''; display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; }
+    .hero h1 {
+      font-size: clamp(2rem,6vw,3.2rem); font-weight: 700; letter-spacing: -.02em;
+      line-height: 1.15; margin-bottom: 1.25rem; font-family: 'Courier New', monospace;
+      background: linear-gradient(135deg, #a5f3fc 0%, var(--accent) 50%, #0891b2 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-subtitle {
+      font-size: 1.1rem; color: var(--muted); max-width: 620px;
+      margin: 0 auto 2rem; line-height: 1.75;
+    }
+    .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .7rem 1.6rem; border-radius: 6px; font-size: .9rem;
+      font-weight: 600; text-decoration: none; transition: all .2s; border: none;
+    }
+    .btn-primary { background: var(--accent); color: #080d12; }
+    .btn-primary:hover { background: #06b6d4; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(34,211,238,.3); }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); transform: translateY(-1px); }
+
+    /* Hero terminal */
+    .hero-terminal {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; max-width: 680px; margin: 0 auto; text-align: left;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .term-hdr {
+      background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border);
+      padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; } .dot-y { background: #febc2e; } .dot-g { background: #28c840; }
+    .term-hdr .ttl { flex:1; text-align:center; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-family:'Courier New',monospace; }
+    .hero-terminal pre {
+      padding: 1.1rem 1.4rem; font-family: 'Courier New', monospace;
+      font-size: .82rem; line-height: 1.85; overflow-x: auto; white-space: pre;
+    }
+    .p  { color: #a78bfa; }
+    .bi { color: var(--accent); font-weight: 600; }
+    .di { color: #4b5563; }
+    .ok { color: #4ade80; }
+    .er { color: #f87171; }
+    .hn { color: #fbbf24; }
+    .cn { color: var(--accent); }
+    .is { color: #c084fc; }
+    .dt { color: #94a3b8; }
+    .ar { color: #fb923c; }
+
+    /* Features */
+    .features { padding: 3rem 1.5rem 4rem; }
+    .section-label {
+      text-align: center; font-size: .72rem; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--accent); font-family: 'Courier New', monospace;
+      margin-bottom: 2.5rem;
+    }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(270px,1fr)); gap: 1.25rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.75rem; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: rgba(34,211,238,.3); transform: translateY(-2px); }
+    .card-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
+    .card p { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+
+    /* Chain diagram */
+    .chain-section { padding: 2rem 1.5rem 4rem; }
+    .chain-img { width: 100%; max-width: 760px; border-radius: 8px; border: 1px solid var(--border); margin: 0 auto; display: block; }
+
+    /* Quick-start */
+    .quickstart { padding: 2rem 1.5rem 4rem; border-top: 1px solid var(--border); }
+    .qs-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap: 1.5rem; }
+    .qs-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .qs-label { background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); padding: .45rem 1rem; font-size: .72rem; color: var(--muted); font-family: 'Courier New', monospace; letter-spacing: .06em; }
+    .qs-block pre { padding: .9rem 1.1rem; font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.8; overflow-x: auto; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="usage.html">Usage</a>
+  <a href="building.html">Building</a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="container">
+    <span class="hero-badge">TLS &nbsp;·&nbsp; GO &nbsp;·&nbsp; ZERO DEPS &nbsp;·&nbsp; STATIC BINARY</span>
+    <h1>tls-ca-fetch</h1>
+    <p class="hero-subtitle">Extract CA certificates from any TLS server — one command, no OpenSSL gymnastics. Connects, walks the cert chain, and writes PEM to disk.</p>
+    <div class="cta-row">
+      <a href="https://github.com/binRick/tls-ca-fetch" target="_blank" class="btn btn-primary">⭐ View on GitHub</a>
+      <a href="usage.html" class="btn btn-secondary">Usage →</a>
+      <a href="building.html" class="btn btn-secondary">Build it →</a>
+    </div>
+
+    <div class="hero-terminal">
+      <div class="term-hdr">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="ttl">tls-ca-fetch — bash</span>
+      </div>
+      <pre><span class="p">$</span> <span class="bi">tls-ca-fetch</span> github.com
+
+<span class="ar">→</span> Connecting to <span class="hn">github.com</span>:443 …
+
+Chain received: 2 certificate(s)
+──────────────────────────────────────────────────────────────
+  [0] <span class="di">leaf            </span>  <span class="cn">CN=github.com</span>                          <span class="di">IsCA=false</span>
+       Issuer : DigiCert TLS Hybrid ECC SHA384 2020 CA1
+       Expires: <span class="dt">2026-03-26</span>
+
+  [1] <span class="ok">intermediate CA </span>  <span class="cn">CN=DigiCert TLS Hybrid ECC SHA384 2020</span>  <span class="di">IsCA=true</span>
+       Issuer : DigiCert Global Root CA
+       Expires: <span class="dt">2031-04-13</span>
+       AIA    : <span class="di">http://cacerts.digicert.com/DigiCertGlobalRootCA.crt</span>
+──────────────────────────────────────────────────────────────
+
+<span class="ok">✓</span> Saved 1 CA certificate(s) → <span class="cn">github.com-ca.pem</span>
+  Verified: 1 PEM block(s) readable in output file</pre>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section class="features">
+  <div class="container">
+    <div class="section-label">CAPABILITIES</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <h3>Full Chain Walk</h3>
+        <p>Reads <code style="color:var(--accent);font-family:monospace">PeerCertificates</code> from the TLS handshake state — no HTTP, no SNI tricks. Gets every cert the server presents.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <h3>AIA Root Fetching</h3>
+        <p>With <code style="color:var(--accent);font-family:monospace">-fetch-root</code>, chases the Authority Information Access extension to download the root CA directly from the issuer's URL.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h3>Zero Dependencies</h3>
+        <p>Single static binary. No OpenSSL CLI, no curl, no certutil. Copy it anywhere and it runs — Alpine, RHEL, Debian, distroless containers.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🖥️</div>
+        <h3>Any Port</h3>
+        <p>Works on port 443, 8443, 587 (SMTPS), 636 (LDAPS), or any custom port. Pass a flag or a positional argument.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔏</div>
+        <h3>Private CAs</h3>
+        <p>Use <code style="color:var(--accent);font-family:monospace">-insecure</code> to extract certs from self-signed or private-CA servers without failing on verification.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <h3>stdout Mode</h3>
+        <p>Pass <code style="color:var(--accent);font-family:monospace">-o -</code> to write PEM to stdout and pipe straight into OpenSSL, update-ca-certificates, or your config pipeline.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Chain diagram -->
+<section class="chain-section">
+  <div class="container">
+    <div class="section-label">CERTIFICATE CHAIN</div>
+    <img src="chain.svg" alt="Certificate chain diagram" class="chain-img">
+  </div>
+</section>
+
+<!-- Quick-start -->
+<section class="quickstart">
+  <div class="container">
+    <div class="section-label">QUICK START</div>
+    <div class="qs-grid">
+
+      <div class="qs-block">
+        <div class="qs-label">grab a CA cert</div>
+        <pre><span class="p">$</span> <span class="bi">tls-ca-fetch</span> <span class="hn">github.com</span>
+<span class="ok">✓</span> github.com-ca.pem
+
+<span class="p">$</span> <span class="bi">tls-ca-fetch</span> <span class="hn">internal.corp.example</span> 8443</pre>
+      </div>
+
+      <div class="qs-block">
+        <div class="qs-label">pipe to openssl</div>
+        <pre><span class="p">$</span> <span class="bi">tls-ca-fetch</span> -o - vault.internal \
+    | openssl x509 -noout -text</pre>
+      </div>
+
+      <div class="qs-block">
+        <div class="qs-label">fetch root via AIA + trust it</div>
+        <pre><span class="p">$</span> <span class="bi">tls-ca-fetch</span> -fetch-root corp-proxy.internal
+<span class="p">$</span> sudo cp corp-proxy.internal-ca.pem \
+    /usr/local/share/ca-certificates/corp-proxy.crt
+<span class="p">$</span> sudo update-ca-certificates</pre>
+      </div>
+
+      <div class="qs-block">
+        <div class="qs-label">private CA / self-signed</div>
+        <pre><span class="p">$</span> <span class="bi">tls-ca-fetch</span> -insecure \
+    -o my-internal-ca.pem vault.internal</pre>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/binRick/tls-ca-fetch" target="_blank">github.com/binRick/tls-ca-fetch</a>
+      &nbsp;·&nbsp; written in Go &nbsp;·&nbsp; Linux · macOS · Windows
+    </p>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/tls-ca-fetch') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
