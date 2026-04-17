@@ -483,7 +483,7 @@ function parseUA(ua) {
 // ── Parse nginx combined log line ────────────────────────────────────────────
 function parseLine(raw) {
   const m = raw.match(
-    /^(\S+)\s+-\s+-\s+\[([^\]]+)\]\s+"([^"]+)"\s+(\d+)\s+(\d+)\s+"([^"]*)"\s+"([^"]*)"/
+    /^(\S+)\s+-\s+\S+\s+\[([^\]]+)\]\s+"([^"]+)"\s+(\d+)\s+(\d+)\s+"([^"]*)"\s+"([^"]*)"/
   );
   if (!m) return { raw };
   const [, ip, ts, req, status, bytes, ref, ua] = m;
