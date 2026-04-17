@@ -76,6 +76,7 @@
     { label: 'Projects', apps: [
       ['rx','RxFitt'],
       ['esp32','Freenove ESP32-S3 Dev Kit FNK0086'],
+      ['esp32-s3-lcd','Waveshare ESP32-S3-Touch-LCD-1.69'],
       ['proc-trace-exec','proc-trace-exec'],
       ['proc-trace-net','proc-trace-net'],
       ['proc-trace-dns','proc-trace-dns'],

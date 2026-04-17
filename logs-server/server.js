@@ -159,6 +159,7 @@ const LOG_FILES = {
   'proc-trace-dns': 'proc-trace-dns.access.log',
   'proc-trace-net': 'proc-trace-net.access.log',
   'proc-trace-tls': 'proc-trace-tls.access.log',
+  'esp32-s3-lcd': 'esp32-s3-lcd.access.log',
   'tls-ca-fetch': 'tls-ca-fetch.access.log',
   conway:       'conway.access.log',
   vim:         'vim.access.log',
@@ -719,6 +720,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="proc-trace-dns">proc-trace-dns</button>
           <button class="site-opt" data-site="proc-trace-net">proc-trace-net</button>
           <button class="site-opt" data-site="proc-trace-tls">proc-trace-tls</button>
+          <button class="site-opt" data-site="esp32-s3-lcd">esp32-s3-lcd</button>
           <button class="site-opt" data-site="tls-ca-fetch">tls-ca-fetch</button>
           <button class="site-opt" data-site="conway">conway</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>

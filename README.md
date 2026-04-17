@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-238 virtual hosts (root + 237 subdomains), all static sites served by a single nginx container.
+239 virtual hosts (root + 238 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -260,6 +260,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [proc-trace-exec.ximg.app](https://proc-trace-exec.ximg.app) | See every exec() call on your Linux system in real time — process tree, exit status, timing, user, cwd. Static Go binary using the Linux netlink proc connector. |
 | [proc-trace-dns.ximg.app](https://proc-trace-dns.ximg.app) | Watch every DNS query your processes make in real time — per-process attribution, query types, resolved IPs, NXDOMAIN errors, latency. Static Go binary. |
 | [proc-trace-tls.ximg.app](https://proc-trace-tls.ximg.app) | Intercept plaintext TLS traffic before encryption — uprobes SSL_read/SSL_write in libssl.so via ftrace. No eBPF. Bypasses cert pinning. Static Go binary. |
+| [esp32-s3-lcd.ximg.app](https://esp32-s3-lcd.ximg.app) | Waveshare ESP32-S3-Touch-LCD-1.69 hardware reference — pinout, ST7789V2 display, CST816T touch, QMI8658 IMU, PCF85063 RTC, native USB-C, arduino-cli FQBN. |
 | [tls-ca-fetch.ximg.app](https://tls-ca-fetch.ximg.app) | Extract CA certificates from any TLS server — walks the cert chain, chases AIA to fetch the root CA, writes PEM to disk. Zero deps, static Go binary. |
 ## Architecture
 
