@@ -1088,8 +1088,7 @@ const HTML = `<!DOCTYPE html>
 
     const MONTHS = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
     function fmtLogTs(ts) {
-      // nginx: "17/Apr/2026:20:07:42 +0000"
-      const m = ts && ts.match(/^(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)\s+([+-]\d{4})$/);
+      const m = ts && ts.match(/^(\\d+)\\/(\\w+)\\/(\\d+):(\\d+):(\\d+):(\\d+)\\s+([+-]\\d{4})$/);
       if (!m) return ts || '';
       const [,d,mon,y,hh,mm,ss,tz] = m;
       const off = (parseInt(tz.slice(0,3))*60 + parseInt(tz[0]+tz.slice(3)))*60000;
