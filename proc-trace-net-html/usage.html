@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage — proc-trace-net</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14; --surface: #111827; --surface2: #1a2235; --border: #1f2937;
+      --accent: #22c55e; --accent2: #22d3ee; --text: #f1f5f9; --muted: #6b7280; --code-bg: #060910;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui,-apple-system,sans-serif; padding-top: 48px; line-height: 1.6; }
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(10,13,20,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #4b5563; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s,background .2s; font-family:'Courier New',monospace; }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+    .page-hero { padding: 3.5rem 1.5rem 2rem; text-align: center; }
+    .page-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: .5rem; }
+    .page-hero p { color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto; }
+    .section { padding: 2rem 1.5rem 3rem; border-bottom: 1px solid var(--border); }
+    .section:last-of-type { border-bottom: none; }
+    .section-label { font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-family:'Courier New',monospace; margin-bottom: 1rem; }
+    .section h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: .5rem; }
+    .section .desc { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.7; }
+
+    /* Synopsis block */
+    .synopsis {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem 1.5rem; font-family: 'Courier New', monospace; font-size: .9rem;
+      color: var(--text); margin-bottom: 2rem;
+    }
+    .syn-bin { color: var(--accent2); font-weight: 600; }
+    .syn-flag { color: var(--accent); }
+    .syn-arg { color: #d946ef; }
+
+    /* Flags table */
+    .flags-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .flags-table th { text-align: left; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-family: 'Courier New', monospace; padding: .6rem 1rem; border-bottom: 1px solid var(--border); }
+    .flags-table td { padding: .75rem 1rem; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .875rem; vertical-align: top; }
+    .flags-table tr:hover td { background: rgba(255,255,255,.02); }
+    .flags-table .flag-col { font-family: 'Courier New', monospace; color: var(--accent); font-size: .9rem; white-space: nowrap; }
+    .flags-table .arg-col { font-family: 'Courier New', monospace; color: var(--accent2); font-size: .85rem; }
+    .flags-table .desc-col { color: var(--muted); line-height: 1.6; }
+    .flags-table .emoji-col { font-size: 1.1rem; }
+
+    /* Example blocks */
+    .example { margin-bottom: 2.5rem; }
+    .example h3 { font-size: 1rem; font-weight: 600; margin-bottom: .3rem; }
+    .example .ex-desc { color: var(--muted); font-size: .875rem; margin-bottom: .75rem; line-height: 1.6; }
+    .terminal { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .term-hdr { background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .dot-r { background:#ff5f57; } .dot-y { background:#febc2e; } .dot-g { background:#28c840; }
+    .term-hdr .ttl { flex:1; text-align:center; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-family:'Courier New',monospace; }
+    .terminal pre { padding: 1.1rem 1.4rem; font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.85; overflow-x: auto; white-space: pre; }
+    .p  { color: #a78bfa; } .su { color: #fbbf24; } .bi { color: #22d3ee; }
+    .pi { color: #fbbf24; } .cm { color: #67e8f9; }
+    .di { color: #6b7280; } .ok { color: #4ade80; }
+    .er { color: #f87171; } .ti { color: #22d3ee; } .ur { color: #f87171; }
+    .uu { color: #4ade80; }
+    .ao { color: #22d3ee; } .ai { color: #a78bfa; } .ax { color: #f87171; }
+    .au { color: #c084fc; } .sr { color: #4ade80; } .ds { color: #fbbf24; } .pr { color: #6b7280; }
+
+    /* Output format legend */
+    .fmt-row { display: flex; align-items: center; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .fmt-row:last-child { border-bottom: none; }
+    .fmt-sample { font-family: 'Courier New', monospace; font-size: .85rem; min-width: 160px; }
+    .fmt-explain { color: var(--muted); font-size: .85rem; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="install.html">Install</a>
+  <a href="usage.html">Usage</a>
+  <a href="building.html">Building</a>
+  <a href="screenshots.html">Screenshots</a>
+</nav>
+
+<div class="page-hero">
+  <div class="container">
+    <h1>Usage</h1>
+    <p>Flags, examples, and output format reference.</p>
+  </div>
+</div>
+
+<!-- ── Synopsis ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">SYNOPSIS</div>
+    <div class="synopsis">
+      <span class="syn-bin">proc-trace-net</span>
+      <span class="syn-flag"> [-ctUurQ46]</span>
+      <span> [-o </span><span class="syn-arg">FILE</span><span>]</span>
+      <span> [-p </span><span class="syn-arg">PID[,PID,...]</span><span></span>
+      <span style="color:var(--muted)"> |</span>
+      <span class="syn-arg"> CMD...</span><span>]</span>
+    </div>
+
+    <table class="flags-table">
+      <thead><tr><th></th><th>Flag</th><th>Argument</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="emoji-col">🎨</td><td class="flag-col">-c</td><td class="arg-col"></td><td class="desc-col">Force-enable ANSI color output. Auto-detected when stdout is a tty; <code style="font-family:monospace;color:var(--accent2)">NO_COLOR=1</code> disables it.</td></tr>
+        <tr><td class="emoji-col">⏱️</td><td class="flag-col">-t</td><td class="arg-col"></td><td class="desc-col">Show elapsed duration when a connection closes. Appends timing to the close (<span style="color:#f87171">×</span>) line.</td></tr>
+        <tr><td class="emoji-col">🔄</td><td class="flag-col">-U</td><td class="arg-col"></td><td class="desc-col">Show TCP state update events — ESTABLISHED, FIN_WAIT, TIME_WAIT transitions. Shown with a <span style="color:#c084fc">⇒</span> marker.</td></tr>
+        <tr><td class="emoji-col">👤</td><td class="flag-col">-u</td><td class="arg-col"></td><td class="desc-col">Print owning user of each connection as <code style="font-family:monospace">&lt;username&gt;</code>. Root in red, other users in green.</td></tr>
+        <tr><td class="emoji-col">🔍</td><td class="flag-col">-r</td><td class="arg-col"></td><td class="desc-col">Perform reverse DNS lookup on remote addresses. Replaces raw IPs with hostnames where available.</td></tr>
+        <tr><td class="emoji-col">🔇</td><td class="flag-col">-Q</td><td class="arg-col"></td><td class="desc-col">Suppress error messages (e.g. inode lookup failures). Useful for long-running background monitoring.</td></tr>
+        <tr><td class="emoji-col">4️⃣</td><td class="flag-col">-4</td><td class="arg-col"></td><td class="desc-col">Show IPv4 connections only. Mutually exclusive with <code style="font-family:monospace">-6</code>.</td></tr>
+        <tr><td class="emoji-col">6️⃣</td><td class="flag-col">-6</td><td class="arg-col"></td><td class="desc-col">Show IPv6 connections only. Mutually exclusive with <code style="font-family:monospace">-4</code>.</td></tr>
+        <tr><td class="emoji-col">📝</td><td class="flag-col">-o</td><td class="arg-col">FILE</td><td class="desc-col">Append output to FILE instead of stdout. Colors are disabled for file output unless <code style="font-family:monospace">-c</code> is also set.</td></tr>
+        <tr><td class="emoji-col">🎯</td><td class="flag-col">-p</td><td class="arg-col">PID[,PID,...]</td><td class="desc-col">Only show connections owned by the given PID(s). Accepts a comma-separated list.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── Output format ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">OUTPUT FORMAT</div>
+    <h2>Anatomy of an output line</h2>
+    <p class="desc">Each connection event produces one line. Symbols indicate direction and state. With <code style="font-family:monospace;color:var(--accent)">-t</code>, close lines include elapsed duration.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;">
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#fbbf24">3892</span>
+        <span class="fmt-explain">PID — process ID in amber</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#67e8f9">curl</span>
+        <span class="fmt-explain">process name (from /proc/&lt;pid&gt;/comm) in cyan</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#f87171">&lt;root&gt;</span>
+        <span class="fmt-explain">user in red (root) or green (other) — only with <code style="font-family:monospace">-u</code></span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#6b7280">TCP</span>
+        <span class="fmt-explain">protocol (TCP or UDP) in dim grey</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#4ade80">10.0.2.15:54321</span>
+        <span class="fmt-explain">local address in green</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#22d3ee">→</span>
+        <span class="fmt-explain">direction: → outbound (local initiated), ← inbound (remote initiated)</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#a78bfa">←</span>
+        <span class="fmt-explain">inbound connection in purple</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#f87171">×</span>
+        <span class="fmt-explain">connection closed in red</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#c084fc">⇒</span>
+        <span class="fmt-explain">TCP state update (ESTABLISHED, FIN_WAIT, etc.) — only with <code style="font-family:monospace">-U</code></span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#fbbf24">93.184.216.34:443</span>
+        <span class="fmt-explain">remote address in amber</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#22d3ee">0.342s</span>
+        <span class="fmt-explain">connection duration in cyan — close lines only, with <code style="font-family:monospace">-t</code></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Examples ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">EXAMPLES</div>
+
+    <div class="example">
+      <h3>System-wide monitoring with color, timing, and user</h3>
+      <p class="ex-desc">The most useful default invocation. Watch every TCP/UDP connection machine-wide with colors, close timing, and user context.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">system-wide (-ctu)</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -ctu
+<span class="pi"> 1234</span> <span class="cm">sshd       </span> <span class="ur">&lt;root&gt;</span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:22            </span>  <span class="ai">←</span>  <span class="ds">203.0.113.7:41002</span>
+<span class="pi"> 2341</span> <span class="cm">systemd-r  </span> <span class="ur">&lt;root&gt;</span>  <span class="pr">UDP</span>  <span class="sr">10.0.2.15:46012         </span>  <span class="ao">→</span>  <span class="ds">8.8.8.8:53</span>
+<span class="pi"> 3892</span> <span class="cm">curl       </span> <span class="uu">&lt;rick&gt;</span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="ao">→</span>  <span class="ds">93.184.216.34:443</span>
+<span class="pi"> 3892</span> <span class="cm">curl       </span> <span class="uu">&lt;rick&gt;</span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="ax">×</span>  <span class="ds">93.184.216.34:443</span>   <span class="ti">0.342s</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>CMD mode — trace a single command</h3>
+      <p class="ex-desc">Pass a command after the flags to trace only its network connections. proc-trace-net will exit when the command completes.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">cmd mode</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -ct curl https://github.com
+<span class="pi"> 9812</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:48201         </span>  <span class="ao">→</span>  <span class="ds">140.82.114.4:443</span>
+<span class="pi"> 9812</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:48201         </span>  <span class="ax">×</span>  <span class="ds">140.82.114.4:443</span>    <span class="ti">0.218s</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Close timing (-ct)</h3>
+      <p class="ex-desc">The <code style="color:var(--accent);font-family:monospace">-t</code> flag appends connection duration to close events. Spot hung or unusually long connections at a glance.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">close timing (-ct)</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -ct
+<span class="pi"> 5501</span> <span class="cm">nginx      </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:80            </span>  <span class="ai">←</span>  <span class="ds">192.168.1.5:52341</span>
+<span class="pi"> 5501</span> <span class="cm">nginx      </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:80            </span>  <span class="ax">×</span>  <span class="ds">192.168.1.5:52341</span>   <span class="ti">0.004s</span>
+<span class="pi"> 7210</span> <span class="cm">postgres   </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:5432          </span>  <span class="ai">←</span>  <span class="ds">127.0.0.1:41092</span>
+<span class="pi"> 7210</span> <span class="cm">postgres   </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:5432          </span>  <span class="ax">×</span>  <span class="ds">127.0.0.1:41092</span>     <span class="ti">142.001s</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>TCP state updates (-cU)</h3>
+      <p class="ex-desc">The <code style="color:var(--accent);font-family:monospace">-U</code> flag shows every TCP state transition — useful for debugging connection teardown issues or TIME_WAIT accumulation.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">state updates (-cU)</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -cU
+<span class="pi"> 3892</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="ao">→</span>  <span class="ds">93.184.216.34:443</span>
+<span class="pi"> 3892</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="au">⇒</span>  <span class="ds">93.184.216.34:443</span>   <span class="di">ESTABLISHED</span>
+<span class="pi"> 3892</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="au">⇒</span>  <span class="ds">93.184.216.34:443</span>   <span class="di">FIN_WAIT</span>
+<span class="pi"> 3892</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="ax">×</span>  <span class="ds">93.184.216.34:443</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>PID filter — watch nginx only (-p)</h3>
+      <p class="ex-desc">Use <code style="color:var(--accent);font-family:monospace">-p</code> with a comma-separated list of PIDs to monitor only specific processes. Combine with pgrep for dynamic PID lookup.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">pid filter (-p)</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -ct -p $(pgrep nginx | paste -sd,)</pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Log to file silently (-Qo)</h3>
+      <p class="ex-desc">Run in the background, suppressing all error noise, writing a connection log for later analysis.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">background logger</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -Qto /var/log/connections.log &amp;
+<span class="di">[1] 9981</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>IPv4 only (-4)</h3>
+      <p class="ex-desc">Filter to only IPv4 connections. Useful to reduce noise in dual-stack environments.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">ipv4 only (-4)</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -4 -ct</pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Reverse DNS (-r)</h3>
+      <p class="ex-desc">The <code style="color:var(--accent);font-family:monospace">-r</code> flag resolves remote IPs to hostnames. Adds latency but makes output much more readable for auditing.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">reverse dns (-r)</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-net</span> -ctr
+<span class="pi"> 3892</span> <span class="cm">curl       </span>  <span class="pr">TCP</span>  <span class="sr">10.0.2.15:54321         </span>  <span class="ao">→</span>  <span class="ds">server-93-184-216-34.example.com:443</span>
+<span class="pi"> 2341</span> <span class="cm">systemd-r  </span>  <span class="pr">UDP</span>  <span class="sr">10.0.2.15:46012         </span>  <span class="ao">→</span>  <span class="ds">dns.google:53</span></pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <a href="https://github.com/binRick/proc-trace-net" target="_blank">github.com/binRick/proc-trace-net</a>
+    &nbsp;·&nbsp; written in Go &nbsp;·&nbsp; Linux only
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
