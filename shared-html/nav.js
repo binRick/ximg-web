@@ -638,6 +638,9 @@
   // ── Theme picker UI — always-applied, never overwritten ──────────────────────
   var pickerStyle = document.createElement('style');
   pickerStyle.textContent =
+    '@keyframes navflash{0%{color:#00ff41}20%{color:#ff1ceb}40%{color:#00e5ff}60%{color:#ffb000}80%{color:#ff5555}100%{color:#00ff41}}' +
+    '.nav-dd-featured{animation:navflash 2.4s linear infinite!important;font-weight:700!important;}' +
+    '.nav-mobile-app.nav-dd-featured{animation:navflash 2.4s linear infinite!important;font-weight:700!important;}' +
     '.nav-theme-wrap{position:relative;margin-left:auto;flex-shrink:0}' +
     '.nav-theme-btn{display:inline-flex;align-items:center;padding:2px 8px;cursor:pointer;' +
     'font-size:.62rem;font-weight:600;color:inherit;opacity:.6;transition:opacity .15s;' +
@@ -726,7 +729,7 @@
       var isActive = subdomain + '.ximg.app' === curHost ||
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
-      item.className = 'nav-dd-item' + (isActive ? ' active' : '');
+      item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
       if (!isActive) item.href = appHref(subdomain);
       dd.appendChild(item);
@@ -835,7 +838,7 @@
       var isActive = subdomain + '.ximg.app' === curHost ||
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
-      item.className = 'nav-mobile-app' + (isActive ? ' active' : '');
+      item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
       if (!isActive) item.href = appHref(subdomain);
       mApps.appendChild(item);
