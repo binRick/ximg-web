@@ -26,10 +26,16 @@ The `esp32.ximg.app` web app (`esp32-html/`) is directly based on the `esp32-dev
 |--------------------|--------------------------|
 | `beep_button` | `button-beep.html` ✓ |
 | `lie_detector` | `truth-detector.html` ✓ |
-| `dvd_screensaver` | missing |
-| `heartbeat_viz` | missing |
-| `pixel_canvas` | missing |
-| `wifi_scanner` | missing |
+| `dvd_screensaver` | `dvd-screensaver.html` ✓ |
+| `heartbeat_viz` | `heartbeat-viz.html` ✓ |
+| `pixel_canvas` | `pixel-canvas.html` ✓ |
+| `wifi_scanner` | `wifi-scanner.html` ✓ |
+
+**When adding a new sketch**, always do all of the following as part of the same task:
+1. Create `esp32-html/<sketch-name>.html` (session page) and `esp32-html/<sketch-name>-source.html` (source viewer)
+2. Add the sketch to the `#subnav` on **every** existing ESP32 page (`index.html`, `hardware.html`, and all session + source pages)
+3. Add a card to the **"What We Built"** session grid in `esp32-html/index.html`
+4. Update this table in `CLAUDE.md` to mark the new sketch as ✓
 
 ## Git Workflow
 
