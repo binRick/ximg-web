@@ -61,6 +61,7 @@
       ['timespan','timespan'],['url','url'],['uuid','uuid'],['ca-fetcher','CA fetcher']
     ]},
     { label: 'Bundlers', apps: [
+      ['bundler-info','what & why'],
       ['ansible-bundler','ansible'],
       ['apt-bundler','apt'],
       ['dockerimagedownloader','docker image'],
@@ -70,7 +71,6 @@
       ['nuget-bundler','nuget'],
       ['python-bundler','python'],
       ['rpm-bundler','rpm'],
-      ['bundler-info','what & why']
     ]},
     { label: 'Projects', apps: [
       ['rx','RxFitt'],
