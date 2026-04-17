@@ -1159,7 +1159,7 @@ const HTML = `<!DOCTYPE html>
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(proto + '//' + location.host + '/ws?site=' + site);
 
-      ws.onmessage = e => { try { addLine(JSON.parse(e.data)); } catch(_) {} };
+      ws.onmessage = e => { try { const d = JSON.parse(e.data); if (!d.ping) addLine(d); } catch(_) {} };
       ws.onclose   = ()  => { reconnectTimer = setTimeout(() => connect(site), 3000); };
       ws.onerror   = ()  => { try { ws && ws.close(); } catch(_) {} };
     }
@@ -2417,6 +2417,16 @@ wss.on('connection', (ws, req) => {
   ws.on('close', stop);
   ws.on('error', stop);
 });
+
+// ── WebSocket keepalive pings ─────────────────────────────────────────────────
+setInterval(() => {
+  const ping = JSON.stringify({ ping: true });
+  for (const client of wss.clients) {
+    if (client.readyState === client.OPEN) {
+      try { client.send(ping); } catch(_) {}
+    }
+  }
+}, 30000);
 
 // ── IDS WebSocket (/ids-ws) ───────────────────────────────────────────────────
 idsWss.on('connection', (ws) => {
