@@ -1368,7 +1368,7 @@ const HTML = `<!DOCTYPE html>
           tbody.innerHTML = entries.map(e => {
             return '<tr>' +
               '<td class="dl-ip">' + esc(fmtTs(e.ts)) + '</td>' +
-              '<td class="dl-ip">' + esc(e.ip || '—') + '</td>' +
+              '<td class="dl-ip"><a class="bot-ip" href="/ip/' + encodeURIComponent(e.ip || '') + '">' + esc(e.ip || '—') + '</a></td>' +
               '<td class="dl-img">' + esc(e.bundler || '—') + '</td>' +
               '<td>' + esc(e.package || '—') + '</td>' +
               '<td class="dl-ip">' + esc(e.extra || '—') + '</td>' +
