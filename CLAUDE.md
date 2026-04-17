@@ -20,6 +20,17 @@ git -C esp32-dev-001 pull origin main
 
 This ensures you have access to the latest content in the `esp32-dev-001` submodule.
 
+The `esp32.ximg.app` web app (`esp32-html/`) is directly based on the `esp32-dev-001` submodule. Each sketch in `esp32-dev-001/sketches/` should have a corresponding page in `esp32-html/`. The mapping is:
+
+| Sketch (submodule) | Web page (`esp32-html/`) |
+|--------------------|--------------------------|
+| `beep_button` | `button-beep.html` ✓ |
+| `lie_detector` | `truth-detector.html` ✓ |
+| `dvd_screensaver` | missing |
+| `heartbeat_viz` | missing |
+| `pixel_canvas` | missing |
+| `wifi_scanner` | missing |
+
 ## Git Workflow
 
 **All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
