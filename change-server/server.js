@@ -41,7 +41,7 @@ function buildCommits() {
         return { hash, short, author, email, date, subject, filesChanged, linesAdded, linesDeleted, charsChanged };
       });
       const html = PAGE_TEMPLATE
-        .replace('/* DATA_PLACEHOLDER */', 'var COMMITS=' + JSON.stringify(commits).replace(/<\/script>/gi, '<\\/script>') + ';')
+        .replace('/* DATA_PLACEHOLDER */', 'var COMMITS=' + JSON.stringify(commits).replace(/<\/script>/gi, '<\\/script>').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029') + ';')
         .replace('SHARED_NAV_PLACEHOLDER', NAV_TAG);
       cachedHtml = html;
       cacheTime  = Date.now();
