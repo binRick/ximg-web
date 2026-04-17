@@ -237,7 +237,7 @@ This is the single authoritative checklist. Follow every step in order.
 
 ### Wiring
 
-8. **Nav bar** — add an entry to `shared-html/nav.js`; if it belongs to the **Bundlers** group, also add a button to the CTA section of `bundler-info-html/index.html` (the "Ready to bundle something?" footer)
+8. **Nav bar** — add an entry to `shared-html/nav.js`; if it belongs to the **Bundlers** group, also add a button to the CTA section of `bundler-info-html/index.html` (the "Ready to bundle something?" footer); if it belongs to the **Dev Tools** group, also add a card to `devtools-info-html/index.html` (the `TOOLS` array in the `<script>` block)
 9. **Landing page** — add a card to `public-html/index.html` (ximg.app)
 10. **Apps directory** — add a row to the `APPS` array in `apps-html/index.html` with name, domain, date added, and description
 11. **Logs app** — add the subdomain to the tab list in `logs-server/server.js` (both the log file map and the button list in the HTML)
