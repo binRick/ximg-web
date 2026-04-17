@@ -1,6 +1,7 @@
 const http = require('http');
 const fs   = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { WebSocketServer } = require('ws');
 const geoip = require('geoip-lite');
 
@@ -529,6 +530,8 @@ const HTML = `<!DOCTYPE html>
     @keyframes flashIn{from{background:rgba(0,255,65,.08)}to{background:transparent}}
     .col-ts{color:var(--dim)}
     .col-ip{color:#79c0ff}
+    .ip-link{color:inherit;text-decoration:none}
+    .ip-link:hover{text-decoration:underline;color:#fff}
     .col-geo{color:#a5b4fc;font-size:.75rem}
     .col-bytes{color:#94a3b8;text-align:right;font-size:.74rem}
     .col-path{color:var(--text)}
@@ -996,7 +999,7 @@ const HTML = `<!DOCTYPE html>
         el.className = 'log-line new';
         el.innerHTML =
           '<span class="col-ts">'  + esc(data.ts)                             + '</span>' +
-          '<span class="col-ip">'  + esc(data.ip)                             + '</span>' +
+          '<span class="col-ip"><a class="ip-link" href="/ip/' + encodeURIComponent(data.ip||'') + '">' + esc(data.ip) + '</a></span>' +
           '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
           '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
           '<span class="col-bytes">' + fmtBytes(data.bytes)                   + '</span>' +
@@ -1889,6 +1892,156 @@ const server = http.createServer(async (req, res) => {
       hourlyBuckets: idsHourly,
       recent,
     }));
+    return;
+  }
+
+  // ── IP profile page ─────────────────────────────────────────────────────────
+  const ipRouteM = req.url.match(/^\/ip\/([^/?]+)/);
+  if (ipRouteM) {
+    const targetIp = decodeURIComponent(ipRouteM[1]);
+    if (!/^[0-9a-fA-F.:]+$/.test(targetIp) || targetIp.length > 45) {
+      res.writeHead(400); res.end('invalid IP'); return;
+    }
+    const DAYS_BACK = 7;
+    const hits = [];
+    const now = Date.now();
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      const readLines = (buf) => {
+        buf.toString('utf8').split('\n').forEach(line => {
+          if (!line.startsWith(targetIp + ' ')) return;
+          const p = parseLine(line);
+          if (p.ip) hits.push({ ...p, site: siteName });
+        });
+      };
+      try { readLines(fs.readFileSync(path.join(LOGS_DIR, logFilename))); } catch (_) {}
+      for (let d = 1; d <= DAYS_BACK; d++) {
+        const dt = new Date(now - d * 86400000);
+        const ds = dt.toISOString().slice(0,10).replace(/-/g,'');
+        const gzp = path.join(LOGS_DIR, logFilename + '-' + ds + '.gz');
+        const rp  = path.join(LOGS_DIR, logFilename + '-' + ds);
+        try { readLines(zlib.gunzipSync(fs.readFileSync(gzp))); } catch (_) {}
+        try { readLines(fs.readFileSync(rp)); } catch (_) {}
+      }
+    }
+    const geo = await lookupGeo(targetIp);
+    const bySite = {}, byPath = {}, byStatus = {}, byDay = {}, byUA = {};
+    let firstSeen = '', lastSeen = '';
+    for (const h of hits) {
+      bySite[h.site]   = (bySite[h.site]   || 0) + 1;
+      if (h.path)   byPath[h.path]   = (byPath[h.path]   || 0) + 1;
+      if (h.ua)     byUA[h.ua]       = (byUA[h.ua]       || 0) + 1;
+      const sc = Math.floor((h.status||0)/100)+'xx';
+      byStatus[sc]     = (byStatus[sc]     || 0) + 1;
+      if (h.ts) {
+        if (!firstSeen || h.ts < firstSeen) firstSeen = h.ts;
+        if (!lastSeen  || h.ts > lastSeen)  lastSeen  = h.ts;
+        const dayKey = h.ts.slice(0,11);
+        byDay[dayKey] = (byDay[dayKey] || 0) + 1;
+      }
+    }
+    const topSites   = Object.entries(bySite).sort((a,b)=>b[1]-a[1]).slice(0,20);
+    const topPaths   = Object.entries(byPath).sort((a,b)=>b[1]-a[1]).slice(0,20);
+    const topUA      = Object.entries(byUA).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const recentHits = hits.slice(-100).reverse();
+    const esc2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const sc   = s => { const c=Math.floor((s||0)/100); return c===2?'s2xx':c===3?'s3xx':c===4?'s4xx':c===5?'s5xx':'s0'; };
+    const flag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c=>0x1F1E6+c.charCodeAt(0)-65)) : '';
+    const geoLabel2 = (geo2) => [geo2.city, geo2.country].filter(Boolean).join(', ');
+
+    const dayRows = Object.entries(byDay).sort((a,b)=>a[0]<b[0]?-1:1)
+      .map(([day,n])=>`<tr><td>${esc2(day)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
+    const siteRows = topSites.map(([s,n])=>`<tr><td><a href="/?site=${esc2(s)}" style="color:#79c0ff;text-decoration:none">${esc2(s)}</a></td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
+    const pathRows = topPaths.map(([p,n])=>`<tr><td style="color:#c9d1d9;word-break:break-all">${esc2(p)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
+    const uaRows   = topUA.map(([u,n])=>`<tr><td style="color:#94a3b8;word-break:break-all;font-size:.68rem">${esc2(u)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
+    const recentRows = recentHits.map(h=>`<tr>
+      <td class="col-ts">${esc2(h.ts)}</td>
+      <td style="color:#a5b4fc;font-size:.72rem">${esc2(h.site||'')}</td>
+      <td class="${sc(h.status)}">${esc2(h.status)}</td>
+      <td style="color:#c9d1d9;word-break:break-all">${esc2((h.method||'')+' '+(h.path||''))}</td>
+    </tr>`).join('');
+    const statusSummary = ['2xx','3xx','4xx','5xx'].map(k=>`<span class="${sc(parseInt(k)+'00')}">${k}: ${byStatus[k]||0}</span>`).join('  ');
+
+    const IP_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${esc2(targetIp)} — logs.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d1117'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='%2300ff41' font-family='monospace' font-weight='bold'>▶</text></svg>">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0d1117;--green:#00ff41;--dim:#484f58;--text:#c9d1d9}
+    body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;padding:0 0 3rem}
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
+    .page{max-width:1100px;margin:0 auto;padding:1.5rem 1.25rem}
+    .back{display:inline-block;color:var(--dim);text-decoration:none;font-size:.75rem;margin-bottom:1.25rem;
+      border:1px solid rgba(255,255,255,.07);padding:.25rem .65rem;border-radius:5px;transition:color .2s}
+    .back:hover{color:var(--text)}
+    h1{font-size:1.35rem;color:var(--green);font-weight:700;margin-bottom:.2rem;word-break:break-all}
+    .geo{color:#a5b4fc;font-size:.85rem;margin-bottom:.25rem}
+    .summary-stats{display:flex;flex-wrap:wrap;gap:.6rem;margin:1rem 0 1.5rem;font-size:.78rem}
+    .stat-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;
+      padding:.35rem .75rem;display:flex;flex-direction:column;gap:.1rem}
+    .stat-pill .label{color:var(--dim);font-size:.65rem;text-transform:uppercase;letter-spacing:.08em}
+    .stat-pill .value{color:var(--text)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.25rem;margin-top:1.25rem}
+    .card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:1rem}
+    .card h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:.75rem}
+    table{width:100%;border-collapse:collapse;font-size:.76rem}
+    th{color:var(--dim);font-weight:600;text-align:left;padding:.25rem .4rem;border-bottom:1px solid rgba(255,255,255,.07);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em}
+    td{padding:.3rem .4rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .col-ts{color:var(--dim);white-space:nowrap;font-size:.72rem}
+    .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
+    .empty{color:var(--dim);padding:1rem;text-align:center;font-size:.8rem}
+    .recent-card{grid-column:1/-1}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="/">← back to logs</a>
+    <h1>${flag(geo.countryCode)} ${esc2(targetIp)}</h1>
+    <div class="geo">${esc2(geoLabel2(geo)) || 'location unknown'}</div>
+    <div style="font-size:.75rem;color:var(--dim)">last ${DAYS_BACK} days of logs</div>
+    <div class="summary-stats">
+      <div class="stat-pill"><span class="label">total hits</span><span class="value">${hits.length}</span></div>
+      <div class="stat-pill"><span class="label">sites visited</span><span class="value">${Object.keys(bySite).length}</span></div>
+      <div class="stat-pill"><span class="label">unique paths</span><span class="value">${Object.keys(byPath).length}</span></div>
+      <div class="stat-pill"><span class="label">first seen</span><span class="value">${esc2(firstSeen||'—')}</span></div>
+      <div class="stat-pill"><span class="label">last seen</span><span class="value">${esc2(lastSeen||'—')}</span></div>
+      <div class="stat-pill"><span class="label">status codes</span><span class="value">${statusSummary}</span></div>
+    </div>
+    ${hits.length===0 ? '<div class="empty">no hits found for this IP in the last '+DAYS_BACK+' days</div>' : ''}
+    <div class="grid">
+      <div class="card">
+        <h2>hits by site</h2>
+        ${topSites.length ? '<table><thead><tr><th>site</th><th>hits</th></tr></thead><tbody>'+siteRows+'</tbody></table>' : '<div class="empty">—</div>'}
+      </div>
+      <div class="card">
+        <h2>hits by day</h2>
+        ${dayRows ? '<table><thead><tr><th>day</th><th>hits</th></tr></thead><tbody>'+dayRows+'</tbody></table>' : '<div class="empty">—</div>'}
+      </div>
+      <div class="card">
+        <h2>top paths</h2>
+        ${topPaths.length ? '<table><thead><tr><th>path</th><th>hits</th></tr></thead><tbody>'+pathRows+'</tbody></table>' : '<div class="empty">—</div>'}
+      </div>
+      <div class="card">
+        <h2>user agents</h2>
+        ${topUA.length ? '<table><thead><tr><th>ua</th><th>hits</th></tr></thead><tbody>'+uaRows+'</tbody></table>' : '<div class="empty">—</div>'}
+      </div>
+      <div class="card recent-card">
+        <h2>recent requests (last 100)</h2>
+        ${recentRows ? '<table><thead><tr><th>timestamp</th><th>site</th><th>status</th><th>request</th></tr></thead><tbody>'+recentRows+'</tbody></table>' : '<div class="empty">—</div>'}
+      </div>
+    </div>
+  </div>
+  <script src="/shared/nav.js?v=2"></script>
+</body>
+</html>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(IP_HTML);
     return;
   }
 
