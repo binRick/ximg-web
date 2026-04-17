@@ -75,7 +75,7 @@
     ]},
     { label: 'Projects', apps: [
       ['rx','RxFitt'],
-      ['esp32','ESP32']
+      ['esp32','Freenove ESP32-S3<br>Dev Kit FNK0086']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
@@ -731,6 +731,7 @@
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
       item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
+      if (label.indexOf('<br>') !== -1) item.style.whiteSpace = 'normal';
       item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
       if (!isActive) item.href = appHref(subdomain);
       dd.appendChild(item);
@@ -840,6 +841,7 @@
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
       item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
+      if (label.indexOf('<br>') !== -1) item.style.whiteSpace = 'normal';
       item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
       if (!isActive) item.href = appHref(subdomain);
       mApps.appendChild(item);
