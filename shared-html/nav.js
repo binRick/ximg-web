@@ -79,7 +79,7 @@
       ['proc-trace-exec','proc-trace-exec'],
       ['proc-trace-net','proc-trace-net'],
       ['proc-trace-dns','proc-trace-dns'],
-      ['pal','pal — Terminal Palette Switcher'],
+      ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch']
     ]},
     { label: 'System', apps: [
