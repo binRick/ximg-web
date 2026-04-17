@@ -2240,6 +2240,18 @@ const server = http.createServer(async (req, res) => {
     </tr>`).join('');
     const statusSummary = ['2xx','3xx','4xx','5xx'].map(k=>`<span class="${sc(parseInt(k)+'00')}">${k}: ${byStatus[k]||0}</span>`).join('  ');
 
+    const hasGeo = !!(geo.lat || geo.lon);
+    const mapLinkTag = hasGeo ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>' : '';
+    const mapDivCard = hasGeo ? '<div class="card" style="grid-column:1/-1;padding:0;overflow:hidden"><div id="ip-map" style="height:260px;width:100%"></div></div>' : '';
+    const mapScript  = hasGeo
+      ? `<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\\/script>` +
+        `<script>` +
+        `var _m=L.map('ip-map',{zoomControl:true,attributionControl:false}).setView([${geo.lat},${geo.lon}],5);` +
+        `L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(_m);` +
+        `L.circleMarker([${geo.lat},${geo.lon}],{radius:9,color:'#00ff41',fillColor:'#00ff41',fillOpacity:.75,weight:2}).addTo(_m);` +
+        `<\\/script>`
+      : '';
+
     const IP_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2277,6 +2289,7 @@ const server = http.createServer(async (req, res) => {
     .empty{color:var(--dim);padding:1rem;text-align:center;font-size:.8rem}
     .recent-card{grid-column:1/-1}
   </style>
+  ${mapLinkTag}
 </head>
 <body>
   <div class="page">
@@ -2294,6 +2307,7 @@ const server = http.createServer(async (req, res) => {
     </div>
     ${hits.length===0 ? '<div class="empty">no hits found for this IP in the last '+DAYS_BACK+' days</div>' : ''}
     <div class="grid">
+      ${mapDivCard}
       <div class="card">
         <h2>hits by site</h2>
         ${topSites.length ? '<table><thead><tr><th>site</th><th>hits</th></tr></thead><tbody>'+siteRows+'</tbody></table>' : '<div class="empty">—</div>'}
@@ -2316,6 +2330,7 @@ const server = http.createServer(async (req, res) => {
       </div>
     </div>
   </div>
+  ${mapScript}
   <script src="/shared/nav.js?v=2"></script>
 </body>
 </html>`;
