@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conway's Game of Life — Demo</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #030a03;
+  --accent: #39ff14;
+  --accent2: #22c40a;
+  --text: #c8e6c9;
+  --muted: #4a6b4a;
+  --panel: rgba(3,10,3,0.92);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+
+#subnav {
+  position: fixed;
+  top: 52px;
+  left: 0; right: 0;
+  z-index: 150;
+  background: rgba(3,10,3,.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(57,255,20,.08);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .2rem;
+  padding: .4rem 1rem;
+}
+#subnav a {
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #4a6b4a;
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: color .2s, background .2s;
+  font-family: 'Courier New', monospace;
+}
+#subnav a:hover, #subnav a.active {
+  color: var(--accent);
+  background: rgba(57,255,20,.06);
+}
+
+#canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  cursor: crosshair;
+}
+
+#hud {
+  position: fixed;
+  top: 104px;
+  right: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: .72rem;
+  color: var(--accent2);
+  text-align: right;
+  pointer-events: none;
+  line-height: 1.6;
+  text-shadow: 0 0 8px rgba(57,255,20,.4);
+}
+
+#controls {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--panel);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(57,255,20,.1);
+  padding: .6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  z-index: 200;
+}
+
+.ctrl-btn {
+  background: rgba(57,255,20,.08);
+  border: 1px solid rgba(57,255,20,.2);
+  color: var(--accent);
+  font-family: 'Courier New', monospace;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  padding: .35rem .7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ctrl-btn:hover { background: rgba(57,255,20,.15); border-color: rgba(57,255,20,.4); }
+.ctrl-btn.active { background: rgba(57,255,20,.2); border-color: var(--accent); color: #fff; }
+
+.ctrl-sep { width: 1px; height: 24px; background: rgba(57,255,20,.1); flex-shrink: 0; }
+
+.ctrl-group { display: flex; align-items: center; gap: .4rem; }
+.ctrl-label {
+  font-family: 'Courier New', monospace;
+  font-size: .65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+.ctrl-range {
+  -webkit-appearance: none;
+  width: 90px;
+  height: 3px;
+  background: rgba(57,255,20,.15);
+  border-radius: 2px;
+  outline: none;
+}
+.ctrl-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(57,255,20,.6);
+}
+.ctrl-range::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+select.ctrl-select {
+  background: rgba(57,255,20,.08);
+  border: 1px solid rgba(57,255,20,.2);
+  color: var(--accent);
+  font-family: 'Courier New', monospace;
+  font-size: .7rem;
+  padding: .3rem .5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+select.ctrl-select option { background: #030a03; }
+
+#shortcuts {
+  position: fixed;
+  bottom: 70px;
+  right: 16px;
+  background: var(--panel);
+  border: 1px solid rgba(57,255,20,.1);
+  border-radius: 4px;
+  padding: .6rem .8rem;
+  font-family: 'Courier New', monospace;
+  font-size: .62rem;
+  color: var(--muted);
+  line-height: 1.8;
+  pointer-events: none;
+  display: none;
+}
+#shortcuts.visible { display: block; }
+#shortcuts kbd {
+  color: var(--accent2);
+  background: rgba(57,255,20,.06);
+  padding: 0 .3rem;
+  border-radius: 2px;
+}
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="demo.html" class="active">Demo</a>
+  <a href="history.html">History</a>
+  <a href="science.html">Science</a>
+  <a href="patterns.html">Patterns</a>
+  <a href="impact.html">Impact</a>
+</nav>
+
+<canvas id="canvas"></canvas>
+
+<div id="hud">
+  <div id="hud-gen">GEN 0</div>
+  <div id="hud-cells">CELLS 0</div>
+  <div id="hud-fps">0 FPS</div>
+</div>
+
+<div id="shortcuts">
+  <div><kbd>Space</kbd> play / pause</div>
+  <div><kbd>→</kbd> step forward</div>
+  <div><kbd>R</kbd> randomize</div>
+  <div><kbd>C</kbd> clear</div>
+  <div><kbd>Scroll</kbd> zoom</div>
+  <div><kbd>Mid drag</kbd> pan</div>
+  <div><kbd>LMB drag</kbd> draw</div>
+  <div><kbd>RMB drag</kbd> erase</div>
+</div>
+
+<div id="controls">
+  <button class="ctrl-btn" id="btn-play">▶ PLAY</button>
+  <button class="ctrl-btn" id="btn-step">⏭ STEP</button>
+  <div class="ctrl-sep"></div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Speed</span>
+    <input type="range" class="ctrl-range" id="speed-range" min="1" max="60" value="15">
+    <span class="ctrl-label" id="speed-val">15/s</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Zoom</span>
+    <input type="range" class="ctrl-range" id="zoom-range" min="2" max="32" value="10">
+    <span class="ctrl-label" id="zoom-val">10px</span>
+  </div>
+  <div class="ctrl-sep"></div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Pattern</span>
+    <select class="ctrl-select" id="pattern-select">
+      <option value="">— load —</option>
+      <optgroup label="Spaceships">
+        <option value="glider">Glider</option>
+        <option value="lwss">LWSS</option>
+        <option value="mwss">MWSS</option>
+        <option value="hwss">HWSS</option>
+      </optgroup>
+      <optgroup label="Oscillators">
+        <option value="blinker">Blinker (p2)</option>
+        <option value="toad">Toad (p2)</option>
+        <option value="beacon">Beacon (p2)</option>
+        <option value="pulsar">Pulsar (p3)</option>
+        <option value="pentadecathlon">Pentadecathlon (p15)</option>
+      </optgroup>
+      <optgroup label="Still Lifes">
+        <option value="block">Block</option>
+        <option value="beehive">Beehive</option>
+        <option value="loaf">Loaf</option>
+      </optgroup>
+      <optgroup label="Guns">
+        <option value="gosper">Gosper Glider Gun</option>
+        <option value="simkin">Simkin Glider Gun</option>
+      </optgroup>
+      <optgroup label="Methuselahs">
+        <option value="rpentomino">R-pentomino</option>
+        <option value="acorn">Acorn</option>
+        <option value="diehard">Diehard</option>
+      </optgroup>
+    </select>
+  </div>
+  <div class="ctrl-sep"></div>
+  <button class="ctrl-btn" id="btn-random">🎲 RANDOM</button>
+  <button class="ctrl-btn" id="btn-center">⊕ CENTER</button>
+  <button class="ctrl-btn" id="btn-clear">✕ CLEAR</button>
+  <button class="ctrl-btn" id="btn-shortcuts" style="margin-left:auto">⌨ KEYS</button>
+</div>
+
+<script>
+// ── Grid constants ──────────────────────────────────────────────────────────
+const GRID_W = 1024;
+const GRID_H = 1024;
+
+let grid = new Uint8Array(GRID_W * GRID_H);
+let next = new Uint8Array(GRID_W * GRID_H);
+let age  = new Uint16Array(GRID_W * GRID_H);
+
+// ── Canvas setup ────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── View state ──────────────────────────────────────────────────────────────
+let cellSize = 10;
+let originX = 0, originY = 0;  // pixel position of grid cell (0,0)
+
+function centerView() {
+  originX = Math.floor(W / 2 - (GRID_W / 2) * cellSize);
+  originY = Math.floor(H / 2 - (GRID_H / 2) * cellSize);
+}
+centerView();
+
+// ── Precompute age color table ───────────────────────────────────────────────
+// Young=bright #39ff14 → old=dark #0a4507
+const AGE_COLORS = new Array(512);
+for (let i = 1; i < 512; i++) {
+  const t = Math.min(1, i / 50);
+  const r = Math.round(57  * (1 - t) + 10  * t);
+  const g = Math.round(255 * (1 - t) + 69  * t);
+  const b = Math.round(20  * (1 - t) + 7   * t);
+  AGE_COLORS[i] = `rgb(${r},${g},${b})`;
+}
+
+// ── Sim state ────────────────────────────────────────────────────────────────
+let running = false;
+let generation = 0;
+let targetFPS = 15;
+let lastStepTime = 0;
+let animId = null;
+let fpsSmooth = 0;
+let lastFrameTime = performance.now();
+
+// ── Step function ────────────────────────────────────────────────────────────
+let liveCellCount = 0;
+function step() {
+  const W2 = GRID_W, H2 = GRID_H;
+  let count = 0;
+  for (let r = 0; r < H2; r++) {
+    const rm = ((r - 1 + H2) % H2) * W2;
+    const rc =   r             * W2;
+    const rp = ((r + 1)       % H2) * W2;
+    for (let c = 0; c < W2; c++) {
+      const cm = (c - 1 + W2) % W2;
+      const cp = (c + 1)       % W2;
+      const n = grid[rm+cm] + grid[rm+c] + grid[rm+cp]
+              + grid[rc+cm]               + grid[rc+cp]
+              + grid[rp+cm] + grid[rp+c] + grid[rp+cp];
+      const alive = grid[rc+c];
+      const born  = alive ? (n===2||n===3) : n===3;
+      next[rc+c]  = born ? 1 : 0;
+      if (born) {
+        age[rc+c] = alive ? Math.min(511, age[rc+c] + 1) : 1;
+        count++;
+      } else {
+        age[rc+c] = 0;
+      }
+    }
+  }
+  // swap buffers
+  const tmp = grid; grid = next; next = tmp;
+  generation++;
+  liveCellCount = count;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  ctx.fillStyle = '#030a03';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines at zoom >= 8
+  if (cellSize >= 8) {
+    ctx.strokeStyle = 'rgba(57,255,20,0.05)';
+    ctx.lineWidth = 0.5;
+    const c0 = Math.floor(-originX / cellSize) - 1;
+    const c1 = c0 + Math.ceil(W / cellSize) + 2;
+    const r0 = Math.floor(-originY / cellSize) - 1;
+    const r1 = r0 + Math.ceil(H / cellSize) + 2;
+    ctx.beginPath();
+    for (let c = c0; c <= c1; c++) {
+      const x = Math.floor(originX + c * cellSize);
+      ctx.moveTo(x, 0); ctx.lineTo(x, H);
+    }
+    for (let r = r0; r <= r1; r++) {
+      const y = Math.floor(originY + r * cellSize);
+      ctx.moveTo(0, y); ctx.lineTo(W, y);
+    }
+    ctx.stroke();
+  }
+
+  // Gather cells by age bucket for batch drawing
+  const buckets = [[], [], [], []];  // fresh, young, adult, old
+  const CELL = cellSize - (cellSize > 3 ? 1 : 0);
+
+  const c0 = Math.floor(-originX / cellSize) - 1;
+  const c1 = c0 + Math.ceil(W / cellSize) + 2;
+  const r0 = Math.floor(-originY / cellSize) - 1;
+  const r1 = r0 + Math.ceil(H / cellSize) + 2;
+
+  for (let r = r0; r <= r1; r++) {
+    const gr = ((r % GRID_H) + GRID_H) % GRID_H;
+    const py = Math.floor(originY + r * cellSize) + (cellSize > 3 ? 1 : 0);
+    for (let c = c0; c <= c1; c++) {
+      const gc = ((c % GRID_W) + GRID_W) % GRID_W;
+      const idx = gr * GRID_W + gc;
+      if (grid[idx]) {
+        const a = age[idx];
+        const px = Math.floor(originX + c * cellSize) + (cellSize > 3 ? 1 : 0);
+        let b;
+        if (a <= 2)  b = 0;
+        else if (a <= 10) b = 1;
+        else if (a <= 40) b = 2;
+        else              b = 3;
+        buckets[b].push(px, py);
+      }
+    }
+  }
+
+  const colors = ['#39ff14', '#22c40a', '#158c07', '#0a4f04'];
+  for (let b = 0; b < 4; b++) {
+    if (!buckets[b].length) continue;
+    ctx.fillStyle = colors[b];
+    for (let i = 0; i < buckets[b].length; i += 2) {
+      ctx.fillRect(buckets[b][i], buckets[b][i+1], CELL, CELL);
+    }
+  }
+}
+
+// ── Animation loop ──────────────────────────────────────────────────────────
+function loop(ts) {
+  animId = requestAnimationFrame(loop);
+  const dt = ts - lastFrameTime;
+  const fpsActual = 1000 / Math.max(1, dt);
+  fpsSmooth = fpsSmooth * 0.9 + fpsActual * 0.1;
+  lastFrameTime = ts;
+
+  if (running) {
+    const interval = 1000 / targetFPS;
+    if (ts - lastStepTime >= interval) {
+      const steps = Math.max(1, Math.floor((ts - lastStepTime) / interval));
+      for (let i = 0; i < Math.min(steps, 5); i++) step();
+      lastStepTime = ts;
+    }
+  }
+
+  render();
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('hud-gen').textContent   = `GEN ${generation.toLocaleString()}`;
+  document.getElementById('hud-cells').textContent = `CELLS ${liveCellCount.toLocaleString()}`;
+  document.getElementById('hud-fps').textContent   = `${Math.round(fpsSmooth)} FPS`;
+}
+
+// ── Patterns ─────────────────────────────────────────────────────────────────
+const PATTERNS = {
+  glider:        [[0,1],[1,2],[2,0],[2,1],[2,2]],
+  blinker:       [[0,0],[0,1],[0,2]],
+  toad:          [[0,1],[0,2],[0,3],[1,0],[1,1],[1,2]],
+  beacon:        [[0,0],[0,1],[1,0],[1,1],[2,2],[2,3],[3,2],[3,3]],
+  block:         [[0,0],[0,1],[1,0],[1,1]],
+  beehive:       [[0,1],[0,2],[1,0],[1,3],[2,1],[2,2]],
+  loaf:          [[0,1],[0,2],[1,0],[1,3],[2,1],[2,3],[3,2]],
+  rpentomino:    [[0,1],[0,2],[1,0],[1,1],[2,1]],
+  acorn:         [[0,0],[1,2],[2,1],[2,2],[2,5],[2,6],[2,7]],
+  diehard:       [[0,6],[1,0],[1,1],[2,1],[2,5],[2,6],[2,7]],
+  lwss: [
+    [0,1],[0,2],[0,3],[0,4],
+    [1,0],[1,4],
+    [2,4],
+    [3,0],[3,3]
+  ],
+  mwss: [
+    [0,1],[0,2],[0,3],[0,4],[0,5],
+    [1,0],[1,5],
+    [2,5],
+    [3,0],[3,4],
+    [4,2]
+  ],
+  hwss: [
+    [0,1],[0,2],[0,3],[0,4],[0,5],[0,6],
+    [1,0],[1,6],
+    [2,6],
+    [3,0],[3,5],
+    [4,2],[4,3]
+  ],
+  pulsar: (function(){
+    const c=[];
+    const rows=[0,5,7,12], cols=[2,3,4,8,9,10];
+    for(const r of rows) for(const col of cols){ c.push([r,col]); c.push([col,r]); }
+    return [...new Set(c.map(p=>p.join('|'))).values()].map(s=>s.split('|').map(Number));
+  })(),
+  pentadecathlon: [
+    [0,1],[1,1],[2,0],[2,2],[3,1],[4,1],[5,1],[6,1],[7,0],[7,2],[8,1],[9,1]
+  ],
+  gosper: [
+    [0,24],
+    [1,22],[1,24],
+    [2,12],[2,13],[2,20],[2,21],[2,34],[2,35],
+    [3,11],[3,15],[3,20],[3,21],[3,34],[3,35],
+    [4,0],[4,1],[4,10],[4,16],[4,20],[4,21],
+    [5,0],[5,1],[5,10],[5,14],[5,16],[5,17],[5,22],[5,24],
+    [6,10],[6,16],[6,24],
+    [7,11],[7,15],
+    [8,12],[8,13]
+  ],
+  simkin: [
+    [0,0],[0,1],[0,7],[0,8],
+    [1,0],[1,1],[1,7],[1,8],
+    [4,4],[4,5],
+    [5,4],[5,5],
+    [10,2],[10,3],
+    [11,2],
+    [12,3],[12,6],[12,7],
+    [13,7],
+    [14,6],[14,7],
+    [17,24],[17,25],
+    [18,23],[18,27],
+    [19,22],[19,28],
+    [20,22],[20,26],[20,28],[20,29],
+    [21,22],[21,23],[21,24],[21,25],[21,28],
+    [22,26],[22,27]
+  ]
+};
+
+function loadPattern(name, clearFirst = false) {
+  if (!PATTERNS[name]) return;
+  if (clearFirst) { grid.fill(0); age.fill(0); }
+  const pat = PATTERNS[name];
+  let maxR = 0, maxC = 0;
+  for (const [r,c] of pat) { maxR = Math.max(maxR,r); maxC = Math.max(maxC,c); }
+  const startR = Math.floor(GRID_H/2 - maxR/2);
+  const startC = Math.floor(GRID_W/2 - maxC/2);
+  for (const [r,c] of pat) {
+    const gr = (startR+r+GRID_H)%GRID_H;
+    const gc = (startC+c+GRID_W)%GRID_W;
+    grid[gr*GRID_W+gc] = 1;
+    age[gr*GRID_W+gc]  = 1;
+  }
+  generation = 0;
+  liveCellCount = grid.reduce((a,v)=>a+v,0);
+}
+
+function randomize(density = 0.25) {
+  generation = 0;
+  liveCellCount = 0;
+  for (let i = 0; i < GRID_W * GRID_H; i++) {
+    grid[i] = Math.random() < density ? 1 : 0;
+    age[i]  = grid[i] ? 1 : 0;
+    if (grid[i]) liveCellCount++;
+  }
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+const btnPlay = document.getElementById('btn-play');
+function setRunning(v) {
+  running = v;
+  btnPlay.textContent = running ? '⏸ PAUSE' : '▶ PLAY';
+  btnPlay.classList.toggle('active', running);
+  if (running) lastStepTime = performance.now();
+}
+
+btnPlay.addEventListener('click', () => setRunning(!running));
+
+document.getElementById('btn-step').addEventListener('click', () => {
+  setRunning(false);
+  step();
+});
+
+document.getElementById('btn-random').addEventListener('click', () => {
+  randomize();
+  centerView();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  setRunning(false);
+  grid.fill(0); next.fill(0); age.fill(0);
+  generation = 0; liveCellCount = 0;
+});
+
+document.getElementById('btn-center').addEventListener('click', centerView);
+
+const speedRange = document.getElementById('speed-range');
+const speedVal   = document.getElementById('speed-val');
+speedRange.addEventListener('input', () => {
+  targetFPS = parseInt(speedRange.value);
+  speedVal.textContent = targetFPS + '/s';
+});
+
+const zoomRange = document.getElementById('zoom-range');
+const zoomVal   = document.getElementById('zoom-val');
+zoomRange.addEventListener('input', () => {
+  const newSize = parseInt(zoomRange.value);
+  // Zoom toward center of viewport
+  const midX = W / 2, midY = H / 2;
+  const gx = (midX - originX) / cellSize;
+  const gy = (midY - originY) / cellSize;
+  cellSize = newSize;
+  originX = midX - gx * cellSize;
+  originY = midY - gy * cellSize;
+  zoomVal.textContent = cellSize + 'px';
+});
+
+const patternSelect = document.getElementById('pattern-select');
+patternSelect.addEventListener('change', () => {
+  const val = patternSelect.value;
+  if (!val) return;
+  loadPattern(val, false);
+  centerView();
+  patternSelect.value = '';
+});
+
+const shortcutsDiv = document.getElementById('shortcuts');
+document.getElementById('btn-shortcuts').addEventListener('click', () => {
+  shortcutsDiv.classList.toggle('visible');
+});
+
+// ── Keyboard ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space')       { e.preventDefault(); setRunning(!running); }
+  if (e.code === 'ArrowRight')  { setRunning(false); step(); }
+  if (e.key  === 'r' || e.key === 'R') randomize();
+  if (e.key  === 'c' || e.key === 'C') {
+    setRunning(false);
+    grid.fill(0); age.fill(0);
+    generation = 0; liveCellCount = 0;
+  }
+  if (e.key === '+' || e.key === '=') zoomAtCenter(1.25);
+  if (e.key === '-')                  zoomAtCenter(0.8);
+});
+
+function zoomAtCenter(factor) {
+  const newSize = Math.max(2, Math.min(32, Math.round(cellSize * factor)));
+  const midX = W/2, midY = H/2;
+  const gx = (midX - originX) / cellSize;
+  const gy = (midY - originY) / cellSize;
+  cellSize = newSize;
+  originX = midX - gx * cellSize;
+  originY = midY - gy * cellSize;
+  zoomRange.value = cellSize;
+  zoomVal.textContent = cellSize + 'px';
+}
+
+// ── Mouse: draw/erase ─────────────────────────────────────────────────────────
+let isDrawing = false;
+let drawMode  = 1;
+let isPanning = false;
+let panStart  = {x:0, y:0};
+let panOrigin = {x:0, y:0};
+let spaceDown = false;
+
+document.addEventListener('keydown', e => { if (e.code==='Space') spaceDown=true; });
+document.addEventListener('keyup',   e => { if (e.code==='Space') spaceDown=false; });
+
+function pixelToCell(px, py) {
+  return [
+    Math.floor((px - originX) / cellSize),
+    Math.floor((py - originY) / cellSize)
+  ];
+}
+
+function setCell(c, r, v) {
+  const gc = ((c % GRID_W) + GRID_W) % GRID_W;
+  const gr = ((r % GRID_H) + GRID_H) % GRID_H;
+  const idx = gr * GRID_W + gc;
+  if (grid[idx] !== v) {
+    liveCellCount += v - grid[idx];
+    grid[idx] = v;
+    age[idx]  = v ? 1 : 0;
+  }
+}
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 1 || spaceDown) {
+    isPanning = true;
+    panStart  = {x: e.clientX, y: e.clientY};
+    panOrigin = {x: originX,   y: originY};
+    canvas.style.cursor = 'grab';
+  } else if (e.button === 0 || e.button === 2) {
+    isDrawing = true;
+    drawMode  = e.button === 2 ? 0 : 1;
+    const [c,r] = pixelToCell(e.clientX, e.clientY);
+    setCell(c, r, drawMode);
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (isPanning) {
+    originX = panOrigin.x + (e.clientX - panStart.x);
+    originY = panOrigin.y + (e.clientY - panStart.y);
+  } else if (isDrawing) {
+    const [c,r] = pixelToCell(e.clientX, e.clientY);
+    setCell(c, r, drawMode);
+  }
+});
+
+window.addEventListener('mouseup', e => {
+  isDrawing = false;
+  isPanning = false;
+  canvas.style.cursor = 'crosshair';
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.2 : (1/1.2);
+  const newSize = Math.max(2, Math.min(32, cellSize * factor));
+  const gx = (e.clientX - originX) / cellSize;
+  const gy = (e.clientY - originY) / cellSize;
+  cellSize = newSize;
+  originX = e.clientX - gx * cellSize;
+  originY = e.clientY - gy * cellSize;
+  zoomRange.value = Math.round(cellSize);
+  zoomVal.textContent = Math.round(cellSize) + 'px';
+}, {passive:false});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Check URL param for a preloaded pattern
+const urlParam = new URLSearchParams(location.search).get('pattern');
+if (urlParam && PATTERNS[urlParam]) {
+  loadPattern(urlParam, true);
+  centerView();
+} else {
+  randomize(0.3);
+  centerView();
+}
+
+requestAnimationFrame(loop);
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

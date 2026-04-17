@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conway's Game of Life</title>
+<meta name="description" content="Conway's Game of Life — history, science, famous patterns, and a full interactive demo. The zero-player game that changed how we think about complexity.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #030a03;
+  --bg2: #060e06;
+  --accent: #39ff14;
+  --accent2: #22c40a;
+  --text: #c8e6c9;
+  --muted: #4a6b4a;
+  --border: rgba(57,255,20,.1);
+  --glow: 0 0 20px rgba(57,255,20,.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+#subnav {
+  position: sticky;
+  top: 52px;
+  z-index: 150;
+  background: rgba(3,10,3,.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .2rem;
+  padding: .4rem 1rem;
+}
+#subnav a {
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: color .2s, background .2s;
+}
+#subnav a:hover, #subnav a.active {
+  color: var(--accent);
+  background: rgba(57,255,20,.06);
+}
+
+/* Hero */
+.hero {
+  position: relative;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem 2rem;
+  overflow: hidden;
+}
+#bg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.35;
+}
+.hero-inner { position: relative; z-index: 1; }
+.hero-label {
+  font-size: .65rem;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 1rem;
+}
+.hero-title {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: var(--glow);
+  line-height: 1.1;
+  margin-bottom: 1rem;
+  letter-spacing: -.02em;
+}
+.hero-sub {
+  font-size: 1.05rem;
+  color: var(--text);
+  max-width: 600px;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: rgba(57,255,20,.1);
+  border: 1px solid rgba(57,255,20,.4);
+  color: var(--accent);
+  padding: .75rem 1.75rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: .85rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: background .2s, box-shadow .2s;
+}
+.hero-cta:hover {
+  background: rgba(57,255,20,.18);
+  box-shadow: var(--glow);
+}
+
+/* Intro */
+.intro {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+.intro p {
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.intro strong { color: var(--accent); }
+
+/* Quick stats bar */
+.stats-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.stat {
+  flex: 1;
+  max-width: 200px;
+  padding: 1.4rem 1rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+.stat-num {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(57,255,20,.4);
+  display: block;
+}
+.stat-label {
+  font-size: .65rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: .25rem;
+  display: block;
+}
+
+/* Nav cards */
+.section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+.section-title {
+  font-size: .7rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.5rem;
+  text-decoration: none;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity .2s;
+}
+.card:hover {
+  border-color: rgba(57,255,20,.3);
+  box-shadow: 0 4px 24px rgba(57,255,20,.1);
+  transform: translateY(-2px);
+}
+.card:hover::before { opacity: 1; }
+.card-icon {
+  font-size: 1.8rem;
+  margin-bottom: .75rem;
+}
+.card-title {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .05em;
+  margin-bottom: .4rem;
+}
+.card-desc {
+  font-size: .8rem;
+  color: var(--muted);
+  line-height: 1.6;
+  flex: 1;
+}
+.card-badge {
+  display: inline-block;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  background: rgba(57,255,20,.06);
+  border: 1px solid rgba(57,255,20,.15);
+  border-radius: 2px;
+  padding: .15rem .4rem;
+  margin-top: .75rem;
+  align-self: flex-start;
+}
+
+/* Rules section */
+.rules {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 2rem 3rem;
+}
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rule {
+  background: var(--bg2);
+  padding: 1.2rem 1.5rem;
+}
+.rule-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: var(--glow);
+}
+.rule-title {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: .05em;
+  margin: .3rem 0 .4rem;
+}
+.rule-desc {
+  font-size: .75rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html" class="active">Overview</a>
+  <a href="demo.html">Demo</a>
+  <a href="history.html">History</a>
+  <a href="science.html">Science</a>
+  <a href="patterns.html">Patterns</a>
+  <a href="impact.html">Impact</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a){
+    var href=a.getAttribute('href'), path=location.pathname;
+    if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('/conway')||path.endsWith('index.html')))){a.classList.add('active');}else{a.classList.remove('active');}
+  });
+</script>
+
+<section class="hero">
+  <canvas id="bg-canvas"></canvas>
+  <div class="hero-inner">
+    <div class="hero-label">John Horton Conway · 1970</div>
+    <h1 class="hero-title">Conway's Game of Life</h1>
+    <p class="hero-sub">A zero-player game on an infinite grid. Four rules. No pieces. No objectives. Pure emergence — and one of the most profound demonstrations of complexity arising from simplicity ever devised.</p>
+    <a href="demo.html" class="hero-cta">▶ Open Interactive Demo</a>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="stat"><span class="stat-num">4</span><span class="stat-label">Rules</span></div>
+  <div class="stat"><span class="stat-num">2</span><span class="stat-label">States per cell</span></div>
+  <div class="stat"><span class="stat-num">∞</span><span class="stat-label">Possible patterns</span></div>
+  <div class="stat"><span class="stat-num">1970</span><span class="stat-label">Year invented</span></div>
+  <div class="stat"><span class="stat-num">TC</span><span class="stat-label">Turing complete</span></div>
+</div>
+
+<div class="intro">
+  <p>Set on an infinite two-dimensional grid of square cells, each cell is either <strong>alive</strong> or <strong>dead</strong>. Each generation, every cell applies the same four rules based solely on its eight neighbors. No central controller. No external input. Yet from these rules springs an endless parade of structures — gliders that travel forever, oscillators that pulse, guns that fire streams of spaceships, and configurations so complex they can compute anything a computer can.</p>
+  <p>The Game of Life is not a game in any traditional sense. Conway called it a <strong>"zero-player game"</strong>. You set up an initial configuration and watch. The rules do the rest.</p>
+</div>
+
+<div class="rules">
+  <div class="section-title" style="text-align:center; margin-bottom:1rem;">The four rules</div>
+  <div class="rules-grid">
+    <div class="rule">
+      <div class="rule-num">01</div>
+      <div class="rule-title">Underpopulation</div>
+      <div class="rule-desc">A live cell with fewer than 2 live neighbors dies — as if by loneliness.</div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">02</div>
+      <div class="rule-title">Survival</div>
+      <div class="rule-desc">A live cell with 2 or 3 live neighbors survives to the next generation.</div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">03</div>
+      <div class="rule-title">Overpopulation</div>
+      <div class="rule-desc">A live cell with more than 3 live neighbors dies — as if by overcrowding.</div>
+    </div>
+    <div class="rule">
+      <div class="rule-num">04</div>
+      <div class="rule-title">Reproduction</div>
+      <div class="rule-desc">A dead cell with exactly 3 live neighbors becomes alive — as if by reproduction.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Explore</div>
+  <div class="cards">
+    <a class="card" href="demo.html">
+      <div class="card-icon">🖥️</div>
+      <div class="card-title">Interactive Demo</div>
+      <div class="card-desc">Full-screen playground with zoom, pan, draw, erase, presets, speed control, and age-based cell coloring. Load famous patterns or paint your own.</div>
+      <div class="card-badge">Live</div>
+    </a>
+    <a class="card" href="history.html">
+      <div class="card-icon">📖</div>
+      <div class="card-title">History</div>
+      <div class="card-desc">John Horton Conway, the Mathematical Games column in Scientific American, and how a simple cellular automaton captured the world's imagination in 1970.</div>
+      <div class="card-badge">Deep dive</div>
+    </a>
+    <a class="card" href="science.html">
+      <div class="card-icon">⚗️</div>
+      <div class="card-title">Science</div>
+      <div class="card-desc">Cellular automata theory, emergence, Turing completeness, the universal constructor, and where GoL sits on Wolfram's classification of complex systems.</div>
+      <div class="card-badge">Theory</div>
+    </a>
+    <a class="card" href="patterns.html">
+      <div class="card-icon">🔬</div>
+      <div class="card-title">Patterns</div>
+      <div class="card-desc">Gallery of famous patterns — still lifes, oscillators, spaceships, glider guns, and long-lived methuselahs. Each with a live demo link.</div>
+      <div class="card-badge">Gallery</div>
+    </a>
+    <a class="card" href="impact.html">
+      <div class="card-icon">🌐</div>
+      <div class="card-title">Impact</div>
+      <div class="card-desc">How GoL inspired artificial life, complexity science, genetic algorithms, digital physics, and a generation of researchers who saw computation as fundamental to nature.</div>
+      <div class="card-badge">Legacy</div>
+    </a>
+  </div>
+</div>
+
+<script>
+// Animated background — mini GoL
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, cols, rows, grid, next;
+  const CS = 14;
+
+  function init(){
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+    cols = Math.ceil(W/CS)+2;
+    rows = Math.ceil(H/CS)+2;
+    grid = new Uint8Array(cols*rows);
+    next = new Uint8Array(cols*rows);
+    for(let i=0;i<cols*rows;i++) grid[i] = Math.random()<0.28?1:0;
+  }
+
+  function step(){
+    for(let r=0;r<rows;r++){
+      const rm=((r-1+rows)%rows)*cols, rc=r*cols, rp=((r+1)%rows)*cols;
+      for(let c=0;c<cols;c++){
+        const cm=(c-1+cols)%cols, cp=(c+1)%cols;
+        const n=grid[rm+cm]+grid[rm+c]+grid[rm+cp]+grid[rc+cm]+grid[rc+cp]+grid[rp+cm]+grid[rp+c]+grid[rp+cp];
+        const a=grid[rc+c];
+        next[rc+c]=a?(n===2||n===3)?1:0:n===3?1:0;
+      }
+    }
+    const t=grid;grid=next;next=t;
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#39ff14';
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        if(grid[r*cols+c]){
+          ctx.fillRect(c*CS+1,r*CS+1,CS-2,CS-2);
+        }
+      }
+    }
+  }
+
+  init();
+  window.addEventListener('resize', init);
+  let last=0;
+  function loop(ts){
+    requestAnimationFrame(loop);
+    if(ts-last>120){ step(); render(); last=ts; }
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

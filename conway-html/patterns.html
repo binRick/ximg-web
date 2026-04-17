@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conway's Game of Life — Patterns</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #030a03;
+  --bg2: #060e06;
+  --accent: #39ff14;
+  --accent2: #22c40a;
+  --text: #c8e6c9;
+  --muted: #4a6b4a;
+  --border: rgba(57,255,20,.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+#subnav {
+  position: sticky;
+  top: 52px;
+  z-index: 150;
+  background: rgba(3,10,3,.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .2rem;
+  padding: .4rem 1rem;
+}
+#subnav a {
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: .3rem .65rem;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: color .2s, background .2s;
+}
+#subnav a:hover, #subnav a.active {
+  color: var(--accent);
+  background: rgba(57,255,20,.06);
+}
+
+.page-hero {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3.5rem 2rem 2rem;
+}
+.page-label {
+  font-size: .65rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: .75rem;
+}
+.page-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(57,255,20,.3);
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+.page-intro {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+  padding-left: 1.2rem;
+  max-width: 700px;
+}
+
+.section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 2rem;
+}
+.section-title {
+  font-size: .7rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  transition: border-color .2s;
+}
+.pat-card:hover { border-color: rgba(57,255,20,.25); }
+
+.pat-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #010501;
+  border-radius: 4px;
+  padding: .5rem;
+  min-height: 100px;
+}
+.pat-canvas { display: block; image-rendering: pixelated; }
+
+.pat-name {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .05em;
+}
+.pat-badge {
+  display: inline-block;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  background: rgba(57,255,20,.06);
+  border: 1px solid rgba(57,255,20,.12);
+  border-radius: 2px;
+  padding: .1rem .35rem;
+  margin-left: .4rem;
+}
+.pat-desc {
+  font-size: .75rem;
+  color: var(--muted);
+  line-height: 1.6;
+  flex: 1;
+}
+.pat-link {
+  display: inline-block;
+  font-size: .65rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid rgba(57,255,20,.2);
+  padding: .25rem .6rem;
+  border-radius: 3px;
+  transition: background .15s;
+  align-self: flex-start;
+}
+.pat-link:hover { background: rgba(57,255,20,.1); }
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="demo.html">Demo</a>
+  <a href="history.html">History</a>
+  <a href="science.html">Science</a>
+  <a href="patterns.html" class="active">Patterns</a>
+  <a href="impact.html">Impact</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a){
+    if(location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+    else a.classList.remove('active');
+  });
+</script>
+
+<div class="page-hero">
+  <div class="page-label">Patterns</div>
+  <h1 class="page-title">Famous Patterns</h1>
+  <p class="page-intro">Decades of hobbyists have catalogued thousands of GoL patterns. These are the classics — the structures every "Lifenthusiast" knows by name.</p>
+</div>
+
+<div class="section">
+  <div class="section-title">Still Lifes — stable, never change</div>
+  <div class="pattern-grid" id="grid-still"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Oscillators — return to initial state after N steps</div>
+  <div class="pattern-grid" id="grid-osc"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Spaceships — move across the grid</div>
+  <div class="pattern-grid" id="grid-ship"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Guns — emit an endless stream of spaceships</div>
+  <div class="pattern-grid" id="grid-gun"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Methuselahs — small start, long and chaotic evolution</div>
+  <div class="pattern-grid" id="grid-meth"></div>
+</div>
+
+<script>
+const PATTERNS = {
+  block:       { cells:[[0,0],[0,1],[1,0],[1,1]], name:'Block', badge:'p1', desc:'The simplest still life. Four cells in a 2×2 square are perfectly balanced — each has exactly 2–3 neighbors.' },
+  beehive:     { cells:[[0,1],[0,2],[1,0],[1,3],[2,1],[2,2]], name:'Beehive', badge:'p1', desc:'Six cells in a hexagonal arrangement. Each live cell has exactly 2–3 live neighbors and every dead cell adjacent has ≤2.' },
+  loaf:        { cells:[[0,1],[0,2],[1,0],[1,3],[2,1],[2,3],[3,2]], name:'Loaf', badge:'p1', desc:'Asymmetric 7-cell still life. Discovered in the early days of GoL and frequently appears in random soups.' },
+  boat:        { cells:[[0,0],[0,1],[1,0],[1,2],[2,1]], name:'Boat', badge:'p1', desc:'Five-cell still life shaped like a boat hull. One of only four 5-cell still lifes.' },
+  blinker:     { cells:[[0,0],[0,1],[0,2]], name:'Blinker', badge:'p2', desc:'The most common oscillator. Three cells in a row alternate between horizontal and vertical each generation. Period 2.' },
+  toad:        { cells:[[0,1],[0,2],[0,3],[1,0],[1,1],[1,2]], name:'Toad', badge:'p2', desc:'Six-cell period-2 oscillator. Two offset rows of three cells that cycle between two complementary states.' },
+  beacon:      { cells:[[0,0],[0,1],[1,0],[1,1],[2,2],[2,3],[3,2],[3,3]], name:'Beacon', badge:'p2', desc:'Two overlapping 2×2 blocks that appear to blink on and off at their corners. Period 2.' },
+  pulsar:      { cells:(function(){const c=[];const rows=[0,5,7,12],cols=[2,3,4,8,9,10];for(const r of rows)for(const col of cols){c.push([r,col]);c.push([col,r]);}return[...new Set(c.map(p=>p.join('|'))).values()].map(s=>s.split('|').map(Number));})(), name:'Pulsar', badge:'p3', desc:'The most common period-3 oscillator. 48 cells arranged in a symmetric cross-like form that pulses with a 3-step cycle. Stunning to watch.' },
+  pentadecathlon:{ cells:[[0,1],[1,1],[2,0],[2,2],[3,1],[4,1],[5,1],[6,1],[7,0],[7,2],[8,1],[9,1]], name:'Pentadecathlon', badge:'p15', desc:'Period-15 oscillator. A row of 10 cells that takes 15 generations to return to its initial state, cycling through an elaborate sequence of intermediate forms.' },
+  glider:      { cells:[[0,1],[1,2],[2,0],[2,1],[2,2]], name:'Glider', badge:'spaceship', desc:'The most famous pattern in GoL. Five cells that move diagonally across the grid, returning to their original form every 4 generations. Gosper used gliders to build the first gun.' },
+  lwss:        { cells:[[0,1],[0,2],[0,3],[0,4],[1,0],[1,4],[2,4],[3,0],[3,3]], name:'LWSS', badge:'spaceship', desc:'Lightweight Spaceship. The smallest orthogonally-moving spaceship. Travels horizontally at c/2 (one cell per two generations).' },
+  mwss:        { cells:[[0,1],[0,2],[0,3],[0,4],[0,5],[1,0],[1,5],[2,5],[3,0],[3,4],[4,2]], name:'MWSS', badge:'spaceship', desc:'Middleweight Spaceship. Like the LWSS but one cell longer, also moving at c/2. Discovered alongside the LWSS in Gardner\'s original column.' },
+  gosper:      { cells:[[0,24],[1,22],[1,24],[2,12],[2,13],[2,20],[2,21],[2,34],[2,35],[3,11],[3,15],[3,20],[3,21],[3,34],[3,35],[4,0],[4,1],[4,10],[4,16],[4,20],[4,21],[5,0],[5,1],[5,10],[5,14],[5,16],[5,17],[5,22],[5,24],[6,10],[6,16],[6,24],[7,11],[7,15],[8,12],[8,13]], name:'Gosper Glider Gun', badge:'gun p30', desc:'The first pattern discovered to grow indefinitely. Found by Bill Gosper in 1970, winning Conway\'s $50 prize. Fires a new glider every 30 generations forever. Period 30.' },
+  rpentomino:  { cells:[[0,1],[0,2],[1,0],[1,1],[2,1]], name:'R-pentomino', badge:'methuselah', desc:'Only 5 cells, but takes 1,103 generations to stabilize. Produces 6 gliders, 8 blinkers, 4 blocks, and several other still lifes. A classic "long-lived" small pattern.' },
+  acorn:       { cells:[[0,0],[1,2],[2,1],[2,2],[2,5],[2,6],[2,7]], name:'Acorn', badge:'methuselah', desc:'Takes 5,206 generations to stabilize, producing 633 cells including 13 gliders. Just 7 initial cells. A favorite for showing exponential complexity from a tiny seed.' },
+  diehard:     { cells:[[0,6],[1,0],[1,1],[2,1],[2,5],[2,6],[2,7]], name:'Diehard', badge:'methuselah', desc:'Exactly 130 generations before all cells die. Named for its "hard to kill" quality — it persists for a remarkably long time before vanishing completely.' },
+};
+
+function drawPattern(cells, canvas, padding) {
+  if (!cells.length) return;
+  let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+  for (const [r,c] of cells) {
+    minR = Math.min(minR,r); maxR = Math.max(maxR,r);
+    minC = Math.min(minC,c); maxC = Math.max(maxC,c);
+  }
+  const rows = maxR - minR + 1;
+  const cols = maxC - minC + 1;
+  const pad = padding || 2;
+  const cellSize = Math.max(3, Math.min(12, Math.floor((120 - pad*2) / Math.max(rows, cols))));
+  const w = cols * cellSize + pad * 2;
+  const h = rows * cellSize + pad * 2;
+  canvas.width  = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#010501';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#39ff14';
+  for (const [r,c] of cells) {
+    const x = (c - minC) * cellSize + pad;
+    const y = (r - minR) * cellSize + pad;
+    ctx.fillRect(x+1, y+1, cellSize-1, cellSize-1);
+  }
+}
+
+const categories = [
+  { id:'grid-still', keys:['block','beehive','loaf','boat'] },
+  { id:'grid-osc',   keys:['blinker','toad','beacon','pulsar','pentadecathlon'] },
+  { id:'grid-ship',  keys:['glider','lwss','mwss'] },
+  { id:'grid-gun',   keys:['gosper'] },
+  { id:'grid-meth',  keys:['rpentomino','acorn','diehard'] },
+];
+
+for (const cat of categories) {
+  const grid = document.getElementById(cat.id);
+  for (const key of cat.keys) {
+    const p = PATTERNS[key];
+    const card = document.createElement('div');
+    card.className = 'pat-card';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'pat-canvas-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pat-canvas';
+    wrap.appendChild(canvas);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'pat-name';
+    nameEl.innerHTML = p.name + (p.badge ? `<span class="pat-badge">${p.badge}</span>` : '');
+
+    const descEl = document.createElement('div');
+    descEl.className = 'pat-desc';
+    descEl.textContent = p.desc;
+
+    const link = document.createElement('a');
+    link.className = 'pat-link';
+    link.href = `demo.html?pattern=${key}`;
+    link.textContent = '▶ Open in Demo';
+
+    card.appendChild(wrap);
+    card.appendChild(nameEl);
+    card.appendChild(descEl);
+    card.appendChild(link);
+    grid.appendChild(card);
+
+    // Draw after appending (layout needed for sizing)
+    requestAnimationFrame(() => drawPattern(p.cells, canvas));
+  }
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

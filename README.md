@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-236 virtual hosts (root + 235 subdomains), all static sites served by a single nginx container.
+237 virtual hosts (root + 236 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -50,6 +50,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [architecture.ximg.app](https://architecture.ximg.app) | 10,000 years of human building — ancient wonders, Gothic cathedrals, Modernist icons, and the architects who shaped civilization. |
 | [bourbon.ximg.app](https://bourbon.ximg.app) | America's native spirit — distilleries, mash bills, legendary bottles, and the Kentucky tradition behind every great pour. |
 | [tetris.ximg.app](https://tetris.ximg.app) | Classic block-stacking game — all 7 tetrominos, SRS wall kicks, ghost piece, hold queue, 3-piece preview, scoring, levels, and mobile touch controls. |
+| [conway.ximg.app](https://conway.ximg.app) | Conway's Game of Life — full interactive demo with zoom/pan/draw, age-based cell coloring, 15 preset patterns, plus history, science, patterns, and impact. |
 | [wargames.ximg.app](https://wargames.ximg.app) | 1983 cold-war thriller guide — cast, plot, WOPR terminal Easter egg, and "Shall we play a game?" lore. |
 | [moto.ximg.app](https://moto.ximg.app) | Motorcycle culture — types, iconic brands, notable bikes, and the art of riding. |
 | [india.ximg.app](https://india.ximg.app) | India explorer — culture, food, landmarks, history, and the subcontinent's incredible diversity. |
