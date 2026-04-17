@@ -732,7 +732,7 @@
       var item = document.createElement('a');
       item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
-      if (!isActive) item.href = appHref(subdomain);
+      item.href = appHref(subdomain);
       dd.appendChild(item);
     });
 
@@ -841,7 +841,7 @@
       var item = document.createElement('a');
       item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
-      if (!isActive) item.href = appHref(subdomain);
+      item.href = appHref(subdomain);
       mApps.appendChild(item);
     });
 
