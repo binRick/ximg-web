@@ -156,6 +156,7 @@ const LOG_FILES = {
   esp32:       'esp32.access.log',
   'ca-fetcher': 'ca-fetcher.access.log',
   'proc-trace-exec': 'proc-trace-exec.access.log',
+  'proc-trace-dns': 'proc-trace-dns.access.log',
   'tls-ca-fetch': 'tls-ca-fetch.access.log',
   vim:         'vim.access.log',
   http:        'http.access.log',
@@ -711,6 +712,8 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="gentoo">gentoo</button>
           <button class="site-opt" data-site="esp32">esp32</button>
           <button class="site-opt" data-site="ca-fetcher">ca-fetcher</button>
+          <button class="site-opt" data-site="proc-trace-exec">proc-trace-exec</button>
+          <button class="site-opt" data-site="proc-trace-dns">proc-trace-dns</button>
           <button class="site-opt" data-site="tls-ca-fetch">tls-ca-fetch</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>

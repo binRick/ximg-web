@@ -78,6 +78,7 @@
       ['esp32','Freenove ESP32-S3 Dev Kit FNK0086'],
       ['proc-trace-exec','proc-trace-exec'],
       ['proc-trace-net','proc-trace-net'],
+      ['proc-trace-dns','proc-trace-dns'],
       ['pal','pal — Terminal Palette Switcher'],
       ['tls-ca-fetch','tls-ca-fetch']
     ]},

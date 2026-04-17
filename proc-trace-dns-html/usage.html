@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage — proc-trace-dns</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14; --surface: #111827; --surface2: #1a2235; --border: #1f2937;
+      --accent: #06b6d4; --accent2: #a78bfa; --text: #f1f5f9; --muted: #6b7280; --code-bg: #060910;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui,-apple-system,sans-serif; padding-top: 48px; line-height: 1.6; }
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(10,13,20,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #4b5563; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s,background .2s; font-family:'Courier New',monospace; }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+    .page-hero { padding: 3.5rem 1.5rem 2rem; text-align: center; }
+    .page-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: .5rem; }
+    .page-hero p { color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto; }
+    .section { padding: 2rem 1.5rem 3rem; border-bottom: 1px solid var(--border); }
+    .section:last-of-type { border-bottom: none; }
+    .section-label { font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-family:'Courier New',monospace; margin-bottom: 1rem; }
+    .section h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: .5rem; }
+    .section .desc { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.7; }
+
+    .synopsis {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem 1.5rem; font-family: 'Courier New', monospace; font-size: .9rem;
+      color: var(--text); margin-bottom: 2rem;
+    }
+    .syn-bin { color: var(--accent2); font-weight: 600; }
+    .syn-flag { color: var(--accent); }
+    .syn-arg { color: #d946ef; }
+
+    .flags-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .flags-table th { text-align: left; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-family: 'Courier New', monospace; padding: .6rem 1rem; border-bottom: 1px solid var(--border); }
+    .flags-table td { padding: .75rem 1rem; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .875rem; vertical-align: top; }
+    .flags-table tr:hover td { background: rgba(255,255,255,.02); }
+    .flags-table .flag-col { font-family: 'Courier New', monospace; color: var(--accent); font-size: .9rem; white-space: nowrap; }
+    .flags-table .arg-col { font-family: 'Courier New', monospace; color: var(--accent2); font-size: .85rem; }
+    .flags-table .desc-col { color: var(--muted); line-height: 1.6; }
+    .flags-table .emoji-col { font-size: 1.1rem; }
+
+    .example { margin-bottom: 2.5rem; }
+    .example h3 { font-size: 1rem; font-weight: 600; margin-bottom: .3rem; }
+    .example .ex-desc { color: var(--muted); font-size: .875rem; margin-bottom: .75rem; line-height: 1.6; }
+    .terminal { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .term-hdr { background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .dot-r { background:#ff5f57; } .dot-y { background:#febc2e; } .dot-g { background:#28c840; }
+    .term-hdr .ttl { flex:1; text-align:center; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-family:'Courier New',monospace; }
+    .terminal pre { padding: 1.1rem 1.4rem; font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.85; overflow-x: auto; white-space: pre; }
+    .p  { color: #a78bfa; } .su { color: #fbbf24; } .bi { color: #06b6d4; }
+    .pi { color: #fbbf24; } .pn { color: #67e8f9; } .qt { color: #a78bfa; }
+    .hn { color: #4ade80; } .ip { color: #38bdf8; } .ms { color: #6b7280; }
+    .er { color: #f87171; } .di { color: #6b7280; } .ok { color: #4ade80; }
+    .ac { color: var(--accent); }
+
+    .fmt-row { display: flex; align-items: center; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .fmt-row:last-child { border-bottom: none; }
+    .fmt-sample { font-family: 'Courier New', monospace; font-size: .85rem; min-width: 140px; }
+    .fmt-explain { color: var(--muted); font-size: .85rem; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="install.html">Install</a>
+  <a href="usage.html">Usage</a>
+  <a href="building.html">Building</a>
+</nav>
+
+<div class="page-hero">
+  <div class="container">
+    <h1>Usage</h1>
+    <p>Flags, examples, and output format reference.</p>
+  </div>
+</div>
+
+<!-- ── Synopsis ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">SYNOPSIS</div>
+    <div class="synopsis">
+      <span class="syn-bin">proc-trace-dns</span>
+      <span class="syn-flag"> [-cfjqQt]</span>
+      <span> [-d </span><span class="syn-arg">PATTERN</span><span>]</span>
+      <span> [-n </span><span class="syn-arg">NAME[,NAME,...]</span><span>]</span>
+      <span> [-o </span><span class="syn-arg">FILE</span><span>]</span>
+      <span> [-p </span><span class="syn-arg">PID[,PID,...]</span><span>]</span>
+      <span> [-T </span><span class="syn-arg">TYPE[,TYPE,...]</span><span>]</span>
+    </div>
+
+    <table class="flags-table">
+      <thead><tr><th></th><th>Flag</th><th>Argument</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="emoji-col">🎨</td><td class="flag-col">-c</td><td class="arg-col"></td><td class="desc-col">Force-enable ANSI color output. Auto-detected when stdout is a tty; <code style="font-family:monospace;color:var(--accent2)">NO_COLOR=1</code> disables it.</td></tr>
+        <tr><td class="emoji-col">🌐</td><td class="flag-col">-d</td><td class="arg-col">PATTERN</td><td class="desc-col">Only show queries matching the domain pattern (substring or glob). E.g. <code style="font-family:monospace">-d amazonaws.com</code>.</td></tr>
+        <tr><td class="emoji-col">⬜</td><td class="flag-col">-f</td><td class="arg-col"></td><td class="desc-col">Flat output — one line per query, no column alignment. Useful when piping to grep or awk.</td></tr>
+        <tr><td class="emoji-col">📄</td><td class="flag-col">-j</td><td class="arg-col"></td><td class="desc-col">JSON output — one JSON object per line (ndjson). Includes all fields: pid, name, type, query, answers, latency_ms.</td></tr>
+        <tr><td class="emoji-col">🔇</td><td class="flag-col">-Q</td><td class="arg-col"></td><td class="desc-col">Suppress error messages and warnings. Useful for long-running background use.</td></tr>
+        <tr><td class="emoji-col">🤫</td><td class="flag-col">-q</td><td class="arg-col"></td><td class="desc-col">Quiet — show only the queried hostname, one per line. Useful for piping into sort | uniq.</td></tr>
+        <tr><td class="emoji-col">⏱️</td><td class="flag-col">-t</td><td class="arg-col"></td><td class="desc-col">Show timestamp for each query (RFC3339 format). Useful for correlating with other logs.</td></tr>
+        <tr><td class="emoji-col">🎯</td><td class="flag-col">-n</td><td class="arg-col">NAME[,NAME,...]</td><td class="desc-col">Only show queries from processes matching these names. Comma-separated or repeatable.</td></tr>
+        <tr><td class="emoji-col">📝</td><td class="flag-col">-o</td><td class="arg-col">FILE</td><td class="desc-col">Append output to FILE instead of stdout. Colors are disabled for file output unless <code style="font-family:monospace">-c</code> is also set.</td></tr>
+        <tr><td class="emoji-col">🎯</td><td class="flag-col">-p</td><td class="arg-col">PID[,PID,...]</td><td class="desc-col">Only show queries from the given PIDs. Comma-separated list or repeatable.</td></tr>
+        <tr><td class="emoji-col">🔤</td><td class="flag-col">-T</td><td class="arg-col">TYPE[,TYPE,...]</td><td class="desc-col">Filter by record type. E.g. <code style="font-family:monospace">-T A,AAAA</code> or <code style="font-family:monospace">-T MX</code>. Default: all types.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── Output format ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">OUTPUT FORMAT</div>
+    <h2>Anatomy of an output line</h2>
+    <p class="desc">Each DNS query/response produces one line. Fields are space-aligned for readability (use <code style="font-family:monospace;color:var(--accent)">-f</code> for flat output).</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;">
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#fbbf24">12345</span>
+        <span class="fmt-explain">PID — process ID in amber</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#67e8f9">curl</span>
+        <span class="fmt-explain">process name in bright cyan</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#a78bfa">A</span>
+        <span class="fmt-explain">DNS record type in violet (A, AAAA, MX, CNAME, TXT, PTR, SRV, …)</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#4ade80">api.github.com</span>
+        <span class="fmt-explain">queried hostname in green</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#38bdf8">→ 140.82.121.6</span>
+        <span class="fmt-explain">resolved address(es) in blue; multiple answers space-separated</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#f87171">→ NXDOMAIN</span>
+        <span class="fmt-explain">failed lookup — NXDOMAIN, SERVFAIL, or TIMEOUT in red</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#6b7280">1.4ms</span>
+        <span class="fmt-explain">query round-trip latency in dim grey</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Examples ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">EXAMPLES</div>
+
+    <div class="example">
+      <h3>Watch all DNS queries system-wide</h3>
+      <p class="ex-desc">No flags — shows every DNS query made by every process on the machine.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">system-wide</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span>
+<span class="pi">12341</span>  <span class="pn">curl</span>      <span class="qt">A    </span>  <span class="hn">api.github.com</span>          <span class="ip">→ 140.82.121.6</span>       <span class="ms">1.4ms</span>
+<span class="pi">12342</span>  <span class="pn">python3</span>   <span class="qt">AAAA </span>  <span class="hn">api.openai.com</span>          <span class="ip">→ 2606:4700::6812</span>   <span class="ms">2.1ms</span>
+<span class="pi">12343</span>  <span class="pn">node</span>      <span class="qt">A    </span>  <span class="hn">registry.npmjs.org</span>      <span class="ip">→ 104.16.0.35</span>       <span class="ms">1.7ms</span>
+<span class="pi">12344</span>  <span class="pn">apt</span>       <span class="qt">A    </span>  <span class="hn">deb.debian.org</span>          <span class="er">→ NXDOMAIN</span>          <span class="ms">0.5ms</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Filter by process name</h3>
+      <p class="ex-desc">Use <code style="color:var(--accent);font-family:monospace">-n</code> to watch only a specific process. Accepts comma-separated names.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">filter by name</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span> -n curl,wget
+<span class="pi">19201</span>  <span class="pn">curl</span>  <span class="qt">A</span>  <span class="hn">example.com</span>        <span class="ip">→ 93.184.216.34</span>  <span class="ms">1.2ms</span>
+<span class="pi">19205</span>  <span class="pn">wget</span>  <span class="qt">A</span>  <span class="hn">releases.ubuntu.com</span>  <span class="ip">→ 185.125.190.36</span> <span class="ms">0.9ms</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Filter by domain pattern</h3>
+      <p class="ex-desc">Use <code style="color:var(--accent);font-family:monospace">-d</code> to surface only queries to a specific domain or subdomain.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">domain filter</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span> -d amazonaws.com
+<span class="pi">19305</span>  <span class="pn">python3</span>  <span class="qt">A</span>  <span class="hn">s3.amazonaws.com</span>       <span class="ip">→ 52.216.8.176</span>   <span class="ms">1.8ms</span>
+<span class="pi">19307</span>  <span class="pn">java</span>     <span class="qt">A</span>  <span class="hn">kinesis.us-east-1.amazonaws.com</span> <span class="ip">→ 52.94.0.15</span> <span class="ms">2.4ms</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Watch only NXDOMAIN failures</h3>
+      <p class="ex-desc">Pipe through grep to isolate failed lookups — useful for finding misconfigured services.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">failure hunting</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span> -Qf | grep NXDOMAIN</pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>JSON output for log ingestion</h3>
+      <p class="ex-desc">Use <code style="color:var(--accent);font-family:monospace">-j</code> to emit ndjson — pipe to jq, ship to Elasticsearch, or feed into any log pipeline.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">json mode</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span> -j | jq .
+<span class="di">{</span>
+  <span class="ac">"pid"</span><span class="di">:</span> <span class="ok">12341</span><span class="di">,</span>
+  <span class="ac">"name"</span><span class="di">:</span> <span class="ok">"curl"</span><span class="di">,</span>
+  <span class="ac">"type"</span><span class="di">:</span> <span class="ok">"A"</span><span class="di">,</span>
+  <span class="ac">"query"</span><span class="di">:</span> <span class="ok">"api.github.com"</span><span class="di">,</span>
+  <span class="ac">"answers"</span><span class="di">:</span> <span class="ok">["140.82.121.6"]</span><span class="di">,</span>
+  <span class="ac">"latency_ms"</span><span class="di">:</span> <span class="ok">1.4</span>
+<span class="di">}</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Audit an install script</h3>
+      <p class="ex-desc">Run a command and capture every DNS resolution it makes — see exactly what it calls home to.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">audit installer</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span> -q -- bash install.sh 2>/dev/null | sort -u
+<span class="hn">api.github.com</span>
+<span class="hn">cdn.segment.com</span>
+<span class="hn">objects.githubusercontent.com</span>
+<span class="hn">telemetry.vendor.io</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Log everything to a file</h3>
+      <p class="ex-desc">Run in the background and log all queries for offline analysis.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">background logger</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-dns</span> -Qt -o /var/log/dns-queries.log &amp;
+<span class="di">[1] 9991</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <a href="https://github.com/binRick/proc-trace-dns" target="_blank">github.com/binRick/proc-trace-dns</a>
+    &nbsp;·&nbsp; written in Go &nbsp;·&nbsp; Linux only
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
