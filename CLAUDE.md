@@ -10,6 +10,16 @@ After completing any task, show a one or two sentence summary of what changed an
 
 **Every app must have a card on the landing page (`public-html/index.html`).** When adding a new app, always add its card to the landing page as part of the checklist — not just to `apps-html/index.html`. If an app exists in the apps directory but has no card on the landing page, that is a bug.
 
+## ESP32
+
+Whenever the conversation involves ESP32 topics, always run the following before proceeding to ensure the submodule is up to date:
+
+```bash
+git -C esp32-dev-001 pull origin main
+```
+
+This ensures you have access to the latest content in the `esp32-dev-001` submodule.
+
 ## Git Workflow
 
 **All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
