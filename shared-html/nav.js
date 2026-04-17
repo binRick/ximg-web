@@ -54,6 +54,7 @@
       ['555timer','555 Timer'],['antenna','antenna'],['arduino','arduino'],['battery','battery'],['capacitor','capacitor'],['circuit','circuit'],['compiler','compiler'],['fpga','fpga'],['impedance','impedance'],['logic','logic'],['ohms','ohms'],['opamp','opamp'],['oscilloscope','oscilloscope'],['pcb','pcb'],['pinout','pinout'],['protocol','protocol'],['psu','psu'],['pwm','pwm'],['resistor','resistor'],['spectrum','spectrum'],['spi','spi'],['uart','uart'],['voltage','voltage']
     ]},
     { label: 'Dev Tools', apps: [
+      ['devtools-info','what & why'],
       ['base64','base64'],['binary','binary'],['cidr','cidr'],['color','color'],['cron','cron'],
       ['csv','csv'],['curl','curl'],['diff','diff'],['dockerimage','dockerimage'],
       ['epoch','epoch'],['githubstars','github stars'],['hash','hash'],['jwt','JWT'],['lorem','lorem'],
@@ -729,7 +730,7 @@
       var isActive = subdomain + '.ximg.app' === curHost ||
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
-      item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' ? ' nav-dd-featured' : '');
+      item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
       if (!isActive) item.href = appHref(subdomain);
       dd.appendChild(item);
@@ -838,7 +839,7 @@
       var isActive = subdomain + '.ximg.app' === curHost ||
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
-      item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' ? ' nav-dd-featured' : '');
+      item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
       if (!isActive) item.href = appHref(subdomain);
       mApps.appendChild(item);

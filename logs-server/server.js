@@ -290,6 +290,7 @@ const LOG_FILES = {
   iso:              'iso.access.log',
   honeypot:         'honeypot.access.log',
   'bundler-info':   'bundler-info.access.log',
+  'devtools-info':  'devtools-info.access.log',
   aztec:            'aztec.access.log',
   babylon:          'babylon.access.log',
   civilwar:         'civilwar.access.log',
@@ -867,6 +868,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="iso">iso</button>
           <button class="site-opt" data-site="honeypot">honeypot</button>
           <button class="site-opt" data-site="bundler-info">bundler-info</button>
+          <button class="site-opt" data-site="devtools-info">devtools-info</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>
