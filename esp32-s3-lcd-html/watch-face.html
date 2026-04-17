@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Watch Face — three-mode smartwatch UI (digital, analog, tilt-level) on the Waveshare ESP32-S3-Touch-LCD-1.69 using the PCF85063 RTC and QMI8658 IMU.">
+<title>Watch Face — ESP32-S3-Touch-LCD-1.69</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📟</text></svg>">
+<style>
+  :root {
+    --bg: #060b10;
+    --surface: #0d1520;
+    --surface2: #132030;
+    --border: #1e3048;
+    --accent: #00c8ff;
+    --accent2: #7c6af7;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --muted: #7a8fa6;
+    --code-bg: #040810;
+    --font-mono: 'Fira Code', 'Consolas', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; padding-top: 48px; line-height: 1.7; min-height: 100vh; }
+
+  #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(6,11,16,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+  #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #3a5068; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: 'Courier New', monospace; }
+  #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+
+  .page-hero { padding: 48px 24px 32px; text-align: center; border-bottom: 1px solid var(--border); }
+  .page-hero h1 { font-size: clamp(20px, 4vw, 36px); font-weight: 700; font-family: 'Courier New', monospace; background: linear-gradient(135deg, #7dd3fc, #00c8ff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+  .page-hero p { color: var(--muted); font-size: 14px; max-width: 600px; margin: 0 auto; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+  .section { padding: 44px 24px; }
+
+  h2 { font-size: 16px; font-weight: 700; color: var(--text); margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; letter-spacing: .05em; }
+  h2 span { color: var(--accent); }
+  p { color: var(--muted); font-size: 13.5px; line-height: 1.8; margin-bottom: 10px; }
+
+  .block-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+  @media (max-width: 600px) { .block-grid { grid-template-columns: 1fr; } }
+  .info-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
+  .info-block h4 { font-size: 13px; font-family: 'Courier New', monospace; color: var(--accent2); margin-bottom: 10px; letter-spacing: .05em; }
+  .info-block p, .info-block li { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .info-block ul { padding-left: 18px; }
+
+  pre, code { font-family: var(--font-mono); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; font-size: 12px; line-height: 1.7; overflow-x: auto; color: #7dd3fc; margin: 10px 0 20px; }
+  code { color: var(--accent); font-size: .88em; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 24px; }
+  th { background: var(--surface2); color: var(--accent); font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 8px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+  td { padding: 8px 14px; border-bottom: 1px solid rgba(30,48,72,.5); color: var(--muted); vertical-align: top; }
+  td:first-child { color: #7dd3fc; font-family: 'Courier New', monospace; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 20px; }
+  .tag { font-size: 11px; font-family: 'Courier New', monospace; background: rgba(0,200,255,0.08); border: 1px solid rgba(0,200,255,0.2); color: #7dd3fc; padding: 3px 9px; border-radius: 4px; }
+  .tag.purple { background: rgba(124,106,247,0.1); border-color: rgba(124,106,247,0.25); color: #a78bfa; }
+
+  .demo-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; margin: 16px 0 24px; display: flex; gap: 24px; align-items: flex-start; }
+  @media (max-width: 600px) { .demo-box { flex-direction: column; } }
+  .watch-preview { flex-shrink: 0; width: 140px; height: 140px; background: #000; border-radius: 12px; border: 2px solid #a08010; overflow: hidden; }
+  .demo-desc { flex: 1; }
+  .demo-desc h3 { font-size: 15px; font-family: 'Courier New', monospace; color: var(--text); margin-bottom: 8px; }
+
+  .face-tabs { display: flex; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+  .face-tab { font-size: 11px; font-family: 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); cursor: default; }
+  .face-tab.active { border-color: rgba(0,200,255,.4); color: var(--accent); background: rgba(0,200,255,.07); }
+
+  footer { border-top: 1px solid var(--border); padding: 28px 24px; text-align: center; color: var(--muted); font-size: 12px; }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="cube-3d.html">Cube 3D</a>
+  <a href="ble-air-mouse.html">BLE Air Mouse</a>
+  <a href="watch-face.html">Watch Face</a>
+</nav>
+
+<div class="page-hero">
+  <h1>Watch Face</h1>
+  <p>A three-mode smartwatch UI — digital, analog, and tilt-level — backed by the PCF85063 RTC, QMI8658 IMU raise-to-wake, and tap-to-cycle touch.</p>
+</div>
+
+<div class="section">
+  <div class="container">
+
+    <div class="tag-row">
+      <span class="tag">PCF85063 RTC</span>
+      <span class="tag">QMI8658 IMU</span>
+      <span class="tag">CST816T Touch</span>
+      <span class="tag purple">Raise-to-wake</span>
+      <span class="tag purple">Arduino_Canvas</span>
+      <span class="tag">3 watch faces</span>
+    </div>
+
+    <div class="demo-box">
+      <div class="watch-preview">
+        <canvas id="watchCanvas" width="140" height="140"></canvas>
+      </div>
+      <div class="demo-desc">
+        <h3>What it does</h3>
+        <p>The PCF85063 RTC keeps accurate time across power cycles. On first boot (or if the oscillator-stopped flag is set), the sketch seeds the RTC from the compile-time <code>__DATE__</code> / <code>__TIME__</code> macros.</p>
+        <p>Tap the screen to cycle through three faces: <strong>Digital</strong> (large HH:MM, seconds bar, date), <strong>Analog</strong> (swept hands with gold bezel and tick marks), and <strong>Info</strong> (time + live pitch/roll level bars). Tilting the board upward triggers raise-to-wake; the display sleeps after 10 s of inactivity.</p>
+      </div>
+    </div>
+
+    <h2><span>#</span> Watch Faces</h2>
+    <table>
+      <tr><th>Face</th><th>Index</th><th>Key elements</th></tr>
+      <tr><td>Digital</td><td>0</td><td>HH:MM at size-6, seconds in gold at size-3, animated seconds progress bar, day + date + month string.</td></tr>
+      <tr><td>Analog</td><td>1</td><td>60-tick bezel with gold double-ring, 12 hour numerals, thick hour/minute hands, red second hand with tail, date window at 6 o'clock position.</td></tr>
+      <tr><td>Info / Level</td><td>2</td><td>Compact time at top, two horizontal progress bars showing live roll and pitch angles. Bar turns green within ±3°, orange beyond.</td></tr>
+    </table>
+
+    <h2><span>#</span> Interaction Model</h2>
+    <table>
+      <tr><th>Input</th><th>Behaviour</th></tr>
+      <tr><td>Tap (CST816T gesture 0x01)</td><td>Cycles <code>faceIdx</code> 0→1→2→0, wakes display, resets 10 s sleep timer.</td></tr>
+      <tr><td>Raise-to-wake (IMU)</td><td>Detects rising-edge on Z-axis acceleration crossing 0.4→0.7 g (wrist lift). Wakes display, resets timer.</td></tr>
+      <tr><td>Inactivity timeout</td><td>After 10 000 ms with no touch or raise event, backlight is pulled LOW (display off).</td></tr>
+    </table>
+
+    <h2><span>#</span> PCF85063 RTC</h2>
+    <div class="block-grid">
+      <div class="info-block">
+        <h4>Registers used</h4>
+        <pre>0x00  Control_1 — STOP/START bit
+0x04  Seconds  (7 bytes, BCD)
+0x04  Seconds — OS flag (bit 7)
+      → non-zero means clock lost power</pre>
+      </div>
+      <div class="info-block">
+        <h4>Auto-seed logic</h4>
+        <pre>if (OS flag set) {
+  stop RTC (0x00 = 0x20)
+  write __DATE__ / __TIME__
+  start RTC (0x00 = 0x00)
+}</pre>
+        <p style="margin-top:8px">Only runs once after a cold start or battery loss — subsequent boots preserve stored time.</p>
+      </div>
+    </div>
+
+    <h2><span>#</span> IMU — Raise-to-Wake</h2>
+    <p>The QMI8658 accelerometer is read every loop (~50 ms). A simple edge detector watches the Z-axis value (gravity component) cross from below 0.4 g to above 0.7 g — the signature of a wrist-lift. A low-pass filter (<code>az = az×0.8 + prev×0.2</code>) smooths the signal before the threshold check.</p>
+    <p>For the Info face, <code>pitch</code> and <code>roll</code> are derived from all three accelerometer axes:</p>
+    <pre>pitch = atan2(ay, sqrt(ax² + az²)) × 180/π
+roll  = atan2(−ax, az)              × 180/π</pre>
+
+    <h2><span>#</span> Rendering Pipeline</h2>
+    <p>All drawing targets an <code>Arduino_Canvas</code> (off-screen framebuffer in PSRAM). Each face calls <code>canvas->flush()</code> once at the end to push the full frame via SPI DMA — eliminating tearing artifacts.</p>
+    <div class="block-grid">
+      <div class="info-block">
+        <h4>Canvas setup</h4>
+        <pre>Arduino_Canvas *canvas =
+  new Arduino_Canvas(240, 280, gfx);</pre>
+        <p style="margin-top:8px">PSRAM-backed; the 240×280×2 byte buffer (~131 KB) fits comfortably in the 8 MB OPI PSRAM.</p>
+      </div>
+      <div class="info-block">
+        <h4>thickLine() helper</h4>
+        <pre>for d in [-thick/2 .. thick/2]:
+  offset perp to line by d px
+  drawLine(offset copy)</pre>
+        <p style="margin-top:8px">Renders bold clock hands without hardware stroke-width support.</p>
+      </div>
+    </div>
+
+    <h2><span>#</span> Source</h2>
+    <p>Full sketch in the <a href="https://github.com/binRick/ESP32-S3-LCD/blob/main/sketches/watch_face/watch_face.ino" target="_blank" style="color:var(--accent)">ESP32-S3-LCD repo</a> — <code>sketches/watch_face/watch_face.ino</code>.</p>
+    <pre>git clone https://github.com/binRick/ESP32-S3-LCD
+bash flash-sketch-003-watch-face.sh</pre>
+
+  </div>
+</div>
+
+<footer>
+  <a href="https://github.com/binRick/ESP32-S3-LCD" target="_blank">github.com/binRick/ESP32-S3-LCD</a>
+  &nbsp;·&nbsp; Watch Face sketch &nbsp;·&nbsp; ESP32-S3-Touch-LCD-1.69
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href)) a.classList.add('active');
+  });
+
+  // Animated analog watch face preview
+  (function() {
+    var canvas = document.getElementById('watchCanvas');
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    var CX = W / 2, CY = H / 2, CR = 58;
+
+    function drawFace(now) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      // Gold bezel
+      ctx.strokeStyle = '#c8960a';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(CX, CY, CR + 2, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(CX, CY, CR + 4, 0, Math.PI * 2); ctx.stroke();
+
+      // Ticks
+      for (var i = 0; i < 60; i++) {
+        var a = (i / 60) * Math.PI * 2 - Math.PI / 2;
+        var major = (i % 5 === 0);
+        var r1 = CR, r2 = major ? CR - 9 : CR - 5;
+        ctx.strokeStyle = major ? '#e2e8f0' : '#2a3a4a';
+        ctx.lineWidth = major ? 1.5 : 1;
+        ctx.beginPath();
+        ctx.moveTo(CX + r1 * Math.cos(a), CY + r1 * Math.sin(a));
+        ctx.lineTo(CX + r2 * Math.cos(a), CY + r2 * Math.sin(a));
+        ctx.stroke();
+      }
+
+      var h = now.getHours() % 12, m = now.getMinutes(), s = now.getSeconds(), ms = now.getMilliseconds();
+      var sFrac = s + ms / 1000;
+
+      // Hour hand
+      var ha = ((h + m / 60) / 12) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(CX, CY);
+      ctx.lineTo(CX + CR * 0.48 * Math.cos(ha), CY + CR * 0.48 * Math.sin(ha));
+      ctx.stroke();
+
+      // Minute hand
+      var ma = ((m + s / 60) / 60) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(CX, CY);
+      ctx.lineTo(CX + CR * 0.72 * Math.cos(ma), CY + CR * 0.72 * Math.sin(ma));
+      ctx.stroke();
+
+      // Second hand (smooth sweep)
+      var sa = (sFrac / 60) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(CX - CR * 0.2 * Math.cos(sa), CY - CR * 0.2 * Math.sin(sa));
+      ctx.lineTo(CX + CR * 0.82 * Math.cos(sa), CY + CR * 0.82 * Math.sin(sa));
+      ctx.stroke();
+
+      // Center dot
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(CX, CY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(CX, CY, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function animate() {
+      drawFace(new Date());
+      requestAnimationFrame(animate);
+    }
+    animate();
+  })();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
