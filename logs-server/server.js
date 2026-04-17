@@ -1941,23 +1941,77 @@ const server = http.createServer(async (req, res) => {
     }
     const topSites   = Object.entries(bySite).sort((a,b)=>b[1]-a[1]).slice(0,20);
     const topPaths   = Object.entries(byPath).sort((a,b)=>b[1]-a[1]).slice(0,20);
-    const topUA      = Object.entries(byUA).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topUA      = Object.entries(byUA).sort((a,b)=>b[1]-a[1]).slice(0,10);
     const recentHits = hits.slice(-100).reverse();
     const esc2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const sc   = s => { const c=Math.floor((s||0)/100); return c===2?'s2xx':c===3?'s3xx':c===4?'s4xx':c===5?'s5xx':'s0'; };
     const flag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c=>0x1F1E6+c.charCodeAt(0)-65)) : '';
     const geoLabel2 = (geo2) => [geo2.city, geo2.country].filter(Boolean).join(', ');
 
+    function parseUA(ua) {
+      if (!ua || ua === '-') return { browser: '—', version: '', os: '', bot: false, tool: false };
+      const low = ua.toLowerCase();
+      const isBot  = /bot|spider|crawler|slurp|scraper|headless|python-requests|python\/|go-http-client|curl\/|wget\/|java\/|okhttp|axios|scrapy|mechanize|libwww|facebookexternalhit|twitterbot|linkedinbot|discordbot|whatsapp|telegram|oai-|gptbot|anthropic|claude|openai|semrush|ahrefs|moz\.com|dotbot|bingpreview|yandex|baidu|duckduck|petalbot|applebot|pingdom|uptimerobot|newrelic|datadog|nagios|masscan|zgrab|nmap|nuclei|sqlmap|nikto|dirbuster|gobuster/.test(low);
+      const isTool = !isBot && /curl\/|wget\/|python|go-http|java\/|okhttp|axios|libwww|httpclient/.test(low);
+      let browser = '', version = '', os = '';
+      // --- bot / tool label ---
+      if (isBot || isTool) {
+        const m = ua.match(/([A-Za-z][A-Za-z0-9_\-]*(?:[Bb]ot|[Ss]pider|[Cc]rawler|[Ss]craper))[\/\s]?([\d.]*)/i)
+               || ua.match(/(OAI-[A-Za-z]+|GPTBot|anthropic-ai|ClaudeBot)[\/\s]?([\d.]*)/i)
+               || ua.match(/(python-requests|curl|wget|Go-http-client|axios|java)[\/\s]?([\d.]*)/i)
+               || ua.match(/^([A-Za-z][A-Za-z0-9_\-]+)[\/\s]?([\d.]+)/);
+        browser = m ? m[1] : ua.slice(0, 32);
+        version = m ? (m[2]||'').split('.')[0] : '';
+      }
+      // --- browser ---
+      if (!browser) {
+        if      (/Edg\//.test(ua))     { const m=ua.match(/Edg\/([\d]+)/);        browser='Edge';    version=m?m[1]:''; }
+        else if (/OPR\//.test(ua))     { const m=ua.match(/OPR\/([\d]+)/);         browser='Opera';   version=m?m[1]:''; }
+        else if (/YaBrowser/.test(ua)) { const m=ua.match(/YaBrowser\/([\d]+)/);   browser='Yandex';  version=m?m[1]:''; }
+        else if (/SamsungBrowser/.test(ua)) { const m=ua.match(/SamsungBrowser\/([\d]+)/); browser='Samsung'; version=m?m[1]:''; }
+        else if (/Firefox\//.test(ua)) { const m=ua.match(/Firefox\/([\d]+)/);     browser='Firefox'; version=m?m[1]:''; }
+        else if (/Chrome\//.test(ua))  { const m=ua.match(/Chrome\/([\d]+)/);      browser='Chrome';  version=m?m[1]:''; }
+        else if (/Safari\//.test(ua))  { const m=ua.match(/Version\/([\d]+)/);     browser='Safari';  version=m?m[1]:''; }
+        else if (/MSIE|Trident/.test(ua)) { browser='IE'; }
+        else { browser = ua.slice(0,28); }
+      }
+      // --- OS ---
+      if      (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+      else if (/Windows NT 6\.3/.test(ua)) os = 'Windows 8.1';
+      else if (/Windows NT/.test(ua))    os = 'Windows';
+      else if (/iPhone/.test(ua))        os = 'iOS';
+      else if (/iPad/.test(ua))          os = 'iPadOS';
+      else if (/Android/.test(ua))       { const m=ua.match(/Android ([\d.]+)/); os='Android'+(m?' '+m[1]:''); }
+      else if (/Macintosh/.test(ua))     { const m=ua.match(/Mac OS X ([\d_]+)/); const v=m?m[1].replace(/_/g,'.'):''; os='macOS'+(v?' '+v:''); }
+      else if (/Linux/.test(ua))         os = 'Linux';
+      else if (/CrOS/.test(ua))          os = 'ChromeOS';
+      return { browser, version, os, bot: isBot, tool: isTool };
+    }
+
+    function renderUA(ua) {
+      if (!ua || ua === '-') return '<span style="color:#484f58">—</span>';
+      const p = parseUA(ua);
+      const badges = [];
+      const browserColor = p.bot ? '#fb923c' : p.tool ? '#facc15' : '#00ff41';
+      const browserBg    = p.bot ? 'rgba(251,146,60,.12)' : p.tool ? 'rgba(250,204,21,.1)' : 'rgba(0,255,65,.1)';
+      const label = p.version ? p.browser + ' ' + p.version : p.browser;
+      badges.push(`<span style="color:${browserColor};background:${browserBg};border:1px solid ${browserColor}33;border-radius:4px;padding:.1rem .4rem;font-size:.7rem;white-space:nowrap">${esc2(label)}</span>`);
+      if (p.os) badges.push(`<span style="color:#a5b4fc;background:rgba(165,180,252,.08);border:1px solid rgba(165,180,252,.2);border-radius:4px;padding:.1rem .4rem;font-size:.7rem;white-space:nowrap">${esc2(p.os)}</span>`);
+      return `<div style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-bottom:.25rem">${badges.join('')}</div>`
+           + `<div style="color:#484f58;font-size:.66rem;word-break:break-all;line-height:1.4">${esc2(ua)}</div>`;
+    }
+
     const dayRows = Object.entries(byDay).sort((a,b)=>a[0]<b[0]?-1:1)
       .map(([day,n])=>`<tr><td>${esc2(day)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
     const siteRows = topSites.map(([s,n])=>`<tr><td><a href="/?site=${esc2(s)}" style="color:#79c0ff;text-decoration:none">${esc2(s)}</a></td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
     const pathRows = topPaths.map(([p,n])=>`<tr><td style="color:#c9d1d9;word-break:break-all">${esc2(p)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
-    const uaRows   = topUA.map(([u,n])=>`<tr><td style="color:#94a3b8;word-break:break-all;font-size:.68rem">${esc2(u)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
+    const uaRows   = topUA.map(([u,n])=>`<tr><td style="padding:.45rem .4rem">${renderUA(u)}</td><td style="color:#c9d1d9;vertical-align:top;padding:.45rem .4rem;white-space:nowrap">${n}</td></tr>`).join('');
     const recentRows = recentHits.map(h=>`<tr>
       <td class="col-ts">${esc2(h.ts)}</td>
       <td style="color:#a5b4fc;font-size:.72rem">${esc2(h.site||'')}</td>
       <td class="${sc(h.status)}">${esc2(h.status)}</td>
       <td style="color:#c9d1d9;word-break:break-all">${esc2((h.method||'')+' '+(h.path||''))}</td>
+      <td style="min-width:160px">${renderUA(h.ua||'')}</td>
     </tr>`).join('');
     const statusSummary = ['2xx','3xx','4xx','5xx'].map(k=>`<span class="${sc(parseInt(k)+'00')}">${k}: ${byStatus[k]||0}</span>`).join('  ');
 
@@ -2033,7 +2087,7 @@ const server = http.createServer(async (req, res) => {
       </div>
       <div class="card recent-card">
         <h2>recent requests (last 100)</h2>
-        ${recentRows ? '<table><thead><tr><th>timestamp</th><th>site</th><th>status</th><th>request</th></tr></thead><tbody>'+recentRows+'</tbody></table>' : '<div class="empty">—</div>'}
+        ${recentRows ? '<table><thead><tr><th>timestamp</th><th>site</th><th>status</th><th>request</th><th>client</th></tr></thead><tbody>'+recentRows+'</tbody></table>' : '<div class="empty">—</div>'}
       </div>
     </div>
   </div>
