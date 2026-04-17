@@ -435,6 +435,44 @@ function tailFile(filePath, onLine) {
   return () => { try { watcher && watcher.close(); } catch (_) {} clearInterval(interval); };
 }
 
+// ── UA parser (shared by IP page and bot-data endpoint) ─────────────────────
+function parseUA(ua) {
+  if (!ua || ua === '-') return { browser: '—', version: '', os: '', bot: false, tool: false };
+  const low = ua.toLowerCase();
+  const isBot  = /bot|spider|crawler|slurp|scraper|headless|python-requests|python\/|go-http-client|curl\/|wget\/|java\/|okhttp|axios|scrapy|mechanize|libwww|facebookexternalhit|twitterbot|linkedinbot|discordbot|whatsapp|telegram|oai-|gptbot|anthropic|claude|openai|semrush|ahrefs|moz\.com|dotbot|bingpreview|yandex|baidu|duckduck|petalbot|applebot|pingdom|uptimerobot|newrelic|datadog|nagios|masscan|zgrab|nmap|nuclei|sqlmap|nikto|dirbuster|gobuster/.test(low);
+  const isTool = !isBot && /curl\/|wget\/|python|go-http|java\/|okhttp|axios|libwww|httpclient/.test(low);
+  let browser = '', version = '', os = '';
+  if (isBot || isTool) {
+    const m = ua.match(/([A-Za-z][A-Za-z0-9_\-]*(?:[Bb]ot|[Ss]pider|[Cc]rawler|[Ss]craper))[\/\s]?([\d.]*)/i)
+           || ua.match(/(OAI-[A-Za-z]+|GPTBot|anthropic-ai|ClaudeBot)[\/\s]?([\d.]*)/i)
+           || ua.match(/(python-requests|curl|wget|Go-http-client|axios|java)[\/\s]?([\d.]*)/i)
+           || ua.match(/^([A-Za-z][A-Za-z0-9_\-]+)[\/\s]?([\d.]+)/);
+    browser = m ? m[1] : ua.slice(0, 32);
+    version = m ? (m[2]||'').split('.')[0] : '';
+  }
+  if (!browser) {
+    if      (/Edg\//.test(ua))     { const m=ua.match(/Edg\/([\d]+)/);        browser='Edge';    version=m?m[1]:''; }
+    else if (/OPR\//.test(ua))     { const m=ua.match(/OPR\/([\d]+)/);         browser='Opera';   version=m?m[1]:''; }
+    else if (/YaBrowser/.test(ua)) { const m=ua.match(/YaBrowser\/([\d]+)/);   browser='Yandex';  version=m?m[1]:''; }
+    else if (/SamsungBrowser/.test(ua)) { const m=ua.match(/SamsungBrowser\/([\d]+)/); browser='Samsung'; version=m?m[1]:''; }
+    else if (/Firefox\//.test(ua)) { const m=ua.match(/Firefox\/([\d]+)/);     browser='Firefox'; version=m?m[1]:''; }
+    else if (/Chrome\//.test(ua))  { const m=ua.match(/Chrome\/([\d]+)/);      browser='Chrome';  version=m?m[1]:''; }
+    else if (/Safari\//.test(ua))  { const m=ua.match(/Version\/([\d]+)/);     browser='Safari';  version=m?m[1]:''; }
+    else if (/MSIE|Trident/.test(ua)) { browser='IE'; }
+    else { browser = ua.slice(0,28); }
+  }
+  if      (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+  else if (/Windows NT 6\.3/.test(ua)) os = 'Windows 8.1';
+  else if (/Windows NT/.test(ua))    os = 'Windows';
+  else if (/iPhone/.test(ua))        os = 'iOS';
+  else if (/iPad/.test(ua))          os = 'iPadOS';
+  else if (/Android/.test(ua))       { const m=ua.match(/Android ([\d.]+)/); os='Android'+(m?' '+m[1]:''); }
+  else if (/Macintosh/.test(ua))     { const m=ua.match(/Mac OS X ([\d_]+)/); const v=m?m[1].replace(/_/g,'.'):''; os='macOS'+(v?' '+v:''); }
+  else if (/Linux/.test(ua))         os = 'Linux';
+  else if (/CrOS/.test(ua))          os = 'ChromeOS';
+  return { browser, version, os, bot: isBot, tool: isTool };
+}
+
 // ── Parse nginx combined log line ────────────────────────────────────────────
 function parseLine(raw) {
   const m = raw.match(
@@ -542,6 +580,43 @@ const HTML = `<!DOCTYPE html>
     @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
 
     /* ── Global Map ─────────────────────────────────────────────────────── */
+    /* ── Bots tab ───────────────────────────────────────────────────────── */
+    #bot-container{flex:1;overflow:hidden;display:none;flex-direction:column}
+    #bot-header{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;
+      border-bottom:1px solid rgba(255,255,255,.06);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
+    #bot-header .bh-val{color:var(--text);font-weight:700}
+    #bot-body{flex:1;display:flex;overflow:hidden;gap:0}
+    #bot-left{width:220px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);
+      overflow-y:auto;padding:.5rem .4rem}
+    #bot-left::-webkit-scrollbar{width:4px}
+    #bot-left::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+    #bot-right{flex:1;overflow-y:auto;padding:.5rem .75rem}
+    #bot-right::-webkit-scrollbar{width:6px}
+    #bot-right::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    .bot-type-item{padding:.3rem .5rem;border-radius:5px;font-size:.73rem;display:flex;justify-content:space-between;
+      align-items:center;cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:2px}
+    .bot-type-item:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07)}
+    .bot-type-item.active{background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.3)}
+    .bot-type-name{color:#fb923c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+    .bot-type-count{color:var(--dim);font-size:.68rem;flex-shrink:0;margin-left:.4rem}
+    .bot-section-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
+      padding:.4rem .5rem .2rem;margin-top:.3rem}
+    .bot-table{width:100%;border-collapse:collapse;font-size:.76rem}
+    .bot-table th{color:var(--dim);font-size:.67rem;text-transform:uppercase;letter-spacing:.07em;
+      text-align:left;padding:.3rem .4rem;border-bottom:1px solid rgba(255,255,255,.07);
+      position:sticky;top:0;background:#0d1117;z-index:1}
+    .bot-table td{padding:.38rem .4rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    .bot-table tr:hover td{background:rgba(255,255,255,.025)}
+    .bot-ip{color:#79c0ff;text-decoration:none;font-size:.76rem}
+    .bot-ip:hover{text-decoration:underline;color:#fff}
+    .bot-geo{color:#a5b4fc;font-size:.71rem}
+    .bot-badge{display:inline-block;border-radius:4px;padding:.08rem .38rem;font-size:.68rem;white-space:nowrap}
+    .bot-badge.isbot{color:#fb923c;background:rgba(251,146,60,.12);border:1px solid rgba(251,146,60,.2)}
+    .bot-badge.istool{color:#facc15;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.2)}
+    .bot-hits{color:#c9d1d9;text-align:right;font-size:.74rem}
+    .bot-sites{color:var(--dim);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+    .bot-empty{color:var(--dim);padding:2rem;text-align:center;font-size:.8rem}
+
     #map-container{flex:1;overflow:hidden;display:none;flex-direction:column;position:relative}
     #map-header{display:flex;align-items:center;gap:.9rem;padding:.4rem .75rem;
       border-bottom:1px solid rgba(255,255,255,.06);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
@@ -879,6 +954,7 @@ const HTML = `<!DOCTYPE html>
     </div>
     <button class="tab" id="ssh-tab">honeypot sessions</button>
     <button class="tab" id="dl-tab">bundler downloads</button>
+    <button class="tab" id="bot-tab">🤖 bots</button>
     <button class="tab" id="map-tab">🌍 global map</button>
     <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
@@ -920,6 +996,29 @@ const HTML = `<!DOCTYPE html>
         </thead>
         <tbody id="dl-tbody"><tr><td colspan="6" class="dl-empty">Loading…</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <div id="bot-container">
+    <div id="bot-header">
+      <span>bot hits</span> <span class="bh-val" id="bh-hits">—</span>
+      <span>unique IPs</span> <span class="bh-val" id="bh-ips">—</span>
+      <span>bot types</span> <span class="bh-val" id="bh-types">—</span>
+      <button id="bot-refresh" style="margin-left:.5rem;background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:\'Courier New\',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">↺ refresh</button>
+    </div>
+    <div id="bot-body">
+      <div id="bot-left">
+        <div class="bot-section-label">bot types</div>
+        <div id="bot-type-list"></div>
+      </div>
+      <div id="bot-right">
+        <table class="bot-table">
+          <thead><tr>
+            <th>IP</th><th>location</th><th>bot / tool</th><th>sites</th><th style="text-align:right">hits</th><th>last seen</th>
+          </tr></thead>
+          <tbody id="bot-tbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1111,6 +1210,7 @@ const HTML = `<!DOCTYPE html>
       clearTimeout(reconnectTimer);
       if (ws) { ws.onclose = null; ws.close(); ws = null; }
       logContainer.style.display = 'none';
+      if (typeof botContainer !== 'undefined') botContainer.style.display = 'none';
       sshContainer.style.display = 'flex';
       loadSshSessions();
     }
@@ -1179,10 +1279,11 @@ const HTML = `<!DOCTYPE html>
       if (dlMode) leaveDlMode();
     });
 
-    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#map-tab)').forEach(btn => {
+    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
         if (sshMode) leaveSshMode();
         if (dlMode) leaveDlMode();
+        if (botMode) leaveBotMode();
         if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       });
     });
@@ -1207,6 +1308,7 @@ const HTML = `<!DOCTYPE html>
       if (ws) { ws.onclose = null; ws.close(); ws = null; }
       logContainer.style.display = 'none';
       sshContainer.style.display = 'none';
+      if (typeof botContainer !== 'undefined') botContainer.style.display = 'none';
       dlContainer.style.display = 'flex';
       loadBundlerDownloads();
       dlPollTimer = setInterval(loadBundlerDownloads, 15000);
@@ -1269,8 +1371,117 @@ const HTML = `<!DOCTYPE html>
     }
 
     dlTab.addEventListener('click', () => {
-      if (!dlMode) { if (sshMode) leaveSshMode(); enterDlMode(); }
+      if (!dlMode) { if (sshMode) leaveSshMode(); if (botMode) leaveBotMode(); enterDlMode(); }
     });
+
+    // ── Bots tab ──────────────────────────────────────────────────────────────
+    const botTab       = document.getElementById('bot-tab');
+    const botContainer = document.getElementById('bot-container');
+    let botMode = false;
+    let botAllIps = [];
+    let activeBotType = null;
+
+    function uaBadge(entry) {
+      const cls = entry.tool ? 'istool' : 'isbot';
+      return '<span class="bot-badge ' + cls + '">' + esc(entry.botName || '—') + '</span>';
+    }
+    function flag(cc) {
+      if (!cc) return '';
+      try { return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) + ' '; } catch(_) { return ''; }
+    }
+
+    function renderBotRows(ips) {
+      const tbody = document.getElementById('bot-tbody');
+      if (!ips.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="bot-empty">No bots found in recent logs.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = ips.map(e => {
+        const geo = [e.city, e.country].filter(Boolean).join(', ');
+        const sitesStr = (e.sites||[]).map(s=>s.n).join(', ');
+        return '<tr>' +
+          '<td><a class="bot-ip" href="/ip/' + encodeURIComponent(e.ip) + '">' + esc(e.ip) + '</a></td>' +
+          '<td class="bot-geo">' + flag(e.countryCode) + esc(geo || '—') + '</td>' +
+          '<td>' + uaBadge(e) + '</td>' +
+          '<td class="bot-sites" title="' + esc(sitesStr) + '">' + esc(sitesStr || '—') + '</td>' +
+          '<td class="bot-hits">' + e.hits + '</td>' +
+          '<td style="color:#484f58;font-size:.71rem;white-space:nowrap">' + esc((e.lastSeen||'').slice(0,20)) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function renderBotTypes(types) {
+      const list = document.getElementById('bot-type-list');
+      list.innerHTML = '<div class="bot-type-item' + (!activeBotType ? ' active' : '') + '" data-type="">' +
+        '<span class="bot-type-name">all bots</span>' +
+        '<span class="bot-type-count">' + botAllIps.length + '</span></div>' +
+        types.map(([name, count]) =>
+          '<div class="bot-type-item' + (activeBotType === name ? ' active' : '') + '" data-type="' + esc(name) + '">' +
+          '<span class="bot-type-name">' + esc(name) + '</span>' +
+          '<span class="bot-type-count">' + count + '</span></div>'
+        ).join('');
+      list.querySelectorAll('.bot-type-item').forEach(item => {
+        item.addEventListener('click', () => {
+          activeBotType = item.dataset.type || null;
+          list.querySelectorAll('.bot-type-item').forEach(i => i.classList.toggle('active', i === item));
+          const filtered = activeBotType
+            ? botAllIps.filter(e => e.botName === activeBotType)
+            : botAllIps;
+          renderBotRows(filtered);
+        });
+      });
+    }
+
+    function loadBotData() {
+      fetch('/bot-data')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('bh-hits').textContent  = data.totalBotHits;
+          document.getElementById('bh-ips').textContent   = data.uniqueBotIps;
+          document.getElementById('bh-types').textContent = data.topBotTypes.length;
+          botAllIps = data.ips || [];
+          activeBotType = null;
+          renderBotTypes(data.topBotTypes || []);
+          renderBotRows(botAllIps);
+        })
+        .catch(() => {
+          document.getElementById('bot-tbody').innerHTML =
+            '<tr><td colspan="6" class="bot-empty">Failed to load bot data.</td></tr>';
+        });
+    }
+
+    function enterBotMode() {
+      if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
+      if (dlMode) leaveDlMode();
+      if (sshMode) leaveSshMode();
+      botMode = true;
+      botTab.classList.add('active');
+      document.querySelector('.tab[data-site="all"]').classList.remove('active');
+      pickerBtn.classList.remove('has-selection');
+      pickerBtn.textContent = '☰ app ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
+      document.getElementById('pause-btn').style.display = 'none';
+      document.querySelector('.stats').style.display = 'none';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      logContainer.style.display = 'none';
+      sshContainer.style.display = 'none';
+      dlContainer.style.display = 'none';
+      botContainer.style.display = 'flex';
+      loadBotData();
+    }
+
+    function leaveBotMode() {
+      botMode = false;
+      botTab.classList.remove('active');
+      document.getElementById('pause-btn').style.display = '';
+      document.querySelector('.stats').style.display = '';
+      botContainer.style.display = 'none';
+      logContainer.style.display = '';
+    }
+
+    botTab.addEventListener('click', () => { if (!botMode) enterBotMode(); });
+    document.getElementById('bot-refresh').addEventListener('click', loadBotData);
 
     // ── Global IP Map ─────────────────────────────────────────────────────────
     const mapTab       = document.getElementById('map-tab');
@@ -1304,6 +1515,7 @@ const HTML = `<!DOCTYPE html>
       logContainer.style.display = 'none';
       sshContainer.style.display = 'none';
       dlContainer.style.display = 'none';
+      botContainer.style.display = 'none';
       mapContainer.style.display = 'flex';
       if (!landRings) loadLand(); else loadMapData();
       mapAutoRefreshTimer = setInterval(loadMapData, 60000);
@@ -1895,6 +2107,47 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Bot summary data ─────────────────────────────────────────────────────────
+  if (req.url === '/bot-data') {
+    const ipMap = new Map(); // ip -> { hits, sites: Map, botName, ua, lastSeen }
+    const botTypes = new Map(); // botName -> count
+    let totalBotHits = 0;
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      const lines = lastLines(path.join(LOGS_DIR, logFilename), 500);
+      for (const line of lines) {
+        const p = parseLine(line);
+        if (!p.ip || !p.ua) continue;
+        const u = parseUA(p.ua);
+        if (!u.bot && !u.tool) continue;
+        totalBotHits++;
+        const botLabel = u.version ? u.browser + '/' + u.version : u.browser;
+        botTypes.set(botLabel, (botTypes.get(botLabel) || 0) + 1);
+        if (!ipMap.has(p.ip)) ipMap.set(p.ip, { hits: 0, sites: new Map(), botName: botLabel, ua: p.ua, lastSeen: '', tool: u.tool });
+        const e = ipMap.get(p.ip);
+        e.hits++;
+        e.sites.set(siteName, (e.sites.get(siteName) || 0) + 1);
+        if (!e.lastSeen || p.ts > e.lastSeen) e.lastSeen = p.ts;
+      }
+    }
+    const uniqueIps = [...ipMap.keys()];
+    await Promise.all(uniqueIps.map(ip => lookupGeo(ip)));
+    const ips = [...ipMap.entries()]
+      .sort((a,b) => b[1].hits - a[1].hits)
+      .slice(0, 200)
+      .map(([ip, d]) => {
+        const g = ipGeoCache.get(ip) || {};
+        return {
+          ip, hits: d.hits, botName: d.botName, ua: d.ua, tool: d.tool, lastSeen: d.lastSeen,
+          lat: g.lat||0, lon: g.lon||0, countryCode: g.countryCode||'', country: g.country||'', city: g.city||'',
+          sites: [...d.sites.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,c])=>({n,c})),
+        };
+      });
+    const topBotTypes = [...botTypes.entries()].sort((a,b)=>b[1]-a[1]).slice(0,20);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ totalBotHits, uniqueBotIps: ipMap.size, topBotTypes, ips }));
+    return;
+  }
+
   // ── IP profile page ─────────────────────────────────────────────────────────
   const ipRouteM = req.url.match(/^\/ip\/([^/?]+)/);
   if (ipRouteM) {
@@ -1947,46 +2200,6 @@ const server = http.createServer(async (req, res) => {
     const sc   = s => { const c=Math.floor((s||0)/100); return c===2?'s2xx':c===3?'s3xx':c===4?'s4xx':c===5?'s5xx':'s0'; };
     const flag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c=>0x1F1E6+c.charCodeAt(0)-65)) : '';
     const geoLabel2 = (geo2) => [geo2.city, geo2.country].filter(Boolean).join(', ');
-
-    function parseUA(ua) {
-      if (!ua || ua === '-') return { browser: '—', version: '', os: '', bot: false, tool: false };
-      const low = ua.toLowerCase();
-      const isBot  = /bot|spider|crawler|slurp|scraper|headless|python-requests|python\/|go-http-client|curl\/|wget\/|java\/|okhttp|axios|scrapy|mechanize|libwww|facebookexternalhit|twitterbot|linkedinbot|discordbot|whatsapp|telegram|oai-|gptbot|anthropic|claude|openai|semrush|ahrefs|moz\.com|dotbot|bingpreview|yandex|baidu|duckduck|petalbot|applebot|pingdom|uptimerobot|newrelic|datadog|nagios|masscan|zgrab|nmap|nuclei|sqlmap|nikto|dirbuster|gobuster/.test(low);
-      const isTool = !isBot && /curl\/|wget\/|python|go-http|java\/|okhttp|axios|libwww|httpclient/.test(low);
-      let browser = '', version = '', os = '';
-      // --- bot / tool label ---
-      if (isBot || isTool) {
-        const m = ua.match(/([A-Za-z][A-Za-z0-9_\-]*(?:[Bb]ot|[Ss]pider|[Cc]rawler|[Ss]craper))[\/\s]?([\d.]*)/i)
-               || ua.match(/(OAI-[A-Za-z]+|GPTBot|anthropic-ai|ClaudeBot)[\/\s]?([\d.]*)/i)
-               || ua.match(/(python-requests|curl|wget|Go-http-client|axios|java)[\/\s]?([\d.]*)/i)
-               || ua.match(/^([A-Za-z][A-Za-z0-9_\-]+)[\/\s]?([\d.]+)/);
-        browser = m ? m[1] : ua.slice(0, 32);
-        version = m ? (m[2]||'').split('.')[0] : '';
-      }
-      // --- browser ---
-      if (!browser) {
-        if      (/Edg\//.test(ua))     { const m=ua.match(/Edg\/([\d]+)/);        browser='Edge';    version=m?m[1]:''; }
-        else if (/OPR\//.test(ua))     { const m=ua.match(/OPR\/([\d]+)/);         browser='Opera';   version=m?m[1]:''; }
-        else if (/YaBrowser/.test(ua)) { const m=ua.match(/YaBrowser\/([\d]+)/);   browser='Yandex';  version=m?m[1]:''; }
-        else if (/SamsungBrowser/.test(ua)) { const m=ua.match(/SamsungBrowser\/([\d]+)/); browser='Samsung'; version=m?m[1]:''; }
-        else if (/Firefox\//.test(ua)) { const m=ua.match(/Firefox\/([\d]+)/);     browser='Firefox'; version=m?m[1]:''; }
-        else if (/Chrome\//.test(ua))  { const m=ua.match(/Chrome\/([\d]+)/);      browser='Chrome';  version=m?m[1]:''; }
-        else if (/Safari\//.test(ua))  { const m=ua.match(/Version\/([\d]+)/);     browser='Safari';  version=m?m[1]:''; }
-        else if (/MSIE|Trident/.test(ua)) { browser='IE'; }
-        else { browser = ua.slice(0,28); }
-      }
-      // --- OS ---
-      if      (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
-      else if (/Windows NT 6\.3/.test(ua)) os = 'Windows 8.1';
-      else if (/Windows NT/.test(ua))    os = 'Windows';
-      else if (/iPhone/.test(ua))        os = 'iOS';
-      else if (/iPad/.test(ua))          os = 'iPadOS';
-      else if (/Android/.test(ua))       { const m=ua.match(/Android ([\d.]+)/); os='Android'+(m?' '+m[1]:''); }
-      else if (/Macintosh/.test(ua))     { const m=ua.match(/Mac OS X ([\d_]+)/); const v=m?m[1].replace(/_/g,'.'):''; os='macOS'+(v?' '+v:''); }
-      else if (/Linux/.test(ua))         os = 'Linux';
-      else if (/CrOS/.test(ua))          os = 'ChromeOS';
-      return { browser, version, os, bot: isBot, tool: isTool };
-    }
 
     function renderUA(ua) {
       if (!ua || ua === '-') return '<span style="color:#484f58">—</span>';
