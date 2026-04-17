@@ -413,7 +413,10 @@ function lastLines(filePath, n) {
     const fd  = fs.openSync(filePath, 'r');
     fs.readSync(fd, buf, 0, chunkSize, stat.size - chunkSize);
     fs.closeSync(fd);
-    return buf.toString('utf8').split('\n').filter(l => l.trim()).slice(-n);
+    const parts = buf.toString('utf8').split('\n');
+    // Drop the first element — it is likely a truncated partial line from the chunk boundary
+    const lines = (stat.size > chunkSize ? parts.slice(1) : parts);
+    return lines.filter(l => l.trim()).slice(-n);
   } catch (_) { return []; }
 }
 
@@ -1083,6 +1086,21 @@ const HTML = `<!DOCTYPE html>
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
+    const MONTHS = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    function fmtLogTs(ts) {
+      // nginx: "17/Apr/2026:20:07:42 +0000"
+      const m = ts && ts.match(/^(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)\s+([+-]\d{4})$/);
+      if (!m) return ts || '';
+      const [,d,mon,y,hh,mm,ss,tz] = m;
+      const off = (parseInt(tz.slice(0,3))*60 + parseInt(tz[0]+tz.slice(3)))*60000;
+      const utc = Date.UTC(+y, MONTHS[mon]||0, +d, +hh, +mm, +ss) - off;
+      return new Date(utc).toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        month:'short', day:'numeric',
+        hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+      });
+    }
+
     function countryFlag(code) {
       if (!code || code.length !== 2) return '';
       return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
@@ -1111,7 +1129,7 @@ const HTML = `<!DOCTYPE html>
         const sc = statusClass(data.status);
         el.className = 'log-line new';
         el.innerHTML =
-          '<span class="col-ts">'  + esc(data.ts)                             + '</span>' +
+          '<span class="col-ts">'  + esc(fmtLogTs(data.ts))                    + '</span>' +
           '<span class="col-ip"><a class="ip-link" href="/ip/' + encodeURIComponent(data.ip||'') + '">' + esc(data.ip) + '</a></span>' +
           '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
           '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
