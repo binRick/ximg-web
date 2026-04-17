@@ -79,6 +79,7 @@
       ['proc-trace-exec','proc-trace-exec'],
       ['proc-trace-net','proc-trace-net'],
       ['proc-trace-dns','proc-trace-dns'],
+      ['proc-trace-tls','proc-trace-tls'],
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch']
     ]},
