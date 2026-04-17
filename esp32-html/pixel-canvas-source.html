@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Source code for the pixel_canvas ESP32-S3 sketch — 30×30 touch pixel art editor with SD BMP save.">
+<title>Pixel Canvas Source · ESP32 Journey</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--bg:#0f1117;--surface2:#22263a;--border:#2e3350;--accent:#7c6af7;--accent2:#4fc3f7;--green:#4ade80;--yellow:#fbbf24;--text:#e2e8f0;--muted:#8892b0;--code-bg:#0d1117;--font-mono:'Fira Code','Cascadia Code','Consolas',monospace;--font-sans:'Inter','Segoe UI',system-ui,sans-serif;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:15px;line-height:1.7;min-height:100vh;padding-top:48px;}
+  #subnav{position:sticky;top:52px;z-index:150;background:rgba(15,17,23,.97);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.07);display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem;}
+  #subnav a{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#5a6070;padding:.3rem .65rem;border-radius:3px;text-decoration:none;transition:color .2s,background .2s;font-family:'Courier New',monospace;}
+  #subnav a:hover,#subnav a.active{color:var(--accent);background:rgba(255,255,255,.06);}
+  #subsubnav{position:sticky;top:88px;z-index:140;background:rgba(10,13,18,.95);border-bottom:1px solid rgba(124,106,247,.12);display:flex;justify-content:center;gap:.4rem;padding:.2rem 1rem;}
+  #subsubnav a{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:#3a4050;padding:.2rem .55rem;border-radius:2px;text-decoration:none;transition:color .2s,background .2s;font-family:'Courier New',monospace;}
+  #subsubnav a:hover,#subsubnav a.active{color:var(--accent);background:rgba(124,106,247,.08);}
+  .hero{background:linear-gradient(135deg,#0a1a2a 0%,#1a0a2a 50%,#0a2a1a 100%);border-bottom:1px solid var(--border);padding:36px 40px 32px;text-align:center;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(251,191,36,0.1) 0%,transparent 70%);pointer-events:none;}
+  .hero-badge{display:inline-block;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);color:#fde68a;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:16px;}
+  .hero h1{font-size:clamp(20px,3vw,32px);font-weight:800;background:linear-gradient(135deg,#fde68a,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;}
+  .hero-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
+  .hero-chip{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--muted);font-family:var(--font-mono);}
+  .source-wrap{max-width:1100px;margin:32px auto 64px;padding:0 24px;}
+  .source-header{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:10px 18px;font-family:var(--font-mono);font-size:13px;}
+  .source-filename{color:var(--accent2);}
+  .copy-btn{background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.3);color:#a78bfa;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);transition:background .2s;}
+  .copy-btn:hover{background:rgba(124,106,247,.3);}
+  .copy-btn.copied{color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1);}
+  #code-display{background:var(--code-bg);border:1px solid var(--border);border-radius:0 0 8px 8px;overflow-x:auto;font-family:var(--font-mono);font-size:13px;line-height:1.7;padding:16px 0;}
+  .code-line{display:flex;min-width:max-content;}.code-line:hover{background:rgba(255,255,255,.03);}
+  .ln{display:inline-block;min-width:50px;padding:0 16px;text-align:right;color:#3a4454;user-select:none;flex-shrink:0;border-right:1px solid #1a2030;}
+  .lc{padding:0 20px;white-space:pre;color:#8b9db0;}
+  .cm{color:#4a6a4a;font-style:italic;}.pp{color:#569cd6;}.kw{color:#c586c0;}.tp{color:#4ec9b0;}.str{color:#ce9178;}.num{color:#b5cea8;}
+  .footer{text-align:center;padding:40px 24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;}
+  ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+<nav id="subnav">
+  <a href="index.html">Overview</a><a href="button-beep.html">Button Beep</a><a href="truth-detector.html">Truth Detector</a><a href="dvd-screensaver.html">DVD Screensaver</a><a href="heartbeat-viz.html">Heartbeat Viz</a><a href="pixel-canvas.html">Pixel Canvas</a><a href="wifi-scanner.html">WiFi Scanner</a>
+</nav>
+<script>document.querySelectorAll('#subnav a').forEach(function(a){var h=a.getAttribute('href'),p=location.pathname;if(p.endsWith(h)||(h==='index.html'&&(p.endsWith('/')||p.endsWith('/esp32')||p.endsWith('index.html'))))a.classList.add('active');});</script>
+<nav id="subsubnav">
+  <a href="pixel-canvas.html">Session</a>
+  <a href="pixel-canvas-source.html">Source Code</a>
+</nav>
+<script>document.querySelectorAll('#subsubnav a').forEach(function(a){if(location.pathname.endsWith(a.getAttribute('href')))a.classList.add('active');});</script>
+
+<div class="hero">
+  <div class="hero-badge">Source Code · Sketch 005</div>
+  <h1>pixel_canvas.ino</h1>
+  <div class="hero-chips">
+    <div class="hero-chip">TFT_eSPI</div>
+    <div class="hero-chip">FT6336U (touch)</div>
+    <div class="hero-chip">SD_MMC</div>
+    <div class="hero-chip">30×30 grid · 8px cells</div>
+    <div class="hero-chip">24-bit BMP save</div>
+  </div>
+</div>
+
+<div class="source-wrap">
+  <div class="source-header">
+    <span class="source-filename">sketches/pixel_canvas/pixel_canvas.ino</span>
+    <button class="copy-btn" id="copy-btn">Copy</button>
+  </div>
+  <div id="code-display"></div>
+</div>
+
+<div class="footer"><p>Built with <strong>Claude Sonnet 4.6</strong> · Anthropic · April 2026</p></div>
+
+<script type="text/plain" id="raw-src">
+// pixel_canvas — Freenove ESP32-S3 Dev Kit (FNK0086)
+//
+// Finger-draw pixel art on a 30×30 grid, pick colors from a palette,
+// clear, and save each painting to SD as a 24-bit BMP.
+//
+// Pin summary:
+//   LCD   : TFT_eSPI  MOSI=20 SCLK=21 DC=0  CS=GND (ST7789 240×320)
+//   Touch : FT6336U   SDA=2   SCL=1
+//   SD    : SDMMC     CMD=38  CLK=39  D0=40
+
+#include <TFT_eSPI.h>
+#include "FT6336U.h"
+#include "SD_MMC.h"
+#include <Wire.h>
+
+#define TOUCH_SDA 2
+#define TOUCH_SCL 1
+#define SD_CLK    39
+#define SD_CMD    38
+#define SD_D0     40
+
+#define SW 240
+#define SH 320
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+#define GRID_W   30
+#define GRID_H   30
+#define PIXEL_SZ  8   // 30 × 8 = 240 — fills screen width exactly
+
+// ── Toolbar (bottom 80 px, y = 240..319) ─────────────────────────────────────
+#define TB_Y  240
+#define TB_H   80
+
+// Palette row
+#define PAL_Y  (TB_Y + 4)
+#define PAL_H   28
+#define PAL_N   12
+#define PAL_W  (SW / PAL_N)   // 20 px per swatch
+
+// Button row
+#define BTN_Y        (PAL_Y + PAL_H + 4)
+#define BTN_H         36
+#define BTN_ERASE_X    0
+#define BTN_ERASE_W   74
+#define BTN_CLEAR_X   79
+#define BTN_CLEAR_W   79
+#define BTN_SAVE_X   162
+#define BTN_SAVE_W    78
+
+// ── Palette colours (RGB565) ──────────────────────────────────────────────────
+#define PAL_BLACK   0x0000
+#define PAL_WHITE   0xFFFF
+#define PAL_RED     0xF800
+#define PAL_ORANGE  0xFD20
+#define PAL_YELLOW  0xFFE0
+#define PAL_LIME    0x07E0
+#define PAL_DKGREEN 0x0400
+#define PAL_CYAN    0x07FF
+#define PAL_BLUE    0x001F
+#define PAL_PURPLE  0x8010
+#define PAL_MAGENTA 0xF81F
+#define PAL_GREY    0xA514
+
+static const uint16_t PALETTE[PAL_N] = {
+  PAL_BLACK, PAL_WHITE,   PAL_RED,    PAL_ORANGE,
+  PAL_YELLOW, PAL_LIME,   PAL_DKGREEN, PAL_CYAN,
+  PAL_BLUE,  PAL_PURPLE,  PAL_MAGENTA, PAL_GREY,
+};
+
+// ── UI colours ────────────────────────────────────────────────────────────────
+#define C_BG       0x0000
+#define C_TB_BG    0x2104
+#define C_DIVIDER  0x4208
+#define C_SEL_RING 0xFFFF
+#define C_BTN_BG   0x4A49
+#define C_BTN_TXT  0xFFFF
+
+// ── BMP row stride ────────────────────────────────────────────────────────────
+static const int BMP_ROW_BYTES = ((GRID_W * 3 + 3) / 4) * 4;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+TFT_eSPI tft;
+FT6336U  ts(TOUCH_SDA, TOUCH_SCL, -1, -1);
+
+uint16_t canvas[GRID_H][GRID_W];
+int      selectedColor        = 0;
+bool     eraserActive         = false;
+bool     sdOK                 = false;
+bool     prevTouched          = false;
+bool     touchStartedInCanvas = false;
+
+// ── Drawing helpers ───────────────────────────────────────────────────────────
+void drawCanvasPixel(int col, int row, uint16_t color) {
+  tft.fillRect(col * PIXEL_SZ, row * PIXEL_SZ, PIXEL_SZ, PIXEL_SZ, color);
+}
+
+void clearCanvas() {
+  memset(canvas, 0, sizeof(canvas));
+  tft.fillRect(0, 0, SW, GRID_H * PIXEL_SZ, C_BG);
+}
+
+void drawPaletteRow() {
+  for (int i = 0; i < PAL_N; i++) {
+    int x = i * PAL_W;
+    uint16_t border = (i == selectedColor && !eraserActive) ? C_SEL_RING : C_TB_BG;
+    tft.drawRect(x, PAL_Y, PAL_W, PAL_H, border);
+    tft.fillRect(x + 1, PAL_Y + 1, PAL_W - 2, PAL_H - 2, PALETTE[i]);
+  }
+}
+
+void drawButton(int x, int w, const char* label, bool active) {
+  uint16_t bg = active ? PAL_ORANGE : C_BTN_BG;
+  tft.fillRoundRect(x, BTN_Y, w, BTN_H, 4, bg);
+  tft.setTextColor(C_BTN_TXT, bg);
+  tft.setTextFont(2);
+  tft.setTextSize(1);
+  int tw = tft.textWidth(label);
+  tft.setCursor(x + (w - tw) / 2, BTN_Y + (BTN_H - 14) / 2);
+  tft.print(label);
+}
+
+void drawToolbar() {
+  tft.fillRect(0, TB_Y, SW, TB_H, C_TB_BG);
+  tft.drawFastHLine(0, TB_Y, SW, C_DIVIDER);
+  drawPaletteRow();
+  drawButton(BTN_ERASE_X, BTN_ERASE_W, "ERASE", eraserActive);
+  drawButton(BTN_CLEAR_X, BTN_CLEAR_W, "CLEAR", false);
+  drawButton(BTN_SAVE_X,  BTN_SAVE_W,  sdOK ? "SAVE" : "NO SD", false);
+}
+
+// ── BMP save ──────────────────────────────────────────────────────────────────
+static void w16(File& f, uint16_t v) { f.write(v & 0xFF); f.write(v >> 8); }
+static void w32(File& f, uint32_t v) {
+  f.write(v & 0xFF); f.write((v >> 8) & 0xFF);
+  f.write((v >> 16) & 0xFF); f.write((v >> 24) & 0xFF);
+}
+
+static int findNextFileNum() {
+  for (int i = 1; i <= 999; i++) {
+    char path[32];
+    snprintf(path, sizeof(path), "/canvas_%03d.bmp", i);
+    if (!SD_MMC.exists(path)) return i;
+  }
+  return 1;
+}
+
+bool saveCanvas() {
+  if (!sdOK) return false;
+  char path[32];
+  snprintf(path, sizeof(path), "/canvas_%03d.bmp", findNextFileNum());
+  File f = SD_MMC.open(path, FILE_WRITE);
+  if (!f) return false;
+  uint32_t pixBytes = (uint32_t)BMP_ROW_BYTES * GRID_H;
+  uint32_t fileSize = 54 + pixBytes;
+  f.write('B'); f.write('M');
+  w32(f, fileSize); w16(f, 0); w16(f, 0); w32(f, 54);
+  w32(f, 40); w32(f, GRID_W); w32(f, GRID_H);
+  w16(f, 1); w16(f, 24); w32(f, 0); w32(f, 0);
+  w32(f, 2835); w32(f, 2835); w32(f, 0); w32(f, 0);
+  uint8_t rowBuf[BMP_ROW_BYTES];
+  for (int gr = GRID_H - 1; gr >= 0; gr--) {
+    memset(rowBuf, 0, BMP_ROW_BYTES);
+    for (int gc = 0; gc < GRID_W; gc++) {
+      uint16_t px = canvas[gr][gc];
+      uint8_t r5 = (px >> 11) & 0x1F;
+      uint8_t g6 = (px >> 5)  & 0x3F;
+      uint8_t b5 =  px        & 0x1F;
+      rowBuf[gc * 3 + 0] = (b5 << 3) | (b5 >> 2);
+      rowBuf[gc * 3 + 1] = (g6 << 2) | (g6 >> 4);
+      rowBuf[gc * 3 + 2] = (r5 << 3) | (r5 >> 2);
+    }
+    f.write(rowBuf, BMP_ROW_BYTES);
+  }
+  f.close();
+  Serial.printf("Saved: %s\n", path);
+  return true;
+}
+
+void showSavedFeedback(bool success) {
+  const char* msg = success ? "SAVED!" : "SAVE FAILED";
+  uint16_t bg = success ? 0x07E0 : 0xF800;
+  const int bw = 130, bh = 40;
+  int bx = (SW - bw) / 2;
+  int by = (GRID_H * PIXEL_SZ - bh) / 2;
+  tft.fillRoundRect(bx, by, bw, bh, 6, bg);
+  tft.setTextColor(TFT_BLACK, bg);
+  tft.setTextFont(4);
+  tft.setTextSize(1);
+  int tw = tft.textWidth(msg);
+  tft.setCursor(bx + (bw - tw) / 2, by + (bh - 26) / 2);
+  tft.print(msg);
+  delay(800);
+  int r0 = max(0, by / PIXEL_SZ);
+  int r1 = min(GRID_H - 1, (by + bh) / PIXEL_SZ + 1);
+  int c0 = max(0, bx / PIXEL_SZ);
+  int c1 = min(GRID_W - 1, (bx + bw) / PIXEL_SZ + 1);
+  for (int r = r0; r <= r1; r++)
+    for (int c = c0; c <= c1; c++)
+      drawCanvasPixel(c, r, canvas[r][c]);
+}
+
+void handleToolbarTouch(int tx, int ty) {
+  if (ty >= PAL_Y && ty < PAL_Y + PAL_H) {
+    int idx = tx / PAL_W;
+    if (idx >= 0 && idx < PAL_N) {
+      selectedColor = idx;
+      eraserActive  = false;
+      drawPaletteRow();
+      drawButton(BTN_ERASE_X, BTN_ERASE_W, "ERASE", false);
+    }
+  } else if (ty >= BTN_Y && ty < BTN_Y + BTN_H) {
+    if (tx >= BTN_ERASE_X && tx < BTN_ERASE_X + BTN_ERASE_W) {
+      eraserActive = !eraserActive;
+      drawPaletteRow();
+      drawButton(BTN_ERASE_X, BTN_ERASE_W, "ERASE", eraserActive);
+    } else if (tx >= BTN_CLEAR_X && tx < BTN_CLEAR_X + BTN_CLEAR_W) {
+      clearCanvas();
+    } else if (tx >= BTN_SAVE_X && tx < BTN_SAVE_X + BTN_SAVE_W) {
+      showSavedFeedback(saveCanvas());
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(TOUCH_SDA, TOUCH_SCL);
+  ts.begin();
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(C_BG);
+  SD_MMC.setPins(SD_CLK, SD_CMD, SD_D0);
+  sdOK = SD_MMC.begin("/sdcard", true);
+  if (!sdOK) Serial.println("SD not mounted — saves disabled");
+  memset(canvas, 0, sizeof(canvas));
+  drawToolbar();
+}
+
+void loop() {
+  FT6336U_TouchPointType tp = ts.scan();
+  bool touched    = (tp.touch_count > 0);
+  int  tx         = touched ? (int)tp.tp[0].x : -1;
+  int  ty         = touched ? (int)tp.tp[0].y : -1;
+  bool freshTouch = touched && !prevTouched;
+  if (freshTouch) {
+    touchStartedInCanvas = (ty < TB_Y);
+  }
+  if (touched) {
+    if (touchStartedInCanvas && ty >= 0 && ty < GRID_H * PIXEL_SZ) {
+      int col = tx / PIXEL_SZ;
+      int row = ty / PIXEL_SZ;
+      if (col >= 0 && col < GRID_W && row >= 0 && row < GRID_H) {
+        uint16_t color = eraserActive ? C_BG : PALETTE[selectedColor];
+        if (canvas[row][col] != color) {
+          canvas[row][col] = color;
+          drawCanvasPixel(col, row, color);
+        }
+      }
+    } else if (freshTouch && !touchStartedInCanvas && ty >= TB_Y) {
+      handleToolbarTouch(tx, ty);
+    }
+  }
+  prevTouched = touched;
+  delay(8);
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+(function(){
+  var raw=document.getElementById('raw-src').textContent.replace(/^\n/,'');
+  var lines=raw.split('\n');
+  if(lines[lines.length-1].trim()==='')lines.pop();
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hl(line){
+    var e=esc(line);
+    e=e.replace(/(\/\/.*$)/g,'<span class="cm">$1</span>');
+    if(e.indexOf('<span class="cm">')!==-1)return e;
+    if(/^#/.test(e))return '<span class="pp">'+e+'</span>';
+    e=e.replace(/("([^"\\]|\\.)*")/g,'<span class="str">$1</span>');
+    e=e.replace(/\b(void|bool|int|float|double|char|uint8_t|uint16_t|uint32_t|int16_t|int32_t|size_t|long|unsigned|byte|const|static|volatile|inline|File)\b/g,'<span class="tp">$1</span>');
+    e=e.replace(/\b(if|else|while|for|return|true|false|NULL|break|continue|switch|case|default|struct|enum|typedef)\b/g,'<span class="kw">$1</span>');
+    e=e.replace(/\b(0x[0-9a-fA-F]+|\d+\.?\d*[fF]?)\b/g,'<span class="num">$1</span>');
+    return e;
+  }
+  var html='';
+  for(var i=0;i<lines.length;i++)html+='<div class="code-line"><span class="ln">'+(i+1)+'</span><span class="lc">'+hl(lines[i])+'</span></div>';
+  document.getElementById('code-display').innerHTML=html;
+  document.getElementById('copy-btn').addEventListener('click',function(){
+    navigator.clipboard.writeText(raw).then(function(){
+      var b=document.getElementById('copy-btn');b.textContent='Copied!';b.classList.add('copied');
+      setTimeout(function(){b.textContent='Copy';b.classList.remove('copied');},2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>

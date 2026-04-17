@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Finger-draw pixel art on a 30×30 grid on the ESP32-S3 — 12-colour palette, erase, clear, and save each painting to SD card as a 24-bit BMP.">
+<title>Pixel Canvas · ESP32 Journey</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #7c6af7;
+    --accent2: #4fc3f7;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --user-bg: #1e2a3a;
+    --claude-bg: #1a1d27;
+    --code-bg: #0d1117;
+    --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+    padding-top: 48px;
+  }
+
+  #subnav {
+    position: sticky;
+    top: 52px;
+    z-index: 150;
+    background: rgba(15,17,23,.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .2rem;
+    padding: .4rem 1rem;
+  }
+  #subnav a {
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #5a6070;
+    padding: .3rem .65rem;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subnav a:hover, #subnav a.active {
+    color: var(--accent);
+    background: rgba(255,255,255,.06);
+  }
+
+  #subsubnav {
+    position: sticky;
+    top: 88px;
+    z-index: 140;
+    background: rgba(10,13,18,.95);
+    border-bottom: 1px solid rgba(124,106,247,.12);
+    display: flex;
+    justify-content: center;
+    gap: .4rem;
+    padding: .2rem 1rem;
+  }
+  #subsubnav a {
+    font-size: .65rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #3a4050;
+    padding: .2rem .55rem;
+    border-radius: 2px;
+    text-decoration: none;
+    transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subsubnav a:hover, #subsubnav a.active {
+    color: var(--accent);
+    background: rgba(124,106,247,.08);
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #0a1a2a 0%, #1a0a2a 50%, #0a2a1a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(251,191,36,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(124,106,247,0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(251,191,36,0.15);
+    border: 1px solid rgba(251,191,36,0.4);
+    color: #fde68a;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    background: linear-gradient(135deg, #fde68a, #f87171, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    line-height: 1.2;
+  }
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto 32px;
+  }
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .hero-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .hero-chip .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--yellow);
+    box-shadow: 0 0 8px var(--yellow);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .timeline-header {
+    max-width: 860px;
+    margin: 56px auto 0;
+    padding: 0 24px;
+  }
+  .section-label {
+    font-size: 12px; font-weight: 600; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--accent2); margin-bottom: 8px;
+  }
+  .section-title { font-size: 26px; font-weight: 700; color: var(--text); }
+
+  .conversation {
+    max-width: 860px;
+    margin: 32px auto 64px;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .msg {
+    display: flex; gap: 14px;
+    padding: 20px 24px; border-radius: 12px; position: relative;
+  }
+  .msg-user {
+    background: var(--user-bg); border: 1px solid #1e3a5f;
+    align-self: flex-end; flex-direction: row-reverse;
+    max-width: 85%; margin-left: auto;
+  }
+  .msg-claude { background: var(--claude-bg); border: 1px solid var(--border); max-width: 100%; }
+
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+  }
+  .avatar-user { background: linear-gradient(135deg, #1d4ed8, #2563eb); border: 2px solid #3b82f6; }
+  .avatar-claude { background: linear-gradient(135deg, #6d28d9, #7c3aed); border: 2px solid var(--accent); }
+
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .msg-user .msg-label { color: #60a5fa; text-align: right; }
+  .msg-claude .msg-label { color: var(--accent); }
+
+  .msg-text { color: var(--text); }
+  .msg-text p { margin-bottom: 10px; }
+  .msg-text p:last-child { margin-bottom: 0; }
+  .msg-text strong { color: #f1f5f9; font-weight: 600; }
+  .msg-text em { color: #94a3b8; font-style: italic; }
+
+  .msg-text pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.6;
+  }
+  .msg-text code {
+    font-family: var(--font-mono); font-size: 13px;
+    background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 4px; padding: 1px 6px; color: #c4b5fd;
+  }
+  .msg-text pre code { background: none; border: none; padding: 0; color: #94a3b8; }
+
+  .msg-text .highlight-green { color: var(--green); font-weight: 600; }
+  .msg-text .highlight-yellow { color: var(--yellow); font-weight: 600; }
+
+  .status-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+  }
+  .badge-green  { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+  .badge-blue   { background: rgba(79,195,247,0.1); border: 1px solid rgba(79,195,247,0.3); color: var(--accent2); }
+  .badge-purple { background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.3); color: #a78bfa; }
+  .badge-yellow { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--yellow); }
+
+  .msg-text table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .msg-text th {
+    background: var(--surface2); color: var(--accent2);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 8px 12px; text-align: left; border: 1px solid var(--border);
+  }
+  .msg-text td { padding: 8px 12px; border: 1px solid var(--border); color: #cbd5e1; vertical-align: top; }
+  .msg-text tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  .milestone {
+    display: flex; align-items: center; gap: 16px; padding: 12px 0; margin: 8px 0;
+  }
+  .milestone-line { flex: 1; height: 1px; background: var(--border); }
+  .milestone-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); white-space: nowrap;
+  }
+
+  .footer {
+    text-align: center; padding: 40px 24px;
+    border-top: 1px solid var(--border); color: var(--muted); font-size: 13px;
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="button-beep.html">Button Beep</a>
+  <a href="truth-detector.html">Truth Detector</a>
+  <a href="dvd-screensaver.html">DVD Screensaver</a>
+  <a href="heartbeat-viz.html">Heartbeat Viz</a>
+  <a href="pixel-canvas.html">Pixel Canvas</a>
+  <a href="wifi-scanner.html">WiFi Scanner</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/esp32') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+<nav id="subsubnav">
+  <a href="pixel-canvas.html">Session</a>
+  <a href="pixel-canvas-source.html">Source Code</a>
+</nav>
+<script>
+  document.querySelectorAll('#subsubnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+
+<div class="hero">
+  <div class="hero-badge">🎨 ESP32-S3 · Sketch 005</div>
+  <h1>Pixel Art Canvas<br>on the Touchscreen</h1>
+  <p class="hero-subtitle">Finger-draw on a 30×30 pixel grid with a 12-colour palette. Erase, clear, and save each painting to SD card as a 24-bit BMP file.</p>
+  <div class="hero-meta">
+    <div class="hero-chip"><span class="dot"></span> FT6336U Touch</div>
+    <div class="hero-chip">🎨 12-Colour Palette</div>
+    <div class="hero-chip">💾 SD Card BMP Save</div>
+    <div class="hero-chip">🤖 Claude Sonnet 4.6</div>
+  </div>
+</div>
+
+<div class="timeline-header">
+  <div class="section-label">Session Transcript</div>
+  <div class="section-title">Building the Pixel Canvas</div>
+</div>
+
+<div class="conversation">
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 1 · Request</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-user">
+    <div class="avatar avatar-user">👤</div>
+    <div class="msg-content">
+      <div class="msg-label">Richard</div>
+      <div class="msg-text"><p>i want to draw pixel art on the touchscreen. grid of pixels, colour palette, and i want to be able to save my drawings to the SD card</p></div>
+    </div>
+  </div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>Layout plan: the 240×320 screen splits into a <strong>30×30 drawing canvas</strong> (top 240 px, each pixel = 8×8 screen pixels — fills width exactly) and an <strong>80 px toolbar</strong> at the bottom with a colour palette row and three buttons.</p>
+        <table>
+          <tr><th>Area</th><th>Y range</th><th>Content</th></tr>
+          <tr><td>Canvas</td><td>0–239</td><td>30×30 grid, 8 px per cell</td></tr>
+          <tr><td>Palette row</td><td>244–271</td><td>12 colour swatches, 20 px wide each</td></tr>
+          <tr><td>Button row</td><td>276–311</td><td>ERASE · CLEAR · SAVE</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 2 · Colour Palette</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>12 colours chosen to cover the primary/secondary spectrum plus a neutral grey:</p>
+        <pre><code>BLACK, WHITE, RED, ORANGE, YELLOW, LIME,
+DARK GREEN, CYAN, BLUE, PURPLE, MAGENTA, GREY</code></pre>
+        <p>Selected colour gets a white border ring. The ERASE button toggles eraser mode (paints <code>C_BG</code> = black); while active it turns orange and the palette ring disappears — clear visual mode indicator.</p>
+        <p>Touch routing separates canvas draws from toolbar taps using a <code>touchStartedInCanvas</code> flag — prevents a finger dragging off the canvas from accidentally tapping a colour.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 3 · BMP Save to SD</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-user">
+    <div class="avatar avatar-user">👤</div>
+    <div class="msg-content">
+      <div class="msg-label">Richard</div>
+      <div class="msg-text"><p>how does the BMP save work exactly?</p></div>
+    </div>
+  </div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>The canvas stores 30×30 RGB565 values in SRAM. On SAVE, the sketch writes a valid 24-bit BMP directly to the SD card using <code>SD_MMC</code> (pins CMD=38, CLK=39, D0=40).</p>
+        <p>BMP quirks handled correctly:</p>
+        <ul style="margin: 10px 0 10px 20px; color: #cbd5e1;">
+          <li><strong>Bottom-up row order</strong> — BMP stores rows from bottom to top, so rows are written in reverse</li>
+          <li><strong>BGR byte order</strong> — BMP uses B G R not R G B</li>
+          <li><strong>Row padding</strong> — rows padded to 4-byte boundary (30 px × 3 bytes = 90, padded to 92)</li>
+          <li><strong>RGB565 → RGB888 conversion</strong> — 5-bit R/B expanded to 8-bit with <code>(v5 &lt;&lt; 3) | (v5 &gt;&gt; 2)</code></li>
+        </ul>
+        <p>Files auto-numbered: <code>canvas_001.bmp</code>, <code>canvas_002.bmp</code>, … Scans SD to find the next free slot. A green <strong>SAVED!</strong> overlay confirms success; red <strong>SAVE FAILED</strong> if SD is not mounted.</p>
+        <pre><code>// Auto-number: find next free canvas_NNN.bmp
+for (int i = 1; i &lt;= 999; i++) {
+    snprintf(path, sizeof(path), "/canvas_%03d.bmp", i);
+    if (!SD_MMC.exists(path)) return i;
+}</code></pre>
+        <div class="status-row">
+          <span class="badge badge-green">✓ Valid 24-bit BMP</span>
+          <span class="badge badge-blue">Auto-numbered files</span>
+          <span class="badge badge-yellow">Opens in any image viewer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 4 · Flash</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>Wrote <code>flash-sketch-005-pixel-canvas.sh</code>. Libraries: TFT_eSPI + FT6336U (touch) + SD_MMC (built into ESP32 Arduino core — no extra install).</p>
+        <pre><code>./flash-sketch-005-pixel-canvas.sh
+
+# Sketch uses 36% of flash, 14% of RAM
+# Wrote 376832 bytes at 0x00010000 in 4.8 seconds
+# Hash of data verified.
+# Hard resetting via RTS pin...</code></pre>
+        <div class="status-row">
+          <span class="badge badge-green">✓ Compiled — 36% flash</span>
+          <span class="badge badge-green">✓ Flashed successfully</span>
+          <span class="badge badge-blue">Canvas ready to draw</span>
+          <span class="badge badge-yellow">SD saves enabled</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Session Summary</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude — What We Built</div>
+      <div class="msg-text">
+        <table>
+          <tr><th>File</th><th>What it does</th></tr>
+          <tr><td><code>sketches/pixel_canvas/pixel_canvas.ino</code></td><td>30×30 touch pixel art editor with palette, erase, clear, SD BMP save</td></tr>
+          <tr><td><code>sketches/pixel_canvas/User_Setup.h</code></td><td>TFT_eSPI pin config for FNK0086</td></tr>
+          <tr><td><code>flash-sketch-005-pixel-canvas.sh</code></td><td>Full compile + flash automation</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Built with <strong>Claude Sonnet 4.6</strong> · Anthropic · April 2026</p>
+  <p style="margin-top:8px">Freenove ESP32-S3 FNK0086 · FT6336U Touch · SDMMC CMD=38 CLK=39 D0=40</p>
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

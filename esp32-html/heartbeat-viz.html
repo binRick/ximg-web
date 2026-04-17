@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Live ECG-style heartbeat visualizer on ESP32-S3 using MAX30102 IR sensor — scrolling waveform, BPM display, beat flash, touch to freeze.">
+<title>Heartbeat Visualizer · ESP32 Journey</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #7c6af7;
+    --accent2: #4fc3f7;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --user-bg: #1e2a3a;
+    --claude-bg: #1a1d27;
+    --code-bg: #0d1117;
+    --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+    padding-top: 48px;
+  }
+
+  #subnav {
+    position: sticky;
+    top: 52px;
+    z-index: 150;
+    background: rgba(15,17,23,.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .2rem;
+    padding: .4rem 1rem;
+  }
+  #subnav a {
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #5a6070;
+    padding: .3rem .65rem;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subnav a:hover, #subnav a.active {
+    color: var(--accent);
+    background: rgba(255,255,255,.06);
+  }
+
+  #subsubnav {
+    position: sticky;
+    top: 88px;
+    z-index: 140;
+    background: rgba(10,13,18,.95);
+    border-bottom: 1px solid rgba(124,106,247,.12);
+    display: flex;
+    justify-content: center;
+    gap: .4rem;
+    padding: .2rem 1rem;
+  }
+  #subsubnav a {
+    font-size: .65rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #3a4050;
+    padding: .2rem .55rem;
+    border-radius: 2px;
+    text-decoration: none;
+    transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subsubnav a:hover, #subsubnav a.active {
+    color: var(--accent);
+    background: rgba(124,106,247,.08);
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #2a0a0a 0%, #1a0b0b 50%, #0a1a2a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(248,113,113,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 50%, rgba(79,195,247,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(248,113,113,0.15);
+    border: 1px solid rgba(248,113,113,0.4);
+    color: #fca5a5;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    background: linear-gradient(135deg, #fca5a5, #f87171, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    line-height: 1.2;
+  }
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto 32px;
+  }
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .hero-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .hero-chip .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 8px var(--red);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .timeline-header {
+    max-width: 860px;
+    margin: 56px auto 0;
+    padding: 0 24px;
+  }
+  .section-label {
+    font-size: 12px; font-weight: 600; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--accent2); margin-bottom: 8px;
+  }
+  .section-title { font-size: 26px; font-weight: 700; color: var(--text); }
+
+  .conversation {
+    max-width: 860px;
+    margin: 32px auto 64px;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .msg {
+    display: flex; gap: 14px;
+    padding: 20px 24px; border-radius: 12px; position: relative;
+  }
+  .msg-user {
+    background: var(--user-bg); border: 1px solid #1e3a5f;
+    align-self: flex-end; flex-direction: row-reverse;
+    max-width: 85%; margin-left: auto;
+  }
+  .msg-claude { background: var(--claude-bg); border: 1px solid var(--border); max-width: 100%; }
+
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+  }
+  .avatar-user { background: linear-gradient(135deg, #1d4ed8, #2563eb); border: 2px solid #3b82f6; }
+  .avatar-claude { background: linear-gradient(135deg, #6d28d9, #7c3aed); border: 2px solid var(--accent); }
+
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .msg-user .msg-label { color: #60a5fa; text-align: right; }
+  .msg-claude .msg-label { color: var(--accent); }
+
+  .msg-text { color: var(--text); }
+  .msg-text p { margin-bottom: 10px; }
+  .msg-text p:last-child { margin-bottom: 0; }
+  .msg-text strong { color: #f1f5f9; font-weight: 600; }
+  .msg-text em { color: #94a3b8; font-style: italic; }
+
+  .msg-text pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.6;
+  }
+  .msg-text code {
+    font-family: var(--font-mono); font-size: 13px;
+    background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 4px; padding: 1px 6px; color: #c4b5fd;
+  }
+  .msg-text pre code { background: none; border: none; padding: 0; color: #94a3b8; }
+
+  .msg-text .highlight-green { color: var(--green); font-weight: 600; }
+  .msg-text .highlight-yellow { color: var(--yellow); font-weight: 600; }
+  .msg-text .highlight-red { color: var(--red); font-weight: 600; }
+
+  .status-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+  }
+  .badge-green  { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+  .badge-blue   { background: rgba(79,195,247,0.1); border: 1px solid rgba(79,195,247,0.3); color: var(--accent2); }
+  .badge-purple { background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.3); color: #a78bfa; }
+  .badge-red    { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+
+  .msg-text table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .msg-text th {
+    background: var(--surface2); color: var(--accent2);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 8px 12px; text-align: left; border: 1px solid var(--border);
+  }
+  .msg-text td { padding: 8px 12px; border: 1px solid var(--border); color: #cbd5e1; vertical-align: top; }
+  .msg-text tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  .milestone {
+    display: flex; align-items: center; gap: 16px; padding: 12px 0; margin: 8px 0;
+  }
+  .milestone-line { flex: 1; height: 1px; background: var(--border); }
+  .milestone-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); white-space: nowrap;
+  }
+
+  .footer {
+    text-align: center; padding: 40px 24px;
+    border-top: 1px solid var(--border); color: var(--muted); font-size: 13px;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="button-beep.html">Button Beep</a>
+  <a href="truth-detector.html">Truth Detector</a>
+  <a href="dvd-screensaver.html">DVD Screensaver</a>
+  <a href="heartbeat-viz.html">Heartbeat Viz</a>
+  <a href="pixel-canvas.html">Pixel Canvas</a>
+  <a href="wifi-scanner.html">WiFi Scanner</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/esp32') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+<nav id="subsubnav">
+  <a href="heartbeat-viz.html">Session</a>
+  <a href="heartbeat-viz-source.html">Source Code</a>
+</nav>
+<script>
+  document.querySelectorAll('#subsubnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+
+<div class="hero">
+  <div class="hero-badge">❤️ ESP32-S3 · Sketch 004</div>
+  <h1>Live ECG Heartbeat<br>Visualizer</h1>
+  <p class="hero-subtitle">MAX30102 IR sensor drives a scrolling ECG waveform with BPM readout, full-screen beat flash, animated pixel-art heart, and touch-to-freeze.</p>
+  <div class="hero-meta">
+    <div class="hero-chip"><span class="dot"></span> Live BPM</div>
+    <div class="hero-chip">🩺 MAX30102 IR Sensor</div>
+    <div class="hero-chip">📺 ST7789 + Sprite Rendering</div>
+    <div class="hero-chip">🤖 Claude Sonnet 4.6</div>
+  </div>
+</div>
+
+<div class="timeline-header">
+  <div class="section-label">Session Transcript</div>
+  <div class="section-title">Building the Heartbeat Visualizer</div>
+</div>
+
+<div class="conversation">
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 1 · Request</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-user">
+    <div class="avatar avatar-user">👤</div>
+    <div class="msg-content">
+      <div class="msg-label">Richard</div>
+      <div class="msg-text"><p>use the heart rate sensor. i want a live ECG-style scrolling waveform on the screen with my BPM in big numbers. make it flash red when my heart beats</p></div>
+    </div>
+  </div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>The MAX30102 is already on the shared I2C bus (<code>SDA=2, SCL=1</code>). I'll use the SparkFun MAX30105 library which covers it. Architecture:</p>
+        <ul style="margin: 10px 0 10px 20px; color: #cbd5e1;">
+          <li><strong>Top 56 px</strong> — header panel: BPM in 48px digits (colour-coded), pixel-art heart, LIVE blink dot</li>
+          <li><strong>Bottom 264 px</strong> — scrolling ECG waveform rendered into a TFT_eSprite (zero flicker)</li>
+          <li><strong>AC coupling</strong> — exponential moving-average DC baseline subtracted so the waveform stays centred regardless of ambient IR</li>
+          <li><strong>Auto-scale</strong> — running peak tracker normalises amplitude so weak signals still fill the display</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 2 · ECG Grid &amp; Waveform</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>ECG grid drawn into the sprite before each waveform render: major horizontal lines every 66 px, minor lines every 33 px, vertical grid every 60/20 px — all in near-black green to stay readable without overpowering the trace.</p>
+        <p>The waveform ring buffer stores 240 float samples (one per screen column). On each frame the oldest column becomes the new write position — creating a natural left-scroll. An 8-pixel "cursor sweep" fade at the leading edge gives it the classic medical monitor look.</p>
+        <pre><code>// AC-couple the raw IR signal
+dcBaseline = dcBaseline * 0.98f + (float)ir * 0.02f;
+float ac = (float)ir - dcBaseline;
+
+// Auto-scale: track peak, decay slowly
+if (fabsf(ac) > acPeak) acPeak = fabsf(ac);
+else                     acPeak *= 0.998f;
+
+float norm = ac / acPeak;  // –1 .. +1</code></pre>
+        <div class="status-row">
+          <span class="badge badge-green">✓ Sprite-based zero-flicker rendering</span>
+          <span class="badge badge-red">ECG grid in dark green</span>
+          <span class="badge badge-blue">Cursor sweep effect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 3 · Beat Detection &amp; Flash</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>Beat detection uses the library's <code>checkForBeat()</code> on each IR sample. On a detected beat, a 3-frame flash sequence fires:</p>
+        <table>
+          <tr><th>Frame</th><th>Header BG</th><th>Duration</th></tr>
+          <tr><td>1</td><td>Full red <code>0xF800</code></td><td>55 ms</td></tr>
+          <tr><td>2</td><td>Mid red <code>0x9000</code></td><td>55 ms</td></tr>
+          <tr><td>3</td><td>Fade red <code>0x3000</code></td><td>55 ms</td></tr>
+        </table>
+        <p>BPM is averaged over the last 8 beats. Colour coding: <strong style="color:#60a5fa">blue</strong> &lt;55, <strong style="color:#4ade80">green</strong> 55–84, <strong style="color:#fbbf24">yellow</strong> 85–99, <strong style="color:#f87171">red</strong> ≥100.</p>
+        <p>The pixel-art heart (11×9 bitmap, 2px scale normally, 3px on beat) pulses visually in sync.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 4 · Touch to Freeze</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-user">
+    <div class="avatar avatar-user">👤</div>
+    <div class="msg-content">
+      <div class="msg-label">Richard</div>
+      <div class="msg-text"><p>can i freeze the trace so i can look at a beat pattern?</p></div>
+    </div>
+  </div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>Added tap-to-freeze via FT6336U touch. A leading-edge tap toggles <code>frozen</code> — the ring buffer stops advancing (waveform stays still) but the sensor keeps reading. A <strong style="color:#fbbf24">[ FROZEN ]</strong> label appears in the header. Tap again to resume scrolling from the current live position.</p>
+        <pre><code>FT6336U_TouchPointType tp = ts.scan();
+bool touched = (tp.touch_count > 0);
+if (touched && !prevTouch) {
+    frozen = !frozen;
+    drawHeader(0);  // immediate FROZEN label update
+}
+prevTouch = touched;</code></pre>
+        <div class="status-row">
+          <span class="badge badge-green">✓ Touch freeze works</span>
+          <span class="badge badge-blue">Sensor continues reading while frozen</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Step 5 · Flash</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude</div>
+      <div class="msg-text">
+        <p>Wrote <code>flash-sketch-004-heartbeat-viz.sh</code>. Additional libraries required: <strong>SparkFun MAX3010x</strong> (heart rate) and <strong>FT6336U</strong> (touch). Both installed automatically by the script.</p>
+        <pre><code>./flash-sketch-004-heartbeat-viz.sh
+
+# Installing SparkFun MAX3010x library...
+# Sketch uses 41% of flash, 18% of RAM
+# Wrote 425984 bytes at 0x00010000 in 5.4 seconds
+# Hash of data verified.
+# Hard resetting via RTS pin...</code></pre>
+        <div class="status-row">
+          <span class="badge badge-green">✓ Compiled — 41% flash</span>
+          <span class="badge badge-green">✓ Flashed successfully</span>
+          <span class="badge badge-red">Live ECG on screen</span>
+          <span class="badge badge-purple">Beat flash + animated heart</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone"><div class="milestone-line"></div><div class="milestone-label">Session Summary</div><div class="milestone-line"></div></div>
+
+  <div class="msg msg-claude">
+    <div class="avatar avatar-claude">✦</div>
+    <div class="msg-content">
+      <div class="msg-label">Claude — What We Built</div>
+      <div class="msg-text">
+        <table>
+          <tr><th>File</th><th>What it does</th></tr>
+          <tr><td><code>sketches/heartbeat_viz/heartbeat_viz.ino</code></td><td>ECG waveform, BPM display, beat flash, pixel heart, touch freeze</td></tr>
+          <tr><td><code>flash-sketch-004-heartbeat-viz.sh</code></td><td>Full compile + flash with SparkFun MAX3010x lib install</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>Built with <strong>Claude Sonnet 4.6</strong> · Anthropic · April 2026</p>
+  <p style="margin-top:8px">Freenove ESP32-S3 FNK0086 · MAX30102 HR Sensor · SDA=2 SCL=1 · ~33 fps</p>
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

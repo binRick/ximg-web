@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Source code for the lie_detector ESP32-S3 sketch — biometric lie detector with MAX30102, funny questions, bell and buzzer verdicts.">
+<title>Truth Detector Source · ESP32 Journey</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--bg:#0f1117;--surface2:#22263a;--border:#2e3350;--accent:#7c6af7;--accent2:#4fc3f7;--green:#4ade80;--red:#f87171;--text:#e2e8f0;--muted:#8892b0;--code-bg:#0d1117;--font-mono:'Fira Code','Cascadia Code','Consolas',monospace;--font-sans:'Inter','Segoe UI',system-ui,sans-serif;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:15px;line-height:1.7;min-height:100vh;padding-top:48px;}
+  #subnav{position:sticky;top:52px;z-index:150;background:rgba(15,17,23,.97);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.07);display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem;}
+  #subnav a{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#5a6070;padding:.3rem .65rem;border-radius:3px;text-decoration:none;transition:color .2s,background .2s;font-family:'Courier New',monospace;}
+  #subnav a:hover,#subnav a.active{color:var(--accent);background:rgba(255,255,255,.06);}
+  #subsubnav{position:sticky;top:88px;z-index:140;background:rgba(10,13,18,.95);border-bottom:1px solid rgba(124,106,247,.12);display:flex;justify-content:center;gap:.4rem;padding:.2rem 1rem;}
+  #subsubnav a{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:#3a4050;padding:.2rem .55rem;border-radius:2px;text-decoration:none;transition:color .2s,background .2s;font-family:'Courier New',monospace;}
+  #subsubnav a:hover,#subsubnav a.active{color:var(--accent);background:rgba(124,106,247,.08);}
+  .hero{background:linear-gradient(135deg,#1a0533 0%,#0d1b4b 50%,#0a2a1a 100%);border-bottom:1px solid var(--border);padding:36px 40px 32px;text-align:center;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(248,113,113,0.1) 0%,transparent 70%);pointer-events:none;}
+  .hero-badge{display:inline-block;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#fca5a5;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:16px;}
+  .hero h1{font-size:clamp(20px,3vw,32px);font-weight:800;background:linear-gradient(135deg,#fca5a5,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;}
+  .hero-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
+  .hero-chip{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--muted);font-family:var(--font-mono);}
+  .source-wrap{max-width:1100px;margin:32px auto 64px;padding:0 24px;}
+  .source-header{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:10px 18px;font-family:var(--font-mono);font-size:13px;}
+  .source-filename{color:var(--accent2);}
+  .copy-btn{background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.3);color:#a78bfa;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);transition:background .2s;}
+  .copy-btn:hover{background:rgba(124,106,247,.3);}
+  .copy-btn.copied{color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1);}
+  #code-display{background:var(--code-bg);border:1px solid var(--border);border-radius:0 0 8px 8px;overflow-x:auto;font-family:var(--font-mono);font-size:13px;line-height:1.7;padding:16px 0;}
+  .code-line{display:flex;min-width:max-content;}.code-line:hover{background:rgba(255,255,255,.03);}
+  .ln{display:inline-block;min-width:50px;padding:0 16px;text-align:right;color:#3a4454;user-select:none;flex-shrink:0;border-right:1px solid #1a2030;}
+  .lc{padding:0 20px;white-space:pre;color:#8b9db0;}
+  .cm{color:#4a6a4a;font-style:italic;}.pp{color:#569cd6;}.kw{color:#c586c0;}.tp{color:#4ec9b0;}.str{color:#ce9178;}.num{color:#b5cea8;}
+  .footer{text-align:center;padding:40px 24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;}
+  ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+<nav id="subnav">
+  <a href="index.html">Overview</a><a href="button-beep.html">Button Beep</a><a href="truth-detector.html">Truth Detector</a><a href="dvd-screensaver.html">DVD Screensaver</a><a href="heartbeat-viz.html">Heartbeat Viz</a><a href="pixel-canvas.html">Pixel Canvas</a><a href="wifi-scanner.html">WiFi Scanner</a>
+</nav>
+<script>document.querySelectorAll('#subnav a').forEach(function(a){var h=a.getAttribute('href'),p=location.pathname;if(p.endsWith(h)||(h==='index.html'&&(p.endsWith('/')||p.endsWith('/esp32')||p.endsWith('index.html'))))a.classList.add('active');});</script>
+<nav id="subsubnav">
+  <a href="truth-detector.html">Session</a>
+  <a href="truth-detector-source.html">Source Code</a>
+</nav>
+<script>document.querySelectorAll('#subsubnav a').forEach(function(a){if(location.pathname.endsWith(a.getAttribute('href')))a.classList.add('active');});</script>
+
+<div class="hero">
+  <div class="hero-badge">Source Code · Sketch 003</div>
+  <h1>lie_detector.ino</h1>
+  <div class="hero-chips">
+    <div class="hero-chip">MAX30105 (HR sensor)</div>
+    <div class="hero-chip">FT6336U (touch)</div>
+    <div class="hero-chip">I2S audio (bell + buzzer)</div>
+    <div class="hero-chip">20 funny questions</div>
+    <div class="hero-chip">state machine</div>
+  </div>
+</div>
+
+<div class="source-wrap">
+  <div class="source-header">
+    <span class="source-filename">sketches/lie_detector/lie_detector.ino</span>
+    <button class="copy-btn" id="copy-btn">Copy</button>
+  </div>
+  <div id="code-display"></div>
+</div>
+
+<div class="footer"><p>Built with <strong>Claude Sonnet 4.6</strong> · Anthropic · April 2026</p></div>
+
+<script type="text/plain" id="raw-src">
+// lie_detector — Freenove ESP32-S3 Dev Kit (FNK0086)
+//
+// Lie Detector Simulator: funny yes/no questions, live BPM graph,
+// bell for truth, buzzer for lying.
+//
+// Pin summary:
+//   LCD   : TFT_eSPI  MOSI=20 SCLK=21 DC=0  CS=GND (ST7789 240×320)
+//   Touch : FT6336U   SDA=2   SCL=1
+//   HR    : MAX30102  SDA=2   SCL=1   addr=0x57 (shared I2C)
+//   Audio : I2S       BCLK=42 LRC=14  DOUT=41
+
+#include <TFT_eSPI.h>
+#include "FT6336U.h"
+#include "MAX30105.h"
+#include "heartRate.h"
+#include "driver/i2s_std.h"
+#include <Wire.h>
+#include <math.h>
+
+#define TOUCH_SDA  2
+#define TOUCH_SCL  1
+#define I2S_BCLK   42
+#define I2S_LRC    14
+#define I2S_DOUT   41
+
+#define SW 240
+#define SH 320
+
+#define HDR_Y    0
+#define HDR_H    28
+#define BAR_Y    (HDR_H)
+#define BAR_H    20
+#define GFX_Y    (BAR_Y + BAR_H + 2)
+#define GFX_H    90
+#define GFX_X    8
+#define GFX_W    (SW - 16)
+#define Q_Y      (GFX_Y + GFX_H + 6)
+#define Q_H      78
+#define BTN_Y    (SH - 54)
+#define BTN_H    46
+#define BTN_W    104
+#define YES_X    6
+#define NO_X     (SW - BTN_W - 6)
+
+#define C_BG      TFT_BLACK
+#define C_HDR_LIE 0xA000
+#define C_HDR_OK  0x0340
+#define C_HDR_CAL 0x000C
+#define C_GBKG    0x0841
+#define C_GRID    0x2104
+#define C_LINE    0x07E0
+#define C_YES_BG  0x0280
+#define C_NO_BG   0x6000
+
+static const char* QUESTIONS[] = {
+  "Have you ever blamed\na fart on your pet?",
+  "Do you skip the gym\nand lie about going?",
+  "Have you eaten food\nfrom someone else's\nfridge?",
+  "Do you pretend to be\nasleep to avoid\ntalking to people?",
+  "Have you regifted a\npresent you received?",
+  "Do you lip-sync\nwhen you don't know\nthe lyrics?",
+  "Have you Googled\nyourself recently?",
+  "Do you laugh at jokes\nyou didn't understand?",
+  "Have you faked being\nbusy to avoid plans?",
+  "Do you talk to your\npets like they fully\nunderstand you?",
+  "Have you sniffed food\nto check if it's\nstill edible?",
+  "Have you pretended\nyou've seen a movie\nyou haven't?",
+  "Do you check if the\ncoast is clear before\npicking your nose?",
+  "Have you used 'seen'\nto avoid replying\nto a message?",
+  "Do you narrate your\nlife in your head\nlike a movie?",
+  "Have you ever lied\nabout your age?",
+  "Do you silently judge\npeople by their\nfood orders?",
+  "Have you ever taken\ncredit for someone\nelse's idea?",
+  "Do you use your phone\nto avoid awkward\neye contact?",
+  "Have you rewatched\na show without\ntelling anyone?",
+};
+static const int Q_COUNT = 20;
+
+enum State { S_FINGER, S_CALIBRATE, S_QUESTION, S_VERDICT, S_THUMB_OFF };
+volatile State gState = S_FINGER;
+State resumeState = S_FINGER;
+
+MAX30105 hr;
+static const byte RATE_HIST = 8;
+byte   rateHistory[RATE_HIST];
+byte   rateSpot = 0;
+long   lastBeatMs = 0;
+int    beatAvg = 0;
+bool   fingerOn = false;
+long   gLastIR  = 0;
+
+static uint8_t gBuf[GFX_W];
+static int     gHead = 0;
+
+float  baselineBpm    = 72.0f;
+int    peakBpm        = 72;
+int    qIndex         = 0;
+int    shuffled[Q_COUNT];
+bool   isLying        = false;
+unsigned long verdictAt = 0;
+
+static i2s_chan_handle_t i2sTx;
+enum SndCmd { SND_NONE, SND_BELL, SND_BUZZ };
+volatile SndCmd gSound = SND_NONE;
+
+void i2s_setup() {
+  i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+  i2s_new_channel(&cc, &i2sTx, NULL);
+  i2s_std_config_t sc = {
+    .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(22050),
+    .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(
+                  I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+    .gpio_cfg = {
+      .mclk = I2S_GPIO_UNUSED,
+      .bclk = (gpio_num_t)I2S_BCLK,
+      .ws   = (gpio_num_t)I2S_LRC,
+      .dout = (gpio_num_t)I2S_DOUT,
+      .din  = I2S_GPIO_UNUSED,
+      .invert_flags = { .mclk_inv=false, .bclk_inv=false, .ws_inv=false },
+    },
+  };
+  i2s_channel_init_std_mode(i2sTx, &sc);
+  i2s_channel_enable(i2sTx);
+}
+
+static void writeI2S(int16_t* buf, int n) {
+  size_t wr;
+  i2s_channel_write(i2sTx, buf, n * 4, &wr, pdMS_TO_TICKS(20));
+}
+
+void playBell() {
+  const int SR = 22050, CHUNK = 256;
+  int16_t buf[CHUNK * 2];
+  unsigned long endMs = millis() + 2000;
+  long i = 0;
+  while (millis() < endMs) {
+    for (int j = 0; j < CHUNK; j++) {
+      float t   = (float)(i + j) / SR;
+      float env = expf(-5.5f * t);
+      int16_t s = (int16_t)(22000 * env * sinf(6.2832f * 1320.0f * t));
+      buf[j * 2] = buf[j * 2 + 1] = s;
+    }
+    writeI2S(buf, CHUNK);
+    i += CHUNK;
+  }
+}
+
+void playBuzzer() {
+  const int SR = 22050, CHUNK = 256;
+  int16_t buf[CHUNK * 2];
+  unsigned long endMs = millis() + 2000;
+  long i = 0;
+  while (millis() < endMs) {
+    for (int j = 0; j < CHUNK; j++) {
+      float t    = (float)(i + j) / SR;
+      float freq = (fmodf(t, 0.2f) < 0.1f) ? 180.0f : 350.0f;
+      bool  on   = fmodf(t, 0.13f) < 0.09f;
+      float ph   = fmodf(t * freq, 1.0f);
+      int16_t s  = on ? (ph < 0.5f ? 11000 : -11000) : 0;
+      buf[j * 2] = buf[j * 2 + 1] = s;
+    }
+    writeI2S(buf, CHUNK);
+    i += CHUNK;
+  }
+  memset(buf, 0, sizeof(buf));
+  for (int f = 0; f < 8; f++) writeI2S(buf, CHUNK);
+}
+
+void audioTask(void*) {
+  while (true) {
+    SndCmd cmd = gSound;
+    if (cmd != SND_NONE) {
+      gSound = SND_NONE;
+      if (cmd == SND_BELL) playBell();
+      else                  playBuzzer();
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+TFT_eSPI tft;
+FT6336U  ts(TOUCH_SDA, TOUCH_SCL, -1, -1);
+
+void drawHeader(const char* txt, uint16_t bg) {
+  tft.fillRect(0, HDR_Y, SW, HDR_H, bg);
+  tft.setTextColor(TFT_WHITE, bg);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextFont(2);
+  tft.drawString(txt, SW / 2, HDR_Y + HDR_H / 2);
+}
+
+void drawBpmBar(int bpm, bool valid) {
+  tft.fillRect(0, BAR_Y, SW, BAR_H, 0x0841);
+  tft.setTextFont(1);
+  tft.setTextDatum(ML_DATUM);
+  if (valid && bpm > 20) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), " %3d BPM", bpm);
+    uint16_t c = (bpm > 105) ? TFT_RED : (bpm > 85) ? TFT_ORANGE : TFT_GREEN;
+    tft.setTextColor(c, 0x0841);
+    tft.drawString(buf, 0, BAR_Y + BAR_H / 2);
+    int w = map(bpm < 50 ? 50 : (bpm > 140 ? 140 : bpm), 50, 140, 0, SW - 58);
+    tft.fillRect(54, BAR_Y + 3, w, BAR_H - 6, c);
+  } else {
+    tft.setTextColor(TFT_DARKGREY, 0x0841);
+    tft.drawString(" -- no thumb --", 0, BAR_Y + BAR_H / 2);
+  }
+}
+
+void drawGraph() {
+  tft.fillRect(GFX_X, GFX_Y, GFX_W, GFX_H, C_GBKG);
+  for (int y = GFX_Y + GFX_H / 3; y < GFX_Y + GFX_H; y += GFX_H / 3)
+    tft.drawFastHLine(GFX_X, y, GFX_W, C_GRID);
+  tft.setTextFont(1);
+  tft.setTextColor(0x4208, C_GBKG);
+  tft.setTextDatum(MR_DATUM);
+  tft.drawString("120", GFX_X - 1, GFX_Y + 4);
+  tft.drawString("85",  GFX_X - 1, GFX_Y + GFX_H / 2);
+  tft.drawString("50",  GFX_X - 1, GFX_Y + GFX_H - 4);
+  int prev_py = -1;
+  for (int i = 0; i < GFX_W; i++) {
+    int idx = (gHead + i) % GFX_W;
+    if (gBuf[idx] == 0) { prev_py = -1; continue; }
+    int bpm = gBuf[idx];
+    int py  = GFX_Y + GFX_H - 1
+              - map(bpm < 50 ? 50 : (bpm > 120 ? 120 : bpm), 50, 120, 0, GFX_H - 2);
+    int px  = GFX_X + i;
+    if (prev_py >= 0) {
+      tft.drawLine(px - 1, prev_py, px, py, C_LINE);
+      tft.drawPixel(px, py - 1, 0x03E0);
+      tft.drawPixel(px, py + 1, 0x03E0);
+    } else {
+      tft.drawPixel(px, py, C_LINE);
+    }
+    prev_py = py;
+  }
+}
+
+void pushSample(int bpm) {
+  gBuf[gHead] = (uint8_t)(bpm < 0 ? 0 : (bpm > 255 ? 255 : bpm));
+  gHead = (gHead + 1) % GFX_W;
+}
+
+void drawQuestion(int qi) {
+  tft.fillRect(0, Q_Y, SW, Q_H, C_BG);
+  tft.setTextColor(TFT_WHITE, C_BG);
+  tft.setTextDatum(TC_DATUM);
+  tft.setTextFont(2);
+  char tmp[96];
+  strncpy(tmp, QUESTIONS[qi], sizeof(tmp) - 1);
+  tmp[sizeof(tmp) - 1] = '\0';
+  int y = Q_Y + 6;
+  char* line = strtok(tmp, "\n");
+  while (line && y < Q_Y + Q_H - 10) {
+    tft.drawString(line, SW / 2, y);
+    y += 18;
+    line = strtok(NULL, "\n");
+  }
+}
+
+void drawButtons(bool hiY, bool hiN) {
+  uint16_t yc = hiY ? TFT_GREEN : C_YES_BG;
+  tft.fillRoundRect(YES_X, BTN_Y, BTN_W, BTN_H, 8, yc);
+  tft.drawRoundRect(YES_X, BTN_Y, BTN_W, BTN_H, 8, TFT_WHITE);
+  tft.setTextColor(TFT_WHITE, yc);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextFont(4);
+  tft.drawString("YES", YES_X + BTN_W / 2, BTN_Y + BTN_H / 2);
+  uint16_t nc = hiN ? TFT_RED : C_NO_BG;
+  tft.fillRoundRect(NO_X, BTN_Y, BTN_W, BTN_H, 8, nc);
+  tft.drawRoundRect(NO_X, BTN_Y, BTN_W, BTN_H, 8, TFT_WHITE);
+  tft.setTextColor(TFT_WHITE, nc);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextFont(4);
+  tft.drawString("NO", NO_X + BTN_W / 2, BTN_Y + BTN_H / 2);
+}
+
+void shuffleQs() {
+  for (int i = 0; i < Q_COUNT; i++) shuffled[i] = i;
+  for (int i = Q_COUNT - 1; i > 0; i--) {
+    int j = (int)(esp_random() % (i + 1));
+    int t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+  }
+}
+
+bool detectLie(float baseline, int peak) {
+  if (qIndex < 2) return false;
+  return (esp_random() % 2) == 0;
+}
+
+void updateHR() {
+  hr.check();
+  if (!hr.available()) return;
+  long lastIR = 0;
+  while (hr.available()) {
+    lastIR = hr.getFIFOIR();
+    fingerOn = (lastIR >= 50000);
+    gLastIR  = lastIR;
+    if (fingerOn && checkForBeat(lastIR)) {
+      long now   = millis();
+      long delta = now - lastBeatMs;
+      lastBeatMs = now;
+      float bpm  = 60000.0f / (float)delta;
+      if (bpm > 20 && bpm < 255) {
+        rateHistory[rateSpot % RATE_HIST] = (byte)bpm;
+        rateSpot++;
+        int sum = 0, cnt = 0;
+        for (int i = 0; i < RATE_HIST; i++) if (rateHistory[i]) { sum += rateHistory[i]; cnt++; }
+        beatAvg = cnt ? sum / cnt : 0;
+      }
+    }
+    hr.nextSample();
+  }
+  if (!fingerOn) beatAvg = 0;
+}
+
+void setup() {
+  Serial.begin(115200);
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(C_BG);
+  Wire.begin(TOUCH_SDA, TOUCH_SCL);
+  ts.begin();
+  if (!hr.begin(Wire, I2C_SPEED_FAST)) {
+    tft.setTextColor(TFT_RED, C_BG);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextFont(2);
+    tft.drawString("MAX30102 not found!", SW / 2, SH / 2);
+    while (true) delay(100);
+  }
+  hr.setup(0x7F, 4, 2, 100, 411, 4096);
+  hr.setPulseAmplitudeRed(0x0A);
+  hr.setPulseAmplitudeGreen(0);
+  i2s_setup();
+  xTaskCreatePinnedToCore(audioTask, "audio", 4096, NULL, 2, NULL, 0);
+  memset(gBuf, 0, sizeof(gBuf));
+  memset(rateHistory, 0, sizeof(rateHistory));
+  shuffleQs();
+  tft.fillScreen(C_BG);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_RED, C_BG);
+  tft.setTextFont(4);
+  tft.drawString("LIE DETECTOR", SW / 2, 70);
+  tft.drawString("3000", SW / 2, 105);
+  delay(2200);
+  tft.fillScreen(C_BG);
+  drawHeader("  LIE DETECTOR 3000  ", C_HDR_LIE);
+  gState = S_FINGER;
+}
+
+static unsigned long lastGraphMs  = 0;
+static unsigned long lastBlinkMs  = 0;
+static bool          blinkOn      = false;
+static unsigned long calibStart   = 0;
+static float         calibSum     = 0;
+static int           calibCount   = 0;
+static bool          prevTouch    = false;
+#define CALIB_MS 3000
+
+void loop() {
+  updateHR();
+  FT6336U_TouchPointType tp = ts.scan();
+  bool touched = (tp.touch_count > 0);
+  int  tx = touched ? tp.tp[0].x : -1;
+  int  ty = touched ? tp.tp[0].y : -1;
+  bool freshTouch = touched && !prevTouch;
+
+  switch (gState) {
+
+    case S_FINGER: {
+      if (fingerOn) {
+        calibStart = millis();
+        calibSum   = 0;
+        calibCount = 0;
+        peakBpm    = beatAvg > 0 ? beatAvg : 72;
+        gState     = S_CALIBRATE;
+        tft.fillScreen(C_BG);
+        drawHeader("  CALIBRATING...  ", C_HDR_CAL);
+      }
+      break;
+    }
+
+    case S_CALIBRATE: {
+      if (!fingerOn) { resumeState = S_CALIBRATE; gState = S_THUMB_OFF; break; }
+      unsigned long elapsed = millis() - calibStart;
+      if (beatAvg > 20) { calibSum += beatAvg; calibCount++; }
+      if (millis() - lastGraphMs > 350) {
+        lastGraphMs = millis();
+        drawBpmBar(beatAvg, true);
+        int barW = 80, barX = (SW - 80) / 2;
+        int pw = constrain((int)map((long)elapsed, 0L, (long)CALIB_MS, 0L, 80L), 0, 80);
+        tft.fillRect(barX, 195, barW, 10, 0x0841);
+        tft.fillRect(barX, 195, pw, 10, TFT_CYAN);
+      }
+      if (elapsed >= CALIB_MS) {
+        baselineBpm = calibCount > 0 ? calibSum / calibCount : 72.0f;
+        peakBpm     = (int)baselineBpm;
+        gState      = S_QUESTION;
+        tft.fillScreen(C_BG);
+        drawHeader("   DETECTING LIES...   ", C_HDR_LIE);
+        memset(gBuf, 0, sizeof(gBuf)); gHead = 0;
+        drawGraph();
+        drawBpmBar(beatAvg, fingerOn && beatAvg > 20);
+        drawQuestion(shuffled[qIndex % Q_COUNT]);
+        drawButtons(false, false);
+      }
+      break;
+    }
+
+    case S_QUESTION: {
+      if (!fingerOn) { resumeState = S_QUESTION; gState = S_THUMB_OFF; break; }
+      if (millis() - lastGraphMs > 300) {
+        lastGraphMs = millis();
+        pushSample(fingerOn && beatAvg > 20 ? beatAvg : 0);
+        if (fingerOn && beatAvg > peakBpm) peakBpm = beatAvg;
+        drawGraph();
+        drawBpmBar(beatAvg, fingerOn && beatAvg > 20);
+        if (millis() - lastBlinkMs > 900) {
+          lastBlinkMs = millis();
+          blinkOn = !blinkOn;
+          drawHeader(blinkOn ? " !! TELL THE TRUTH !! " : "   DETECTING LIES...  ",
+                     blinkOn ? 0xB800 : C_HDR_LIE);
+        }
+      }
+      if (freshTouch) {
+        bool pY = (tx >= YES_X && tx < YES_X + BTN_W && ty >= BTN_Y && ty < BTN_Y + BTN_H);
+        bool pN = (tx >= NO_X  && tx < NO_X  + BTN_W && ty >= BTN_Y && ty < BTN_Y + BTN_H);
+        if (pY || pN) {
+          drawButtons(pY, pN);
+          delay(180);
+          isLying   = detectLie(baselineBpm, peakBpm);
+          gSound    = isLying ? SND_BUZZ : SND_BELL;
+          verdictAt = millis();
+          gState    = S_VERDICT;
+          tft.fillScreen(isLying ? 0x2800 : 0x0120);
+          drawHeader(isLying ? "  *** L I A R ! ***  " : "  *** T R U T H ! ***  ",
+                     isLying ? TFT_RED : 0x0400);
+          tft.setTextColor(isLying ? TFT_RED : TFT_GREEN, isLying ? 0x2800 : 0x0120);
+          tft.setTextDatum(MC_DATUM);
+          tft.setTextFont(7);
+          tft.drawString(isLying ? "LIE!" : "TRUE", SW / 2, 145);
+        }
+      }
+      break;
+    }
+
+    case S_VERDICT:
+      if (!fingerOn) { resumeState = S_VERDICT; gState = S_THUMB_OFF; break; }
+      if (freshTouch && (millis() - verdictAt > 1800)) {
+        qIndex++;
+        peakBpm = (int)baselineBpm;
+        blinkOn = false;
+        gState  = S_QUESTION;
+        tft.fillScreen(C_BG);
+        drawHeader("   DETECTING LIES...   ", C_HDR_LIE);
+        memset(gBuf, 0, sizeof(gBuf)); gHead = 0;
+        drawGraph();
+        drawBpmBar(beatAvg, fingerOn && beatAvg > 20);
+        drawQuestion(shuffled[qIndex % Q_COUNT]);
+        drawButtons(false, false);
+      }
+      break;
+
+    case S_THUMB_OFF: {
+      static unsigned long flashMs = 0;
+      static bool flashHi = true;
+      if (millis() - flashMs > 400) {
+        flashMs = millis(); flashHi = !flashHi;
+        tft.fillRect(0, 0, SW, HDR_H + 10, flashHi ? TFT_RED : 0x6000);
+      }
+      if (fingerOn) {
+        if (resumeState == S_CALIBRATE) {
+          calibStart = millis(); calibSum = 0; calibCount = 0; peakBpm = beatAvg;
+          gState = S_CALIBRATE;
+          tft.fillScreen(C_BG);
+          drawHeader("  CALIBRATING...  ", C_HDR_CAL);
+        } else {
+          qIndex++;
+          peakBpm = (int)baselineBpm;
+          blinkOn = false;
+          gState  = S_QUESTION;
+          tft.fillScreen(C_BG);
+          drawHeader("   DETECTING LIES...   ", C_HDR_LIE);
+          memset(gBuf, 0, sizeof(gBuf)); gHead = 0;
+          drawGraph();
+          drawBpmBar(beatAvg, fingerOn && beatAvg > 20);
+          drawQuestion(shuffled[qIndex % Q_COUNT]);
+          drawButtons(false, false);
+        }
+      }
+      break;
+    }
+  }
+
+  prevTouch = touched;
+  delay(6);
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+(function(){
+  var raw=document.getElementById('raw-src').textContent.replace(/^\n/,'');
+  var lines=raw.split('\n');
+  if(lines[lines.length-1].trim()==='')lines.pop();
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hl(line){
+    var e=esc(line);
+    e=e.replace(/(\/\/.*$)/g,'<span class="cm">$1</span>');
+    if(e.indexOf('<span class="cm">')!==-1)return e;
+    if(/^#/.test(e))return '<span class="pp">'+e+'</span>';
+    e=e.replace(/("([^"\\]|\\.)*")/g,'<span class="str">$1</span>');
+    e=e.replace(/\b(void|bool|int|float|double|char|uint8_t|uint16_t|uint32_t|int16_t|int32_t|size_t|long|unsigned|byte|const|static|volatile|inline|SndCmd|State)\b/g,'<span class="tp">$1</span>');
+    e=e.replace(/\b(if|else|while|for|return|true|false|NULL|break|continue|switch|case|default|struct|enum|typedef)\b/g,'<span class="kw">$1</span>');
+    e=e.replace(/\b(0x[0-9a-fA-F]+|\d+\.?\d*[fF]?)\b/g,'<span class="num">$1</span>');
+    return e;
+  }
+  var html='';
+  for(var i=0;i<lines.length;i++)html+='<div class="code-line"><span class="ln">'+(i+1)+'</span><span class="lc">'+hl(lines[i])+'</span></div>';
+  document.getElementById('code-display').innerHTML=html;
+  document.getElementById('copy-btn').addEventListener('click',function(){
+    navigator.clipboard.writeText(raw).then(function(){
+      var b=document.getElementById('copy-btn');b.textContent='Copied!';b.classList.add('copied');
+      setTimeout(function(){b.textContent='Copy';b.classList.remove('copied');},2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>

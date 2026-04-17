@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Source code for the heartbeat_viz ESP32-S3 sketch — ECG waveform, BPM display, beat flash, sprite rendering.">
+<title>Heartbeat Viz Source · ESP32 Journey</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root { --bg:#0f1117;--surface2:#22263a;--border:#2e3350;--accent:#7c6af7;--accent2:#4fc3f7;--green:#4ade80;--red:#f87171;--text:#e2e8f0;--muted:#8892b0;--code-bg:#0d1117;--font-mono:'Fira Code','Cascadia Code','Consolas',monospace;--font-sans:'Inter','Segoe UI',system-ui,sans-serif; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:15px;line-height:1.7;min-height:100vh;padding-top:48px;}
+  #subnav{position:sticky;top:52px;z-index:150;background:rgba(15,17,23,.97);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.07);display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem;}
+  #subnav a{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#5a6070;padding:.3rem .65rem;border-radius:3px;text-decoration:none;transition:color .2s,background .2s;font-family:'Courier New',monospace;}
+  #subnav a:hover,#subnav a.active{color:var(--accent);background:rgba(255,255,255,.06);}
+  #subsubnav{position:sticky;top:88px;z-index:140;background:rgba(10,13,18,.95);border-bottom:1px solid rgba(124,106,247,.12);display:flex;justify-content:center;gap:.4rem;padding:.2rem 1rem;}
+  #subsubnav a{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:#3a4050;padding:.2rem .55rem;border-radius:2px;text-decoration:none;transition:color .2s,background .2s;font-family:'Courier New',monospace;}
+  #subsubnav a:hover,#subsubnav a.active{color:var(--accent);background:rgba(124,106,247,.08);}
+  .hero{background:linear-gradient(135deg,#2a0a0a 0%,#1a0b0b 50%,#0a1a2a 100%);border-bottom:1px solid var(--border);padding:36px 40px 32px;text-align:center;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(248,113,113,0.1) 0%,transparent 70%);pointer-events:none;}
+  .hero-badge{display:inline-block;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#fca5a5;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:16px;}
+  .hero h1{font-size:clamp(20px,3vw,32px);font-weight:800;background:linear-gradient(135deg,#fca5a5,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;}
+  .hero-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
+  .hero-chip{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--muted);font-family:var(--font-mono);}
+  .source-wrap{max-width:1100px;margin:32px auto 64px;padding:0 24px;}
+  .source-header{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:10px 18px;font-family:var(--font-mono);font-size:13px;}
+  .source-filename{color:var(--accent2);}
+  .copy-btn{background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.3);color:#a78bfa;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);transition:background .2s;}
+  .copy-btn:hover{background:rgba(124,106,247,.3);}
+  .copy-btn.copied{color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1);}
+  #code-display{background:var(--code-bg);border:1px solid var(--border);border-radius:0 0 8px 8px;overflow-x:auto;font-family:var(--font-mono);font-size:13px;line-height:1.7;padding:16px 0;}
+  .code-line{display:flex;min-width:max-content;}.code-line:hover{background:rgba(255,255,255,.03);}
+  .ln{display:inline-block;min-width:50px;padding:0 16px;text-align:right;color:#3a4454;user-select:none;flex-shrink:0;border-right:1px solid #1a2030;}
+  .lc{padding:0 20px;white-space:pre;color:#8b9db0;}
+  .cm{color:#4a6a4a;font-style:italic;}.pp{color:#569cd6;}.kw{color:#c586c0;}.tp{color:#4ec9b0;}.str{color:#ce9178;}.num{color:#b5cea8;}
+  .footer{text-align:center;padding:40px 24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;}
+  ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+<nav id="subnav">
+  <a href="index.html">Overview</a><a href="button-beep.html">Button Beep</a><a href="truth-detector.html">Truth Detector</a><a href="dvd-screensaver.html">DVD Screensaver</a><a href="heartbeat-viz.html">Heartbeat Viz</a><a href="pixel-canvas.html">Pixel Canvas</a><a href="wifi-scanner.html">WiFi Scanner</a>
+</nav>
+<script>document.querySelectorAll('#subnav a').forEach(function(a){var h=a.getAttribute('href'),p=location.pathname;if(p.endsWith(h)||(h==='index.html'&&(p.endsWith('/')||p.endsWith('/esp32')||p.endsWith('index.html'))))a.classList.add('active');});</script>
+<nav id="subsubnav">
+  <a href="heartbeat-viz.html">Session</a>
+  <a href="heartbeat-viz-source.html">Source Code</a>
+</nav>
+<script>document.querySelectorAll('#subsubnav a').forEach(function(a){if(location.pathname.endsWith(a.getAttribute('href')))a.classList.add('active');});</script>
+
+<div class="hero">
+  <div class="hero-badge">Source Code · Sketch 004</div>
+  <h1>heartbeat_viz.ino</h1>
+  <div class="hero-chips">
+    <div class="hero-chip">TFT_eSPI + TFT_eSprite</div>
+    <div class="hero-chip">MAX30105 (HR sensor)</div>
+    <div class="hero-chip">FT6336U (touch)</div>
+    <div class="hero-chip">AC-coupled waveform</div>
+    <div class="hero-chip">touch-to-freeze</div>
+  </div>
+</div>
+
+<div class="source-wrap">
+  <div class="source-header">
+    <span class="source-filename">sketches/heartbeat_viz/heartbeat_viz.ino</span>
+    <button class="copy-btn" id="copy-btn">Copy</button>
+  </div>
+  <div id="code-display"></div>
+</div>
+
+<div class="footer"><p>Built with <strong>Claude Sonnet 4.6</strong> · Anthropic · April 2026</p></div>
+
+<script type="text/plain" id="raw-src">
+// heartbeat_viz — Freenove ESP32-S3 Dev Kit (FNK0086)
+//
+// Live ECG-style heartbeat visualizer using MAX30102 IR signal.
+//
+// Features:
+//   • Scrolling waveform (AC-coupled IR signal, auto-scaled)
+//   • ECG grid background
+//   • Full-screen red flash on each detected beat
+//   • Animated pixel-art heart that pumps on each beat
+//   • BPM in large digits, color-coded by rate
+//   • "LIVE" blink dot to confirm sensor is reading
+//   • Sprite-based rendering for zero flicker
+//   • Touch to freeze / unfreeze the trace
+//
+// Pin summary:
+//   LCD   : TFT_eSPI  MOSI=20 SCLK=21 DC=0  CS=GND (ST7789 240×320)
+//   Touch : FT6336U   SDA=2   SCL=1
+//   HR    : MAX30102  SDA=2   SCL=1   addr=0x57 (shared I2C)
+
+#include <TFT_eSPI.h>
+#include "FT6336U.h"
+#include "MAX30105.h"
+#include "heartRate.h"
+#include <Wire.h>
+#include <math.h>
+
+// ── Pins ──────────────────────────────────────────────────────────────────────
+#define TOUCH_SDA  2
+#define TOUCH_SCL  1
+
+// ── Screen dimensions ─────────────────────────────────────────────────────────
+#define SW  240
+#define SH  320
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+// Top area: BPM + animated heart
+#define TOP_H      56   // height of header panel
+// Waveform area
+#define WAVE_Y     TOP_H
+#define WAVE_H     (SH - TOP_H)  // 264 px tall
+#define WAVE_W     SW
+
+// ── Colours ───────────────────────────────────────────────────────────────────
+#define C_BG        TFT_BLACK
+#define C_GRID      0x0841   // very dark green grid
+#define C_GRID2     0x0421   // lighter grid accent
+#define C_TRACE     0x07E0   // bright green
+#define C_TRACE_DIM 0x03E0   // glow shadow
+#define C_FLASH_HI  0xF800   // full red flash
+#define C_FLASH_MID 0x9000   // mid flash frame
+#define C_FLASH_LO  0x3000   // fade-out frame
+#define C_HDR_BG    0x0841
+#define C_LIVE_ON   0x07E0
+#define C_LIVE_OFF  0x0421
+
+// ── BPM colour thresholds ─────────────────────────────────────────────────────
+inline uint16_t bpmColor(int bpm) {
+  if (bpm <= 0)   return TFT_DARKGREY;
+  if (bpm < 55)   return 0x001F;  // blue — bradycardia
+  if (bpm < 85)   return 0x07E0;  // green — normal
+  if (bpm < 100)  return 0xFFE0;  // yellow — elevated
+  return 0xF800;                   // red — high
+}
+
+// ── Waveform ring buffer ───────────────────────────────────────────────────────
+#define BUF_LEN  WAVE_W
+static float   waveBuf[BUF_LEN];
+static int     waveBufHead = 0;
+
+// ── DC baseline tracking ──────────────────────────────────────────────────────
+static float dcBaseline = 0.0f;
+#define DC_ALPHA  0.02f
+
+// ── Auto-scale ────────────────────────────────────────────────────────────────
+static float acPeak = 500.0f;
+#define PEAK_DECAY  0.998f
+
+// ── Heart rate ────────────────────────────────────────────────────────────────
+MAX30105  hr;
+static const byte RATE_HIST = 8;
+byte  rateHistory[RATE_HIST];
+byte  rateSpot   = 0;
+long  lastBeatMs = 0;
+int   beatAvg    = 0;
+bool  fingerOn   = false;
+bool  beatNow    = false;
+
+// ── Beat flash state ──────────────────────────────────────────────────────────
+static int  flashState = 0;
+static unsigned long flashMs = 0;
+#define FLASH_FRAME_MS  55
+
+// ── Animated heart ────────────────────────────────────────────────────────────
+static const uint8_t HEART_MAP[9][11] = {
+  {0,1,1,0,0,0,0,0,1,1,0},
+  {1,1,1,1,0,0,0,1,1,1,1},
+  {1,1,1,1,1,0,1,1,1,1,1},
+  {1,1,1,1,1,1,1,1,1,1,1},
+  {0,1,1,1,1,1,1,1,1,1,0},
+  {0,0,1,1,1,1,1,1,1,0,0},
+  {0,0,0,1,1,1,1,1,0,0,0},
+  {0,0,0,0,1,1,1,0,0,0,0},
+  {0,0,0,0,0,1,0,0,0,0,0},
+};
+static int   heartScale  = 2;
+static bool  heartBig    = false;
+#define HEART_COLS  11
+#define HEART_ROWS  9
+#define HEART_X     (SW - HEART_COLS*3 - 6)
+#define HEART_Y     8
+
+// ── Live dot blink ────────────────────────────────────────────────────────────
+static bool liveOn = false;
+static unsigned long liveMs = 0;
+#define LIVE_PERIOD_MS  500
+
+// ── Freeze toggle (touch) ─────────────────────────────────────────────────────
+static bool frozen = false;
+static bool prevTouch = false;
+
+// ── Peripherals ───────────────────────────────────────────────────────────────
+TFT_eSPI    tft;
+TFT_eSprite wavSprite(&tft);
+FT6336U     ts(TOUCH_SDA, TOUCH_SCL, -1, -1);
+
+// ── Draw pixel-art heart ──────────────────────────────────────────────────────
+void drawHeart(int x, int y, int sz, uint16_t col, uint16_t bg) {
+  for (int r = 0; r < HEART_ROWS; r++) {
+    for (int c = 0; c < HEART_COLS; c++) {
+      uint16_t px = HEART_MAP[r][c] ? col : bg;
+      tft.fillRect(x + c*sz, y + r*sz, sz, sz, px);
+    }
+  }
+}
+
+// ── Draw top header panel ─────────────────────────────────────────────────────
+void drawHeader(uint16_t flashBg) {
+  uint16_t bg = (flashBg != 0) ? flashBg : C_HDR_BG;
+  tft.fillRect(0, 0, SW, TOP_H, bg);
+
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextFont(7);
+  uint16_t bCol = (flashBg != 0) ? TFT_WHITE : bpmColor(beatAvg);
+  tft.setTextColor(bCol, bg);
+  char bpmStr[8];
+  if (fingerOn && beatAvg > 20)
+    snprintf(bpmStr, sizeof(bpmStr), "%3d", beatAvg);
+  else
+    snprintf(bpmStr, sizeof(bpmStr), " --");
+  tft.drawString(bpmStr, 6, 28);
+
+  tft.setTextFont(2);
+  tft.setTextColor(TFT_LIGHTGREY, bg);
+  tft.setTextDatum(BL_DATUM);
+  tft.drawString("BPM", 6, TOP_H - 4);
+
+  if (frozen) {
+    tft.setTextFont(2);
+    tft.setTextColor(TFT_YELLOW, bg);
+    tft.setTextDatum(BC_DATUM);
+    tft.drawString("[ FROZEN ]", SW/2, TOP_H - 4);
+  }
+
+  tft.fillCircle(HEART_X - 12, TOP_H/2, 4,
+                 (liveOn && fingerOn) ? C_LIVE_ON : (bg == C_HDR_BG ? C_LIVE_OFF : bg));
+
+  int sz = heartBig ? 3 : 2;
+  uint16_t hCol = (flashBg != 0) ? 0xFBEF : (fingerOn ? 0xF800 : 0x4208);
+  drawHeart(HEART_X, HEART_Y, sz, hCol, bg);
+}
+
+// ── ECG grid ─────────────────────────────────────────────────────────────────
+void drawGrid() {
+  wavSprite.fillSprite(C_BG);
+  for (int y = WAVE_H/4; y < WAVE_H; y += WAVE_H/4)
+    wavSprite.drawFastHLine(0, y, WAVE_W, C_GRID);
+  for (int y = WAVE_H/8; y < WAVE_H; y += WAVE_H/4)
+    wavSprite.drawFastHLine(0, y, WAVE_W, C_GRID2);
+  for (int x = 60; x < WAVE_W; x += 60)
+    wavSprite.drawFastVLine(x, 0, WAVE_H, C_GRID);
+  for (int x = 20; x < WAVE_W; x += 20) {
+    if (x % 60 != 0)
+      wavSprite.drawFastVLine(x, 0, WAVE_H, C_GRID2);
+  }
+}
+
+inline int acToY(float v) {
+  float half = (WAVE_H - 2) * 0.40f;
+  int y = (int)(WAVE_H/2 - v * half);
+  if (y < 1)        y = 1;
+  if (y > WAVE_H-2) y = WAVE_H-2;
+  return y;
+}
+
+void drawWave() {
+  drawGrid();
+  int prevY = -1;
+  for (int col = 0; col < WAVE_W; col++) {
+    int idx = (waveBufHead + col) % BUF_LEN;
+    float v = waveBuf[idx];
+    if (v == 0.0f && !fingerOn) { prevY = -1; continue; }
+    int y = acToY(v);
+    bool isCursor = (col >= WAVE_W - 8);
+    uint16_t col1 = isCursor ? 0x0180 : C_TRACE;
+    uint16_t col2 = isCursor ? 0x00C0 : C_TRACE_DIM;
+    if (prevY >= 0) {
+      wavSprite.drawLine(col-1, prevY, col, y, col1);
+      if (y > 1)        wavSprite.drawPixel(col, y-1, col2);
+      if (y < WAVE_H-1) wavSprite.drawPixel(col, y+1, col2);
+    } else {
+      wavSprite.drawPixel(col, y, col1);
+    }
+    prevY = y;
+  }
+  wavSprite.pushSprite(0, WAVE_Y);
+}
+
+// ── HR update ────────────────────────────────────────────────────────────────
+void updateHR() {
+  hr.check();
+  if (!hr.available()) return;
+  beatNow = false;
+  while (hr.available()) {
+    long ir = hr.getFIFOIR();
+    fingerOn = (ir >= 50000);
+    if (fingerOn) {
+      dcBaseline = dcBaseline * (1.0f - DC_ALPHA) + (float)ir * DC_ALPHA;
+      float ac = (float)ir - dcBaseline;
+      float absAc = fabsf(ac);
+      if (absAc > acPeak) acPeak = absAc;
+      else                acPeak *= PEAK_DECAY;
+      if (acPeak < 100.0f) acPeak = 100.0f;
+      float norm = ac / acPeak;
+      if (!frozen) {
+        waveBuf[waveBufHead] = norm;
+        waveBufHead = (waveBufHead + 1) % BUF_LEN;
+      }
+      if (checkForBeat(ir)) {
+        long now   = millis();
+        long delta = now - lastBeatMs;
+        lastBeatMs = now;
+        float bpm  = 60000.0f / (float)delta;
+        if (bpm > 20.0f && bpm < 250.0f) {
+          rateHistory[rateSpot % RATE_HIST] = (byte)bpm;
+          rateSpot++;
+          int sum = 0, cnt = 0;
+          for (int i = 0; i < RATE_HIST; i++)
+            if (rateHistory[i]) { sum += rateHistory[i]; cnt++; }
+          beatAvg = cnt ? sum / cnt : 0;
+        }
+        beatNow = true;
+      }
+    } else {
+      if (!frozen) {
+        waveBuf[waveBufHead] = 0.0f;
+        waveBufHead = (waveBufHead + 1) % BUF_LEN;
+      }
+      beatAvg = 0;
+      dcBaseline = 0.0f;
+    }
+    hr.nextSample();
+  }
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
+void setup() {
+  Serial.begin(115200);
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(C_BG);
+  Wire.begin(TOUCH_SDA, TOUCH_SCL);
+  ts.begin();
+  wavSprite.createSprite(WAVE_W, WAVE_H);
+  wavSprite.setColorDepth(16);
+  if (!hr.begin(Wire, I2C_SPEED_FAST)) {
+    tft.setTextColor(TFT_RED, C_BG);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextFont(2);
+    tft.drawString("MAX30102 not found!", SW/2, SH/2);
+    tft.drawString("Check SDA=2 SCL=1",  SW/2, SH/2 + 20);
+    while (true) delay(100);
+  }
+  hr.setup(0x7F, 4, 2, 100, 411, 4096);
+  hr.setPulseAmplitudeRed(0x0A);
+  hr.setPulseAmplitudeGreen(0);
+  memset(rateHistory, 0, sizeof(rateHistory));
+  memset(waveBuf, 0, sizeof(waveBuf));
+  tft.fillScreen(C_BG);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_RED, C_BG);
+  tft.setTextFont(4);
+  tft.drawString("HEARTBEAT", SW/2, 100);
+  tft.drawString("VISUALIZER", SW/2, 130);
+  tft.setTextFont(2);
+  tft.setTextColor(TFT_DARKGREY, C_BG);
+  tft.drawString("Place finger on sensor", SW/2, 190);
+  tft.drawString("Tap screen to freeze", SW/2, 210);
+  delay(2000);
+  tft.fillScreen(C_BG);
+  drawHeader(0);
+  drawWave();
+}
+
+// ── Loop ──────────────────────────────────────────────────────────────────────
+static unsigned long lastDrawMs = 0;
+#define DRAW_INTERVAL_MS  30
+
+void loop() {
+  updateHR();
+  FT6336U_TouchPointType tp = ts.scan();
+  bool touched = (tp.touch_count > 0);
+  if (touched && !prevTouch) {
+    frozen = !frozen;
+    drawHeader(0);
+  }
+  prevTouch = touched;
+  if (beatNow) { flashState = 1; flashMs = millis(); heartBig = true; }
+  if (flashState > 0 && millis() - flashMs > FLASH_FRAME_MS) {
+    flashState++;
+    flashMs = millis();
+    if (flashState > 3) { flashState = 0; heartBig = false; }
+  }
+  if (millis() - liveMs > LIVE_PERIOD_MS) { liveMs = millis(); liveOn = !liveOn; }
+  if (millis() - lastDrawMs >= DRAW_INTERVAL_MS) {
+    lastDrawMs = millis();
+    uint16_t fbg = 0;
+    if (flashState == 1) fbg = C_FLASH_HI;
+    else if (flashState == 2) fbg = C_FLASH_MID;
+    else if (flashState == 3) fbg = C_FLASH_LO;
+    drawHeader(fbg);
+    drawWave();
+  }
+}
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+(function(){
+  var raw=document.getElementById('raw-src').textContent.replace(/^\n/,'');
+  var lines=raw.split('\n');
+  if(lines[lines.length-1].trim()==='')lines.pop();
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function hl(line){
+    var e=esc(line);
+    e=e.replace(/(\/\/.*$)/g,'<span class="cm">$1</span>');
+    if(e.indexOf('<span class="cm">')!==-1)return e;
+    if(/^#/.test(e))return '<span class="pp">'+e+'</span>';
+    e=e.replace(/("([^"\\]|\\.)*")/g,'<span class="str">$1</span>');
+    e=e.replace(/\b(void|bool|int|float|double|char|uint8_t|uint16_t|uint32_t|int16_t|int32_t|size_t|long|unsigned|byte|const|static|volatile|inline)\b/g,'<span class="tp">$1</span>');
+    e=e.replace(/\b(if|else|while|for|return|true|false|NULL|break|continue|switch|case|default|struct|enum|typedef)\b/g,'<span class="kw">$1</span>');
+    e=e.replace(/\b(0x[0-9a-fA-F]+|\d+\.?\d*[fF]?)\b/g,'<span class="num">$1</span>');
+    return e;
+  }
+  var html='';
+  for(var i=0;i<lines.length;i++)html+='<div class="code-line"><span class="ln">'+(i+1)+'</span><span class="lc">'+hl(lines[i])+'</span></div>';
+  document.getElementById('code-display').innerHTML=html;
+  document.getElementById('copy-btn').addEventListener('click',function(){
+    navigator.clipboard.writeText(raw).then(function(){
+      var b=document.getElementById('copy-btn');b.textContent='Copied!';b.classList.add('copied');
+      setTimeout(function(){b.textContent='Copy';b.classList.remove('copied');},2000);
+    });
+  });
+})();
+</script>
+</body>
+</html>
