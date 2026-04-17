@@ -2244,12 +2244,12 @@ const server = http.createServer(async (req, res) => {
     const mapLinkTag = hasGeo ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>' : '';
     const mapDivCard = hasGeo ? '<div class="card" style="grid-column:1/-1;padding:0;overflow:hidden"><div id="ip-map" style="height:260px;width:100%"></div></div>' : '';
     const mapScript  = hasGeo
-      ? `<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\\/script>` +
-        `<script>` +
+      ? '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>' +
+        '<script>' +
         `var _m=L.map('ip-map',{zoomControl:true,attributionControl:false}).setView([${geo.lat},${geo.lon}],5);` +
         `L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(_m);` +
         `L.circleMarker([${geo.lat},${geo.lon}],{radius:9,color:'#00ff41',fillColor:'#00ff41',fillOpacity:.75,weight:2}).addTo(_m);` +
-        `<\\/script>`
+        '</script>'
       : '';
 
     const IP_HTML = `<!DOCTYPE html>
