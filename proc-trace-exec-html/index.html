@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>proc-trace-exec — exec() tracer for Linux</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2937;
+      --accent: #f59e0b;
+      --accent2: #38bdf8;
+      --text: #f1f5f9;
+      --muted: #6b7280;
+      --code-bg: #060910;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding-top: 48px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(10,13,20,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+      color: #4b5563; padding: .3rem .65rem; border-radius: 3px;
+      text-decoration: none; transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 5rem 1.5rem 3rem; text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,158,11,.08) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25);
+      color: var(--accent); font-family: 'Courier New', monospace;
+      font-size: .72rem; letter-spacing: .12em;
+      padding: .3rem .9rem; border-radius: 2rem; margin-bottom: 1.75rem;
+    }
+    .hero-badge::before { content:''; display:inline-block; width:6px; height:6px; background:var(--accent); border-radius:50%; }
+    .hero h1 {
+      font-size: clamp(2rem,6vw,3.2rem); font-weight: 700; letter-spacing: -.02em;
+      line-height: 1.15; margin-bottom: 1.25rem; font-family: 'Courier New', monospace;
+      background: linear-gradient(135deg, #fde68a 0%, var(--accent) 50%, #d97706 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-subtitle {
+      font-size: 1.1rem; color: var(--muted); max-width: 620px;
+      margin: 0 auto 2rem; line-height: 1.75;
+    }
+    .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .7rem 1.6rem; border-radius: 6px; font-size: .9rem;
+      font-weight: 600; text-decoration: none; transition: all .2s; border: none;
+    }
+    .btn-primary { background: var(--accent); color: #0a0d14; }
+    .btn-primary:hover { background: #d97706; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(245,158,11,.35); }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); transform: translateY(-1px); }
+
+    /* ── Hero terminal ── */
+    .hero-terminal {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; max-width: 680px; margin: 0 auto; text-align: left;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .term-hdr {
+      background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border);
+      padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; } .dot-y { background: #febc2e; } .dot-g { background: #28c840; }
+    .term-hdr .ttl { flex: 1; text-align: center; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-family: 'Courier New', monospace; }
+    .hero-terminal pre {
+      padding: 1.1rem 1.4rem; font-family: 'Courier New', monospace;
+      font-size: .82rem; line-height: 1.8; overflow-x: auto; white-space: pre;
+    }
+    .p  { color: #a78bfa; }
+    .su { color: #fbbf24; }
+    .bi { color: #38bdf8; }
+    .pi { color: #fbbf24; }
+    .ex { color: #4ade80; }
+    .xi { color: #f87171; }
+    .cm { color: #67e8f9; }
+    .di { color: #6b7280; }
+    .ok { color: #4ade80; }
+    .er { color: #f87171; }
+    .ti { color: #38bdf8; }
+    .ur { color: #f87171; }
+    .uu { color: #4ade80; }
+
+    /* ── Features ── */
+    .features { padding: 3rem 1.5rem 4rem; }
+    .section-label {
+      text-align: center; font-size: .72rem; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--accent); font-family: 'Courier New', monospace;
+      margin-bottom: 2.5rem;
+    }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(270px,1fr)); gap: 1.25rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.75rem; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: rgba(245,158,11,.35); transform: translateY(-2px); }
+    .card-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
+    .card p { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── Motivation ── */
+    .motivation { padding: 2rem 1.5rem 4rem; }
+    .motivation-inner {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start;
+    }
+    @media (max-width: 720px) { .motivation-inner { grid-template-columns: 1fr; } }
+    .motivation h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; line-height: 1.3; }
+    .motivation h2 span { color: var(--accent); }
+    .motivation p { color: var(--muted); font-size: .95rem; line-height: 1.8; margin-bottom: 1rem; }
+    .motivation img { width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+
+    /* ── Use Cases ── */
+    .use-cases { padding: 2rem 1.5rem 4rem; }
+    .uc-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 1rem; }
+    .uc-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.25rem 1.5rem; display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .uc-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .uc-item h4 { font-size: .95rem; font-weight: 600; margin-bottom: .3rem; }
+    .uc-item p { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── How it works callout ── */
+    .callout {
+      background: rgba(56,189,248,.06); border: 1px solid rgba(56,189,248,.2);
+      border-radius: 8px; padding: 1.5rem; margin: 2rem 0;
+      font-size: .875rem; color: var(--muted); line-height: 1.75;
+    }
+    .callout strong { color: var(--accent2); }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="screenshots.html">Screenshots</a>
+  <a href="usage.html">Usage</a>
+  <a href="building.html">Building</a>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="container">
+    <span class="hero-badge">LINUX &nbsp;·&nbsp; NETLINK CONNECTOR &nbsp;·&nbsp; ZERO DEPS</span>
+    <h1>proc-trace-exec</h1>
+    <p class="hero-subtitle">Watch every <code style="color:var(--accent);font-family:'Courier New',monospace">exec()</code> call on your Linux system — in real time, with process trees, exit timing, and user context. No eBPF. No ptrace. No kernel modules.</p>
+    <div class="cta-row">
+      <a href="https://github.com/binRick/proc-trace-exec" target="_blank" class="btn btn-primary">⭐ View on GitHub</a>
+      <a href="screenshots.html" class="btn btn-secondary">Screenshots →</a>
+      <a href="building.html" class="btn btn-secondary">Build it →</a>
+    </div>
+
+    <div class="hero-terminal">
+      <div class="term-hdr">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="ttl">proc-trace-exec — bash</span>
+      </div>
+      <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span> -t make
+<span class="pi">91100</span><span class="ex">+</span> <span class="cm">make</span>
+  <span class="pi">91101</span><span class="ex">+</span> <span class="cm">gcc</span> <span class="di">-O2 -c src/main.c -o src/main.o</span>
+  <span class="pi">91102</span><span class="ex">+</span> <span class="cm">gcc</span> <span class="di">-O2 -c src/util.c -o src/util.o</span>
+  <span class="pi">91103</span><span class="ex">+</span> <span class="cm">ld</span> <span class="di">-o output src/main.o src/util.o</span>
+  <span class="pi">91103</span><span class="xi">-</span> <span class="di">ld exited</span> <span class="ok">status=0</span> <span class="ti">time=0.042s</span>
+  <span class="pi">91102</span><span class="xi">-</span> <span class="di">gcc exited</span> <span class="ok">status=0</span> <span class="ti">time=0.118s</span>
+  <span class="pi">91101</span><span class="xi">-</span> <span class="di">gcc exited</span> <span class="ok">status=0</span> <span class="ti">time=0.134s</span>
+<span class="pi">91100</span><span class="xi">-</span> <span class="di">make exited</span> <span class="ok">status=0</span> <span class="ti">time=0.201s</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ── Feature cards ── -->
+<section class="features">
+  <div class="container">
+    <div class="section-label">CAPABILITIES</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🌳</div>
+        <h3>Process Tree</h3>
+        <p>Indented output shows exact parent→child relationships. See who spawned what, however deep the hierarchy goes.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <h3>Exit Timing</h3>
+        <p>The <code style="color:var(--accent);font-family:monospace">-t</code> flag shows exit status and wall-clock runtime for every process. Instantly spot which subprocess is the bottleneck.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <h3>System-Wide</h3>
+        <p>Catches every <code style="color:var(--accent);font-family:monospace">exec()</code> on the machine, not just children of your shell. One socket, full visibility.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <h3>Subtree Filter</h3>
+        <p>Use <code style="color:var(--accent);font-family:monospace">-p PID[,PID,...]</code> to watch only descendants of specific processes, or pass <code style="color:var(--accent);font-family:monospace">CMD...</code> to trace a single command's subtree.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h3>Color Output</h3>
+        <p>ANSI colors auto-detected when stdout is a tty. PIDs in amber, commands in cyan, exit markers in green/red, timing in blue.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>Zero Dependencies</h3>
+        <p>Single static binary. Uses the kernel's proc connector via a netlink socket — no eBPF, no ptrace, no kernel modules, no root privileges if <code style="color:var(--accent);font-family:monospace">CAP_NET_ADMIN</code> is granted.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Motivation ── -->
+<section class="motivation">
+  <div class="container">
+    <div class="motivation-inner">
+      <div>
+        <div class="section-label" style="text-align:left;margin-bottom:1rem;">WHY THIS EXISTS</div>
+        <h2>Built to answer one question: <span>what is my system actually doing?</span></h2>
+        <p>When a build takes 3 minutes, which subprocess is the bottleneck? When an install script runs, what does it actually exec? When your app forks children, are they the processes you expect?</p>
+        <p>Existing tools are painful: <code style="color:var(--accent2);font-family:monospace">strace -e execve -f</code> is extremely verbose and affects performance. <code style="color:var(--accent2);font-family:monospace">auditd</code> is complex to configure and requires daemon setup. eBPF requires kernel 5.8+ and root. <code style="color:var(--accent2);font-family:monospace">ps</code> polling misses short-lived processes entirely.</p>
+        <p>proc-trace-exec answers these questions with one command and one static binary — subscribing to the kernel's own process event stream rather than intercepting syscalls.</p>
+        <div class="callout">
+          <strong>How it works in one sentence:</strong> the Linux kernel broadcasts a netlink event for every fork/exec/exit system-wide; proc-trace-exec subscribes to that stream and formats it.
+        </div>
+      </div>
+      <div>
+        <img src="images/global.svg" alt="System-wide process tree with user annotation">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Use Cases ── -->
+<section class="use-cases">
+  <div class="container">
+    <div class="section-label">USE CASES</div>
+    <div class="uc-grid">
+      <div class="uc-item">
+        <div class="uc-icon">🔨</div>
+        <div>
+          <h4>Build System Archaeology</h4>
+          <p>See every subprocess cmake, make, gradle, or bazel spawns. Find the slow step. Understand the full dependency graph.</p>
+        </div>
+      </div>
+      <div class="uc-item">
+        <div class="uc-icon">🔐</div>
+        <div>
+          <h4>Security Auditing</h4>
+          <p>Watch what an installer script, package, or binary does before you trust it. Does it exec curl? wget? chmod? You'll see everything.</p>
+        </div>
+      </div>
+      <div class="uc-item">
+        <div class="uc-icon">📦</div>
+        <div>
+          <h4>Package Manager Tracing</h4>
+          <p>Trace every subprocess spawned by apt, yum, pip, or npm during install. Understand what pre/post-install scripts actually do.</p>
+        </div>
+      </div>
+      <div class="uc-item">
+        <div class="uc-icon">🐛</div>
+        <div>
+          <h4>Shell Script Debugging</h4>
+          <p>Find the exact command silently failing. Unlike <code style="color:var(--accent2);font-family:monospace">set -x</code>, this catches exec'd subshells that don't inherit xtrace.</p>
+        </div>
+      </div>
+      <div class="uc-item">
+        <div class="uc-icon">📊</div>
+        <div>
+          <h4>Performance Profiling</h4>
+          <p>Count process spawns in hot paths. Identify fork bombs early. See which step in your pipeline is spawning hundreds of subprocesses.</p>
+        </div>
+      </div>
+      <div class="uc-item">
+        <div class="uc-icon">🎓</div>
+        <div>
+          <h4>Learning & Exploration</h4>
+          <p>Understand how programs work by watching what they exec. A great way to explore unfamiliar systems, CI environments, or new software.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/binRick/proc-trace-exec" target="_blank">github.com/binRick/proc-trace-exec</a>
+      &nbsp;·&nbsp; written in Go &nbsp;·&nbsp; Linux only &nbsp;·&nbsp; requires <code>CAP_NET_ADMIN</code>
+    </p>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    var href = a.getAttribute('href');
+    var path = location.pathname;
+    if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('/proc-trace-exec') || path.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

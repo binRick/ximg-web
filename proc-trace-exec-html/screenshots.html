@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshots — proc-trace-exec</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14; --surface: #111827; --surface2: #1a2235; --border: #1f2937;
+      --accent: #f59e0b; --accent2: #38bdf8; --text: #f1f5f9; --muted: #6b7280; --code-bg: #060910;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui,-apple-system,sans-serif; padding-top: 48px; line-height: 1.6; }
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(10,13,20,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #4b5563; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: 'Courier New', monospace; }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+    .page-hero { padding: 3.5rem 1.5rem 1.5rem; text-align: center; }
+    .page-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: .6rem; }
+    .page-hero p { color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto; }
+    .section-label { text-align: center; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-family: 'Courier New', monospace; margin-bottom: 1.5rem; }
+    .screenshot-block { padding: 3rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .screenshot-block:last-of-type { border-bottom: none; }
+    .screenshot-block h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: .4rem; }
+    .screenshot-block .desc { color: var(--muted); font-size: .9rem; margin-bottom: .75rem; line-height: 1.7; max-width: 760px; }
+    .screenshot-block .cmd-tag {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+      padding: .3rem .8rem; font-family: 'Courier New', monospace; font-size: .8rem;
+      color: var(--accent2); margin-bottom: 1.5rem;
+    }
+    .screenshot-block img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+    /* ── Terminal blocks ── */
+    .terminal { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .term-hdr { background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .dot-r { background:#ff5f57; } .dot-y { background:#febc2e; } .dot-g { background:#28c840; }
+    .term-hdr .ttl { flex:1; text-align:center; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-family:'Courier New',monospace; }
+    .terminal pre { padding: 1.1rem 1.4rem; font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.85; overflow-x: auto; white-space: pre; }
+    /* color classes for terminal output */
+    .p  { color: #a78bfa; }
+    .su { color: #fbbf24; }
+    .bi { color: #38bdf8; }
+    .pi { color: #fbbf24; }
+    .ex { color: #4ade80; }
+    .xi { color: #f87171; }
+    .cm { color: #67e8f9; }
+    .di { color: #6b7280; }
+    .ok { color: #4ade80; }
+    .er { color: #f87171; }
+    .ti { color: #38bdf8; }
+    .ur { color: #f87171; }  /* root user */
+    .uu { color: #4ade80; }  /* normal user */
+    .uw { color: #fbbf24; }  /* www-data */
+    .cw { color: #d946ef; }  /* cwd */
+    .flag { color: #4ade80; }
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="screenshots.html">Screenshots</a>
+  <a href="usage.html">Usage</a>
+  <a href="building.html">Building</a>
+</nav>
+
+<div class="page-hero">
+  <div class="container">
+    <h1>Screenshots</h1>
+    <p>Real output from proc-trace-exec. Colors rendered as-is from the terminal.</p>
+  </div>
+</div>
+
+<!-- ── 1: CMD mode + timing ── -->
+<div class="screenshot-block">
+  <div class="container">
+    <div class="section-label">CMD MODE · -t FLAG</div>
+    <h2>Tracing a command and all its children</h2>
+    <p class="desc">Pass a command after the flags to trace only its subtree. The <code style="color:var(--accent);font-family:monospace">-t</code> flag adds exit status and wall-clock timing to each process — making it easy to spot which subprocess is slow or failing.</p>
+    <div class="cmd-tag">$ sudo proc-trace-exec -t sh -c 'find /etc -name "*.conf" | head -3'</div>
+    <img src="images/demo.svg" alt="CMD mode with timing">
+  </div>
+</div>
+
+<!-- ── 2: System-wide + user ── -->
+<div class="screenshot-block">
+  <div class="container">
+    <div class="section-label">SYSTEM-WIDE MODE · -u -t FLAGS</div>
+    <h2>Watching the whole system with user context</h2>
+    <p class="desc">Run without a command to trace all exec()s on the machine. The <code style="color:var(--accent);font-family:monospace">-u</code> flag shows the owning user for each process. Root processes appear in red, normal users in green, service accounts in amber — matching the terminal color output.</p>
+    <div class="cmd-tag">$ sudo proc-trace-exec -u -t</div>
+    <img src="images/global.svg" alt="System-wide mode with user annotation">
+  </div>
+</div>
+
+<!-- ── 3: Build trace ── -->
+<div class="screenshot-block">
+  <div class="container">
+    <div class="section-label">BUILD TRACING · -t -u FLAGS</div>
+    <h2>Tracing a C build — see every compiler invocation</h2>
+    <p class="desc">Watch exactly what your build system does. See parallelism, identify missing dependencies, or find which step takes longest.</p>
+    <div class="cmd-tag">$ sudo proc-trace-exec -t -u make -j4</div>
+    <div class="terminal">
+      <div class="term-hdr">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="ttl">proc-trace-exec — build trace</span>
+      </div>
+      <pre><span class="pi">91100</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cm">make</span> <span class="di">-j4</span>
+  <span class="pi">91101</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cm">cc</span> <span class="di">-O2 -c src/conn.c -o build/conn.o</span>
+  <span class="pi">91102</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cm">cc</span> <span class="di">-O2 -c src/netlink.c -o build/netlink.o</span>
+  <span class="pi">91103</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cm">cc</span> <span class="di">-O2 -c src/depth.c -o build/depth.o</span>
+  <span class="pi">91104</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cm">cc</span> <span class="di">-O2 -c src/output.c -o build/output.o</span>
+  <span class="pi">91104</span><span class="xi">-</span> <span class="ur">&lt;root&gt;</span> <span class="di">cc exited</span> <span class="ok">status=0</span> <span class="ti">time=0.091s</span>
+  <span class="pi">91103</span><span class="xi">-</span> <span class="ur">&lt;root&gt;</span> <span class="di">cc exited</span> <span class="ok">status=0</span> <span class="ti">time=0.102s</span>
+  <span class="pi">91101</span><span class="xi">-</span> <span class="ur">&lt;root&gt;</span> <span class="di">cc exited</span> <span class="ok">status=0</span> <span class="ti">time=0.118s</span>
+  <span class="pi">91102</span><span class="xi">-</span> <span class="ur">&lt;root&gt;</span> <span class="di">cc exited</span> <span class="ok">status=0</span> <span class="ti">time=0.134s</span>
+  <span class="pi">91105</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cm">ld</span> <span class="di">-o proc-trace-exec build/*.o</span>
+  <span class="pi">91105</span><span class="xi">-</span> <span class="ur">&lt;root&gt;</span> <span class="di">ld exited</span> <span class="ok">status=0</span> <span class="ti">time=0.031s</span>
+<span class="pi">91100</span><span class="xi">-</span> <span class="ur">&lt;root&gt;</span> <span class="di">make exited</span> <span class="ok">status=0</span> <span class="ti">time=0.298s</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ── 4: Security audit ── -->
+<div class="screenshot-block">
+  <div class="container">
+    <div class="section-label">SECURITY AUDIT · -u -d FLAGS</div>
+    <h2>Auditing what an installer actually does</h2>
+    <p class="desc">Use <code style="color:var(--accent);font-family:monospace">-d</code> to add working directories. Watch a package install reveal its full exec tree, including helper scripts, post-install hooks, and any surprise network calls.</p>
+    <div class="cmd-tag">$ sudo proc-trace-exec -u -d -t bash install.sh</div>
+    <div class="terminal">
+      <div class="term-hdr">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="ttl">proc-trace-exec — install audit</span>
+      </div>
+      <pre><span class="pi">62001</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/tmp/install</span> % <span class="cm">bash</span> <span class="di">install.sh</span>
+  <span class="pi">62002</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/tmp/install</span> % <span class="cm">id</span>
+  <span class="pi">62002</span><span class="xi">-</span> <span class="di">id exited</span> <span class="ok">status=0</span> <span class="ti">time=0.001s</span>
+  <span class="pi">62003</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/tmp/install</span> % <span class="cm">curl</span> <span class="di">-fsSL https://releases.example.com/v2.1/binary</span>
+  <span class="pi">62004</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/tmp/install</span> % <span class="cm">install</span> <span class="di">-m 755 binary /usr/local/bin/</span>
+  <span class="pi">62004</span><span class="xi">-</span> <span class="di">install exited</span> <span class="ok">status=0</span> <span class="ti">time=0.001s</span>
+  <span class="pi">62005</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/etc/systemd/system</span> % <span class="cm">systemctl</span> <span class="di">enable --now binary.service</span>
+  <span class="pi">62005</span><span class="xi">-</span> <span class="di">systemctl exited</span> <span class="ok">status=0</span> <span class="ti">time=0.043s</span>
+  <span class="pi">62003</span><span class="xi">-</span> <span class="di">curl exited</span> <span class="ok">status=0</span> <span class="ti">time=1.204s</span>
+<span class="pi">62001</span><span class="xi">-</span> <span class="di">bash exited</span> <span class="ok">status=0</span> <span class="ti">time=1.251s</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ── 5: Multi-PID ── -->
+<div class="screenshot-block">
+  <div class="container">
+    <div class="section-label">MULTI-PID MODE · -p FLAG</div>
+    <h2>Watching multiple existing processes</h2>
+    <p class="desc">Pass comma-separated PIDs to <code style="color:var(--accent);font-family:monospace">-p</code> to watch several processes simultaneously — useful for monitoring a cluster of nginx workers, a pool of PHP-FPM processes, or any group of related daemons.</p>
+    <div class="cmd-tag">$ sudo proc-trace-exec -p $(pgrep nginx | paste -sd,) -t -u</div>
+    <div class="terminal">
+      <div class="term-hdr">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="ttl">proc-trace-exec — nginx worker monitoring</span>
+      </div>
+      <pre><span class="pi">73400</span><span class="ex">+</span> <span class="uw">&lt;www-data&gt;</span> <span class="cm">sh</span> <span class="di">-c '/usr/lib/nginx/modules/load.sh'</span>
+  <span class="pi">73401</span><span class="ex">+</span> <span class="uw">&lt;www-data&gt;</span> <span class="cm">/usr/lib/nginx/modules/load.sh</span>
+  <span class="pi">73401</span><span class="xi">-</span> <span class="di">load.sh exited</span> <span class="ok">status=0</span> <span class="ti">time=0.003s</span>
+<span class="pi">73400</span><span class="xi">-</span> <span class="di">sh exited</span> <span class="ok">status=0</span> <span class="ti">time=0.004s</span>
+<span class="pi">73410</span><span class="ex">+</span> <span class="uw">&lt;www-data&gt;</span> <span class="cm">sh</span> <span class="di">-c 'lua /etc/nginx/scripts/auth.lua'</span>
+  <span class="pi">73411</span><span class="ex">+</span> <span class="uw">&lt;www-data&gt;</span> <span class="cm">lua</span> <span class="di">/etc/nginx/scripts/auth.lua</span>
+  <span class="pi">73411</span><span class="xi">-</span> <span class="di">lua exited</span> <span class="ok">status=0</span> <span class="ti">time=0.011s</span>
+<span class="pi">73410</span><span class="xi">-</span> <span class="di">sh exited</span> <span class="ok">status=0</span> <span class="ti">time=0.012s</span></pre>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <a href="https://github.com/binRick/proc-trace-exec" target="_blank">github.com/binRick/proc-trace-exec</a>
+    &nbsp;·&nbsp; written in Go &nbsp;·&nbsp; Linux only
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

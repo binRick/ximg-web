@@ -155,6 +155,7 @@ const LOG_FILES = {
   gentoo:      'gentoo.access.log',
   esp32:       'esp32.access.log',
   'ca-fetcher': 'ca-fetcher.access.log',
+  'proc-trace-exec': 'proc-trace-exec.access.log',
   vim:         'vim.access.log',
   http:        'http.access.log',
   ssh:         'ssh.access.log',

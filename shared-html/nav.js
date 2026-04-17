@@ -75,7 +75,9 @@
     ]},
     { label: 'Projects', apps: [
       ['rx','RxFitt'],
-      ['esp32','Freenove ESP32-S3 Dev Kit FNK0086']
+      ['esp32','Freenove ESP32-S3 Dev Kit FNK0086'],
+      ['proc-trace-exec','proc-trace-exec'],
+      ['pal','pal — Terminal Palette Switcher']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']

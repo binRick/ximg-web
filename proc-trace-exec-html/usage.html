@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage — proc-trace-exec</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14; --surface: #111827; --surface2: #1a2235; --border: #1f2937;
+      --accent: #f59e0b; --accent2: #38bdf8; --text: #f1f5f9; --muted: #6b7280; --code-bg: #060910;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui,-apple-system,sans-serif; padding-top: 48px; line-height: 1.6; }
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(10,13,20,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #4b5563; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s,background .2s; font-family:'Courier New',monospace; }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+    .page-hero { padding: 3.5rem 1.5rem 2rem; text-align: center; }
+    .page-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: .5rem; }
+    .page-hero p { color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto; }
+    .section { padding: 2rem 1.5rem 3rem; border-bottom: 1px solid var(--border); }
+    .section:last-of-type { border-bottom: none; }
+    .section-label { font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-family:'Courier New',monospace; margin-bottom: 1rem; }
+    .section h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: .5rem; }
+    .section .desc { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.7; }
+
+    /* Synopsis block */
+    .synopsis {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem 1.5rem; font-family: 'Courier New', monospace; font-size: .9rem;
+      color: var(--text); margin-bottom: 2rem;
+    }
+    .syn-bin { color: var(--accent2); font-weight: 600; }
+    .syn-flag { color: var(--accent); }
+    .syn-arg { color: #d946ef; }
+
+    /* Flags table */
+    .flags-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .flags-table th { text-align: left; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-family: 'Courier New', monospace; padding: .6rem 1rem; border-bottom: 1px solid var(--border); }
+    .flags-table td { padding: .75rem 1rem; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .875rem; vertical-align: top; }
+    .flags-table tr:hover td { background: rgba(255,255,255,.02); }
+    .flags-table .flag-col { font-family: 'Courier New', monospace; color: var(--accent); font-size: .9rem; white-space: nowrap; }
+    .flags-table .arg-col { font-family: 'Courier New', monospace; color: var(--accent2); font-size: .85rem; }
+    .flags-table .desc-col { color: var(--muted); line-height: 1.6; }
+    .flags-table .emoji-col { font-size: 1.1rem; }
+
+    /* Example blocks */
+    .example { margin-bottom: 2.5rem; }
+    .example h3 { font-size: 1rem; font-weight: 600; margin-bottom: .3rem; }
+    .example .ex-desc { color: var(--muted); font-size: .875rem; margin-bottom: .75rem; line-height: 1.6; }
+    .terminal { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .term-hdr { background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: .5rem; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .dot-r { background:#ff5f57; } .dot-y { background:#febc2e; } .dot-g { background:#28c840; }
+    .term-hdr .ttl { flex:1; text-align:center; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-family:'Courier New',monospace; }
+    .terminal pre { padding: 1.1rem 1.4rem; font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.85; overflow-x: auto; white-space: pre; }
+    .p  { color: #a78bfa; } .su { color: #fbbf24; } .bi { color: #38bdf8; }
+    .pi { color: #fbbf24; } .ex { color: #4ade80; } .xi { color: #f87171; }
+    .cm { color: #67e8f9; } .di { color: #6b7280; } .ok { color: #4ade80; }
+    .er { color: #f87171; } .ti { color: #38bdf8; } .ur { color: #f87171; }
+    .uu { color: #4ade80; } .uw { color: #fbbf24; } .cw { color: #d946ef; }
+
+    /* Output format legend */
+    .fmt-row { display: flex; align-items: center; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .fmt-row:last-child { border-bottom: none; }
+    .fmt-sample { font-family: 'Courier New', monospace; font-size: .85rem; min-width: 140px; }
+    .fmt-explain { color: var(--muted); font-size: .85rem; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="screenshots.html">Screenshots</a>
+  <a href="usage.html">Usage</a>
+  <a href="building.html">Building</a>
+</nav>
+
+<div class="page-hero">
+  <div class="container">
+    <h1>Usage</h1>
+    <p>Flags, examples, and output format reference.</p>
+  </div>
+</div>
+
+<!-- ── Synopsis ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">SYNOPSIS</div>
+    <div class="synopsis">
+      <span class="syn-bin">proc-trace-exec</span>
+      <span class="syn-flag"> [-cdeflqQtu]</span>
+      <span> [-o </span><span class="syn-arg">FILE</span><span>]</span>
+      <span> [-p </span><span class="syn-arg">PID[,PID,...]</span><span>]</span>
+      <span style="color:var(--muted)"> |</span>
+      <span class="syn-arg"> CMD...</span>
+    </div>
+
+    <table class="flags-table">
+      <thead><tr><th></th><th>Flag</th><th>Argument</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="emoji-col">🎨</td><td class="flag-col">-c</td><td class="arg-col"></td><td class="desc-col">Force-enable ANSI color output. Auto-detected when stdout is a tty; <code style="font-family:monospace;color:var(--accent2)">NO_COLOR=1</code> disables it.</td></tr>
+        <tr><td class="emoji-col">📁</td><td class="flag-col">-d</td><td class="arg-col"></td><td class="desc-col">Print working directory of each process (via <code style="font-family:monospace">/proc/&lt;pid&gt;/cwd</code>). Shown before the command, separated by <code style="font-family:monospace">%</code>.</td></tr>
+        <tr><td class="emoji-col">🌿</td><td class="flag-col">-e</td><td class="arg-col"></td><td class="desc-col">Print full environment of each process. One variable per line, indented under the exec line.</td></tr>
+        <tr><td class="emoji-col">⬜</td><td class="flag-col">-f</td><td class="arg-col"></td><td class="desc-col">Flat output — suppress indentation. Useful when piping to grep or awk.</td></tr>
+        <tr><td class="emoji-col">🔗</td><td class="flag-col">-l</td><td class="arg-col"></td><td class="desc-col">Print the full resolved executable path (via <code style="font-family:monospace">/proc/&lt;pid&gt;/exe</code>) instead of argv[0].</td></tr>
+        <tr><td class="emoji-col">📝</td><td class="flag-col">-o</td><td class="arg-col">FILE</td><td class="desc-col">Append output to FILE instead of stdout. Colors are disabled for file output unless <code style="font-family:monospace">-c</code> is also set.</td></tr>
+        <tr><td class="emoji-col">🎯</td><td class="flag-col">-p</td><td class="arg-col">PID[,PID,...]</td><td class="desc-col">Only show exec()s in the subtree(s) of the given PID(s). Accepts a comma-separated list or can be specified multiple times.</td></tr>
+        <tr><td class="emoji-col">🤫</td><td class="flag-col">-q</td><td class="arg-col"></td><td class="desc-col">Suppress arguments — show only the executable name (argv[0]).</td></tr>
+        <tr><td class="emoji-col">🔇</td><td class="flag-col">-Q</td><td class="arg-col"></td><td class="desc-col">Suppress error messages (e.g. "process vanished before notification"). Useful for long-running background use.</td></tr>
+        <tr><td class="emoji-col">⏱️</td><td class="flag-col">-t</td><td class="arg-col"></td><td class="desc-col">Show exit status and wall-clock runtime. Adds <code style="font-family:monospace">+</code> to exec lines and prints a <code style="font-family:monospace">-</code> exit line for each process.</td></tr>
+        <tr><td class="emoji-col">👤</td><td class="flag-col">-u</td><td class="arg-col"></td><td class="desc-col">Print owning user of each process as <code style="font-family:monospace">&lt;username&gt;</code> before the command.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── Output format ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">OUTPUT FORMAT</div>
+    <h2>Anatomy of an output line</h2>
+    <p class="desc">Each exec event produces one line. With <code style="font-family:monospace;color:var(--accent)">-t</code>, a matching exit line follows when the process terminates.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;">
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#6b7280">  </span>
+        <span class="fmt-explain">2-space indent per depth level (suppressed with <code style="font-family:monospace">-f</code>)</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#fbbf24">32741</span>
+        <span class="fmt-explain">PID — process ID in amber</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#4ade80">+</span>
+        <span class="fmt-explain">exec marker (green) — only shown with <code style="font-family:monospace">-t</code></span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#f87171">-</span>
+        <span class="fmt-explain">exit marker (red) — only with <code style="font-family:monospace">-t</code>, on process exit</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#f87171">&lt;root&gt;</span>
+        <span class="fmt-explain">user in red (root) or green (other) — only with <code style="font-family:monospace">-u</code></span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#d946ef">/home/rick</span>
+        <span class="fmt-explain">cwd in magenta, followed by <code style="font-family:monospace"> % </code> — only with <code style="font-family:monospace">-d</code></span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#67e8f9">find</span>
+        <span class="fmt-explain">command (argv[0]) in bright cyan; full path with <code style="font-family:monospace">-l</code></span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#6b7280">/etc -name '*.conf'</span>
+        <span class="fmt-explain">arguments in dim grey (suppressed with <code style="font-family:monospace">-q</code>)</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#4ade80">status=0</span>
+        <span class="fmt-explain">exit status: green if 0, red if non-zero — exit lines only</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#f87171">signal=SIGTERM</span>
+        <span class="fmt-explain">signal name in red if the process was killed — exit lines only</span>
+      </div>
+      <div class="fmt-row">
+        <span class="fmt-sample" style="color:#38bdf8">time=0.003s</span>
+        <span class="fmt-explain">wall-clock runtime in cyan — exit lines only</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Examples ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">EXAMPLES</div>
+
+    <div class="example">
+      <h3>Watch everything system-wide</h3>
+      <p class="ex-desc">The simplest invocation — no flags, no command. Shows every exec() on the machine with process tree indentation.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">system-wide</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span>
+<span class="pi">1100</span> <span class="cm">sshd</span>
+  <span class="pi">1101</span> <span class="cm">bash</span>
+    <span class="pi">1150</span> <span class="cm">git</span> <span class="di">status</span>
+      <span class="pi">1151</span> <span class="cm">git-status</span>
+    <span class="pi">1152</span> <span class="cm">vim</span> <span class="di">README.md</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Trace a command with timing</h3>
+      <p class="ex-desc">Run a command directly and trace its entire subtree. <code style="color:var(--accent);font-family:monospace">-t</code> adds exec/exit markers and wall-clock timing.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">cmd mode + timing</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span> -t sh -c <span style="color:#d946ef">'find /etc -name "*.conf" | head -3'</span>
+<span class="pi">32741</span><span class="ex">+</span> <span class="cm">sh</span> <span class="di">-c 'find /etc -name "*.conf" | head -3'</span>
+  <span class="pi">32742</span><span class="ex">+</span> <span class="cm">find</span> <span class="di">/etc -name '*.conf'</span>
+  <span class="pi">32743</span><span class="ex">+</span> <span class="cm">head</span> <span class="di">-3</span>
+  <span class="pi">32743</span><span class="xi">-</span> <span class="di">head exited</span> <span class="ok">status=0</span> <span class="ti">time=0.001s</span>
+  <span class="pi">32742</span><span class="xi">-</span> <span class="di">find exited</span> <span class="er">status=141</span> <span class="ti">time=0.003s</span>
+<span class="pi">32741</span><span class="xi">-</span> <span class="di">sh exited</span> <span class="ok">status=0</span> <span class="ti">time=0.006s</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Watch multiple nginx workers</h3>
+      <p class="ex-desc">Comma-separate PIDs from pgrep to watch a whole group of processes at once.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">multi-pid</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span> -p $(pgrep nginx | paste -sd,) -u -t</pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>User, cwd, and full path</h3>
+      <p class="ex-desc">Combine flags for maximum context: user, working directory, and fully resolved executable path.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">-u -d -l</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span> -u -d -l -t sh -c 'ls /tmp'
+<span class="pi">41000</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/root</span> % <span class="cm">/usr/bin/dash</span> <span class="di">-c 'ls /tmp'</span>
+  <span class="pi">41001</span><span class="ex">+</span> <span class="ur">&lt;root&gt;</span> <span class="cw">/root</span> % <span class="cm">/usr/bin/ls</span> <span class="di">/tmp</span>
+  <span class="pi">41001</span><span class="xi">-</span> <span class="di">ls exited</span> <span class="ok">status=0</span> <span class="ti">time=0.001s</span>
+<span class="pi">41000</span><span class="xi">-</span> <span class="di">dash exited</span> <span class="ok">status=0</span> <span class="ti">time=0.002s</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Flat output — pipe to grep</h3>
+      <p class="ex-desc">Use <code style="color:var(--accent);font-family:monospace">-f</code> to remove indentation, making it safe to pipe to grep, awk, or tee.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">flat + grep</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span> -Qf | grep <span style="color:#d946ef">python</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Log everything to a file</h3>
+      <p class="ex-desc">Run in the background, suppressing all error noise, and write to a log file for later analysis.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">background logger</span></div>
+        <pre><span class="p">$</span> <span class="su">sudo</span> <span class="bi">proc-trace-exec</span> -Qto /var/log/execs.log &amp;
+<span class="di">[1] 9981</span></pre>
+      </div>
+    </div>
+
+    <div class="example">
+      <h3>Grant capability — run without sudo</h3>
+      <p class="ex-desc">Grant <code style="color:var(--accent);font-family:monospace">CAP_NET_ADMIN</code> to the binary so normal users can run it without sudo.</p>
+      <div class="terminal">
+        <div class="term-hdr"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span class="ttl">capability grant</span></div>
+        <pre><span class="p">$</span> sudo setcap cap_net_admin+ep ./proc-trace-exec
+<span class="p">$</span> <span class="bi">./proc-trace-exec</span> -t make   <span class="di"># runs as your user, no sudo needed</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <a href="https://github.com/binRick/proc-trace-exec" target="_blank">github.com/binRick/proc-trace-exec</a>
+    &nbsp;·&nbsp; written in Go &nbsp;·&nbsp; Linux only
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
