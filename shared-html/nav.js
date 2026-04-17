@@ -71,7 +71,7 @@
       ['rpm-bundler','rpm'],
       ['bundler-info','what & why']
     ]},
-    { label: 'More', apps: [
+    { label: 'Projects', apps: [
       ['rx','RxFitt'],
       ['esp32','ESP32']
     ]},
