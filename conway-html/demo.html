@@ -206,8 +206,8 @@ select.ctrl-select option { background: #030a03; }
   <div class="ctrl-sep"></div>
   <div class="ctrl-group">
     <span class="ctrl-label">Speed</span>
-    <input type="range" class="ctrl-range" id="speed-range" min="1" max="60" value="15">
-    <span class="ctrl-label" id="speed-val">15/s</span>
+    <input type="range" class="ctrl-range" id="speed-range" min="1" max="60" value="20">
+    <span class="ctrl-label" id="speed-val">20/s</span>
   </div>
   <div class="ctrl-group">
     <span class="ctrl-label">Zoom</span>
@@ -300,7 +300,7 @@ for (let i = 1; i < 512; i++) {
 // ── Sim state ────────────────────────────────────────────────────────────────
 let running = false;
 let generation = 0;
-let targetFPS = 15;
+let targetFPS = 20;
 let lastStepTime = 0;
 let animId = null;
 let fpsSmooth = 0;
@@ -402,25 +402,6 @@ function render() {
 }
 
 // ── Animation loop ──────────────────────────────────────────────────────────
-function loop(ts) {
-  animId = requestAnimationFrame(loop);
-  const dt = ts - lastFrameTime;
-  const fpsActual = 1000 / Math.max(1, dt);
-  fpsSmooth = fpsSmooth * 0.9 + fpsActual * 0.1;
-  lastFrameTime = ts;
-
-  if (running) {
-    const interval = 1000 / targetFPS;
-    if (ts - lastStepTime >= interval) {
-      const steps = Math.max(1, Math.floor((ts - lastStepTime) / interval));
-      for (let i = 0; i < Math.min(steps, 5); i++) step();
-      lastStepTime = ts;
-    }
-  }
-
-  render();
-  updateHUD();
-}
 
 function updateHUD() {
   document.getElementById('hud-gen').textContent   = `GEN ${generation.toLocaleString()}`;
@@ -517,13 +498,25 @@ function loadPattern(name, clearFirst = false) {
   liveCellCount = grid.reduce((a,v)=>a+v,0);
 }
 
-function randomize(density = 0.25) {
-  generation = 0;
-  liveCellCount = 0;
-  for (let i = 0; i < GRID_W * GRID_H; i++) {
-    grid[i] = Math.random() < density ? 1 : 0;
-    age[i]  = grid[i] ? 1 : 0;
-    if (grid[i]) liveCellCount++;
+function randomize(density = 0.08) {
+  grid.fill(0); age.fill(0);
+  generation = 0; liveCellCount = 0;
+  // Seed only the visible viewport (plus a 20-cell margin) so the action
+  // is always on screen and the grid never fills up with off-screen static
+  const margin = 20;
+  const c0 = Math.floor(-originX / cellSize) - margin;
+  const c1 = c0 + Math.ceil(W / cellSize) + margin * 2;
+  const r0 = Math.floor(-originY / cellSize) - margin;
+  const r1 = r0 + Math.ceil(H / cellSize) + margin * 2;
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
+      if (Math.random() < density) {
+        const gr = ((r % GRID_H) + GRID_H) % GRID_H;
+        const gc = ((c % GRID_W) + GRID_W) % GRID_W;
+        const idx = gr * GRID_W + gc;
+        grid[idx] = 1; age[idx] = 1; liveCellCount++;
+      }
+    }
   }
 }
 
@@ -544,8 +537,9 @@ document.getElementById('btn-step').addEventListener('click', () => {
 });
 
 document.getElementById('btn-random').addEventListener('click', () => {
-  randomize();
   centerView();
+  randomize();
+  setRunning(true);
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
@@ -692,15 +686,44 @@ canvas.addEventListener('wheel', e => {
   zoomVal.textContent = Math.round(cellSize) + 'px';
 }, {passive:false});
 
+// ── Auto-reseed when population collapses ─────────────────────────────────────
+function loop(ts) {
+  animId = requestAnimationFrame(loop);
+  const dt = ts - lastFrameTime;
+  const fpsActual = 1000 / Math.max(1, dt);
+  fpsSmooth = fpsSmooth * 0.9 + fpsActual * 0.1;
+  lastFrameTime = ts;
+
+  if (running) {
+    const interval = 1000 / targetFPS;
+    if (ts - lastStepTime >= interval) {
+      const steps = Math.max(1, Math.floor((ts - lastStepTime) / interval));
+      for (let i = 0; i < Math.min(steps, 5); i++) step();
+      lastStepTime = ts;
+
+      // Auto-reseed if everything dies
+      if (liveCellCount === 0 && generation > 5) {
+        randomize();
+        generation = 0;
+      }
+    }
+  }
+
+  render();
+  updateHUD();
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-// Check URL param for a preloaded pattern
 const urlParam = new URLSearchParams(location.search).get('pattern');
 if (urlParam && PATTERNS[urlParam]) {
   loadPattern(urlParam, true);
   centerView();
+  setRunning(true);
 } else {
-  randomize(0.3);
+  // Start with the Gosper Glider Gun — iconic, always evolving
+  loadPattern('gosper', true);
   centerView();
+  setRunning(true);
 }
 
 requestAnimationFrame(loop);
