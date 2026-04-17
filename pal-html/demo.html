@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pal — Interactive Demo</title>
+  <link rel="icon" href="images/banner.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f18; --bg2: #12141f; --bg3: #1a1c2a;
+      --border: rgba(255,255,255,.07); --text: #cdd6f4; --muted: #6272a4;
+      --accent: #bd93f9; --cyan: #8be9fd; --green: #50fa7b; --red: #ff5555; --yellow: #f1fa8c;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.7; padding-top: 52px; }
+    a { color: var(--accent); text-decoration: none; }
+    code { font-family: 'Courier New', monospace; background: var(--bg3); padding: .1em .35em; border-radius: 3px; font-size: .88em; color: var(--cyan); }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(13,15,24,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: 'Courier New', monospace; }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(189,147,249,.08); }
+
+    .hero { background: linear-gradient(160deg, #0d0f18 0%, #130d1f 100%); border-bottom: 1px solid var(--border); padding: 2.5rem 2rem; text-align: center; }
+    .hero h1 { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: .5rem; }
+    .hero p { color: var(--muted); font-size: 1rem; }
+
+    .section { max-width: 960px; margin: 0 auto; padding: 3rem 2rem; }
+    .section-title { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: .5rem; }
+
+    /* ── Palette picker ── */
+    .palette-grid {
+      display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 2rem;
+    }
+    .pal-btn {
+      display: flex; align-items: center; gap: .45rem;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: .35rem .75rem; cursor: pointer; transition: border-color .15s, transform .1s;
+      font-family: 'Courier New', monospace; font-size: .78rem; color: var(--muted);
+      user-select: none;
+    }
+    .pal-btn:hover { border-color: rgba(189,147,249,.4); color: var(--text); }
+    .pal-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(189,147,249,.08); }
+    .pal-btn:active { transform: scale(.97); }
+    .pal-swatch { display: flex; gap: 2px; }
+    .pal-swatch span { width: 10px; height: 10px; border-radius: 2px; display: block; }
+
+    /* ── Fake terminal window ── */
+    .terminal-wrap {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5); margin-bottom: 2rem;
+    }
+    .terminal-titlebar {
+      display: flex; align-items: center; gap: .45rem;
+      background: var(--bg3); padding: .55rem .9rem; border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .terminal-label { margin-left: .5rem; font-family: 'Courier New', monospace; font-size: .78rem; color: var(--muted); }
+
+    #terminal-body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: .9rem;
+      line-height: 1.65;
+      padding: 1.1rem 1.4rem;
+      min-height: 340px;
+      transition: background .5s, color .5s;
+      /* colors driven by JS */
+    }
+    #terminal-body .line { display: block; white-space: pre-wrap; }
+    #terminal-body .prompt { font-weight: 700; }
+    #terminal-body .cmd    { }
+    #terminal-body .out    { }
+    #terminal-body .dim    { opacity: .55; }
+    #terminal-body .swatch-row { display: flex; gap: 4px; margin: .2rem 0 .1rem; }
+    #terminal-body .swatch-row span { display: inline-block; width: 22px; height: 14px; border-radius: 2px; }
+    #terminal-body .cursor { display: inline-block; width: .55em; height: 1em; vertical-align: text-bottom; animation: blink 1.1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── Color strip under terminal ── */
+    .color-strip { display: flex; height: 6px; border-radius: 0 0 10px 10px; overflow: hidden; transition: all .5s; }
+    .color-strip div { flex: 1; transition: background .5s; }
+
+    /* ── Info row ── */
+    .info-row {
+      display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;
+    }
+    .info-card {
+      flex: 1; min-width: 180px;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem;
+    }
+    .info-card-label { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .3rem; font-family: monospace; }
+    .info-card-value { font-size: 1rem; font-family: 'Courier New', monospace; color: var(--text); transition: color .4s; }
+    #info-name { color: var(--accent); }
+
+    .callout { background: rgba(189,147,249,.07); border: 1px solid rgba(189,147,249,.2); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: .9rem; }
+    .callout strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="install.html">Install</a>
+  <a href="usage.html">Usage</a>
+  <a href="demo.html">Demo</a>
+  <a href="palettes.html">Palettes</a>
+  <a href="building.html">Building</a>
+  <a href="motivation.html">Motivation</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+</script>
+
+<div class="hero">
+  <h1>Interactive Demo</h1>
+  <p>Click a palette to see <code>pal</code> recolor a live terminal session</p>
+</div>
+
+<div class="section">
+
+  <div class="callout">
+    <strong>How it works:</strong> <code>pal</code> writes OSC 4/10/11 escape sequences directly to stdout.
+    Your terminal intercepts them and repaints every color slot — fg, bg, and all 16 ANSI colors — instantly,
+    with no config file and no shell restart.
+  </div>
+
+  <div class="section-title">Choose a palette</div>
+  <div class="palette-grid" id="palette-grid"></div>
+
+  <div class="section-title">Terminal session</div>
+
+  <div class="terminal-wrap">
+    <div class="terminal-titlebar">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="terminal-label" id="term-label">user@host: ~</span>
+    </div>
+    <div id="terminal-body"></div>
+    <div class="color-strip" id="color-strip"></div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-card">
+      <div class="info-card-label">Active palette</div>
+      <div class="info-card-value" id="info-name">dracula-dark</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">Command used</div>
+      <div class="info-card-value" id="info-cmd">pal dracula-dark</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">OSC sequences</div>
+      <div class="info-card-value" id="info-osc">18 written</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">Apply time</div>
+      <div class="info-card-value">&lt; 5 ms</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Palette data ─────────────────────────────────────────────────────────────
+// Each entry: [bg, fg, cursor, black, red, green, yellow, blue, magenta, cyan, white,
+//              br-black, br-red, br-green, br-yellow, br-blue, br-magenta, br-cyan, br-white]
+var PALETTES = {
+  'dracula-dark': {
+    bg:'#282a36', fg:'#f8f8f2', cursor:'#f8f8f2',
+    c:['#21222c','#ff5555','#50fa7b','#f1fa8c','#bd93f9','#ff79c6','#8be9fd','#f8f8f2',
+       '#6272a4','#ff6e6e','#69ff94','#ffffa5','#d6acff','#ff92df','#a4ffff','#ffffff'],
+    accent:'#bd93f9'
+  },
+  'nord': {
+    bg:'#2e3440', fg:'#d8dee9', cursor:'#d8dee9',
+    c:['#3b4252','#bf616a','#a3be8c','#ebcb8b','#81a1c1','#b48ead','#88c0d0','#e5e9f0',
+       '#4c566a','#bf616a','#a3be8c','#ebcb8b','#81a1c1','#b48ead','#8fbcbb','#eceff4'],
+    accent:'#88c0d0'
+  },
+  'gruvbox-dark': {
+    bg:'#282828', fg:'#ebdbb2', cursor:'#ebdbb2',
+    c:['#282828','#cc241d','#98971a','#d79921','#458588','#b16286','#689d6a','#a89984',
+       '#928374','#fb4934','#b8bb26','#fabd2f','#83a598','#d3869b','#8ec07c','#ebdbb2'],
+    accent:'#fabd2f'
+  },
+  'monokai-dark': {
+    bg:'#272822', fg:'#f8f8f2', cursor:'#f8f8f0',
+    c:['#272822','#f92672','#a6e22e','#f4bf75','#66d9e8','#ae81ff','#a1efe4','#f8f8f2',
+       '#75715e','#f92672','#a6e22e','#f4bf75','#66d9e8','#ae81ff','#a1efe4','#f9f8f5'],
+    accent:'#ae81ff'
+  },
+  'rose-pine-dark': {
+    bg:'#191724', fg:'#e0def4', cursor:'#e0def4',
+    c:['#26233a','#eb6f92','#31748f','#f6c177','#9ccfd8','#c4a7e7','#ebbcba','#e0def4',
+       '#6e6a86','#eb6f92','#31748f','#f6c177','#9ccfd8','#c4a7e7','#ebbcba','#e0def4'],
+    accent:'#c4a7e7'
+  },
+  'catppuccin-mocha': {
+    bg:'#1e1e2e', fg:'#cdd6f4', cursor:'#f5e0dc',
+    c:['#45475a','#f38ba8','#a6e3a1','#f9e2af','#89b4fa','#f5c2e7','#94e2d5','#bac2de',
+       '#585b70','#f38ba8','#a6e3a1','#f9e2af','#89b4fa','#f5c2e7','#94e2d5','#a6adc8'],
+    accent:'#cba6f7'
+  },
+  'solarized-dark': {
+    bg:'#002b36', fg:'#839496', cursor:'#839496',
+    c:['#073642','#dc322f','#859900','#b58900','#268bd2','#d33682','#2aa198','#eee8d5',
+       '#002b36','#cb4b16','#586e75','#657b83','#839496','#6c71c4','#93a1a1','#fdf6e3'],
+    accent:'#268bd2'
+  },
+  'one-dark': {
+    bg:'#282c34', fg:'#abb2bf', cursor:'#528bff',
+    c:['#282c34','#e06c75','#98c379','#e5c07b','#61afef','#c678dd','#56b6c2','#abb2bf',
+       '#5c6370','#e06c75','#98c379','#e5c07b','#61afef','#c678dd','#56b6c2','#ffffff'],
+    accent:'#61afef'
+  },
+  'tokyo-night': {
+    bg:'#1a1b26', fg:'#a9b1d6', cursor:'#c0caf5',
+    c:['#32344a','#f7768e','#9ece6a','#e0af68','#7aa2f7','#ad8ee6','#449dab','#787c99',
+       '#444b6a','#ff7a93','#b9f27c','#ff9e64','#7da6ff','#bb9af7','#0db9d7','#acb0d0'],
+    accent:'#7aa2f7'
+  },
+  'gotham-dark': {
+    bg:'#0c1014', fg:'#98d1ce', cursor:'#98d1ce',
+    c:['#0c1014','#c33027','#26a98b','#edb54b','#195465','#4e5165','#33859d','#98d1ce',
+       '#10151b','#d26939','#081f2d','#245361','#093748','#888ba5','#599cab','#d3ebe9'],
+    accent:'#26a98b'
+  },
+  'palenight': {
+    bg:'#292d3e', fg:'#a6accd', cursor:'#a6accd',
+    c:['#292d3e','#f07178','#c3e88d','#ffcb6b','#82aaff','#c792ea','#89ddff','#d0d0d0',
+       '#434758','#ff8b92','#ddffa7','#ffe585','#9cc4ff','#e1acff','#a3f7ff','#ffffff'],
+    accent:'#c792ea'
+  },
+  'iceberg-dark': {
+    bg:'#161821', fg:'#c6c8d1', cursor:'#c6c8d1',
+    c:['#1e2132','#e27878','#b4be82','#e2a478','#84a0c6','#a093c7','#89b8c2','#c6c8d1',
+       '#6b7089','#e98989','#c0ca8e','#e9b189','#91acd1','#ada0d3','#95c4ce','#d2d4de'],
+    accent:'#84a0c6'
+  }
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function hex2rgb(h) {
+  var r = parseInt(h.slice(1,3),16), g = parseInt(h.slice(3,5),16), b = parseInt(h.slice(5,7),16);
+  return [r,g,b];
+}
+function luminance(h) {
+  var rgb = hex2rgb(h);
+  return 0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2];
+}
+
+// ── Render palette picker ─────────────────────────────────────────────────────
+var grid = document.getElementById('palette-grid');
+Object.keys(PALETTES).forEach(function(name) {
+  var p = PALETTES[name];
+  var btn = document.createElement('button');
+  btn.className = 'pal-btn';
+  btn.dataset.name = name;
+
+  var swatchDiv = document.createElement('span');
+  swatchDiv.className = 'pal-swatch';
+  // show 8 main colors as tiny swatches
+  p.c.slice(0,8).forEach(function(col) {
+    var s = document.createElement('span');
+    s.style.background = col;
+    swatchDiv.appendChild(s);
+  });
+
+  btn.appendChild(swatchDiv);
+  btn.appendChild(document.createTextNode(name));
+  btn.addEventListener('click', function() { applyPalette(name); });
+  grid.appendChild(btn);
+});
+
+// ── Terminal state ────────────────────────────────────────────────────────────
+var currentPalette = null;
+var animTimer = null;
+
+function applyPalette(name) {
+  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+
+  // mark button active
+  document.querySelectorAll('.pal-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.name === name);
+  });
+
+  var p = PALETTES[name];
+  currentPalette = name;
+
+  // update info row
+  document.getElementById('info-name').textContent = name;
+  document.getElementById('info-cmd').textContent = 'pal ' + name;
+  document.getElementById('info-osc').textContent = '18 written';
+
+  // animate the terminal
+  animateSession(name, p);
+}
+
+function animateSession(name, p) {
+  var body = document.getElementById('terminal-body');
+  var strip = document.getElementById('color-strip');
+  var label = document.getElementById('term-label');
+
+  // typing simulation: lines to show
+  var lines = [
+    { type:'prompt+cmd', text: 'pal ' + name, delay: 0 },
+    { type:'out-apply',  text: 'Applied: ' + name, delay: 400 },
+    { type:'blank',      text: '', delay: 500 },
+    { type:'prompt+cmd', text: 'ls --color=always', delay: 900 },
+    { type:'ls-out',     text: '', delay: 1250 },
+    { type:'blank',      text: '', delay: 1300 },
+    { type:'prompt+cmd', text: 'pal preview ' + name, delay: 1700 },
+    { type:'preview',    text: '', delay: 2100 },
+    { type:'blank',      text: '', delay: 2150 },
+    { type:'prompt+cursor', text: '', delay: 2600 },
+  ];
+
+  body.innerHTML = '';
+  body.style.background = p.bg;
+  body.style.color = p.fg;
+
+  // color strip
+  strip.innerHTML = '';
+  p.c.forEach(function(col) {
+    var d = document.createElement('div');
+    d.style.background = col;
+    strip.appendChild(d);
+  });
+
+  var promptColor = p.accent || p.c[4] || '#8be9fd';
+  var outColor    = p.c[2]  || '#50fa7b';
+  var dimColor    = p.c[8]  || p.c[0];
+  var yellowColor = p.c[3]  || '#f1fa8c';
+  var cyanColor   = p.c[6]  || '#8be9fd';
+  var redColor    = p.c[1]  || '#ff5555';
+
+  function makePrompt(cmdText, withCursor) {
+    var span = document.createElement('span');
+    span.className = 'line';
+    span.innerHTML =
+      '<span class="prompt" style="color:' + promptColor + '">user@host</span>' +
+      '<span style="color:' + p.fg + '">:</span>' +
+      '<span style="color:' + cyanColor + '">~</span>' +
+      '<span style="color:' + p.fg + '"> $ </span>' +
+      '<span class="cmd">' + esc(cmdText) + '</span>' +
+      (withCursor ? '<span class="cursor" style="background:' + (p.cursor||p.fg) + '"> </span>' : '');
+    return span;
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function addLine(el) { body.appendChild(el); }
+
+  function makeLine(html, color) {
+    var s = document.createElement('span');
+    s.className = 'line';
+    s.style.color = color || p.fg;
+    s.innerHTML = html;
+    return s;
+  }
+
+  function makeLsOut() {
+    var s = document.createElement('span');
+    s.className = 'line';
+    s.innerHTML =
+      '<span style="color:' + cyanColor   + '">Documents</span>  ' +
+      '<span style="color:' + cyanColor   + '">Downloads</span>  ' +
+      '<span style="color:' + outColor    + '">README.md</span>  ' +
+      '<span style="color:' + yellowColor + '">notes.txt</span>  ' +
+      '<span style="color:' + redColor    + '">.env</span>  ' +
+      '<span style="color:' + p.fg       + '">main.go</span>';
+    return s;
+  }
+
+  function makePreview() {
+    var frag = document.createDocumentFragment();
+    var info = makeLine('  palette: <span style="color:' + promptColor + '">' + esc(name) + '</span>', p.fg);
+    frag.appendChild(info);
+
+    var row1 = document.createElement('span');
+    row1.className = 'line swatch-row';
+    row1.style.marginTop = '.3rem';
+    p.c.slice(0,8).forEach(function(col) {
+      var sq = document.createElement('span');
+      sq.style.background = col;
+      sq.style.width = '24px';
+      sq.style.height = '16px';
+      sq.style.borderRadius = '2px';
+      row1.appendChild(sq);
+    });
+    frag.appendChild(row1);
+
+    var row2 = document.createElement('span');
+    row2.className = 'line swatch-row';
+    p.c.slice(8,16).forEach(function(col) {
+      var sq = document.createElement('span');
+      sq.style.background = col;
+      sq.style.width = '24px';
+      sq.style.height = '16px';
+      sq.style.borderRadius = '2px';
+      row2.appendChild(sq);
+    });
+    frag.appendChild(row2);
+
+    var meta = makeLine(
+      '  <span style="opacity:.6">fg:</span><span style="color:' + p.fg + '">' + p.fg + '</span>' +
+      '  <span style="opacity:.6">bg:</span><span style="color:' + p.fg + '">' + p.bg + '</span>' +
+      '  <span style="opacity:.6">cursor:</span><span style="color:' + (p.cursor||p.fg) + '">' + (p.cursor||p.fg) + '</span>',
+      p.fg
+    );
+    meta.style.marginTop = '.3rem';
+    meta.style.fontFamily = 'Courier New, monospace';
+    meta.style.fontSize = '.82rem';
+    frag.appendChild(meta);
+    return frag;
+  }
+
+  lines.forEach(function(l) {
+    animTimer = setTimeout(function() {
+      if (currentPalette !== name) return; // cancelled by new pick
+      if (l.type === 'prompt+cmd') {
+        addLine(makePrompt(l.text, false));
+      } else if (l.type === 'out-apply') {
+        addLine(makeLine('<span style="color:' + outColor + '">Applied: </span><span style="color:' + promptColor + '">' + esc(name) + '</span>'));
+      } else if (l.type === 'ls-out') {
+        addLine(makeLsOut());
+      } else if (l.type === 'preview') {
+        body.appendChild(makePreview());
+      } else if (l.type === 'blank') {
+        addLine(makeLine(''));
+      } else if (l.type === 'prompt+cursor') {
+        addLine(makePrompt('', true));
+      }
+    }, l.delay);
+  });
+}
+
+// ── Boot with dracula-dark ────────────────────────────────────────────────────
+applyPalette('dracula-dark');
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
