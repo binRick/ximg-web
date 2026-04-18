@@ -191,12 +191,10 @@ const LOG_FILES = {
   logs:        'logs.access.log',
   stats:       'stats.access.log',
   ids:         'ids.access.log',
-  nagios:      'nagios.access.log',
   claudemd:    'claudemd.access.log',
   network:     'network.access.log',
   request:     'request.access.log',
   readme:      'readme.access.log',
-  status:      'status.access.log',
   nav:         'nav.access.log',
   world:       'world.access.log',
   sandbox:     'sandbox.access.log',
@@ -774,7 +772,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="medieval">medieval</button>
           <button class="site-opt" data-site="monkey">monkey</button>
           <button class="site-opt" data-site="moto">moto</button>
-          <button class="site-opt" data-site="nagios">nagios</button>
           <button class="site-opt" data-site="nav">nav</button>
           <button class="site-opt" data-site="nintendo">nintendo</button>
           <button class="site-opt" data-site="passwords">passwords</button>
@@ -830,7 +827,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="space">space</button>
           <button class="site-opt" data-site="sql">sql</button>
           <button class="site-opt" data-site="ssh">ssh</button>
-          <button class="site-opt" data-site="status">status</button>
           <button class="site-opt" data-site="stats">stats</button>
           <button class="site-opt" data-site="suricata">suricata</button>
           <button class="site-opt" data-site="systemd">systemd</button>

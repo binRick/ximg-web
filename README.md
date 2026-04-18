@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-240 virtual hosts (root + 239 subdomains), all static sites served by a single nginx container.
+239 virtual hosts (root + 238 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -105,7 +105,6 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ximg.ximg.app](https://ximg.ximg.app) | Full technical teardown of the ximg.app infrastructure — architecture Mermaid diagrams, container topology, SSL lifecycle, tech stack breakdown, and the 9-step new-app checklist. |
 | [apps.ximg.app](https://apps.ximg.app) | This page — a complete directory of every app in the ximg.app stack with descriptions and launch dates. |
 | [stats.ximg.app](https://stats.ximg.app) | AWStats traffic reports for every ximg.app subdomain — page views, unique visitors, countries, referrers, and an all-sites combined report. Updated hourly. |
-| [nagios.ximg.app](https://nagios.ximg.app) | Nagios Core monitoring — live HTTPS health checks for every subdomain plus SSH honeypot port watch. No auth, read-only. |
 | [vim.ximg.app](https://vim.ximg.app) | The ubiquitous editor — modes, commands, 50+ key bindings, 12 essential plugins, and the full history from vi (1976) to Vim 9. |
 | [http.ximg.app](https://http.ximg.app) | The protocol of the web — all 9 methods, full status code reference, request/response headers, versions HTTP/0.9 through HTTP/3, and security headers. |
 | [ssh.ximg.app](https://ssh.ximg.app) | Secure Shell protocol — 30+ commands, key types (Ed25519/RSA/ECDSA), client/server config reference, and a hardening best-practices guide. |
@@ -377,7 +376,6 @@ Every new app must be wired into all of the following:
 7. **`public-html/index.html`** — add landing page card
 8. **`apps-html/index.html`** — add a row to the `APPS` array
 9. **`logs-server/server.js`** — add subdomain to the tab list
-10. **Nagios** — add a `define host {}` entry in `nagios-server/ximg-hosts.cfg` and add the subdomain to the `members` list
-11. **`README.md`** — add a row to the Live Sites table
-12. **`install/setup.sh`** — add the subdomain to the `DOMAINS` array
+10. **`README.md`** — add a row to the Live Sites table
+11. **`install/setup.sh`** — add the subdomain to the `DOMAINS` array
 13. **DNS** — add an A record → `172.238.205.61`
