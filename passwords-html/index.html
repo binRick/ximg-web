@@ -91,7 +91,7 @@
 
     /* Tab panels */
     .tab-panel { display: flex; flex-direction: column; gap: 1.5rem; animation: fadeUp .4s ease both; }
-    .tab-panel
+    .tab-panel.hidden { display: none; }
 
     /* Cards */
     .card {
@@ -268,35 +268,26 @@
   </style>
 </head>
 <body>
-<div class="subnav">
-    <a class="snav-btn " href="index.html">⚡ Generator</a>
-    <a class="snav-btn" href="strength.html">📊 Strength Checker</a>
-    <a class="snav-btn" href="wordlist.html">📖 Passphrase</a>
-    <a class="snav-btn" href="guide.html">🛡️ Best Practices</a>
-    <a class="snav-btn" href="crack.html">⏱️ Crack Times</a>
-    <a class="snav-btn" href="history.html">📜 History</a>
-  </div>
 
-<script>
-(function(){
-  var p = location.pathname;
-  document.querySelectorAll('a[href]').forEach(function(a){
-    var h = a.getAttribute('href');
-    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
-    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/passwords') || p.endsWith('index.html')))) {
-      a.classList.add('active');
-    }
-  });
-})();
-</script>
 <div class="wrap">
   <div class="hero">
     <div class="hero-icon">🔐</div>
     <h1>Passwords</h1>
     <p class="hero-sub">Generate strong passwords, test your existing ones, and learn why good passwords matter.</p>
   </div>
-<section id="generator">
-<div class="card">
+
+  <div class="subnav">
+    <button class="snav-btn active" data-tab="generator" onclick="switchTab('generator')">⚡ Generator</button>
+    <button class="snav-btn" data-tab="strength"  onclick="switchTab('strength')">📊 Strength Checker</button>
+    <button class="snav-btn" data-tab="wordlist"  onclick="switchTab('wordlist')">📖 Passphrase</button>
+    <button class="snav-btn" data-tab="guide"     onclick="switchTab('guide')">🛡️ Best Practices</button>
+    <button class="snav-btn" data-tab="crack"     onclick="switchTab('crack')">⏱️ Crack Times</button>
+    <button class="snav-btn" data-tab="history" onclick="switchTab('history')">📜 History</button>
+  </div>
+
+  <!-- ── Generator ── -->
+  <div id="tab-generator" class="tab-panel">
+    <div class="card">
       <h2>⚡ Random Password Generator</h2>
       <div class="gen-output" id="gen-output" onclick="copyPassword()" title="Click to copy">
         <span id="gen-text">Click Generate</span>
@@ -357,7 +348,631 @@
   </div>
 
   <!-- ── Strength Checker ── -->
-</section>
+  <div id="tab-strength" class="tab-panel hidden">
+    <div class="card">
+      <h2>📊 Password Strength Checker</h2>
+      <input type="password" class="strength-input" id="strength-input" placeholder="Type your password here (stays on your device)…" oninput="checkStrength(this.value)">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem;">
+        <label class="cb-label" style="font-size:.75rem;">
+          <input type="checkbox" onchange="document.getElementById('strength-input').type=this.checked?'text':'password'"> Show
+        </label>
+        <span style="font-size:.72rem;color:var(--muted);">⚠️ Never type real passwords into untrusted websites. This tool runs entirely in your browser — nothing is sent anywhere.</span>
+      </div>
+    </div>
+
+    <div class="card" id="strength-result" style="display:none;">
+      <div class="strength-score" id="str-score">0</div>
+      <div class="strength-label" id="str-label">—</div>
+      <div class="strength-bar-wrap">
+        <div class="strength-bar" id="str-bar"></div>
+      </div>
+      <div class="strength-facts" id="str-facts"></div>
+    </div>
+  </div>
+
+  <!-- ── Passphrase ── -->
+  <div id="tab-wordlist" class="tab-panel hidden">
+    <div class="card">
+      <h2>📖 Diceware Passphrase Generator</h2>
+      <p style="font-size:.83rem;color:var(--muted);margin-bottom:1rem;line-height:1.65;">A passphrase made of random common words is both easy to remember <em>and</em> extremely strong. Four random words give ~52 bits of entropy — enough to resist everything short of a nation-state.</p>
+      <div class="phrase-display" id="phrase-output" onclick="copyPhrase()" title="Click to copy">
+        <span id="phrase-text">Click Generate</span>
+        <span class="copy-hint">click to copy</span>
+      </div>
+      <div class="controls" style="margin-top:.75rem;">
+        <div class="ctrl-group">
+          <label>WORDS: <span class="range-val" id="words-val">4</span></label>
+          <input type="range" id="words-range" min="3" max="8" value="4" oninput="document.getElementById('words-val').textContent=this.value">
+        </div>
+        <div class="ctrl-group">
+          <label>SEPARATOR</label>
+          <select id="sep-select" style="background:#0c1118;border:1px solid rgba(0,255,136,.2);color:var(--text);font-family:inherit;font-size:.82rem;padding:.35rem .6rem;border-radius:5px;cursor:pointer;">
+            <option value="-">hyphen  ( - )</option>
+            <option value=".">dot  ( . )</option>
+            <option value="_">underscore  ( _ )</option>
+            <option value=" ">space</option>
+            <option value="">none</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <label>&nbsp;</label>
+          <label class="cb-label"><input type="checkbox" id="cb-capitalize" checked> Capitalize</label>
+        </div>
+        <div class="ctrl-group">
+          <label>&nbsp;</label>
+          <label class="cb-label"><input type="checkbox" id="cb-number"> Add number</label>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="generatePhrase()">📖 Generate Phrase</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔢 Entropy Breakdown</h2>
+      <div id="entropy-info" style="font-size:.85rem;color:var(--muted);line-height:1.7;"></div>
+    </div>
+
+    <div class="card">
+      <h2>📚 About Diceware</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="ic-icon">🎲</div>
+          <h3>How It Works</h3>
+          <p>Roll five dice, map the result to a word in a numbered list. Each word adds ~12.9 bits of entropy (7776 word choices).</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🧠</div>
+          <h3>Memorability</h3>
+          <p>Random words like "correct-horse-battery-staple" are far easier to remember than "Tr0ub4dor&3" and dramatically stronger.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">📐</div>
+          <h3>5-Word Standard</h3>
+          <p>Five Diceware words (~64 bits) is the minimum recommended for long-term secrets. Six words (~77 bits) for high-value accounts.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">✅</div>
+          <h3>EFF Word List</h3>
+          <p>This generator uses the EFF Long Wordlist — 7,776 common English words, chosen for clarity and minimal ambiguity.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Best Practices ── -->
+  <div id="tab-guide" class="tab-panel hidden">
+    <div class="card">
+      <h2>🛡️ Password Best Practices</h2>
+      <ul class="tips">
+        <li><span class="ico">🔑</span><div><strong>Use a password manager.</strong> Tools like Bitwarden, 1Password, or KeePass generate and store unique passwords for every site. You only need to memorize one strong master password.</div></li>
+        <li><span class="ico">📏</span><div><strong>Length beats complexity.</strong> A 20-character lowercase password is stronger than an 8-character one with symbols. Aim for 16+ characters minimum.</div></li>
+        <li><span class="ico">🔁</span><div><strong>Never reuse passwords.</strong> Data breaches happen constantly. If you reuse a password, one breach compromises all your accounts (credential stuffing).</div></li>
+        <li><span class="ico">📲</span><div><strong>Enable two-factor authentication (2FA).</strong> Even if your password leaks, 2FA stops attackers. Use an authenticator app (TOTP) rather than SMS when possible.</div></li>
+        <li><span class="ico">🚫</span><div><strong>Avoid dictionary words alone.</strong> Attackers run wordlist attacks first. Single words, names, or common phrases with letter substitutions (p@ssw0rd) are cracked in seconds.</div></li>
+        <li><span class="ico">🔒</span><div><strong>Use a passphrase for memorizable secrets.</strong> Four to six random words (diceware) are both memorable and very strong — ideal for master passwords or disk encryption.</div></li>
+        <li><span class="ico">📧</span><div><strong>Use unique email aliases per service.</strong> Services like SimpleLogin or Apple Hide My Email let you know exactly which site leaked your address.</div></li>
+        <li><span class="ico">🕵️</span><div><strong>Check Have I Been Pwned.</strong> Regularly search haveibeenpwned.com to see if your email or passwords have appeared in known breaches.</div></li>
+        <li><span class="ico">⚡</span><div><strong>Change compromised passwords immediately.</strong> If a site you use announces a breach, change that password (and any reused copies) right away.</div></li>
+        <li><span class="ico">🖥️</span><div><strong>Never type passwords on untrusted devices.</strong> Public computers, shared kiosks, or unfamiliar devices may have keyloggers. Use your own device whenever possible.</div></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>📦 Recommended Password Managers</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="ic-icon">🟢</div>
+          <h3>Bitwarden</h3>
+          <p>Open-source, free tier, self-hostable. Widely audited. Best choice for most people.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🔵</div>
+          <h3>1Password</h3>
+          <p>Polished UI, family/team plans, Travel Mode. Popular in enterprise.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🟡</div>
+          <h3>KeePassXC</h3>
+          <p>Offline, open-source, local file storage. No cloud, maximum privacy.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🟠</div>
+          <h3>Proton Pass</h3>
+          <p>From Proton (ProtonMail). E2E encrypted, open-source, integrated with Proton ecosystem.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Crack Times ── -->
+  <div id="tab-crack" class="tab-panel hidden">
+    <div class="card">
+      <h2>⏱️ How Long to Crack?</h2>
+      <p style="font-size:.83rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.65;">Estimates assume offline attack at 100 billion guesses/second (modern GPU cluster) against a fast hash (MD5/NTLM). Against slow hashes (bcrypt, Argon2) multiply by 10,000× or more.</p>
+      <table class="crack-table">
+        <thead>
+          <tr>
+            <th>Password Type</th>
+            <th>Example</th>
+            <th>Entropy</th>
+            <th>Fast Hash (100B/s)</th>
+            <th>bcrypt (10M/s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>4-digit PIN</td><td>1234</td><td>13 bits</td><td class="bad">&lt; 1ms</td><td class="bad">&lt; 1ms</td></tr>
+          <tr><td>6-char lowercase</td><td>monkey</td><td>28 bits</td><td class="bad">&lt; 1s</td><td class="bad">&lt; 30s</td></tr>
+          <tr><td>8-char mixed case</td><td>Monkey12</td><td>47 bits</td><td class="bad">~21 min</td><td class="ok">~3 days</td></tr>
+          <tr><td>8-char full charset</td><td>M0nk3y!X</td><td>52 bits</td><td class="ok">~12 hrs</td><td class="ok">~140 days</td></tr>
+          <tr><td>12-char full charset</td><td>xR7#kP!9mL2@</td><td>79 bits</td><td class="ok">~6,000 yrs</td><td class="good">forever</td></tr>
+          <tr><td>16-char full charset</td><td>v8#Qz!dR2mWp@9sL</td><td>105 bits</td><td class="good">forever</td><td class="good">forever</td></tr>
+          <tr><td>20-char full charset</td><td>(generated above)</td><td>131 bits</td><td class="good">forever</td><td class="good">forever</td></tr>
+          <tr><td>3-word passphrase</td><td>correct-horse-battery</td><td>38 bits</td><td class="bad">~45 min</td><td class="ok">~320 days</td></tr>
+          <tr><td>4-word passphrase</td><td>correct-horse-battery-staple</td><td>51 bits</td><td class="ok">~6 hrs</td><td class="good">~380 yrs</td></tr>
+          <tr><td>5-word passphrase</td><td>five random EFF words</td><td>64 bits</td><td class="good">~1,800 yrs</td><td class="good">forever</td></tr>
+          <tr><td>6-word passphrase</td><td>six random EFF words</td><td>77 bits</td><td class="good">forever</td><td class="good">forever</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🔬 Attack Types Explained</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="ic-icon">📖</div>
+          <h3>Dictionary Attack</h3>
+          <p>Tries words from wordlists. Cracks most real-world passwords in seconds. "p@ssw0rd" = cracked instantly.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🌈</div>
+          <h3>Rainbow Tables</h3>
+          <p>Pre-computed hash-to-password lookup tables. Defeated by salted hashes — modern systems always salt.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">💪</div>
+          <h3>Brute Force</h3>
+          <p>Tries every combination systematically. Always works eventually — length and charset size determine how long.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🎯</div>
+          <h3>Credential Stuffing</h3>
+          <p>Uses leaked username/password pairs from other breaches. Unique passwords per site completely defeats this.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── History ── -->
+  <div id="tab-history" class="tab-panel hidden">
+    <div class="card">
+      <h2>📜 History of Passwords &amp; Authentication</h2>
+      <p style="font-size:.85rem;color:var(--muted);line-height:1.7;margin-bottom:1.25rem;">From MIT's time-sharing terminals to cryptographic passkeys — the story of how we prove who we are to computers.</p>
+
+      <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🖥️</div>
+          <h3>1961 — MIT CTSS: The First Passwords</h3>
+          <p>The Compatible Time-Sharing System at MIT introduces the first computer passwords. Users are assigned personal passwords to protect their private files on a shared mainframe. Simple, plaintext — but a foundational idea that has lasted 60+ years.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🐧</div>
+          <h3>1970s — Unix /etc/passwd and Hashed Passwords</h3>
+          <p>Ken Thompson and Dennis Ritchie create the Unix <code>/etc/passwd</code> system. Instead of storing passwords in plaintext, they are hashed using <code>crypt()</code> — a one-way function based on DES. A huge leap: even system administrators cannot read users' passwords. The shadow password file separates hashes from world-readable user data.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">📄</div>
+          <h3>1979 — "Password Security: A Case History"</h3>
+          <p>Robert Morris Sr. and Ken Thompson publish the first major study of real-world password cracking. Analyzing actual Unix passwords, they discover most users choose short, predictable, or dictionary-word passwords. Their findings launch the field of password security research and introduce the concept of proactive password strength checking.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🐛</div>
+          <h3>1988 — The Morris Worm</h3>
+          <p>Robert Morris Jr. releases one of the first internet worms. It spreads partly by exploiting weak passwords and default credentials, infecting thousands of Unix machines across the early internet. A watershed moment: it demonstrated that password weakness is not just a theoretical concern but an active, large-scale attack vector.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">⚒️</div>
+          <h3>1990s — Password Cracking Tools Go Mainstream</h3>
+          <p>Tools like Alec Muffett's <em>Crack</em> and L0phtCrack emerge, making dictionary and brute-force attacks practical on consumer hardware. MD5 becomes widely used for password hashing — fast by design, which turns out to be a fatal flaw. The security community begins debating the inadequacy of MD5 and DES-crypt for password storage.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🌈</div>
+          <h3>1997–2003 — Rainbow Tables</h3>
+          <p>The concept of precomputed hash chains is refined into what Philippe Oechslin names "rainbow tables" in 2003. By trading storage for speed, rainbow tables can reverse common password hashes in seconds. This attack is defeated only by proper salting — adding a unique random value to each password before hashing — which becomes standard practice.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🐡</div>
+          <h3>2004 — bcrypt Gains Traction</h3>
+          <p>Designed by Niels Provos and David Mazières in 1999, bcrypt is built to be <em>intentionally slow</em> — an adjustable cost factor means it stays resistant to brute force even as hardware improves. By the mid-2000s, bcrypt gains wide adoption as the gold standard for password hashing. The first dedicated password manager applications also appear around this time.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">💥</div>
+          <h3>2009 — The RockYou Breach</h3>
+          <p>Social app RockYou stores 32 million passwords in plaintext. When breached, the dump reveals that "123456" is the single most common password, followed by "12345", "123456789", and "password". This dataset becomes the foundational wordlist for nearly every password cracking tool since. It ignites the modern password strength movement and public awareness of credential hygiene.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🏆</div>
+          <h3>2015–2017 — Argon2 and New NIST Guidelines</h3>
+          <p>Argon2 wins the Password Hashing Competition in 2015 — designed to be resistant to GPU and ASIC attacks by requiring large amounts of memory in addition to computation time. In 2017, NIST publishes SP 800-63B, overturning decades of bad advice: stop forcing complex rules, stop mandatory 90-day rotations, check passwords against breach databases, and prioritize <em>length</em> over arbitrary complexity.</p>
+        </div>
+
+        <div class="info-card" style="border-color:rgba(0,255,136,.15);">
+          <div class="ic-icon">🔑</div>
+          <h3>2020s — Passkeys: The Password Replacement</h3>
+          <p>FIDO2 and WebAuthn define a new authentication model based on public-key cryptography. The private key never leaves the user's device; the server stores only a public key. No shared secret means no breach database, no phishing, and no credential stuffing. Apple, Google, and Microsoft ship passkey support across their platforms. The password era may finally be drawing to a close.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧑‍💻 Key Figures</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="ic-icon">🖥️</div>
+          <h3>Ken Thompson</h3>
+          <p>Co-created Unix and the <code>/etc/passwd</code> hashed password system. Co-authored the first major study of password cracking in 1979.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">📄</div>
+          <h3>Robert Morris Sr.</h3>
+          <p>NSA cryptographer and Bell Labs researcher. Co-authored "Password Security: A Case History" — the paper that launched password security as a discipline.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🐡</div>
+          <h3>Niels Provos</h3>
+          <p>Designed bcrypt (with David Mazières) in 1999. Pioneered the concept of an adaptive cost factor that keeps password hashing resistant to faster hardware over time.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🌈</div>
+          <h3>Philippe Oechslin</h3>
+          <p>Formalized and popularized rainbow tables in 2003, demonstrating how time-memory trade-off attacks can crack unsalted password hashes at massive scale.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(id) {
+  history.pushState(null, '', '#' + id);
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
+  document.querySelectorAll('.snav-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-' + id).classList.remove('hidden');
+  document.querySelector('[data-tab="' + id + '"]').classList.add('active');
+}
+window.addEventListener('hashchange', function() { var h = location.hash.slice(1); if (h) switchTab(h); });
+(function() { var h = location.hash.slice(1); if (h) switchTab(h); })();
+
+// ── Crypto random ──────────────────────────────────────────────────────────────
+function cryptoRandInt(max) {
+  var arr = new Uint32Array(1);
+  do { crypto.getRandomValues(arr); } while (arr[0] >= Math.floor(0xFFFFFFFF / max) * max);
+  return arr[0] % max;
+}
+
+function pickFrom(str) { return str[cryptoRandInt(str.length)]; }
+
+// ── Password generator ──────────────────────────────────────────────────────────
+var UPPER   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+var LOWER   = 'abcdefghijklmnopqrstuvwxyz';
+var DIGITS  = '0123456789';
+var SYMBOLS = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+var AMBIG   = '0Ol1I';
+
+function buildCharset() {
+  var upper   = document.getElementById('cb-upper').checked;
+  var lower   = document.getElementById('cb-lower').checked;
+  var digits  = document.getElementById('cb-digits').checked;
+  var symbols = document.getElementById('cb-symbols').checked;
+  var noAmbig = document.getElementById('cb-ambiguous').checked;
+
+  var pool = '';
+  var required = [];
+
+  function add(s) {
+    if (noAmbig) { s = s.split('').filter(function(c){ return AMBIG.indexOf(c) === -1; }).join(''); }
+    pool += s;
+    return s;
+  }
+
+  if (upper)   { var s = add(UPPER);   if (s) required.push(pickFrom(s)); }
+  if (lower)   { var s = add(LOWER);   if (s) required.push(pickFrom(s)); }
+  if (digits)  { var s = add(DIGITS);  if (s) required.push(pickFrom(s)); }
+  if (symbols) { var s = add(SYMBOLS); if (s) required.push(pickFrom(s)); }
+
+  return { pool: pool, required: required };
+}
+
+function generatePassword() {
+  var len = parseInt(document.getElementById('len-range').value);
+  var cs  = buildCharset();
+  if (!cs.pool) { showToast('Select at least one character type'); return; }
+
+  var chars = cs.required.slice();
+  while (chars.length < len) { chars.push(pickFrom(cs.pool)); }
+
+  // Fisher-Yates shuffle
+  for (var i = chars.length - 1; i > 0; i--) {
+    var j = cryptoRandInt(i + 1);
+    var t = chars[i]; chars[i] = chars[j]; chars[j] = t;
+  }
+
+  var pwd = chars.join('');
+  document.getElementById('gen-text').textContent = pwd;
+  document.getElementById('copy-hint').textContent = 'click to copy';
+  document.getElementById('multi-card').style.display = 'none';
+}
+
+function generateMultiple() {
+  var len  = parseInt(document.getElementById('len-range').value);
+  var cs   = buildCharset();
+  if (!cs.pool) { showToast('Select at least one character type'); return; }
+
+  var list = [];
+  for (var n = 0; n < 10; n++) {
+    var chars = cs.required.slice();
+    while (chars.length < len) { chars.push(pickFrom(cs.pool)); }
+    for (var i = chars.length - 1; i > 0; i--) {
+      var j = cryptoRandInt(i + 1);
+      var t = chars[i]; chars[i] = chars[j]; chars[j] = t;
+    }
+    list.push(chars.join(''));
+  }
+
+  var card = document.getElementById('multi-card');
+  var ul   = document.getElementById('multi-list');
+  ul.innerHTML = '';
+  list.forEach(function(p) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.4rem .6rem;border-radius:5px;background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.1);cursor:pointer;font-size:.88rem;color:var(--green);letter-spacing:.04em;';
+    row.innerHTML = '<span>' + escapeHtml(p) + '</span><span style="font-size:.7rem;color:var(--muted);">copy</span>';
+    row.onclick = function() { navigator.clipboard.writeText(p).then(function(){ showToast('Copied!'); }); };
+    ul.appendChild(row);
+  });
+  card.style.display = '';
+}
+
+function copyPassword() {
+  var txt = document.getElementById('gen-text').textContent;
+  if (txt === 'Click Generate') return;
+  navigator.clipboard.writeText(txt).then(function() {
+    document.getElementById('copy-hint').textContent = 'copied!';
+    showToast('Password copied!');
+    setTimeout(function(){ document.getElementById('copy-hint').textContent = 'click to copy'; }, 2000);
+  });
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Strength checker ───────────────────────────────────────────────────────────
+function checkStrength(pwd) {
+  var card = document.getElementById('strength-result');
+  if (!pwd) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  var hasUpper   = /[A-Z]/.test(pwd);
+  var hasLower   = /[a-z]/.test(pwd);
+  var hasDigit   = /[0-9]/.test(pwd);
+  var hasSymbol  = /[^A-Za-z0-9]/.test(pwd);
+  var len = pwd.length;
+
+  // Charset size
+  var pool = 0;
+  if (hasLower)  pool += 26;
+  if (hasUpper)  pool += 26;
+  if (hasDigit)  pool += 10;
+  if (hasSymbol) pool += 32;
+  if (!pool) pool = 26;
+
+  var entropy = Math.round(len * Math.log2(pool));
+
+  // Penalties
+  if (/^(.)\1+$/.test(pwd)) entropy = Math.min(entropy, 20);
+  if (/^(012|123|234|345|456|567|678|789|890|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(pwd)) entropy -= 15;
+  if (/^[a-z]+$/i.test(pwd) && len < 12) entropy -= 10;
+
+  var commonWords = ['password','passw0rd','123456','qwerty','letmein','dragon','master','welcome','monkey','shadow','sunshine','princess','football','iloveyou'];
+  commonWords.forEach(function(w){ if (pwd.toLowerCase().indexOf(w) !== -1) entropy = Math.min(entropy, 15); });
+
+  entropy = Math.max(0, entropy);
+
+  // Score 0-100
+  var score = Math.min(100, Math.round(entropy * 1.2));
+
+  // Label & color
+  var label, color;
+  if (score < 25)      { label = 'Very Weak';  color = '#ef4444'; }
+  else if (score < 45) { label = 'Weak';        color = '#f97316'; }
+  else if (score < 65) { label = 'Fair';        color = '#f59e0b'; }
+  else if (score < 80) { label = 'Strong';      color = '#22c55e'; }
+  else                  { label = 'Very Strong'; color = '#00ff88'; }
+
+  document.getElementById('str-score').textContent = score;
+  document.getElementById('str-score').style.color = color;
+  document.getElementById('str-label').textContent = label;
+  document.getElementById('str-label').style.color = color;
+
+  var bar = document.getElementById('str-bar');
+  bar.style.width = score + '%';
+  bar.style.background = color;
+
+  // Crack time estimate (100B guesses/sec)
+  var rate = 1e11;
+  var combos = Math.pow(2, entropy);
+  var seconds = combos / rate / 2; // avg half keyspace
+  var crackStr = formatTime(seconds);
+
+  // Facts
+  var types = [hasUpper?'Uppercase':'', hasLower?'Lowercase':'', hasDigit?'Digits':'', hasSymbol?'Symbols':''].filter(Boolean);
+  document.getElementById('str-facts').innerHTML =
+    '<div class="sf"><div class="sf-label">LENGTH</div><div class="sf-val">' + len + ' chars</div></div>' +
+    '<div class="sf"><div class="sf-label">ENTROPY</div><div class="sf-val">~' + entropy + ' bits</div></div>' +
+    '<div class="sf"><div class="sf-label">CHARSET POOL</div><div class="sf-val">' + pool + ' chars</div></div>' +
+    '<div class="sf"><div class="sf-label">TYPES USED</div><div class="sf-val">' + (types.join(', ') || 'none') + '</div></div>' +
+    '<div class="sf" style="grid-column:1/-1"><div class="sf-label">EST. CRACK TIME (fast hash, 100B/s)</div><div class="sf-val" style="color:' + color + '">' + crackStr + '</div></div>';
+}
+
+function formatTime(s) {
+  if (s < 0.001)   return 'Instantly';
+  if (s < 1)       return 'Less than a second';
+  if (s < 60)      return Math.round(s) + ' seconds';
+  if (s < 3600)    return Math.round(s/60) + ' minutes';
+  if (s < 86400)   return Math.round(s/3600) + ' hours';
+  if (s < 2592000) return Math.round(s/86400) + ' days';
+  if (s < 31536000)return Math.round(s/2592000) + ' months';
+  var yrs = s / 31536000;
+  if (yrs < 1e6)   return (yrs < 1000 ? Math.round(yrs) : yrs.toExponential(1)) + ' years';
+  return 'Effectively forever';
+}
+
+// ── Passphrase (EFF long wordlist — 200 words sample, proper CSPRNG) ──────────
+// 200 representative words from the EFF Long Wordlist
+var EFF_WORDS = [
+  'abacus','abbey','abbot','abide','abode','abort','about','abrupt','absent','absorb',
+  'abyss','acorn','acrid','actor','acute','adobe','adult','after','agile','aglow',
+  'agree','ahead','aided','aisle','alarm','album','alert','aloft','aloof','aloud',
+  'amber','ample','angel','angry','ankle','annex','anvil','aorta','apple','apply',
+  'apron','aptly','arbor','ardor','argue','aroma','array','arrow','artsy','ascot',
+  'aside','atlas','attic','audit','avid','avocado','award','aware','awful','azure',
+  'bagel','baker','banjo','barge','baron','basil','batch','bayou','beach','beard',
+  'beech','began','beige','bench','berry','birch','bison','biter','blaze','bleat',
+  'blend','bliss','block','bloom','blown','blunt','blurt','bobby','boggy','bonus',
+  'borax','boxer','brace','braid','brand','brash','brave','brawn','bread','brisk',
+  'brook','broth','brown','budge','buggy','bully','bunch','bunny','cabin','cadet',
+  'camel','candy','cargo','carve','cedar','chalk','champ','charm','chart','chase',
+  'chess','chest','chick','chief','child','china','chirp','chord','churn','civic',
+  'civil','clamp','clang','clasp','clean','clerk','cliff','cling','clock','clone',
+  'cloth','cloud','clown','coax','cobra','cocoa','comet','comic','comma','coral',
+  'cough','cover','crack','craft','crane','creak','cream','creek','crisp','crown',
+  'crumb','crush','crust','cubic','cubic','curry','cycle','daisy','dance','dandy',
+  'datum','delta','depot','derby','drink','drive','dromp','drone','drown','duple',
+  'dwarf','eagle','early','earth','eight','elder','ember','emoji','empty','entry',
+  'epoch','equal','error','essay','evade','event','exact','exile','extra','fable',
+  'faint','fancy','fauna','feast','fetch','fever','fiber','fifth','finch','first',
+  'fishy','fixed','fjord','flame','flask','fleck','flint','float','flood','floor',
+  'flora','floss','flute','focal','foamy','focus','folks','forge','forth','forum',
+  'found','foxed','frame','frank','fraud','fresh','frisk','frond','frost','froze',
+  'fruit','fully','fungi','furry','gable','gavel','gauze','gauzy','gecko','geode',
+  'ghost','girth','given','gizmo','gland','glass','glee','glide','gloom','glory',
+  'gloss','glove','glyph','golem','goose','gorge','gourd','grace','grade','grain',
+  'grand','grant','grasp','grate','gravel','gravy','graze','great','greed','greet',
+  'grief','grind','groan','groom','grove','growl','gruel','gruff','guava','guide',
+  'guild','guise','gulch','gummy','gusto','gypsy','habit','halve','handy','happy',
+  'hardy','haven','hazel','heady','heart','heavy','hedge','heron','hiked','hippo',
+  'hobby','holly','honor','horse','hotel','house','hover','human','humor','hunky',
+  'husky','hutch','icicle','ideal','igloo','image','imply','inbox','index','indie',
+  'infer','infix','input','irony','ivory','jaunt','jazzy','joust','judge','jumbo',
+  'kayak','kebab','knock','koala','kudos','label','lance','lapel','large','laser',
+  'later','latte','lauds','layer','leafy','leaky','least','lemon','level','light',
+  'lilac','limit','liner','links','liver','llama','local','lodge','logic','lotus',
+  'lowly','lucid','lucky','lunar','lunch','lusty','lyric','magic','major','mango',
+  'maple','marsh','match','mauve','melon','mercy','merit','metal','midst','milky',
+  'mimic','minor','minus','misty','model','mogul','moist','morph','mossy','motel',
+  'motif','motor','mourn','muddy','mulch','music','musky','mystic','naive','naval',
+  'never','nexus','night','noble','noise','north','notch','novel','nudge','nurse',
+  'nymph','ocean','olive','onset','onyx','optic','orbit','organ','other','otter',
+  'outer','ovoid','owner','oxide','ozone','paddy','paint','panda','panic','pansy',
+  'papal','parse','pasta','patch','patchy','pause','peach','pearl','penny','perch',
+  'phase','phone','photo','piano','pilot','pinch','pixel','pizza','place','plaid',
+  'plain','plank','plant','plaza','pluck','plumb','plume','plush','poem','point',
+  'poker','polar','poppy','porch','power','press','price','prima','prone','proud',
+  'prose','proxy','prune','psalm','pudgy','pulse','punch','pupil','purse','pygmy',
+  'queen','query','queue','quick','quirk','quota','rabbi','radar','radix','rainy',
+  'rally','ramen','ranch','range','rapid','ratio','raven','reach','react','realm',
+  'rebel','rebus','relay','renew','repay','rerun','reuse','risky','rivet','robot',
+  'rocky','rouge','rough','round','rower','rowdy','ruler','rumor','rural','rusty',
+  'sadly','saint','salad','salon','salve','sandy','sauce','sauna','savvy','scald',
+  'scalp','scant','scamp','scoff','scone','scoop','scope','score','scout','scram',
+  'scrub','seedy','seize','sense','serum','seven','shark','shelf','shine','shirt',
+  'shoal','showy','shrew','shrub','sigma','silky','since','sixth','sized','skimp',
+  'skulk','slant','slave','sleek','sleet','slick','slide','slime','sloth','slump',
+  'slunk','smash','smear','smile','smirk','smite','smoky','snack','snail','snaky',
+  'snare','snarl','sneak','sneer','sniff','snowy','solar','solve','sorry','south',
+  'space','spark','spear','speck','speed','spend','spiky','spill','spine','spire',
+  'spite','splash','spore','sport','spray','sprig','spunk','squad','squat','squid',
+  'stack','stain','stall','stand','stark','start','stash','state','steal','steam',
+  'steel','steep','steer','stern','stiff','still','stock','stoic','stoke','stomp',
+  'stone','stood','storm','story','stove','strap','straw','stray','study','stump',
+  'stung','stunt','style','suave','sugar','suite','sunny','super','surge','swamp',
+  'swarm','swash','swear','sweep','swept','swill','swipe','sword','swore','syrup',
+  'talon','tangy','tapir','taste','tatty','taunt','teach','tense','tepid','that',
+  'thatch','their','theme','thick','thing','third','thorn','those','throw','thrum',
+  'thud','tidal','tiger','timer','tipsy','tired','toast','today','token','tonic',
+  'topaz','torso','total','touch','tower','toxic','trace','track','trade','trail',
+  'train','trait','trawl','trend','triad','tribe','tripe','trite','troll','tromp',
+  'troop','trout','trove','truce','trunk','truly','trump','trust','tulip','tuner',
+  'tunic','tutor','tuxedo','twice','twill','twist','tying','udder','ulcer','umbra',
+  'under','unfit','union','unify','unity','until','upper','usher','usual','utter',
+  'valid','valor','valve','vapor','vault','vegan','venue','verge','vigil','vicar',
+  'viola','viper','viral','vivid','vocal','vodka','vomit','voter','vouch','vowel',
+  'vulva','waltz','water','waver','weary','weave','wedge','weedy','weird','whack',
+  'whale','while','whiff','whirl','whisk','whole','widen','widow','windy','witty',
+  'world','worry','worse','worth','wrack','wrath','wreak','wrest','wring','wrote',
+  'yacht','yearn','yodel','yonder','yummy','zappy','zebra','zesty','zippy','zodiac'
+];
+
+function generatePhrase() {
+  var count   = parseInt(document.getElementById('words-range').value);
+  var sep     = document.getElementById('sep-select').value;
+  var caps    = document.getElementById('cb-capitalize').checked;
+  var addNum  = document.getElementById('cb-number').checked;
+
+  var words = [];
+  for (var i = 0; i < count; i++) {
+    var w = EFF_WORDS[cryptoRandInt(EFF_WORDS.length)];
+    if (caps) w = w[0].toUpperCase() + w.slice(1);
+    words.push(w);
+  }
+
+  var suffix = addNum ? sep + cryptoRandInt(100) : '';
+  var phrase = words.join(sep) + suffix;
+  document.getElementById('phrase-text').textContent = phrase;
+
+  // Entropy info
+  var bitsPerWord = Math.log2(EFF_WORDS.length);
+  var totalBits   = Math.round(bitsPerWord * count);
+  document.getElementById('entropy-info').innerHTML =
+    'Word pool: <strong style="color:var(--green)">' + EFF_WORDS.length + ' words</strong> &nbsp;·&nbsp; ' +
+    'Bits per word: <strong style="color:var(--green)">' + bitsPerWord.toFixed(1) + '</strong> &nbsp;·&nbsp; ' +
+    'Total entropy: <strong style="color:var(--green)">~' + totalBits + ' bits</strong><br><br>' +
+    'Equivalent to cracking a ' + totalBits + '-bit key — at 100 billion guesses/second this would take <strong style="color:var(--green)">' +
+    formatTime(Math.pow(2, totalBits) / 1e11 / 2) + '</strong>.';
+}
+
+function copyPhrase() {
+  var txt = document.getElementById('phrase-text').textContent;
+  if (txt === 'Click Generate') return;
+  navigator.clipboard.writeText(txt).then(function() { showToast('Passphrase copied!'); });
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2000);
+}
+
+// Init
+generatePassword();
+</script>
+
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

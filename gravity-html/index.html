@@ -13,6 +13,8 @@ body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
 .tab-btn.active{color:#eab308;border-bottom-color:#eab308}
 .tab-btn:hover:not(.active){color:#e2e8f0}
+.tab-panel{display:none;padding:1.5rem}
+.tab-panel.active{display:block}
 canvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px;cursor:crosshair}
 .controls{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;align-items:center}
 .ctrl{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#94a3b8}
@@ -34,27 +36,17 @@ h2{color:#eab308;margin-bottom:1rem;font-size:1.2rem}
 </style>
 </head>
 <body>
+
 <nav class="sub-nav">
-  <a class="tab-btn " href="index.html">Solar System</a>
-  <a class="tab-btn" href="nbody.html">N-Body Gravity</a>
-  <a class="tab-btn" href="lagrange.html">Lagrange Points</a>
-  <a class="tab-btn" href="escape.html">Escape Velocity</a>
+  <button class="tab-btn active" data-tab="solar">Solar System</button>
+  <button class="tab-btn" data-tab="nbody">N-Body Gravity</button>
+  <button class="tab-btn" data-tab="lagrange">Lagrange Points</button>
+  <button class="tab-btn" data-tab="escape">Escape Velocity</button>
 </nav>
 
-<script>
-(function(){
-  var p = location.pathname;
-  document.querySelectorAll('a[href]').forEach(function(a){
-    var h = a.getAttribute('href');
-    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
-    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/gravity') || p.endsWith('index.html')))) {
-      a.classList.add('active');
-    }
-  });
-})();
-</script>
-<section id="solar">
-<h2>Solar System Orbits</h2>
+<!-- TAB 1: Solar System -->
+<div class="tab-panel active" id="tab-solar">
+  <h2>Solar System Orbits</h2>
   <div class="controls">
     <div class="ctrl"><label>Speed</label><input type="range" id="solarSpeed" min="0.1" max="5" step="0.1" value="1"></div>
     <div class="ctrl"><label>Scale</label><input type="range" id="solarScale" min="0.5" max="2" step="0.1" value="1"></div>
@@ -81,7 +73,652 @@ h2{color:#eab308;margin-bottom:1rem;font-size:1.2rem}
 </div>
 
 <!-- TAB 2: N-Body -->
-</section>
+<div class="tab-panel" id="tab-nbody">
+  <h2>N-Body Gravitational Simulation</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Mass</label><input type="range" id="nbodyMass" min="0.5" max="5" step="0.1" value="1"><span id="nbodyMassVal" style="color:#eab308">1.0</span></div>
+    <div class="ctrl"><label>Speed</label><input type="range" id="nbodySpeed" min="0.1" max="3" step="0.1" value="1"></div>
+    <div class="ctrl"><label>Trail</label><input type="range" id="nbodyTrail" min="20" max="300" step="10" value="100"></div>
+    <button class="btn" id="nbodyReset">Reset</button>
+    <button class="btn danger" id="nbodyClear">Clear All</button>
+  </div>
+  <canvas id="nbodyCanvas"></canvas>
+  <div class="info-box">
+    <h3>Newton's Law of Universal Gravitation</h3>
+    <span class="formula">F = G·M·m / r²</span><br><br>
+    Click on the canvas to add new bodies. Each body attracts every other body. With 3+ bodies the system becomes chaotic — small changes in initial conditions lead to wildly different outcomes.
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-top:1.5rem;">
+    <figure style="margin:0" id="img-pendulum">
+      <img src="images/pendulum.gif" alt="Pendulum motion animation showing gravitational oscillation" style="border-radius:8px;max-width:100%;display:block;" onerror="this.closest('figure').style.display='none'" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">Pendulum — periodic gravitational motion</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- TAB 3: Lagrange Points -->
+<div class="tab-panel" id="tab-lagrange">
+  <h2>Earth-Moon Lagrange Points</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Animate</label><input type="range" id="lagrangeSpeed" min="0.1" max="5" step="0.1" value="1"></div>
+    <div class="ctrl"><button class="btn" id="lagrangePlace">Place Test Particle</button></div>
+  </div>
+  <canvas id="lagrangeCanvas"></canvas>
+  <div class="info-box" id="lagrangeInfo">
+    <h3>Lagrange Points</h3>
+    Hover over each labeled point for a description. There are 5 Lagrange points where a small body can maintain a stable position relative to two large bodies (Earth and Moon).
+  </div>
+</div>
+
+<!-- TAB 4: Escape Velocity -->
+<div class="tab-panel" id="tab-escape">
+  <h2>Escape Velocity Simulator</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Angle</label><input type="range" id="escapeAngle" min="-80" max="80" step="1" value="45"><span id="escapeAngleVal" style="color:#eab308">45°</span></div>
+    <div class="ctrl"><label>Power</label><input type="range" id="escapePower" min="1" max="100" step="1" value="50"><span id="escapePowerVal" style="color:#eab308">50%</span></div>
+    <div class="ctrl"><label>Planet Size</label><input type="range" id="escapePlanetR" min="30" max="100" step="5" value="60"><span id="escapePlanetRVal" style="color:#eab308">60</span></div>
+    <button class="btn" id="escapeFire">Launch!</button>
+    <button class="btn" id="escapeReset">Reset</button>
+  </div>
+  <canvas id="escapeCanvas"></canvas>
+  <div class="info-box" id="escapeInfo">
+    <h3>Escape Velocity</h3>
+    <span class="formula">v<sub>esc</sub> = √(2GM/R)</span><br><br>
+    The escape velocity is the minimum speed needed to escape a planet's gravity without further propulsion.
+    <br><span id="escapeCalc" style="color:#f97316;margin-top:.4rem;display:block"></span>
+  </div>
+</div>
+
+<script>
+// ── Utility ──────────────────────────────────────────────────────────────────
+function resizeCanvas(canvas) {
+  const parent = canvas.parentElement;
+  const w = Math.min(parent.clientWidth - 0, 1200);
+  canvas.width  = w;
+  canvas.height = Math.round(w * 0.52);
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+const tabBtns   = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+let activeTab = 'solar';
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabPanels.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const id = btn.dataset.tab;
+    document.getElementById('tab-' + id).classList.add('active');
+    activeTab = id;
+    if (id === 'lagrange') initLagrange();
+    if (id === 'escape')   initEscape();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 1 — SOLAR SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+const solarCanvas  = document.getElementById('solarCanvas');
+const solarCtx     = solarCanvas.getContext('2d');
+const solarTooltip = document.getElementById('solarTooltip');
+const solarHover   = document.getElementById('solarHoverInfo');
+
+const PLANETS = [
+  { name:'Mercury', period:0.241, radius:3,  color:'#b5b5b5', dist:0.10 },
+  { name:'Venus',   period:0.615, radius:6,  color:'#e8cda0', dist:0.17 },
+  { name:'Earth',   period:1.000, radius:6.5,color:'#4a9eff', dist:0.25 },
+  { name:'Mars',    period:1.881, radius:4.5,color:'#c1440e', dist:0.33 },
+  { name:'Jupiter', period:11.86, radius:16, color:'#c88b3a', dist:0.46 },
+  { name:'Saturn',  period:29.46, radius:13, color:'#e4d191', dist:0.58, ring:true },
+  { name:'Uranus',  period:84.01, radius:9,  color:'#7de8e8', dist:0.70 },
+  { name:'Neptune', period:164.8, radius:8,  color:'#3f54ba', dist:0.82 },
+];
+
+let solarTime = 0;
+let solarRAF;
+let solarMX = -1, solarMY = -1;
+
+function drawSolar() {
+  resizeCanvas(solarCanvas);
+  const W = solarCanvas.width, H = solarCanvas.height;
+  const cx = W / 2, cy = H / 2;
+  const maxR = Math.min(W, H) * 0.42;
+  const speed = parseFloat(document.getElementById('solarSpeed').value);
+  const scale = parseFloat(document.getElementById('solarScale').value);
+
+  const ctx = solarCtx;
+  ctx.clearRect(0, 0, W, H);
+
+  // Starfield
+  if (!solarCanvas._stars) {
+    solarCanvas._stars = Array.from({length:200}, () => ({
+      x: Math.random()*2000, y: Math.random()*1200,
+      r: Math.random()*1.2+0.2, a: Math.random()*.8+.2
+    }));
+  }
+  solarCanvas._stars.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(s.x % W, s.y % H, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+    ctx.fill();
+  });
+
+  // Sun
+  const sunGrad = ctx.createRadialGradient(cx,cy,2,cx,cy,22);
+  sunGrad.addColorStop(0,'#fffbe0');
+  sunGrad.addColorStop(0.4,'#eab308');
+  sunGrad.addColorStop(1,'rgba(234,179,8,0)');
+  ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2);
+  ctx.fillStyle = sunGrad; ctx.fill();
+
+  let hoveredPlanet = null;
+
+  PLANETS.forEach(p => {
+    const orbitR = p.dist * maxR * scale;
+    if (orbitR > maxR * 1.05) return;
+    const angle  = (solarTime / p.period) * Math.PI * 2;
+    const px = cx + Math.cos(angle) * orbitR;
+    const py = cy + Math.sin(angle) * orbitR;
+
+    // Orbit path
+    ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Saturn ring
+    if (p.ring) {
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(1, 0.35);
+      ctx.beginPath(); ctx.arc(0, 0, p.radius*2.2, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(228,209,145,0.5)'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.restore();
+    }
+
+    // Planet
+    const grad = ctx.createRadialGradient(px-1,py-1,0,px,py,p.radius);
+    grad.addColorStop(0,'#fff');
+    grad.addColorStop(0.3,p.color);
+    grad.addColorStop(1,p.color+'88');
+    ctx.beginPath(); ctx.arc(px, py, p.radius, 0, Math.PI*2);
+    ctx.fillStyle = grad; ctx.fill();
+
+    // Hover detection
+    const dx = solarMX-px, dy = solarMY-py;
+    if (Math.sqrt(dx*dx+dy*dy) < p.radius+10) {
+      hoveredPlanet = { ...p, px, py, orbitR };
+      ctx.beginPath(); ctx.arc(px, py, p.radius+4, 0, Math.PI*2);
+      ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  });
+
+  // Tooltip
+  if (hoveredPlanet) {
+    solarTooltip.style.display = 'block';
+    solarTooltip.style.left = (solarMX + 12) + 'px';
+    solarTooltip.style.top  = (solarMY - 10) + 'px';
+    solarTooltip.innerHTML  = `<b>${hoveredPlanet.name}</b><br>Period: ${hoveredPlanet.period} yr`;
+    solarHover.textContent  = `${hoveredPlanet.name} — orbital period: ${hoveredPlanet.period} Earth years`;
+  } else {
+    solarTooltip.style.display = 'none';
+    solarHover.textContent = 'Hover a planet';
+  }
+
+  solarTime += 0.0005 * speed;
+  if (activeTab === 'solar') requestAnimationFrame(drawSolar);
+}
+
+solarCanvas.addEventListener('mousemove', e => {
+  const r = solarCanvas.getBoundingClientRect();
+  solarMX = e.clientX - r.left;
+  solarMY = e.clientY - r.top;
+});
+solarCanvas.addEventListener('mouseleave', () => { solarMX=-1; solarMY=-1; });
+
+drawSolar();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 2 — N-BODY
+// ─────────────────────────────────────────────────────────────────────────────
+const nbodyCanvas = document.getElementById('nbodyCanvas');
+const nbodyCtx    = nbodyCanvas.getContext('2d');
+const G = 500;
+const COLORS = ['#eab308','#f97316','#22d3ee','#a78bfa','#34d399','#fb7185','#60a5fa','#fbbf24','#c084fc','#4ade80'];
+
+let bodies = [];
+let nbodyRAF;
+
+function makeBodies() {
+  bodies = [];
+  // Start with 3 bodies in stable-ish triangle
+  const W = nbodyCanvas.width, H = nbodyCanvas.height;
+  const cx = W/2, cy = H/2;
+  const configs = [
+    {x:cx, y:cy-120, vx:80, vy:0, m:2},
+    {x:cx+104, y:cy+60, vx:-40, vy:-70, m:2},
+    {x:cx-104, y:cy+60, vx:-40, vy:70, m:2},
+  ];
+  configs.forEach((c,i)=>{
+    bodies.push({x:c.x,y:c.y,vx:c.vx,vy:c.vy,m:c.m,color:COLORS[i%COLORS.length],trail:[]});
+  });
+}
+
+function addBody(x,y) {
+  if (bodies.length >= 10) return;
+  const m = parseFloat(document.getElementById('nbodyMass').value);
+  bodies.push({x,y,vx:(Math.random()-0.5)*60,vy:(Math.random()-0.5)*60,m,color:COLORS[bodies.length%COLORS.length],trail:[]});
+}
+
+function stepNBody(dt) {
+  const n = bodies.length;
+  const ax = new Array(n).fill(0);
+  const ay = new Array(n).fill(0);
+  for (let i=0;i<n;i++) {
+    for (let j=i+1;j<n;j++) {
+      const dx = bodies[j].x - bodies[i].x;
+      const dy = bodies[j].y - bodies[i].y;
+      const r2 = dx*dx + dy*dy + 200; // softening
+      const r  = Math.sqrt(r2);
+      const F  = G / r2;
+      const fx = F * dx/r, fy = F * dy/r;
+      ax[i] += fx * bodies[j].m;
+      ay[i] += fy * bodies[j].m;
+      ax[j] -= fx * bodies[i].m;
+      ay[j] -= fy * bodies[i].m;
+    }
+  }
+  const trail = parseInt(document.getElementById('nbodyTrail').value);
+  bodies.forEach((b,i)=>{
+    b.vx += ax[i]*dt; b.vy += ay[i]*dt;
+    b.x  += b.vx*dt;  b.y  += b.vy*dt;
+    b.trail.push({x:b.x,y:b.y});
+    if (b.trail.length > trail) b.trail.shift();
+  });
+}
+
+function drawNBody() {
+  resizeCanvas(nbodyCanvas);
+  const W = nbodyCanvas.width, H = nbodyCanvas.height;
+  const ctx = nbodyCtx;
+  ctx.fillStyle = 'rgba(7,7,32,0.18)';
+  ctx.fillRect(0,0,W,H);
+
+  const speed = parseFloat(document.getElementById('nbodySpeed').value);
+  const substeps = Math.round(speed * 3);
+  for (let s=0;s<substeps;s++) stepNBody(0.016);
+
+  // Draw trails + bodies
+  bodies.forEach(b=>{
+    if (b.trail.length > 2) {
+      ctx.beginPath();
+      ctx.moveTo(b.trail[0].x, b.trail[0].y);
+      b.trail.forEach((pt,i)=>{
+        ctx.lineTo(pt.x,pt.y);
+        ctx.strokeStyle = b.color + Math.floor((i/b.trail.length)*220+35).toString(16).padStart(2,'0');
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pt.x,pt.y);
+      });
+    }
+    const r = 4 + b.m * 3;
+    const g = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,r);
+    g.addColorStop(0,'#fff');
+    g.addColorStop(0.3,b.color);
+    g.addColorStop(1,b.color+'44');
+    ctx.beginPath(); ctx.arc(b.x,b.y,r,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+  });
+
+  if (activeTab === 'nbody') requestAnimationFrame(drawNBody);
+}
+
+function initNBody() {
+  resizeCanvas(nbodyCanvas);
+  makeBodies();
+}
+
+nbodyCanvas.addEventListener('click', e => {
+  const r = nbodyCanvas.getBoundingClientRect();
+  addBody(e.clientX - r.left, e.clientY - r.top);
+});
+document.getElementById('nbodyReset').addEventListener('click', () => { initNBody(); });
+document.getElementById('nbodyClear').addEventListener('click', () => { bodies = []; });
+document.getElementById('nbodyMass').addEventListener('input', function(){ document.getElementById('nbodyMassVal').textContent = parseFloat(this.value).toFixed(1); });
+document.getElementById('nbodySpeed').addEventListener('input', function(){});
+
+// Start N-Body immediately so it's ready
+initNBody();
+drawNBody();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 3 — LAGRANGE POINTS
+// ─────────────────────────────────────────────────────────────────────────────
+const lagrangeCanvas = document.getElementById('lagrangeCanvas');
+const lagrangeCtx    = lagrangeCanvas.getContext('2d');
+const LAGRANGE_DESC = {
+  L1:'Between Earth and Moon — used for solar observation (e.g., SOHO). Gravity of Earth and Moon balance here.',
+  L2:'Behind the Moon (from Earth) — unstable equilibrium, useful for radio astronomy away from Earth noise.',
+  L3:'Opposite Earth on far side — behind the Sun, never directly observable from Earth.',
+  L4:'60° ahead of Moon in its orbit — stable "Trojan" point, gravitational well keeps objects here.',
+  L5:'60° behind Moon in its orbit — stable "Trojan" point, same stability as L4. Proposed space colony site.',
+};
+
+let lagrangeTime = 0;
+let lagrangeParticles = [];
+let lagrangeHoveredPt = null;
+
+function initLagrange() {
+  resizeCanvas(lagrangeCanvas);
+  lagrangeParticles = [];
+  drawLagrangeLoop();
+}
+
+function drawLagrangeLoop() {
+  if (activeTab !== 'lagrange') return;
+  resizeCanvas(lagrangeCanvas);
+  const W = lagrangeCanvas.width, H = lagrangeCanvas.height;
+  const cx = W/2, cy = H/2;
+  const ctx = lagrangeCtx;
+  const speed = parseFloat(document.getElementById('lagrangeSpeed').value);
+
+  ctx.clearRect(0,0,W,H);
+
+  // Earth-Moon system
+  const moonOrbitR = Math.min(W,H) * 0.33;
+  const moonAngle  = lagrangeTime;
+  const earthX = cx, earthY = cy;
+  const moonX  = cx + Math.cos(moonAngle)*moonOrbitR;
+  const moonY  = cy + Math.sin(moonAngle)*moonOrbitR;
+
+  // Moon orbit
+  ctx.beginPath(); ctx.arc(cx,cy,moonOrbitR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.stroke();
+
+  // Lagrange point positions
+  const mu = 0.0123; // Moon/total mass ratio
+  const L1x = cx + Math.cos(moonAngle)*(moonOrbitR*(1 - Math.cbrt(mu/3)));
+  const L1y = cy + Math.sin(moonAngle)*(moonOrbitR*(1 - Math.cbrt(mu/3)));
+  const L2x = cx + Math.cos(moonAngle)*(moonOrbitR*(1 + Math.cbrt(mu/3)));
+  const L2y = cy + Math.sin(moonAngle)*(moonOrbitR*(1 + Math.cbrt(mu/3)));
+  const L3x = cx - Math.cos(moonAngle)*(moonOrbitR*(1 + 5*mu/12));
+  const L3y = cy - Math.sin(moonAngle)*(moonOrbitR*(1 + 5*mu/12));
+  const L4x = cx + Math.cos(moonAngle+Math.PI/3)*moonOrbitR;
+  const L4y = cy + Math.sin(moonAngle+Math.PI/3)*moonOrbitR;
+  const L5x = cx + Math.cos(moonAngle-Math.PI/3)*moonOrbitR;
+  const L5y = cy + Math.sin(moonAngle-Math.PI/3)*moonOrbitR;
+
+  const lpts = { L1:{x:L1x,y:L1y}, L2:{x:L2x,y:L2y}, L3:{x:L3x,y:L3y}, L4:{x:L4x,y:L4y}, L5:{x:L5x,y:L5y} };
+
+  // Draw L4/L5 equilateral triangle lines (faint)
+  ctx.setLineDash([4,6]);
+  ctx.strokeStyle='rgba(234,179,8,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(earthX,earthY); ctx.lineTo(moonX,moonY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(earthX,earthY); ctx.lineTo(L4x,L4y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(moonX,moonY); ctx.lineTo(L4x,L4y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(earthX,earthY); ctx.lineTo(L5x,L5y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(moonX,moonY); ctx.lineTo(L5x,L5y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Earth
+  const eg = ctx.createRadialGradient(earthX,earthY,2,earthX,earthY,16);
+  eg.addColorStop(0,'#aef'); eg.addColorStop(0.4,'#4a9eff'); eg.addColorStop(1,'#1a3a6e');
+  ctx.beginPath(); ctx.arc(earthX,earthY,16,0,Math.PI*2); ctx.fillStyle=eg; ctx.fill();
+  ctx.fillStyle='#e2e8f0'; ctx.font='bold 11px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText('Earth',earthX,earthY+28);
+
+  // Moon
+  const mg = ctx.createRadialGradient(moonX,moonY,1,moonX,moonY,9);
+  mg.addColorStop(0,'#ddd'); mg.addColorStop(1,'#666');
+  ctx.beginPath(); ctx.arc(moonX,moonY,9,0,Math.PI*2); ctx.fillStyle=mg; ctx.fill();
+  ctx.fillStyle='#94a3b8'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText('Moon',moonX,moonY+20);
+
+  // Lagrange points
+  Object.entries(lpts).forEach(([name,pt])=>{
+    const isHover = lagrangeHoveredPt === name;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,isHover?10:7,0,Math.PI*2);
+    ctx.fillStyle = isHover ? '#f97316' : '#eab308';
+    ctx.globalAlpha = isHover ? 1 : 0.85;
+    ctx.fill(); ctx.globalAlpha=1;
+    ctx.strokeStyle='#1e293b'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#e2e8f0'; ctx.font='bold 10px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText(name, pt.x, pt.y-12);
+  });
+
+  // Test particles
+  lagrangeParticles.forEach(p=>{
+    p.angle += 0.003 * speed;
+    p.t += 0.02*speed;
+    const px = p.cx + Math.cos(p.angle)*p.r + Math.sin(p.t*2)*p.drift;
+    const py = p.cy + Math.sin(p.angle)*p.r + Math.cos(p.t*1.7)*p.drift;
+    ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2);
+    ctx.fillStyle='#22d3ee'; ctx.fill();
+  });
+
+  lagrangeTime += 0.005 * speed;
+  requestAnimationFrame(drawLagrangeLoop);
+}
+
+lagrangeCanvas.addEventListener('mousemove', e => {
+  const r = lagrangeCanvas.getBoundingClientRect();
+  const mx = e.clientX-r.left, my = e.clientY-r.top;
+  const W = lagrangeCanvas.width, H = lagrangeCanvas.height;
+  const cx = W/2, cy = H/2;
+  const moonOrbitR = Math.min(W,H)*0.33;
+  const moonAngle  = lagrangeTime;
+  const mu = 0.0123;
+  const pts = {
+    L1:{x:cx+Math.cos(moonAngle)*(moonOrbitR*(1-Math.cbrt(mu/3))), y:cy+Math.sin(moonAngle)*(moonOrbitR*(1-Math.cbrt(mu/3)))},
+    L2:{x:cx+Math.cos(moonAngle)*(moonOrbitR*(1+Math.cbrt(mu/3))), y:cy+Math.sin(moonAngle)*(moonOrbitR*(1+Math.cbrt(mu/3)))},
+    L3:{x:cx-Math.cos(moonAngle)*(moonOrbitR*(1+5*mu/12)),         y:cy-Math.sin(moonAngle)*(moonOrbitR*(1+5*mu/12))},
+    L4:{x:cx+Math.cos(moonAngle+Math.PI/3)*moonOrbitR,             y:cy+Math.sin(moonAngle+Math.PI/3)*moonOrbitR},
+    L5:{x:cx+Math.cos(moonAngle-Math.PI/3)*moonOrbitR,             y:cy+Math.sin(moonAngle-Math.PI/3)*moonOrbitR},
+  };
+  let found = null;
+  Object.entries(pts).forEach(([name,pt])=>{
+    if (Math.hypot(mx-pt.x,my-pt.y)<16) found=name;
+  });
+  lagrangeHoveredPt = found;
+  document.getElementById('lagrangeInfo').innerHTML = found
+    ? `<h3>${found} — Lagrange Point</h3>${LAGRANGE_DESC[found]}`
+    : `<h3>Lagrange Points</h3>Hover over each labeled point for a description. There are 5 Lagrange points where a small body can maintain a stable position relative to Earth and Moon.`;
+});
+
+document.getElementById('lagrangePlace').addEventListener('click', ()=>{
+  const W = lagrangeCanvas.width, H = lagrangeCanvas.height;
+  const cx = W/2, cy = H/2;
+  const moonOrbitR = Math.min(W,H)*0.33;
+  lagrangeParticles.push({cx,cy,angle:Math.random()*Math.PI*2,r:moonOrbitR,drift:5+(Math.random()-0.5)*20,t:0});
+  if (lagrangeParticles.length>12) lagrangeParticles.shift();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 4 — ESCAPE VELOCITY
+// ─────────────────────────────────────────────────────────────────────────────
+const escapeCanvas = document.getElementById('escapeCanvas');
+const escapeCtx    = escapeCanvas.getContext('2d');
+let escapeProjectile = null;
+let escapeTrail = [];
+let escapeFiring = false;
+let escapeRAF;
+
+function getEscapeParams() {
+  const angle   = parseFloat(document.getElementById('escapeAngle').value);
+  const power   = parseFloat(document.getElementById('escapePower').value);
+  const planetR = parseFloat(document.getElementById('escapePlanetR').value);
+  return { angle, power, planetR };
+}
+
+function escapeVelocity(R) {
+  // Scaled: G*M = R^3 * 40 (so bigger planet = stronger gravity)
+  const GM = R * R * R * 40;
+  return Math.sqrt(2 * GM / R);
+}
+
+function launchProjectile() {
+  resizeCanvas(escapeCanvas);
+  const W = escapeCanvas.width, H = escapeCanvas.height;
+  const {angle, power, planetR} = getEscapeParams();
+  const cx = W * 0.35, cy = H * 0.65;
+  const vEsc = escapeVelocity(planetR);
+  const vMax = vEsc * 1.5;
+  const speed = (power/100) * vMax;
+  const rad   = (-90 + angle) * Math.PI/180;
+  escapeProjectile = {
+    x: cx + Math.cos(rad)*(planetR+2),
+    y: cy + Math.sin(rad)*(planetR+2),
+    vx: Math.cos(rad)*speed,
+    vy: Math.sin(rad)*speed,
+    cx, cy, planetR, escaped:false, crashed:false
+  };
+  escapeTrail = [];
+  escapeFiring = true;
+  document.getElementById('escapeCalc').textContent =
+    `Planet radius: ${planetR} | Escape velocity: ${vEsc.toFixed(1)} | Launch speed: ${speed.toFixed(1)} (${power}%)`;
+}
+
+function drawEscape() {
+  resizeCanvas(escapeCanvas);
+  const W = escapeCanvas.width, H = escapeCanvas.height;
+  const ctx = escapeCtx;
+  ctx.clearRect(0,0,W,H);
+
+  const {angle, power, planetR} = getEscapeParams();
+  const cx = W*0.35, cy = H*0.65;
+  const GM  = planetR*planetR*planetR*40;
+
+  // Stars
+  if (!escapeCanvas._stars) {
+    escapeCanvas._stars = Array.from({length:180}, ()=>({x:Math.random()*2000,y:Math.random()*1200,r:Math.random()*1.2+.2,a:Math.random()*.7+.2}));
+  }
+  escapeCanvas._stars.forEach(s=>{
+    ctx.beginPath(); ctx.arc(s.x%W, s.y%H, s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${s.a})`; ctx.fill();
+  });
+
+  // Planet
+  const pg = ctx.createRadialGradient(cx-planetR*.3,cy-planetR*.3,planetR*.1,cx,cy,planetR);
+  pg.addColorStop(0,'#6ee7b7'); pg.addColorStop(0.5,'#10b981'); pg.addColorStop(1,'#065f46');
+  ctx.beginPath(); ctx.arc(cx,cy,planetR,0,Math.PI*2);
+  ctx.fillStyle=pg; ctx.fill();
+  ctx.strokeStyle='#34d399'; ctx.lineWidth=2; ctx.stroke();
+
+  // Atmosphere halo
+  const atm = ctx.createRadialGradient(cx,cy,planetR,cx,cy,planetR+20);
+  atm.addColorStop(0,'rgba(52,211,153,0.15)'); atm.addColorStop(1,'transparent');
+  ctx.beginPath(); ctx.arc(cx,cy,planetR+20,0,Math.PI*2); ctx.fillStyle=atm; ctx.fill();
+
+  // Gravity rings (visual)
+  [1.5,2.2,3.1].forEach(factor=>{
+    ctx.beginPath(); ctx.arc(cx,cy,planetR*factor,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(234,179,8,${0.06*factor})`; ctx.lineWidth=1; ctx.stroke();
+  });
+
+  // Cannon
+  const rad = (-90+angle)*Math.PI/180;
+  const cannonX = cx + Math.cos(rad)*(planetR-2);
+  const cannonY = cy + Math.sin(rad)*(planetR-2);
+  ctx.save();
+  ctx.translate(cannonX, cannonY);
+  ctx.rotate(rad+Math.PI/2);
+  ctx.fillStyle='#94a3b8';
+  ctx.fillRect(-4,-14,8,18);
+  ctx.restore();
+
+  // Launch trajectory preview (dotted)
+  if (!escapeFiring) {
+    const vEsc  = escapeVelocity(planetR);
+    const vMax  = vEsc * 1.5;
+    const speed = (power/100)*vMax;
+    let px = cx+Math.cos(rad)*(planetR+2), py = cy+Math.sin(rad)*(planetR+2);
+    let pvx = Math.cos(rad)*speed, pvy = Math.sin(rad)*speed;
+    ctx.setLineDash([4,6]);
+    ctx.strokeStyle='rgba(249,115,22,0.4)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px,py);
+    for (let i=0;i<200;i++) {
+      const dx=px-cx, dy=py-cy;
+      const r2=dx*dx+dy*dy; const r=Math.sqrt(r2);
+      if (r < planetR || px<-100||px>W+100||py<-100||py>H+100) break;
+      const acc = -GM/(r2);
+      pvx += (acc*dx/r)*0.02; pvy += (acc*dy/r)*0.02;
+      px += pvx*0.02; py += pvy*0.02;
+      ctx.lineTo(px,py);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Simulate & draw projectile
+  if (escapeFiring && escapeProjectile) {
+    const p = escapeProjectile;
+    const substeps = 3;
+    for (let s=0;s<substeps;s++) {
+      if (p.escaped || p.crashed) break;
+      const dx = p.x-p.cx, dy = p.y-p.cy;
+      const r2 = dx*dx+dy*dy; const r=Math.sqrt(r2);
+      const acc = -GM/(r2);
+      p.vx += (acc*dx/r)*0.016; p.vy += (acc*dy/r)*0.016;
+      p.x += p.vx*0.016; p.y += p.vy*0.016;
+      if (r < p.planetR) { p.crashed=true; escapeFiring=false; break; }
+      if (p.x<-300||p.x>W+300||p.y<-300||p.y>H+300) { p.escaped=true; escapeFiring=false; break; }
+      escapeTrail.push({x:p.x,y:p.y});
+      if (escapeTrail.length>600) escapeTrail.shift();
+    }
+
+    // Draw trail
+    if (escapeTrail.length>1) {
+      ctx.beginPath(); ctx.moveTo(escapeTrail[0].x, escapeTrail[0].y);
+      escapeTrail.forEach(pt=>ctx.lineTo(pt.x,pt.y));
+      ctx.strokeStyle = p.escaped ? '#22c55e' : p.crashed ? '#ef4444' : '#f97316';
+      ctx.lineWidth=2; ctx.stroke();
+    }
+
+    if (!p.escaped && !p.crashed) {
+      ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2);
+      ctx.fillStyle='#fbbf24'; ctx.fill();
+    }
+
+    if (p.escaped) {
+      ctx.fillStyle='#22c55e'; ctx.font='bold 16px Segoe UI'; ctx.textAlign='center';
+      ctx.fillText('ESCAPED!', W/2, 60);
+    } else if (p.crashed) {
+      ctx.fillStyle='#ef4444'; ctx.font='bold 16px Segoe UI'; ctx.textAlign='center';
+      ctx.fillText('CRASHED — increase power!', W/2, 60);
+    }
+  }
+
+  // Labels
+  ctx.fillStyle='#e2e8f0'; ctx.font='12px Segoe UI'; ctx.textAlign='left';
+  const vEsc = escapeVelocity(planetR);
+  ctx.fillStyle='#eab308';
+  ctx.fillText(`Escape vel: ${vEsc.toFixed(1)}`, W-180, 30);
+  ctx.fillStyle='#f97316';
+  ctx.fillText(`Launch: ${((power/100)*vEsc*1.5).toFixed(1)} (${power}%)`, W-180, 50);
+
+  if (activeTab === 'escape') requestAnimationFrame(drawEscape);
+}
+
+function initEscape() {
+  resizeCanvas(escapeCanvas);
+  escapeProjectile = null; escapeTrail = []; escapeFiring = false;
+  drawEscape();
+}
+
+document.getElementById('escapeFire').addEventListener('click', launchProjectile);
+document.getElementById('escapeReset').addEventListener('click', ()=>{
+  escapeProjectile=null; escapeTrail=[]; escapeFiring=false;
+});
+['escapeAngle','escapePower','escapePlanetR'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', function(){
+    const suffix = id==='escapeAngle'?'°':'';
+    document.getElementById(id+'Val').textContent = this.value + suffix;
+    if (id==='escapePlanetR') document.getElementById('escapePlanetRVal').textContent=this.value;
+  });
+});
+
+// Init escape tab for immediate draw if somehow active
+drawEscape();
+</script>
+
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

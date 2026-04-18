@@ -20,6 +20,9 @@
     .tab.active{color:#ffa657;border-bottom-color:#ffa657}
     .tab:hover:not(.active){color:#c9d1d9}
 
+    .section{display:none}
+    .section.active{display:block}
+
     /* token input */
     .label{font-size:.7rem;color:#586069;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem}
     textarea,input[type=text]{width:100%;background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:6px;
@@ -94,30 +97,20 @@
   </style>
 </head>
 <body>
-<div class="tabs">
-    <a class="tab " href="index.html">Decode / Inspect</a>
-    <a class="tab" href="encode.html">Encode / Build</a>
-    <a class="tab" href="reference.html">Claims Reference</a>
-  </div>
-
-<script>
-(function(){
-  var p = location.pathname;
-  document.querySelectorAll('a[href]').forEach(function(a){
-    var h = a.getAttribute('href');
-    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
-    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/jwt') || p.endsWith('index.html')))) {
-      a.classList.add('active');
-    }
-  });
-})();
-</script>
 <script src="/shared/nav.js?v=3"></script>
 <div class="page">
   <h1>JWT Decoder &amp; Encoder</h1>
   <p class="subtitle">Inspect, verify, and create JSON Web Tokens — header, payload, signature, and claims</p>
-<section id="decode">
-<div class="label">Paste JWT Token</div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="decode">Decode / Inspect</button>
+    <button class="tab" data-tab="encode">Encode / Build</button>
+    <button class="tab" data-tab="reference">Claims Reference</button>
+  </div>
+
+  <!-- DECODE -->
+  <div class="section active" id="tab-decode">
+    <div class="label">Paste JWT Token</div>
     <textarea class="token-input" id="token-input" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" spellcheck="false" autocomplete="off"></textarea>
     <div class="err-msg" id="decode-err"></div>
     <div id="decode-parts" class="jwt-parts"></div>
@@ -126,7 +119,308 @@
   </div>
 
   <!-- ENCODE -->
-</section>
-<script src="/shared/nav.js?v=3"></script>
+  <div class="section" id="tab-encode">
+    <div class="encode-layout">
+      <div>
+        <div class="field-group">
+          <div class="small-label">Algorithm</div>
+          <select class="select" id="enc-alg">
+            <option value="HS256">HS256 (HMAC SHA-256)</option>
+            <option value="HS384">HS384 (HMAC SHA-384)</option>
+            <option value="HS512">HS512 (HMAC SHA-512)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="small-label">Secret (HMAC key)</div>
+          <input type="text" class="secret-input" id="enc-secret" value="your-256-bit-secret" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field-group">
+          <div class="small-label">Header (JSON)</div>
+          <textarea id="enc-header" rows="3">{"alg":"HS256","typ":"JWT"}</textarea>
+        </div>
+      </div>
+      <div>
+        <div class="field-group">
+          <div class="small-label">Payload (JSON)</div>
+          <textarea id="enc-payload" rows="10">{"sub":"1234567890","name":"John Doe","iat":1516239022,"exp":9999999999}</textarea>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="enc-build">Build Token</button>
+      <button class="btn" id="enc-random-secret">Random Secret</button>
+      <button class="btn" id="enc-now">Set iat = now</button>
+      <button class="btn" id="enc-exp1h">exp +1 hour</button>
+    </div>
+    <div class="err-msg" id="enc-err"></div>
+    <div class="label" style="margin-top:.75rem">Generated Token</div>
+    <div id="enc-result" class="result-token">—</div>
+    <div class="btn-row">
+      <button class="copy-btn" id="enc-copy">Copy token</button>
+      <button class="copy-btn" id="enc-to-decode">→ Send to Decoder</button>
+    </div>
+  </div>
+
+  <!-- REFERENCE -->
+  <div class="section" id="tab-reference">
+    <div class="label">Registered Claims (RFC 7519)</div>
+    <div class="claims-grid" id="claims-grid"></div>
+    <div style="margin-top:1.25rem" class="label">Algorithm Comparison</div>
+    <div class="claims-grid" id="alg-grid"></div>
+  </div>
+</div>
+
+<script>
+// ── tabs ──────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(function(t) {
+  t.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
+    document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active')});
+    t.classList.add('active');
+    document.getElementById('tab-' + t.getAttribute('data-tab')).classList.add('active');
+  });
+});
+
+// ── base64url helpers ─────────────────────────────────────────────────────
+function b64urlDecode(s) {
+  s = s.replace(/-/g,'+').replace(/_/g,'/');
+  while (s.length % 4) s += '=';
+  try { return atob(s); } catch(e) { return null; }
+}
+function b64urlEncode(s) {
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64urlEncodeBytes(buf) {
+  var binary = '';
+  new Uint8Array(buf).forEach(function(b){ binary += String.fromCharCode(b); });
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+// ── decode ────────────────────────────────────────────────────────────────
+var tokenInput = document.getElementById('token-input');
+tokenInput.addEventListener('input', decode);
+
+function decode() {
+  var raw = tokenInput.value.trim();
+  var errEl = document.getElementById('decode-err');
+  var partsEl = document.getElementById('decode-parts');
+  var statusEl = document.getElementById('decode-status');
+  var outEl = document.getElementById('decode-output');
+
+  if (!raw) { errEl.textContent=''; partsEl.innerHTML=''; statusEl.innerHTML=''; outEl.innerHTML=''; return; }
+
+  var parts = raw.split('.');
+  if (parts.length !== 3) { errEl.textContent='✗ Not a valid JWT — expected 3 dot-separated parts, got ' + parts.length; partsEl.innerHTML=''; statusEl.innerHTML=''; outEl.innerHTML=''; return; }
+  errEl.textContent = '';
+
+  // parts display
+  partsEl.innerHTML =
+    '<span class="part hdr" title="Header">' + esc(parts[0].slice(0,20)+(parts[0].length>20?'…':'')) + '</span>.' +
+    '<span class="part pay" title="Payload">' + esc(parts[1].slice(0,20)+(parts[1].length>20?'…':'')) + '</span>.' +
+    '<span class="part sig" title="Signature">' + esc(parts[2].slice(0,20)+(parts[2].length>20?'…':'')) + '</span>';
+
+  var hdrRaw = b64urlDecode(parts[0]);
+  var payRaw = b64urlDecode(parts[1]);
+
+  var hdr, pay;
+  try { hdr = JSON.parse(hdrRaw); } catch(e) { hdr = null; }
+  try { pay = JSON.parse(payRaw); } catch(e) { pay = null; }
+
+  // status
+  var now = Math.floor(Date.now()/1000);
+  var statuses = [];
+  statuses.push('<div class="status-item"><div class="dot grey"></div>Signature NOT verified (client-side HMAC requires server)</div>');
+  if (pay) {
+    if (pay.exp) {
+      var expired = pay.exp < now;
+      statuses.push('<div class="status-item"><div class="dot ' + (expired?'err':'ok') + '"></div>' +
+        (expired ? 'Expired ' + relTime(pay.exp - now) + ' ago' : 'Expires in ' + relTime(pay.exp - now)) + '</div>');
+    }
+    if (pay.nbf && pay.nbf > now) {
+      statuses.push('<div class="status-item"><div class="dot warn"></div>Not valid yet (nbf in ' + relTime(pay.nbf - now) + ')</div>');
+    }
+    if (pay.iat) {
+      statuses.push('<div class="status-item"><div class="dot grey"></div>Issued ' + relTime(now - pay.iat) + ' ago</div>');
+    }
+  }
+  statusEl.innerHTML = statuses.join('');
+
+  // output
+  var html = '<div class="decode-box"><h3 class="hdr">Header</h3>';
+  if (hdr) {
+    html += kvTable(hdr, {'alg':'Algorithm','typ':'Token Type','kid':'Key ID','cty':'Content Type'});
+  } else {
+    html += '<pre>' + esc(hdrRaw || '(decode failed)') + '</pre>';
+  }
+  html += '</div>';
+
+  html += '<div class="decode-box"><h3 class="pay">Payload</h3>';
+  if (pay) {
+    html += kvTable(pay, {sub:'Subject',iss:'Issuer',aud:'Audience',exp:'Expiration',nbf:'Not Before',iat:'Issued At',jti:'JWT ID',name:'Name',email:'Email',roles:'Roles',scope:'Scope'});
+  } else {
+    html += '<pre>' + esc(payRaw || '(decode failed)') + '</pre>';
+  }
+  html += '</div>';
+
+  outEl.innerHTML = html;
+}
+
+function kvTable(obj, labels) {
+  var html = '';
+  Object.keys(obj).forEach(function(k) {
+    var v = obj[k];
+    var display = v;
+    var badge = '';
+    if ((k === 'exp' || k === 'nbf' || k === 'iat') && typeof v === 'number') {
+      display = new Date(v * 1000).toISOString() + ' (' + v + ')';
+      if (k === 'exp') {
+        var now = Math.floor(Date.now()/1000);
+        badge = v < now ? '<span class="kv-badge badge-exp">expired</span>' : '<span class="kv-badge badge-ok">valid</span>';
+      }
+    } else if (typeof v === 'object') {
+      display = JSON.stringify(v);
+    }
+    var labelHint = labels[k] ? ' title="' + labels[k] + '"' : '';
+    html += '<div class="kv-row"><span class="kv-key"' + labelHint + '>' + esc(k) + '</span><span class="kv-val">' + esc(String(display)) + badge + '</span></div>';
+  });
+  return html;
+}
+
+function relTime(secs) {
+  var abs = Math.abs(secs);
+  if (abs < 60) return abs + 's';
+  if (abs < 3600) return Math.floor(abs/60) + 'm';
+  if (abs < 86400) return Math.floor(abs/3600) + 'h ' + Math.floor((abs%3600)/60) + 'm';
+  return Math.floor(abs/86400) + 'd';
+}
+
+// ── encode ────────────────────────────────────────────────────────────────
+document.getElementById('enc-build').addEventListener('click', buildToken);
+document.getElementById('enc-random-secret').addEventListener('click', function() {
+  var arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  document.getElementById('enc-secret').value = Array.from(arr).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+});
+document.getElementById('enc-now').addEventListener('click', function() {
+  try {
+    var p = JSON.parse(document.getElementById('enc-payload').value);
+    p.iat = Math.floor(Date.now()/1000);
+    document.getElementById('enc-payload').value = JSON.stringify(p, null, 2);
+  } catch(e) {}
+});
+document.getElementById('enc-exp1h').addEventListener('click', function() {
+  try {
+    var p = JSON.parse(document.getElementById('enc-payload').value);
+    p.exp = Math.floor(Date.now()/1000) + 3600;
+    document.getElementById('enc-payload').value = JSON.stringify(p, null, 2);
+  } catch(e) {}
+});
+
+document.getElementById('enc-alg').addEventListener('change', function() {
+  try {
+    var h = JSON.parse(document.getElementById('enc-header').value);
+    h.alg = this.value;
+    document.getElementById('enc-header').value = JSON.stringify(h, null, 0);
+  } catch(e) {}
+});
+
+document.getElementById('enc-copy').addEventListener('click', function() {
+  var t = document.getElementById('enc-result').textContent;
+  if (t === '—') return;
+  navigator.clipboard.writeText(t).then(function() {
+    var btn = document.getElementById('enc-copy');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy token'; btn.classList.remove('copied'); }, 1500);
+  });
+});
+
+document.getElementById('enc-to-decode').addEventListener('click', function() {
+  var t = document.getElementById('enc-result').textContent;
+  if (t === '—') return;
+  document.getElementById('token-input').value = t;
+  document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
+  document.querySelectorAll('.section').forEach(function(x){x.classList.remove('active')});
+  document.querySelector('[data-tab="decode"]').classList.add('active');
+  document.getElementById('tab-decode').classList.add('active');
+  decode();
+});
+
+async function buildToken() {
+  var errEl = document.getElementById('enc-err');
+  var resEl = document.getElementById('enc-result');
+  errEl.textContent = '';
+
+  var alg = document.getElementById('enc-alg').value;
+  var secret = document.getElementById('enc-secret').value;
+
+  var hdrJson, payJson;
+  try { hdrJson = JSON.parse(document.getElementById('enc-header').value); } catch(e) { errEl.textContent='✗ Header JSON invalid: '+e.message; return; }
+  try { payJson = JSON.parse(document.getElementById('enc-payload').value); } catch(e) { errEl.textContent='✗ Payload JSON invalid: '+e.message; return; }
+
+  var headerB64 = b64urlEncode(JSON.stringify(hdrJson));
+  var payloadB64 = b64urlEncode(JSON.stringify(payJson));
+  var signingInput = headerB64 + '.' + payloadB64;
+
+  // HMAC sign
+  var hashAlg = { HS256:'SHA-256', HS384:'SHA-384', HS512:'SHA-512' }[alg] || 'SHA-256';
+  try {
+    var key = await crypto.subtle.importKey('raw',
+      new TextEncoder().encode(secret),
+      { name:'HMAC', hash: hashAlg },
+      false, ['sign']);
+    var sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
+    var token = signingInput + '.' + b64urlEncodeBytes(sig);
+    resEl.textContent = token;
+  } catch(e) {
+    errEl.textContent = '✗ ' + e.message;
+  }
+}
+
+// ── reference ─────────────────────────────────────────────────────────────
+var CLAIMS = [
+  ['iss','Issuer — who created the token'],
+  ['sub','Subject — who the token refers to'],
+  ['aud','Audience — intended recipient(s)'],
+  ['exp','Expiration Time — Unix timestamp (NumericDate)'],
+  ['nbf','Not Before — token invalid before this time'],
+  ['iat','Issued At — when the token was created'],
+  ['jti','JWT ID — unique identifier to prevent replay'],
+  ['name','Full name of the subject'],
+  ['email','Email address of the subject'],
+  ['roles','Array of role strings (custom claim)'],
+  ['scope','OAuth 2.0 scope string'],
+  ['azp','Authorized Party — OAuth client ID'],
+];
+
+var ALGS = [
+  ['HS256','HMAC + SHA-256 — symmetric, shared secret'],
+  ['HS384','HMAC + SHA-384 — symmetric, stronger'],
+  ['HS512','HMAC + SHA-512 — symmetric, strongest HMAC'],
+  ['RS256','RSA + SHA-256 — asymmetric, public/private key'],
+  ['RS384','RSA + SHA-384 — asymmetric'],
+  ['RS512','RSA + SHA-512 — asymmetric'],
+  ['ES256','ECDSA P-256 — asymmetric, compact signatures'],
+  ['ES384','ECDSA P-384 — asymmetric'],
+  ['PS256','RSA-PSS + SHA-256 — stronger than RS256'],
+  ['none','No signature — DANGEROUS, never use in production'],
+];
+
+var cg = document.getElementById('claims-grid');
+CLAIMS.forEach(function(c) {
+  cg.innerHTML += '<div class="claim-item"><span class="claim-key">' + esc(c[0]) + '</span><span class="claim-desc">' + esc(c[1]) + '</span></div>';
+});
+var ag = document.getElementById('alg-grid');
+ALGS.forEach(function(a) {
+  ag.innerHTML += '<div class="claim-item"><span class="claim-key">' + esc(a[0]) + '</span><span class="claim-desc">' + esc(a[1]) + '</span></div>';
+});
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// auto-decode sample on load
+decode();
+</script>
 </body>
 </html>

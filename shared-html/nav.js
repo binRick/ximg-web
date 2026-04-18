@@ -83,8 +83,7 @@
       ['proc-trace-dns','proc-trace-dns'],
       ['proc-trace-tls','proc-trace-tls'],
       ['pal','pal'],
-      ['tls-ca-fetch','tls-ca-fetch'],
-      ['github-stats','GitHub Stats']
+      ['tls-ca-fetch','tls-ca-fetch']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']

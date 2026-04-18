@@ -94,11 +94,125 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="ziggurat">
 <div class="section-title">The Ziggurat — Stairway to Heaven</div>
     <canvas id="ziggurat-canvas"></canvas>
     <div class="canvas-label">Click to offer tribute — the ziggurat rises as offerings are made to the gods</div>
 </section>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('babylon-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, t = 0;
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  const stars = Array.from({length:80}, () => ({ x: Math.random(), y: Math.random(), r: Math.random()*1.5+.3, a: Math.random()*Math.PI*2 }));
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.008;
+    stars.forEach(s => {
+      s.a += 0.006;
+      ctx.beginPath(); ctx.arc(s.x*W, s.y*H*0.6, s.r*(0.7+0.3*Math.sin(s.a)), 0, Math.PI*2);
+      ctx.fillStyle = `rgba(212,168,76,${0.2+0.15*Math.sin(s.a)})`; ctx.fill();
+    });
+    // Euphrates river
+    ctx.beginPath(); ctx.moveTo(0, H*0.8);
+    for(let x = 0; x <= W; x+=8) ctx.lineTo(x, H*0.8 + Math.sin(x/80+t)*6);
+    ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+    ctx.fillStyle = 'rgba(40,80,120,.12)'; ctx.fill();
+    // Brick texture hints
+    for(let row = 0; row < 8; row++){
+      for(let col = 0; col < 15; col++){
+        const bx = (col/15)*W + (row%2)*20, by = H*(0.65+row*0.04);
+        ctx.strokeStyle = `rgba(92,46,10,${0.04+0.02*Math.sin(t+row+col)})`; ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, W/15-2, H*0.035);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+(function(){
+  const c = document.getElementById('ziggurat-canvas');
+  const ctx = c.getContext('2d');
+  let W = 0, H = 0;
+  function initSize(){
+    const w = c.offsetWidth;
+    if(w > 0 && (c.width !== w || c.height !== 240)){
+      c.width = w; c.height = 240;
+      W = w; H = 240;
+    }
+  }
+  let offerings = [], t = 0, glow = 0;
+  c.addEventListener('click', e => {
+    const r = c.getBoundingClientRect();
+    offerings.push({ x: e.clientX-r.left, y: e.clientY-r.top, t: 0 });
+    glow = 1.0;
+  });
+  function drawZiggurat(glowAmt){
+    const cx = W/2, baseY = H-30, levels = 5;
+    const baseW = W*0.55, baseH = H*0.6;
+    for(let i = levels-1; i >= 0; i--){
+      const frac = i/levels;
+      const lw = baseW*(1-frac*0.65);
+      const lh = baseH/levels;
+      const lx = cx - lw/2;
+      const ly = baseY - (levels-i)*lh;
+      const r = Math.floor(92 + i*20 + glowAmt*30);
+      const g = Math.floor(46 + i*10 + glowAmt*20);
+      const b = Math.floor(10 + i*5);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(lx, ly, lw, lh);
+      // Bricks
+      ctx.strokeStyle = `rgba(0,0,0,${0.3-glowAmt*0.1})`; ctx.lineWidth = 1;
+      for(let bx = lx; bx < lx+lw; bx+=20){
+        ctx.beginPath(); ctx.moveTo(bx,ly); ctx.lineTo(bx,ly+lh); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(lx,ly+lh/2); ctx.lineTo(lx+lw,ly+lh/2); ctx.stroke();
+      ctx.strokeStyle = `rgba(212,168,76,${0.1+glowAmt*0.3})`; ctx.lineWidth = 1;
+      ctx.strokeRect(lx,ly,lw,lh);
+    }
+    // Temple top
+    const tW = baseW*0.2, tH = 30, tX = cx-tW/2, tY = baseY - levels*baseH/levels - tH;
+    ctx.fillStyle = `rgb(${180+Math.floor(glowAmt*40)},${90+Math.floor(glowAmt*20)},20)`;
+    ctx.fillRect(tX, tY, tW, tH);
+    if(glowAmt > 0.1){
+      const flame = ctx.createRadialGradient(cx, tY, 0, cx, tY, 40*glowAmt);
+      flame.addColorStop(0,'rgba(255,200,50,.6)'); flame.addColorStop(1,'transparent');
+      ctx.fillStyle = flame; ctx.beginPath(); ctx.arc(cx,tY,40*glowAmt,0,Math.PI*2); ctx.fill();
+    }
+  }
+  function frame(){
+    initSize();
+    if(!W){ requestAnimationFrame(frame); return; }
+    ctx.clearRect(0,0,W,H); t += 0.016;
+    // Night sky
+    const sky = ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'rgba(4,2,1,1)'); sky.addColorStop(1,'rgba(10,5,2,1)');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+    // Stars
+    for(let i = 0; i < 40; i++){
+      const sx = (i*137.5%100)/100*W, sy = (i*71.3%60)/100*H;
+      ctx.beginPath(); ctx.arc(sx,sy,0.8,0,Math.PI*2);
+      ctx.fillStyle = `rgba(212,168,76,${0.4+0.3*Math.sin(t+i)})`; ctx.fill();
+    }
+    glow = Math.max(0, glow - 0.02);
+    drawZiggurat(glow);
+    // Offerings
+    offerings = offerings.filter(o => o.t < 2);
+    offerings.forEach(o => {
+      o.t += 0.04;
+      ctx.font = `${18+o.t*5}px serif`; ctx.fillStyle = `rgba(212,168,76,${1-o.t/2})`; ctx.textAlign = 'center';
+      ctx.fillText('🙏', o.x, o.y - o.t*30);
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

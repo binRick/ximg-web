@@ -319,6 +319,7 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="timeline">
 <div class="section-title">MS-DOS Timeline</div>
     <div class="timeline">
@@ -408,6 +409,60 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
       </div>
     </div>
 </section>
+</div>
+<script>
+// ── Background canvas — CRT scan lines + blue glow ──────────────────────────
+var canvas = document.getElementById('dos-canvas');
+var ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Horizontal scan lines scrolling slowly downward
+var scanOffset = 0;
+
+function drawFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw scan lines — groups of bright lines with dark gaps, scrolling down
+  var lineSpacing = 4;
+  var lineHeight = 1;
+  var speed = 0.3;
+
+  scanOffset = (scanOffset + speed) % lineSpacing;
+
+  ctx.strokeStyle = 'rgba(85,255,255,0.22)';
+  ctx.lineWidth = lineHeight;
+
+  for (var y = -lineSpacing + scanOffset; y < canvas.height + lineSpacing; y += lineSpacing) {
+    // Vary brightness slightly across the screen height for CRT curvature effect
+    var brightness = 0.15 + 0.07 * Math.sin(y / canvas.height * Math.PI);
+    ctx.strokeStyle = 'rgba(85,255,255,' + brightness + ')';
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  // Subtle vertical phosphor glow bands
+  for (var i = 0; i < 5; i++) {
+    var gx = (canvas.width / 5) * i + canvas.width / 10;
+    var grad = ctx.createLinearGradient(gx - 60, 0, gx + 60, 0);
+    grad.addColorStop(0, 'rgba(0,80,160,0)');
+    grad.addColorStop(0.5, 'rgba(0,80,160,0.04)');
+    grad.addColorStop(1, 'rgba(0,80,160,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(gx - 60, 0, 120, canvas.height);
+  }
+
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

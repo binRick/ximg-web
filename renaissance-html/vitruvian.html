@@ -72,11 +72,108 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="vitruvian">
 <div class="section-title">The Vitruvian Man — Human Proportion</div>
     <canvas id="vitruvian-canvas"></canvas>
     <div class="canvas-label">Move your cursor to rotate the figure — exploring Leonardo's study of the ideal human proportions</div>
 </section>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('renaissance-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, t = 0;
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.005;
+    // Golden ratio spirals
+    for(let i=0;i<5;i++){
+      const s = 0.3+i*0.15; const ang = t*0.2+i;
+      ctx.beginPath(); ctx.arc(W/2+Math.cos(ang)*W*0.1, H/2+Math.sin(ang)*H*0.1, 80*s, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(200,144,44,${0.02+i*0.01})`; ctx.lineWidth = 1; ctx.stroke();
+    }
+    for(let i=0;i<50;i++){
+      const sx=(i*137.5%100)/100*W, sy=(i*71.3%50)/100*H*0.5;
+      ctx.beginPath(); ctx.arc(sx,sy,0.7,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,180,140,${0.2+0.1*Math.sin(t+i)})`; ctx.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+(function(){
+  const c = document.getElementById('vitruvian-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth; c.height = 250;
+  const W = c.width, H = c.height;
+  let mx = W/2, t = 0, armAngle = 0;
+  c.addEventListener('mousemove', e => { const r=c.getBoundingClientRect(); mx=e.clientX-r.left; });
+  function drawVitruvianMan(cx, cy, r, armAng){
+    // Circle
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(200,144,44,.3)'; ctx.lineWidth=1; ctx.stroke();
+    // Square
+    const s = r*1.2;
+    ctx.strokeStyle='rgba(200,144,44,.2)'; ctx.lineWidth=1;
+    ctx.strokeRect(cx-s*0.55,cy-s*0.6,s*1.1,s*1.2);
+    // Golden cross lines
+    ctx.strokeStyle='rgba(200,144,44,.1)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(cx-r,cy); ctx.lineTo(cx+r,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx,cy+r); ctx.stroke();
+    const h = r*1.6; // body height
+    // Head
+    ctx.beginPath(); ctx.arc(cx, cy-h*0.38, h*0.1, 0, Math.PI*2);
+    ctx.strokeStyle='rgba(200,144,44,.5)'; ctx.lineWidth=1.5; ctx.stroke();
+    // Body
+    ctx.strokeStyle='rgba(200,144,44,.5)';
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.28); ctx.lineTo(cx, cy+h*0.1); ctx.stroke();
+    // Arms (two positions)
+    const armLen = h*0.45;
+    // Down arms
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.2); ctx.lineTo(cx-armLen, cy-h*0.05); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.2); ctx.lineTo(cx+armLen, cy-h*0.05); ctx.stroke();
+    // Up arms (faded)
+    const upY = cy - h*0.32;
+    ctx.strokeStyle = `rgba(200,144,44,${0.2+0.15*Math.sin(armAng)})`;
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.2); ctx.lineTo(cx-armLen*0.9, upY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.2); ctx.lineTo(cx+armLen*0.9, upY); ctx.stroke();
+    // Legs
+    ctx.strokeStyle='rgba(200,144,44,.5)';
+    ctx.beginPath(); ctx.moveTo(cx,cy+h*0.1); ctx.lineTo(cx-h*0.2,cy+h*0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy+h*0.1); ctx.lineTo(cx+h*0.2,cy+h*0.5); ctx.stroke();
+    // Spread legs (faded)
+    ctx.strokeStyle=`rgba(200,144,44,${0.2+0.15*Math.sin(armAng+1)})`;
+    ctx.beginPath(); ctx.moveTo(cx,cy+h*0.1); ctx.lineTo(cx-h*0.35,cy+h*0.45); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy+h*0.1); ctx.lineTo(cx+h*0.35,cy+h*0.45); ctx.stroke();
+    // Proportion lines
+    ctx.strokeStyle='rgba(200,144,44,.1)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(cx-armLen,cy-h*0.05); ctx.lineTo(cx+armLen,cy-h*0.05); ctx.stroke();
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.02;
+    armAngle = t;
+    // Parchment background
+    const bg = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W/2);
+    bg.addColorStop(0,'rgba(30,22,12,.9)'); bg.addColorStop(1,'rgba(5,4,3,.95)');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // Measurement grid hints
+    ctx.strokeStyle='rgba(200,144,44,.03)'; ctx.lineWidth=1;
+    for(let x=0;x<W;x+=20){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let y=0;y<H;y+=20){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    const cx = W/2 + (mx-W/2)*0.02;
+    drawVitruvianMan(cx, H/2, H*0.37, armAngle);
+    // Label
+    ctx.font='italic 11px Georgia'; ctx.fillStyle='rgba(200,144,44,.4)'; ctx.textAlign='center';
+    ctx.fillText('"The human body is the measure of all things" — Leonardo da Vinci', W/2, H-8);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

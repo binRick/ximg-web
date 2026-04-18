@@ -13,6 +13,8 @@ body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-seri
 .tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
 .tab-btn.active{color:#ef4444;border-bottom-color:#ef4444}
 .tab-btn:hover:not(.active){color:#e2e8f0}
+.tab-panel{display:none;padding:1.5rem}
+.tab-panel.active{display:block}
 canvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px}
 .controls{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;align-items:center}
 .ctrl{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#94a3b8}
@@ -42,27 +44,17 @@ h2{color:#ef4444;margin-bottom:1rem;font-size:1.2rem}
 </style>
 </head>
 <body>
+
 <nav class="sub-nav">
-  <a class="tab-btn " href="index.html">SIR Simulation</a>
-  <a class="tab-btn" href="curves.html">SIR Curves</a>
-  <a class="tab-btn" href="interventions.html">Interventions</a>
-  <a class="tab-btn" href="params.html">Parameters</a>
+  <button class="tab-btn active" data-tab="sim">SIR Simulation</button>
+  <button class="tab-btn" data-tab="curves">SIR Curves</button>
+  <button class="tab-btn" data-tab="interventions">Interventions</button>
+  <button class="tab-btn" data-tab="params">Parameters</button>
 </nav>
 
-<script>
-(function(){
-  var p = location.pathname;
-  document.querySelectorAll('a[href]').forEach(function(a){
-    var h = a.getAttribute('href');
-    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
-    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/epidemic') || p.endsWith('index.html')))) {
-      a.classList.add('active');
-    }
-  });
-})();
-</script>
-<section id="sim">
-<h2>SIR Agent-Based Simulation</h2>
+<!-- TAB 1: SIR Simulation -->
+<div class="tab-panel active" id="tab-sim">
+  <h2>SIR Agent-Based Simulation</h2>
   <div class="controls">
     <div class="ctrl"><label>Transmission β</label><input type="range" id="simBeta" min="0.01" max="0.5" step="0.01" value="0.15"><span id="simBetaVal" style="color:#ef4444">0.15</span></div>
     <div class="ctrl"><label>Recovery γ</label><input type="range" id="simGamma" min="0.005" max="0.05" step="0.001" value="0.02"><span id="simGammaVal" style="color:#22c55e">0.020</span></div>
@@ -82,7 +74,477 @@ h2{color:#ef4444;margin-bottom:1rem;font-size:1.2rem}
 </div>
 
 <!-- TAB 2: SIR Curves -->
-</section>
+<div class="tab-panel" id="tab-curves">
+  <h2>SIR Population Curves</h2>
+  <div class="controls">
+    <div class="ctrl"><label>β (transmission)</label><input type="range" id="curveBeta" min="0.01" max="0.5" step="0.01" value="0.15"><span id="curveBetaVal" style="color:#ef4444">0.15</span></div>
+    <div class="ctrl"><label>γ (recovery)</label><input type="range" id="curveGamma" min="0.005" max="0.1" step="0.001" value="0.02"><span id="curveGammaVal" style="color:#22c55e">0.020</span></div>
+    <div class="ctrl"><label>N (population)</label><input type="range" id="curveN" min="100" max="2000" step="100" value="500"><span id="curveNVal" style="color:#94a3b8">500</span></div>
+    <button class="btn" id="curveRun">Run Simulation</button>
+    <button class="btn" id="curveClear">Clear</button>
+  </div>
+  <div class="stats-row" id="curveStats"></div>
+  <canvas id="curveCanvas"></canvas>
+  <div class="info-box">
+    <h3>Differential SIR Equations</h3>
+    <span class="formula">dS/dt = -β·S·I/N</span> &nbsp;
+    <span class="formula">dI/dt = β·S·I/N - γ·I</span> &nbsp;
+    <span class="formula">dR/dt = γ·I</span><br><br>
+    The <b style="color:#ef4444">peak of the red curve</b> is when the healthcare system is most stressed. R₀ = β/γ — if &gt;1, epidemic grows; if &lt;1, it fades.
+  </div>
+</div>
+
+<!-- TAB 3: Interventions -->
+<div class="tab-panel" id="tab-interventions">
+  <h2>Flattening the Curve — Interventions</h2>
+  <div class="controls">
+    <div class="ctrl"><label>Social distance</label><input type="range" id="intSocial" min="0" max="1" step="0.1" value="0"><span id="intSocialVal" style="color:#f59e0b">OFF</span></div>
+    <div class="ctrl"><label>Vaccination %</label><input type="range" id="intVax" min="0" max="80" step="5" value="0"><span id="intVaxVal" style="color:#22c55e">0%</span></div>
+    <div class="ctrl"><label>Quarantine</label><button class="btn" id="intQuarBtn">OFF</button></div>
+    <div class="ctrl"><label>Speed</label><input type="range" id="intSpeed" min="1" max="5" step="1" value="2"></div>
+    <button class="btn" id="intReset">Reset</button>
+  </div>
+  <div class="stats-row" id="intStats"></div>
+  <canvas id="intCanvas"></canvas>
+  <div class="info-box" id="intInfoBox">
+    <h3>Interventions</h3>
+    <b style="color:#f59e0b">Social distancing</b> — reduces movement speed, lowering contact rate and effective β.<br>
+    <b style="color:#22c55e">Vaccination</b> — converts susceptible dots directly to recovered (immune) at start.<br>
+    <b style="color:#3b82f6">Quarantine</b> — infected individuals stop moving, reducing transmission dramatically.
+  </div>
+</div>
+
+<!-- TAB 4: Parameters -->
+<div class="tab-panel" id="tab-params">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;">
+    <figure style="margin:0" id="img-sir-model">
+      <img src="images/sir-model.svg" alt="SIR epidemic model diagram showing transitions between Susceptible, Infected, and Recovered states" style="border-radius:8px;max-width:100%;display:block;background:#fff;padding:0.5rem;" onerror="this.closest('figure').style.display='none'" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">SIR model — state transitions with rates β and γ</figcaption>
+    </figure>
+    <figure style="margin:0" id="img-sir-graph">
+      <img src="images/sir-graph.png" alt="SIR model simulation graph showing S, I, R curves over time" style="border-radius:8px;max-width:100%;display:block;" onerror="this.closest('figure').style.display='none'" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">SIR simulation — S, I, R curves over time</figcaption>
+    </figure>
+    <figure style="margin:0" id="img-virus">
+      <img src="images/influenza-virus.jpg" alt="Influenza virus particle colored electron microscopy image" style="border-radius:8px;max-width:100%;display:block;" onerror="this.closest('figure').style.display='none'" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">Influenza virus particle — electron microscopy</figcaption>
+    </figure>
+  </div>
+  <h2>Epidemiology Parameters</h2>
+  <div class="controls">
+    <div class="ctrl"><label>β (0–0.5)</label><input type="range" id="paramBeta" min="0.01" max="0.5" step="0.01" value="0.15"><span id="paramBetaVal" style="color:#ef4444">0.15</span></div>
+    <div class="ctrl"><label>γ (0.005–0.1)</label><input type="range" id="paramGamma" min="0.005" max="0.1" step="0.001" value="0.02"><span id="paramGammaVal" style="color:#22c55e">0.020</span></div>
+  </div>
+  <div class="two-col">
+    <div>
+      <canvas id="paramCanvas" style="height:260px"></canvas>
+    </div>
+    <div>
+      <div class="info-box" style="margin-top:0">
+        <h3>Your Parameters</h3>
+        <table class="param-table" id="paramTable"></table>
+      </div>
+      <div class="info-box" style="margin-top:1rem">
+        <h3>Historical R₀ Values</h3>
+        <table class="param-table">
+          <tr><td>Measles</td><td>R₀ ≈ 12–18</td></tr>
+          <tr><td>Whooping cough</td><td>R₀ ≈ 12–17</td></tr>
+          <tr><td>Chickenpox</td><td>R₀ ≈ 10–12</td></tr>
+          <tr><td>Mumps</td><td>R₀ ≈ 4–7</td></tr>
+          <tr><td>COVID-19 (Delta)</td><td>R₀ ≈ 5–6</td></tr>
+          <tr><td>COVID-19 (original)</td><td>R₀ ≈ 2–3</td></tr>
+          <tr><td>Seasonal flu</td><td>R₀ ≈ 1.3</td></tr>
+          <tr><td>Ebola</td><td>R₀ ≈ 1.5–2.5</td></tr>
+          <tr><td>SARS (2003)</td><td>R₀ ≈ 2–5</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="info-box" style="margin-top:1rem">
+    <h3>Key Formulas</h3>
+    <span class="formula">R₀ = β / γ</span> &nbsp;—&nbsp; Basic reproduction number (avg new infections per infected person)<br>
+    <span class="formula">Herd immunity threshold = 1 − 1/R₀</span> &nbsp;—&nbsp; Fraction of population that must be immune to stop spread<br>
+    <span class="formula">Peak infection time ≈ ln(N·β/γ) / (β−γ)</span>
+  </div>
+</div>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────────────────────────
+const tabBtns   = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+let activeTab='sim';
+
+tabBtns.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    tabBtns.forEach(b=>b.classList.remove('active'));
+    tabPanels.forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    const id=btn.dataset.tab;
+    document.getElementById('tab-'+id).classList.add('active');
+    activeTab=id;
+    if (id==='params') updateParamTab();
+    if (id==='curves') runCurveSim();
+  });
+});
+
+function resizeCanvas(canvas,ratio) {
+  ratio=ratio||0.5;
+  const w=Math.min(canvas.parentElement.clientWidth,1200);
+  canvas.width=w; canvas.height=Math.round(w*ratio);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared agent-based engine
+// ─────────────────────────────────────────────────────────────────────────────
+const STATE_S=0, STATE_I=1, STATE_R=2;
+const PERSON_R=4;
+const INFECT_DIST=12;
+
+function createPopulation(canvas, N, initI, vaccPct) {
+  const W=canvas.width, H=canvas.height;
+  const people=[];
+  const vaxCount=Math.floor(N*vaccPct/100);
+  for (let i=0;i<N;i++) {
+    const state = i<initI ? STATE_I : (i<initI+vaxCount ? STATE_R : STATE_S);
+    people.push({
+      x:PERSON_R+Math.random()*(W-PERSON_R*2),
+      y:PERSON_R+Math.random()*(H-PERSON_R*2),
+      vx:(Math.random()-.5)*2,
+      vy:(Math.random()-.5)*2,
+      state,
+      infectTimer:state===STATE_I ? Math.floor(Math.random()*100):0
+    });
+  }
+  return people;
+}
+
+function stepPeople(people, beta, gamma, W, H, socialDist, quarantine) {
+  const speedMult = 1-socialDist*0.8;
+  people.forEach(p=>{
+    if (quarantine && p.state===STATE_I) return; // quarantined: don't move
+    p.x+=p.vx*speedMult; p.y+=p.vy*speedMult;
+    if (p.x<PERSON_R||p.x>W-PERSON_R) p.vx*=-1;
+    if (p.y<PERSON_R||p.y>H-PERSON_R) p.vy*=-1;
+    p.x=Math.max(PERSON_R,Math.min(W-PERSON_R,p.x));
+    p.y=Math.max(PERSON_R,Math.min(H-PERSON_R,p.y));
+  });
+
+  // Infection
+  const infected=people.filter(p=>p.state===STATE_I);
+  infected.forEach(ip=>{
+    people.forEach(sp=>{
+      if (sp.state!==STATE_S) return;
+      const dx=ip.x-sp.x, dy=ip.y-sp.y;
+      if (dx*dx+dy*dy < INFECT_DIST*INFECT_DIST) {
+        if (Math.random()<beta) sp.state=STATE_I;
+      }
+    });
+    if (Math.random()<gamma) ip.state=STATE_R;
+  });
+}
+
+function drawPeople(ctx, people, W, H) {
+  ctx.clearRect(0,0,W,H);
+  people.forEach(p=>{
+    ctx.beginPath(); ctx.arc(p.x,p.y,PERSON_R,0,Math.PI*2);
+    if (p.state===STATE_S) ctx.fillStyle='rgba(200,200,220,0.7)';
+    else if (p.state===STATE_I) ctx.fillStyle='rgba(239,68,68,0.9)';
+    else ctx.fillStyle='rgba(34,197,94,0.8)';
+    ctx.fill();
+  });
+}
+
+function countStates(people) {
+  let S=0,I=0,R=0;
+  people.forEach(p=>{ if(p.state===STATE_S)S++; else if(p.state===STATE_I)I++; else R++; });
+  return {S,I,R,N:people.length};
+}
+
+function renderStats(el, {S,I,R,N}, beta, gamma) {
+  const R0=(beta/gamma).toFixed(2);
+  el.innerHTML=
+    `<div class="stat-pill stat-S">S: ${S}</div>`+
+    `<div class="stat-pill stat-I">I: ${I}</div>`+
+    `<div class="stat-pill stat-R">R: ${R}</div>`+
+    `<div class="stat-pill stat-R0">R₀ = ${R0}</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 1 — SIR Simulation
+// ─────────────────────────────────────────────────────────────────────────────
+const simCanvas=document.getElementById('simCanvas');
+const simCtx=simCanvas.getContext('2d');
+const SIM_N=200;
+let simPeople=[];
+
+function initSim() {
+  resizeCanvas(simCanvas, 0.55);
+  const initI=parseInt(document.getElementById('simInitI').value);
+  simPeople=createPopulation(simCanvas, SIM_N, initI, 0);
+}
+
+function drawSimLoop() {
+  if (activeTab!=='sim') return;
+  resizeCanvas(simCanvas, 0.55);
+  const W=simCanvas.width, H=simCanvas.height;
+  const beta=parseFloat(document.getElementById('simBeta').value);
+  const gamma=parseFloat(document.getElementById('simGamma').value);
+  const speed=parseInt(document.getElementById('simSpeed').value);
+
+  for (let s=0;s<speed;s++) stepPeople(simPeople, beta, gamma, W, H, 0, false);
+  drawPeople(simCtx, simPeople, W, H);
+  renderStats(document.getElementById('simStats'), countStates(simPeople), beta, gamma);
+  requestAnimationFrame(drawSimLoop);
+}
+
+['simBeta','simGamma','simInitI'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',function(){
+    const v=parseFloat(this.value);
+    const suffix=id==='simInitI'?'':id==='simGamma'?this.value:'';
+    document.getElementById(id+'Val').textContent=id==='simGamma'?v.toFixed(3):v;
+  });
+});
+document.getElementById('simReset').addEventListener('click',initSim);
+
+initSim();
+drawSimLoop();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 2 — SIR Curves (ODE simulation)
+// ─────────────────────────────────────────────────────────────────────────────
+const curveCanvas=document.getElementById('curveCanvas');
+const curveCtx=curveCanvas.getContext('2d');
+let curveHistory=[];
+
+function runCurveSim() {
+  resizeCanvas(curveCanvas, 0.45);
+  const beta=parseFloat(document.getElementById('curveBeta').value);
+  const gamma=parseFloat(document.getElementById('curveGamma').value);
+  const N=parseInt(document.getElementById('curveN').value);
+  const R0=(beta/gamma);
+  const herd=Math.max(0,1-1/R0);
+
+  let S=N-1, I=1, R=0;
+  curveHistory=[];
+  for (let t=0;t<1500;t++) {
+    const dS=-beta*S*I/N;
+    const dR=gamma*I;
+    const dI=beta*S*I/N-gamma*I;
+    S+=dS; I+=dI; R+=dR;
+    if (S<0)S=0; if (I<0)I=0; if (R>N)R=N;
+    curveHistory.push({S,I,R});
+    if (I<0.1&&t>50) break;
+  }
+
+  const peakI=Math.max(...curveHistory.map(h=>h.I));
+  const peakT=curveHistory.findIndex(h=>h.I===peakI);
+
+  document.getElementById('curveStats').innerHTML=
+    `<div class="stat-pill stat-I">Peak infected: ${Math.round(peakI)} (${(peakI/N*100).toFixed(1)}%) at t=${peakT}</div>`+
+    `<div class="stat-pill stat-R0">R₀ = ${R0.toFixed(2)}</div>`+
+    `<div class="stat-pill" style="border-color:#22c55e;color:#22c55e">Herd immunity: ${(herd*100).toFixed(1)}%</div>`;
+
+  drawCurves();
+}
+
+function drawCurves() {
+  resizeCanvas(curveCanvas, 0.45);
+  const W=curveCanvas.width, H=curveCanvas.height;
+  const ctx=curveCtx;
+  ctx.clearRect(0,0,W,H);
+  if (!curveHistory.length) return;
+
+  const N=parseInt(document.getElementById('curveN').value);
+  const T=curveHistory.length;
+  const padL=50, padR=20, padT=20, padB=30;
+  const gW=W-padL-padR, gH=H-padT-padB;
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const y=padT+gH*(1-f);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+gW,y); ctx.stroke();
+    ctx.fillStyle='#475569'; ctx.font='10px Segoe UI'; ctx.textAlign='right';
+    ctx.fillText(Math.round(f*N),padL-4,y+3);
+  });
+
+  const LINES=[
+    {key:'S',color:'#94a3b8',label:'Susceptible'},
+    {key:'I',color:'#ef4444',label:'Infected'},
+    {key:'R',color:'#22c55e',label:'Recovered'},
+  ];
+
+  LINES.forEach(({key,color,label})=>{
+    ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    curveHistory.forEach((h,t)=>{
+      const x=padL+t/T*gW;
+      const y=padT+gH*(1-h[key]/N);
+      t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    // Legend
+    const li=LINES.indexOf(LINES.find(l=>l.key===key));
+    ctx.fillStyle=color; ctx.font='11px Segoe UI'; ctx.textAlign='left';
+    ctx.fillText(label, padL+10+li*120, padT+16);
+  });
+
+  // Peak marker
+  const peakI=Math.max(...curveHistory.map(h=>h.I));
+  const peakT=curveHistory.findIndex(h=>h.I===peakI);
+  const px=padL+peakT/T*gW;
+  ctx.strokeStyle='rgba(239,68,68,0.5)'; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(px,padT); ctx.lineTo(px,padT+gH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#ef4444'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText('peak', px, padT+gH+20);
+
+  // Axes
+  ctx.strokeStyle='#334155'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+gH); ctx.lineTo(padL+gW,padT+gH); ctx.stroke();
+  ctx.fillStyle='#475569'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText('Time (steps)', padL+gW/2, H-4);
+}
+
+['curveBeta','curveGamma','curveN'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',function(){
+    const v=parseFloat(this.value);
+    document.getElementById(id+'Val').textContent=id==='curveGamma'?v.toFixed(3):v;
+  });
+});
+document.getElementById('curveRun').addEventListener('click',runCurveSim);
+document.getElementById('curveClear').addEventListener('click',()=>{ curveHistory=[]; drawCurves(); });
+
+runCurveSim();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 3 — Interventions
+// ─────────────────────────────────────────────────────────────────────────────
+const intCanvas=document.getElementById('intCanvas');
+const intCtx=intCanvas.getContext('2d');
+const INT_N=200;
+const INT_BETA=0.18, INT_GAMMA=0.015;
+let intPeople=[];
+let quarantineActive=false;
+
+function initInt() {
+  resizeCanvas(intCanvas,0.55);
+  const vaxPct=parseInt(document.getElementById('intVax').value);
+  intPeople=createPopulation(intCanvas, INT_N, 3, vaxPct);
+}
+
+document.getElementById('intQuarBtn').addEventListener('click',()=>{
+  quarantineActive=!quarantineActive;
+  document.getElementById('intQuarBtn').textContent=quarantineActive?'ON':'OFF';
+  document.getElementById('intQuarBtn').classList.toggle('active-btn',quarantineActive);
+});
+
+document.getElementById('intSocial').addEventListener('input',function(){
+  const v=parseFloat(this.value);
+  document.getElementById('intSocialVal').textContent=v===0?'OFF':Math.round(v*100)+'%';
+});
+document.getElementById('intVax').addEventListener('input',function(){
+  document.getElementById('intVaxVal').textContent=this.value+'%';
+});
+document.getElementById('intReset').addEventListener('click',initInt);
+
+function drawIntLoop() {
+  if (activeTab!=='interventions') return;
+  resizeCanvas(intCanvas,0.55);
+  const W=intCanvas.width, H=intCanvas.height;
+  const social=parseFloat(document.getElementById('intSocial').value);
+  const speed=parseInt(document.getElementById('intSpeed').value);
+
+  for (let s=0;s<speed;s++) stepPeople(intPeople, INT_BETA, INT_GAMMA, W, H, social, quarantineActive);
+  drawPeople(intCtx, intPeople, W, H);
+
+  // Draw quarantine rings
+  if (quarantineActive) {
+    intCtx.strokeStyle='rgba(59,130,246,0.3)'; intCtx.lineWidth=1;
+    intPeople.filter(p=>p.state===STATE_I).forEach(p=>{
+      intCtx.beginPath(); intCtx.arc(p.x,p.y,INFECT_DIST,0,Math.PI*2); intCtx.stroke();
+    });
+  }
+
+  renderStats(document.getElementById('intStats'), countStates(intPeople), INT_BETA, INT_GAMMA);
+  requestAnimationFrame(drawIntLoop);
+}
+
+initInt();
+drawIntLoop();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 4 — Parameters
+// ─────────────────────────────────────────────────────────────────────────────
+const paramCanvas=document.getElementById('paramCanvas');
+const paramCtx=paramCanvas.getContext('2d');
+
+function updateParamTab() {
+  resizeCanvas(paramCanvas, 0.55);
+  const beta=parseFloat(document.getElementById('paramBeta').value);
+  const gamma=parseFloat(document.getElementById('paramGamma').value);
+  const R0=beta/gamma;
+  const herd=Math.max(0,1-1/R0);
+  const N=1000;
+
+  // Run ODE
+  let S=N-1,I=1,R=0;
+  const history=[];
+  for (let t=0;t<1000;t++) {
+    const dI=beta*S*I/N-gamma*I;
+    S-=beta*S*I/N; I+=dI; R+=gamma*(I-dI);
+    if (S<0)S=0; if(I<0)I=0;
+    history.push({S,I,R});
+    if(I<0.1&&t>20)break;
+  }
+
+  document.getElementById('paramTable').innerHTML=`
+    <tr><td>β (transmission rate)</td><td>${beta.toFixed(3)}</td></tr>
+    <tr><td>γ (recovery rate)</td><td>${gamma.toFixed(3)}</td></tr>
+    <tr><td>R₀ = β/γ</td><td style="color:${R0>1?'#ef4444':'#22c55e'};font-weight:700">${R0.toFixed(2)}</td></tr>
+    <tr><td>Infectious period</td><td>${(1/gamma).toFixed(1)} days</td></tr>
+    <tr><td>Herd immunity threshold</td><td>${(herd*100).toFixed(1)}%</td></tr>
+    <tr><td>Epidemic status</td><td style="color:${R0>1?'#ef4444':'#22c55e'}">${R0>1?'GROWING':'DECLINING'}</td></tr>
+  `;
+
+  // Draw mini curve
+  const W=paramCanvas.width, H=paramCanvas.height;
+  const ctx=paramCtx;
+  ctx.clearRect(0,0,W,H);
+  const T=history.length;
+  const pad=30;
+
+  const lines=[{key:'S',c:'#94a3b8'},{key:'I',c:'#ef4444'},{key:'R',c:'#22c55e'}];
+  lines.forEach(({key,c})=>{
+    ctx.strokeStyle=c; ctx.lineWidth=2;
+    ctx.beginPath();
+    history.forEach((h,t)=>{
+      const x=pad+t/T*(W-pad*2);
+      const y=pad+((H-pad*2)*(1-h[key]/N));
+      t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  });
+
+  // R0 bar
+  ctx.fillStyle='#1e293b'; ctx.fillRect(pad,H-20,W-pad*2,10);
+  ctx.fillStyle=R0>5?'#ef4444':R0>2?'#f97316':'#22c55e';
+  ctx.fillRect(pad,H-20,Math.min((R0/20)*(W-pad*2),W-pad*2),10);
+  ctx.fillStyle='#64748b'; ctx.font='10px Segoe UI'; ctx.textAlign='left';
+  ctx.fillText(`R₀ = ${R0.toFixed(2)} (0–20 scale)`,pad,H-24);
+}
+
+['paramBeta','paramGamma'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',function(){
+    const v=parseFloat(this.value);
+    document.getElementById(id+'Val').textContent=id==='paramGamma'?v.toFixed(3):v;
+    if(activeTab==='params') updateParamTab();
+  });
+});
+
+updateParamTab();
+</script>
+
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

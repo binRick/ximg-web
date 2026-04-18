@@ -80,6 +80,7 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="steam">
 <div class="section-title">Steam Engine — Power of the Industrial Age</div>
     <canvas id="steam-canvas"></canvas>
@@ -220,6 +221,111 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
 </body>
 </html>
 </section>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('industrial-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, t = 0;
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  const embers = Array.from({length:60}, () => ({ x: Math.random(), y: Math.random(), r: Math.random()*2+.5, a: Math.random()*Math.PI*2, vy: -Math.random()*0.5-0.2 }));
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.01;
+    embers.forEach(e => {
+      e.a += 0.01; e.y += e.vy; if(e.y < -0.1) e.y = 1.1;
+      ctx.beginPath(); ctx.arc(e.x*W, e.y*H, e.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(212,80,16,${0.2+0.15*Math.sin(e.a)})`; ctx.fill();
+    });
+    // Factory chimneys smoke
+    for(let i=0;i<5;i++){
+      const cx = (i*0.2+0.1)*W;
+      for(let p=0;p<3;p++){
+        const py = 0.3+(p*0.15 + ((t*0.5+i+p)%0.5));
+        if(py < 0 || py > 0.8) continue;
+        ctx.beginPath(); ctx.arc(cx, py*H, 15+p*8, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(50,40,30,${0.06-p*0.01})`; ctx.fill();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+(function(){
+  const c = document.getElementById('steam-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth; c.height = 220;
+  const W = c.width, H = c.height;
+  let t = 0, trainX = 0, speed = 1.5, coal = 5, puffs = [];
+  c.addEventListener('click', () => { coal = Math.min(20, coal+3); speed = Math.min(6, speed+0.5); });
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.02;
+    // Sky with soot
+    ctx.fillStyle = 'rgba(4,3,3,.97)'; ctx.fillRect(0,0,W,H);
+    // Industrial skyline
+    for(let i=0;i<8;i++){
+      const fx = i*(W/7.5), fw = 20+i*8, fh = 40+i*20;
+      ctx.fillStyle = `rgba(${20+i*3},${15+i*2},${10+i*2},.9)`;
+      ctx.fillRect(fx, H*0.55-fh, fw, fh);
+      // Chimney
+      ctx.fillStyle = 'rgba(30,20,15,.9)'; ctx.fillRect(fx+fw*0.3,H*0.55-fh-25,8,25);
+      // Smoke
+      for(let s=0;s<3;s++){
+        const sy = H*0.55-fh-25 - (((t*0.4+i+s*0.3)%0.8))*60;
+        ctx.beginPath(); ctx.arc(fx+fw*0.3+4, sy, 8+s*4, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(50,40,30,${0.1-s*0.02})`; ctx.fill();
+      }
+    }
+    // Track
+    ctx.fillStyle = 'rgba(80,60,40,.8)'; ctx.fillRect(0,H*0.72,W,6);
+    for(let i=0;i<W/30;i++){
+      ctx.fillStyle = 'rgba(60,45,30,.6)'; ctx.fillRect(i*30,H*0.7,4,14);
+    }
+    // Puffs
+    puffs = puffs.filter(p=>p.alpha>0.01);
+    puffs.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.r += 0.5; p.alpha -= 0.015;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = `rgba(180,160,140,${p.alpha})`; ctx.fill();
+    });
+    // Locomotive
+    trainX = (trainX + speed) % (W + 200);
+    const lx = trainX - 150, ly = H*0.7-30;
+    // Coal car
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(lx-60,ly+5,50,25);
+    // Body
+    ctx.fillStyle = '#3a2a20'; ctx.fillRect(lx,ly,80,25);
+    // Boiler
+    ctx.fillStyle = '#5a3a20';
+    ctx.beginPath(); ctx.ellipse(lx+80,ly+12,20,12,0,0,Math.PI*2); ctx.fill();
+    // Smokestack
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(lx+55,ly-20,10,20);
+    ctx.fillStyle = '#3a2a10'; ctx.fillRect(lx+52,ly-22,16,6);
+    // Wheels
+    [lx+15,lx+45,lx+70].forEach(wx=>{
+      ctx.beginPath(); ctx.arc(wx,ly+30,12,0,Math.PI*2);
+      ctx.fillStyle='#4a3020'; ctx.fill();
+      ctx.strokeStyle='#8a6040'; ctx.lineWidth=2; ctx.stroke();
+      // Spokes
+      for(let s=0;s<6;s++){
+        const sa=(s/6)*Math.PI*2+t*2*speed/3;
+        ctx.beginPath(); ctx.moveTo(wx,ly+30); ctx.lineTo(wx+Math.cos(sa)*10,ly+30+Math.sin(sa)*10);
+        ctx.strokeStyle='rgba(100,80,60,.8)'; ctx.lineWidth=1.5; ctx.stroke();
+      }
+    });
+    // Add puffs
+    if(Math.random()<0.3) puffs.push({ x:lx+60, y:ly-20, vx:speed*0.3+Math.random()*0.5, vy:-Math.random()*1-0.5, r:5, alpha:0.6 });
+    // Coal meter
+    ctx.font='11px monospace'; ctx.fillStyle='rgba(200,144,44,.7)'; ctx.textAlign='left';
+    ctx.fillText(`COAL: ${'▓'.repeat(Math.floor(coal))}${'░'.repeat(20-Math.floor(coal))} SPEED: ${speed.toFixed(1)}km/h x10`, 8, 15);
+    coal = Math.max(1, coal-0.01); speed = Math.max(1, speed-0.005);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

@@ -69,11 +69,102 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="longship">
 <div class="section-title">The Longship — Terror of the Seas</div>
     <canvas id="longship-canvas"></canvas>
     <div class="canvas-label">Click to summon more longships — the Norse fleet crosses the North Sea</div>
 </section>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('vikings-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, t = 0;
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  const stars = Array.from({length:120}, () => ({ x: Math.random(), y: Math.random()*0.5, r: Math.random()*1.2+.3, a: Math.random()*Math.PI*2 }));
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.006;
+    // Northern lights
+    for(let i=0;i<3;i++){
+      ctx.beginPath();
+      ctx.moveTo(0, H*0.2+i*20);
+      for(let x=0;x<=W;x+=20) ctx.lineTo(x, H*0.2+i*20+Math.sin(x/200+t+i)*30);
+      ctx.strokeStyle = `rgba(${[0,20,40][i]},${[180,200,160][i]},${[100,180,100][i]},${0.04+0.02*Math.sin(t+i)})`; ctx.lineWidth = 15-i*3; ctx.stroke();
+    }
+    stars.forEach(s => {
+      s.a += 0.003;
+      ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(160,176,192,${0.3+0.15*Math.sin(s.a)})`; ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+(function(){
+  const c = document.getElementById('longship-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth; c.height = 220;
+  const W = c.width, H = c.height;
+  let ships = [], t = 0;
+  function addShip(){ ships.push({ x: -120, y: H*0.55+(Math.random()-.5)*40, sp: 0.8+Math.random()*0.6, scale: 0.7+Math.random()*0.5 }); }
+  for(let i=0;i<3;i++) ships.push({ x: (i+1)*W/4, y: H*0.55+(Math.random()-.5)*40, sp: 0.8+Math.random()*0.6, scale: 0.7+Math.random()*0.5 });
+  c.addEventListener('click', () => { for(let i=0;i<2;i++) addShip(); });
+  function drawShip(x, y, sc, tt){
+    ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+    // Hull
+    ctx.beginPath(); ctx.moveTo(-60,0); ctx.quadraticCurveTo(-50,20, 0, 22); ctx.quadraticCurveTo(50,20, 60,0);
+    ctx.quadraticCurveTo(50,-5, 0,-8); ctx.quadraticCurveTo(-50,-5,-60,0);
+    ctx.fillStyle = '#3a2010'; ctx.fill();
+    ctx.strokeStyle = '#6b3810'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Oar ports
+    for(let i=-3;i<=3;i++){
+      ctx.beginPath(); ctx.arc(i*15, 10, 3, 0, Math.PI*2);
+      ctx.fillStyle = '#1a0808'; ctx.fill();
+    }
+    // Mast
+    ctx.strokeStyle = '#5a3018'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-80); ctx.stroke();
+    // Sail
+    const sailWave = Math.sin(tt*2)*5;
+    ctx.beginPath(); ctx.moveTo(-5,-70); ctx.quadraticCurveTo(sailWave+30,-50, sailWave+35,-20); ctx.lineTo(-5,-20); ctx.closePath();
+    ctx.fillStyle = 'rgba(180,60,30,.85)'; ctx.fill();
+    // Dragon head (prow)
+    ctx.fillStyle = '#8b4020';
+    ctx.beginPath(); ctx.moveTo(60,0); ctx.quadraticCurveTo(75,-10,80,-5); ctx.quadraticCurveTo(75,5,60,0); ctx.fill();
+    ctx.restore();
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.02;
+    // Sea
+    const sea = ctx.createLinearGradient(0, H*0.4, 0, H);
+    sea.addColorStop(0,'rgba(10,26,42,.9)'); sea.addColorStop(1,'rgba(2,4,10,.95)');
+    ctx.fillStyle = sea; ctx.fillRect(0,0,W,H);
+    // Waves
+    for(let i=0;i<8;i++){
+      ctx.beginPath(); const wy = H*0.4+i*H*0.08;
+      ctx.moveTo(0,wy);
+      for(let x=0;x<=W;x+=6) ctx.lineTo(x, wy+Math.sin(x/60+t+i)*4);
+      ctx.strokeStyle = `rgba(100,140,180,${0.06-i*0.005})`; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ships.sort((a,b)=>a.scale-b.scale);
+    ships.forEach(s => {
+      s.x += s.sp; s.y += Math.sin(t*1.5+s.x/100)*0.3;
+      drawShip(s.x, s.y, s.scale, t);
+    });
+    for(let i=ships.length-1;i>=0;i--) if(ships[i].x > W+120) ships.splice(i,1);
+    if(ships.length < 3) addShip();
+    // Moon
+    ctx.beginPath(); ctx.arc(W*0.85, H*0.12, 20, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(200,210,220,.8)'; ctx.fill();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

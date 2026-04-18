@@ -39,6 +39,8 @@
     }
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
     /* Cards */
     .card {
@@ -129,30 +131,20 @@
   </style>
 </head>
 <body>
-<div class="tab-nav">
-    <a class="tab-btn " href="index.html">Tokenizer</a>
-    <a class="tab-btn" href="temperature.html">Temperature</a>
-    <a class="tab-btn" href="sampling.html">Top-k / Top-p</a>
-    <a class="tab-btn" href="compare.html">Compare</a>
-  </div>
-
-<script>
-(function(){
-  var p = location.pathname;
-  document.querySelectorAll('a[href]').forEach(function(a){
-    var h = a.getAttribute('href');
-    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
-    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/playground') || p.endsWith('index.html')))) {
-      a.classList.add('active');
-    }
-  });
-})();
-</script>
 <div class="page">
   <h1><span>AI Playground</span></h1>
   <p class="subtitle">Interactive explorer for core LLM concepts — tokenization, temperature, sampling strategies.</p>
-<section id="tokenizer">
-<div class="card">
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="tokenizer">Tokenizer</button>
+    <button class="tab-btn" data-tab="temperature">Temperature</button>
+    <button class="tab-btn" data-tab="sampling">Top-k / Top-p</button>
+    <button class="tab-btn" data-tab="compare">Compare</button>
+  </div>
+
+  <!-- TAB 1: TOKENIZER -->
+  <div class="tab-panel active" id="tab-tokenizer">
+    <div class="card">
       <h2>Tokenizer</h2>
       <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Type text below to see how it gets split into tokens. Uses a BPE-like simulation with common English merges.</p>
       <textarea id="tok-input" rows="4" placeholder="Type something like: The quick brown fox jumps over the lazy dog. Tokenization is fascinating!">The quick brown fox jumps over the lazy dog. Tokenization is fascinating!</textarea>
@@ -176,7 +168,436 @@
   </div>
 
   <!-- TAB 2: TEMPERATURE -->
-</section>
+  <div class="tab-panel" id="tab-temperature">
+    <div class="card">
+      <h2>Temperature Explorer</h2>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Temperature scales the logits before softmax. Low values make the model more deterministic; high values flatten the distribution.</p>
+      <div class="slider-row">
+        <label>Temperature:</label>
+        <input type="range" id="temp-slider" min="0" max="200" value="100" step="5">
+        <span class="slider-val" id="temp-val">1.00</span>
+      </div>
+      <div class="explain-box" id="temp-zone-desc"></div>
+      <div class="section-title" style="margin-top:1rem;">Prompt: "The sky is ___"  — Next token probability distribution</div>
+      <div class="bar-chart" id="temp-bars"></div>
+      <div class="math-block" id="temp-math"></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: TOP-K / TOP-P -->
+  <div class="tab-panel" id="tab-sampling">
+    <div class="card">
+      <h2>Top-k / Top-p Sampling</h2>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Given the next-token probability distribution, see which words are included at different k and p values. <strong style="color:var(--accent)">Purple = included</strong>, grey = excluded.</p>
+      <div class="slider-row">
+        <label>Top-k:</label>
+        <input type="range" id="topk-slider" min="1" max="10" value="4" step="1">
+        <span class="slider-val" id="topk-val">4</span>
+      </div>
+      <div class="slider-row">
+        <label>Top-p (nucleus):</label>
+        <input type="range" id="topp-slider" min="1" max="100" value="85" step="1">
+        <span class="slider-val" id="topp-val">0.85</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
+        <div>
+          <div class="section-title">Top-k Result</div>
+          <div class="word-grid" id="topk-words"></div>
+          <div style="margin-top:.5rem;font-size:.8rem;color:var(--muted)" id="topk-desc"></div>
+        </div>
+        <div>
+          <div class="section-title">Top-p (Nucleus) Result</div>
+          <div class="word-grid" id="topp-words"></div>
+          <div style="margin-top:.5rem;font-size:.8rem;color:var(--muted)" id="topp-desc"></div>
+        </div>
+      </div>
+      <div class="bar-chart" id="sampling-bars" style="margin-top:1rem;"></div>
+      <div class="explain-box" style="margin-top:1rem;">
+        <strong>Top-k</strong> keeps only the k most likely tokens, then renormalizes.<br>
+        <strong>Top-p (nucleus)</strong> keeps the smallest set of tokens whose cumulative probability ≥ p.<br>
+        Both strategies prevent the model from sampling very unlikely (weird) tokens.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: COMPARE -->
+  <div class="tab-panel" id="tab-compare">
+    <div class="card">
+      <h2>Temperature Comparison</h2>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Same prompt, same model — different temperatures produce dramatically different outputs.</p>
+
+      <div style="margin-bottom:.75rem;">
+        <span class="section-title">Prompt:</span>
+        <span style="font-size:.87rem;font-family:'Courier New',monospace;color:var(--text);margin-left:.5rem;" id="compare-prompt-display">"The old house at the end of the street…"</span>
+      </div>
+
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <button class="tab-btn active" id="cpbtn-1" onclick="setComparePrompt(0)">Story continuation</button>
+        <button class="tab-btn" id="cpbtn-2" onclick="setComparePrompt(1)">Code completion</button>
+        <button class="tab-btn" id="cpbtn-3" onclick="setComparePrompt(2)">Factual Q&amp;A</button>
+      </div>
+
+      <div class="compare-grid" id="compare-grid"></div>
+
+      <div class="explain-box" style="margin-top:1rem;">
+        <strong>Why does temperature matter?</strong><br>
+        Creative tasks (stories, poems, brainstorming) benefit from <strong>higher temperature</strong> (0.8–1.4) because diversity and surprise are desirable.
+        Factual tasks (code, math, Q&amp;A) benefit from <strong>lower temperature</strong> (0.0–0.4) because precision and reproducibility matter more than novelty.
+        At temperature 0, the model always picks the single most likely token — fully deterministic.
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/shared/nav.js?v=3"></script>
+<script>
+// ── Tab navigation ────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Tokenizer ─────────────────────────────────────────────────────────────────
+const TOKEN_COLORS = [
+  ['rgba(139,92,246,.25)','#8b5cf6'],['rgba(236,72,153,.25)','#ec4899'],
+  ['rgba(16,185,129,.25)','#10b981'],['rgba(245,158,11,.25)','#f59e0b'],
+  ['rgba(59,130,246,.25)','#3b82f6'],['rgba(239,68,68,.25)','#ef4444'],
+  ['rgba(6,182,212,.25)','#06b6d4'],['rgba(168,85,247,.25)','#a855f7'],
+];
+
+// BPE-like simulation: common English subword merges
+const BPE_PAIRS = {
+  'tokeniz': 1, 'ation': 2, 'ing': 3, 'tion': 4, 'ed': 5, 'ly': 6,
+  'er': 7, 'ing': 8, 'ness': 9, 'ful': 10, 'less': 11, 'ment': 12,
+  'un': 13, 're': 14, 'pre': 15, 'over': 16, 'under': 17, 'inter': 18,
+  'ent': 19, 'al': 20, 'ic': 21, 'ive': 22, 'ous': 23, 'ible': 24, 'able': 25
+};
+
+// Common whole-word tokens (very high frequency words get their own token)
+const WHOLE_WORDS = new Set([
+  'the','a','an','in','on','at','to','of','and','or','but','not','is','are',
+  'was','were','be','been','have','has','had','will','would','could','should',
+  'may','might','do','did','does','for','with','from','by','as','this','that',
+  'it','he','she','we','they','you','I','my','your','his','her','its','our',
+  'if','when','while','then','than','more','most','some','all','any','no',
+  'up','down','out','so','can','get','got','go','gone','just','also','about',
+  'after','before','between','through','over','under','into','onto','upon',
+  'quick','brown','fox','jumps','lazy','dog','old','new','good','great',
+  'fascinating','interesting','amazing','beautiful','simple','complex'
+]);
+
+const PUNCTUATION = new Set(['.','!','?',',',';',':','-','\'','"','(',')','[',']','{','}','...','\\n','\\t']);
+
+let tokenIdCounter = 1000;
+const tokenIdMap = {};
+
+function getTokenId(tok) {
+  if (!tokenIdMap[tok]) {
+    tokenIdMap[tok] = tokenIdCounter++;
+  }
+  return tokenIdMap[tok];
+}
+
+function classifyToken(tok) {
+  const clean = tok.replace(/[^a-zA-Z0-9]/g, '');
+  if (!clean) return 'punctuation';
+  if (/^\d+$/.test(clean)) return 'number';
+  if (WHOLE_WORDS.has(tok.toLowerCase())) return 'whole-word';
+  for (const p of Object.keys(BPE_PAIRS)) {
+    if (tok.toLowerCase().startsWith(p) || tok.toLowerCase().endsWith(p)) return 'subword';
+  }
+  if (tok.length <= 2) return 'subword';
+  return 'whole-word';
+}
+
+function tokenize(text) {
+  if (!text.trim()) return [];
+  const tokens = [];
+  // Split on whitespace, punctuation
+  const parts = text.split(/(\s+|[.,!?;:'"()\[\]{}\-…])/);
+  for (const part of parts) {
+    if (!part) continue;
+    if (/^\s+$/.test(part)) {
+      // Encode spaces as part of next token (BPE style — space before word)
+      continue;
+    }
+    const word = part.toLowerCase();
+    if (WHOLE_WORDS.has(word) || /^[0-9]+$/.test(part)) {
+      tokens.push(part);
+    } else if (PUNCTUATION.has(part) || /^[^a-zA-Z0-9]+$/.test(part)) {
+      tokens.push(part);
+    } else if (part.length <= 3) {
+      tokens.push(part);
+    } else {
+      // Try BPE-like splitting
+      let remaining = part;
+      let splitTokens = [];
+      let found = false;
+      for (const prefix of Object.keys(BPE_PAIRS)) {
+        if (remaining.toLowerCase().startsWith(prefix) && remaining.length > prefix.length) {
+          splitTokens.push(remaining.slice(0, prefix.length));
+          splitTokens.push(remaining.slice(prefix.length));
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // Suffix split
+        for (const suffix of Object.keys(BPE_PAIRS)) {
+          if (remaining.toLowerCase().endsWith(suffix) && remaining.length > suffix.length) {
+            splitTokens.push(remaining.slice(0, -suffix.length));
+            splitTokens.push(remaining.slice(-suffix.length));
+            found = true;
+            break;
+          }
+        }
+      }
+      if (found && splitTokens.length > 0) {
+        tokens.push(...splitTokens);
+      } else {
+        // fallback: split every 4 chars
+        for (let i = 0; i < part.length; i += 4) tokens.push(part.slice(i, i + 4));
+      }
+    }
+  }
+  return tokens.filter(t => t.length > 0);
+}
+
+function renderTokenizer() {
+  const text = document.getElementById('tok-input').value;
+  const tokens = tokenize(text);
+  const words = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0) : [];
+
+  document.getElementById('stat-chars').textContent = text.length;
+  document.getElementById('stat-tokens').textContent = tokens.length;
+  document.getElementById('stat-words').textContent = words.length;
+  document.getElementById('stat-ratio').textContent = words.length ? (tokens.length / words.length).toFixed(2) : '0.00';
+  const totalLen = tokens.reduce((s, t) => s + t.length, 0);
+  document.getElementById('stat-avglen').textContent = tokens.length ? (totalLen / tokens.length).toFixed(2) : '0.00';
+
+  const display = document.getElementById('tok-display');
+  if (!tokens.length) { display.textContent = 'Type text above…'; return; }
+  display.innerHTML = tokens.map((tok, i) => {
+    const [bg, border] = TOKEN_COLORS[i % TOKEN_COLORS.length];
+    return `<span class="token-chip" style="background:${bg};border:1px solid ${border};color:${border};" title="Token ${i+1}: ID ${getTokenId(tok)}">${escHtml(tok)}</span>`;
+  }).join('');
+
+  const tbody = document.getElementById('tok-table-body');
+  tbody.innerHTML = tokens.map((tok, i) => {
+    const [bg, col] = TOKEN_COLORS[i % TOKEN_COLORS.length];
+    const cls = classifyToken(tok);
+    const bytes = new TextEncoder().encode(tok).length;
+    const clsColor = cls === 'whole-word' ? 'var(--green)' : cls === 'subword' ? 'var(--accent)' : cls === 'punctuation' ? 'var(--pink)' : 'var(--muted)';
+    return `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><span class="token-chip" style="background:${bg};border:1px solid ${col};color:${col};">${escHtml(tok)}</span></td>
+      <td style="font-family:'Courier New',monospace;color:var(--text)">${getTokenId(tok)}</td>
+      <td style="color:var(--muted)">${bytes}</td>
+      <td style="color:${clsColor};font-size:.78rem;font-weight:600">${cls}</td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('tok-input').addEventListener('input', renderTokenizer);
+renderTokenizer();
+
+// ── Temperature ───────────────────────────────────────────────────────────────
+const TEMP_WORDS = [
+  { word: 'blue', logit: 3.8 },
+  { word: 'clear', logit: 3.2 },
+  { word: 'bright', logit: 2.9 },
+  { word: 'cloudy', logit: 2.1 },
+  { word: 'dark', logit: 1.5 },
+  { word: 'gray', logit: 1.2 },
+  { word: 'pink', logit: 0.3 },
+  { word: 'orange', logit: -0.2 },
+];
+
+function softmax(logits, temp) {
+  const t = Math.max(temp, 0.01);
+  const scaled = logits.map(l => l / t);
+  const maxV = Math.max(...scaled);
+  const exps = scaled.map(l => Math.exp(l - maxV));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
+}
+
+function renderTemperature() {
+  const sliderVal = parseInt(document.getElementById('temp-slider').value);
+  const temp = sliderVal / 100;
+  document.getElementById('temp-val').textContent = temp.toFixed(2);
+
+  const logits = TEMP_WORDS.map(w => w.logit);
+  const probs = softmax(logits, temp);
+
+  let zone, zoneColor, desc;
+  if (temp < 0.2) { zone = 'Deterministic'; zoneColor = '#10b981'; desc = 'The model almost always picks the single most likely token. Responses are highly consistent and predictable — good for code generation and factual tasks.'; }
+  else if (temp < 0.6) { zone = 'Focused'; zoneColor = '#3b82f6'; desc = 'High probability tokens dominate, but some diversity exists. Great for tasks requiring accuracy with slight variation.'; }
+  else if (temp < 1.1) { zone = 'Balanced'; zoneColor = '#8b5cf6'; desc = 'Natural, balanced distribution. The model\'s default behavior — good for general chat and creative tasks that need to stay coherent.'; }
+  else if (temp < 1.6) { zone = 'Creative'; zoneColor = '#f59e0b'; desc = 'Lower-probability tokens become viable. Outputs become more surprising and varied — ideal for creative writing, brainstorming, and poetry.'; }
+  else { zone = 'Chaotic'; zoneColor = '#ef4444'; desc = 'Distribution nearly flat. Almost any token can be selected. Outputs may be incoherent, surprising, or absurd.'; }
+
+  document.getElementById('temp-zone-desc').innerHTML = `<strong style="color:${zoneColor}">Zone: ${zone}</strong> — ${desc}`;
+
+  const bars = document.getElementById('temp-bars');
+  const maxProb = Math.max(...probs);
+  bars.innerHTML = TEMP_WORDS.map((w, i) => {
+    const pct = probs[i] * 100;
+    const widthPct = (probs[i] / maxProb) * 100;
+    const isTop = i === 0;
+    const barColor = isTop ? 'linear-gradient(90deg,var(--accent),var(--pink))' : 'rgba(139,92,246,.4)';
+    return `<div class="bar-row">
+      <span class="bar-label">"${w.word}"</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${widthPct}%;background:${barColor}">${pct > 5 ? pct.toFixed(1)+'%' : ''}</div>
+      </div>
+      <span class="bar-pct">${pct.toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+
+  // Math display
+  const topIdx = probs.indexOf(Math.max(...probs));
+  const topLogit = TEMP_WORDS[topIdx].logit;
+  const scaledLogit = (topLogit / temp).toFixed(3);
+  document.getElementById('temp-math').innerHTML =
+    `<div>softmax(z<sub>i</sub> / T) where T = <span class="hl">${temp.toFixed(2)}</span></div>` +
+    `<div style="margin-top:.4rem">Top token: "${TEMP_WORDS[topIdx].word}"  logit = ${topLogit} / T = ${scaledLogit}</div>` +
+    `<div>P("${TEMP_WORDS[topIdx].word}") = exp(${scaledLogit}) / Σ exp(all / T) = <span class="hl">${(probs[topIdx]*100).toFixed(2)}%</span></div>`;
+}
+
+document.getElementById('temp-slider').addEventListener('input', renderTemperature);
+renderTemperature();
+
+// ── Top-k / Top-p ─────────────────────────────────────────────────────────────
+const SAMPLE_WORDS = [
+  { word: 'beautiful', prob: 0.28 },
+  { word: 'clear',     prob: 0.22 },
+  { word: 'perfect',   prob: 0.15 },
+  { word: 'lovely',    prob: 0.10 },
+  { word: 'warm',      prob: 0.07 },
+  { word: 'bright',    prob: 0.06 },
+  { word: 'pleasant',  prob: 0.05 },
+  { word: 'nice',      prob: 0.04 },
+  { word: 'grand',     prob: 0.02 },
+  { word: 'vivid',     prob: 0.01 },
+];
+
+function renderSampling() {
+  const k = parseInt(document.getElementById('topk-slider').value);
+  const p = parseInt(document.getElementById('topp-slider').value) / 100;
+  document.getElementById('topk-val').textContent = k;
+  document.getElementById('topp-val').textContent = p.toFixed(2);
+
+  // Top-k: keep top k words
+  const topkIncluded = new Set(SAMPLE_WORDS.slice(0, k).map(w => w.word));
+  // Top-p: accumulate until p
+  let cumulative = 0;
+  const toppIncluded = new Set();
+  for (const w of SAMPLE_WORDS) {
+    toppIncluded.add(w.word);
+    cumulative += w.prob;
+    if (cumulative >= p) break;
+  }
+
+  document.getElementById('topk-words').innerHTML = SAMPLE_WORDS.map(w =>
+    `<div class="word-chip ${topkIncluded.has(w.word) ? 'included' : 'excluded'}">${w.word}<br><small style="font-size:.7rem;opacity:.7">${(w.prob*100).toFixed(0)}%</small></div>`
+  ).join('');
+  document.getElementById('topk-desc').textContent = `${k} tokens included, ${SAMPLE_WORDS.length - k} excluded.`;
+
+  document.getElementById('topp-words').innerHTML = SAMPLE_WORDS.map(w =>
+    `<div class="word-chip ${toppIncluded.has(w.word) ? 'included' : 'excluded'}">${w.word}<br><small style="font-size:.7rem;opacity:.7">${(w.prob*100).toFixed(0)}%</small></div>`
+  ).join('');
+  const toppCumulative = SAMPLE_WORDS.filter(w => toppIncluded.has(w.word)).reduce((s, w) => s + w.prob, 0);
+  document.getElementById('topp-desc').textContent = `${toppIncluded.size} tokens cover ${(toppCumulative*100).toFixed(1)}% of probability mass.`;
+
+  // Bar chart showing both
+  const bars = document.getElementById('sampling-bars');
+  bars.innerHTML = SAMPLE_WORDS.map((w, i) => {
+    const inK = topkIncluded.has(w.word);
+    const inP = toppIncluded.has(w.word);
+    const colorK = inK ? 'var(--accent)' : 'rgba(100,116,139,.3)';
+    const colorP = inP ? 'var(--pink)' : 'rgba(100,116,139,.3)';
+    const widthPct = w.prob * 100 / 0.28 * 100;
+    return `<div class="bar-row" style="margin:.2rem 0">
+      <span class="bar-label" style="font-size:.78rem">${w.word}</span>
+      <div style="flex:1;display:flex;gap:3px;align-items:center;">
+        <div style="flex:1;height:10px;background:#0a0a20;border-radius:3px;overflow:hidden;">
+          <div style="width:${widthPct}%;height:100%;background:${colorK};border-radius:3px;transition:background .2s"></div>
+        </div>
+        <div style="flex:1;height:10px;background:#0a0a20;border-radius:3px;overflow:hidden;">
+          <div style="width:${widthPct}%;height:100%;background:${colorP};border-radius:3px;transition:background .2s"></div>
+        </div>
+      </div>
+      <span class="bar-pct" style="font-size:.75rem">${(w.prob*100).toFixed(0)}%</span>
+    </div>`;
+  }).join('');
+  bars.insertAdjacentHTML('afterbegin', `<div style="display:flex;gap:.5rem;margin-bottom:.5rem;font-size:.75rem;">
+    <span style="color:var(--muted);min-width:90px"></span>
+    <span style="flex:1;color:var(--accent);font-weight:600">Top-k</span>
+    <span style="flex:1;color:var(--pink);font-weight:600">Top-p</span>
+    <span style="min-width:50px"></span>
+  </div>`);
+}
+
+document.getElementById('topk-slider').addEventListener('input', renderSampling);
+document.getElementById('topp-slider').addEventListener('input', renderSampling);
+renderSampling();
+
+// ── Compare ───────────────────────────────────────────────────────────────────
+const COMPARE_PROMPTS = [
+  {
+    prompt: '"The old house at the end of the street…"',
+    low: { temp: '0.1', label: 'Low Temperature', text: 'The old house at the end of the street was abandoned. It had been empty for many years. The windows were broken. The door was locked. Nobody lived there anymore.' },
+    high: { temp: '1.4', label: 'High Temperature', text: 'The old house at the end of the street breathed differently at dusk — its peeling paint exhaling decades of forgotten laughter, its crooked weathervane pointing toward some oblique memory only the wind remembered.' }
+  },
+  {
+    prompt: '"def fibonacci(n):"',
+    low: { temp: '0.0', label: 'Low Temperature', text: 'def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)' },
+    high: { temp: '1.5', label: 'High Temperature', text: 'def fibonacci(n):\n    # Actually let\'s think about this differently\n    golden = (1 + 5**0.5) / 2\n    return round(golden**n / 5**0.5)\n    # Wait, or maybe use memoization... actually decorators!' }
+  },
+  {
+    prompt: '"What is the capital of France?"',
+    low: { temp: '0.0', label: 'Low Temperature', text: 'The capital of France is Paris.' },
+    high: { temp: '1.6', label: 'High Temperature', text: 'Ah, France! The capital is Paris, though historically Lyon was quite significant, and some argue Versailles had its era of political primacy, but officially speaking — Paris! City of lights, croissants, existentialism...' }
+  }
+];
+
+let currentPromptIdx = 0;
+
+function setComparePrompt(idx) {
+  currentPromptIdx = idx;
+  [1,2,3].forEach((n,i) => {
+    const btn = document.getElementById(`cpbtn-${n}`);
+    btn.classList.toggle('active', i === idx);
+  });
+  renderCompare();
+}
+
+function renderCompare() {
+  const cp = COMPARE_PROMPTS[currentPromptIdx];
+  document.getElementById('compare-prompt-display').textContent = cp.prompt;
+  document.getElementById('compare-grid').innerHTML = `
+    <div class="compare-card">
+      <div class="label low">Low Temperature</div>
+      <span class="temp-badge low">T = ${cp.low.temp}</span>
+      <p>${cp.low.text.replace(/\n/g,'<br>')}</p>
+    </div>
+    <div class="compare-card">
+      <div class="label high">High Temperature</div>
+      <span class="temp-badge high">T = ${cp.high.temp}</span>
+      <p>${cp.high.text.replace(/\n/g,'<br>')}</p>
+    </div>`;
+}
+
+renderCompare();
+</script>
 </body>
 </html>

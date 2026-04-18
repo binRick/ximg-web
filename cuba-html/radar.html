@@ -95,11 +95,253 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="radar">
 <div class="section-title">NORAD Early Warning Radar</div>
     <canvas id="radar-canvas"></canvas>
     <div class="canvas-label">Click to add missile contacts — rotating sweep detects inbound targets · Range rings: 500 / 1000 / 1500 / 2000 mi</div>
 </section>
+</div>
+<script>
+// ── Background radar sweep canvas ──────────────────────────────────────────
+(function(){
+  const c = document.getElementById('cuba-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, angle = 0;
+  const blips = [];
+  for(let i = 0; i < 12; i++){
+    const a = Math.random() * Math.PI * 2;
+    const r = 0.15 + Math.random() * 0.38;
+    blips.push({ a, r, alpha: Math.random() });
+  }
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  function frame(){
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) * 0.42;
+    // Range rings
+    for(let i = 1; i <= 4; i++){
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * i / 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,180,0,${0.06 + i * 0.015})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // Cross
+    ctx.strokeStyle = 'rgba(0,160,0,0.05)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+    // Sweep trail
+    angle += 0.006;
+    for(let trail = 0; trail < 30; trail++){
+      const ta = angle - trail * 0.025;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, ta, ta + 0.027);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(0,200,0,${(30 - trail) / 30 * 0.04})`;
+      ctx.fill();
+    }
+    // Sweep line
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * R, cy + Math.sin(angle) * R);
+    ctx.strokeStyle = 'rgba(0,255,0,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Blips
+    blips.forEach(b => {
+      const bx = cx + Math.cos(b.a) * b.r * R;
+      const by = cy + Math.sin(b.a) * b.r * R;
+      const diff = ((angle - b.a) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      if(diff < 0.12) b.alpha = 0.9;
+      else b.alpha = Math.max(0.02, b.alpha - 0.003);
+      ctx.beginPath();
+      ctx.arc(bx, by, 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,255,0,${b.alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+// ── Interactive radar canvas ────────────────────────────────────────────────
+(function(){
+  const c = document.getElementById('radar-canvas');
+  const ctx = c.getContext('2d');
+  function setSize(){
+    c.width = c.offsetWidth;
+    c.height = Math.min(Math.floor(c.offsetWidth * 0.65), 480);
+  }
+  setSize();
+  window.addEventListener('resize', setSize);
+
+  const contacts = [];
+  // Seed some initial contacts
+  for(let i = 0; i < 7; i++){
+    const a = Math.random() * Math.PI * 2;
+    const d = (0.2 + Math.random() * 0.72);
+    contacts.push({ rx: Math.cos(a) * d, ry: Math.sin(a) * d, alpha: 0.3 + Math.random() * 0.5, label: i < 3 ? 'TGT' : null });
+  }
+
+  c.addEventListener('click', function(e){
+    const rect = c.getBoundingClientRect();
+    const W = c.width, H = c.height;
+    const cx = W / 2, cy = H / 2;
+    const R = Math.min(cx, cy) - 36;
+    const mx = e.clientX - rect.left - cx;
+    const my = e.clientY - rect.top - cy;
+    const dist = Math.sqrt(mx * mx + my * my);
+    if(dist < R){
+      contacts.push({ rx: mx / R, ry: my / R, alpha: 1, label: 'MSLE', new: true });
+    }
+  });
+
+  let angle = 0;
+  const RANGE_LABELS = ['500mi', '1000mi', '1500mi', '2000mi'];
+  const COMPASS = [
+    { label: 'N', a: -Math.PI / 2 },
+    { label: 'E', a: 0 },
+    { label: 'S', a: Math.PI / 2 },
+    { label: 'W', a: Math.PI }
+  ];
+
+  function frame(){
+    const W = c.width, H = c.height;
+    const cx = W / 2, cy = H / 2;
+    const R = Math.min(cx, cy) - 36;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,8,2,0.98)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Outer circle clip
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,160,0,0.35)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Range rings
+    for(let i = 1; i <= 4; i++){
+      const ri = R * i / 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ri, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,170,0,${0.1 + i * 0.04})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Range label
+      ctx.font = '10px monospace';
+      ctx.fillStyle = 'rgba(0,200,0,0.45)';
+      ctx.textAlign = 'center';
+      ctx.fillText(RANGE_LABELS[i - 1], cx, cy - ri + 12);
+    }
+
+    // Cross hairs
+    ctx.strokeStyle = 'rgba(0,180,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+    // Diagonal guides
+    for(let d = 0; d < 4; d++){
+      const da = d * Math.PI / 4 + Math.PI / 8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(da) * R, cy + Math.sin(da) * R);
+      ctx.strokeStyle = 'rgba(0,160,0,0.07)';
+      ctx.stroke();
+    }
+
+    // Compass labels
+    COMPASS.forEach(comp => {
+      const lx = cx + Math.cos(comp.a) * (R + 20);
+      const ly = cy + Math.sin(comp.a) * (R + 20) + 4;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = 'rgba(0,220,0,0.7)';
+      ctx.textAlign = 'center';
+      ctx.fillText(comp.label, lx, ly);
+    });
+
+    // Sweep trail
+    angle += 0.025;
+    for(let trail = 0; trail < 24; trail++){
+      const ta = angle - trail * 0.035;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, ta, ta + 0.037);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(0,220,0,${(24 - trail) / 24 * 0.1})`;
+      ctx.fill();
+    }
+
+    // Sweep line
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * R, cy + Math.sin(angle) * R);
+    const sweepGrad = ctx.createLinearGradient(cx, cy, cx + Math.cos(angle) * R, cy + Math.sin(angle) * R);
+    sweepGrad.addColorStop(0, 'rgba(0,255,80,0.8)');
+    sweepGrad.addColorStop(1, 'rgba(0,255,80,0.0)');
+    ctx.strokeStyle = sweepGrad;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Contacts
+    contacts.forEach(ct => {
+      const bx = cx + ct.rx * R;
+      const by = cy + ct.ry * R;
+      const diff = ((angle - Math.atan2(ct.ry, ct.rx)) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      if(diff < 0.1) ct.alpha = 1;
+      else ct.alpha = Math.max(0.05, ct.alpha - 0.006);
+
+      // Glow
+      if(ct.alpha > 0.3){
+        ctx.beginPath();
+        ctx.arc(bx, by, 8, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0,255,80,${ct.alpha * 0.12})`;
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(bx, by, 4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,255,80,${ct.alpha})`;
+      ctx.fill();
+
+      if(ct.label && ct.alpha > 0.25){
+        ctx.font = '9px monospace';
+        ctx.fillStyle = `rgba(0,220,80,${ct.alpha * 0.85})`;
+        ctx.textAlign = 'left';
+        ctx.fillText(ct.label, bx + 7, by - 3);
+      }
+    });
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,255,80,0.9)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,255,80,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Title label
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = 'rgba(0,200,0,0.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText('NORAD EARLY WARNING RADAR — CHEYENNE MTN', cx, H - 10);
+
+    ctx.restore();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

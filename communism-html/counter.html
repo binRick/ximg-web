@@ -49,6 +49,7 @@
     .card-deaths { font-size: .85rem; font-weight: 700; color: var(--red); margin-bottom: .4rem; letter-spacing: .04em; }
     .card-sub { font-size: .75rem; color: #a04040; font-variant: small-caps; margin-bottom: .4rem; letter-spacing: .06em; }
     .card-desc { font-size: .82rem; color: var(--text); line-height: 1.55; }
+    .card-img { width: 100%; height: 180px; object-fit: cover; object-position: top center; border-radius: 6px; margin-bottom: .7rem; filter: grayscale(30%) contrast(1.05); }
     .card-desc ul { padding-left: 1.1rem; margin-top: .4rem; }
     .card-desc li { margin-bottom: .3rem; }
     .card-promise { font-size: .82rem; color: #70b070; font-style: italic; margin-bottom: .35rem; line-height: 1.4; }
@@ -115,6 +116,7 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="counter">
 <div class="section-title">Death Counter</div>
     <canvas id="counter-canvas"></canvas>
@@ -402,6 +404,253 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
 </body>
 </html>
 </section>
+</div>
+<script>
+// ── Ash/ember background canvas ─────────────────────────────────────────────
+(function(){
+  const c = document.getElementById('ash-canvas');
+  const ctx = c.getContext('2d');
+  let W, H;
+  const particles = [];
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  for(let i = 0; i < 50; i++){
+    particles.push({
+      x: Math.random() * 2000,
+      y: Math.random() * 2000,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: 0.3 + Math.random() * 0.5,
+      r: 0.5 + Math.random() * 2,
+      alpha: 0.3 + Math.random() * 0.7,
+      type: Math.random() < 0.3 ? 'ember' : 'ash'
+    });
+  }
+  function frame(){
+    if(W <= 0){ requestAnimationFrame(frame); return; }
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if(p.y > H + 10){ p.y = -10; p.x = Math.random() * W; }
+      if(p.x < -10){ p.x = W + 10; }
+      if(p.x > W + 10){ p.x = -10; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      if(p.type === 'ember'){
+        ctx.fillStyle = `rgba(180,30,10,${p.alpha})`;
+      } else {
+        ctx.fillStyle = `rgba(140,120,120,${p.alpha * 0.6})`;
+      }
+      ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+// ── Death Counter canvas ─────────────────────────────────────────────────────
+(function(){
+  var started = false;
+  var animFrame = null;
+
+  var TOTAL = 94360000;
+  var REGIMES = [
+    { label: 'China (Mao Zedong)',      min: 40000000, max: 80000000 },
+    { label: 'Soviet Union',            min: 20000000, max: 62000000 },
+    { label: 'Cambodia (Pol Pot)',       min: 1700000,  max: 1700000  },
+    { label: 'North Korea',             min: 1600000,  max: 1600000  },
+    { label: 'Vietnam',                 min: 1000000,  max: 1000000  },
+    { label: 'Ethiopia',                min: 750000,   max: 750000   },
+    { label: 'Others / Proxy Wars',     min: 1000000,  max: 1000000  },
+  ];
+
+  window.startCounter = function(){
+    if(started) return;
+    started = true;
+    var c = document.getElementById('counter-canvas');
+    if(!c) return;
+    c.width = c.offsetWidth || 800;
+    c.height = 420;
+    var W = c.width, H = c.height;
+    var ctx = c.getContext('2d');
+
+    var startTime = null;
+    var duration = 5000; // ms to count up
+    var glowPhase = 0;
+
+    // Skull particles
+    var skulls = [];
+    var lastSkullTime = 0;
+    var falling = false; // true once counter hits total
+
+    function spawnSkulls(ts, rate){
+      if(ts - lastSkullTime < rate) return;
+      lastSkullTime = ts;
+      var count = Math.floor(1 + Math.random() * 2);
+      for(var s = 0; s < count; s++){
+        skulls.push({
+          x: W * 0.05 + Math.random() * W * 0.9,
+          y: H * 0.88 + Math.random() * H * 0.1,
+          vy: -(0.4 + Math.random() * 0.8),
+          vx: (Math.random() - 0.5) * 0.4,
+          size: 10 + Math.random() * 18,
+          alpha: 0.7 + Math.random() * 0.3,
+          rot: (Math.random() - 0.5) * 0.4,
+          rotV: (Math.random() - 0.5) * 0.02
+        });
+      }
+      // cap particle count
+      if(skulls.length > 120) skulls.splice(0, skulls.length - 120);
+    }
+
+    function triggerFall(){
+      if(falling) return;
+      falling = true;
+      for(var i = 0; i < skulls.length; i++){
+        skulls[i].vy = Math.abs(skulls[i].vy) * 0.5 + 1; // flip upward to downward
+        skulls[i].vx *= 2;
+        skulls[i].gravity = 0.06 + Math.random() * 0.06;
+      }
+    }
+
+    function easeOut(t){ return 1 - Math.pow(1-t, 3); }
+
+    function draw(ts){
+      if(!startTime) startTime = ts;
+      var elapsed = ts - startTime;
+      var progress = Math.min(elapsed / duration, 1);
+      var easedProg = easeOut(progress);
+      var current = Math.floor(TOTAL * easedProg);
+
+      glowPhase += 0.04;
+
+      // Spawn skulls — faster as count climbs; trigger fall at end
+      if(progress < 1){
+        var spawnRate = 120 - progress * 90; // 120ms → 30ms
+        spawnSkulls(ts, spawnRate);
+      } else {
+        triggerFall();
+      }
+
+      if(W <= 0){ animFrame = requestAnimationFrame(draw); return; }
+
+      ctx.clearRect(0,0,W,H);
+
+      // Background
+      ctx.fillStyle = 'rgba(3,1,2,1)';
+      ctx.fillRect(0,0,W,H);
+
+      // Pulsing glow behind main number
+      var glowAlpha = 0.06 + 0.04 * Math.sin(glowPhase);
+      var grd = ctx.createRadialGradient(W/2, H*0.22, 0, W/2, H*0.22, W*0.45);
+      grd.addColorStop(0, `rgba(192,57,43,${glowAlpha * 3})`);
+      grd.addColorStop(0.5, `rgba(139,0,0,${glowAlpha})`);
+      grd.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0,0,W,H);
+
+      // Total counter
+      var totalStr = current.toLocaleString();
+      var fs = Math.min(Math.floor(W / 7), 72);
+      ctx.font = `700 ${fs}px 'Georgia', serif`;
+      ctx.textAlign = 'center';
+      // Shadow glow
+      ctx.shadowColor = '#c0392b';
+      ctx.shadowBlur = 18 + 8 * Math.sin(glowPhase);
+      ctx.fillStyle = '#e03020';
+      ctx.fillText(totalStr, W/2, H * 0.26);
+      ctx.shadowBlur = 0;
+
+      // Label below total
+      ctx.font = `italic ${Math.min(Math.floor(W/45), 16)}px 'Georgia', serif`;
+      ctx.fillStyle = '#806060';
+      ctx.fillText('Estimated deaths under communist regimes', W/2, H * 0.36);
+      ctx.fillStyle = '#604040';
+      ctx.fillText('(Black Book of Communism, Courtois et al., 1997)', W/2, H * 0.42);
+
+      // Draw & update skull particles
+      ctx.save();
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      for(var si = skulls.length - 1; si >= 0; si--){
+        var sk = skulls[si];
+        if(falling && sk.gravity) sk.vy += sk.gravity;
+        sk.x += sk.vx;
+        sk.y += sk.vy;
+        sk.alpha -= falling ? 0.018 : 0.004;
+        sk.rot += sk.rotV;
+        if(sk.alpha <= 0 || sk.y < -sk.size || sk.y > H + sk.size){ skulls.splice(si, 1); continue; }
+        ctx.save();
+        ctx.translate(sk.x, sk.y);
+        ctx.rotate(sk.rot);
+        ctx.globalAlpha = sk.alpha;
+        ctx.font = sk.size + 'px serif';
+        ctx.fillText('💀', 0, 0);
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // Regime breakdown — animate in sequentially
+      var listStartY = H * 0.50;
+      var rowH = (H * 0.46) / REGIMES.length;
+      var itemFs = Math.min(Math.floor(W/50), 13);
+      ctx.font = `${itemFs}px 'Georgia', serif`;
+
+      REGIMES.forEach(function(r, i){
+        var revealDelay = (i / REGIMES.length) * 0.7;
+        var itemProgress = Math.max(0, Math.min((easedProg - revealDelay) / 0.15, 1));
+        if(itemProgress <= 0) return;
+
+        var y = listStartY + i * rowH + rowH * 0.7;
+        var countVal = Math.floor(r.min * itemProgress);
+        var rangeStr = r.min === r.max
+          ? countVal.toLocaleString()
+          : countVal.toLocaleString() + '–' + r.max.toLocaleString();
+
+        // Label
+        ctx.textAlign = 'left';
+        ctx.fillStyle = `rgba(192,140,80,${itemProgress})`;
+        ctx.fillText(r.label, W * 0.06, y);
+
+        // Bar
+        var barX = W * 0.40;
+        var barW = W * 0.38;
+        var barH = rowH * 0.35;
+        var fillW = barW * (r.min / 80000000) * itemProgress;
+        ctx.fillStyle = `rgba(80,20,20,${itemProgress * 0.6})`;
+        ctx.fillRect(barX, y - barH, barW, barH);
+        ctx.fillStyle = `rgba(192,57,43,${itemProgress})`;
+        ctx.fillRect(barX, y - barH, fillW, barH);
+
+        // Count on right
+        ctx.textAlign = 'right';
+        ctx.fillStyle = `rgba(220,80,60,${itemProgress})`;
+        ctx.fillText(rangeStr, W * 0.96, y);
+      });
+
+      if(progress < 1 || skulls.length > 0){
+        animFrame = requestAnimationFrame(draw);
+      }
+    }
+
+    animFrame = requestAnimationFrame(draw);
+  };
+
+  // Re-run counter on resize if visible
+  window.addEventListener('resize', function(){
+    var c = document.getElementById('counter-canvas');
+    if(!c) return;
+    var section = document.getElementById('counter');
+    if(section && section.classList.contains('visible')){
+      c.width = c.offsetWidth || 800;
+      started = false;
+      if(animFrame) cancelAnimationFrame(animFrame);
+      startCounter();
+    }
+  });
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

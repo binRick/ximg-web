@@ -79,11 +79,107 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
+<div class="wrap">
 <section id="field">
 <div class="section-title">The Battlefield — Infantry Formations</div>
     <canvas id="battle-canvas"></canvas>
     <div class="canvas-label">Click to fire a cannon volley — Blue vs Gray formations advance across the field</div>
 </section>
+</div>
+<script>
+(function(){
+  const c = document.getElementById('civilwar-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, t = 0;
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.006;
+    for(let i=0;i<60;i++){
+      const sx=(i*137.5%100)/100*W, sy=(i*71.3%50)/100*H*0.5;
+      ctx.beginPath(); ctx.arc(sx,sy,0.7,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,190,220,${0.2+0.1*Math.sin(t+i)})`; ctx.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+<script>
+(function(){
+  const c = document.getElementById('battle-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth; c.height = 220;
+  const W = c.width, H = c.height;
+  let t = 0, shots = [];
+  const union = { x: 30, advance: 0 };
+  const confed = { x: W-30, advance: 0 };
+  c.addEventListener('click', e => {
+    const r = c.getBoundingClientRect();
+    const mx = e.clientX - r.left;
+    if(mx < W/2){
+      shots.push({ x: union.x + union.advance, y: H*0.52, vx: 4, col: '#4060c0', smoke: [] });
+    } else {
+      shots.push({ x: confed.x - confed.advance, y: H*0.52, vx: -4, col: '#c04040', smoke: [] });
+    }
+  });
+  function drawTroop(x, y, col, flip){
+    ctx.save(); ctx.translate(x,y); if(flip) ctx.scale(-1,1);
+    ctx.fillStyle = col;
+    // Body
+    ctx.fillRect(-3,-12,6,10);
+    // Head
+    ctx.beginPath(); ctx.arc(0,-14,4,0,Math.PI*2); ctx.fill();
+    // Rifle
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(4,-8); ctx.lineTo(14,-8); ctx.stroke();
+    ctx.restore();
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H); t += 0.02;
+    // Sky
+    ctx.fillStyle='rgba(10,12,20,.97)'; ctx.fillRect(0,0,W,H);
+    // Ground
+    ctx.fillStyle='rgba(30,25,15,.8)'; ctx.fillRect(0,H*0.6,W,H*0.4);
+    // Wheat field
+    for(let i=0;i<30;i++){
+      const gx=i*(W/29); const gh=8+Math.sin(t+i)*3;
+      ctx.fillStyle='rgba(120,100,40,.3)';
+      ctx.fillRect(gx,H*0.6-gh,2,gh);
+    }
+    // Union troops (blue, left side)
+    const uRows = 2;
+    for(let row=0;row<uRows;row++){
+      for(let col=0;col<12;col++){
+        const tx = 40 + union.advance + col*18;
+        const ty = H*0.56 - row*22 + Math.sin(t*3+col)*1.5;
+        drawTroop(tx, ty, '#4a6fce', false);
+      }
+    }
+    // Confederate troops (gray, right side)
+    for(let row=0;row<uRows;row++){
+      for(let col=0;col<12;col++){
+        const tx = W-40 - confed.advance - col*18;
+        const ty = H*0.56 - row*22 + Math.sin(t*3+col+6)*1.5;
+        drawTroop(tx, ty, '#8a8870', true);
+      }
+    }
+    // Shots
+    shots = shots.filter(s=>s.x>0&&s.x<W);
+    shots.forEach(s=>{
+      s.x += s.vx; s.smoke.push({x:s.x,y:s.y,r:4,alpha:.4});
+      s.smoke = s.smoke.filter(sm=>sm.alpha>0.01);
+      s.smoke.forEach(sm=>{sm.r+=0.3;sm.alpha-=0.03;ctx.beginPath();ctx.arc(sm.x,sm.y,sm.r,0,Math.PI*2);ctx.fillStyle=`rgba(150,130,100,${sm.alpha})`;ctx.fill();});
+      ctx.beginPath();ctx.arc(s.x,s.y,3,0,Math.PI*2);ctx.fillStyle=s.col;ctx.fill();
+    });
+    // Labels
+    ctx.font='10px Georgia'; ctx.fillStyle='rgba(74,111,206,.7)'; ctx.textAlign='left'; ctx.fillText('UNION (Blue)', 5, H-8);
+    ctx.fillStyle='rgba(138,136,112,.7)'; ctx.textAlign='right'; ctx.fillText('CONFEDERACY (Gray)', W-5, H-8);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

@@ -13,6 +13,8 @@
   .subnav button{background:none;border:none;color:#94a3b8;padding:12px 22px;cursor:pointer;font-size:.9rem;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
   .subnav button:hover{color:#e2e8f0;background:#0f172a}
   .subnav button.active{color:#14b8a6;border-bottom-color:#14b8a6}
+  .tab-content{display:none;padding:24px}
+  .tab-content.active{display:block}
   h2{font-size:1.4rem;margin-bottom:6px;color:#f1f5f9}
   .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
   .panel{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:16px}
@@ -64,27 +66,110 @@
 </style>
 </head>
 <body>
+
 <nav class="subnav">
-  <a class="active" href="index.html">Table Relationships</a>
-  <a href="join.html">JOIN Visualizer</a>
-  <a href="query.html">Query Builder</a>
-  <a href="index.html">Index Performance</a>
+  <button class="active" data-tab="er">Table Relationships</button>
+  <button data-tab="join">JOIN Visualizer</button>
+  <button data-tab="query">Query Builder</button>
+  <button data-tab="index">Index Performance</button>
 </nav>
 
-<script>
-(function(){
-  var p = location.pathname;
-  document.querySelectorAll('a[href]').forEach(function(a){
-    var h = a.getAttribute('href');
-    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
-    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/database') || p.endsWith('index.html')))) {
-      a.classList.add('active');
-    }
-  });
-})();
-</script>
-<section id="index">
-<h2>Index Performance</h2>
+<!-- ── TAB 1: ER DIAGRAM ─────────────────────────────────────────────────── -->
+<div class="tab-content active" id="tab-er">
+  <h2>Table Relationships — ER Diagram</h2>
+  <p class="subtitle">Click a table to highlight its relationships</p>
+  <canvas id="erCanvas" height="440"></canvas>
+  <div class="er-legend">
+    <span><span class="dot" style="background:#14b8a6"></span>Primary Key</span>
+    <span><span class="dot" style="background:#f97316"></span>Foreign Key</span>
+    <span style="color:#94a3b8">— 1:Many relationship &nbsp; ═ Many:Many</span>
+  </div>
+  <div id="erInfo" class="info-box" style="margin-top:14px">Click a table to highlight its relationships and see details.</div>
+</div>
+
+<!-- ── TAB 2: JOIN VISUALIZER ─────────────────────────────────────────────── -->
+<div class="tab-content" id="tab-join">
+  <h2>JOIN Visualizer</h2>
+  <p class="subtitle">See which rows match across tables for each JOIN type</p>
+  <div class="controls">
+    <label>JOIN Type
+      <select id="joinType">
+        <option value="inner">INNER JOIN</option>
+        <option value="left">LEFT JOIN</option>
+        <option value="right">RIGHT JOIN</option>
+        <option value="full">FULL OUTER JOIN</option>
+      </select>
+    </label>
+    <label>Join On <select id="joinOn"><option value="dept_id">dept_id</option><option value="manager_id">manager_id</option></select></label>
+    <button class="btn" id="joinRun">Animate Join</button>
+  </div>
+  <div class="join-layout">
+    <div class="panel">
+      <h3 style="font-size:.85rem;color:#94a3b8;margin-bottom:10px">Employees (left)</h3>
+      <table class="data-table" id="leftTable"></table>
+    </div>
+    <div class="panel">
+      <h3 style="font-size:.85rem;color:#94a3b8;margin-bottom:10px">Departments (right)</h3>
+      <table class="data-table" id="rightTable"></table>
+    </div>
+  </div>
+  <div class="code-block" id="joinSQL"></div>
+  <div class="join-result panel">
+    <h3 style="font-size:.85rem;color:#14b8a6;margin-bottom:10px">Result Set</h3>
+    <table class="data-table" id="resultTable"></table>
+  </div>
+</div>
+
+<!-- ── TAB 3: QUERY BUILDER ───────────────────────────────────────────────── -->
+<div class="tab-content" id="tab-query">
+  <h2>Visual Query Builder</h2>
+  <p class="subtitle">Build a SQL query visually — see the generated SQL and simulated results</p>
+  <div class="qb-layout">
+    <div class="qb-section panel">
+      <h3 style="font-size:.85rem;color:#94a3b8;margin-bottom:6px">Build Query</h3>
+      <div class="qb-row">
+        <label>FROM</label>
+        <select id="qbTable" style="flex:1">
+          <option value="users">users</option>
+          <option value="orders">orders</option>
+          <option value="products">products</option>
+          <option value="categories">categories</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:.82rem;color:#94a3b8;margin-bottom:6px">SELECT columns:</div>
+        <div class="cb-group" id="qbCols"></div>
+      </div>
+      <div class="qb-row">
+        <label>WHERE</label>
+        <select id="qbWhereCol" style="flex:1"></select>
+        <select id="qbWhereOp"><option>=</option><option>!=</option><option>&gt;</option><option>&lt;</option><option>LIKE</option></select>
+        <input type="text" id="qbWhereVal" placeholder="value" style="width:100px">
+      </div>
+      <div class="qb-row">
+        <label>ORDER BY</label>
+        <select id="qbOrderCol" style="flex:1"></select>
+        <select id="qbOrderDir"><option>ASC</option><option>DESC</option></select>
+      </div>
+      <div class="qb-row">
+        <label>LIMIT</label>
+        <select id="qbLimit"><option>5</option><option selected>10</option><option>25</option><option>ALL</option></select>
+      </div>
+      <button class="btn" id="qbRun">Run Query</button>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <h3 style="font-size:.85rem;color:#94a3b8">Generated SQL</h3>
+      <div class="code-block" id="qbSQL"></div>
+      <h3 style="font-size:.85rem;color:#94a3b8">Results</h3>
+      <div style="overflow-x:auto"><table class="data-table" id="qbResults"></table></div>
+      <div id="qbResultCount" style="font-size:.8rem;color:#64748b"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 4: INDEX PERFORMANCE ───────────────────────────────────────────── -->
+<div class="tab-content" id="tab-index">
+  <h2>Index Performance</h2>
   <p class="subtitle">Watch the difference between a full table scan and an indexed lookup</p>
   <div class="controls">
     <label>Search for user_id: <input type="number" id="searchId" value="742" min="1" max="1000" style="width:80px;margin-left:6px"></label>
@@ -109,7 +194,404 @@
       <table class="data-table" id="perfTable"></table>
     </div>
   </div>
-</section>
+</div>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.subnav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.subnav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function escHTML(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 1 – ER DIAGRAM
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const canvas=document.getElementById('erCanvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=Math.min(800,canvas.parentElement.clientWidth*0.97||780);
+
+  const tables=[
+    { name:'users', x:60, y:60, color:'#14b8a6',
+      cols:[{name:'user_id',pk:true},{name:'name'},{name:'email'},{name:'created_at'}]},
+    { name:'orders', x:canvas.width/2-100, y:60, color:'#3b82f6',
+      cols:[{name:'order_id',pk:true},{name:'user_id',fk:true},{name:'product_id',fk:true},{name:'quantity'},{name:'total'},{name:'ordered_at'}]},
+    { name:'products', x:canvas.width-230, y:60, color:'#f97316',
+      cols:[{name:'product_id',pk:true},{name:'name'},{name:'price'},{name:'category_id',fk:true},{name:'stock'}]},
+    { name:'categories', x:canvas.width-230, y:310, color:'#a855f7',
+      cols:[{name:'category_id',pk:true},{name:'name'},{name:'description'}]},
+  ];
+
+  const relationships=[
+    {from:'users',to:'orders',label:'1 : many',type:'one'},
+    {from:'orders',to:'products',label:'many : many',type:'many'},
+    {from:'products',to:'categories',label:'many : 1',type:'one'},
+  ];
+
+  let selected=null;
+  const COL_H=22, HDR_H=32, PAD=14, TBL_W=200;
+  function tableHeight(t){ return HDR_H+t.cols.length*COL_H+8; }
+  function tableCX(t){ return t.x+TBL_W/2; }
+  function tableCY(t){ return t.y+HDR_H/2; }
+
+  function drawER(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // relationships
+    relationships.forEach(rel=>{
+      const a=tables.find(t=>t.name===rel.from), b=tables.find(t=>t.name===rel.to);
+      const isActive=selected&&(selected.name===rel.from||selected.name===rel.to);
+      ctx.strokeStyle=isActive?'#14b8a6':'#334155'; ctx.lineWidth=isActive?2.5:1.5;
+      if(rel.type==='many'){ ctx.setLineDash([6,3]); } else { ctx.setLineDash([]); }
+      ctx.beginPath(); ctx.moveTo(tableCX(a),tableCY(a)+HDR_H/2); ctx.lineTo(tableCX(b),tableCY(b)+HDR_H/2); ctx.stroke();
+      ctx.setLineDash([]);
+      // label
+      const mx=(tableCX(a)+tableCX(b))/2, my=(tableCY(a)+tableCY(b))/2+HDR_H/2;
+      ctx.fillStyle=isActive?'#14b8a6':'#475569'; ctx.font='11px Segoe UI'; ctx.textAlign='center';
+      ctx.fillText(rel.label,mx,my-6);
+    });
+    // tables
+    tables.forEach(t=>{
+      const h=tableHeight(t), isSelected=selected&&selected.name===t.name;
+      ctx.fillStyle=isSelected?t.color+'33':'#0f172a'; ctx.strokeStyle=isSelected?t.color:'#1e293b'; ctx.lineWidth=isSelected?2:1;
+      roundRect(ctx,t.x,t.y,TBL_W,h,6); ctx.fill(); ctx.stroke();
+      // header
+      ctx.fillStyle=t.color; roundRect(ctx,t.x,t.y,TBL_W,HDR_H,6,true); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='bold 13px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(t.name,t.x+TBL_W/2,t.y+HDR_H/2);
+      // columns
+      t.cols.forEach((col,i)=>{
+        const cy=t.y+HDR_H+i*COL_H+4;
+        ctx.fillStyle='#e2e8f0'; ctx.font='12px Courier New'; ctx.textAlign='left'; ctx.textBaseline='top';
+        ctx.fillText((col.pk?'🔑 ':col.fk?'🔗 ':' ')+col.name, t.x+PAD, cy+3);
+        if(col.pk){ ctx.fillStyle='#14b8a6'; ctx.font='bold 12px Courier New'; ctx.fillText(col.name,t.x+PAD+18,cy+3); }
+        if(col.fk){ ctx.fillStyle='#f97316'; ctx.font='12px Courier New'; ctx.fillText(col.name,t.x+PAD+18,cy+3); }
+      });
+    });
+  }
+
+  function roundRect(ctx,x,y,w,h,r,topOnly=false){
+    ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    if(!topOnly){ ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r); }
+    else { ctx.lineTo(x+w,y+h); ctx.lineTo(x,y+h); }
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+  }
+
+  canvas.addEventListener('click',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const hit=tables.find(t=>mx>=t.x&&mx<=t.x+TBL_W&&my>=t.y&&my<=t.y+tableHeight(t));
+    if(hit===selected) selected=null; else selected=hit||null;
+    drawER();
+    const info=document.getElementById('erInfo');
+    if(selected){
+      const rels=relationships.filter(r=>r.from===selected.name||r.to===selected.name);
+      info.innerHTML=`<strong style="color:#14b8a6">${selected.name}</strong> table — ${selected.cols.length} columns<br>${rels.map(r=>`• ${r.from} → ${r.to} (${r.label})`).join('<br>')||'No relationships'}`;
+    } else { info.textContent='Click a table to highlight its relationships and see details.'; }
+  });
+
+  drawER();
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 2 – JOIN VISUALIZER
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const employees=[
+    {emp_id:1,name:'Alice',dept_id:10,salary:80000},
+    {emp_id:2,name:'Bob',dept_id:20,salary:75000},
+    {emp_id:3,name:'Carol',dept_id:10,salary:92000},
+    {emp_id:4,name:'Dave',dept_id:30,salary:68000},
+    {emp_id:5,name:'Eve',dept_id:null,salary:55000},
+  ];
+  const departments=[
+    {dept_id:10,dept_name:'Engineering',budget:500000},
+    {dept_id:20,dept_name:'Marketing',budget:200000},
+    {dept_id:40,dept_name:'HR',budget:150000},
+    {dept_id:50,dept_name:'Finance',budget:300000},
+  ];
+
+  function renderTable(el,rows,highlightFn,dimFn){
+    if(!rows.length){ el.innerHTML='<tr><td colspan="10" style="color:#475569;padding:12px">No data</td></tr>'; return; }
+    const keys=Object.keys(rows[0]);
+    el.innerHTML=`<thead><tr>${keys.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>${
+      rows.map(r=>`<tr class="${highlightFn&&highlightFn(r)?'highlight':dimFn&&dimFn(r)?'dimmed':''}">${keys.map(k=>`<td>${r[k]===null?'<span style="color:#475569">NULL</span>':escHTML(r[k])}</td>`).join('')}</tr>`).join('')
+    }</tbody>`;
+  }
+
+  function computeJoin(type,on){
+    const result=[];
+    if(type==='inner'){
+      employees.forEach(e=>{ const d=departments.find(d=>d[on]===e[on]); if(d) result.push({...e,...d}); });
+    } else if(type==='left'){
+      employees.forEach(e=>{ const d=departments.find(d=>d[on]===e[on]); result.push(d?{...e,...d}:{...e,...Object.fromEntries(Object.keys(departments[0]).map(k=>[k,null]))}); });
+    } else if(type==='right'){
+      departments.forEach(d=>{ const e=employees.find(e=>e[on]===d[on]); result.push(e?{...e,...d}:{...Object.fromEntries(Object.keys(employees[0]).map(k=>[k,null])),...d}); });
+    } else {
+      employees.forEach(e=>{ const d=departments.find(d=>d[on]===e[on]); result.push(d?{...e,...d}:{...e,...Object.fromEntries(Object.keys(departments[0]).map(k=>[k,null]))}); });
+      departments.forEach(d=>{ const e=employees.find(e=>e[on]===d[on]); if(!e) result.push({...Object.fromEntries(Object.keys(employees[0]).map(k=>[k,null])),...d}); });
+    }
+    return result;
+  }
+
+  let animating=false;
+  async function runJoin(){
+    if(animating) return;
+    animating=true;
+    const type=document.getElementById('joinType').value;
+    const on='dept_id'; // simplified
+    const result=computeJoin(type,on);
+    const matchedE=new Set(result.filter(r=>r.emp_id!==null&&r.dept_id!==null).map(r=>r.emp_id));
+    const matchedD=new Set(result.filter(r=>r.emp_id!==null&&r.dept_id!==null).map(r=>r.dept_id));
+
+    renderTable(document.getElementById('leftTable'),employees,
+      r=>matchedE.has(r.emp_id), r=>type==='inner'&&!matchedE.has(r.emp_id));
+    renderTable(document.getElementById('rightTable'),departments,
+      r=>matchedD.has(r.dept_id), r=>type==='inner'&&!matchedD.has(r.dept_id));
+
+    const sqlMap={inner:`SELECT e.*, d.dept_name, d.budget\nFROM employees e\nINNER JOIN departments d ON e.dept_id = d.dept_id;`,
+      left:`SELECT e.*, d.dept_name, d.budget\nFROM employees e\nLEFT JOIN departments d ON e.dept_id = d.dept_id;`,
+      right:`SELECT e.*, d.dept_name, d.budget\nFROM employees e\nRIGHT JOIN departments d ON e.dept_id = d.dept_id;`,
+      full:`SELECT e.*, d.dept_name, d.budget\nFROM employees e\nFULL OUTER JOIN departments d ON e.dept_id = d.dept_id;`};
+    document.getElementById('joinSQL').textContent=sqlMap[type];
+
+    await sleep(400);
+    renderTable(document.getElementById('resultTable'),result,null,null);
+    animating=false;
+  }
+
+  document.getElementById('joinRun').addEventListener('click',runJoin);
+
+  // initial render
+  renderTable(document.getElementById('leftTable'),employees,null,null);
+  renderTable(document.getElementById('rightTable'),departments,null,null);
+  document.getElementById('joinSQL').textContent='-- Select a JOIN type and click Animate Join';
+  document.getElementById('resultTable').innerHTML='';
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 3 – QUERY BUILDER
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const TABLES={
+    users:{cols:['user_id','name','email','country','age','created_at'],data:[
+      {user_id:1,name:'Alice Smith',email:'alice@example.com',country:'US',age:28,created_at:'2024-01-15'},
+      {user_id:2,name:'Bob Jones',email:'bob@example.com',country:'UK',age:34,created_at:'2024-02-01'},
+      {user_id:3,name:'Carol Lee',email:'carol@example.com',country:'CA',age:22,created_at:'2024-02-14'},
+      {user_id:4,name:'Dave Brown',email:'dave@example.com',country:'AU',age:41,created_at:'2024-03-01'},
+      {user_id:5,name:'Eve Davis',email:'eve@example.com',country:'US',age:29,created_at:'2024-03-15'},
+      {user_id:6,name:'Frank Wilson',email:'frank@example.com',country:'DE',age:55,created_at:'2024-04-01'},
+      {user_id:7,name:'Grace Kim',email:'grace@example.com',country:'KR',age:26,created_at:'2024-04-10'},
+      {user_id:8,name:'Henry Liu',email:'henry@example.com',country:'CN',age:38,created_at:'2024-04-20'},
+    ]},
+    orders:{cols:['order_id','user_id','product_id','quantity','total','status','ordered_at'],data:[
+      {order_id:101,user_id:1,product_id:5,quantity:2,total:199.98,status:'delivered',ordered_at:'2024-03-10'},
+      {order_id:102,user_id:2,product_id:3,quantity:1,total:49.99,status:'shipped',ordered_at:'2024-03-11'},
+      {order_id:103,user_id:1,product_id:7,quantity:3,total:89.97,status:'pending',ordered_at:'2024-03-12'},
+      {order_id:104,user_id:4,product_id:2,quantity:1,total:299.99,status:'delivered',ordered_at:'2024-03-15'},
+      {order_id:105,user_id:3,product_id:5,quantity:5,total:499.95,status:'delivered',ordered_at:'2024-03-16'},
+      {order_id:106,user_id:5,product_id:1,quantity:2,total:159.98,status:'cancelled',ordered_at:'2024-03-18'},
+    ]},
+    products:{cols:['product_id','name','price','category_id','stock'],data:[
+      {product_id:1,name:'Laptop Pro',price:79.99,category_id:1,stock:45},
+      {product_id:2,name:'Wireless Mouse',price:299.99,category_id:1,stock:120},
+      {product_id:3,name:'USB-C Hub',price:49.99,category_id:1,stock:80},
+      {product_id:4,name:'Headphones',price:149.99,category_id:2,stock:60},
+      {product_id:5,name:'Keyboard',price:99.99,category_id:1,stock:95},
+      {product_id:6,name:'Monitor',price:349.99,category_id:1,stock:30},
+    ]},
+    categories:{cols:['category_id','name','description'],data:[
+      {category_id:1,name:'Electronics',description:'Computers and peripherals'},
+      {category_id:2,name:'Audio',description:'Headphones and speakers'},
+      {category_id:3,name:'Accessories',description:'Bags and cases'},
+    ]},
+  };
+
+  function updateCols(){
+    const tname=document.getElementById('qbTable').value;
+    const t=TABLES[tname];
+    const cbGroup=document.getElementById('qbCols');
+    cbGroup.innerHTML=t.cols.map(c=>`<label class="cb-item"><input type="checkbox" value="${c}" checked> ${c}</label>`).join('');
+    const colSel=document.getElementById('qbWhereCol');
+    const ordSel=document.getElementById('qbOrderCol');
+    colSel.innerHTML=t.cols.map(c=>`<option>${c}</option>`).join('');
+    ordSel.innerHTML=t.cols.map(c=>`<option>${c}</option>`).join('');
+    buildSQL();
+  }
+
+  function buildSQL(){
+    const tname=document.getElementById('qbTable').value;
+    const checked=[...document.querySelectorAll('#qbCols input:checked')].map(i=>i.value);
+    const cols=checked.length?checked.join(', '):'*';
+    const whereCol=document.getElementById('qbWhereCol').value;
+    const whereOp=document.getElementById('qbWhereOp').value;
+    const whereVal=document.getElementById('qbWhereVal').value.trim();
+    const orderCol=document.getElementById('qbOrderCol').value;
+    const orderDir=document.getElementById('qbOrderDir').value;
+    const limit=document.getElementById('qbLimit').value;
+    let sql=`SELECT ${cols}\nFROM ${tname}`;
+    if(whereVal) sql+=`\nWHERE ${whereCol} ${whereOp} '${whereVal}'`;
+    sql+=`\nORDER BY ${orderCol} ${orderDir}`;
+    if(limit!=='ALL') sql+=`\nLIMIT ${limit}`;
+    sql+=';';
+    document.getElementById('qbSQL').textContent=sql;
+    return {tname,checked,whereCol,whereOp,whereVal,orderCol,orderDir,limit};
+  }
+
+  function runQuery(){
+    const {tname,checked,whereCol,whereOp,whereVal,orderCol,orderDir,limit}=buildSQL();
+    const t=TABLES[tname];
+    let rows=[...t.data];
+    if(whereVal){
+      rows=rows.filter(r=>{
+        const v=String(r[whereCol]).toLowerCase(), w=whereVal.toLowerCase();
+        if(whereOp==='=') return v===w;
+        if(whereOp==='!=') return v!==w;
+        if(whereOp==='>') return parseFloat(r[whereCol])>parseFloat(whereVal);
+        if(whereOp==='<') return parseFloat(r[whereCol])<parseFloat(whereVal);
+        if(whereOp==='LIKE') return v.includes(w.replace(/%/g,''));
+        return true;
+      });
+    }
+    rows.sort((a,b)=>{ const av=a[orderCol],bv=b[orderCol]; return orderDir==='ASC'?(av>bv?1:-1):(av<bv?1:-1); });
+    const lim=limit==='ALL'?rows.length:parseInt(limit);
+    rows=rows.slice(0,lim);
+    const cols=checked.length?checked:t.cols;
+    const res=document.getElementById('qbResults');
+    if(!rows.length){ res.innerHTML='<tr><td style="color:#475569;padding:10px">No results</td></tr>'; document.getElementById('qbResultCount').textContent='0 rows returned'; return; }
+    res.innerHTML=`<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${escHTML(r[c])}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    document.getElementById('qbResultCount').textContent=`${rows.length} row${rows.length!==1?'s':''} returned`;
+  }
+
+  document.getElementById('qbTable').addEventListener('change',updateCols);
+  document.getElementById('qbCols').addEventListener('change',buildSQL);
+  ['qbWhereCol','qbWhereOp','qbWhereVal','qbOrderCol','qbOrderDir','qbLimit'].forEach(id=>document.getElementById(id).addEventListener('change',buildSQL));
+  document.getElementById('qbWhereVal').addEventListener('input',buildSQL);
+  document.getElementById('qbRun').addEventListener('click',runQuery);
+  updateCols();
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 4 – INDEX PERFORMANCE
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  const TOTAL=1000;
+  // generate pseudo-random but consistent data
+  const TABLE=Array.from({length:TOTAL},(_,i)=>({
+    user_id:i+1,
+    name:['Alice','Bob','Carol','Dave','Eve','Frank','Grace','Henry','Iris','Jack'][(i*7)%10]+' '+(String.fromCharCode(65+i%26)),
+    email:`user${i+1}@example.com`,
+    age:18+(i*13)%55,
+    country:['US','UK','CA','AU','DE','FR','JP','CN'][i%8],
+  }));
+
+  // Render first 20 rows
+  const preview=TABLE.slice(0,20);
+  const perfTable=document.getElementById('perfTable');
+  const keys=Object.keys(preview[0]);
+  perfTable.innerHTML=`<thead><tr>${keys.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>${
+    preview.map(r=>`<tr>${keys.map(k=>`<td>${escHTML(r[k])}</td>`).join('')}</tr>`).join('')
+  }</tbody>`;
+
+  // Paint canvas
+  const canvas=document.getElementById('perfCanvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=Math.min(800,canvas.parentElement.clientWidth*0.97||780);
+  canvas.height=200;
+
+  let scanStep=0, indexStep=0, scanning=false, indexing=false;
+
+  function drawCanvas(highlightRow=-1, indexHops=[]){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const CW=Math.floor((canvas.width-20)/50), CH=Math.floor((canvas.height-20)/20);
+    for(let i=0;i<TOTAL;i++){
+      const col=i%50, row=Math.floor(i/50);
+      const x=10+col*CW, y=10+row*CH;
+      let fill='#0f172a';
+      if(i<scanStep) fill='#ef444444';
+      if(i===highlightRow) fill='#22c55e';
+      if(indexHops.includes(i)) fill='#3b82f6';
+      ctx.fillStyle=fill; ctx.fillRect(x,y,CW-1,CH-1);
+    }
+  }
+
+  let scanTimer=null, indexTimer=null;
+  let scanStart=0, indexStart=0;
+
+  document.getElementById('runScan').addEventListener('click', async ()=>{
+    if(scanning||indexing) return;
+    scanning=true;
+    const target=parseInt(document.getElementById('searchId').value)||742;
+    const targetIdx=target-1;
+    scanStep=0;
+    document.getElementById('scanBar').style.width='0%';
+    document.getElementById('scanBar').textContent='Full scan: 0 rows read';
+    document.getElementById('perfResult').innerHTML='';
+    scanStart=performance.now();
+
+    function step(){
+      if(scanStep>=TOTAL||scanStep>=targetIdx+1){
+        const elapsed=performance.now()-scanStart;
+        document.getElementById('scanBar').style.width='100%';
+        document.getElementById('scanBar').textContent=`Full scan: ${scanStep} rows read`;
+        drawCanvas(targetIdx);
+        document.getElementById('perfResult').innerHTML=`<span style="color:#ef4444">Full Table Scan:</span> Read <strong>${scanStep}</strong> rows to find user_id=${target}. Simulated time: <strong>${elapsed.toFixed(1)}ms</strong>. O(n) — worst case reads every row.`;
+        scanning=false; return;
+      }
+      scanStep+=Math.ceil(TOTAL/120);
+      if(scanStep>TOTAL) scanStep=TOTAL;
+      const pct=Math.min(100,(scanStep/TOTAL)*100);
+      document.getElementById('scanBar').style.width=pct+'%';
+      document.getElementById('scanBar').textContent=`Full scan: ${scanStep} rows read`;
+      drawCanvas(-1);
+      scanTimer=requestAnimationFrame(step);
+    }
+    scanTimer=requestAnimationFrame(step);
+  });
+
+  document.getElementById('runIndex').addEventListener('click', async ()=>{
+    if(scanning||indexing) return;
+    indexing=true;
+    const target=parseInt(document.getElementById('searchId').value)||742;
+    const targetIdx=target-1;
+    const hops=[];
+    // simulate B-tree index: binary search
+    let lo=0,hi=TOTAL-1,steps=0;
+    while(lo<=hi){ const mid=Math.floor((lo+hi)/2); hops.push(mid); steps++; if(mid===targetIdx) break; if(mid<targetIdx) lo=mid+1; else hi=mid-1; }
+    indexStart=performance.now();
+    document.getElementById('indexBar').style.width='0%';
+    document.getElementById('indexBar').textContent='Index: 0 hops';
+
+    for(let i=0;i<hops.length;i++){
+      await sleep(300);
+      document.getElementById('indexBar').style.width=((i+1)/hops.length*100)+'%';
+      document.getElementById('indexBar').textContent=`Index: ${i+1} of ${hops.length} hops`;
+      drawCanvas(hops[i],hops.slice(0,i+1));
+    }
+    const elapsed=performance.now()-indexStart;
+    document.getElementById('perfResult').innerHTML=(document.getElementById('perfResult').innerHTML||'')+'<br><span style="color:#3b82f6">Index Lookup:</span> Traversed <strong>'+hops.length+'</strong> B-tree nodes to find user_id='+target+'. Simulated time: <strong>'+elapsed.toFixed(1)+'ms</strong>. O(log n) — massively faster for large tables.';
+    indexing=false;
+  });
+
+  document.getElementById('resetPerf').addEventListener('click',()=>{
+    if(scanTimer) cancelAnimationFrame(scanTimer);
+    scanning=false; indexing=false; scanStep=0;
+    document.getElementById('scanBar').style.width='0%'; document.getElementById('scanBar').textContent='Full scan: 0 rows read';
+    document.getElementById('indexBar').style.width='0%'; document.getElementById('indexBar').textContent='Index: 0 hops';
+    document.getElementById('perfResult').innerHTML='';
+    drawCanvas();
+  });
+
+  drawCanvas();
+})();
+</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>
