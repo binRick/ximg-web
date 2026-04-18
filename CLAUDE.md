@@ -113,11 +113,6 @@ Apps with multiple sections **must use separate HTML pages per section**, not an
 
 **Do NOT use `href="#section"` anchor jumps for sub-nav.** Each tab is a real page load.
 
-> **Anti-pattern (wrong):** `<a href="#thirteen-days">` — single page with JS show/hide
-> **Correct pattern:** `<a href="thirteen-days.html">` — separate HTML file per section
-
-Every app that was previously using anchor-based subnav has been converted to the separate-pages pattern (cuba, rome, ww2, ww1, aztec, babylon, bbs, british, civilwar, colonial, commodore, communism, crusades, dos, egypt, french, greece, industrial, medieval, modem, mongols, napoleon, ottoman, pirates, renaissance, revolution, russianrev, samurai, silkroad, spacerace, vikings).
-
 Example structure for a multi-section app at `bourbon.ximg.app`:
 ```
 bourbon-html/

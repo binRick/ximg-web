@@ -1,1 +1,1 @@
-proc-trace-exec -p $(pgrep claude | paste -sd,)
+./dist/proc-trace-exec-linux-amd64 -p $(pgrep claude | paste -sd,)
