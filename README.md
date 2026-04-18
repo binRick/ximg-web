@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-239 virtual hosts (root + 238 subdomains), all static sites served by a single nginx container.
+240 virtual hosts (root + 239 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -262,6 +262,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [proc-trace-tls.ximg.app](https://proc-trace-tls.ximg.app) | Intercept plaintext TLS traffic before encryption — uprobes SSL_read/SSL_write in libssl.so via ftrace. No eBPF. Bypasses cert pinning. Static Go binary. |
 | [esp32-s3-lcd.ximg.app](https://esp32-s3-lcd.ximg.app) | Waveshare ESP32-S3-Touch-LCD-1.69 hardware reference — pinout, ST7789V2 display, CST816T touch, QMI8658 IMU, PCF85063 RTC, native USB-C, arduino-cli FQBN. |
 | [tls-ca-fetch.ximg.app](https://tls-ca-fetch.ximg.app) | Extract CA certificates from any TLS server — walks the cert chain, chases AIA to fetch the root CA, writes PEM to disk. Zero deps, static Go binary. |
+| [github-stats.ximg.app](https://github-stats.ximg.app) | GitHub traffic stats dashboard — clones, views, and unique visitor counts for the latest 20 repos, pulled hourly from the GitHub API. |
 ## Architecture
 
 ```
