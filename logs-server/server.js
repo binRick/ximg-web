@@ -1338,8 +1338,11 @@ const HTML = `<!DOCTYPE html>
     }
 
     sshTab.addEventListener('click', () => {
-      if (!sshMode) enterSshMode();
-      if (dlMode) leaveDlMode();
+      if (!sshMode) {
+        if (dlMode) leaveDlMode();
+        if (botMode) leaveBotMode();
+        enterSshMode();
+      }
     });
 
     document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab)').forEach(btn => {
