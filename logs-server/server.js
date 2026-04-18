@@ -1935,6 +1935,7 @@ const HTML = `<!DOCTYPE html>
       if (!mapMode) {
         if (sshMode) leaveSshMode();
         if (dlMode) leaveDlMode();
+        if (botMode) leaveBotMode();
         enterMapMode();
       }
     });
