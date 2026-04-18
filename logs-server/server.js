@@ -2406,7 +2406,7 @@ wss.on('connection', (ws, req) => {
     for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
       const logFile = path.join(LOGS_DIR, logFilename);
       const send = makeSend(siteName);
-      for (const line of lastLines(logFile, 5)) {
+      for (const line of lastLines(logFile, 30)) {
         seedLines.push({ ts: logLineSortKey(line), line, send });
       }
       stopFns.push(tailFile(logFile, send));
