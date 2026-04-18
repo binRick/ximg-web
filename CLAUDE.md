@@ -109,12 +109,19 @@ Use the right command for the situation:
 | Situation | Command |
 |-----------|---------|
 | Static file change (HTML/CSS/JS in `*-html/`) | No restart needed — nginx `static` serves files live |
-| nginx config change (`nginx/nginx.conf`) | `docker compose exec nginx nginx -s reload` |
+| nginx config change (`nginx/nginx.conf`) | `docker compose exec nginx nginx -s reload` — but if the file was replaced (new inode), use `docker compose up -d --force-recreate nginx` instead, or the container will serve the stale config |
 | Node.js server change (`logs-server/`, `change-server/`, etc.) | `docker compose restart <service>` |
 | compose.yaml change (new volume mount to `static`) | `docker compose up -d` |
 | Dockerfile or build context change | `docker compose up -d --build <service>` |
 
 After any nginx config change, always test first: `docker compose exec nginx nginx -t`
+
+**Inode warning:** If `nginx.conf` was replaced rather than edited in-place (e.g., written via a text editor that saves atomically), the running container binds to the old inode and `nginx -s reload` has no effect — the container silently serves the stale config. Detect this with:
+```bash
+stat /root/ximg-web/nginx/nginx.conf   # check host inode
+docker compose exec nginx stat /etc/nginx/nginx.conf  # check container inode
+```
+If they differ, run `docker compose up -d --force-recreate nginx` to fix it.
 
 ## Sub-Navigation Pattern
 
