@@ -226,7 +226,6 @@ const LOG_FILES = {
   http:        'http.access.log',
   ssh:         'ssh.access.log',
   sql:         'sql.access.log',
-  space:       'space.access.log',
   coffee:      'coffee.access.log',
   japan:       'japan.access.log',
   quake:       'quake.access.log',
@@ -238,11 +237,6 @@ const LOG_FILES = {
   dos:         'dos.access.log',
   modem:       'modem.access.log',
   commodore:   'commodore.access.log',
-  physics:     'physics.access.log',
-  chemistry:   'chemistry.access.log',
-  biology:     'biology.access.log',
-  math:        'math.access.log',
-  evolution:   'evolution.access.log',
   dns:         'dns.access.log',
   suricata:    'suricata.access.log',
   crypto:      'crypto.access.log',
@@ -256,12 +250,6 @@ const LOG_FILES = {
   request:     'request.access.log',
   readme:      'readme.access.log',
   nav:         'nav.access.log',
-  world:       'world.access.log',
-  sandbox:     'sandbox.access.log',
-  gravity:     'gravity.access.log',
-  waves:       'waves.access.log',
-  chaos:       'chaos.access.log',
-  epidemic:    'epidemic.access.log',
   algorithms:  'algorithms.access.log',
   os:          'os.access.log',
   security:    'security.access.log',
@@ -279,10 +267,6 @@ const LOG_FILES = {
   loadbalancer:   'loadbalancer.access.log',
   cdn:            'cdn.access.log',
   queue:          'queue.access.log',
-  brain:          'brain.access.log',
-  sleep:          'sleep.access.log',
-  nutrition:      'nutrition.access.log',
-  training:       'training.access.log',
   punch:          'punch.access.log',
   terminal:       'terminal.access.log',
   circuit:        'circuit.access.log',
@@ -296,11 +280,6 @@ const LOG_FILES = {
   jwt:            'jwt.access.log',
   cron:           'cron.access.log',
   color:          'color.access.log',
-  dna:            'dna.access.log',
-  cell:           'cell.access.log',
-  immune:         'immune.access.log',
-  quantum:        'quantum.access.log',
-  synth:          'synth.access.log',
   compound:       'compound.access.log',
   savings:        'savings.access.log',
   tax:            'tax.access.log',
@@ -783,7 +762,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="aztec">aztec</button>
           <button class="site-opt" data-site="babylon">babylon</button>
           <button class="site-opt" data-site="bash">bash</button>
-          <button class="site-opt" data-site="biology">biology</button>
           <button class="site-opt" data-site="bsd">bsd</button>
           <button class="site-opt" data-site="gentoo">gentoo</button>
           <button class="site-opt" data-site="esp32">esp32</button>
@@ -800,7 +778,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>
           <button class="site-opt" data-site="clamav">clamav</button>
-          <button class="site-opt" data-site="chemistry">chemistry</button>
           <button class="site-opt" data-site="chess">chess</button>
           <button class="site-opt" data-site="chinese">chinese</button>
           <button class="site-opt" data-site="claude">claude</button>
@@ -815,7 +792,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="dns">dns</button>
           <button class="site-opt" data-site="docker">docker</button>
           <button class="site-opt" data-site="doom">doom</button>
-          <button class="site-opt" data-site="evolution">evolution</button>
           <button class="site-opt" data-site="fidonet">fidonet</button>
           <button class="site-opt" data-site="florida">florida</button>
           <button class="site-opt" data-site="git">git</button>
@@ -834,7 +810,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="mac">mac</button>
           <button class="site-opt" data-site="mail">mail</button>
           <button class="site-opt" data-site="mario">mario</button>
-          <button class="site-opt" data-site="math">math</button>
           <button class="site-opt" data-site="medieval">medieval</button>
           <button class="site-opt" data-site="monkey">monkey</button>
           <button class="site-opt" data-site="moto">moto</button>
@@ -842,7 +817,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="nintendo">nintendo</button>
           <button class="site-opt" data-site="pal">pal</button>
           <button class="site-opt" data-site="passwords">passwords</button>
-          <button class="site-opt" data-site="physics">physics</button>
           <button class="site-opt" data-site="pirates">pirates</button>
           <button class="site-opt" data-site="pizza">pizza</button>
           <button class="site-opt" data-site="sushi">sushi</button>
@@ -891,7 +865,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="readme">readme</button>
           <button class="site-opt" data-site="rx">rx</button>
           <button class="site-opt" data-site="simcity">simcity</button>
-          <button class="site-opt" data-site="space">space</button>
           <button class="site-opt" data-site="sql">sql</button>
           <button class="site-opt" data-site="ssh">ssh</button>
           <button class="site-opt" data-site="stats">stats</button>
@@ -909,12 +882,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="wood">wood</button>
           <button class="site-opt" data-site="ximg">ximg</button>
           <button class="site-opt" data-site="ximg-app">ximg-app</button>
-          <button class="site-opt" data-site="world">world</button>
-          <button class="site-opt" data-site="sandbox">sandbox</button>
-          <button class="site-opt" data-site="gravity">gravity</button>
-          <button class="site-opt" data-site="waves">waves</button>
-          <button class="site-opt" data-site="chaos">chaos</button>
-          <button class="site-opt" data-site="epidemic">epidemic</button>
           <button class="site-opt" data-site="algorithms">algorithms</button>
           <button class="site-opt" data-site="os">os</button>
           <button class="site-opt" data-site="security">security</button>
@@ -932,10 +899,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="loadbalancer">loadbalancer</button>
           <button class="site-opt" data-site="cdn">cdn</button>
           <button class="site-opt" data-site="queue">queue</button>
-          <button class="site-opt" data-site="brain">brain</button>
-          <button class="site-opt" data-site="sleep">sleep</button>
-          <button class="site-opt" data-site="nutrition">nutrition</button>
-          <button class="site-opt" data-site="training">training</button>
           <button class="site-opt" data-site="terminal">terminal</button>
           <button class="site-opt" data-site="punch">punch</button>
           <button class="site-opt" data-site="circuit">circuit</button>
@@ -949,11 +912,6 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="jwt">jwt</button>
           <button class="site-opt" data-site="cron">cron</button>
           <button class="site-opt" data-site="color">color</button>
-          <button class="site-opt" data-site="dna">dna</button>
-          <button class="site-opt" data-site="cell">cell</button>
-          <button class="site-opt" data-site="immune">immune</button>
-          <button class="site-opt" data-site="quantum">quantum</button>
-          <button class="site-opt" data-site="synth">synth</button>
           <button class="site-opt" data-site="compound">compound</button>
           <button class="site-opt" data-site="savings">savings</button>
           <button class="site-opt" data-site="tax">tax</button>
