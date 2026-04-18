@@ -94,7 +94,7 @@ function openShell ({ cols, rows, ip, onReady, onGiveUp }) {
     conn.connect({
       host:         SSH_HOST,
       port:         SSH_PORT,
-      username:     'user',
+      username:     ip ? 'user|' + ip : 'user',
       password:     PASSWORDS[attempt % PASSWORDS.length],
       readyTimeout: 5000,
     });

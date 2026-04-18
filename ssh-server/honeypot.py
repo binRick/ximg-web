@@ -25,6 +25,7 @@ class HoneypotServer(paramiko.ServerInterface):
         self.username = ''
         self.password = ''
         self.ip = ip
+        self.proxy_ip = None
         self.env = {}
 
     def check_channel_request(self, kind, chanid):
@@ -32,7 +33,12 @@ class HoneypotServer(paramiko.ServerInterface):
                else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
     def check_auth_password(self, username, password):
-        self.username = username
+        # Proxy encodes real browser IP as 'user|REALIP'
+        if '|' in username:
+            self.username, self.proxy_ip = username.split('|', 1)
+        else:
+            self.username = username
+            self.proxy_ip = None
         self.password = password
         with _auth_lock:
             _auth_attempts[self.ip] = _auth_attempts.get(self.ip, 0) + 1
@@ -88,8 +94,8 @@ def handle(sock, addr):
         trans.close()
         return
 
-    # Use real client IP passed via SSH env var from web proxy; fall back to socket peer
-    real_ip = srv.env.get('X_REAL_IP') or addr[0]
+    # Use real browser IP encoded in username by web proxy; fall back to socket peer
+    real_ip = srv.proxy_ip or addr[0]
 
     master, slave = pty.openpty()
     fcntl.ioctl(master, termios.TIOCSWINSZ,
