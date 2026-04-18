@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MS-DOS — Disk Operating System — interactive educational app on ximg.app">
+  <title>MS-DOS — Disk Operating System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💻</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #001030;
+      --panel:   #001848;
+      --blue:    #0050a0;
+      --bright:  #5555ff;
+      --cyan:    #55ffff;
+      --white:   #aaaaaa;
+      --ltwhite: #ffffff;
+      --text:    #aaaaaa;
+      --muted:   #555577;
+      --card:    rgba(0,16,48,.93);
+      --border:  rgba(85,255,255,.15);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 50% at 50% 0%, rgba(0,80,160,.3) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 40% at 80% 90%, rgba(85,85,255,.12) 0%, transparent 60%),
+        linear-gradient(180deg, #001030 0%, #000820 100%);
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(85,255,255,.012) 0, rgba(85,255,255,.012) 1px, transparent 1px, transparent 4px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Canvas ── */
+    #dos-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; opacity: 0.15; pointer-events: none;
+    }
+
+    /* ── Blink animation ── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .cursor { animation: blink 1.1s step-end infinite; }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .hero-icon { font-size: 4rem; line-height: 1; margin-bottom: .75rem; filter: drop-shadow(0 0 24px rgba(85,255,255,.5)); }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
+      letter-spacing: -.01em; color: var(--cyan);
+      text-shadow: 0 0 30px rgba(85,255,255,.35);
+    }
+    .hero-spqr {
+      font-size: 1.1rem; color: var(--ltwhite); margin-top: .4rem;
+      letter-spacing: .04em;
+    }
+    .hero-sub { font-size: 1rem; color: var(--muted); margin-top: .35rem; font-style: italic; }
+    .hero-dates {
+      display: inline-block; margin-top: .75rem;
+      background: rgba(85,255,255,.07); border: 1px solid var(--border);
+      border-radius: 6px; padding: .35rem 1rem;
+      font-size: .85rem; color: var(--cyan); letter-spacing: .08em; font-style: normal;
+    }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: .12em;
+      color: var(--cyan); text-transform: uppercase;
+      border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.25rem;
+    }
+
+    /* ── Commands grid ── */
+    .cmd-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .85rem;
+    }
+    .cmd-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: .9rem 1rem; transition: border-color .2s, transform .2s;
+    }
+    .cmd-card:hover { border-color: var(--cyan); transform: translateY(-2px); }
+    .cmd-name   { font-size: 1rem; font-weight: 700; color: var(--cyan); margin-bottom: .25rem; }
+    .cmd-syntax { font-size: .74rem; color: var(--muted); margin-bottom: .35rem; font-style: italic; }
+    .cmd-desc   { font-size: .8rem; color: var(--text); line-height: 1.5; }
+
+    /* ── File viewer ── */
+    .file-viewer {
+      background: #000010; border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .file-titlebar {
+      background: var(--blue); padding: .4rem .85rem;
+      font-size: .8rem; color: var(--ltwhite); letter-spacing: .04em;
+    }
+    .file-body {
+      padding: 1rem 1.25rem; font-size: .82rem; line-height: 1.6; color: var(--white);
+    }
+    .file-body .comment { color: var(--muted); }
+    .file-body .keyword { color: var(--cyan); }
+    .file-body .value   { color: #ffff55; }
+    .file-body .path    { color: #55ff55; }
+
+    /* ── Config table ── */
+    .cfg-table { width: 100%; border-collapse: collapse; font-size: .81rem; margin-top: .75rem; }
+    .cfg-table th {
+      text-align: left; padding: .45rem .7rem;
+      color: var(--cyan); border-bottom: 1px solid var(--border);
+      font-weight: 700; letter-spacing: .05em;
+    }
+    .cfg-table td { padding: .4rem .7rem; color: var(--text); vertical-align: top; }
+    .cfg-table tr:hover td { background: rgba(85,255,255,.04); }
+    .cfg-table .td-cmd { color: var(--white); font-weight: 700; white-space: nowrap; }
+
+    /* ── Memory diagram ── */
+    .mem-diagram { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.25rem; border-radius: 8px; overflow: hidden; }
+    .mem-row {
+      display: flex; align-items: center;
+      border-left: 3px solid transparent; padding: .55rem .9rem;
+      gap: .85rem;
+    }
+    .mem-row.conv    { background: rgba(0,180,0,.12); border-left-color: #00c853; }
+    .mem-row.video   { background: rgba(200,60,0,.1); border-left-color: #ff5500; }
+    .mem-row.adapter { background: rgba(100,100,0,.1); border-left-color: #aaaa00; }
+    .mem-row.bios    { background: rgba(80,0,130,.15); border-left-color: #aa44ff; }
+    .mem-row.xms     { background: rgba(0,80,180,.15); border-left-color: var(--cyan); }
+    .mem-row.ems     { background: rgba(80,0,100,.12); border-left-color: #ff55ff; }
+    .mem-addr { font-size: .75rem; color: var(--muted); width: 110px; flex-shrink: 0; text-align: right; }
+    .mem-label { font-size: .85rem; font-weight: 700; flex-shrink: 0; min-width: 160px; }
+    .mem-row.conv    .mem-label { color: #55ff55; }
+    .mem-row.video   .mem-label { color: #ff8855; }
+    .mem-row.adapter .mem-label { color: #ffff55; }
+    .mem-row.bios    .mem-label { color: #cc88ff; }
+    .mem-row.xms     .mem-label { color: var(--cyan); }
+    .mem-row.ems     .mem-label { color: #ff88ff; }
+    .mem-desc { font-size: .79rem; color: var(--text); line-height: 1.45; }
+
+    /* ── Generic card grid ── */
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.1rem 1.2rem; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: var(--cyan); transform: translateY(-2px); }
+    .card-name { font-size: 1rem; font-weight: 700; color: var(--cyan); }
+    .card-sub  { font-size: .78rem; color: var(--muted); margin-bottom: .45rem; }
+    .card-desc { font-size: .82rem; color: var(--text); line-height: 1.55; }
+    .card-tag  {
+      display: inline-block; margin-top: .55rem; padding: .2rem .55rem;
+      font-size: .72rem; border-radius: 4px; font-weight: 700;
+    }
+    .tag-sys  { background: rgba(85,255,255,.12); color: var(--cyan); border: 1px solid rgba(85,255,255,.25); }
+    .tag-app  { background: rgba(85,85,255,.15); color: #aaaaff; border: 1px solid rgba(85,85,255,.3); }
+    .tag-game { background: rgba(0,180,0,.12); color: #55ff55; border: 1px solid rgba(0,180,0,.25); }
+
+    /* ── Boot flow ── */
+    .boot-flow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    .boot-step {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: .75rem 1.2rem; width: 100%; max-width: 600px;
+      display: grid; grid-template-columns: 50px 1fr; gap: .75rem; align-items: start;
+      transition: border-color .2s;
+    }
+    .boot-step:hover { border-color: var(--cyan); }
+    .boot-num {
+      font-size: 1.3rem; font-weight: 700; color: var(--cyan);
+      text-align: center; padding-top: .1rem;
+    }
+    .boot-title { font-size: .9rem; font-weight: 700; color: var(--ltwhite); margin-bottom: .2rem; }
+    .boot-desc  { font-size: .8rem; color: var(--text); line-height: 1.45; }
+    .boot-arrow { font-size: 1.2rem; color: rgba(85,255,255,.3); margin: .2rem 0; }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: .75rem; }
+    .tl-item {
+      display: grid; grid-template-columns: 110px 1fr;
+      gap: .75rem; align-items: start;
+    }
+    .tl-year {
+      font-size: .85rem; font-weight: 700; color: var(--cyan);
+      padding-top: .15rem; text-align: right;
+    }
+    .tl-body {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan); border-radius: 0 8px 8px 0;
+      padding: .6rem .85rem;
+    }
+    .tl-title { font-size: .88rem; font-weight: 700; color: var(--ltwhite); margin-bottom: .2rem; }
+    .tl-desc  { font-size: .81rem; color: var(--text); line-height: 1.45; }
+
+    /* ── Fact row ── */
+    .fact-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .85rem;
+      margin-bottom: 1.25rem;
+    }
+    .fact-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: .85rem 1rem; text-align: center;
+    }
+    .fact-num  { font-size: 1.5rem; font-weight: 700; color: var(--cyan); line-height: 1; }
+    .fact-label{ font-size: .75rem; color: var(--muted); margin-top: .3rem; letter-spacing: .04em; }
+
+    /* ── Prose ── */
+    .prose { font-size: .88rem; line-height: 1.7; color: var(--text); }
+    .prose + .prose { margin-top: .85rem; }
+    .prose strong { color: var(--cyan); }
+    .prose em { color: var(--white); font-style: normal; }
+
+    /* ── Simulator ── */
+    .sim-wrap { background: #000; border: 2px solid rgba(85,255,255,.25); border-radius: 8px; overflow: hidden; box-shadow: 0 0 30px rgba(85,255,255,.08); }
+    .sim-titlebar { background: var(--blue); padding: .4rem 1rem; display: flex; align-items: center; gap: .75rem; }
+    .sim-title { font-size: .8rem; color: var(--ltwhite); letter-spacing: .06em; flex: 1; text-align: center; }
+    .sim-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.3); }
+    .sim-screen { padding: 1rem 1.2rem 0; min-height: 360px; max-height: 480px; overflow-y: auto; font-size: .85rem; line-height: 1.55; }
+    .sim-screen::-webkit-scrollbar { width: 6px; }
+    .sim-screen::-webkit-scrollbar-track { background: #000; }
+    .sim-screen::-webkit-scrollbar-thumb { background: rgba(85,255,255,.25); border-radius: 3px; }
+    .sim-line { color: var(--white); white-space: pre-wrap; word-break: break-all; }
+    .sim-line.prompt { color: var(--cyan); }
+    .sim-line.error { color: #ff5555; }
+    .sim-line.info { color: #55ff55; }
+    .sim-line.header { color: var(--cyan); font-weight: 700; }
+    .sim-line.muted { color: var(--muted); }
+    .sim-input-row { display: flex; align-items: center; padding: .5rem 1.2rem .85rem; border-top: 1px solid rgba(85,255,255,.1); margin-top: .5rem; gap: .4rem; }
+    .sim-prompt-label { color: var(--cyan); font-size: .85rem; flex-shrink: 0; white-space: nowrap; }
+    .sim-input { background: transparent; border: none; outline: none; color: var(--ltwhite); font-family: 'Courier New', monospace; font-size: .85rem; flex: 1; caret-color: var(--cyan); }
+    .sim-hint { font-size: .75rem; color: var(--muted); margin-top: .65rem; text-align: center; font-style: italic; }
+
+    /* ── Sub Nav ── */
+    .sub-nav-wrap {
+      position: sticky; top: 36px; z-index: 100;
+      background: rgba(0,16,48,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .sub-nav {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: .15rem; padding: .45rem .75rem;
+    }
+    .sub-nav a {
+      color: var(--muted); text-decoration: none;
+      font-family: 'Courier New', monospace; font-size: .78rem;
+      letter-spacing: .06em; padding: .35rem .75rem;
+      border-radius: 5px; border: 1px solid transparent;
+      transition: color .18s, border-color .18s, background .18s;
+      white-space: nowrap;
+    }
+    .sub-nav a:hover, .sub-nav a.active {
+      color: var(--cyan); border-color: var(--border);
+      background: rgba(85,255,255,.06);
+    }
+
+    @media (max-width: 600px) {
+      .tl-item { grid-template-columns: 70px 1fr; }
+      .sub-nav a { font-size: .72rem; padding: .3rem .5rem; }
+      .mem-addr { width: 70px; }
+      .mem-label { min-width: 110px; }
+      .boot-step { grid-template-columns: 36px 1fr; }
+    }
+    .card-img { width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 6px; margin-bottom: .75rem; filter: sepia(30%) brightness(.82); transition: filter .3s; display: block; }
+    .card-img:hover { filter: sepia(8%) brightness(1); }
+    .tl-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 4px; margin-top: .65rem; filter: sepia(30%) brightness(.85); transition: filter .3s; display: block; }
+    .tl-img:hover { filter: sepia(8%) brightness(1); }
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .gallery-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .2s, transform .2s; }
+    .gallery-card:hover { border-color: var(--cyan); transform: translateY(-2px); }
+    .gallery-img { width: 100%; height: 220px; object-fit: cover; display: block; filter: sepia(25%) brightness(.85); transition: filter .3s; }
+    .gallery-img:hover { filter: sepia(5%) brightness(1.05); }
+    .gallery-info { padding: .6rem .85rem .8rem; }
+    .gallery-title { font-size: .88rem; color: var(--cyan); font-weight: 700; margin-bottom: .2rem; }
+    .gallery-caption { font-size: .76rem; color: var(--muted); font-style: italic; line-height: 1.4; }
+  </style>
+</head>
+<body>
+<canvas id="dos-canvas"></canvas>
+<nav class="sub-nav-wrap">
+  <div class="sub-nav">
+    <a href="index.html">💻 Commands</a>
+    <a href="config.html">⚙ CONFIG.SYS</a>
+    <a href="memory.html">🧠 Memory</a>
+    <a href="software.html">📦 Software</a>
+    <a href="boot.html">🏁 Boot</a>
+    <a href="timeline.html">📜 Timeline</a>
+    <a href="simulator.html">▶ Simulator</a>
+    <a href="gallery.html">🖼 Gallery</a>
+  </div>
+</nav>
+<script>
+document.querySelectorAll('.sub-nav a').forEach(function(a){
+  var h = a.getAttribute('href');
+  var p = location.pathname;
+  if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/dos') || p.endsWith('index.html')))) {
+    a.classList.add('active');
+  }
+});
+</script>
+<div class="wrap">
+<section id="memory">
+<div class="section-title">The 640K Barrier</div>
+
+    <div class="fact-row">
+      <div class="fact-box"><div class="fact-num">640 KB</div><div class="fact-label">Conventional memory — the precious limit</div></div>
+      <div class="fact-box"><div class="fact-num">384 KB</div><div class="fact-label">Reserved for video, ROMs, and adapters</div></div>
+      <div class="fact-box"><div class="fact-num">~45 KB</div><div class="fact-num" style="font-size:.9rem">freed</div><div class="fact-label">By loading DOS into HMA</div></div>
+      <div class="fact-box"><div class="fact-num">8086</div><div class="fact-label">CPU with 20-bit address bus = 1MB maximum</div></div>
+    </div>
+
+    <p class="prose" style="margin-bottom:1rem">The IBM PC's original designers in 1981 made a fateful decision: the Intel 8088 CPU's 20-bit address bus allowed a maximum of 1 megabyte of addressable memory. Of that 1MB, only the <strong>bottom 640KB</strong> was available for programs — the rest was reserved for the video display, ROM BIOS, and expansion card firmware. Bill Gates' apocryphal quote "640K ought to be enough for anybody" became one of computing's most famous (misattributed) remarks. Whether he said it or not, it captured exactly what happened: 640K rapidly became desperately insufficient.</p>
+
+    <div class="mem-diagram">
+      <div class="mem-row conv">
+        <div class="mem-addr">0 – 640 KB</div>
+        <div class="mem-label">Conventional Memory</div>
+        <div class="mem-desc">The precious 640K. DOS itself, device drivers, TSRs (Terminate-and-Stay-Resident programs), and the running application all competed for this space. Every kilobyte spent on drivers and utilities was a kilobyte stolen from your game or word processor.</div>
+      </div>
+      <div class="mem-row video">
+        <div class="mem-addr">640 – 768 KB</div>
+        <div class="mem-label">Video Memory (VGA/EGA)</div>
+        <div class="mem-desc">Display adapter RAM — the VGA frame buffer. Text mode used only a few KB; graphics modes used more. Memory managers could sometimes "fill the gaps" in this area to create UMBs (Upper Memory Blocks) for loading drivers.</div>
+      </div>
+      <div class="mem-row adapter">
+        <div class="mem-addr">768 – 960 KB</div>
+        <div class="mem-label">Adapter ROM / UMBs</div>
+        <div class="mem-desc">Network card ROMs, SCSI BIOS, CD-ROM firmware. Unused sections of this area could be claimed by EMM386.EXE as Upper Memory Blocks (UMBs) — used to load device drivers high with DEVICEHIGH and TSRs with LOADHIGH/LH, freeing conventional memory.</div>
+      </div>
+      <div class="mem-row bios">
+        <div class="mem-addr">960 KB – 1 MB</div>
+        <div class="mem-label">BIOS ROM</div>
+        <div class="mem-desc">The system BIOS — Power-On Self Test, disk I/O, keyboard, video services. Cannot be reclaimed or moved. The "shadow RAM" trick copied the BIOS ROM into faster RAM at the same address to speed up BIOS calls.</div>
+      </div>
+      <div class="mem-row xms">
+        <div class="mem-addr">1 MB – 64 MB+</div>
+        <div class="mem-label">Extended Memory (XMS)</div>
+        <div class="mem-desc">Available on 286+ machines. Only accessible in protected mode — DOS programs running in real mode couldn't touch it directly. HIMEM.SYS provided the XMS API. Windows 3.x ran applications here. DOS programs used it only via XMS calls (disk cache, RAMDRIVE, etc.).</div>
+      </div>
+      <div class="mem-row ems">
+        <div class="mem-addr">Bank-switched</div>
+        <div class="mem-label">Expanded Memory (EMS)</div>
+        <div class="mem-desc">A pre-286 hack: a 64KB "window" in the 640–1MB range mapped to 16KB banks of memory on an EMS card (or emulated by EMM386). Lotus-Intel-Microsoft spec (LIM EMS). Allowed Lotus 1-2-3 and WordPerfect to access >640KB. Superseded by XMS on 386+ machines.</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:1.5rem">Memory Managers</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-name">HIMEM.SYS</div>
+        <div class="card-sub">Included with MS-DOS 5.0+</div>
+        <div class="card-desc">Microsoft's Extended Memory Manager. Provided the XMS (eXtended Memory Specification) API and unlocked the High Memory Area (HMA) — the first 64KB above 1MB. Required to use DOS=HIGH which moved DOS itself out of conventional memory, freeing ~45KB. The foundation of all DOS memory optimization.</div>
+        <span class="card-tag tag-sys">Free with DOS</span>
+      </div>
+      <div class="card">
+        <div class="card-name">EMM386.EXE</div>
+        <div class="card-sub">Included with MS-DOS 5.0+</div>
+        <div class="card-desc">Ran in protected mode (386+ required) to create Upper Memory Blocks from unused address space in the 640–1MB range. Enabled DEVICEHIGH and LOADHIGH commands. Could also emulate EMS for legacy programs via the RAM parameter instead of NOEMS. Choosing NOEMS vs RAM vs a specific memory frame was the subject of endless config tweaking.</div>
+        <span class="card-tag tag-sys">Free with DOS</span>
+      </div>
+      <div class="card">
+        <div class="card-name">QEMM-386</div>
+        <div class="card-sub">Quarterdeck Office Systems — ~$60-100</div>
+        <div class="card-desc">The most popular third-party memory manager. QEMM was smarter than EMM386 at finding available UMB space — it could "stealth" ROM by remapping it, recovering more upper memory than Microsoft's tools. Included OPTIMIZE, an automated configuration wizard that rebooted your system multiple times to measure exactly how each driver should be loaded. Many users swore by it.</div>
+        <span class="card-tag tag-app">Commercial</span>
+      </div>
+      <div class="card">
+        <div class="card-name">386MAX</div>
+        <div class="card-sub">Qualitas — QEMM's main competitor</div>
+        <div class="card-desc">Competed directly with QEMM. Included its own optimization wizard (MAXIMIZE). Some users found it freed slightly more memory than QEMM on certain hardware configurations; others found the reverse. The QEMM vs 386MAX debate was a constant topic in PC magazines and BBS technical conferences throughout the early 1990s.</div>
+        <span class="card-tag tag-app">Commercial</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Software -->
+</section>
+</div>
+<script>
+// ── Background canvas — CRT scan lines + blue glow ──────────────────────────
+var canvas = document.getElementById('dos-canvas');
+var ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Horizontal scan lines scrolling slowly downward
+var scanOffset = 0;
+
+function drawFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw scan lines — groups of bright lines with dark gaps, scrolling down
+  var lineSpacing = 4;
+  var lineHeight = 1;
+  var speed = 0.3;
+
+  scanOffset = (scanOffset + speed) % lineSpacing;
+
+  ctx.strokeStyle = 'rgba(85,255,255,0.22)';
+  ctx.lineWidth = lineHeight;
+
+  for (var y = -lineSpacing + scanOffset; y < canvas.height + lineSpacing; y += lineSpacing) {
+    // Vary brightness slightly across the screen height for CRT curvature effect
+    var brightness = 0.15 + 0.07 * Math.sin(y / canvas.height * Math.PI);
+    ctx.strokeStyle = 'rgba(85,255,255,' + brightness + ')';
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  // Subtle vertical phosphor glow bands
+  for (var i = 0; i < 5; i++) {
+    var gx = (canvas.width / 5) * i + canvas.width / 10;
+    var grad = ctx.createLinearGradient(gx - 60, 0, gx + 60, 0);
+    grad.addColorStop(0, 'rgba(0,80,160,0)');
+    grad.addColorStop(0.5, 'rgba(0,80,160,0.04)');
+    grad.addColorStop(1, 'rgba(0,80,160,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(gx - 60, 0, 120, canvas.height);
+  }
+
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

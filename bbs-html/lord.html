@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Bulletin Board Systems">
+  <title>BBS — Bulletin Board Systems</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #020a02;
+      --panel:  #040e04;
+      --green:  #00c853;
+      --bright: #69f0ae;
+      --amber:  #ffd740;
+      --text:   #b8d4b0;
+      --muted:  #3a5a3a;
+      --card:   rgba(2,10,2,.93);
+      --border: rgba(0,200,83,.18);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 100% 50% at 50% 0%, rgba(0,200,83,.18) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 40% at 20% 90%, rgba(0,100,40,.15) 0%, transparent 60%),
+        linear-gradient(180deg, #020a02 0%, #010601 100%);
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(0,200,83,.015) 0, rgba(0,200,83,.015) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, rgba(0,200,83,.008) 0, rgba(0,200,83,.008) 1px, transparent 1px, transparent 80px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 2rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Canvas ── */
+    #bbs-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0; opacity: 0.13; pointer-events: none;
+    }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .hero-icon { font-size: 4rem; line-height: 1; margin-bottom: .75rem; filter: drop-shadow(0 0 24px rgba(0,200,83,.6)); }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700;
+      letter-spacing: -.01em; color: var(--bright);
+      text-shadow: 0 0 30px rgba(105,240,174,.4);
+    }
+    .hero-spqr {
+      font-size: 1rem; color: var(--green); margin-top: .35rem;
+      letter-spacing: .2em;
+    }
+    .hero-sub { font-size: 1rem; color: var(--muted); margin-top: .35rem; font-style: italic; }
+    .hero-dates {
+      display: inline-block; margin-top: .75rem;
+      background: rgba(0,200,83,.08); border: 1px solid var(--border);
+      border-radius: 6px; padding: .35rem 1rem;
+      font-size: .85rem; color: var(--green); letter-spacing: .08em; font-style: normal;
+    }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: .12em;
+      color: var(--green); text-transform: uppercase;
+      border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.25rem;
+    }
+
+    /* ── Generic card grid ── */
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.1rem 1.2rem; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: var(--green); transform: translateY(-2px); }
+    .card-name { font-size: 1rem; font-weight: 700; color: var(--bright); }
+    .card-sub  { font-size: .78rem; color: var(--green); margin-bottom: .45rem; }
+    .card-desc { font-size: .82rem; color: var(--text); line-height: 1.55; }
+    .card-tag  {
+      display: inline-block; margin-top: .55rem; padding: .2rem .55rem;
+      font-size: .72rem; border-radius: 4px; font-weight: 700;
+    }
+    .tag-hit   { background: rgba(0,200,83,.15); color: var(--bright); border: 1px solid rgba(0,200,83,.3); }
+    .tag-soft  { background: rgba(255,215,64,.1); color: var(--amber); border: 1px solid rgba(255,215,64,.25); }
+    .tag-net   { background: rgba(0,120,200,.15); color: #55cfff; border: 1px solid rgba(0,120,200,.3); }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: .75rem; }
+    .tl-item {
+      display: grid; grid-template-columns: 110px 1fr;
+      gap: .75rem; align-items: start;
+    }
+    .tl-year {
+      font-size: .85rem; font-weight: 700; color: var(--green);
+      padding-top: .15rem; text-align: right;
+    }
+    .tl-body {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;
+      padding: .6rem .85rem;
+    }
+    .tl-title { font-size: .88rem; font-weight: 700; color: var(--bright); margin-bottom: .2rem; }
+    .tl-desc  { font-size: .81rem; color: var(--text); line-height: 1.45; }
+
+    /* ── Hierarchy tiers ── */
+    .hier { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+    .hier-tier {
+      border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+      padding: .7rem 1.5rem; text-align: center; transition: border-color .2s;
+    }
+    .hier-tier:hover { border-color: var(--green); }
+    .hier-tier.h1 { width: 40%; background: rgba(0,200,83,.12); }
+    .hier-tier.h2 { width: 55%; }
+    .hier-tier.h3 { width: 68%; background: rgba(0,200,83,.06); }
+    .hier-tier.h4 { width: 80%; }
+    .hier-tier.h5 { width: 92%; background: rgba(0,50,20,.4); }
+    .hier-tier.h6 { width: 100%; background: rgba(0,30,10,.5); }
+    .ht-title { font-size: .95rem; font-weight: 700; color: var(--bright); }
+    .ht-desc  { font-size: .8rem; color: var(--text); margin-top: .2rem; }
+    .ht-arrow { text-align: center; font-size: .9rem; color: rgba(0,200,83,.4); }
+
+    /* ── ANSI art block ── */
+    .ansi-demo {
+      background: #000; border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.25rem 1.5rem; overflow-x: auto; margin-bottom: 1.25rem;
+    }
+    .ansi-demo pre {
+      font-family: 'Courier New', monospace; font-size: .78rem; line-height: 1.35;
+      white-space: pre; color: var(--green);
+    }
+    .ansi-bright { color: var(--bright); }
+    .ansi-amber  { color: var(--amber); }
+    .ansi-red    { color: #ff5555; }
+    .ansi-cyan   { color: #55ffff; }
+    .ansi-white  { color: #ffffff; }
+    .ansi-dim    { color: #336633; }
+
+    /* ── Info prose ── */
+    .prose { font-size: .88rem; line-height: 1.7; color: var(--text); }
+    .prose + .prose { margin-top: .85rem; }
+    .prose strong { color: var(--bright); }
+    .prose em { color: var(--green); font-style: normal; }
+
+    /* ── Fact row ── */
+    .fact-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .85rem;
+      margin-bottom: 1.25rem;
+    }
+    .fact-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: .85rem 1rem; text-align: center;
+    }
+    .fact-num  { font-size: 1.6rem; font-weight: 700; color: var(--bright); line-height: 1; }
+    .fact-label{ font-size: .75rem; color: var(--muted); margin-top: .3rem; letter-spacing: .05em; }
+
+    /* ── FidoNet address ── */
+    .fido-addr {
+      display: inline-block; background: #000; border: 1px solid var(--border);
+      border-radius: 5px; padding: .3rem .8rem; color: var(--amber);
+      font-size: .88rem; letter-spacing: .06em; margin: .35rem 0;
+    }
+
+    /* ── Sub Nav ── */
+    .sub-nav-wrap {
+      position: sticky; top: 36px; z-index: 100;
+      background: rgba(2,10,2,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .sub-nav {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: .15rem; padding: .45rem .75rem;
+    }
+    .sub-nav a {
+      color: var(--muted); text-decoration: none;
+      font-family: 'Courier New', monospace; font-size: .78rem;
+      letter-spacing: .06em; padding: .35rem .75rem;
+      border-radius: 5px; border: 1px solid transparent;
+      transition: color .18s, border-color .18s, background .18s;
+      white-space: nowrap;
+    }
+    .sub-nav a:hover, .sub-nav a.active {
+      color: var(--bright); border-color: var(--border);
+      background: rgba(0,200,83,.07);
+    }
+
+    @media (max-width: 600px) {
+      .tl-item { grid-template-columns: 70px 1fr; }
+      .hier-tier { width: 100% !important; }
+      .sub-nav a { font-size: .72rem; padding: .3rem .5rem; }
+    }
+    .card-img { width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 6px; margin-bottom: .75rem; filter: sepia(30%) brightness(.82); transition: filter .3s; display: block; }
+    .card-img:hover { filter: sepia(8%) brightness(1); }
+    .tl-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 4px; margin-top: .65rem; filter: sepia(30%) brightness(.85); transition: filter .3s; display: block; }
+    .tl-img:hover { filter: sepia(8%) brightness(1); }
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .gallery-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .2s, transform .2s; }
+    .gallery-card:hover { border-color: var(--green); transform: translateY(-2px); }
+    .gallery-img { width: 100%; height: 220px; object-fit: cover; display: block; filter: sepia(25%) brightness(.85); transition: filter .3s; }
+    .gallery-img:hover { filter: sepia(5%) brightness(1.05); }
+    .gallery-info { padding: .6rem .85rem .8rem; }
+    .gallery-title { font-size: .88rem; color: var(--bright); font-weight: 700; margin-bottom: .2rem; }
+    .gallery-caption { font-size: .76rem; color: var(--muted); font-style: italic; line-height: 1.4; }
+
+    /* ── LORD Sub-Nav ── */
+    :root { --red: #c83200; --bright-red: #ff7733; --amber-dim: rgba(255,100,40,.18); }
+    .lord-nav-wrap {
+      background: rgba(12,2,0,.88);
+      border: 1px solid rgba(200,50,0,.3);
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(8px);
+    }
+    .lord-nav {
+      display: flex; flex-wrap: wrap;
+      gap: .1rem; padding: .4rem .65rem;
+    }
+    .lord-nav a {
+      color: rgba(200,100,50,.65); text-decoration: none;
+      font-family: 'Courier New', monospace; font-size: .78rem;
+      letter-spacing: .06em; padding: .3rem .75rem;
+      border-radius: 5px; border: 1px solid transparent;
+      transition: color .18s, border-color .18s, background .18s;
+      white-space: nowrap;
+    }
+    .lord-nav a:hover, .lord-nav a.lord-active {
+      color: var(--bright-red); border-color: rgba(200,50,0,.4);
+      background: rgba(200,50,0,.1);
+    }
+    .lord-section { display: none; }
+    .lord-section.visible { display: block; }
+
+    /* LORD-specific components */
+    .lord-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: .12em;
+      color: var(--bright-red); text-transform: uppercase;
+      border-bottom: 1px solid rgba(200,50,0,.25); padding-bottom: .5rem; margin-bottom: 1.25rem;
+    }
+    .lord-fact-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .85rem;
+      margin-bottom: 1.25rem;
+    }
+    .lord-fact-box {
+      background: rgba(12,2,0,.8); border: 1px solid rgba(200,50,0,.25); border-radius: 8px;
+      padding: .85rem 1rem; text-align: center;
+    }
+    .lord-fact-num   { font-size: 1.6rem; font-weight: 700; color: var(--bright-red); line-height: 1; }
+    .lord-fact-label { font-size: .74rem; color: rgba(200,120,80,.7); margin-top: .3rem; letter-spacing: .05em; }
+    .lord-card {
+      background: rgba(12,2,0,.85); border: 1px solid rgba(200,50,0,.2); border-radius: 10px;
+      padding: 1.1rem 1.2rem; transition: border-color .2s, transform .2s;
+    }
+    .lord-card:hover { border-color: var(--red); transform: translateY(-2px); }
+    .lord-card-name { font-size: 1rem; font-weight: 700; color: var(--bright-red); }
+    .lord-card-sub  { font-size: .77rem; color: rgba(200,100,50,.7); margin-bottom: .4rem; }
+    .lord-card-desc { font-size: .82rem; color: var(--text); line-height: 1.55; }
+    .lord-tag {
+      display: inline-block; margin-top: .5rem; padding: .2rem .55rem;
+      font-size: .72rem; border-radius: 4px; font-weight: 700;
+      background: rgba(200,50,0,.15); color: var(--bright-red); border: 1px solid rgba(200,50,0,.3);
+    }
+    .lord-loc-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem;
+      margin-bottom: 1.25rem;
+    }
+    .lord-loc {
+      background: rgba(12,2,0,.85); border: 1px solid rgba(200,50,0,.2); border-radius: 8px;
+      padding: .75rem 1rem; border-left: 3px solid var(--red);
+    }
+    .lord-loc-name { font-size: .9rem; font-weight: 700; color: var(--bright-red); margin-bottom: .25rem; }
+    .lord-loc-desc { font-size: .81rem; color: var(--text); line-height: 1.45; }
+    .lord-tl { display: flex; flex-direction: column; gap: .65rem; }
+    .lord-tl-item { display: grid; grid-template-columns: 90px 1fr; gap: .75rem; align-items: start; }
+    .lord-tl-ver  { font-size: .85rem; font-weight: 700; color: var(--bright-red); text-align: right; padding-top: .15rem; }
+    .lord-tl-body {
+      background: rgba(12,2,0,.85); border: 1px solid rgba(200,50,0,.2);
+      border-left: 3px solid var(--red); border-radius: 0 8px 8px 0;
+      padding: .6rem .85rem;
+    }
+    .lord-tl-title { font-size: .88rem; font-weight: 700; color: var(--bright-red); margin-bottom: .2rem; }
+    .lord-tl-desc  { font-size: .81rem; color: var(--text); line-height: 1.45; }
+    .prose-red { font-size: .88rem; line-height: 1.7; color: var(--text); }
+    .prose-red + .prose-red { margin-top: .85rem; }
+    .prose-red strong { color: var(--bright-red); }
+    .prose-red em { color: rgba(220,140,80,.9); font-style: normal; }
+
+    @media (max-width: 600px) {
+      .lord-tl-item { grid-template-columns: 65px 1fr; }
+    }
+  </style>
+</head>
+<body>
+<canvas id="bbs-canvas"></canvas>
+<nav class="sub-nav-wrap">
+  <div class="sub-nav">
+    <a href="index.html">💾 History</a>
+    <a href="ansi.html">🎨 ANSI Art</a>
+    <a href="doors.html">🚪 Door Games</a>
+    <a href="software.html">🖥 Software</a>
+    <a href="fidonet.html">🌐 FidoNet</a>
+    <a href="timeline.html">📜 Timeline</a>
+    <a href="gallery.html">🖼 Gallery</a>
+    <a href="lord.html">🐉 LORD</a>
+  </div>
+</nav>
+<script>
+document.querySelectorAll('.sub-nav a').forEach(function(a){
+  var h = a.getAttribute('href');
+  var p = location.pathname;
+  if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/bbs') || p.endsWith('index.html')))) {
+    a.classList.add('active');
+  }
+});
+</script>
+<div class="wrap">
+<section id="lord">
+<nav class="lord-nav-wrap">
+      <div class="lord-nav">
+        <a href="#" data-lord="overview" class="lord-active">⚔ Overview</a>
+        <a href="#" data-lord="characters">👤 Characters</a>
+        <a href="#" data-lord="gameplay">🎮 Gameplay</a>
+        <a href="#" data-lord="creator">🧙 Seth Able</a>
+        <a href="#" data-lord="versions">📦 Versions</a>
+        <a href="#" data-lord="legacy">🏆 Legacy</a>
+      </div>
+    </nav>
+
+    <!-- Overview -->
+    <div id="lord-overview" class="lord-section visible">
+      <div class="lord-title">Legend of the Red Dragon</div>
+
+      <div class="lord-fact-row">
+        <div class="lord-fact-box"><div class="lord-fact-num">1989</div><div class="lord-fact-label">First release by Seth Able Robinson</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">~60K</div><div class="lord-fact-label">BBSs running LORD at peak</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">10</div><div class="lord-fact-label">Daily forest fights (default)</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">12</div><div class="lord-fact-label">Levels before facing the Red Dragon</div></div>
+      </div>
+
+      <p class="prose-red"><strong>Legend of the Red Dragon</strong> — universally known as <em>LORD</em> — was the most widely installed door game in BBS history. Written by Seth Able Robinson in 1989, it shipped with nearly every major BBS software bundle and ran on an estimated 60,000 boards at its peak. No other door game came close to its install count or cultural footprint.</p>
+
+      <p class="prose-red">The premise was deceptively simple: you played a warrior or thief in a medieval village, spending your daily allotment of forest fights to kill monsters, gain experience, and level up — eventually growing powerful enough to challenge the <strong>Red Dragon</strong> that terrorized the land. The twist was that real players shared the same village. You could rob them, challenge them to combat, seduce the innkeeper's daughter before they could, or read the daily <em>Daily Happenings</em> newspaper to see what everyone else had been up to.</p>
+
+      <p class="prose-red">LORD succeeded because it married two addictive loops: the <strong>daily check-in</strong> (your turns reset at midnight, forcing daily engagement) and <strong>social drama</strong> (the village was a gossip engine full of rivalries, flirtations, and grudges). Players who had never met in person would spend weeks locked in feuds over stolen gems or a contested marriage to Violet. This was social gaming — with persistent state, player-driven drama, and daily ritual — a full decade before World of Warcraft.</p>
+    </div>
+
+    <!-- Characters -->
+    <div id="lord-characters" class="lord-section">
+      <div class="lord-title">Characters &amp; NPCs</div>
+      <div class="cards-grid">
+        <div class="lord-card">
+          <div class="lord-card-name">🐉 The Red Dragon</div>
+          <div class="lord-card-sub">The final boss — reason you fight</div>
+          <div class="lord-card-desc">The ancient Red Dragon ravages the countryside at will, and no warrior has yet slain it. Reaching level 12 and defeating the Dragon resets your character back to level 1 — you become a legend, and the game begins again with your name inscribed in the hall of fame. The Dragon is intentionally far stronger than any individual player; many players spent weeks just trying to reach it.</div>
+          <span class="lord-tag">Final Boss</span>
+        </div>
+        <div class="lord-card">
+          <div class="lord-card-name">💜 Violet</div>
+          <div class="lord-card-sub">The innkeeper's daughter</div>
+          <div class="lord-card-desc">Violet is the innkeeper's young daughter at the local tavern. You can flirt with her daily, bring her flowers (bought with gold), and ultimately propose marriage. Only one player can marry Violet — once wed, she boosts your stats and other players get locked out. Competing with other players to win Violet before they could was one of LORD's defining social mechanics and generated enormous drama on active boards.</div>
+          <span class="lord-tag">NPC — Marriageable</span>
+        </div>
+        <div class="lord-card">
+          <div class="lord-card-name">🎵 The Bard</div>
+          <div class="lord-card-sub">Village storyteller &amp; gossip engine</div>
+          <div class="lord-card-desc">The Bard holds court in the tavern and will sing the tales of the day's heroes — who slew what in the forest, who challenged whom to combat, who married Violet, who got robbed. The Bard's recaps were LORD's social feed: players logged on just to read what enemies had been up to. Sysops who kept logs of the Bard's tales had some of the most entertaining BBS message archives of the era.</div>
+          <span class="lord-tag">NPC — Gossip Engine</span>
+        </div>
+        <div class="lord-card">
+          <div class="lord-card-name">💀 The Death Knight</div>
+          <div class="lord-card-sub">What you become after dying too many times</div>
+          <div class="lord-card-desc">Die three times in combat and you are transformed into a Death Knight — a semi-demonic form that automatically attacks other players in the forest, whether you want to or not. Death Knights were feared and hunted. The mechanic created an emergent bounty-hunting culture: high-level players would wait in the forest specifically to intercept Death Knights and collect their gear. Being turned was both a punishment and a perverse badge of honor.</div>
+          <span class="lord-tag">Mechanic — PvP Trigger</span>
+        </div>
+        <div class="lord-card">
+          <div class="lord-card-name">🧝 Other Players</div>
+          <div class="lord-card-sub">The real antagonists</div>
+          <div class="lord-card-desc">LORD's most dangerous enemies were other players. You could see who was online and challenge them to direct combat, ambush them in the forest, or hire the thief guild to rob them. Players could form alliances and warn each other about Death Knights. On busy boards with 50–200 active users, the social metagame — reputation, rivalries, alliances — was more engaging than the game's actual RPG mechanics.</div>
+          <span class="lord-tag">PvP</span>
+        </div>
+        <div class="lord-card">
+          <div class="lord-card-name">🗡 Forest Monsters</div>
+          <div class="lord-card-sub">Daily combat fodder</div>
+          <div class="lord-card-desc">The forest holds a rotating cast of monsters scaled to your current level: goblins and kobolds at low levels, trolls and ogres mid-game, giants and demons approaching level 12. Each fight consumed one of your daily turns. Monsters sometimes dropped gems — a secondary currency used to buy items and boost Violet's affection. The forest was the economic engine of LORD: turns in, gold and gems out.</div>
+          <span class="lord-tag">PvE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gameplay -->
+    <div id="lord-gameplay" class="lord-section">
+      <div class="lord-title">A Day in the Village</div>
+
+      <p class="prose-red">A typical LORD session lasted five to fifteen minutes — exactly as long as your daily turns took to spend. The genius of the design was that <em>everything reset at midnight</em>: your forest fights refilled, Violet's daily flirt opportunity refreshed, the newspaper updated. Players built a daily ritual around it: check in, spend turns, read the news, log off. For years, some players did this every single day.</p>
+
+      <div class="lord-loc-grid">
+        <div class="lord-loc">
+          <div class="lord-loc-name">🌲 The Forest</div>
+          <div class="lord-loc-desc">Your daily allotment of fights (usually 10, configurable by sysop). Fight a random monster, win experience and gold. Lose and you get injured — or die. Also where you encounter other players and Death Knights.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">🍺 Ye Olde Inne</div>
+          <div class="lord-loc-desc">The social hub. Talk to the Bard (read daily news), flirt with Violet, drink to restore HP, check the online list, or challenge another player to combat. Most of LORD's social drama originated here.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">⚔ Weapons Shop</div>
+          <div class="lord-loc-desc">Buy better weapons and armor with gold earned from forest fights. Weapon and armor quality directly scaled your combat effectiveness — upgrading gear was the primary gold sink and progression motivator between level-ups.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">🏦 The Bank</div>
+          <div class="lord-loc-desc">Deposit gold to protect it from thieves and Death Knights. Gold in hand could be stolen; gold in the bank couldn't. Smart players banked immediately after each forest session. The bank also paid modest interest, creating a small idle-income mechanic.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">💊 The Healer</div>
+          <div class="lord-loc-desc">Restore HP between forest runs. The healer charged gold scaled to how much HP you needed restored. Running out of HP mid-session without healer gold was a classic mistake for new players — and one that often cost them a death and a step toward Death Knight status.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">🔮 The Mystic Shop</div>
+          <div class="lord-loc-desc">Spend gems on magical items: extra forest fights, healing potions, strength boosts, and special attack skills. Gems were rarer than gold and dropped unpredictably from forest monsters — saving gems for the right item was a strategic layer most players didn't discover until their second or third playthrough.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">📜 Daily Happenings</div>
+          <div class="lord-loc-desc">The in-game newspaper printed at midnight each night. It listed all major events from the previous day: who leveled up, who killed the most monsters, who challenged whom in PvP, who married Violet, who became a Death Knight. On active boards this was must-read content and drove most of the social conversation in the BBS message bases.</div>
+        </div>
+        <div class="lord-loc">
+          <div class="lord-loc-name">💍 Marriage</div>
+          <div class="lord-loc-desc">Propose to Violet (or, in some versions, to other players' female characters). A married player received stat bonuses. Competing for Violet — and the jealousy, scheming, and revenge it provoked — was the single most socially explosive mechanic in LORD. Boards with active PvP scenes were often driven entirely by who had just married (or stolen) whose partner.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Creator -->
+    <div id="lord-creator" class="lord-section">
+      <div class="lord-title">Seth Able Robinson</div>
+
+      <div class="lord-fact-row">
+        <div class="lord-fact-box"><div class="lord-fact-num">~16</div><div class="lord-fact-label">Age when LORD v1.0 shipped (1989)</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">1994</div><div class="lord-fact-label">LORD II: New World released</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">v4.07</div><div class="lord-fact-label">Final major LORD release</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">Canadian</div><div class="lord-fact-label">British Columbia</div></div>
+      </div>
+
+      <p class="prose-red">Seth Able Robinson was a teenager in British Columbia when he wrote the first version of LORD in 1989. He distributed it as shareware through BBS networks, and it spread faster than almost any other door game in history. His online handle — <strong>Seth Able</strong> — became famous enough that players often assumed it was a character name in the game rather than the programmer's handle.</p>
+
+      <p class="prose-red">Robinson continued developing LORD through the early 1990s, releasing updates that added new mechanics, IGM (Inter-Game Module) support, and a richer NPC system. The IGM architecture was a key innovation: it allowed third-party developers to write plug-in modules that hooked into LORD's drop-file system and added entirely new game locations, quests, and characters. Hundreds of IGMs were written and freely distributed — the first real modding ecosystem in online gaming.</p>
+
+      <p class="prose-red">In 1994 Robinson released <strong>LORD II: New World</strong>, which moved the setting to a new continent, added a more complex overworld map, and introduced new character classes. LORD II never matched the original's cultural dominance — by 1994 the BBS era was entering its final years and LORD's install base was simply too large to uproot — but it demonstrated Robinson's continued investment in the game world he had built.</p>
+
+      <p class="prose-red">Robinson later released LORD's source code, allowing the community to continue development and port it to modern platforms. Today LORD is freely downloadable and still runs on telnet BBSs worldwide. The original source release cemented its place not just as a historically significant game but as living software — still playable, still surprising new players, still generating Bard stories about who stole whose gems in the forest last night.</p>
+    </div>
+
+    <!-- Versions -->
+    <div id="lord-versions" class="lord-section">
+      <div class="lord-title">Versions &amp; Sequels</div>
+      <div class="lord-tl">
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">1989</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">LORD v1.0 — Initial Release</div>
+            <div class="lord-tl-desc">Seth Able Robinson releases LORD v1.0 as shareware distributed through BBS networks. Core mechanics are all present: daily forest fights, the village, Violet, the Red Dragon goal. Distribution via BBS file sections means every board that downloads it makes it available to hundreds of callers.</div>
+          </div>
+        </div>
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">1990–91</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">v2.x — IGM Support Added</div>
+            <div class="lord-tl-desc">The v2.x series introduces <strong>Inter-Game Modules (IGMs)</strong> — a drop-file interface allowing third-party developers to write plug-in game locations that hook seamlessly into LORD. Within months, hundreds of IGMs appear: new shops, quests, NPCs, mini-games, and entire new village districts. LORD becomes a platform, not just a game.</div>
+          </div>
+        </div>
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">1992–93</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">v3.x — Refinements at Peak Popularity</div>
+            <div class="lord-tl-desc">The v3.x releases polish the core experience during LORD's peak install years. Sysop configuration options expand substantially — daily fight counts, gem drop rates, PvP settings, Death Knight behavior, and per-board custom welcome messages. The Daily Happenings newspaper becomes richer and more social. An estimated 40,000+ BBSs are running LORD.</div>
+          </div>
+        </div>
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">1993</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">v4.07 — Final Major Release</div>
+            <div class="lord-tl-desc">Version 4.07 is the final widely-deployed release and the version most players today remember as canonical LORD. It includes the full IGM ecosystem, refined combat balancing, the complete NPC cast, and a mature sysop configuration system. Many BBSs ran v4.07 unchanged for the remainder of their operation.</div>
+          </div>
+        </div>
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">1994</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">LORD II: New World</div>
+            <div class="lord-tl-desc">Robinson releases a full sequel set on a new continent. LORD II adds an overworld exploration map, new character classes (ranger, paladin, bard), mounted combat, and a redesigned village. The graphics are richer and the RPG mechanics deeper. Despite strong reviews, it never displaces the original — LORD v4.07's install base is simply too entrenched.</div>
+          </div>
+        </div>
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">1996–98</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">Internet LORD &amp; Telnet Ports</div>
+            <div class="lord-tl-desc">As BBSs convert to internet access via telnet, LORD ports follow. Several community-maintained builds add TCP/IP support, allowing LORD to run on modern telnet BBS software (Synchronet, Mystic, ENiGMA½). The game survives the death of the dial-up BBS entirely and finds a new home in the telnet revival community.</div>
+          </div>
+        </div>
+        <div class="lord-tl-item">
+          <div class="lord-tl-ver">2000s</div>
+          <div class="lord-tl-body">
+            <div class="lord-tl-title">Source Code Released — Community Forks</div>
+            <div class="lord-tl-desc">Robinson releases LORD's source code, spawning community forks and modern ports. <strong>LORD2000</strong> and other enhanced builds add Unicode output, web-based front-ends, and modern authentication. Browser-playable versions appear. The LORD codebase, now over a decade old, is actively maintained by enthusiasts and still ships on new telnet BBS installs.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legacy -->
+    <div id="lord-legacy" class="lord-section">
+      <div class="lord-title">Legacy &amp; Impact</div>
+
+      <div class="lord-fact-row">
+        <div class="lord-fact-box"><div class="lord-fact-num">#1</div><div class="lord-fact-label">Most widely installed door game ever</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">35+</div><div class="lord-fact-label">Years of continuous play (1989 – present)</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">100s</div><div class="lord-fact-label">Third-party IGM modules written</div></div>
+        <div class="lord-fact-box"><div class="lord-fact-num">Still live</div><div class="lord-fact-label">Playable on telnet BBSs today</div></div>
+      </div>
+
+      <p class="prose-red">LORD's most prescient design insight was the <strong>daily turn limit</strong>. Capping players at 10 forest fights per day — and resetting at midnight — forced daily engagement and created a shared temporal rhythm on every board that ran it. Players didn't just play LORD; they <em>checked in</em>, the same way a later generation would check social media feeds or mobile game energy bars. LORD invented the daily login loop decades before Farmville or Clash of Clans.</p>
+
+      <p class="prose-red">The <strong>IGM architecture</strong> was equally ahead of its time. By exposing a clean drop-file interface for third-party modules, Robinson created one of the first modding ecosystems in online gaming. IGM developers built hundreds of new locations, quests, and characters that sysops could mix and match — essentially user-generated content for a multiplayer game in 1990. The pattern resurfaced in everything from Quake mods to Steam Workshop.</p>
+
+      <p class="prose-red">LORD also demonstrated that <strong>social mechanics outweigh RPG mechanics</strong> in multiplayer games. The numbers — combat stats, gold, gems — were simple. What kept players coming back was the social drama: the feuds, the marriages, the Death Knight hunts, the Bard's gossip. The game was a social network with a thin RPG layer on top. Modern MMO designers who talk about "emergent social gameplay" are rediscovering what LORD figured out in 1989.</p>
+
+      <p class="prose-red">Today, LORD still runs on hundreds of telnet BBSs worldwide. The source code is freely available. New players — often introduced by retro-computing enthusiasts — encounter it and find that it holds up: the pacing is tight, the social hooks still work, and the daily ritual still generates drama. Thirty-five years after Seth Able Robinson shipped it from his home in British Columbia, the Red Dragon is still waiting in the forest.</p>
+    </div>
+
+  </div><!-- /lord -->
+
+</div><!-- /wrap -->
+
+<script>
+// ── Sub-nav routing ──────────────────────────────────────────────────────────
+var SECTIONS = ['history','ansi','doors','software','fidonet','timeline','gallery','lord'];
+var navLinks = document.querySelectorAll('.sub-nav a');
+
+function showSection(id) {
+  SECTIONS.forEach(function(s) {
+    var el = document.getElementById(s);
+    if (el) el.classList.toggle('visible', s === id);
+  });
+  navLinks.forEach(function(a) {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+  });
+}
+
+navLinks.forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    var id = a.getAttribute('href').slice(1);
+    history.replaceState(null, '', '#' + id);
+    showSection(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+var initial = (location.hash.slice(1) || 'history');
+if (SECTIONS.indexOf(initial) === -1) initial = 'history';
+showSection(initial);
+
+// ── LORD internal sub-nav ────────────────────────────────────────────────────
+var lordLinks = document.querySelectorAll('.lord-nav a');
+var LORD_SECTS = ['overview','characters','gameplay','creator','versions','legacy'];
+
+function showLordSection(id) {
+  LORD_SECTS.forEach(function(s) {
+    var el = document.getElementById('lord-' + s);
+    if (el) el.classList.toggle('visible', s === id);
+  });
+  lordLinks.forEach(function(a) {
+    a.classList.toggle('lord-active', a.getAttribute('data-lord') === id);
+  });
+}
+
+lordLinks.forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    showLordSection(a.getAttribute('data-lord'));
+  });
+});
+
+showLordSection('overview');
+
+// ── Background canvas — Matrix-style falling characters ──────────────────────
+var canvas = document.getElementById('bbs-canvas');
+var ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', function() {
+  resize();
+  initCols();
+});
+
+var cols = [];
+var CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!?<>[]{}|/\\~`';
+
+function initCols() {
+  cols = [];
+  var colWidth = 16;
+  var numCols = Math.floor(canvas.width / colWidth) + 1;
+  for (var i = 0; i < numCols; i++) {
+    cols.push({
+      x: i * colWidth,
+      y: Math.random() * canvas.height,
+      speed: 0.8 + Math.random() * 2.2,
+      len: 8 + Math.floor(Math.random() * 20),
+      chars: [],
+      timer: 0,
+      changeRate: 3 + Math.floor(Math.random() * 8)
+    });
+    for (var j = 0; j < cols[i].len; j++) {
+      cols[i].chars.push(CHARS[Math.floor(Math.random() * CHARS.length)]);
+    }
+  }
+}
+initCols();
+
+var frame = 0;
+function drawFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '13px "Courier New", monospace';
+
+  cols.forEach(function(c) {
+    frame++;
+    c.timer++;
+    if (c.timer % c.changeRate === 0) {
+      var idx = Math.floor(Math.random() * c.len);
+      c.chars[idx] = CHARS[Math.floor(Math.random() * CHARS.length)];
+    }
+
+    for (var i = 0; i < c.len; i++) {
+      var cy = c.y - i * 14;
+      if (cy < -14 || cy > canvas.height + 14) continue;
+      var ratio = i / c.len;
+      var alpha;
+      if (i === 0) {
+        alpha = 0.9;
+        ctx.fillStyle = 'rgba(180,255,200,' + alpha + ')';
+      } else {
+        alpha = (1 - ratio) * 0.55;
+        ctx.fillStyle = 'rgba(0,200,83,' + alpha + ')';
+      }
+      ctx.fillText(c.chars[i], c.x, cy);
+    }
+
+    c.y += c.speed;
+    if (c.y - c.len * 14 > canvas.height) {
+      c.y = -c.len * 14;
+      c.speed = 0.8 + Math.random() * 2.2;
+    }
+  });
+
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
+
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>
+</section>
+</div>
+<script>
+// ── LORD internal sub-nav ────────────────────────────────────────────────────
+var lordLinks = document.querySelectorAll('.lord-nav a');
+var LORD_SECTS = ['overview','characters','gameplay','creator','versions','legacy'];
+
+function showLordSection(id) {
+  LORD_SECTS.forEach(function(s) {
+    var el = document.getElementById('lord-' + s);
+    if (el) el.classList.toggle('visible', s === id);
+  });
+  lordLinks.forEach(function(a) {
+    a.classList.toggle('lord-active', a.getAttribute('data-lord') === id);
+  });
+}
+
+lordLinks.forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    showLordSection(a.getAttribute('data-lord'));
+  });
+});
+
+showLordSection('overview');
+</script>
+<script>
+// ── Background canvas — Matrix-style falling characters ──────────────────────
+var canvas = document.getElementById('bbs-canvas');
+var ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', function() {
+  resize();
+  initCols();
+});
+
+var cols = [];
+var CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!?<>[]{}|/\\~`';
+
+function initCols() {
+  cols = [];
+  var colWidth = 16;
+  var numCols = Math.floor(canvas.width / colWidth) + 1;
+  for (var i = 0; i < numCols; i++) {
+    cols.push({
+      x: i * colWidth,
+      y: Math.random() * canvas.height,
+      speed: 0.8 + Math.random() * 2.2,
+      len: 8 + Math.floor(Math.random() * 20),
+      chars: [],
+      timer: 0,
+      changeRate: 3 + Math.floor(Math.random() * 8)
+    });
+    for (var j = 0; j < cols[i].len; j++) {
+      cols[i].chars.push(CHARS[Math.floor(Math.random() * CHARS.length)]);
+    }
+  }
+}
+initCols();
+
+var frame = 0;
+function drawFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '13px "Courier New", monospace';
+
+  cols.forEach(function(c) {
+    frame++;
+    c.timer++;
+    if (c.timer % c.changeRate === 0) {
+      var idx = Math.floor(Math.random() * c.len);
+      c.chars[idx] = CHARS[Math.floor(Math.random() * CHARS.length)];
+    }
+
+    for (var i = 0; i < c.len; i++) {
+      var cy = c.y - i * 14;
+      if (cy < -14 || cy > canvas.height + 14) continue;
+      var ratio = i / c.len;
+      var alpha;
+      if (i === 0) {
+        alpha = 0.9;
+        ctx.fillStyle = 'rgba(180,255,200,' + alpha + ')';
+      } else {
+        alpha = (1 - ratio) * 0.55;
+        ctx.fillStyle = 'rgba(0,200,83,' + alpha + ')';
+      }
+      ctx.fillText(c.chars[i], c.x, cy);
+    }
+
+    c.y += c.speed;
+    if (c.y - c.len * 14 > canvas.height) {
+      c.y = -c.len * 14;
+      c.speed = 0.8 + Math.random() * 2.2;
+    }
+  });
+
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+</script>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>
