@@ -6,6 +6,7 @@
 <meta name="description" content="IP Intelligence — ip.ximg.app — geolocation, ASN, BGP routing, reverse DNS, WebRTC leak detection, and VPN detection for your IP address">
 <title>IP Intelligence — ip.ximg.app</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -129,6 +130,29 @@ a.map-link:hover{opacity:1}
 .prefix-item:last-child{border-bottom:none}
 .prefix-name{color:var(--text-bright);font-weight:600}
 .prefix-meta{color:var(--text-dim);font-size:.67rem;margin-top:.08rem}
+
+/* ── Map ── */
+.map-wrap{position:relative;height:400px;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.9rem}
+@media(max-width:680px){.map-wrap{height:260px}}
+#ipMap{width:100%;height:100%;background:var(--bg2)}
+.map-overlay{position:absolute;bottom:0;left:0;right:0;z-index:1000;background:linear-gradient(transparent,rgba(4,8,16,.85));padding:.6rem .9rem;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}
+.map-coords{font-family:var(--mono);font-size:.7rem;color:var(--accent);letter-spacing:.06em}
+.map-label{font-family:var(--mono);font-size:.72rem;color:var(--text-bright);text-align:right}
+.map-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg1);z-index:500;font-family:var(--mono);font-size:.75rem;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase}
+/* Pulse marker */
+.pulse-wrap{position:relative;width:24px;height:24px}
+.pulse-dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent),0 0 4px var(--accent)}
+.pulse-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);animation:pr 2s ease-out infinite}
+.pulse-ring2{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,212,170,.4);animation:pr 2s ease-out .7s infinite}
+@keyframes pr{0%{transform:translate(-50%,-50%) scale(1);opacity:.9}100%{transform:translate(-50%,-50%) scale(4);opacity:0}}
+/* Override leaflet attribution style */
+.leaflet-control-attribution{background:rgba(4,8,16,.7)!important;color:#3d5068!important;font-size:.6rem!important}
+.leaflet-control-attribution a{color:#3d5068!important}
+.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--text)!important;border-color:var(--border)!important}
+.leaflet-control-zoom a:hover{background:var(--bg1)!important;color:var(--accent)!important}
+.ip-popup .leaflet-popup-content-wrapper{background:var(--bg1);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.6);padding:0}
+.ip-popup .leaflet-popup-content{margin:.5rem .75rem;font-family:var(--mono)}
+.ip-popup .leaflet-popup-tip{background:var(--bg1)}
 </style>
 </head>
 <body>
@@ -163,6 +187,15 @@ document.querySelectorAll('#subnav a').forEach(function(a){
     <span class="s-item" id="si-ptr"><span class="s-dot loading" id="sd-ptr"></span>Reverse DNS</span>
     <span class="s-item" id="si-vpn"><span class="s-dot loading" id="sd-vpn"></span>VPN Detection</span>
     <span class="s-item" id="si-rtc"><span class="s-dot loading" id="sd-rtc"></span>WebRTC</span>
+  </div>
+
+  <div class="map-wrap" id="mapWrap">
+    <div class="map-loading" id="mapLoading">Resolving coordinates...</div>
+    <div id="ipMap"></div>
+    <div class="map-overlay">
+      <div class="map-coords" id="mapCoords"></div>
+      <div class="map-label" id="mapLabel"></div>
+    </div>
   </div>
 
   <div class="section-lbl">identity &amp; network</div>
@@ -449,6 +482,40 @@ async function fetchBGP(ip){
   return null;
 }
 
+// ── Map ──────────────────────────────────────────────────────────────────────
+var _map=null;
+function initMap(lat,lon,city,country,ip){
+  var loading=document.getElementById('mapLoading');
+  if(loading)loading.style.display='none';
+  if(_map)return;
+  _map=L.map('ipMap',{center:[lat,lon],zoom:11,zoomControl:true,scrollWheelZoom:false,attributionControl:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains:'abcd',maxZoom:19
+  }).addTo(_map);
+  var icon=L.divIcon({
+    className:'',
+    html:'<div class="pulse-wrap"><div class="pulse-ring"></div><div class="pulse-ring2"></div><div class="pulse-dot"></div></div>',
+    iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-14]
+  });
+  var marker=L.marker([lat,lon],{icon:icon}).addTo(_map);
+  marker.bindPopup(
+    '<div style="font-family:\'Courier New\',monospace;font-size:.75rem;color:#dde6f0;background:#07101a;padding:.25rem .5rem;border-radius:4px;line-height:1.6;min-width:140px">'+
+    '<div style="color:#00d4aa;font-weight:700;margin-bottom:.2rem">'+ip+'</div>'+
+    '<div style="color:#b8c5d4">'+city+'</div>'+
+    '<div style="color:#3d5068">'+country+'</div>'+
+    '</div>',
+    {className:'ip-popup',closeButton:false}
+  ).openPopup();
+  // Add accuracy circle (~city-level IP geolocation ≈ 25km radius)
+  L.circle([lat,lon],{radius:25000,color:'#00d4aa',fillColor:'#00d4aa',fillOpacity:.04,weight:1,opacity:.25}).addTo(_map);
+  // Overlay labels
+  var coordEl=document.getElementById('mapCoords');
+  var labelEl=document.getElementById('mapLabel');
+  if(coordEl)coordEl.textContent=lat.toFixed(4)+'°, '+lon.toFixed(4)+'°';
+  if(labelEl)labelEl.textContent=city+(country?' · '+country:'');
+}
+
 // ── Explicit IPv4 / IPv6 fetch ───────────────────────────────────────────────
 async function fetchIpv4(){
   try{var r=await fetch('https://api4.ipify.org?format=json',{signal:AbortSignal.timeout(5000)});var d=await r.json();return d.ip||null;}catch(e){return null;}
@@ -512,7 +579,12 @@ async function main(){
     var lat=geoData.latitude,lon=geoData.longitude;
     if(lat&&lon){
       sh('g-coords','<a class="map-link" href="https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'&zoom=12" target="_blank" rel="noopener">'+lat.toFixed(4)+', '+lon.toFixed(4)+' &#8599;</a>');
-    }else sv('g-coords','—');
+      initMap(lat,lon,geoData.city||'',geoData.country_name||'',publicIp);
+    }else{
+      sv('g-coords','—');
+      var loading=document.getElementById('mapLoading');
+      if(loading)loading.textContent='No coordinates available';
+    }
     sv('g-tz',geoData.timezone||'—');
     sv('g-utc',geoData.utc_offset||'—');
     sv('g-tld',geoData.country_tld||'—');
@@ -722,6 +794,7 @@ function copyIp(ip){
 main();
 </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/shared/nav.js?v=2"></script>
 </body>
 </html>
