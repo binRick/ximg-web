@@ -153,6 +153,7 @@ document.querySelectorAll('#subnav a').forEach(function(a){
     <div class="hero-ip" id="heroIp">
       <span class="shim" style="width:220px;height:1.9em"></span>
     </div>
+    <div id="heroIpv6" style="display:none;font-size:.85rem;font-family:var(--mono);color:var(--text-dim);margin-top:.3rem"></div>
     <div class="hero-ptr" id="heroPtr" style="display:none">PTR &rarr; <span class="ptr-val" id="ptrVal"></span></div>
   </div>
 
@@ -188,6 +189,8 @@ document.querySelectorAll('#subnav a').forEach(function(a){
     <div class="panel">
       <div class="panel-hdr"><div class="p-dot blue"></div><div class="panel-title">Network / ASN</div></div>
       <div class="panel-body">
+        <div class="d-row"><span class="d-key">IPv4 Address</span><span class="d-val accent" id="n-ipv4"><span class="shim" style="width:120px"></span></span></div>
+        <div class="d-row"><span class="d-key">IPv6 Address</span><span class="d-val" id="n-ipv6"><span class="shim" style="width:180px"></span></span></div>
         <div class="d-row"><span class="d-key">IP Address</span><span class="d-val accent" id="n-ip"><span class="shim" style="width:120px"></span></span></div>
         <div class="d-row"><span class="d-key">IP Version</span><span class="d-val" id="n-ver"><span class="shim" style="width:40px"></span></span></div>
         <div class="d-row"><span class="d-key">ASN</span><span class="d-val" id="n-asn"><span class="shim" style="width:80px"></span></span></div>
@@ -446,6 +449,14 @@ async function fetchBGP(ip){
   return null;
 }
 
+// ── Explicit IPv4 / IPv6 fetch ───────────────────────────────────────────────
+async function fetchIpv4(){
+  try{var r=await fetch('https://api4.ipify.org?format=json',{signal:AbortSignal.timeout(5000)});var d=await r.json();return d.ip||null;}catch(e){return null;}
+}
+async function fetchIpv6(){
+  try{var r=await fetch('https://api6.ipify.org?format=json',{signal:AbortSignal.timeout(5000)});var d=await r.json();return d.ip||null;}catch(e){return null;}
+}
+
 // ── proxycheck.io VPN detection ───────────────────────────────────────────────
 async function fetchProxycheck(ip){
   try{
@@ -459,25 +470,34 @@ async function fetchProxycheck(ip){
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main(){
   var geoData=null,bgpData=null,ptrResult=null,rtcIps=[],proxycheckData=null;
-  var publicIp=null;
+  var publicIp=null,ipv4=null,ipv6=null;
   var orgStr='',asnStr='';
 
-  // ── Geo ──
-  try{
-    var r=await fetch('https://ipapi.co/json/');
-    geoData=await r.json();
-  }catch(e){setStatus('geo','err');}
+  // ── Geo + explicit v4/v6 in parallel ──
+  var geoPromise=fetch('https://ipapi.co/json/').then(function(r){return r.json();}).catch(function(){return null;});
+  var v4Promise=fetchIpv4();
+  var v6Promise=fetchIpv6();
+  geoData=await geoPromise;
+  ipv4=await v4Promise;
+  ipv6=await v6Promise;
+  if(!geoData||!geoData.ip){setStatus('geo','err');}
 
   if(geoData&&geoData.ip){
-    publicIp=geoData.ip;
+    // Use IPv4 as the primary IP for lookups; fall back to whatever ipapi returned
+    publicIp=ipv4||geoData.ip;
     var v=ipVer(publicIp);
     var cls=classifyIp(publicIp);
     asnStr=geoData.asn||'';
     orgStr=geoData.org||'';
     var orgName=orgStr.replace(/^AS\d+\s*/,'');
 
-    // Hero
-    sh('heroIp',publicIp+' <span class="ip-badge">IPv'+v+'</span> <button class="copy-btn" id="copyBtn" onclick="copyIp(\''+publicIp+'\')">copy</button>');
+    // Hero — show IPv4 prominently; show IPv6 below if available
+    sh('heroIp',publicIp+' <span class="ip-badge">IPv4</span> <button class="copy-btn" id="copyBtn" onclick="copyIp(\''+publicIp+'\')">copy</button>');
+    if(ipv6){
+      var v6el=document.getElementById('heroIpv6');
+      v6el.style.display='block';
+      v6el.innerHTML='<span style="color:var(--purple);font-family:var(--mono);font-size:.8rem">IPv6</span> <span style="color:var(--text-dim);font-family:var(--mono);font-size:.8rem">'+ipv6+'</span>';
+    }
 
     // PTR zone (show immediately as query)
     var q=ptrZone(publicIp);
@@ -505,6 +525,8 @@ async function main(){
 
     // Network panel
     sh('n-asn',asnStr?'<a href="https://bgp.he.net/'+asnStr+'" target="_blank" rel="noopener" style="color:var(--blue);font-family:var(--mono)">'+asnStr+'</a>':'—');
+    sv('n-ipv4',ipv4||'Not detected','accent');
+    sv('n-ipv6',ipv6||'Not detected',ipv6?'purple':'dim');
     sv('n-ip',publicIp,'accent');
     sv('n-ver','IPv'+v);
     sv('n-asname',orgName||'—');
