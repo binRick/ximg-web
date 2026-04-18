@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SQL Injection Demo">
+<title>Security Lab — security.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+  .subnav{position:sticky;top:44px;z-index:90;background:#070720;border-bottom:1px solid #1e293b;display:flex;justify-content:center;overflow-x:auto}
+  .subnav button{background:none;border:none;color:#94a3b8;padding:12px 22px;cursor:pointer;font-size:.9rem;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+  .subnav button:hover{color:#e2e8f0;background:#0f172a}
+  .subnav button.active{color:#ef4444;border-bottom-color:#ef4444}
+  h2{font-size:1.4rem;margin-bottom:6px;color:#f1f5f9}
+  .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
+  .panel{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:16px}
+  .panel h3{font-size:.9rem;color:#94a3b8;margin-bottom:10px}
+  label{font-size:.82rem;color:#94a3b8;display:block;margin-bottom:4px}
+  input[type=text],input[type=password],textarea{background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:.9rem;width:100%;font-family:inherit}
+  input[type=text]:focus,input[type=password]:focus,textarea:focus{outline:none;border-color:#ef4444}
+  .btn{background:#ef4444;border:none;color:#fff;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:700;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn.orange{background:#f97316}
+  .btn.gray{background:#1e293b;color:#94a3b8}
+  .btn.gray:hover{background:#334155;color:#e2e8f0}
+  code,pre{font-family:'Courier New',monospace}
+  .code-block{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:12px;font-family:'Courier New',monospace;font-size:.82rem;line-height:1.6;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+  .highlight-bad{color:#ef4444;font-weight:700}
+  .highlight-good{color:#22c55e;font-weight:700}
+  .highlight-key{color:#3b82f6}
+  .highlight-val{color:#eab308}
+  .info-box{background:#0f172a;border-left:3px solid #f97316;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.83rem;color:#94a3b8;margin-top:10px;line-height:1.6}
+  .warning-box{background:#1c0a0a;border-left:3px solid #ef4444;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.83rem;color:#fca5a5;margin-top:10px}
+
+  /* SQL */
+  .sql-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.sql-layout{grid-template-columns:1fr}}
+  .fake-form{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px;max-width:340px}
+  .fake-form h4{color:#94a3b8;font-size:.9rem;margin-bottom:12px}
+  .fake-form input{margin-bottom:10px}
+  .example-payloads{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .payload-btn{background:#1e293b;border:none;color:#f97316;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:.78rem;font-family:'Courier New',monospace}
+  .payload-btn:hover{background:#334155}
+
+  /* XSS */
+  .xss-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.xss-layout{grid-template-columns:1fr}}
+  .preview-box{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:12px;min-height:80px;font-size:.85rem}
+
+  /* Password */
+  .strength-bar{height:8px;background:#1e293b;border-radius:4px;margin:8px 0;overflow:hidden}
+  .strength-fill{height:100%;border-radius:4px;transition:width .3s,background .3s}
+  .hash-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.78rem;font-family:'Courier New',monospace;word-break:break-all}
+  .hash-grid .lbl{color:#64748b;white-space:nowrap;align-self:center}
+  .hash-grid .val{color:#22c55e;background:#0f172a;padding:4px 6px;border-radius:4px}
+  .analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .analysis-item{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;font-size:.82rem}
+  .analysis-item .alabel{color:#64748b;font-size:.75rem}
+  .analysis-item .aval{color:#e2e8f0;font-weight:600;margin-top:2px}
+
+  /* JWT */
+  .jwt-parts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px}
+  @media(max-width:700px){.jwt-parts{grid-template-columns:1fr}}
+  .jwt-part{border-radius:6px;padding:12px;font-size:.8rem}
+  .jwt-part h4{font-size:.8rem;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+  .jwt-part pre{font-size:.78rem;white-space:pre-wrap;word-break:break-all;line-height:1.5}
+</style>
+</head>
+<body>
+<nav class="subnav">
+  <a class="active" href="index.html">SQL Injection</a>
+  <a href="xss.html">XSS Sandbox</a>
+  <a href="password.html">Password Strength</a>
+  <a href="jwt.html">JWT Decoder</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/security') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="xss">
+<h2>XSS Sandbox</h2>
+  <p class="subtitle">Cross-Site Scripting — see how malicious HTML/JS behaves, and how to prevent it</p>
+  <div class="panel">
+    <label>Enter HTML or JavaScript payload:</label>
+    <textarea id="xssInput" rows="4" placeholder="e.g.
+</section>
+<script>
+alert('xss')
+</script>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

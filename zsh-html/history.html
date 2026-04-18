@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Z Shell — the modern shell with powerful interactive features">
+  <title>Zsh — Z Shell Reference</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --blue: #79c0ff;
+      --blue-dim: rgba(121,192,255,.1);
+      --cyan: #56d364;
+      --yellow: #e3b341;
+      --orange: #f0883e;
+      --purple: #d2a8ff;
+      --red: #ff7b72;
+      --text: #e6edf3;
+      --muted: #8b949e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── hero ── */
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% -10%, rgba(121,192,255,.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-ascii {
+      font-size: .6rem;
+      line-height: 1.2;
+      color: var(--blue);
+      text-shadow: 0 0 8px var(--blue);
+      margin-bottom: 1rem;
+      white-space: pre;
+      display: inline-block;
+    }
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--blue);
+      text-shadow: 0 0 20px rgba(121,192,255,.4);
+      letter-spacing: .05em;
+      margin-bottom: .4rem;
+    }
+    .hero-sub { font-size: 1rem; color: var(--muted); margin-bottom: 1rem; }
+    .hero-version {
+      display: inline-block;
+      font-size: .78rem;
+      padding: .2rem .7rem;
+      border: 1px solid var(--blue);
+      border-radius: 4px;
+      color: var(--blue);
+      background: var(--blue-dim);
+    }
+
+    /* ── sub-nav ── */
+    .sub-nav {
+      display: flex;
+      justify-content: center;
+      gap: .5rem;
+      padding: .75rem 1rem 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .sub-tab {
+      padding: .45rem 1.2rem;
+      font-size: .82rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      background: none;
+      transition: color .15s, background .15s, border-color .15s;
+      position: relative;
+      bottom: -1px;
+    }
+    .sub-tab:hover { color: var(--text); background: var(--surface); }
+    .sub-tab.active {
+      color: var(--blue);
+      background: var(--surface);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+    }
+
+    /* ── tab panels ── */
+
+    /* ── main layout ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      width: 100%;
+    }
+
+    /* ── section titles ── */
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin: 2.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .section-title:first-child { margin-top: 0; }
+    .section-title::before { content: '## '; opacity: .5; }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: .5rem;
+    }
+
+    /* ── ref grid / cards ── */
+    .ref-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+    .ref-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .ref-card-hdr {
+      background: var(--surface2);
+      padding: .6rem 1rem;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--blue);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .ref-card-hdr::before { content: '▸'; color: var(--blue); }
+    .ref-card-body { padding: .75rem; }
+
+    /* ── code snippets ── */
+    .snippet {
+      background: #080c10;
+      border-radius: 6px;
+      padding: .5rem .75rem;
+      margin-bottom: .5rem;
+      font-size: .78rem;
+      line-height: 1.7;
+      border-left: 2px solid var(--blue-dim);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .snippet:last-child { margin-bottom: 0; }
+
+    .kw  { color: var(--orange); }
+    .str { color: var(--yellow); }
+    .var { color: var(--blue); }
+    .cm  { color: #484f58; }
+    .op  { color: var(--cyan); }
+    .fn  { color: var(--purple); }
+    .num { color: #79c0ff; }
+    .hi  { color: #ff7b72; }
+
+    /* ── comparison table ── */
+    .vs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+      margin-bottom: 2.5rem;
+    }
+    .vs-table th {
+      padding: .55rem .9rem;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+      font-weight: 700;
+    }
+    .vs-table th:nth-child(1) { background: var(--surface2); color: var(--muted); }
+    .vs-table th:nth-child(2) { background: rgba(48,54,61,.5); color: #56d364; }
+    .vs-table th:nth-child(3) { background: rgba(121,192,255,.06); color: var(--blue); }
+    .vs-table td {
+      padding: .45rem .9rem;
+      border-bottom: 1px solid rgba(48,54,61,.7);
+      vertical-align: top;
+    }
+    .vs-table tr:hover td { background: rgba(255,255,255,.02); }
+    .check { color: var(--cyan); }
+    .cross { color: var(--red); }
+
+    /* ── plugin grid ── */
+    .plugin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .plugin-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .9rem;
+    }
+    .plugin-name { font-weight: 700; color: var(--blue); margin-bottom: .3rem; font-size: .85rem; }
+    .plugin-desc { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── history timeline ── */
+    .timeline { display: flex; flex-direction: column; }
+    .tl-item {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 1rem;
+      position: relative;
+      padding-bottom: 1.4rem;
+    }
+    .tl-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 44px; top: 22px; bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+    .tl-year {
+      text-align: right;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--blue);
+      padding-top: .2rem;
+      font-family: 'Courier New', monospace;
+    }
+    .tl-dot {
+      position: absolute;
+      left: 40px; top: 6px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 8px var(--blue);
+    }
+    .tl-content { font-size: .87rem; line-height: 1.65; }
+    .tl-content strong { color: var(--text); }
+    .tl-content span { color: var(--muted); }
+
+    /* ── reason cards ── */
+    .reason-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.1rem;
+      margin-bottom: 2.5rem;
+    }
+    .reason-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+      border-left: 3px solid var(--blue);
+    }
+    .reason-icon { font-size: 1.5rem; margin-bottom: .5rem; }
+    .reason-label { font-size: .9rem; font-weight: 700; color: var(--blue); margin-bottom: .35rem; }
+    .reason-desc { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--muted);
+      font-size: .75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── demo tab ── */
+    .demo-wrap { max-width: 780px; margin: 0 auto; }
+
+    .scene-bar {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+      margin-bottom: 1.25rem; justify-content: center;
+    }
+    .scene-btn {
+      font-family: 'Courier New', monospace;
+      font-size: .75rem; font-weight: 700;
+      padding: .3rem .85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .scene-btn:hover { color: var(--text); border-color: var(--blue); }
+    .scene-btn.active { color: var(--blue); border-color: var(--blue); background: var(--blue-dim); }
+
+    /* terminal window */
+    .term-win {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: .75rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      position: relative;
+    }
+    .term-chrome {
+      background: #21262d;
+      padding: .55rem 1rem;
+      display: flex; align-items: center; gap: .45rem;
+      border-bottom: 1px solid #30363d;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot-r { background: #ff5f56; }
+    .dot-y { background: #ffbd2e; }
+    .dot-g { background: #27c93f; }
+    .term-title { margin-left: .5rem; font-size: .75rem; color: var(--muted); flex: 1; text-align: center; }
+
+    .term-body {
+      padding: .75rem 1rem;
+      min-height: 280px;
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+
+    .term-output {
+      flex: 1; overflow: hidden;
+      display: flex; flex-direction: column;
+      justify-content: flex-end;
+      gap: 0;
+    }
+    .tl { font-size: .82rem; line-height: 1.65; white-space: pre; }
+    .tl-prompt { color: #56d364; }
+    .tl-cmd    { color: #e6edf3; }
+    .tl-dim    { color: #484f58; }
+    .tl-ok     { color: #56d364; }
+    .tl-err    { color: #ff7b72; }
+    .tl-warn   { color: #e3b341; }
+    .tl-dir    { color: #79c0ff; }
+    .tl-file   { color: #e6edf3; }
+    .tl-cursor-inline {
+      display: inline-block; width: .5em; height: 1em;
+      background: var(--yellow); vertical-align: text-bottom;
+      animation: cblink 1s step-end infinite;
+    }
+
+    /* completion popup */
+    .comp-popup {
+      display: none;
+      position: absolute; bottom: 44px; left: 1rem;
+      background: #161b22; border: 1px solid #388bfd;
+      border-radius: 6px; padding: .3rem;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    .comp-item {
+      font-size: .8rem; padding: .2rem .65rem;
+      border-radius: 4px; color: #c9d1d9;
+      white-space: nowrap; cursor: default;
+    }
+    .comp-item.comp-sel { background: #388bfd; color: #fff; }
+
+    /* history search popup */
+    .hs-popup {
+      display: none;
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: #161b22; border-top: 1px solid #30363d;
+      z-index: 10; padding: .5rem .75rem;
+    }
+    .hs-header {
+      font-size: .78rem; color: var(--muted);
+      margin-bottom: .3rem; display: flex; align-items: center; gap: .2rem;
+    }
+    .hs-label { color: var(--blue); font-weight: 700; }
+    .hs-query-text { color: var(--text); }
+    .hs-cur { display: inline-block; width: .5em; height: .9em; background: var(--blue); vertical-align: text-bottom; animation: cblink 1s step-end infinite; }
+    .hs-results { display: flex; flex-direction: column; gap: .05rem; }
+    .hs-item { font-size: .78rem; padding: .15rem .5rem; border-radius: 4px; color: #484f58; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hs-item.hs-sel { background: rgba(56,139,253,.15); color: #e6edf3; }
+
+    /* key indicator */
+    .key-pill {
+      display: none;
+      position: absolute; top: 2.5rem; right: 1rem;
+      background: #21262d; border: 1px solid var(--blue);
+      color: var(--blue); font-size: .72rem; font-weight: 700;
+      padding: .2rem .65rem; border-radius: 4px;
+      z-index: 20; pointer-events: none;
+      transition: opacity .3s;
+    }
+    .key-pill.fading { opacity: 0; }
+
+    /* current input row */
+    .term-input-row {
+      display: flex; align-items: baseline;
+      font-size: .82rem; padding-top: .35rem;
+      flex-shrink: 0;
+    }
+    .tp-dir   { color: #7dd3fc; }
+    .tp-git   { color: #56d364; margin: 0 .3rem; }
+    .tp-arrow { color: #56d364; font-weight: 700; margin-right: .45rem; }
+
+    #term-typed   { color: #e6edf3; white-space: pre; }
+    #term-suggest { color: #3d444d; white-space: pre; }
+    .th-valid   { color: #56d364; }
+    .th-invalid { color: #ff7b72; }
+
+    .term-cursor {
+      display: inline-block; width: .55em; height: 1em;
+      background: #e6edf3; vertical-align: text-bottom;
+      animation: cblink 1s step-end infinite;
+    }
+    @keyframes cblink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* desc + controls */
+    .demo-desc {
+      text-align: center; margin: .75rem 0 .5rem;
+    }
+    .demo-feat {
+      font-size: .95rem; font-weight: 700; color: var(--blue); margin-bottom: .3rem;
+    }
+    .demo-explain { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+    .demo-controls {
+      display: flex; justify-content: center; gap: .75rem; margin-top: .75rem;
+    }
+    .demo-controls button {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .3rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .demo-controls button:hover { color: var(--blue); border-color: var(--blue); }
+  </style>
+</head>
+<body>
+<div class="sub-nav">
+    <a class="sub-tab " href="index.html">Reasons</a>
+    <a class="sub-tab" href="history.html">History</a>
+    <a class="sub-tab" href="technology.html">Technology</a>
+    <a class="sub-tab" href="demo.html">Demo</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/zsh') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="history">
+<div class="section-title">Origin</div>
+      <div class="ref-grid" style="margin-bottom:2.5rem">
+        <div class="ref-card">
+          <div class="ref-card-hdr">Who Created Zsh?</div>
+          <div class="ref-card-body" style="font-size:.87rem;line-height:1.7;padding:1rem">
+            <p style="margin-bottom:.75rem">Zsh was created by <strong style="color:var(--text)">Paul Falstad</strong> in 1990 while he was a student at Princeton University. He released the first version (0.1) in late 1990 on the <code>comp.sources.misc</code> Usenet newsgroup.</p>
+            <p style="margin-bottom:.75rem">The name "zsh" comes from <strong style="color:var(--text)">Zhong Shao</strong>, a Yale professor whose login name was <code>zsh</code> — Falstad thought it made a good shell name. Shao himself had nothing to do with creating the shell.</p>
+            <p>Falstad later said he wrote Zsh to have a shell "with all the features I wanted" — pulling from <strong style="color:var(--text)">csh</strong>, <strong style="color:var(--text)">ksh</strong>, and <strong style="color:var(--text)">bash</strong>, then adding his own ideas on top.</p>
+          </div>
+        </div>
+        <div class="ref-card">
+          <div class="ref-card-hdr">Shell Family Tree</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+1971  sh      — Thompson shell (Bell Labs)
+1979  sh      — Bourne shell (replaces Thompson)
+1983  csh     — C shell (Bill Joy, BSD)
+1983  ksh     — KornShell (David Korn, AT&T)
+1989  bash    — Bourne Again Shell (FSF/GNU)
+<span class="hi">1990  zsh     — Z Shell (Paul Falstad)</span>
+1993  tcsh    — TENEX C Shell update
+2003  fish    — Friendly Interactive Shell
+2019  zsh     — becomes macOS default shell</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Version Timeline</div>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-year">1990</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 0.1</strong> <span>— Paul Falstad posts first version to comp.sources.misc at Princeton. Features prompt customization, command completion, and spelling correction from day one.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">1992</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 2.0</strong> <span>— Richard Coleman takes over maintenance. Adds history sharing between sessions, extended globbing, and associative arrays. Project moves to a public mailing list.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">1995</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 2.6 / 3.0</strong> <span>— Zoltan Hidvegi joins as co-maintainer. Module system introduced (zsh/mathfunc, zsh/zle, zsh/complete). ZLE (Zsh Line Editor) becomes a first-class subsystem.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">1997</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 3.1 (development)</strong> <span>— Peter Stephenson becomes lead. Introduces zstyle for configurable completion, the zcompdump cache, and the completion system (compsys) that still ships today.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2000</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 4.0</strong> <span>— Major completion rewrite. The new compsys (compdef, compctl replacement) ships, giving context-aware completion with zstyle configuration. This is the completion engine still in use.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2003</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 4.2</strong> <span>— Stable release with improved Unicode support, parameter flags, and the prompt theme system formalized. oh-my-zsh-style themes become practical.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2009</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>oh-my-zsh launched</strong> <span>— Robby Russell releases oh-my-zsh on GitHub. Within years it becomes the dominant way to manage Zsh config — 170,000+ GitHub stars today.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2015</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 5.0</strong> <span>— Unicode fully supported, multibyte characters in prompts and completion. zsh/zutil module adds zparseopts for getopts-style flag parsing.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2017</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 5.4</strong> <span>— Pattern matching improvements, new modules, and stability fixes. Zinit (formerly zplugin) emerges as a faster alternative to oh-my-zsh for plugin management.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2019</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>macOS Catalina — Zsh becomes default</strong> <span>— Apple replaces Bash 3.2 (GPLv2) with Zsh 5.7 (MIT) as the default shell for new macOS accounts, instantly making Zsh the most widely distributed interactive shell in the world.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2022</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Zsh 5.9</strong> <span>— Current stable release. Continued improvements to completion, Unicode, and the module system. The codebase is now over 30 years old and actively maintained by a small core team.</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">Today</div>
+          <div class="tl-dot"></div>
+          <div class="tl-content"><strong>Standard on macOS, popular on Linux</strong> <span>— Zsh ships by default on macOS, is the preferred shell for millions of developers, and is the default in many Docker images and dev containers. oh-my-zsh alone has over 170K GitHub stars.</span></div>
+        </div>
+      </div>
+
+    </div><!-- /tab-history -->
+
+    <!-- ═══════════════ TECHNOLOGY ═══════════════ -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

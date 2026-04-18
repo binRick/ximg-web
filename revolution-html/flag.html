@@ -76,115 +76,11 @@ document.querySelectorAll('.sub-nav a').forEach(function(a){
   }
 });
 </script>
-<div class="wrap">
 <section id="flag">
 <div class="section-title">The Flag — Stars and Stripes</div>
     <canvas id="flag-canvas"></canvas>
     <div class="canvas-label">Click to add a star — the flag grows as new states join the Union</div>
 </section>
-</div>
-<script>
-(function(){
-  const c = document.getElementById('revolution-canvas');
-  const ctx = c.getContext('2d');
-  let W, H, t = 0;
-  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
-  resize(); window.addEventListener('resize', resize);
-  const stars = Array.from({length:80}, () => ({ x: Math.random(), y: Math.random()*0.5, r: Math.random()*1.2+.3, a: Math.random()*Math.PI*2 }));
-  function frame(){
-    ctx.clearRect(0,0,W,H); t += 0.006;
-    stars.forEach(s => {
-      s.a += 0.003;
-      ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(200,220,255,${0.2+0.15*Math.sin(s.a)})`; ctx.fill();
-    });
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-</script>
-<script>
-(function(){
-  const c = document.getElementById('flag-canvas');
-  const ctx = c.getContext('2d');
-  c.width = c.offsetWidth; c.height = 220;
-  const W = c.width, H = c.height;
-  let t = 0, extraStars = [];
-  const flagW = W*0.6, flagH = H*0.75;
-  const flagX = (W-flagW)/2, flagY = (H-flagH)/2;
-  c.addEventListener('click', e => {
-    const r = c.getBoundingClientRect();
-    extraStars.push({ x: e.clientX-r.left, y: e.clientY-r.top, alpha: 1 });
-  });
-  function drawStar(cx, cy, size, alpha){
-    ctx.save(); ctx.translate(cx,cy); ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.beginPath();
-    for(let i=0;i<5;i++){
-      const a = (i*72-90)*Math.PI/180;
-      const ia = ((i+0.5)*72-90)*Math.PI/180;
-      if(i===0) ctx.moveTo(Math.cos(a)*size, Math.sin(a)*size);
-      else ctx.lineTo(Math.cos(a)*size, Math.sin(a)*size);
-      ctx.lineTo(Math.cos(ia)*(size*0.4), Math.sin(ia)*(size*0.4));
-    }
-    ctx.closePath(); ctx.fill(); ctx.restore();
-  }
-  function frame(){
-    ctx.clearRect(0,0,W,H); t += 0.02;
-    ctx.fillStyle = 'rgba(2,4,10,.95)'; ctx.fillRect(0,0,W,H);
-    // Flag stripes wave
-    const stripes = 13;
-    const sh = flagH/stripes;
-    for(let i=0;i<stripes;i++){
-      for(let x=0;x<=flagW;x+=3){
-        const wave = Math.sin(x/40 + t + i*0.5)*4;
-        const fy = flagY + i*sh + wave;
-        ctx.fillStyle = i%2===0 ? `rgba(180,30,30,1)` : `rgba(220,220,220,1)`;
-        ctx.fillRect(flagX+x, fy, 3, sh+1);
-      }
-    }
-    // Canton (blue field)
-    const cantonW = flagW*0.38, cantonH = flagH*7/13;
-    for(let x=0;x<=cantonW;x+=3){
-      const wave = Math.sin(x/40 + t)*4;
-      ctx.fillStyle = 'rgba(20,40,120,1)';
-      ctx.fillRect(flagX+x, flagY+wave, 3, cantonH);
-    }
-    // Stars (13 original)
-    const cols = 6, rows = 5;
-    const sw = cantonW/(cols+1), srh = cantonH/(rows+1);
-    let starCount = 0;
-    for(let row=0;row<rows&&starCount<13;row++){
-      const rowCols = row%2===0 ? cols : cols-1;
-      const rowOffset = row%2===0 ? 0 : sw/2;
-      for(let col=0;col<rowCols&&starCount<13;col++){
-        const sx = flagX+sw+col*sw+rowOffset;
-        const sy = flagY+srh+row*srh+Math.sin(sx/40+t)*4;
-        drawStar(sx,sy,4,1);
-        starCount++;
-      }
-    }
-    // Extra stars (clicked)
-    extraStars.forEach(s => {
-      s.alpha = Math.min(1, s.alpha);
-      drawStar(s.x, s.y, 8, s.alpha);
-      // Sparkle
-      for(let i=0;i<5;i++){
-        const sa = (i/5)*Math.PI*2 + t*3;
-        ctx.beginPath(); ctx.arc(s.x+Math.cos(sa)*15, s.y+Math.sin(sa)*15, 2, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,220,100,${s.alpha*0.6})`; ctx.fill();
-      }
-    });
-    // Pole
-    ctx.strokeStyle = 'rgba(200,160,80,.6)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(flagX,flagY-10); ctx.lineTo(flagX,H); ctx.stroke();
-    // Label
-    ctx.font = '11px Georgia'; ctx.fillStyle = 'rgba(200,144,44,.6)'; ctx.textAlign = 'center';
-    ctx.fillText('July 4, 1776 — E PLURIBUS UNUM', W/2, H-8);
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-</script>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

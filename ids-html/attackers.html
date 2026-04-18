@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IDS — ids.ximg.app — interactive educational app on ximg.app">
+  <title>IDS — ids.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d1117;--green:#00ff41;--red:#ff4444;--orange:#ff8800;
+      --yellow:#facc15;--dim:#484f58;--text:#c9d1d9;--border:rgba(255,255,255,.08);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+
+    /* ── header ── */
+    .hdr{display:flex;align-items:center;gap:1rem;padding:.6rem 1rem;
+      background:rgba(10,10,15,.95);border-bottom:1px solid var(--border);
+      position:sticky;top:0;z-index:50;flex-wrap:wrap}
+    .hdr-title{font-size:1rem;font-weight:700;color:var(--red);letter-spacing:.05em}
+    .hdr-sub{font-size:.72rem;color:var(--dim)}
+    .hdr-status{margin-left:auto;display:flex;align-items:center;gap:.5rem;font-size:.72rem}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+    .dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .badge{padding:.15rem .45rem;border-radius:4px;font-size:.68rem;font-weight:700}
+    .badge-red{background:rgba(255,68,68,.15);color:var(--red);border:1px solid rgba(255,68,68,.3)}
+    .badge-orange{background:rgba(255,136,0,.15);color:var(--orange);border:1px solid rgba(255,136,0,.3)}
+    .badge-yellow{background:rgba(250,204,21,.12);color:var(--yellow);border:1px solid rgba(250,204,21,.25)}
+    .badge-dim{background:rgba(255,255,255,.06);color:var(--dim);border:1px solid var(--border)}
+    .counter{font-size:1.1rem;font-weight:700;color:var(--text)}
+    .counter-lbl{font-size:.62rem;color:var(--dim);margin-left:.15rem}
+
+    /* ── sub-nav ── */
+    .subnav{display:flex;justify-content:center;gap:.35rem;padding:.45rem .75rem;
+      background:rgba(10,10,15,.8);border-bottom:1px solid var(--border);overflow-x:auto}
+    .tab{padding:.3rem .75rem;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--dim);
+      font-family:'Courier New',monospace;transition:all .15s;white-space:nowrap}
+    .tab:hover:not(.active){border-color:rgba(255,255,255,.18);color:var(--text)}
+    .tab.active{color:var(--red);border-color:rgba(255,68,68,.4);background:rgba(255,68,68,.07)}
+
+    /* ── layout ── */
+    .page{display:none;padding:0 1rem 1.5rem}
+    .page.active{display:block}
+
+    /* ── live feed ── */
+    .toolbar{display:flex;align-items:center;gap:.75rem;padding:.5rem 0;flex-wrap:wrap}
+    .btn{padding:.28rem .7rem;border-radius:5px;font-size:.72rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);
+      font-family:'Courier New',monospace;transition:all .15s}
+    .btn:hover{background:rgba(255,255,255,.09)}
+    .btn.paused{color:var(--green);border-color:rgba(0,255,65,.4)}
+    .filter-row{display:flex;gap:.4rem;flex-wrap:wrap}
+    .filter{padding:.22rem .55rem;border-radius:4px;font-size:.68rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--dim);
+      font-family:'Courier New',monospace;transition:all .15s}
+    .filter:hover,.filter.on{border-color:rgba(255,68,68,.4);color:var(--red);background:rgba(255,68,68,.07)}
+
+    .feed{font-size:.71rem;line-height:1.55}
+    .row{display:grid;grid-template-columns:135px 42px 130px 1fr 56px 56px;
+      gap:.35rem;padding:.28rem .4rem;border-bottom:1px solid rgba(255,255,255,.03);
+      align-items:center;transition:background .1s}
+    .row:hover{background:rgba(255,255,255,.025)}
+    .row.sev1{border-left:2px solid var(--red)}
+    .row.sev2{border-left:2px solid var(--orange)}
+    .row.sev3{border-left:2px solid rgba(250,204,21,.4)}
+    .col-ts{color:var(--dim);font-size:.67rem}
+    .col-sig{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+    .col-ip{color:#60a5fa;white-space:nowrap}
+    .col-geo{color:var(--dim);font-size:.66rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .col-port{color:#a78bfa;text-align:right;font-size:.7rem}
+    .col-proto{color:var(--dim);font-size:.67rem;text-align:right}
+    .connecting{color:var(--dim);padding:1.5rem;animation:blink 1s step-end infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* ── stats ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;padding:.75rem 0}
+    .stat-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem}
+    .stat-val{font-size:1.6rem;font-weight:700;color:var(--text);line-height:1}
+    .stat-val.red{color:var(--red)}
+    .stat-val.orange{color:var(--orange)}
+    .stat-val.green{color:var(--green)}
+    .stat-lbl{font-size:.63rem;color:var(--dim);margin-top:.2rem}
+    .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.75rem 0}
+    .chart-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem}
+    .chart-title{font-size:.72rem;color:var(--dim);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em}
+    canvas{display:block;width:100% !important}
+    .heatmap-wrap{margin:.75rem 0;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;padding:.75rem}
+    .heatmap-title{font-size:.72rem;color:var(--dim);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em}
+    .table-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;
+      overflow:hidden;margin:.75rem 0}
+    .table-box table{width:100%;border-collapse:collapse;font-size:.71rem}
+    .table-box th{background:rgba(255,255,255,.04);color:var(--dim);padding:.35rem .6rem;
+      text-align:left;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.05em}
+    .table-box td{padding:.32rem .6rem;border-top:1px solid rgba(255,255,255,.03);color:var(--text)}
+    .table-box tr:hover td{background:rgba(255,255,255,.025)}
+    .bar-bg{background:rgba(255,255,255,.06);border-radius:2px;height:5px;margin-top:3px}
+    .bar-fill{background:var(--red);border-radius:2px;height:5px;transition:width .4s}
+
+    /* ── attackers ── */
+    .atk-table{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+    .atk-table table{width:100%;border-collapse:collapse;font-size:.71rem}
+    .atk-table th{background:rgba(255,255,255,.04);color:var(--dim);padding:.4rem .7rem;
+      text-align:left;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.05em}
+    .atk-table td{padding:.35rem .7rem;border-top:1px solid rgba(255,255,255,.03)}
+    .atk-table tr:hover td{background:rgba(255,255,255,.025)}
+    .rank{color:var(--dim);font-size:.65rem}
+
+    /* ── map ── */
+    #map-canvas{width:100%;border-radius:8px;border:1px solid var(--border);cursor:crosshair}
+    .map-legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.66rem;color:var(--dim);margin-top:.4rem}
+    .legend-item{display:flex;align-items:center;gap:.3rem}
+    .legend-dot{width:8px;height:8px;border-radius:50%}
+  </style>
+</head>
+<body>
+<div class="subnav">
+    <a class="tab " href="index.html">Live Feed</a>
+    <a class="tab" href="stats.html">Stats</a>
+    <a class="tab" href="attackers.html">Top Attackers</a>
+    <a class="tab" href="map.html">Map</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/ids') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="attackers">
+<div style="padding:.75rem 0;font-size:.72rem;color:var(--dim)">
+      Top source IPs by alert count, with GeoIP resolution.
+    </div>
+    <div class="atk-table">
+      <table>
+        <thead><tr>
+          <th>#</th><th>IP Address</th><th>Country</th><th>City</th>
+          <th style="text-align:right">Alerts</th><th>Last Seen</th>
+        </tr></thead>
+        <tbody id="tbl-attackers"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── MAP ── -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

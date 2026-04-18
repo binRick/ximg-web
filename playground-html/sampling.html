@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Temperature Explorer">
+  <title>AI Playground — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f;
+      --card: #070720;
+      --border: #1e293b;
+      --accent: #8b5cf6;
+      --pink: #ec4899;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #10b981;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding-top: 44px;
+    }
+    .page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: .3rem; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+
+    /* Tab nav */
+    .tab-nav { display: flex; gap: .5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .tab-btn {
+      padding: .5rem 1.1rem; font-size: .85rem; font-weight: 600; cursor: pointer;
+      background: none; border: none; color: var(--muted); border-bottom: 2px solid transparent;
+      transition: all .18s; margin-bottom: -1px;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Cards */
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem;
+    }
+    .card + .card { margin-top: 1rem; }
+    .card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; color: var(--text); }
+    .card h3 { font-size: .9rem; font-weight: 600; color: var(--muted); margin-bottom: .5rem; }
+
+    /* Textarea / input */
+    textarea, input[type=text] {
+      width: 100%; background: #0a0a20; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: .75rem; font-family: 'Courier New', monospace; font-size: .88rem;
+      resize: vertical; outline: none;
+    }
+    textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+
+    /* Token display */
+    .token-display {
+      margin-top: 1rem; padding: .75rem; background: #0a0a20; border-radius: 6px;
+      border: 1px solid var(--border); min-height: 60px; line-height: 2;
+      font-family: 'Courier New', monospace; font-size: .85rem; word-break: break-all;
+    }
+    .token-chip {
+      display: inline-block; padding: .1rem .4rem; border-radius: 4px; margin: 2px;
+      font-size: .8rem; font-weight: 600; cursor: default;
+    }
+    .token-stats {
+      display: flex; gap: 1rem; margin-top: .75rem; flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: .75rem; color: var(--muted); }
+
+    /* Token ID table */
+    .token-table { margin-top: 1rem; width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .token-table th { background: #0a0a20; padding: .4rem .7rem; text-align: left; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .token-table td { padding: .35rem .7rem; border-bottom: 1px solid #0d1225; }
+    .token-table tr:hover td { background: #0d1225; }
+
+    /* Slider */
+    .slider-row { display: flex; align-items: center; gap: 1rem; margin: .75rem 0; }
+    .slider-row label { font-size: .85rem; color: var(--muted); white-space: nowrap; min-width: 120px; }
+    input[type=range] {
+      flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer;
+    }
+    .slider-val {
+      min-width: 40px; text-align: right; font-weight: 700; color: var(--accent); font-size: .9rem;
+    }
+
+    /* Bar chart */
+    .bar-chart { margin-top: 1rem; }
+    .bar-row { display: flex; align-items: center; gap: .5rem; margin: .3rem 0; }
+    .bar-label { min-width: 90px; font-size: .82rem; font-family: 'Courier New', monospace; color: var(--muted); }
+    .bar-track { flex: 1; height: 18px; background: #0a0a20; border-radius: 4px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .25s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: .3rem; font-size: .72rem; color: rgba(255,255,255,.7); font-weight: 600; min-width: 2px; }
+    .bar-pct { min-width: 50px; text-align: right; font-size: .8rem; color: var(--text); font-family: 'Courier New', monospace; }
+
+    /* Top-k / Top-p word chips */
+    .word-grid { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .word-chip {
+      padding: .35rem .75rem; border-radius: 6px; font-size: .82rem; font-weight: 600;
+      border: 1px solid; transition: all .2s; cursor: default;
+    }
+    .word-chip.included { background: rgba(139,92,246,.15); border-color: var(--accent); color: var(--accent); }
+    .word-chip.excluded { background: #0a0a20; border-color: var(--border); color: var(--muted); opacity: .5; }
+
+    /* Compare */
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    @media (max-width: 600px) { .compare-grid { grid-template-columns: 1fr; } }
+    .compare-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    .compare-card .label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .5rem; }
+    .compare-card .label.low { color: var(--green); }
+    .compare-card .label.high { color: var(--pink); }
+    .compare-card p { font-size: .87rem; line-height: 1.65; color: var(--text); font-style: italic; }
+    .compare-card .temp-badge { display: inline-block; padding: .15rem .5rem; border-radius: 4px; font-size: .75rem; font-weight: 700; margin-bottom: .5rem; }
+    .compare-card .temp-badge.low { background: rgba(16,185,129,.15); color: var(--green); }
+    .compare-card .temp-badge.high { background: rgba(236,72,153,.15); color: var(--pink); }
+    .explain-box { background: rgba(139,92,246,.07); border: 1px solid rgba(139,92,246,.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; font-size: .87rem; line-height: 1.7; }
+    .explain-box strong { color: var(--accent); }
+
+    .info-row { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+    .info-chip { background: rgba(139,92,246,.1); border: 1px solid rgba(139,92,246,.2); border-radius: 6px; padding: .4rem .8rem; font-size: .8rem; color: var(--accent); }
+
+    .section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .5rem; }
+    .math-block { background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; padding: .75rem 1rem; font-family: 'Courier New', monospace; font-size: .85rem; color: var(--text); margin-top: .75rem; line-height: 1.8; }
+    .math-block .hl { color: var(--pink); font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="tab-nav">
+    <a class="tab-btn " href="index.html">Tokenizer</a>
+    <a class="tab-btn" href="temperature.html">Temperature</a>
+    <a class="tab-btn" href="sampling.html">Top-k / Top-p</a>
+    <a class="tab-btn" href="compare.html">Compare</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/playground') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="sampling">
+<div class="card">
+      <h2>Top-k / Top-p Sampling</h2>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Given the next-token probability distribution, see which words are included at different k and p values. <strong style="color:var(--accent)">Purple = included</strong>, grey = excluded.</p>
+      <div class="slider-row">
+        <label>Top-k:</label>
+        <input type="range" id="topk-slider" min="1" max="10" value="4" step="1">
+        <span class="slider-val" id="topk-val">4</span>
+      </div>
+      <div class="slider-row">
+        <label>Top-p (nucleus):</label>
+        <input type="range" id="topp-slider" min="1" max="100" value="85" step="1">
+        <span class="slider-val" id="topp-val">0.85</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
+        <div>
+          <div class="section-title">Top-k Result</div>
+          <div class="word-grid" id="topk-words"></div>
+          <div style="margin-top:.5rem;font-size:.8rem;color:var(--muted)" id="topk-desc"></div>
+        </div>
+        <div>
+          <div class="section-title">Top-p (Nucleus) Result</div>
+          <div class="word-grid" id="topp-words"></div>
+          <div style="margin-top:.5rem;font-size:.8rem;color:var(--muted)" id="topp-desc"></div>
+        </div>
+      </div>
+      <div class="bar-chart" id="sampling-bars" style="margin-top:1rem;"></div>
+      <div class="explain-box" style="margin-top:1rem;">
+        <strong>Top-k</strong> keeps only the k most likely tokens, then renormalizes.<br>
+        <strong>Top-p (nucleus)</strong> keeps the smallest set of tokens whose cumulative probability ≥ p.<br>
+        Both strategies prevent the model from sampling very unlikely (weird) tokens.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: COMPARE -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

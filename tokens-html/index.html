@@ -27,8 +27,6 @@
     .tab-btn { padding: .5rem 1.1rem; font-size: .85rem; font-weight: 600; cursor: pointer; background: none; border: none; color: var(--muted); border-bottom: 2px solid transparent; transition: all .18s; margin-bottom: -1px; }
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
     .card + .card { margin-top: 1rem; }
     .card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; }
@@ -75,20 +73,30 @@
   </style>
 </head>
 <body>
+<div class="tab-nav">
+    <a class="tab-btn " href="index.html">Tokenize</a>
+    <a class="tab-btn" href="types.html">Token Types</a>
+    <a class="tab-btn" href="context.html">Context Window</a>
+    <a class="tab-btn" href="vocab.html">Vocabulary</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/tokens') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
 <div class="page">
   <h1><span>Token Visualizer</span></h1>
   <p class="subtitle">Deep dive into tokenization — how text becomes numbers, token types, context windows, and vocabulary.</p>
-
-  <div class="tab-nav">
-    <button class="tab-btn active" data-tab="tokenize">Tokenize</button>
-    <button class="tab-btn" data-tab="types">Token Types</button>
-    <button class="tab-btn" data-tab="context">Context Window</button>
-    <button class="tab-btn" data-tab="vocab">Vocabulary</button>
-  </div>
-
-  <!-- TAB 1: TOKENIZE -->
-  <div class="tab-panel active" id="tab-tokenize">
-    <div class="card">
+<section id="tokenize">
+<div class="card">
       <h2>Live Tokenizer</h2>
       <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Each colored block is one token. Hover a token to see its ID. Spacing, punctuation, and capitalization all affect tokenization.</p>
       <textarea id="tv-input" rows="5" placeholder="Paste any text to tokenize it…">Artificial intelligence is transforming the world. GPT-4, Claude, and Gemini are large language models that process text by splitting it into tokens — subword units that balance vocabulary size with coverage. Tokenization is the first step in any NLP pipeline!</textarea>
@@ -110,339 +118,7 @@
   </div>
 
   <!-- TAB 2: TOKEN TYPES -->
-  <div class="tab-panel" id="tab-types">
-    <div class="card">
-      <h2>Token Types</h2>
-      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Modern tokenizers produce several distinct token types. Understanding them helps you predict how text will be chunked and why token counts vary.</p>
-      <div class="type-grid" id="types-grid"></div>
-      <div class="info-box">
-        <strong>BPE (Byte Pair Encoding)</strong> starts with individual characters, then iteratively merges the most frequent adjacent pairs. After thousands of iterations, common words become single tokens while rare/new words are handled as subword sequences.
-        GPT models use ~50,000 tokens in their vocabulary; sentence-piece models vary from 32K to 256K.
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 3: CONTEXT WINDOW -->
-  <div class="tab-panel" id="tab-context">
-    <div class="card">
-      <h2>Context Window Visualizer</h2>
-      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Every LLM has a maximum context window — the number of tokens it can "see" at once. Drag the slider to fill the window and see what gets cut off.</p>
-      <div class="ctx-controls">
-        <label>Window size:</label>
-        <select id="ctx-window-size" style="background:#0a0a20;border:1px solid var(--border);color:var(--text);padding:.35rem .5rem;border-radius:5px;font-size:.85rem;">
-          <option value="512">512 (early GPT-2)</option>
-          <option value="2048">2,048 (GPT-3)</option>
-          <option value="4096" selected>4,096 (GPT-4 base)</option>
-          <option value="8192">8,192 (Claude 2 base)</option>
-          <option value="32768">32,768 (GPT-4 Turbo)</option>
-          <option value="200000">200,000 (Claude 3 Opus)</option>
-        </select>
-        <label>Document tokens:</label>
-        <input type="range" id="ctx-doc-slider" min="0" max="200000" value="3000" step="100" style="width:200px">
-        <span id="ctx-doc-val" style="color:var(--accent);font-weight:700;min-width:60px">3,000</span>
-      </div>
-      <div class="ctx-stats">
-        <div class="ctx-stat" style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:var(--accent)">
-          Window: <span id="ctx-window-display">4,096</span> tokens
-        </div>
-        <div class="ctx-stat" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)">
-          Used: <span id="ctx-used">3,000</span> tokens
-        </div>
-        <div class="ctx-stat" style="background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.3);color:var(--muted)">
-          Remaining: <span id="ctx-remaining">1,096</span>
-        </div>
-        <div class="ctx-stat" id="ctx-overflow-stat" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;display:none">
-          Truncated: <span id="ctx-overflow">0</span> tokens
-        </div>
-      </div>
-      <div class="section-title">Token grid — <span style="color:var(--accent)">purple = used</span> / <span style="color:var(--muted)">dark = available</span> / <span style="color:#ef4444">red = truncated</span></div>
-      <div class="ctx-grid" id="ctx-grid"></div>
-      <div id="ctx-info-box" class="info-box" style="margin-top:1rem;"></div>
-    </div>
-  </div>
-
-  <!-- TAB 4: VOCABULARY -->
-  <div class="tab-panel" id="tab-vocab">
-    <div class="card">
-      <h2>BPE Vocabulary Sample</h2>
-      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">A sample of tokens from a typical BPE vocabulary. Notice: single characters, common words, common subwords, numbers, punctuation, and special tokens all coexist.</p>
-      <div class="vocab-search">
-        <input type="text" id="vocab-search" placeholder="Search tokens… (e.g. 'ing', 'un', 'the')">
-      </div>
-      <div id="vocab-count" style="font-size:.82rem;color:var(--muted);margin-bottom:.5rem;"></div>
-      <div class="vocab-grid" id="vocab-grid"></div>
-      <div class="info-box">
-        <strong>Vocabulary facts:</strong><br>
-        GPT-2/GPT-3: ~50,257 tokens | GPT-4: ~100,277 tokens | Claude: ~100k tokens | LLaMA 2: 32,000 tokens<br><br>
-        <strong>How token ID assignment works:</strong> Tokens are ranked by frequency during training. ID 0–255 are usually byte fallbacks. Common English words get IDs in the hundreds. Special tokens like [CLS], [SEP], &lt;|endoftext|&gt; are assigned fixed IDs.
-      </div>
-    </div>
-  </div>
-</div>
-
+</section>
 <script src="/shared/nav.js?v=3"></script>
-<script>
-// ── Tab nav ──────────────────────────────────────────────────────────────────
-document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-  });
-});
-
-// ── Shared tokenizer ─────────────────────────────────────────────────────────
-const TOK_COLORS = [
-  ['rgba(139,92,246,.25)','#8b5cf6'],['rgba(236,72,153,.25)','#ec4899'],
-  ['rgba(16,185,129,.25)','#10b981'],['rgba(245,158,11,.25)','#f59e0b'],
-  ['rgba(59,130,246,.25)','#3b82f6'],['rgba(239,68,68,.25)','#ef4444'],
-  ['rgba(6,182,212,.25)','#06b6d4'],['rgba(168,85,247,.25)','#a855f7'],
-  ['rgba(234,179,8,.25)','#eab308'],['rgba(20,184,166,.25)','#14b8a6'],
-];
-const WHOLE_WORDS = new Set(['the','a','an','in','on','at','to','of','and','or','but','not','is','are','was','were','be','been','have','has','had','will','would','could','should','may','might','do','did','does','for','with','from','by','as','this','that','it','he','she','we','they','you','I','my','your','his','her','its','our','if','when','while','then','than','more','most','some','all','any','no','up','down','out','so','can','get','got','go','just','also','about','after','before','between','through','over','under','into','text','model','models','language','large','token','tokens','first','last','new','old','long','short','great','world','time','way','process','split','step','every','only','each','their','them','these','those','good','bad','high','low','use','used','using','make','made','making','take','takes','part','parts','such','like','very','much','many','few','well','already','still','even','both','same','different','how','what','which','where','who','why','because','since','until','though','although','however','therefore','thus','hence','here','there','now','then','later','soon','next']);
-const BPE_SUFFIXES = ['ing','tion','ment','ness','ful','less','ible','able','ical','ous','ive','ent','al','er','ed','ly','ist','ism','ize','ise','fy','ary','ery','ory'];
-const BPE_PREFIXES = ['un','re','pre','dis','over','under','inter','trans','sub','super','anti','non','mis','out','up','in','im','ir'];
-
-let tokenIdCounter = 1000;
-const tokenIdCache = {};
-function getTokenId(tok) {
-  if (!tokenIdCache[tok]) tokenIdCache[tok] = tokenIdCounter++;
-  return tokenIdCache[tok];
-}
-
-function tokenize(text) {
-  if (!text.trim()) return [];
-  const tokens = [];
-  // Split preserving punctuation
-  const raw = text.split(/(\s+|[.,!?;:'"()\[\]{}\-—…\/\\@#$%^&*+=<>|~`])/);
-  for (const part of raw) {
-    if (!part || /^\s+$/.test(part)) continue;
-    const lo = part.toLowerCase();
-    if (/^[^a-zA-Z0-9]+$/.test(part)) { tokens.push(part); continue; }
-    if (/^\d+$/.test(part)) { tokens.push(part); continue; }
-    if (WHOLE_WORDS.has(lo)) { tokens.push(part); continue; }
-    if (part.length <= 3) { tokens.push(part); continue; }
-    // Try suffix split
-    let split = false;
-    for (const suf of BPE_SUFFIXES) {
-      if (lo.endsWith(suf) && part.length > suf.length + 1) {
-        tokens.push(part.slice(0, -suf.length));
-        tokens.push(suf);
-        split = true; break;
-      }
-    }
-    if (split) continue;
-    // Try prefix split
-    for (const pre of BPE_PREFIXES) {
-      if (lo.startsWith(pre) && part.length > pre.length + 2) {
-        tokens.push(part.slice(0, pre.length));
-        tokens.push(part.slice(pre.length));
-        split = true; break;
-      }
-    }
-    if (split) continue;
-    // Fallback: 4-char chunks
-    if (part.length > 6) {
-      tokens.push(part.slice(0, Math.ceil(part.length/2)));
-      tokens.push(part.slice(Math.ceil(part.length/2)));
-    } else {
-      tokens.push(part);
-    }
-  }
-  return tokens.filter(t => t.length > 0);
-}
-
-function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ── Tab 1: Tokenize ──────────────────────────────────────────────────────────
-function renderTokenize() {
-  const text = document.getElementById('tv-input').value;
-  const tokens = tokenize(text);
-  const words = text.trim() ? text.trim().split(/\s+/).filter(w=>w) : [];
-  const unique = new Set(tokens.map(t=>t.toLowerCase())).size;
-
-  document.getElementById('tv-chars').textContent = text.length;
-  document.getElementById('tv-tokens').textContent = tokens.length;
-  document.getElementById('tv-words').textContent = words.length;
-  document.getElementById('tv-ratio').textContent = words.length ? (tokens.length/words.length).toFixed(2) : '0.00';
-  const avgLen = tokens.length ? (tokens.reduce((s,t)=>s+t.length,0)/tokens.length).toFixed(2) : '0.00';
-  document.getElementById('tv-avglen').textContent = avgLen;
-  document.getElementById('tv-density').textContent = unique;
-
-  const display = document.getElementById('tv-display');
-  if (!tokens.length) { display.textContent = 'Type text to see tokens…'; return; }
-  display.innerHTML = tokens.map((tok, i) => {
-    const [bg, col] = TOK_COLORS[i % TOK_COLORS.length];
-    return `<span class="tok" style="background:${bg};border:1px solid ${col};color:${col}" title="ID: ${getTokenId(tok)}">${escHtml(tok)}</span>`;
-  }).join('');
-}
-
-document.getElementById('tv-input').addEventListener('input', renderTokenize);
-renderTokenize();
-
-// ── Tab 2: Token Types ────────────────────────────────────────────────────────
-const TOKEN_TYPES = [
-  {
-    name: 'Whole Words',
-    color: '#10b981', bg: 'rgba(16,185,129,.15)',
-    desc: 'Very common words get their own single token. These are typically the most frequent words in English.',
-    examples: ['the','and','is','to','a','of','in','you','that','it','for','was','on','are','with','as','at','be']
-  },
-  {
-    name: 'Subwords / Suffixes',
-    color: '#8b5cf6', bg: 'rgba(139,92,246,.15)',
-    desc: 'Common morphemes appear as tokens. This allows composing new words from familiar parts.',
-    examples: ['ing','tion','ment','ness','ful','less','ible','able','ical','ous','ive','ent','al','ly','ed','er','est']
-  },
-  {
-    name: 'Subwords / Prefixes',
-    color: '#3b82f6', bg: 'rgba(59,130,246,.15)',
-    desc: 'Common prefixes also appear as tokens, allowing efficient encoding of derived words.',
-    examples: ['un','re','pre','dis','over','under','inter','trans','sub','super','anti','non','mis','pro']
-  },
-  {
-    name: 'Punctuation',
-    color: '#f59e0b', bg: 'rgba(245,158,11,.15)',
-    desc: 'Punctuation marks are usually individual tokens. Some combinations like "..." may be merged.',
-    examples: ['.','!','?',',',';',':','-','"',"'",'(',')','[',']','{','}','...','—','…']
-  },
-  {
-    name: 'Numbers',
-    color: '#06b6d4', bg: 'rgba(6,182,212,.15)',
-    desc: 'Numbers may tokenize as whole numbers (common ones) or digit-by-digit depending on the tokenizer.',
-    examples: ['0','1','2','10','100','2024','42','0.5','1,000','+1','-1','3.14','42','2023']
-  },
-  {
-    name: 'Special Tokens',
-    color: '#ec4899', bg: 'rgba(236,72,153,.15)',
-    desc: 'Every model defines special tokens for structure: start/end of text, padding, separators, and role delimiters.',
-    examples: ['[CLS]','[SEP]','[PAD]','[UNK]','[MASK]','<|im_start|>','<|im_end|>','<|endoftext|>','<s>','</s>','<pad>']
-  },
-  {
-    name: 'Byte Fallbacks',
-    color: '#a855f7', bg: 'rgba(168,85,247,.15)',
-    desc: 'Any character not in the vocabulary falls back to raw UTF-8 bytes. This ensures the tokenizer can handle any text.',
-    examples: ['<0xE2>','<0x80>','<0x99>','<0xF0>','<0x9F>','<0x92>','<0xA1>','Ø','ñ','ü','中','日','한','🔥','→','≠']
-  },
-  {
-    name: 'Whitespace Tokens',
-    color: '#64748b', bg: 'rgba(100,116,139,.15)',
-    desc: 'Many tokenizers encode a leading space as part of the token itself ("Ġ" in GPT-2), distinguishing mid-word from start-of-word.',
-    examples: ['Ġthe','Ġand','Ġis','Ġto','Ġa','Ġof','Ġin','Ġyou','Ġthat','Ġit','Ġwas','Ġfor','Ċ','Ġ','  ']
-  }
-];
-
-const typesGrid = document.getElementById('types-grid');
-typesGrid.innerHTML = TOKEN_TYPES.map(t => `
-  <div class="type-card">
-    <h3 style="color:${t.color}">${t.name}</h3>
-    <p>${t.desc}</p>
-    <div class="type-examples">
-      ${t.examples.map(e => `<span class="type-badge" style="background:${t.bg};color:${t.color}">${escHtml(e)}</span>`).join('')}
-    </div>
-  </div>
-`).join('');
-
-// ── Tab 3: Context Window ────────────────────────────────────────────────────
-function renderCtx() {
-  const windowSize = parseInt(document.getElementById('ctx-window-size').value);
-  const docTokens = parseInt(document.getElementById('ctx-doc-slider').value);
-
-  document.getElementById('ctx-doc-val').textContent = docTokens.toLocaleString();
-  document.getElementById('ctx-window-display').textContent = windowSize.toLocaleString();
-
-  const used = Math.min(docTokens, windowSize);
-  const remaining = windowSize - used;
-  const overflow = Math.max(0, docTokens - windowSize);
-
-  document.getElementById('ctx-used').textContent = used.toLocaleString();
-  document.getElementById('ctx-remaining').textContent = remaining.toLocaleString();
-
-  const overflowStat = document.getElementById('ctx-overflow-stat');
-  if (overflow > 0) {
-    overflowStat.style.display = '';
-    document.getElementById('ctx-overflow').textContent = overflow.toLocaleString();
-  } else {
-    overflowStat.style.display = 'none';
-  }
-
-  // Render grid — cap at 4096 cells for performance
-  const gridMax = Math.min(windowSize, 4096);
-  const scale = windowSize / gridMax;
-  const usedCells = Math.round(used / scale);
-  const grid = document.getElementById('ctx-grid');
-  let html = '';
-  for (let i = 0; i < gridMax; i++) {
-    let color;
-    if (i < usedCells) color = 'var(--accent)';
-    else color = 'rgba(30,41,59,.6)';
-    html += `<div class="ctx-cell" style="background:${color}"></div>`;
-  }
-  if (overflow > 0) {
-    const overflowCells = Math.min(Math.round(overflow / scale), 2048);
-    for (let i = 0; i < overflowCells; i++) html += `<div class="ctx-cell" style="background:#ef4444"></div>`;
-  }
-  grid.innerHTML = html;
-
-  const fillPct = (used / windowSize * 100).toFixed(1);
-  const infoBox = document.getElementById('ctx-info-box');
-  if (overflow > 0) {
-    infoBox.innerHTML = `<strong style="color:#ef4444">Context overflow!</strong> Your document has ${docTokens.toLocaleString()} tokens but the window only fits ${windowSize.toLocaleString()}. The model will <strong>not see</strong> the last ${overflow.toLocaleString()} tokens. Common strategies: chunk the document, use summarization, or use a model with a larger context window like Claude 3 (200k) or Gemini 1.5 (1M).`;
-  } else {
-    infoBox.innerHTML = `Window is <strong style="color:var(--accent)">${fillPct}% full</strong>. ${remaining.toLocaleString()} tokens remain for the model's response plus any system prompt. A typical system prompt uses 200–800 tokens; responses commonly use 500–2,000 tokens.`;
-  }
-}
-
-document.getElementById('ctx-window-size').addEventListener('change', renderCtx);
-document.getElementById('ctx-doc-slider').addEventListener('input', renderCtx);
-renderCtx();
-
-// ── Tab 4: Vocabulary ────────────────────────────────────────────────────────
-const VOCAB_TOKENS = [
-  // Byte literals
-  {tok:'!',id:0},{tok:'"',id:1},{tok:'#',id:2},{tok:'$',id:3},{tok:'%',id:4},{tok:'&',id:5},{tok:"'",id:6},{tok:'(',id:7},{tok:')',id:8},{tok:'*',id:9},{tok:'+',id:10},{tok:',',id:11},{tok:'-',id:12},{tok:'.',id:13},{tok:'/',id:14},{tok:'0',id:15},{tok:'1',id:16},{tok:'2',id:17},{tok:'3',id:18},{tok:'4',id:19},{tok:'5',id:20},{tok:'6',id:21},{tok:'7',id:22},{tok:'8',id:23},{tok:'9',id:24},{tok:':',id:25},{tok:';',id:26},{tok:'<',id:27},{tok:'=',id:28},{tok:'>',id:29},{tok:'?',id:30},{tok:'@',id:31},
-  // Single letters
-  {tok:'a',id:64},{tok:'b',id:65},{tok:'c',id:66},{tok:'d',id:67},{tok:'e',id:68},{tok:'f',id:69},{tok:'g',id:70},{tok:'h',id:71},{tok:'i',id:72},{tok:'j',id:73},{tok:'k',id:74},{tok:'l',id:75},{tok:'m',id:76},{tok:'n',id:77},{tok:'o',id:78},{tok:'p',id:79},{tok:'q',id:80},{tok:'r',id:81},{tok:'s',id:82},{tok:'t',id:83},{tok:'u',id:84},{tok:'v',id:85},{tok:'w',id:86},{tok:'x',id:87},{tok:'y',id:88},{tok:'z',id:89},
-  // Very common words
-  {tok:'the',id:262},{tok:'of',id:286},{tok:'and',id:290},{tok:'in',id:287},{tok:'to',id:284},{tok:'a',id:256},{tok:'is',id:318},{tok:'it',id:340},{tok:'you',id:345},{tok:'that',id:326},{tok:'he',id:339},{tok:'was',id:374},{tok:'for',id:307},{tok:'on',id:319},{tok:'are',id:389},{tok:'with',id:351},{tok:'as',id:347},{tok:'at',id:379},{tok:'be',id:307},{tok:'this',id:428},{tok:'from',id:422},{tok:'or',id:393},{tok:'an',id:335},{tok:'by',id:416},{tok:'but',id:475},{tok:'not',id:407},{tok:'have',id:452},{tok:'had',id:550},{tok:'they',id:508},{tok:'her',id:531},
-  // Common subwords/suffixes
-  {tok:'ing',id:992},{tok:'tion',id:1431},{tok:'ed',id:774},{tok:'ly',id:1072},{tok:'ment',id:1950},{tok:'ness',id:2490},{tok:'ful',id:3160},{tok:'less',id:3840},{tok:'able',id:2900},{tok:'ible',id:4200},{tok:'ous',id:3500},{tok:'ive',id:3100},{tok:'er',id:945},{tok:'al',id:847},{tok:'ent',id:2100},{tok:'ical',id:5500},{tok:'ary',id:4700},
-  // Common prefixes
-  {tok:'un',id:403},{tok:'re',id:444},{tok:'pre',id:992},{tok:'dis',id:1220},{tok:'over',id:2010},{tok:'inter',id:4330},{tok:'trans',id:5820},{tok:'sub',id:3920},{tok:'non',id:6100},{tok:'anti',id:7200},{tok:'mis',id:8100},
-  // Tech/AI tokens
-  {tok:'model',id:9290},{tok:'data',id:8500},{tok:'token',id:11050},{tok:'neural',id:15200},{tok:'network',id:14100},{tok:'learning',id:16800},{tok:'training',id:18200},{tok:'language',id:17400},{tok:'text',id:7800},{tok:'input',id:9200},{tok:'output',id:10500},{tok:'layer',id:12300},{tok:'weights',id:19800},{tok:'gradient',id:22000},{tok:'loss',id:9700},
-  // Numbers
-  {tok:'10',id:940},{tok:'100',id:1425},{tok:'2024',id:8201},{tok:'2023',id:8198},{tok:'0',id:15},{tok:'1',id:16},{tok:'42',id:2314},{tok:'1000',id:4800},
-  // Special tokens
-  {tok:'[CLS]',id:101},{tok:'[SEP]',id:102},{tok:'[PAD]',id:0},{tok:'[UNK]',id:100},{tok:'[MASK]',id:103},{tok:'<|endoftext|>',id:50256},{tok:'<|im_start|>',id:100264},{tok:'<|im_end|>',id:100265},{tok:'<s>',id:1},{tok:'</s>',id:2},
-];
-
-function renderVocab(filter='') {
-  const lo = filter.toLowerCase();
-  const filtered = filter ? VOCAB_TOKENS.filter(v => v.tok.toLowerCase().includes(lo)) : VOCAB_TOKENS;
-  document.getElementById('vocab-count').textContent = `Showing ${filtered.length} of ${VOCAB_TOKENS.length} tokens`;
-
-  const colorFor = (tok) => {
-    if (/^\[/.test(tok) || /^</.test(tok)) return ['rgba(236,72,153,.15)','#ec4899'];
-    if (/^[^a-zA-Z0-9]$/.test(tok)) return ['rgba(245,158,11,.15)','#f59e0b'];
-    if (/^\d+$/.test(tok)) return ['rgba(6,182,212,.15)','#06b6d4'];
-    if (tok.length === 1) return ['rgba(16,185,129,.15)','#10b981'];
-    if (WHOLE_WORDS.has(tok)) return ['rgba(16,185,129,.15)','#10b981'];
-    return ['rgba(139,92,246,.15)','#8b5cf6'];
-  };
-
-  document.getElementById('vocab-grid').innerHTML = filtered.map(v => {
-    const [bg, col] = colorFor(v.tok);
-    return `<div class="vocab-item" style="border-color:${col}22;background:${bg}">
-      <span style="color:${col};font-weight:700">${escHtml(v.tok)}</span>
-      <span class="vid">ID: ${v.id.toLocaleString()}</span>
-    </div>`;
-  }).join('');
-}
-
-document.getElementById('vocab-search').addEventListener('input', e => renderVocab(e.target.value));
-renderVocab();
-</script>
 </body>
 </html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="UART — Universal Asynchronous Receiver/Transmitter">
+<title>Protocol Visualizer — protocol.ximg.app</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+.sub-nav{position:sticky;top:44px;z-index:100;background:#070720;border-bottom:1px solid #1e293b;display:flex;gap:0;padding:0 1rem;justify-content:center}
+.tab-btn{background:none;border:none;color:#94a3b8;padding:.75rem 1.25rem;cursor:pointer;font-size:.9rem;font-family:inherit;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
+.tab-btn.active{color:#34d399;border-bottom-color:#34d399}
+.tab-btn:hover:not(.active){color:#e2e8f0}
+h2{color:#34d399;margin-bottom:1rem;font-size:1.2rem}
+.info-box{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-top:1rem;font-size:.85rem;line-height:1.7;color:#94a3b8}
+.info-box h3{color:#34d399;margin-bottom:.5rem;font-size:1rem}
+.formula{font-family:'Courier New',monospace;color:#6ee7b7;background:#022c22;padding:.3rem .6rem;border-radius:4px;font-size:.85rem;display:inline-block;margin:.15rem 0}
+.btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:.4rem .9rem;border-radius:5px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:background .2s}
+.btn:hover{background:#334155}
+.btn.active-btn{background:#052e16;border-color:#34d399;color:#34d399}
+/* Waveform diagram */
+.waveform-wrap{background:#050518;border:1px solid #1e293b;border-radius:8px;overflow:hidden;margin-bottom:1rem}
+canvas.wave{display:block;width:100%}
+.controls{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;align-items:center}
+.ctrl{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#94a3b8}
+.ctrl label{white-space:nowrap}
+input[type=range]{width:120px;accent-color:#34d399}
+input[type=number],input[type=text],select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:.3rem .6rem;border-radius:4px;font-family:inherit;font-size:.85rem}
+select{cursor:pointer}
+.sig-label{font-family:'Courier New',monospace;font-size:.78rem;color:#64748b}
+.legend{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem}
+.leg-item{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:#94a3b8}
+.leg-swatch{width:12px;height:3px;border-radius:2px}
+/* Stats */
+.stat-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem}
+.stat{font-size:.82rem;color:#64748b;background:#070720;border:1px solid #1e293b;border-radius:5px;padding:.3rem .65rem}
+.stat span{color:#34d399;font-weight:600}
+/* Ref table */
+.cmp-table{width:100%;border-collapse:collapse;font-size:.83rem}
+.cmp-table th{background:#1e293b;color:#34d399;padding:.5rem .75rem;text-align:left;font-weight:600;border-bottom:2px solid #334155}
+.cmp-table td{padding:.45rem .75rem;border-bottom:1px solid #1e293b;color:#94a3b8;vertical-align:top}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table .hl{color:#34d399;font-weight:600}
+</style>
+</head>
+<body>
+<nav class="sub-nav">
+  <a class="tab-btn " href="index.html">UART</a>
+  <a class="tab-btn" href="spi.html">SPI</a>
+  <a class="tab-btn" href="i2c.html">I²C</a>
+  <a class="tab-btn" href="compare.html">Comparison</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/protocol') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="compare">
+<h2>Protocol Comparison</h2>
+  <div class="tt-wrap" style="overflow-x:auto">
+    <table class="cmp-table">
+      <thead><tr><th>Feature</th><th class="hl">UART</th><th class="hl">SPI</th><th class="hl">I²C</th></tr></thead>
+      <tbody>
+        <tr><td>Synchronous?</td><td>No (async)</td><td class="hl">Yes</td><td class="hl">Yes</td></tr>
+        <tr><td>Wires</td><td>2 (TX, RX)</td><td>4+ (SCK, MOSI, MISO, CS×n)</td><td>2 (SDA, SCL)</td></tr>
+        <tr><td>Max devices</td><td>2 (point-to-point)</td><td>Unlimited (one CS each)</td><td>128 (7-bit) / 1024 (10-bit)</td></tr>
+        <tr><td>Full duplex?</td><td>Yes</td><td class="hl">Yes (simultaneous)</td><td>No (half-duplex)</td></tr>
+        <tr><td>Typical speed</td><td>up to ~1 Mbps</td><td class="hl">up to ~100 MHz</td><td>100 kHz – 3.4 MHz</td></tr>
+        <tr><td>Addressing</td><td>None (dedicated wire)</td><td>None (CS pin per device)</td><td class="hl">7-bit or 10-bit address</td></tr>
+        <tr><td>Error detection</td><td>Optional parity bit</td><td>None built-in</td><td>ACK/NACK only</td></tr>
+        <tr><td>Hardware complexity</td><td>Simple</td><td>Moderate</td><td>Moderate (pull-ups needed)</td></tr>
+        <tr><td>Typical use</td><td>Debug consoles, GPS, Bluetooth, RS-232</td><td>Flash, SD cards, ADCs, displays</td><td>Sensors (temp, IMU), EEPROMs, RTCs</td></tr>
+        <tr><td>Pull-up resistors?</td><td>No</td><td>No</td><td class="hl">Required (on SDA & SCL)</td></tr>
+        <tr><td>Clock stretching</td><td>N/A</td><td>N/A</td><td class="hl">Supported by slave</td></tr>
+        <tr><td>Long-distance?</td><td>RS-232 up to 15m; RS-485 up to 1.2km</td><td>Short (high-speed, board-level)</td><td>Short (board-level, &lt;1m typical)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info-box" style="margin-top:1.25rem">
+    <h3>When to Use Which</h3>
+    <p><b>UART:</b> Simple two-device communication, debug output, connecting to legacy serial equipment (GPS modules, RS-232). No clock signal, so both sides must agree on baud rate. Easy to implement in software ("bit-bang").</p>
+    <br>
+    <p><b>SPI:</b> Fast data transfer to a single peripheral (SD card, external flash, high-speed DAC/ADC). Needs more pins for multiple devices but supports very high clock rates. Best for applications where speed matters more than pin count.</p>
+    <br>
+    <p><b>I²C:</b> Multiple sensors on a single bus with minimal wiring. Ideal for slow peripherals (temperature sensors, IMUs, EEPROMs) where you need many devices but speed is not critical. Requires careful pull-up resistor selection based on bus capacitance.</p>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

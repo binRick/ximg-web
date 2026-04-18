@@ -13,8 +13,6 @@
   .subnav button{background:none;border:none;color:#94a3b8;padding:12px 22px;cursor:pointer;font-size:.9rem;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
   .subnav button:hover{color:#e2e8f0;background:#0f172a}
   .subnav button.active{color:#22c55e;border-bottom-color:#22c55e}
-  .tab-content{display:none;padding:24px}
-  .tab-content.active{display:block}
   h2{font-size:1.4rem;margin-bottom:6px;color:#f1f5f9}
   .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
   .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px;align-items:center}
@@ -64,17 +62,27 @@
 </style>
 </head>
 <body>
-
 <nav class="subnav">
-  <button class="active" data-tab="scheduler">Process Scheduler</button>
-  <button data-tab="memory">Memory Manager</button>
-  <button data-tab="filesystem">File System</button>
-  <button data-tab="monitor">System Monitor</button>
+  <a class="active" href="index.html">Process Scheduler</a>
+  <a href="memory.html">Memory Manager</a>
+  <a href="filesystem.html">File System</a>
+  <a href="monitor.html">System Monitor</a>
 </nav>
 
-<!-- ── TAB 1: SCHEDULER ───────────────────────────────────────────────────── -->
-<div class="tab-content active" id="tab-scheduler">
-  <h2>Process Scheduler</h2>
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/os') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="scheduler">
+<h2>Process Scheduler</h2>
   <p class="subtitle">CPU time-slice simulation — watch processes compete for CPU time</p>
   <div class="controls">
     <label>Algorithm
@@ -94,382 +102,7 @@
 </div>
 
 <!-- ── TAB 2: MEMORY ─────────────────────────────────────────────────────── -->
-<div class="tab-content" id="tab-memory">
-  <h2>Memory Manager</h2>
-  <p class="subtitle">Visual RAM layout — stack (top-down, blue) and heap (bottom-up, green). Click a free block to allocate.</p>
-  <div class="controls">
-    <label>Allocation size (blocks) <select id="allocSize"><option>1</option><option selected>2</option><option>4</option><option>8</option></select></label>
-    <button class="btn blue" id="memAlloc">Allocate</button>
-    <button class="btn gray" id="memFree">Free Random</button>
-    <button class="btn gray" id="memReset">Reset</button>
-  </div>
-  <canvas id="memCanvas" width="680" height="380"></canvas>
-  <div class="mem-stats">
-    <div class="mem-stat"><span class="mem-stat-label">Total RAM</span><span class="mem-stat-val" id="memTotal">—</span></div>
-    <div class="mem-stat"><span class="mem-stat-label">Used</span><span class="mem-stat-val" id="memUsed" style="color:#ef4444">—</span></div>
-    <div class="mem-stat"><span class="mem-stat-label">Free</span><span class="mem-stat-val" id="memFree2" style="color:#22c55e">—</span></div>
-    <div class="mem-stat"><span class="mem-stat-label">Fragmentation</span><span class="mem-stat-val" id="memFrag">—</span></div>
-  </div>
-</div>
-
-<!-- ── TAB 3: FILE SYSTEM ─────────────────────────────────────────────────── -->
-<div class="tab-content" id="tab-filesystem">
-  <h2>Virtual File System</h2>
-  <p class="subtitle">Click to expand directories, select items to view metadata</p>
-  <div class="fs-layout">
-    <div>
-      <div class="fs-tree" id="fsTree"></div>
-      <div class="fs-input-row">
-        <input id="fsNewName" placeholder="name" maxlength="20">
-        <button class="btn" id="fsNewFile">New File</button>
-        <button class="btn blue" id="fsNewDir">New Dir</button>
-        <button class="btn red" id="fsDelete">Delete</button>
-      </div>
-    </div>
-    <div class="fs-info panel">
-      <div id="fsInfoContent" style="color:#64748b;font-size:.85rem">Select a file or folder to view details.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ── TAB 4: SYSTEM MONITOR ─────────────────────────────────────────────── -->
-<div class="tab-content" id="tab-monitor">
-  <h2>System Monitor</h2>
-  <p class="subtitle">Simulated real-time metrics — updates every second</p>
-  <div class="monitor-grid">
-    <div class="mon-card">
-      <h3>CPU Usage</h3>
-      <div class="mon-val" id="cpuVal" style="color:#22c55e">—</div>
-      <canvas id="cpuGraph" height="80"></canvas>
-    </div>
-    <div class="mon-card">
-      <h3>Memory Usage</h3>
-      <div class="mon-val" id="ramVal" style="color:#3b82f6">—</div>
-      <canvas id="ramGraph" height="80"></canvas>
-    </div>
-    <div class="mon-card">
-      <h3>Disk I/O (MB/s)</h3>
-      <div class="mon-val" id="diskVal" style="color:#f97316">—</div>
-      <canvas id="diskGraph" height="80"></canvas>
-    </div>
-    <div class="mon-card">
-      <h3>Network (KB/s)</h3>
-      <div class="mon-val" id="netVal" style="color:#a855f7">—</div>
-      <canvas id="netGraph" height="80"></canvas>
-    </div>
-  </div>
-</div>
-
-<script>
-// ── Tab switching ─────────────────────────────────────────────────────────────
-document.querySelectorAll('.subnav button').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.subnav button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-  });
-});
-
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TAB 1 – SCHEDULER
-// ══════════════════════════════════════════════════════════════════════════════
-(function(){
-  const canvas=document.getElementById('schedCanvas');
-  const ctx=canvas.getContext('2d');
-  canvas.width=Math.min(800,canvas.parentElement.clientWidth*0.95||780);
-  const PROC_NAMES=['init','bash','nginx','node','python','vim','ssh','curl','grep','cat'];
-  const PROC_COLORS=['#22c55e','#3b82f6','#f97316','#a855f7','#eab308','#ef4444','#14b8a6','#ec4899','#84cc16','#fb923c'];
-  let processes=[], nextPid=1, running=false, interval=null, currentIdx=-1, tickMs=0;
-
-  function makeProc(){
-    const i=(nextPid-1)%PROC_NAMES.length;
-    return { pid:nextPid++, name:PROC_NAMES[i], color:PROC_COLORS[i], priority:Math.ceil(Math.random()*5), cpuUsed:0, burst:Math.floor(Math.random()*500)+100, state:'ready' };
-  }
-
-  function initProcs(){
-    processes=[]; nextPid=1;
-    for(let i=0;i<6;i++) processes.push(makeProc());
-    processes[0].state='running'; currentIdx=0;
-    renderTable(); drawGantt();
-  }
-
-  function renderTable(){
-    const tbody=document.querySelector('#procTable tbody');
-    const stateColors={running:'#22c55e',ready:'#eab308',blocked:'#ef4444',terminated:'#64748b'};
-    tbody.innerHTML=processes.map(p=>`<tr>
-      <td>${p.pid}</td><td>${p.name}</td><td>${p.priority}</td>
-      <td>${p.cpuUsed}</td><td>${p.burst}</td>
-      <td><span class="status-badge" style="background:${stateColors[p.state]}22;color:${stateColors[p.state]}">${p.state}</span></td>
-    </tr>`).join('');
-  }
-
-  const ganttLog=[];
-  function drawGantt(){
-    const w=canvas.width, h=canvas.height;
-    ctx.clearRect(0,0,w,h);
-    if(!ganttLog.length){ ctx.fillStyle='#475569'; ctx.font='13px Segoe UI'; ctx.textAlign='center'; ctx.fillText('Press Start to run the scheduler',w/2,h/2); return; }
-    const last=Math.min(ganttLog.length,50);
-    const seg=ganttLog.slice(-last);
-    const sw=(w-20)/last;
-    seg.forEach((entry,i)=>{
-      const p=processes.find(x=>x.pid===entry.pid);
-      ctx.fillStyle=p?p.color+'88':'#1e293b';
-      ctx.fillRect(10+i*sw,20,sw-1,h-40);
-      if(sw>18){ ctx.fillStyle='#fff'; ctx.font='10px Segoe UI'; ctx.textAlign='center'; ctx.fillText(p?p.name.slice(0,4):'—',10+i*sw+sw/2,h/2); }
-    });
-    ctx.fillStyle='#64748b'; ctx.font='10px Segoe UI'; ctx.textAlign='left'; ctx.fillText('← time',10,h-5);
-  }
-
-  function tick(){
-    const quantum=parseInt(document.getElementById('schedQuantum').value);
-    const algo=document.getElementById('schedAlgo').value;
-    const active=processes.filter(p=>p.state!=='terminated');
-    if(!active.length){ clearInterval(interval); running=false; document.getElementById('schedToggle').textContent='Start'; return; }
-
-    // occasionally block/unblock
-    active.forEach(p=>{ if(p.state==='ready'&&Math.random()<0.03) p.state='blocked'; if(p.state==='blocked'&&Math.random()<0.15) p.state='ready'; });
-
-    let next=null;
-    if(algo==='fifo'){ next=active.find(p=>p.state==='ready')||active[0]; }
-    else if(algo==='priority'){ const ready=active.filter(p=>p.state==='ready'); ready.sort((a,b)=>b.priority-a.priority); next=ready[0]||active[0]; }
-    else { // round-robin
-      const ready=active.filter(p=>p.state==='ready');
-      if(!ready.length){ next=active[0]; } else {
-        currentIdx=(currentIdx+1)%ready.length; next=ready[currentIdx%ready.length];
-      }
-    }
-    if(next){ processes.forEach(p=>{ if(p.state==='running') p.state='ready'; }); next.state='running'; next.cpuUsed+=quantum; if(next.cpuUsed>=next.burst) next.state='terminated'; ganttLog.push({pid:next.pid}); }
-    renderTable(); drawGantt();
-  }
-
-  document.getElementById('schedToggle').addEventListener('click',()=>{
-    if(running){ clearInterval(interval); running=false; document.getElementById('schedToggle').textContent='Start'; }
-    else { running=true; document.getElementById('schedToggle').textContent='Stop'; interval=setInterval(tick,300); }
-  });
-  document.getElementById('schedAddProc').addEventListener('click',()=>{ if(processes.length<10) processes.push(makeProc()); renderTable(); });
-  document.getElementById('schedReset').addEventListener('click',()=>{ clearInterval(interval); running=false; document.getElementById('schedToggle').textContent='Start'; ganttLog.length=0; initProcs(); });
-
-  initProcs();
-})();
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TAB 2 – MEMORY MANAGER
-// ══════════════════════════════════════════════════════════════════════════════
-(function(){
-  const canvas=document.getElementById('memCanvas');
-  const ctx=canvas.getContext('2d');
-  const TOTAL=64, COLS=16;
-  const CW=canvas.width/COLS, CH=canvas.height/Math.ceil(TOTAL/COLS);
-  // Each block: {state: 'free'|'stack'|'heap', alloc_id}
-  let blocks=[];
-  let allocId=0;
-
-  function initBlocks(){
-    blocks=Array.from({length:TOTAL},(_,i)=>({state:'free',id:null}));
-    // kernel space (top 4)
-    for(let i=0;i<4;i++) blocks[i]={state:'kernel',id:-1};
-    drawMem();
-  }
-
-  function drawMem(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const colors={free:'#0f172a',kernel:'#581c87',stack:'#1d4ed8',heap:'#15803d'};
-    const labels={free:'',kernel:'K',stack:'S',heap:'H'};
-    blocks.forEach((b,i)=>{
-      const col=i%COLS, row=Math.floor(i/COLS);
-      const x=col*CW, y=row*CH;
-      ctx.fillStyle=colors[b.state]||'#0f172a';
-      ctx.fillRect(x+1,y+1,CW-2,CH-2);
-      ctx.strokeStyle='#1e293b'; ctx.lineWidth=1; ctx.strokeRect(x,y,CW,CH);
-      if(b.state!=='free'){ ctx.fillStyle='#fff'; ctx.font='9px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(labels[b.state]||'',x+CW/2,y+CH/2); }
-      // block index
-      ctx.fillStyle='#334155'; ctx.font='8px Segoe UI'; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(i,x+2,y+2);
-    });
-    // legend
-    const ly=canvas.height-18;
-    [['#581c87','Kernel'],['#1d4ed8','Stack'],['#15803d','Heap'],['#0f172a','Free']].forEach(([c,l],i)=>{
-      ctx.fillStyle=c; ctx.fillRect(10+i*90,ly,12,12);
-      ctx.fillStyle='#94a3b8'; ctx.font='11px Segoe UI'; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(l,26+i*90,ly);
-    });
-    updateStats();
-  }
-
-  function updateStats(){
-    const used=blocks.filter(b=>b.state!=='free').length;
-    const free=blocks.filter(b=>b.state==='free').length;
-    const fragmented=blocks.reduce((acc,b,i)=>{ if(b.state==='free'&&i>0&&blocks[i-1].state!=='free') acc++; return acc; },0);
-    document.getElementById('memTotal').textContent=`${TOTAL} blocks`;
-    document.getElementById('memUsed').textContent=`${used} blocks`;
-    document.getElementById('memFree2').textContent=`${free} blocks`;
-    document.getElementById('memFrag').textContent=`${fragmented} gaps`;
-  }
-
-  function allocate(type, size){
-    // find contiguous free blocks
-    const n=parseInt(document.getElementById('allocSize').value)||2;
-    const sz=size||n;
-    let start=-1;
-    for(let i=0;i<=TOTAL-sz;i++){
-      if(blocks.slice(i,i+sz).every(b=>b.state==='free')){ start=i; break; }
-    }
-    if(start===-1){ alert('Not enough contiguous memory!'); return; }
-    const id=++allocId;
-    for(let i=start;i<start+sz;i++) blocks[i]={state:type,id};
-    drawMem();
-  }
-
-  canvas.addEventListener('click',e=>{
-    const rect=canvas.getBoundingClientRect();
-    const x=e.clientX-rect.left, y=e.clientY-rect.top;
-    const col=Math.floor(x/CW), row=Math.floor(y/CH);
-    const idx=row*COLS+col;
-    if(idx<0||idx>=TOTAL) return;
-    if(blocks[idx].state==='free'){ allocate('heap',1); }
-    else if(blocks[idx].state==='heap'||blocks[idx].state==='stack'){
-      const id=blocks[idx].id;
-      blocks.forEach(b=>{ if(b.id===id) b={state:'free',id:null}; });
-      blocks=blocks.map(b=>b.id===id?{state:'free',id:null}:b);
-      drawMem();
-    }
-  });
-
-  document.getElementById('memAlloc').addEventListener('click',()=> allocate('stack'));
-  document.getElementById('memFree').addEventListener('click',()=>{
-    const used=blocks.filter(b=>b.state==='heap'||b.state==='stack');
-    if(!used.length) return;
-    const target=used[Math.floor(Math.random()*used.length)];
-    const id=target.id;
-    blocks=blocks.map(b=>b.id===id?{state:'free',id:null}:b);
-    drawMem();
-  });
-  document.getElementById('memReset').addEventListener('click', initBlocks);
-  initBlocks();
-})();
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TAB 3 – FILE SYSTEM
-// ══════════════════════════════════════════════════════════════════════════════
-(function(){
-  let inode=100;
-  function mkFile(name,size){ return {type:'file',name,inode:inode++,size,perms:'-rw-r--r--',created:new Date().toISOString().slice(0,19)}; }
-  function mkDir(name){ return {type:'dir',name,inode:inode++,children:[],perms:'drwxr-xr-x',created:new Date().toISOString().slice(0,19),expanded:true}; }
-
-  let fs=mkDir('/');
-  const home=mkDir('home'); const user=mkDir('user');
-  user.children.push(mkFile('readme.txt',1204),mkFile('.bashrc',892),mkDir('projects'));
-  home.children.push(user);
-  const etc=mkDir('etc'); etc.children.push(mkFile('hosts',320),mkFile('passwd',1842),mkFile('fstab',608));
-  const usr=mkDir('usr'); const bin=mkDir('bin'); bin.children.push(mkFile('bash',1048576),mkFile('ls',98304),mkFile('cat',20480)); usr.children.push(bin);
-  const var_=mkDir('var'); const log=mkDir('log'); log.children.push(mkFile('syslog',204800),mkFile('auth.log',81920)); var_.children.push(log);
-  fs.children.push(home,etc,usr,var_);
-
-  let selected=null, selectedParent=null;
-
-  function renderTree(){
-    const tree=document.getElementById('fsTree');
-    tree.innerHTML='';
-    renderNode(fs,tree,0,null);
-  }
-
-  function renderNode(node,container,depth,parent){
-    const div=document.createElement('div');
-    div.className='fs-node'+(node===selected?' selected':'');
-    div.style.paddingLeft=(depth*14)+'px';
-    const icon=node.type==='dir'?(node.expanded?'▼ ':'▶ '):'  ';
-    const color=node.type==='dir'?'#3b82f6':'#94a3b8';
-    div.innerHTML=`<span style="color:${color}">${icon}</span><span style="color:${node===selected?'#22c55e':'inherit'}">${node.name}</span>`;
-    div.addEventListener('click',e=>{ e.stopPropagation(); if(node.type==='dir') node.expanded=!node.expanded; selected=node; selectedParent=parent; renderTree(); showInfo(node); });
-    container.appendChild(div);
-    if(node.type==='dir'&&node.expanded) node.children.forEach(c=>renderNode(c,container,depth+1,node));
-  }
-
-  function showInfo(node){
-    const el=document.getElementById('fsInfoContent');
-    el.innerHTML=`<table class="fs-info-table">
-      <tr><td>Name</td><td><strong>${node.name}</strong></td></tr>
-      <tr><td>Type</td><td>${node.type==='dir'?'Directory':'Regular File'}</td></tr>
-      <tr><td>Inode</td><td>${node.inode}</td></tr>
-      <tr><td>Permissions</td><td style="font-family:monospace">${node.perms}</td></tr>
-      <tr><td>Size</td><td>${node.type==='file'?formatSize(node.size):(node.children.length+' entries')}</td></tr>
-      <tr><td>Created</td><td>${node.created}</td></tr>
-    </table>`;
-  }
-  function formatSize(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
-
-  document.getElementById('fsNewFile').addEventListener('click',()=>{
-    const name=document.getElementById('fsNewName').value.trim();
-    if(!name) return;
-    const parent=selected&&selected.type==='dir'?selected:(selectedParent||fs);
-    parent.children.push(mkFile(name,Math.floor(Math.random()*4096)+64));
-    parent.expanded=true; document.getElementById('fsNewName').value=''; renderTree();
-  });
-  document.getElementById('fsNewDir').addEventListener('click',()=>{
-    const name=document.getElementById('fsNewName').value.trim();
-    if(!name) return;
-    const parent=selected&&selected.type==='dir'?selected:(selectedParent||fs);
-    parent.children.push(mkDir(name));
-    parent.expanded=true; document.getElementById('fsNewName').value=''; renderTree();
-  });
-  document.getElementById('fsDelete').addEventListener('click',()=>{
-    if(!selected||selected===fs) return;
-    const parent=selectedParent;
-    if(!parent) return;
-    parent.children=parent.children.filter(c=>c!==selected);
-    selected=null; selectedParent=null; renderTree();
-    document.getElementById('fsInfoContent').textContent='Select a file or folder to view details.';
-  });
-
-  renderTree();
-})();
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TAB 4 – SYSTEM MONITOR
-// ══════════════════════════════════════════════════════════════════════════════
-(function(){
-  const metrics=[
-    {id:'cpu',label:'CPU',valId:'cpuVal',suffix:'%',color:'#22c55e',base:35,variance:30,canvasId:'cpuGraph'},
-    {id:'ram',label:'RAM',valId:'ramVal',suffix:'%',color:'#3b82f6',base:58,variance:12,canvasId:'ramGraph'},
-    {id:'disk',label:'Disk',valId:'diskVal',suffix:' MB/s',color:'#f97316',base:12,variance:40,canvasId:'diskGraph'},
-    {id:'net',label:'Net',valId:'netVal',suffix:' KB/s',color:'#a855f7',base:80,variance:120,canvasId:'netGraph'},
-  ];
-  const HISTORY=60;
-  metrics.forEach(m=>{ m.data=[]; m.canvas=document.getElementById(m.canvasId); m.ctx=m.canvas.getContext('2d'); });
-
-  function smoothVal(prev,base,variance){ const target=base+Math.random()*variance; return prev===undefined?target:prev*0.6+target*0.4; }
-
-  function drawGraph(m){
-    const canvas=m.canvas, ctx=m.ctx;
-    canvas.width=canvas.parentElement.clientWidth-28||300;
-    canvas.height=80;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    if(m.data.length<2) return;
-    const max=Math.max(...m.data,1);
-    const sw=canvas.width/(HISTORY-1);
-    ctx.beginPath();
-    m.data.forEach((v,i)=>{ const x=i*sw, y=canvas.height-(v/max)*canvas.height*0.9-4; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
-    ctx.strokeStyle=m.color; ctx.lineWidth=2; ctx.stroke();
-    // fill
-    ctx.lineTo((m.data.length-1)*sw,canvas.height); ctx.lineTo(0,canvas.height); ctx.closePath();
-    ctx.fillStyle=m.color+'22'; ctx.fill();
-  }
-
-  function tick(){
-    metrics.forEach(m=>{
-      const prev=m.data[m.data.length-1];
-      const v=Math.max(0,Math.min(m.base+m.variance*2, smoothVal(prev,m.base,m.variance)));
-      m.data.push(v);
-      if(m.data.length>HISTORY) m.data.shift();
-      document.getElementById(m.valId).textContent=Math.round(v)+m.suffix;
-      drawGraph(m);
-    });
-  }
-
-  setInterval(tick,1000); tick();
-})();
-</script>
+</section>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-Time World Data Dashboard">
+  <title>World Data — ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #02020f;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+
+    .page-header {
+      background: #070720;
+      border-bottom: 1px solid #1e293b;
+      padding: 18px 24px 14px;
+    }
+    .page-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #22d3ee;
+      letter-spacing: 0.02em;
+    }
+    .page-header p {
+      font-size: 0.82rem;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    .tab-nav {
+      display: flex;
+      background: #070720;
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
+      top: 44px;
+      z-index: 10;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 11px 22px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #64748b;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: #cbd5e1; }
+    .tab-btn.active { color: #22d3ee; border-bottom-color: #22d3ee; }
+
+    .tab-pane { display: none; padding: 20px; }
+    .tab-pane.active { display: block; }
+
+    canvas { display: block; }
+
+    /* ── Internet Traffic ── */
+    #traffic-wrap {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px;
+    }
+    .map-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .map-card h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #22d3ee;
+      margin-bottom: 10px;
+    }
+    #traffic-map { width: 100%; }
+    .bars-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .bars-card h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #22d3ee;
+      margin-bottom: 12px;
+    }
+    .bar-row {
+      margin-bottom: 10px;
+    }
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+    .bar-track {
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0891b2, #22d3ee);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    /* ── Cyber Attacks ── */
+    #attacks-wrap {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 16px;
+    }
+    .feed-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+      max-height: 520px;
+      overflow: hidden;
+    }
+    .feed-card h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #f97316;
+      margin-bottom: 10px;
+    }
+    .feed-header {
+      display: grid;
+      grid-template-columns: 90px 1fr 1fr 100px 70px;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 6px;
+    }
+    #attack-feed { overflow: hidden; }
+    .attack-row {
+      display: grid;
+      grid-template-columns: 90px 1fr 1fr 100px 70px;
+      gap: 8px;
+      font-size: 0.76rem;
+      padding: 5px 0;
+      border-bottom: 1px solid #0f172a;
+      color: #94a3b8;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .sev-high   { color: #ef4444; }
+    .sev-med    { color: #f97316; }
+    .sev-low    { color: #eab308; }
+    .sev-info   { color: #22d3ee; }
+
+    /* ── Stocks ── */
+    #stocks-wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stock-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .stock-ticker { font-size: 1rem; font-weight: 700; color: #e2e8f0; }
+    .stock-name   { font-size: 0.72rem; color: #475569; margin-bottom: 6px; }
+    .stock-price  { font-size: 1.3rem; font-weight: 600; }
+    .stock-change { font-size: 0.78rem; margin-left: 6px; }
+    .up   { color: #22c55e; }
+    .down { color: #ef4444; }
+    .stock-spark { margin-top: 8px; }
+    .heatmap-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .heatmap-card h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #22d3ee;
+      margin-bottom: 12px;
+    }
+    #heatmap-canvas { width: 100%; }
+
+    /* ── Live Stats ── */
+    #stats-wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .stat-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #22d3ee, transparent);
+    }
+    .stat-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .stat-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin-bottom: 6px; }
+    .stat-value { font-size: 1.7rem; font-weight: 700; color: #22d3ee; font-variant-numeric: tabular-nums; }
+    .stat-rate  { font-size: 0.72rem; color: #22c55e; margin-top: 4px; }
+
+    @media (max-width: 900px) {
+      #traffic-wrap, #attacks-wrap { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<nav class="tab-nav">
+  <a class="tab-btn " href="index.html">Internet Traffic</a>
+  <a class="tab-btn" href="attacks.html">Cyber Attacks</a>
+  <a class="tab-btn" href="stocks.html">Stock Markets</a>
+  <a class="tab-btn" href="livestats.html">Live Stats</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/world') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="livestats">
+<div id="stats-wrap"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-top:1.5rem;padding:0 1rem 2rem;">
+    <figure style="margin:0">
+      <img src="images/ocean-currents.jpg" alt="Global ocean surface currents map showing circulation patterns" style="border-radius:8px;max-width:100%;display:block;" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">Global ocean surface currents</figcaption>
+    </figure>
+    <figure style="margin:0" id="img-tectonic">
+      <img src="images/tectonic-plates.png" alt="Tectonic plates world map showing plate boundaries and movement" style="border-radius:8px;max-width:100%;display:block;" onerror="this.closest('figure').style.display='none'" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">Tectonic plates — boundaries and movement</figcaption>
+    </figure>
+    <figure style="margin:0" id="img-world-map">
+      <img src="images/world-map.svg" alt="World map blank outline showing all continents" style="border-radius:8px;max-width:100%;display:block;background:#e8f4f8;padding:0.5rem;" onerror="this.closest('figure').style.display='none'" loading="lazy" decoding="async">
+      <figcaption style="color:#64748b;font-size:0.78rem;margin-top:0.4rem;text-align:center;">World map — continents and geography</figcaption>
+    </figure>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

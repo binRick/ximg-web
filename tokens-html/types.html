@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Deep dive into tokenization — how text becomes numbers, token types, context windows, and vocabulary.">
+  <title>Token Visualizer — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f;
+      --card: #070720;
+      --border: #1e293b;
+      --accent: #8b5cf6;
+      --pink: #ec4899;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #10b981;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding-top: 44px; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: .3rem; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+    .tab-nav { display: flex; gap: .5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .tab-btn { padding: .5rem 1.1rem; font-size: .85rem; font-weight: 600; cursor: pointer; background: none; border: none; color: var(--muted); border-bottom: 2px solid transparent; transition: all .18s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .card + .card { margin-top: 1rem; }
+    .card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: .75rem; }
+    textarea { width: 100%; background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: .75rem; font-family: 'Courier New', monospace; font-size: .88rem; resize: vertical; outline: none; }
+    textarea:focus { border-color: var(--accent); }
+    input[type=text] { width: 100%; background: #0a0a20; border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: .6rem .75rem; font-family: 'Courier New', monospace; font-size: .88rem; outline: none; }
+    input[type=text]:focus { border-color: var(--accent); }
+
+    .token-display { margin-top: 1rem; padding: .75rem; background: #0a0a20; border-radius: 6px; border: 1px solid var(--border); min-height: 80px; line-height: 2.2; font-family: 'Courier New', monospace; font-size: .88rem; word-break: break-all; }
+    .tok { display: inline-block; padding: .1rem .35rem; border-radius: 4px; margin: 2px 1px; font-size: .82rem; font-weight: 600; transition: transform .1s, box-shadow .1s; cursor: default; }
+    .tok:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+
+    .stats-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .75rem; }
+    .stat { text-align: center; background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: .6rem 1rem; min-width: 90px; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: .72rem; color: var(--muted); margin-top: .1rem; }
+
+    /* Token types tab */
+    .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .type-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    .type-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+    .type-card p { font-size: .82rem; color: var(--muted); line-height: 1.6; margin-bottom: .6rem; }
+    .type-examples { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .type-badge { padding: .2rem .5rem; border-radius: 4px; font-size: .78rem; font-weight: 700; font-family: 'Courier New', monospace; }
+
+    /* Context window */
+    .ctx-controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .ctx-controls label { font-size: .85rem; color: var(--muted); }
+    input[type=range] { accent-color: var(--accent); cursor: pointer; }
+    .ctx-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .ctx-stat { padding: .4rem .8rem; border-radius: 6px; font-size: .82rem; font-weight: 600; }
+    .ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8px, 1fr)); gap: 2px; max-height: 300px; overflow-y: auto; padding: .5rem; background: #0a0a20; border-radius: 8px; border: 1px solid var(--border); }
+    .ctx-cell { width: 8px; height: 8px; border-radius: 1px; transition: background .2s; }
+
+    /* Vocabulary tab */
+    .vocab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: .4rem; margin-top: .75rem; max-height: 500px; overflow-y: auto; }
+    .vocab-item { background: #0a0a20; border: 1px solid var(--border); border-radius: 5px; padding: .3rem .5rem; font-size: .78rem; font-family: 'Courier New', monospace; cursor: default; transition: border-color .15s; }
+    .vocab-item:hover { border-color: var(--accent); color: var(--accent); }
+    .vocab-item .vid { color: var(--muted); font-size: .65rem; display: block; }
+    .vocab-search { margin-bottom: .75rem; }
+    .section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .5rem; }
+    .info-box { background: rgba(139,92,246,.07); border: 1px solid rgba(139,92,246,.2); border-radius: 8px; padding: 1rem; font-size: .87rem; line-height: 1.7; margin-top: 1rem; }
+    .info-box strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="tab-nav">
+    <a class="tab-btn " href="index.html">Tokenize</a>
+    <a class="tab-btn" href="types.html">Token Types</a>
+    <a class="tab-btn" href="context.html">Context Window</a>
+    <a class="tab-btn" href="vocab.html">Vocabulary</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/tokens') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="types">
+<div class="card">
+      <h2>Token Types</h2>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:.75rem;">Modern tokenizers produce several distinct token types. Understanding them helps you predict how text will be chunked and why token counts vary.</p>
+      <div class="type-grid" id="types-grid"></div>
+      <div class="info-box">
+        <strong>BPE (Byte Pair Encoding)</strong> starts with individual characters, then iteratively merges the most frequent adjacent pairs. After thousands of iterations, common words become single tokens while rare/new words are handled as subword sequences.
+        GPT models use ~50,000 tokens in their vocabulary; sentence-piece models vary from 32K to 256K.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CONTEXT WINDOW -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

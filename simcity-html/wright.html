@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The Man Who Invented a Genre">
+  <title>SimCity — simcity.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #020a0f;
+      --bg2:    #061420;
+      --sky:    #38c0ff;
+      --green:  #3ddd6a;
+      --amber:  #ffcc00;
+      --road:   #6b7a8d;
+      --text:   #a8cce0;
+      --dim:    #3a6070;
+      --border: rgba(56,192,255,.1);
+    }
+
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+      pointer-events: none; z-index: 1;
+    }
+
+    /* ── Header ── */
+    .sc-header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(2,20,40,.9) 0%, transparent 100%);
+    }
+    .sc-title {
+      font-size: clamp(1.8rem,6vw,3.5rem);
+      font-weight: 900;
+      letter-spacing: .12em;
+      color: var(--sky);
+      text-shadow: 0 0 30px rgba(56,192,255,.5), 0 0 60px rgba(56,192,255,.2);
+      line-height: 1;
+    }
+    .sc-subtitle {
+      font-size: .72rem;
+      color: var(--dim);
+      letter-spacing: .2em;
+      margin-top: .5rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky;
+      top: 44px; z-index: 100;
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .4rem .75rem;
+      background: rgba(2,10,15,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .sc-tab {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .28rem .8rem;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--dim); cursor: pointer; border-radius: 3px;
+      letter-spacing: .1em; transition: all .2s; white-space: nowrap;
+    }
+    .sc-tab:hover { background: rgba(56,192,255,.08); border-color: rgba(56,192,255,.3); color: var(--sky); }
+    .sc-tab.active { background: rgba(56,192,255,.12); border-color: rgba(56,192,255,.5); color: var(--sky); text-shadow: 0 0 8px rgba(56,192,255,.4); }
+
+    /* ── Sections ── */
+    .section { padding: 2rem 1rem 4rem; max-width: 1300px; margin: 0 auto; }
+
+    .section-title {
+      font-size: .85rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--sky); text-transform: uppercase;
+      margin-bottom: 1.5rem; padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+      position: relative;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent, var(--sky)), transparent);
+      opacity: .5;
+    }
+    .card:hover { border-color: rgba(56,192,255,.28); box-shadow: 0 0 24px rgba(56,192,255,.05); }
+
+    /* ── Game card image ── */
+    .card-img-wrap {
+      height: 180px; overflow: hidden;
+      background: #030c14;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0; transition: opacity .5s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-ph {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .5rem;
+    }
+    .card-img-ph .ph-icon { font-size: 2.8rem; opacity: .15; }
+    .card-img-ph .ph-year { font-size: .6rem; letter-spacing: .2em; color: var(--dim); opacity: .6; }
+
+    .card-body { padding: 1.2rem; }
+    .card-name { font-size: 1rem; font-weight: 700; color: #c8e8f8; letter-spacing: .04em; margin-bottom: .45rem; }
+    .card-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+
+    .badge {
+      font-size: .62rem; font-weight: 700; letter-spacing: .08em;
+      padding: .15rem .5rem; border-radius: 2px; border: 1px solid; white-space: nowrap;
+    }
+    .by  { color: var(--amber);  border-color: rgba(255,204,0,.4);   background: rgba(255,204,0,.07); }
+    .bw  { color: #9be8d0;       border-color: rgba(155,232,208,.3); background: rgba(155,232,208,.05); }
+    .bp  { color: #c890ff;       border-color: rgba(200,144,255,.3); background: rgba(200,144,255,.05); }
+    .bg  { color: var(--green);  border-color: rgba(61,221,106,.35); background: rgba(61,221,106,.06); }
+    .br  { color: #7090a0;       border-color: rgba(112,144,160,.3); background: transparent; font-weight: 400; font-style: italic; }
+    .bx  { color: #ff6677;       border-color: rgba(255,102,119,.35); background: rgba(255,102,119,.06); }
+
+    .card-desc { font-size: .78rem; line-height: 1.7; color: #5a8898; }
+    .card-desc p { margin-bottom: .5rem; }
+    .card-desc p:last-child { margin-bottom: 0; }
+
+    .card-feats { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(255,255,255,.05); }
+    .card-feats ul { list-style: none; }
+    .card-feats li { font-size: .72rem; color: #4a7080; padding: .15rem 0 .15rem .85rem; position: relative; }
+    .card-feats li::before { content: '▸'; position: absolute; left: 0; color: var(--sky); opacity: .4; }
+
+    /* ── Timeline divider ── */
+    .era {
+      grid-column: 1/-1;
+      font-size: .66rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--dim); text-transform: uppercase;
+      padding: .25rem 0; margin-top: .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .era:first-child { margin-top: 0; }
+
+    /* ── Lore / article layout ── */
+    .article-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+    @media(max-width: 500px) { .article-grid { grid-template-columns: 1fr; } }
+
+    .art-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.5rem;
+    }
+    .art-card.wide { grid-column: span 2; }
+    @media(max-width: 900px) { .art-card.wide { grid-column: span 1; } }
+
+    .art-card h2 { font-size: 1rem; font-weight: 700; color: var(--sky); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .2rem; }
+    .art-card .asub { font-size: .64rem; color: var(--dim); letter-spacing: .15em; margin-bottom: .9rem; text-transform: uppercase; }
+    .art-card p { font-size: .78rem; line-height: 1.72; color: #5a8898; margin-bottom: .7rem; }
+    .art-card p:last-child { margin-bottom: 0; }
+    .art-card h3 { font-size: .75rem; font-weight: 700; color: #8ac8e0; letter-spacing: .08em; margin: 1rem 0 .3rem; text-transform: uppercase; }
+    .hi { color: #b0ddf0; font-style: italic; }
+
+    /* ── Screenshot gallery ── */
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+      margin-top: .9rem;
+    }
+    .screenshot-grid a { display: block; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+    .screenshot-grid img {
+      width: 100%; height: 140px; object-fit: cover;
+      display: block; opacity: 0; transition: opacity .4s;
+    }
+    .screenshot-grid img.loaded { opacity: 1; }
+    @media (max-width: 600px) { .screenshot-grid { grid-template-columns: 1fr; } }
+
+    /* ── Wright portrait ── */
+    .wright-portrait {
+      float: right;
+      margin: 0 0 1.2rem 1.4rem;
+      width: clamp(140px, 28%, 220px);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 0 24px rgba(56,192,255,.08);
+    }
+    .wright-portrait img {
+      width: 100%; display: block;
+      opacity: 0; transition: opacity .5s;
+    }
+    .wright-portrait img.loaded { opacity: 1; }
+    .wright-portrait figcaption {
+      font-size: .6rem; letter-spacing: .1em; color: var(--dim);
+      text-align: center; padding: .35rem .5rem;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,.3);
+    }
+
+    /* ── History timeline ── */
+    .tl { position: relative; display: flex; flex-direction: column; gap: 0; max-width: 780px; }
+    .tl::before { content: ''; position: absolute; left: 58px; top: 8px; bottom: 8px; width: 2px;
+      background: linear-gradient(to bottom, transparent, rgba(56,192,255,.35) 8%, rgba(56,192,255,.35) 92%, transparent); }
+    .tl-item { display: flex; gap: 1rem; padding: .85rem 0; align-items: flex-start; }
+    .tl-year { font-family: 'Courier New', monospace; font-size: .78rem; font-weight: 700;
+      color: var(--sky); min-width: 44px; text-align: right; padding-top: .18rem; flex-shrink: 0; }
+    .tl-dot-wrap { width: 28px; display: flex; justify-content: center; padding-top: .24rem;
+      flex-shrink: 0; position: relative; z-index: 1; }
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sky);
+      box-shadow: 0 0 8px rgba(56,192,255,.7); flex-shrink: 0; }
+    .tl-dot.minor { width: 7px; height: 7px; background: #2a8ab0; box-shadow: 0 0 5px rgba(42,138,176,.5); }
+    .tl-body { flex: 1; }
+    .tl-title { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+    .tl-desc { font-size: .74rem; color: var(--dim); line-height: 1.6; }
+    .tl-tag { display: inline-block; font-size: .62rem; font-weight: 700; padding: .1rem .42rem;
+      border-radius: 2px; margin-left: .4rem; vertical-align: middle; letter-spacing: .06em; }
+    .tag-release { background: rgba(56,192,255,.1); color: var(--sky); border: 1px solid rgba(56,192,255,.3); }
+    .tag-company { background: rgba(255,204,0,.1); color: var(--amber); border: 1px solid rgba(255,204,0,.3); }
+    .tag-milestone { background: rgba(61,221,106,.1); color: var(--green); border: 1px solid rgba(61,221,106,.3); }
+    .tag-bad { background: rgba(255,102,119,.1); color: #ff6677; border: 1px solid rgba(255,102,119,.3); }
+
+    /* ── Comparison table ── */
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .73rem; margin-top: .8rem; }
+    .cmp-table th { text-align: left; padding: .4rem .6rem; font-size: .62rem; letter-spacing: .12em; color: var(--dim); border-bottom: 1px solid var(--border); }
+    .cmp-table td { padding: .4rem .6rem; border-bottom: 1px solid rgba(255,255,255,.04); color: #5a8898; vertical-align: top; }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table td:first-child { color: #8ac8e0; font-weight: 700; white-space: nowrap; }
+    .cmp-table .yes { color: var(--green); }
+    .cmp-table .no  { color: #ff6677; }
+  </style>
+</head>
+<body>
+<div class="sub-nav">
+    <a class="sc-tab " href="index.html">GAMES</a>
+    <a class="sc-tab" href="wright.html">WILL WRIGHT</a>
+    <a class="sc-tab" href="skylines.html">CITIES: SKYLINES</a>
+    <a class="sc-tab" href="history.html">HISTORY</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/simcity') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="wright">
+<div class="section-title">Will Wright — The Visionary</div>
+    <div class="article-grid">
+
+      <div class="art-card wide">
+        <h2>The Man Who Invented a Genre</h2>
+        <div class="asub">William Ralph Wright · Born January 20, 1960 · Atlanta, Georgia</div>
+        <figure class="wright-portrait">
+          <img src="images/will-wright.jpg" alt="Will Wright at GDC 2010" id="wright-photo" loading="lazy" decoding="async">
+          <figcaption>WILL WRIGHT · GDC 2010</figcaption>
+        </figure>
+        <p>Will Wright is the most original game designer in the history of the medium. In a field crowded with war games, platformers, and shooters, Wright spent his career asking a different question: <span class="hi">what if the experience itself — the act of observing a complex system respond to your inputs — was enough?</span> What if a game didn't need a win condition, an enemy to defeat, or a story to tell?</p>
+        <p>The answer was SimCity, The Sims, and Spore — three of the most influential games ever made, each one redefining what games could be. Wright didn't iterate on existing genres. He invented new ones from scratch, repeatedly, across three decades.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>Origins: The Crash That Became SimCity</h2>
+        <div class="asub">1984 — Raid on Bungeling Bay</div>
+        <p>Wright's first commercial game was Raid on Bungeling Bay (1984) — a helicopter combat game for the Commodore 64. It was competent. Unremarkable. But while building it, Wright noticed something: creating the maps and towns was more engaging than playing the game itself. The editor was the fun part.</p>
+        <p>He kept the editor. Stripped out the helicopters. Added zoning rules, traffic simulation, and a city budget. What remained had no enemies, no win state, and no way to lose in any conventional sense. Publishers told him no one would buy a game you couldn't win. He pitched it for years before Broderbund finally took a chance. SimCity shipped in 1989 and changed everything.</p>
+        <h3>The Key Insight</h3>
+        <p>Wright understood something that the games industry had missed: <span class="hi">the human brain finds complex systems intrinsically rewarding to observe and manipulate</span>. The satisfaction of watching a city grow in response to your decisions is its own form of play — not competition, not narrative, but the pleasure of understanding a system well enough to make it thrive. He called it a "software toy" rather than a game, and the distinction mattered enormously.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>The Sims: Turning Inward</h2>
+        <div class="asub">2000 — The Best-Selling PC Game of All Time</div>
+        <p>After SimCity's success, Wright spent the 1990s thinking about a different kind of simulation. Cities were one level of human organization — what about the level below? What about the simulation of individual domestic life?</p>
+        <p>The Sims launched in 2000 and became the best-selling PC game series of all time. It applied Wright's same philosophy — observable complex system, no win condition, emergent behavior from simple rules — but turned the lens inward, onto the household rather than the city. The result resonated with audiences who had never played a "game" before: people who wanted a dollhouse with physics, a drama generator, a life simulator.</p>
+        <h3>Demographics Shattered</h3>
+        <p>The Sims was the first major game franchise where women constituted the majority of the audience. Wright had designed not a game but a <span class="hi">creative sandbox that appealed to human curiosity regardless of gender or gaming background</span>. The industry noticed. The lesson — that simulation and creative tools could reach audiences that combat and competition never would — permanently altered game development strategy at every major studio.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>Spore: The Most Ambitious Toy Ever Made</h2>
+        <div class="asub">2008 — Procedural Evolution Across Five Stages</div>
+        <p>Wright's final major project at Maxis was Spore — an attempt to compress the entire arc of biological and civilizational evolution into a single game. Players guided a species from single-celled organism through creature, tribe, civilization, and space-faring stages. Each stage was a different genre entirely: action, strategy, city-building, RTS, space exploration.</p>
+        <p>The ambition was breathtaking. The procedural creature animation engine — which could take any arbitrary shape and make it walk, swim, and fly believably — remains a technical achievement that has never been fully replicated. The promise of a procedurally generated galaxy populated by creatures made by millions of players worldwide anticipated what games would spend the next decade reaching for.</p>
+        <h3>The Gap Between Vision and Product</h3>
+        <p>Spore was critically praised but commercially divisive. Its deep simulation systems — years in development — were simplified late in production to broaden the audience. Players who had followed its development for years felt the final product fell short of its potential. <span class="hi">It is a game that is simultaneously a masterwork of creative vision and a demonstration of how hard it is to execute Wright's ideas at scale without compromising them.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>Philosophy: Toys, Not Games</h2>
+        <div class="asub">The Design Language of Will Wright</div>
+        <p>Wright has spoken extensively about the distinction between "games" — which have explicit goals, win/lose states, and competition — and "toys," which exist simply to be played with. SimCity, The Sims, and Spore are all toys in this sense. The player sets their own objectives. Failure is optional. The system rewards engagement, not performance.</p>
+        <p>This philosophy runs against the grain of most game design, which is built around challenge, mastery, and feedback loops reinforcing progress toward a defined objective. Wright argued that <span class="hi">the absence of a win condition is itself a design choice — one that frees the player to find their own meaning in the system</span>.</p>
+        <h3>Mental Models</h3>
+        <p>Wright's other central design principle is the mental model: a game should teach the player to build an accurate model of its simulation in their head. The more accurate the model, the more effective the player — and the more satisfying the experience. A city that responds predictably to your decisions is rewarding precisely because you can understand why. This is why SimCity's disasters, which violated the model, were so memorable: they were the moment the system surprised you.</p>
+        <h3>Legacy</h3>
+        <p>Wright left EA in 2009 to found Syntertainment, focused on the intersection of games and science education. He has spoken at TED, consulted for NASA on space exploration engagement, and lectured at universities worldwide. He is one of only a handful of game designers whose name alone is used to market a product — because his name means something specific: <span class="hi">a game that will make you think differently about systems, simulation, and what play actually is.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>The SimCity Influence</h2>
+        <div class="asub">How One Game Reshaped an Industry</div>
+        <p>SimCity's direct descendants include every city builder, colony sim, and management game made in the thirty-five years since its release. Tropico, Cities: Skylines, Anno, Frostpunk, Dwarf Fortress, Banished, Foundation, Workers &amp; Resources — all of them trace their lineage directly to Wright's 1989 original. The idea that a game can be built around managing a complex system — without a villain, without a level to complete — is his contribution to the medium.</p>
+        <p>Indirectly, his influence reaches further. The emergent narrative of The Sims — the stories players told about their Sims without any authorial intent on Wright's part — anticipated everything from open-world sandbox games to the player-generated content economy of the 2010s and 2020s. He built systems that told stories he never wrote.</p>
+        <h3>The Award Record</h3>
+        <p>Wright has received the Lifetime Achievement Award from BAFTA, the Game Developers Choice Award for Lifetime Achievement, induction into the Academy of Interactive Arts &amp; Sciences Hall of Fame, and numerous other recognitions. More meaningfully, virtually every designer working in simulation, management, or sandbox games today cites him as a foundational influence. <span class="hi">He didn't just make great games. He invented a way of making games that others have spent decades learning to replicate.</span></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       CITIES: SKYLINES
+  ══════════════════════════════════════════════ -->
+</section>
+<script src="/shared/nav.js?v=4"></script>
+</body>
+</html>

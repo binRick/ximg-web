@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Open-source infrastructure monitoring — hosts, services, and alerts since 1999">
+  <title>nagios.ximg.app</title>
+  <link rel="icon" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #070d0a;
+      --grn:  #4ade80;
+      --emer: #34d399;
+      --cyan: #22d3ee;
+      --yel:  #fbbf24;
+      --red:  #f87171;
+      --orn:  #fb923c;
+      --dim:  #64748b;
+      --text: #e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(74,222,128,.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(74,222,128,.03) 1px,transparent 1px);
+      background-size:40px 40px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(120px);opacity:.12;pointer-events:none;z-index:0}
+    .glow-1{width:700px;height:700px;background:#16a34a;top:-250px;left:-200px}
+    .glow-2{width:500px;height:500px;background:#0d6966;bottom:-150px;right:-150px}
+
+    .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.5rem}
+
+    h1{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#4ade80 0%,#34d399 40%,#22d3ee 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:var(--dim);margin-top:.25rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .nag-tabs{display:flex;justify-content:center;gap:.4rem;flex-wrap:wrap;
+      border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .nag-tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
+      font-family:inherit;transition:all .2s}
+    .nag-tab.active{color:var(--grn);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.07)}
+    .nag-tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .nag-section{display:flex;flex-direction:column;gap:1.3rem}
+    .nag-section
+
+    .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--grn);margin-bottom:-.2rem}
+
+    /* ── Cards ── */
+    .card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.25rem 1.5rem}
+    .card p{font-size:.84rem;line-height:1.75;color:#94a3b8}
+    .card p+p{margin-top:.6rem}
+
+    /* ── Fact grid ── */
+    .fact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.7rem}
+    .fact{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;
+      padding:.9rem 1rem;text-align:center}
+    .fact-val{font-size:1.2rem;font-weight:800;color:var(--grn);font-family:'Courier New',monospace}
+    .fact-lbl{font-size:.72rem;color:var(--dim);margin-top:.25rem}
+
+    /* ── Status pills ── */
+    .status-row{display:flex;flex-wrap:wrap;gap:.6rem}
+    .status-pill{display:inline-flex;align-items:center;gap:.5rem;font-size:.8rem;
+      font-family:'Courier New',monospace;font-weight:700;padding:.35rem .9rem;
+      border-radius:99px;border:1px solid}
+    .s-ok   {color:#4ade80;background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.3)}
+    .s-warn {color:#fbbf24;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3)}
+    .s-crit {color:#f87171;background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3)}
+    .s-unkn {color:#fb923c;background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.3)}
+    .s-pend {color:#94a3b8;background:rgba(148,163,184,.08);border-color:rgba(148,163,184,.3)}
+
+    /* ── Command table ── */
+    .cmd-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden}
+    .cmd-row{display:grid;grid-template-columns:minmax(200px,auto) 1fr;
+      border-bottom:1px solid rgba(255,255,255,.05);align-items:start}
+    .cmd-row:last-child{border-bottom:none}
+    .cmd-code{font-family:'Courier New',monospace;font-size:.78rem;padding:.6rem 1rem;
+      color:var(--grn);background:rgba(0,0,0,.25);border-right:1px solid rgba(255,255,255,.05);
+      word-break:break-all;line-height:1.5}
+    .cmd-code .arg{color:var(--yel)}
+    .cmd-code .flag{color:var(--cyan)}
+    .cmd-desc{font-size:.78rem;padding:.6rem 1rem;color:#94a3b8;line-height:1.5}
+
+    /* ── Grid of cards ── */
+    .rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
+    .rec-card{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem}
+    .rec-name{font-family:'Courier New',monospace;font-size:.9rem;font-weight:700;color:var(--emer);margin-bottom:.35rem}
+    .rec-desc{font-size:.8rem;color:#94a3b8;line-height:1.6}
+    .rec-example{font-family:'Courier New',monospace;font-size:.73rem;color:var(--grn);
+      background:rgba(0,0,0,.4);border-radius:6px;padding:.35rem .6rem;margin-top:.5rem;white-space:pre-wrap;word-break:break-all}
+
+    /* ── Config block ── */
+    .cfg-block{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;padding:1.2rem 1.5rem;
+      font-family:'Courier New',monospace;font-size:clamp(.74rem,1.5vw,.85rem);
+      line-height:1.85;position:relative}
+    .cfg-block::before{content:attr(data-label);position:absolute;top:.55rem;right:1rem;
+      font-size:.62rem;color:#334155;letter-spacing:.1em;font-family:'Segoe UI',sans-serif}
+    .ck {color:var(--cyan)}
+    .cv {color:var(--grn)}
+    .cn {color:var(--yel)}
+    .cc {color:#475569;font-style:italic}
+    .cm {color:#f472b6}
+
+    /* ── Flow steps ── */
+    .flow{display:flex;flex-direction:column;gap:.5rem}
+    .flow-step{display:grid;grid-template-columns:2rem 1fr;gap:.75rem;align-items:start}
+    .flow-num{width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:.78rem;font-weight:800;background:rgba(74,222,128,.1);color:var(--grn);
+      border:1px solid rgba(74,222,128,.3);flex-shrink:0;margin-top:.1rem}
+    .flow-body{font-size:.83rem;line-height:1.7;color:#94a3b8}
+    .flow-body strong{color:var(--text)}
+
+    /* ── Timeline ── */
+    .tl{position:relative;display:flex;flex-direction:column;gap:0;padding-left:0}
+    .tl::before{content:'';position:absolute;left:56px;top:8px;bottom:8px;width:2px;
+      background:linear-gradient(to bottom,transparent,rgba(74,222,128,.4) 8%,rgba(74,222,128,.4) 92%,transparent)}
+    .tl-item{display:flex;gap:1rem;padding:.75rem 0;align-items:flex-start}
+    .tl-year{font-family:'Courier New',monospace;font-size:.78rem;font-weight:700;
+      color:var(--grn);width:56px;flex-shrink:0;padding-top:.15rem;text-align:right}
+    .tl-dot{width:10px;height:10px;border-radius:50%;background:var(--grn);flex-shrink:0;
+      margin-top:.45rem;box-shadow:0 0 6px rgba(74,222,128,.5)}
+    .tl-body{font-size:.82rem;color:#94a3b8;line-height:1.6;padding-top:.1rem}
+    .tl-body strong{color:var(--text)}
+
+    /* ── Arch diagram ── */
+    .arch{font-family:'Courier New',monospace;font-size:.8rem;line-height:1.9;
+      background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:12px;
+      padding:1.2rem 1.5rem;color:#94a3b8}
+    .arch .hl-nagios{color:var(--grn)}
+    .arch .hl-plugin{color:var(--cyan)}
+    .arch .hl-nrpe{color:var(--yel)}
+    .arch .hl-passive{color:var(--orn)}
+  </style>
+</head>
+<body>
+<div class="nag-tabs">
+    <a class="nag-tab " href="index.html">Overview</a>
+    <a class="nag-tab" href="checks.html">Checks</a>
+    <a class="nag-tab" href="config.html">Config</a>
+    <a class="nag-tab" href="alerts.html">Alerts</a>
+    <a class="nag-tab" href="history.html">History</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/nagios') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="checks">
+<p class="sec-title">Active vs Passive Checks</p>
+    <div class="rec-grid">
+      <div class="rec-card">
+        <div class="rec-name" style="color:var(--grn)">Active Checks</div>
+        <div class="rec-desc">Nagios initiates the check on a schedule. The scheduler calls a plugin, waits for the exit code, and records the result. Most checks are active — HTTPS, ping, TCP port, load, disk, etc.</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name" style="color:var(--orn)">Passive Checks</div>
+        <div class="rec-desc">External systems push results to Nagios via the command file (FIFO) or NSCA. Useful for services that can't be reached from the Nagios host, batch jobs, or event-driven state changes.</div>
+      </div>
+    </div>
+
+    <p class="sec-title">Standard Nagios Plugins (check_*)</p>
+    <div class="cmd-card">
+      <div class="cmd-row">
+        <div class="cmd-code">check_http <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-S --sni</span></div>
+        <div class="cmd-desc">HTTPS check with SNI; add <code>-C 30,14</code> for cert expiry warning/critical days</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_ping <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-w 100,5%</span> <span class="flag">-c 200,10%</span></div>
+        <div class="cmd-desc">ICMP ping — warn at 100ms/5% loss, critical at 200ms/10% loss</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_tcp <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-p</span> <span class="arg">443</span></div>
+        <div class="cmd-desc">TCP port connectivity check — simple open/closed test</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_smtp <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-p 25</span></div>
+        <div class="cmd-desc">SMTP banner check on port 25 (or 587 for submission)</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_disk <span class="flag">-w 20%</span> <span class="flag">-c 10%</span> <span class="flag">-p /</span></div>
+        <div class="cmd-desc">Disk usage — warn at &lt;20% free, critical at &lt;10% free</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_load <span class="flag">-w 5,3,2</span> <span class="flag">-c 10,6,4</span></div>
+        <div class="cmd-desc">System load averages at 1/5/15 minutes</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_procs <span class="flag">-c 1:</span> <span class="flag">-C nginx</span></div>
+        <div class="cmd-desc">Count processes matching a name — critical if count &lt;1</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_nrpe <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-c</span> <span class="arg">check_disk</span></div>
+        <div class="cmd-desc">Delegate a check to NRPE agent on remote host</div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-code">check_dummy <span class="arg">0</span> <span class="arg">"OK"</span></div>
+        <div class="cmd-desc">Always returns specified exit code — useful for passive-only services</div>
+      </div>
+    </div>
+
+    <p class="sec-title">NRPE — Nagios Remote Plugin Executor</p>
+    <div class="card">
+      <p>NRPE lets Nagios run plugins on remote hosts. The agent listens on TCP 5666 and accepts check commands from the Nagios server. This is necessary for local-only checks like disk usage, CPU load, or process counts on machines that don't expose those metrics over the network.</p>
+      <p>The Nagios server runs <code style="color:var(--grn)">check_nrpe -H &lt;target&gt; -c &lt;command&gt;</code>. The NRPE daemon on the target executes the corresponding plugin locally and returns the exit code and output back over the connection.</p>
+    </div>
+
+    <p class="sec-title">Obsessing</p>
+    <div class="card">
+      <p><strong style="color:var(--text)">Obsessive checks</strong> run an additional event handler script after every check result, regardless of state change. Combined with <code style="color:var(--grn)">obsess_over_services=1</code> in nagios.cfg, this feeds results to distributed monitoring parents (DistributedNagios / OCSP/OCHP). Used to collect check data from child Nagios nodes into a central aggregator.</p>
+    </div>
+  </div>
+
+  <!-- ── Config ── -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

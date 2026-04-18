@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JWT Decoder &amp; Encoder">
+  <title>jwt.ximg.app</title>
+  <link rel="icon" href="favicon.png">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0d0d16;color:#c9d1d9;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
+    .page{flex:1;max-width:980px;width:100%;margin:0 auto;padding:1.5rem 1rem 2rem}
+    h1{font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.25rem}
+    .subtitle{font-size:.8rem;color:#586069;margin-bottom:1.5rem}
+
+    /* tabs */
+    .tabs{display:flex;gap:.4rem;margin-bottom:1.25rem;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:0}
+    .tab{background:none;border:none;color:#586069;font-family:'Courier New',monospace;font-size:.82rem;
+      padding:.45rem .9rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+    .tab.active{color:#ffa657;border-bottom-color:#ffa657}
+    .tab:hover:not(.active){color:#c9d1d9}
+
+    /* token input */
+    .label{font-size:.7rem;color:#586069;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem}
+    textarea,input[type=text]{width:100%;background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:6px;
+      color:#c9d1d9;font-family:'Courier New',monospace;font-size:.85rem;padding:.65rem .85rem;
+      outline:none;resize:vertical;transition:border-color .2s}
+    textarea:focus,input[type=text]:focus{border-color:rgba(255,255,255,.3)}
+    .token-input{min-height:90px;color:#79c0ff;font-size:.82rem;word-break:break-all}
+
+    /* parts */
+    .jwt-parts{display:flex;gap:.35rem;margin:.75rem 0;font-size:.78rem;flex-wrap:wrap}
+    .part{padding:.25rem .5rem;border-radius:4px;font-size:.73rem;font-weight:600}
+    .part.hdr{background:rgba(255,141,96,.15);color:#ff8d60}
+    .part.pay{background:rgba(88,166,255,.15);color:#79c0ff}
+    .part.sig{background:rgba(63,185,80,.15);color:#3fb950}
+
+    /* decoded grid */
+    .decode-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.75rem}
+    @media(max-width:640px){.decode-grid{grid-template-columns:1fr}}
+    .decode-box{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:1rem}
+    .decode-box h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem}
+    .decode-box h3.hdr{color:#ff8d60}
+    .decode-box h3.pay{color:#79c0ff}
+    .decode-box h3.sig{color:#3fb950}
+    .decode-box pre{font-size:.8rem;line-height:1.65;white-space:pre-wrap;word-break:break-all}
+
+    .kv-row{display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem}
+    .kv-row:last-child{border:none}
+    .kv-key{color:#586069;min-width:60px;flex-shrink:0}
+    .kv-val{color:#c9d1d9;word-break:break-all}
+    .kv-badge{font-size:.68rem;padding:.15rem .4rem;border-radius:3px;margin-left:.35rem;vertical-align:middle}
+    .badge-ok{background:rgba(63,185,80,.2);color:#3fb950}
+    .badge-exp{background:rgba(248,81,73,.2);color:#f85149}
+    .badge-warn{background:rgba(255,166,87,.2);color:#ffa657}
+
+    /* status bar */
+    .status-bar{display:flex;gap:.75rem;align-items:center;margin:.75rem 0;flex-wrap:wrap}
+    .status-item{font-size:.78rem;color:#586069;display:flex;align-items:center;gap:.35rem}
+    .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .dot.ok{background:#3fb950;box-shadow:0 0 5px #3fb950}
+    .dot.err{background:#f85149}
+    .dot.warn{background:#ffa657}
+    .dot.grey{background:#586069}
+
+    /* encode section */
+    .encode-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.5rem}
+    @media(max-width:640px){.encode-layout{grid-template-columns:1fr}}
+    .field-group{margin-bottom:.75rem}
+    .small-label{font-size:.7rem;color:#586069;margin-bottom:.25rem;display:flex;align-items:center;gap:.4rem}
+    .select{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:#c9d1d9;
+      font-family:'Courier New',monospace;font-size:.82rem;padding:.4rem .6rem;outline:none;cursor:pointer;width:100%}
+    .btn{background:rgba(255,166,87,.12);border:1px solid rgba(255,166,87,.4);border-radius:6px;
+      color:#ffa657;font-family:'Courier New',monospace;font-size:.8rem;padding:.5rem 1.1rem;cursor:pointer;transition:all .15s}
+    .btn:hover{background:rgba(255,166,87,.2)}
+    .btn-row{display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap}
+    .result-token{background:#161b22;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:.75rem;
+      font-size:.78rem;word-break:break-all;color:#79c0ff;min-height:60px;margin-top:.75rem}
+    .copy-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;
+      color:#c9d1d9;font-size:.74rem;padding:.3rem .7rem;cursor:pointer;font-family:'Courier New',monospace;transition:all .15s}
+    .copy-btn:hover{background:rgba(255,255,255,.12)}
+    .copy-btn.copied{color:#3fb950;border-color:rgba(63,185,80,.5)}
+
+    /* claims ref */
+    .claims-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.4rem;margin-top:.5rem}
+    .claim-item{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:5px;
+      padding:.45rem .7rem;display:flex;gap:.5rem}
+    .claim-key{color:#ffa657;min-width:40px;font-size:.8rem}
+    .claim-desc{font-size:.76rem;color:#8b949e}
+
+    .err-msg{color:#f85149;font-size:.78rem;margin:.5rem 0}
+
+    .secret-input{font-size:.85rem}
+  </style>
+</head>
+<body>
+<div class="tabs">
+    <a class="tab " href="index.html">Decode / Inspect</a>
+    <a class="tab" href="encode.html">Encode / Build</a>
+    <a class="tab" href="reference.html">Claims Reference</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/jwt') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="reference">
+<div class="label">Registered Claims (RFC 7519)</div>
+    <div class="claims-grid" id="claims-grid"></div>
+    <div style="margin-top:1.25rem" class="label">Algorithm Comparison</div>
+    <div class="claims-grid" id="alg-grid"></div>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

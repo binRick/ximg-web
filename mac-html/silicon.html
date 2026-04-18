@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Steve Jobs, Steve Wozniak, and Ronald Wayne founded Apple on April 1, 1976. Wozniak designed the Apple I — a bare circuit board sold as a kit — and the follow-up Apple II, which shipped in 1977 with c">
+  <title>Mac — Apple Silicon, macOS, Mach Kernel</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:     #080810;
+      --panel:  #0d0d1a;
+      --apple:  #ffffff;
+      --silver: #a0aec0;
+      --blue:   #3b82f6;
+      --cyan:   #06b6d4;
+      --violet: #8b5cf6;
+      --rose:   #f43f5e;
+      --gold:   #f59e0b;
+      --green:  #10b981;
+      --text:   #e2e8f0;
+      --muted:  #475569;
+      --dim:    #1e293b;
+      --border: rgba(255,255,255,.07);
+    }
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      overflow-x:hidden;
+    }
+
+    /* ── Ambient glows ── */
+    body::before{
+      content:'';
+      position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 0%,   rgba(59,130,246,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(139,92,246,.10) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 30% at 50% 50%,  rgba(6,182,212,.06) 0%, transparent 60%);
+    }
+    body::after{
+      content:'';
+      position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        repeating-linear-gradient(0deg,   rgba(255,255,255,.015) 0, rgba(255,255,255,.015) 1px, transparent 1px, transparent 80px),
+        repeating-linear-gradient(90deg,  rgba(255,255,255,.010) 0, rgba(255,255,255,.010) 1px, transparent 1px, transparent 100px);
+    }
+
+    .wrap{
+      position:relative;z-index:1;
+      max-width:980px;margin:0 auto;width:100%;
+      padding:5rem 1.25rem 4rem;
+      display:flex;flex-direction:column;gap:1.75rem;
+    }
+
+    /* ── Hero ── */
+    .hero{display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+    .hero-logo{width:64px;height:64px;flex-shrink:0;filter:drop-shadow(0 0 24px rgba(139,92,246,.5))}
+    .hero-text h1{
+      font-size:2.4rem;font-weight:800;letter-spacing:-.04em;line-height:1;
+      background:linear-gradient(135deg,#fff 0%,#a5b4fc 40%,#06b6d4 80%,#8b5cf6 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .hero-text .tagline{
+      font-size:.82rem;color:var(--muted);margin-top:.4rem;
+      letter-spacing:.06em;text-transform:uppercase;font-family:'Courier New',monospace;
+    }
+
+    /* ── Tabs ── */
+    .tabs{display:flex;justify-content:center;gap:.4rem;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:.75rem}
+    .tab{
+      font-size:.8rem;padding:.35rem 1rem;border-radius:8px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.07);background:transparent;color:var(--muted);
+      font-family:inherit;transition:all .2s;letter-spacing:.02em;
+    }
+    .tab.active{color:#fff;border-color:rgba(139,92,246,.45);background:rgba(139,92,246,.1)}
+    .tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .section{display:flex;flex-direction:column;gap:1.5rem}
+    .section
+
+    /* ── Section titles ── */
+    .sec-label{
+      font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+      color:var(--violet);font-family:'Courier New',monospace;
+    }
+    .sec-title{font-size:1.35rem;font-weight:800;letter-spacing:-.02em;margin-top:.15rem}
+    .sec-intro{font-size:.84rem;color:#94a3b8;line-height:1.65;max-width:700px}
+
+    /* ── Cards ── */
+    .card{
+      background:rgba(13,13,26,.7);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:1.25rem 1.4rem;
+      backdrop-filter:blur(8px);
+    }
+    .card-title{
+      font-size:.88rem;font-weight:700;margin-bottom:.5rem;
+      display:flex;align-items:center;gap:.5rem;
+    }
+    .card-body{font-size:.79rem;color:#94a3b8;line-height:1.65}
+    .card-body p+p{margin-top:.6rem}
+
+    /* ── Grid layouts ── */
+    .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+    .grid-3{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.85rem}
+    .grid-4{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem}
+
+    /* ── Timeline ── */
+    .timeline{display:flex;flex-direction:column;gap:0}
+    .tl-item{
+      display:grid;grid-template-columns:90px 1fr;
+      border-left:2px solid rgba(139,92,246,.2);
+      margin-left:44px;position:relative;
+    }
+    .tl-item::before{
+      content:'';position:absolute;left:-6px;top:1.1rem;
+      width:10px;height:10px;border-radius:50%;
+      background:var(--violet);box-shadow:0 0 10px rgba(139,92,246,.6);
+    }
+    .tl-year{
+      font-family:'Courier New',monospace;font-size:.72rem;font-weight:700;
+      color:var(--violet);padding:.9rem .5rem .9rem 1rem;
+    }
+    .tl-content{padding:.7rem .5rem .7rem 1rem;border-bottom:1px solid var(--border)}
+    .tl-item:last-child .tl-content{border-bottom:none}
+    .tl-name{font-size:.82rem;font-weight:700;color:var(--text)}
+    .tl-desc{font-size:.75rem;color:#64748b;line-height:1.5;margin-top:.2rem}
+
+    /* ── Spec table ── */
+    .spec-table{width:100%;border-collapse:collapse}
+    .spec-table td{
+      padding:.5rem .8rem;font-size:.77rem;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .spec-table td:first-child{color:var(--muted);font-family:'Courier New',monospace;width:40%}
+    .spec-table td:last-child{color:var(--text)}
+    .spec-table tr:last-child td{border-bottom:none}
+
+    /* ── Stat pills ── */
+    .stat-row{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.75rem}
+    .stat{
+      display:inline-flex;flex-direction:column;align-items:center;
+      background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);
+      border-radius:10px;padding:.55rem .9rem;min-width:80px;
+    }
+    .stat-val{font-size:1.1rem;font-weight:800;color:var(--text)}
+    .stat-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.1rem}
+
+    /* ── Highlight box ── */
+    .highlight{
+      background:linear-gradient(135deg,rgba(139,92,246,.08),rgba(6,182,212,.05));
+      border:1px solid rgba(139,92,246,.25);
+      border-radius:12px;padding:1rem 1.2rem;
+    }
+    .highlight-title{font-size:.78rem;font-weight:700;color:var(--violet);margin-bottom:.4rem}
+    .highlight-body{font-size:.77rem;color:#94a3b8;line-height:1.6}
+
+    /* ── Kernel diagram ── */
+    .kernel-diagram{
+      background:rgba(0,0,0,.4);border:1px solid var(--border);
+      border-radius:16px;padding:1.75rem;
+      display:flex;flex-direction:column;gap:.6rem;align-items:center;
+    }
+    .k-layer{
+      width:100%;max-width:560px;
+      display:flex;align-items:center;justify-content:center;
+      border-radius:10px;padding:.6rem 1rem;
+      font-family:'Courier New',monospace;font-size:.78rem;font-weight:700;
+      text-align:center;letter-spacing:.04em;
+    }
+    .k-arrow{color:#334155;font-size:.9rem;line-height:1;align-self:center}
+    .k-user{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);color:var(--green)}
+    .k-syscall{background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.2);color:var(--cyan)}
+    .k-bsd{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);color:var(--blue)}
+    .k-mach{background:rgba(139,92,246,.10);border:1px solid rgba(139,92,246,.4);color:var(--violet)}
+    .k-hw{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);color:var(--gold)}
+    .k-label{font-size:.65rem;color:#475569;margin:0 .8rem;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+
+    /* ── Product cards ── */
+    .product-card{
+      background:rgba(13,13,26,.7);border:1px solid var(--border);
+      border-radius:16px;padding:1.25rem;
+      display:flex;flex-direction:column;gap:.6rem;
+    }
+    .product-icon{font-size:2rem;line-height:1}
+    .product-name{font-size:.92rem;font-weight:800;color:var(--text)}
+    .product-chip{
+      display:inline-flex;align-items:center;gap:.3rem;
+      font-size:.68rem;font-weight:700;font-family:'Courier New',monospace;
+      color:var(--violet);background:rgba(139,92,246,.1);
+      border:1px solid rgba(139,92,246,.25);border-radius:6px;
+      padding:.2rem .55rem;width:fit-content;
+    }
+    .product-desc{font-size:.76rem;color:#64748b;line-height:1.5}
+    .product-specs{margin-top:.4rem;display:flex;flex-direction:column;gap:.15rem}
+    .product-spec{font-size:.72rem;color:#94a3b8;display:flex;gap:.4rem}
+    .product-spec-k{color:var(--muted);min-width:70px;font-family:'Courier New',monospace}
+
+    /* ── Chip comparison ── */
+    .chip-card{
+      background:rgba(13,13,26,.7);border:1px solid var(--border);
+      border-radius:16px;padding:1.3rem;overflow:hidden;position:relative;
+    }
+    .chip-card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,var(--blue),var(--violet),var(--cyan));
+    }
+    .chip-gen{font-size:.67rem;color:var(--muted);font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:.1em}
+    .chip-name{font-size:1.5rem;font-weight:900;letter-spacing:-.03em;margin:.15rem 0}
+    .chip-process{font-size:.72rem;color:var(--cyan);font-family:'Courier New',monospace}
+    .chip-bars{margin-top:1rem;display:flex;flex-direction:column;gap:.45rem}
+    .chip-bar-row{display:flex;flex-direction:column;gap:.2rem}
+    .chip-bar-label{font-size:.67rem;color:var(--muted);display:flex;justify-content:space-between}
+    .chip-bar-track{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+    .chip-bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+
+    /* ── IPC diagram ── */
+    .ipc-diagram{
+      background:rgba(0,0,0,.4);border:1px solid var(--border);
+      border-radius:14px;padding:1.5rem;
+      display:flex;flex-direction:column;align-items:center;gap:1rem;
+    }
+    .ipc-row{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;justify-content:center}
+    .ipc-box{
+      padding:.55rem 1.1rem;border-radius:10px;font-family:'Courier New',monospace;
+      font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;
+    }
+    .ipc-arrow{font-size:1.1rem;color:#334155}
+    .ipc-task{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--blue)}
+    .ipc-port{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);color:var(--cyan)}
+    .ipc-msg{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:var(--violet)}
+    .ipc-kern{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);color:var(--gold)}
+    .ipc-caption{font-size:.72rem;color:var(--muted);text-align:center;max-width:500px;line-height:1.5}
+
+    /* ── Quote ── */
+    .quote-block{
+      border-left:3px solid var(--violet);
+      padding:.75rem 1.2rem;
+      background:rgba(139,92,246,.05);
+      border-radius:0 10px 10px 0;
+    }
+    .quote-text{font-size:.88rem;color:#cbd5e1;font-style:italic;line-height:1.65}
+    .quote-attr{font-size:.72rem;color:var(--muted);margin-top:.5rem;font-family:'Courier New',monospace}
+
+    /* ── UMA diagram ── */
+    .uma-diagram{
+      background:rgba(0,0,0,.4);border:1px solid var(--border);
+      border-radius:14px;padding:1.5rem;
+    }
+    .uma-row{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:.75rem}
+    .uma-block{
+      display:flex;flex-direction:column;align-items:center;gap:.35rem;
+      background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+      border-radius:10px;padding:.75rem 1rem;min-width:100px;
+    }
+    .uma-icon{font-size:1.4rem}
+    .uma-label{font-size:.69rem;font-weight:700;color:var(--text);font-family:'Courier New',monospace}
+    .uma-sub{font-size:.62rem;color:var(--muted);text-align:center;line-height:1.4}
+    .uma-bridge{
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(139,92,246,.15));
+      border:1px solid rgba(139,92,246,.3);
+      border-radius:10px;padding:.6rem 1.5rem;
+      font-size:.72rem;font-weight:700;color:var(--violet);
+      font-family:'Courier New',monospace;letter-spacing:.04em;
+      width:100%;max-width:400px;margin:.5rem auto;
+    }
+    .uma-arrow-v{text-align:center;color:#334155;font-size:.9rem}
+
+    /* ── Color accents per tab ── */
+    .t-overview .sec-label,.t-overview .card-title{color:var(--silver)}
+    .t-overview .tab.active{border-color:rgba(160,174,192,.4);background:rgba(160,174,192,.08)}
+    .t-macos .sec-label,.t-macos .card-title{color:var(--blue)}
+    .t-hardware .sec-label,.t-hardware .card-title{color:var(--cyan)}
+    .t-mach .sec-label,.t-mach .card-title{color:var(--violet)}
+    .t-silicon .sec-label,.t-silicon .card-title{color:var(--gold)}
+    .t-history .sec-label,.t-history .card-title{color:var(--green)}
+
+    /* ── Badges ── */
+    .badge{
+      display:inline-block;font-size:.65rem;font-weight:700;
+      padding:.15rem .5rem;border-radius:5px;
+      font-family:'Courier New',monospace;letter-spacing:.04em;
+    }
+    .badge-blue{background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)}
+    .badge-violet{background:rgba(139,92,246,.15);color:var(--violet);border:1px solid rgba(139,92,246,.3)}
+    .badge-gold{background:rgba(245,158,11,.12);color:var(--gold);border:1px solid rgba(245,158,11,.3)}
+    .badge-cyan{background:rgba(6,182,212,.12);color:var(--cyan);border:1px solid rgba(6,182,212,.3)}
+    .badge-green{background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+    .badge-rose{background:rgba(244,63,94,.12);color:var(--rose);border:1px solid rgba(244,63,94,.3)}
+
+    /* ── Performance chart ── */
+    .perf-chart{display:flex;flex-direction:column;gap:.6rem}
+    .perf-row{display:flex;align-items:center;gap:.75rem}
+    .perf-label{font-size:.72rem;color:var(--muted);font-family:'Courier New',monospace;width:100px;flex-shrink:0;text-align:right}
+    .perf-track{flex:1;height:22px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden;position:relative}
+    .perf-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:.5rem}
+    .perf-val{font-size:.67rem;font-weight:700;color:#fff;font-family:'Courier New',monospace}
+
+    /* ── Photos ── */
+    .product-photo{
+      width:100%;height:160px;object-fit:cover;
+      border-radius:10px;border:1px solid rgba(255,255,255,.07);
+      display:block;margin-bottom:.5rem;
+    }
+    .photo-banner{
+      width:100%;height:220px;object-fit:cover;object-position:center 30%;
+      border-radius:12px;border:1px solid rgba(255,255,255,.07);
+      display:block;
+    }
+    .chip-photo{
+      width:100%;height:110px;object-fit:cover;object-position:center;
+      border-radius:8px;border:1px solid rgba(255,255,255,.07);
+      display:block;margin-bottom:.75rem;
+    }
+    .photo-pair{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .photo-pair img{width:100%;height:200px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.07);display:block}
+    @media(max-width:600px){
+      .photo-pair{grid-template-columns:1fr}
+      .wrap{padding:5rem .75rem 3rem}
+      .hero-text h1{font-size:1.8rem}
+      .tl-item{grid-template-columns:70px 1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="tabs">
+    <a class="tab " href="index.html">Overview</a>
+    <a class="tab" href="macos.html">macOS</a>
+    <a class="tab" href="hardware.html">Hardware</a>
+    <a class="tab" href="mach.html">Mach Kernel</a>
+    <a class="tab" href="silicon.html">Silicon</a>
+    <a class="tab" href="history.html">History</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/mac') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="silicon">
+<div>
+      <div class="sec-label">Apple Silicon</div>
+      <div class="sec-title">The ARM Revolution</div>
+      <div class="sec-intro">In June 2020, Apple announced it would replace Intel processors with its own ARM-based chips. The M1 arrived six months later and immediately set performance-per-watt records that the x86 world couldn't match. Four generations later, Apple Silicon dominates every compute benchmark category.</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📐 Why ARM?</div>
+        <div class="card-body">
+          <p>Intel's x86 architecture dates to 1978. Decades of backward-compatibility requirements mean x86 CPUs spend silicon area and power budget on instruction decoding, legacy mode support, and microcode. ARM64 (AArch64) is a clean RISC ISA with a fixed 32-bit instruction width and a register-rich design that compiles elegantly from C/Swift/Rust.</p>
+          <p>Apple had been designing ARM chips since the A4 in 2010 (iPhone 4). By 2020 the A14 Bionic in iPad Air was already faster than most Intel laptops. The M1 was essentially an A14X scaled up for sustained performance, and the x86 world was caught completely flat-footed.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🧠 Unified Memory Architecture</div>
+        <div class="card-body">
+          <p>Traditional computers have separate memory pools: CPU RAM and GPU VRAM. Copying data between them (e.g., uploading a texture) consumes time and power. Apple Silicon eliminates this with <strong>Unified Memory Architecture (UMA)</strong> — CPU, GPU, Neural Engine, and all accelerators share a single on-package memory pool with a single memory controller.</p>
+          <p>A video frame decoded by the media engine, processed by the GPU, and analyzed by Core ML's Neural Engine never crosses a PCIe bus. It stays in the same memory, accessed at full bandwidth by each engine in turn. This is the architectural reason Apple's video and ML performance devastates discrete-GPU systems watt-for-watt.</p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-label">Unified Memory</div>
+      <div class="sec-title">One Pool, Every Engine</div>
+    </div>
+
+    <div class="uma-diagram">
+      <div class="uma-row">
+        <div class="uma-block"><div class="uma-icon">🖥️</div><div class="uma-label">CPU</div><div class="uma-sub">P-cores &amp; E-cores</div></div>
+        <div class="uma-block"><div class="uma-icon">🎮</div><div class="uma-label">GPU</div><div class="uma-sub">Tile-based deferred renderer</div></div>
+        <div class="uma-block"><div class="uma-icon">🧠</div><div class="uma-label">Neural Engine</div><div class="uma-sub">ML inference</div></div>
+        <div class="uma-block"><div class="uma-icon">📹</div><div class="uma-label">Media Engine</div><div class="uma-sub">H.264/HEVC/ProRes HW</div></div>
+        <div class="uma-block"><div class="uma-icon">🔌</div><div class="uma-label">Thunderbolt</div><div class="uma-sub">I/O fabric</div></div>
+      </div>
+      <div class="uma-arrow-v">▼ All access via Fabric interconnect ▼</div>
+      <div class="uma-bridge">Unified Memory — LPDDR5X on-package<br>Up to 546 GB/s (M4 Max) · Single coherent address space</div>
+    </div>
+
+    <div>
+      <div class="sec-label">Generations</div>
+      <div class="sec-title">M1 through M4</div>
+    </div>
+
+    <div class="grid-2">
+
+      <div class="chip-card">
+        <div class="chip-gen">Generation 1 · 2020</div>
+        <div class="chip-name" style="background:linear-gradient(135deg,#a0aec0,#e2e8f0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">M1</div>
+        <div class="chip-process">TSMC 5nm · 16 billion transistors</div>
+        <img src="/images/apple-m1-chip.jpg" class="chip-photo" alt="Apple M1 chip die" loading="lazy" decoding="async">
+        <div style="font-size:.75rem;color:#94a3b8;margin-top:.6rem;line-height:1.5">The opening shot of Apple Silicon. An 8-core CPU (4P+4E), 8-core GPU, 16-core Neural Engine. Outperformed Intel Core i9 laptops at one-third the power. Introduced Unified Memory to the desktop/laptop world.</div>
+        <div class="chip-bars">
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Single-core CPU</span><span>~3,500 pts</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:55%;background:linear-gradient(90deg,#3b82f6,#8b5cf6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>GPU compute</span><span>~21 TFLOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:40%;background:linear-gradient(90deg,#06b6d4,#3b82f6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Neural Engine</span><span>11 TOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:45%;background:linear-gradient(90deg,#10b981,#06b6d4)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Memory BW</span><span>68.25 GB/s</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:30%;background:linear-gradient(90deg,#f59e0b,#f43f5e)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chip-card">
+        <div class="chip-gen">Generation 2 · 2022</div>
+        <div class="chip-name" style="background:linear-gradient(135deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">M2</div>
+        <div class="chip-process">TSMC 5nm enhanced · 20 billion transistors</div>
+        <img src="/images/apple-m2-chip.jpg" class="chip-photo" alt="Apple M2 chip die" loading="lazy" decoding="async">
+        <div style="font-size:.75rem;color:#94a3b8;margin-top:.6rem;line-height:1.5">18% faster CPU, 35% faster GPU, 40% faster Neural Engine vs M1. Added hardware-accelerated ProRes video encode/decode. M2 Pro/Max brought memory bandwidth up to 400 GB/s for the first time.</div>
+        <div class="chip-bars">
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Single-core CPU</span><span>~4,100 pts</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:64%;background:linear-gradient(90deg,#3b82f6,#8b5cf6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>GPU compute</span><span>~27 TFLOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:52%;background:linear-gradient(90deg,#06b6d4,#3b82f6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Neural Engine</span><span>15.8 TOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:62%;background:linear-gradient(90deg,#10b981,#06b6d4)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Memory BW</span><span>100 GB/s</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:43%;background:linear-gradient(90deg,#f59e0b,#f43f5e)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chip-card">
+        <div class="chip-gen">Generation 3 · 2023</div>
+        <div class="chip-name" style="background:linear-gradient(135deg,#10b981,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">M3</div>
+        <div class="chip-process">TSMC 3nm · 25 billion transistors</div>
+        <div style="font-size:.75rem;color:#94a3b8;margin-top:.6rem;line-height:1.5">First Apple Silicon on 3nm process. Introduced hardware ray tracing and mesh shaders to the Mac GPU — capabilities previously exclusive to discrete GPUs. Dynamic caching GPU memory allocation eliminates wasted VRAM. M3 Max reaches 400 GB/s memory bandwidth.</div>
+        <div class="chip-bars">
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Single-core CPU</span><span>~4,500 pts</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:71%;background:linear-gradient(90deg,#3b82f6,#8b5cf6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>GPU compute</span><span>~35 TFLOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:67%;background:linear-gradient(90deg,#10b981,#3b82f6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Neural Engine</span><span>18 TOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:71%;background:linear-gradient(90deg,#10b981,#06b6d4)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Memory BW</span><span>150 GB/s</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:65%;background:linear-gradient(90deg,#f59e0b,#f43f5e)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chip-card">
+        <div class="chip-gen">Generation 4 · 2024–2025</div>
+        <div class="chip-name" style="background:linear-gradient(135deg,#f59e0b,#f43f5e,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">M4</div>
+        <div class="chip-process">TSMC 3nm second-gen · 28 billion transistors</div>
+        <div style="font-size:.75rem;color:#94a3b8;margin-top:.6rem;line-height:1.5">The AI chip. Neural Engine upgraded to 38 TOPS — enough to run Apple Intelligence on-device. Minimum 16 GB unified memory across all configurations. M4 Ultra (two M4 Max dies) delivers 546 GB/s memory bandwidth and 192 GB unified memory.</div>
+        <div class="chip-bars">
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Single-core CPU</span><span>~4,800 pts</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:76%;background:linear-gradient(90deg,#3b82f6,#8b5cf6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>GPU compute</span><span>~54 TFLOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f43f5e,#8b5cf6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Neural Engine</span><span>38 TOPS</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:100%;background:linear-gradient(90deg,#10b981,#06b6d4,#3b82f6)"></div></div>
+          </div>
+          <div class="chip-bar-row">
+            <div class="chip-bar-label"><span>Memory BW</span><span>546 GB/s (Ultra)</span></div>
+            <div class="chip-bar-track"><div class="chip-bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f43f5e)"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="sec-label">Performance vs x86</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏆 Why Apple Silicon Destroys x86 in Performance-per-Watt</div>
+      <div class="card-body">
+        <div class="perf-chart" style="margin-top:.5rem">
+          <div class="perf-row">
+            <div class="perf-label">M4 MacBook Air</div>
+            <div class="perf-track"><div class="perf-fill" style="width:95%;background:linear-gradient(90deg,#10b981,#06b6d4)"><span class="perf-val">20W · 18 hr battery</span></div></div>
+          </div>
+          <div class="perf-row">
+            <div class="perf-label">Intel i7 Laptop</div>
+            <div class="perf-track"><div class="perf-fill" style="width:48%;background:linear-gradient(90deg,#3b82f6,#6366f1)"><span class="perf-val">45W · 8 hr battery</span></div></div>
+          </div>
+          <div class="perf-row">
+            <div class="perf-label">AMD Ryzen 9</div>
+            <div class="perf-track"><div class="perf-fill" style="width:52%;background:linear-gradient(90deg,#f43f5e,#f59e0b)"><span class="perf-val">55W · 7 hr battery</span></div></div>
+          </div>
+        </div>
+        <p style="margin-top:1rem">The M4 delivers <em>more</em> single-core performance than Intel's i7 at <em>less than half the power</em>. This gap exists because of the architecture: ARM64's RISC ISA is inherently more efficient to decode, Apple's out-of-order window (600+ instructions) is larger than any x86 CPU, and the Unified Memory means zero PCIe overhead for GPU workloads.</p>
+        <p>The <strong>efficiency cores</strong> (E-cores) on Apple Silicon run at ~0.5W each — handling background tasks, notifications, and light UI work while the performance cores (P-cores) sleep. On Intel/AMD laptops, background tasks still wake the power-hungry P-cores. This architectural efficiency explains the 2× battery-life difference in real-world use.</p>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">🏭 UltraFusion</div>
+        <div class="card-body">The M-series Ultra chips are literally two Max dies connected with Apple's UltraFusion package-on-package interconnect — 2,500 GB/s die-to-die bandwidth, transparent to software. The OS and apps see one giant processor. No MPI, no NUMA complexity. It's the most elegant multi-die design in the industry.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">📡 Neural Engine</div>
+        <div class="card-body">The ANE (Apple Neural Engine) first appeared in the A11 Bionic (iPhone X, 2017). By the M4 it delivers 38 TOPS — enough to run a 3-billion parameter language model locally at 30 tokens/second. Apple Intelligence uses the ANE for writing tools, summarization, Smart Reply, and Genmoji generation, all without sending data to a server.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🎬 Media Engine</div>
+        <div class="card-body">A dedicated hardware block handles video encode/decode for H.264, HEVC (H.265), ProRes, and AV1. Transcoding 4K ProRes RAW in Final Cut Pro runs at near real-time on a $599 Mac Mini — a task that required a $5,000 dedicated hardware card just five years ago. The media engine is separate from the GPU, so encoding doesn't impact GPU performance.</div>
+      </div>
+    </div>
+
+    <div class="highlight">
+      <div class="highlight-title">The Architectural Moat</div>
+      <div class="highlight-body">Intel and AMD can't simply "copy" what Apple does. Apple's advantage comes from: (1) owning the entire stack from silicon to OS to app frameworks, (2) designing the ISA, microarchitecture, memory subsystem, and OS scheduler as a single co-designed system, (3) using TSMC's leading-edge nodes first due to Apple's purchasing power, and (4) 15 years of ARM microarchitecture expertise from building iPhone chips. The "Apple Silicon lead" will take competitors a decade to close — if they ever do.</div>
+    </div>
+
+  </div><!-- /silicon -->
+
+
+  <!-- ════════════════════════════════════════════
+       TAB: History
+  ═══════════════════════════════════════════════ -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Semantic Space — 2D Projection">
+  <title>Vector Embeddings Explorer — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --accent: #8b5cf6; --pink: #ec4899; --text: #e2e8f0;
+      --muted: #64748b; --green: #10b981; --blue: #3b82f6; --yellow: #f59e0b;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding-top: 44px; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: .3rem; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+    .tab-nav { display: flex; gap: .5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .tab-btn { padding: .5rem 1.1rem; font-size: .85rem; font-weight: 600; cursor: pointer; background: none; border: none; color: var(--muted); border-bottom: 2px solid transparent; transition: all .18s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .card + .card { margin-top: 1rem; }
+    .section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .75rem; }
+    select { background: #0a0a20; border: 1px solid var(--border); color: var(--text); padding: .4rem .6rem; border-radius: 5px; font-size: .85rem; cursor: pointer; }
+    select:focus { outline: none; border-color: var(--accent); }
+    .info-box { background: rgba(139,92,246,.07); border: 1px solid rgba(139,92,246,.2); border-radius: 8px; padding: 1rem; font-size: .87rem; line-height: 1.7; margin-top: 1rem; }
+    .info-box strong { color: var(--accent); }
+
+    /* 2D Viz */
+    #viz-canvas { width: 100%; border-radius: 8px; background: #0a0a20; border: 1px solid var(--border); cursor: crosshair; display: block; }
+    .legend { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .legend-item { display: flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Similarity */
+    .sim-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 600px) { .sim-controls { grid-template-columns: 1fr; } }
+    .sim-score { text-align: center; padding: 1.5rem; }
+    .sim-number { font-size: 3rem; font-weight: 900; }
+    .sim-bar { height: 12px; background: #0a0a20; border-radius: 6px; overflow: hidden; margin: .5rem 0; }
+    .sim-bar-fill { height: 100%; border-radius: 6px; transition: width .4s ease, background .4s; }
+    .sim-label { font-size: .8rem; color: var(--muted); }
+    .similar-list { margin-top: 1rem; }
+    .similar-item { display: flex; justify-content: space-between; align-items: center; padding: .4rem .6rem; border-radius: 5px; margin: .25rem 0; }
+    .similar-item:hover { background: #0a0a20; }
+
+    /* Analogy */
+    .analogy-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 600px) { .analogy-controls { grid-template-columns: 1fr; } }
+    .analogy-formula { text-align: center; font-size: 1.1rem; font-weight: 700; padding: 1rem; background: #0a0a20; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; }
+    .analogy-result { text-align: center; padding: 1.5rem; }
+    .analogy-result-word { font-size: 2.5rem; font-weight: 900; color: var(--green); }
+    .analogy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .analogy-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; cursor: pointer; transition: border-color .15s; }
+    .analogy-card:hover { border-color: var(--accent); }
+    .analogy-card .formula-small { font-size: .82rem; color: var(--muted); margin-bottom: .4rem; font-family: 'Courier New', monospace; }
+    .analogy-card .result-small { font-size: 1.2rem; font-weight: 800; color: var(--green); }
+
+    /* Dimensions */
+    .radar-wrapper { display: flex; justify-content: center; margin: 1rem 0; }
+    #radar-canvas { max-width: 400px; width: 100%; }
+    .dim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .5rem; margin-top: .75rem; }
+    .dim-row { display: flex; align-items: center; gap: .5rem; padding: .4rem .6rem; background: #0a0a20; border-radius: 5px; }
+    .dim-label { font-size: .78rem; color: var(--muted); min-width: 110px; }
+    .dim-bar-track { flex: 1; height: 8px; background: #0d0d20; border-radius: 4px; overflow: hidden; }
+    .dim-bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+    .dim-val { font-size: .78rem; font-family: 'Courier New', monospace; color: var(--text); min-width: 45px; text-align: right; }
+  </style>
+</head>
+<body>
+<div class="tab-nav">
+    <a class="tab-btn " href="index.html">2D Visualization</a>
+    <a class="tab-btn" href="similarity.html">Similarity Calculator</a>
+    <a class="tab-btn" href="analogy.html">Analogy</a>
+    <a class="tab-btn" href="dimensions.html">Dimensions</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/embeddings') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="analogy">
+<div class="card">
+      <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:.75rem;">Word Analogies — Vector Arithmetic</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem;">The famous "king - man + woman = queen" property of word embeddings. Pick words to compute: A - B + C = ?</p>
+      <div class="analogy-controls">
+        <div><div class="section-title">Word A (e.g. king)</div><select id="an-a" style="width:100%"></select></div>
+        <div><div class="section-title">Word B (subtract)</div><select id="an-b" style="width:100%"></select></div>
+        <div><div class="section-title">Word C (add)</div><select id="an-c" style="width:100%"></select></div>
+      </div>
+      <div class="analogy-formula" id="an-formula">king − man + woman = <span style="color:var(--green)">?</span></div>
+      <div class="analogy-result">
+        <div style="font-size:.85rem;color:var(--muted);margin-bottom:.4rem;">Result word:</div>
+        <div class="analogy-result-word" id="an-result">queen</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-top:.4rem;" id="an-similarity"></div>
+      </div>
+      <div class="section-title" style="margin-top:.75rem;">Try these classic examples:</div>
+      <div class="analogy-grid" id="analogy-examples"></div>
+    </div>
+    <div class="info-box">
+      <strong>How vector arithmetic works:</strong><br>
+      "man" and "king" differ by a "royalty" direction in embedding space. Adding that same direction to "woman" points toward "queen". This geometry reflects real semantic relationships encoded during training on billions of text documents.
+    </div>
+  </div>
+
+  <!-- TAB 4: DIMENSIONS -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

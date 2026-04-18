@@ -49,7 +49,7 @@
     .nag-tab.active{color:var(--grn);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.07)}
     .nag-tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
     .nag-section{display:flex;flex-direction:column;gap:1.3rem}
-    .nag-section.hidden{display:none}
+    .nag-section
 
     .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
       color:var(--grn);margin-bottom:-.2rem}
@@ -142,6 +142,26 @@
   </style>
 </head>
 <body>
+<div class="nag-tabs">
+    <a class="nag-tab " href="index.html">Overview</a>
+    <a class="nag-tab" href="checks.html">Checks</a>
+    <a class="nag-tab" href="config.html">Config</a>
+    <a class="nag-tab" href="alerts.html">Alerts</a>
+    <a class="nag-tab" href="history.html">History</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/nagios') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
 <div class="glow glow-1"></div>
 <div class="glow glow-2"></div>
 <div class="wrap">
@@ -152,17 +172,8 @@
   </div>
 
   <!-- Tabs -->
-  <div class="nag-tabs">
-    <button class="nag-tab active" data-tab="overview">Overview</button>
-    <button class="nag-tab" data-tab="checks">Checks</button>
-    <button class="nag-tab" data-tab="config">Config</button>
-    <button class="nag-tab" data-tab="alerts">Alerts</button>
-    <button class="nag-tab" data-tab="history">History</button>
-  </div>
-
-  <!-- ── Overview ── -->
-  <div class="nag-section" id="tab-overview">
-    <p class="sec-title">What is Nagios Core?</p>
+<section id="overview">
+<p class="sec-title">What is Nagios Core?</p>
     <div class="card">
       <p>Nagios Core is an open-source IT infrastructure monitoring system. It watches hosts and services, alerts on failures, and provides a web dashboard showing the health of your entire environment at a glance. Originally called NetSaint, it was renamed Nagios in 2002 and became the gold standard for ops monitoring for over a decade.</p>
       <p>Nagios uses a plugin model — the engine itself just schedules checks and handles alerting. All actual monitoring logic lives in small executables (plugins) that return a numeric exit code: 0 = OK, 1 = WARNING, 2 = CRITICAL, 3 = UNKNOWN. This makes it infinitely extensible.</p>
@@ -225,350 +236,7 @@
   </div>
 
   <!-- ── Checks ── -->
-  <div class="nag-section hidden" id="tab-checks">
-    <p class="sec-title">Active vs Passive Checks</p>
-    <div class="rec-grid">
-      <div class="rec-card">
-        <div class="rec-name" style="color:var(--grn)">Active Checks</div>
-        <div class="rec-desc">Nagios initiates the check on a schedule. The scheduler calls a plugin, waits for the exit code, and records the result. Most checks are active — HTTPS, ping, TCP port, load, disk, etc.</div>
-      </div>
-      <div class="rec-card">
-        <div class="rec-name" style="color:var(--orn)">Passive Checks</div>
-        <div class="rec-desc">External systems push results to Nagios via the command file (FIFO) or NSCA. Useful for services that can't be reached from the Nagios host, batch jobs, or event-driven state changes.</div>
-      </div>
-    </div>
-
-    <p class="sec-title">Standard Nagios Plugins (check_*)</p>
-    <div class="cmd-card">
-      <div class="cmd-row">
-        <div class="cmd-code">check_http <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-S --sni</span></div>
-        <div class="cmd-desc">HTTPS check with SNI; add <code>-C 30,14</code> for cert expiry warning/critical days</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_ping <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-w 100,5%</span> <span class="flag">-c 200,10%</span></div>
-        <div class="cmd-desc">ICMP ping — warn at 100ms/5% loss, critical at 200ms/10% loss</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_tcp <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-p</span> <span class="arg">443</span></div>
-        <div class="cmd-desc">TCP port connectivity check — simple open/closed test</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_smtp <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-p 25</span></div>
-        <div class="cmd-desc">SMTP banner check on port 25 (or 587 for submission)</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_disk <span class="flag">-w 20%</span> <span class="flag">-c 10%</span> <span class="flag">-p /</span></div>
-        <div class="cmd-desc">Disk usage — warn at &lt;20% free, critical at &lt;10% free</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_load <span class="flag">-w 5,3,2</span> <span class="flag">-c 10,6,4</span></div>
-        <div class="cmd-desc">System load averages at 1/5/15 minutes</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_procs <span class="flag">-c 1:</span> <span class="flag">-C nginx</span></div>
-        <div class="cmd-desc">Count processes matching a name — critical if count &lt;1</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_nrpe <span class="flag">-H</span> <span class="arg">host</span> <span class="flag">-c</span> <span class="arg">check_disk</span></div>
-        <div class="cmd-desc">Delegate a check to NRPE agent on remote host</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">check_dummy <span class="arg">0</span> <span class="arg">"OK"</span></div>
-        <div class="cmd-desc">Always returns specified exit code — useful for passive-only services</div>
-      </div>
-    </div>
-
-    <p class="sec-title">NRPE — Nagios Remote Plugin Executor</p>
-    <div class="card">
-      <p>NRPE lets Nagios run plugins on remote hosts. The agent listens on TCP 5666 and accepts check commands from the Nagios server. This is necessary for local-only checks like disk usage, CPU load, or process counts on machines that don't expose those metrics over the network.</p>
-      <p>The Nagios server runs <code style="color:var(--grn)">check_nrpe -H &lt;target&gt; -c &lt;command&gt;</code>. The NRPE daemon on the target executes the corresponding plugin locally and returns the exit code and output back over the connection.</p>
-    </div>
-
-    <p class="sec-title">Obsessing</p>
-    <div class="card">
-      <p><strong style="color:var(--text)">Obsessive checks</strong> run an additional event handler script after every check result, regardless of state change. Combined with <code style="color:var(--grn)">obsess_over_services=1</code> in nagios.cfg, this feeds results to distributed monitoring parents (DistributedNagios / OCSP/OCHP). Used to collect check data from child Nagios nodes into a central aggregator.</p>
-    </div>
-  </div>
-
-  <!-- ── Config ── -->
-  <div class="nag-section hidden" id="tab-config">
-    <p class="sec-title">Object Definitions</p>
-    <div class="card">
-      <p>Nagios configuration is built from object definitions in <code style="color:var(--grn)">.cfg</code> files under the <code style="color:var(--grn)">cfg_dir</code> path. The four core objects are <strong style="color:var(--text)">host</strong>, <strong style="color:var(--text)">service</strong>, <strong style="color:var(--text)">command</strong>, and <strong style="color:var(--text)">contact</strong>. All share a template/inheritance system via <code style="color:var(--grn)">use</code> directives.</p>
-    </div>
-
-    <p class="sec-title">Host Definition</p>
-    <div class="cfg-block" data-label="hosts.cfg">
-<span class="cc"># Template — inherited by all hosts</span>
-<span class="ck">define host</span> {
-    name                    <span class="cv">ximg-host-template</span>
-    check_command           <span class="cv">check_ping!100,5%!200,10%</span>
-    max_check_attempts      <span class="cn">3</span>
-    check_interval          <span class="cn">5</span>   <span class="cc"># minutes between checks</span>
-    retry_interval          <span class="cn">1</span>   <span class="cc"># minutes between retries on failure</span>
-    check_period            <span class="cv">24x7</span>
-    notification_interval   <span class="cn">60</span>
-    notification_period     <span class="cv">24x7</span>
-    notifications_enabled   <span class="cn">1</span>
-    register                <span class="cn">0</span>   <span class="cc"># template, not a real host</span>
-}
-
-<span class="ck">define host</span> {
-    use                     <span class="cv">ximg-host-template</span>
-    host_name               <span class="cv">ximg.app</span>
-    alias                   <span class="cv">ximg landing page</span>
-    address                 <span class="cv">ximg.app</span>
-    contact_groups          <span class="cv">admins</span>
-}</div>
-
-    <p class="sec-title">Service Definition</p>
-    <div class="cfg-block" data-label="services.cfg">
-<span class="cc"># Service checks run against a specific host</span>
-<span class="ck">define service</span> {
-    host_name               <span class="cv">ximg.app</span>
-    service_description     <span class="cv">HTTPS</span>
-    check_command           <span class="cv">check_https_vhost</span>
-    max_check_attempts      <span class="cn">3</span>
-    check_interval          <span class="cn">5</span>
-    retry_interval          <span class="cn">1</span>
-    check_period            <span class="cv">24x7</span>
-    notification_interval   <span class="cn">60</span>
-    notification_period     <span class="cv">24x7</span>
-    contact_groups          <span class="cv">admins</span>
-    notifications_enabled   <span class="cn">1</span>
-}
-
-<span class="ck">define service</span> {
-    host_name               <span class="cv">ximg.app</span>
-    service_description     <span class="cv">SSL-Cert</span>
-    check_command           <span class="cv">check_https_cert</span>  <span class="cc"># -C 30,14</span>
-    max_check_attempts      <span class="cn">2</span>
-    check_interval          <span class="cn">360</span>               <span class="cc"># every 6 hours</span>
-    retry_interval          <span class="cn">60</span>
-    check_period            <span class="cv">24x7</span>
-    contact_groups          <span class="cv">admins</span>
-}</div>
-
-    <p class="sec-title">Command Definition</p>
-    <div class="cfg-block" data-label="commands.cfg">
-<span class="cc"># Commands define what plugin binary to run</span>
-<span class="ck">define command</span> {
-    command_name    <span class="cv">check_https_vhost</span>
-    command_line    <span class="cv">$USER1$/check_http -H '$HOSTADDRESS$' -S --sni -p 443 -t 15 -w 3 -c 8</span>
-}
-
-<span class="ck">define command</span> {
-    command_name    <span class="cv">check_https_cert</span>
-    command_line    <span class="cv">$USER1$/check_http -H '$HOSTADDRESS$' -S --sni -p 443 -C 30,14 -t 15</span>
-}
-
-<span class="cc"># $USER1$ = /opt/nagios/libexec (set in resource.cfg)</span>
-<span class="cc"># $HOSTADDRESS$ = host address field from host definition</span>
-<span class="cc"># $ARG1$ ... $ARG32$ = !-delimited arguments in check_command</span></div>
-
-    <p class="sec-title">Contact &amp; Notification</p>
-    <div class="cfg-block" data-label="contacts.cfg">
-<span class="ck">define contact</span> {
-    contact_name                    <span class="cv">admin</span>
-    alias                           <span class="cv">Site Administrator</span>
-    email                           <span class="cv">admin@ximg.app</span>
-    service_notification_period     <span class="cv">24x7</span>
-    host_notification_period        <span class="cv">24x7</span>
-    service_notification_options    <span class="cv">w,u,c,r</span>   <span class="cc"># warn,unknown,crit,recovery</span>
-    host_notification_options       <span class="cv">d,u,r</span>     <span class="cc"># down,unreachable,recovery</span>
-    service_notification_commands   <span class="cv">notify-service-by-email</span>
-    host_notification_commands      <span class="cv">notify-host-by-email</span>
-}
-
-<span class="ck">define contactgroup</span> {
-    contactgroup_name   <span class="cv">admins</span>
-    alias               <span class="cv">Nagios Administrators</span>
-    members             <span class="cv">admin</span>
-}</div>
-
-    <p class="sec-title">Time Periods</p>
-    <div class="cfg-block" data-label="timeperiods.cfg">
-<span class="ck">define timeperiod</span> {
-    timeperiod_name <span class="cv">24x7</span>
-    alias           <span class="cv">24 Hours A Day, 7 Days A Week</span>
-    sunday          <span class="cv">00:00-24:00</span>
-    monday          <span class="cv">00:00-24:00</span>
-    tuesday         <span class="cv">00:00-24:00</span>
-    wednesday       <span class="cv">00:00-24:00</span>
-    thursday        <span class="cv">00:00-24:00</span>
-    friday          <span class="cv">00:00-24:00</span>
-    saturday        <span class="cv">00:00-24:00</span>
-}
-
-<span class="ck">define timeperiod</span> {
-    timeperiod_name <span class="cv">workhours</span>
-    alias           <span class="cv">Business Hours Only</span>
-    monday          <span class="cv">09:00-17:00</span>
-    tuesday         <span class="cv">09:00-17:00</span>
-    wednesday       <span class="cv">09:00-17:00</span>
-    thursday        <span class="cv">09:00-17:00</span>
-    friday          <span class="cv">09:00-17:00</span>
-}</div>
-  </div>
-
-  <!-- ── Alerts ── -->
-  <div class="nag-section hidden" id="tab-alerts">
-    <p class="sec-title">Notification Flow</p>
-    <div class="flow">
-      <div class="flow-step">
-        <div class="flow-num">1</div>
-        <div class="flow-body"><strong>Check fails</strong> — plugin returns exit code 1 (WARNING) or 2 (CRITICAL). State changes to SOFT problem.</div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-num">2</div>
-        <div class="flow-body"><strong>Retries</strong> — Nagios re-checks at <code style="color:var(--grn)">retry_interval</code>. No notifications yet. After <code style="color:var(--grn)">max_check_attempts</code> consecutive failures, state becomes HARD.</div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-num">3</div>
-        <div class="flow-body"><strong>Hard state reached</strong> — Nagios evaluates notification conditions: is notifications_enabled? Is the contact's notification period active? Is the service in scheduled downtime? Is this a flapping service?</div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-num">4</div>
-        <div class="flow-body"><strong>Notification sent</strong> — Nagios runs the contact's <code style="color:var(--grn)">service_notification_command</code> (e.g., send an email or POST to Slack webhook). Subsequent alerts fire at <code style="color:var(--grn)">notification_interval</code> until the problem resolves.</div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-num">5</div>
-        <div class="flow-body"><strong>Recovery</strong> — check returns 0 (OK). If the previous hard state triggered a notification, a recovery notification fires. State clears to OK and normal scheduling resumes.</div>
-      </div>
-    </div>
-
-    <p class="sec-title">Flap Detection</p>
-    <div class="card">
-      <p>Flapping is when a service oscillates rapidly between OK and problem states. Nagios detects it by tracking the percentage of state changes over the last 21 check results. If the change rate exceeds <code style="color:var(--grn)">high_flap_threshold</code> (default 30%), notifications are suppressed and a "FLAPPING START" event fires. When the rate drops below <code style="color:var(--grn)">low_flap_threshold</code> (default 20%), a "FLAPPING STOP" event fires and normal alerting resumes.</p>
-      <p>Enable flap detection globally with <code style="color:var(--grn)">enable_flap_detection=1</code> in nagios.cfg, and per-object with <code style="color:var(--grn)">flap_detection_enabled 1</code>.</p>
-    </div>
-
-    <p class="sec-title">Escalations</p>
-    <div class="cfg-block" data-label="escalations.cfg">
-<span class="cc"># Escalate to on-call after 3 notifications (3 × 60min = 3 hours unresolved)</span>
-<span class="ck">define serviceescalation</span> {
-    host_name               <span class="cv">*</span>
-    service_description     <span class="cv">*</span>
-    first_notification      <span class="cn">3</span>
-    last_notification       <span class="cn">0</span>   <span class="cc"># 0 = unlimited</span>
-    notification_interval   <span class="cn">30</span>  <span class="cc"># 30 min cadence after escalation</span>
-    contact_groups          <span class="cv">oncall</span>
-    escalation_options      <span class="cv">w,u,c,r</span>
-}</div>
-
-    <p class="sec-title">Acknowledgements</p>
-    <div class="card">
-      <p>Acknowledging a problem in the web UI (or via command) suppresses further notifications until the next state change. A "sticky" acknowledgement persists across state changes. The acknowledgement is recorded in the log with an author and comment, providing an audit trail. Useful for telling Nagios "I know about this — stop paging me."</p>
-    </div>
-
-    <p class="sec-title">Common nagios.cfg Tuning</p>
-    <div class="cmd-card">
-      <div class="cmd-row">
-        <div class="cmd-code">check_result_reaper_frequency=<span class="arg">10</span></div>
-        <div class="cmd-desc">How often (seconds) Nagios collects check results from worker threads</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">max_concurrent_checks=<span class="arg">50</span></div>
-        <div class="cmd-desc">Cap parallel checks to avoid CPU spikes; 0 = unlimited</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">service_check_timeout=<span class="arg">60</span></div>
-        <div class="cmd-desc">Seconds before a check plugin is killed; tune per slow targets</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">log_rotation_method=<span class="arg">d</span></div>
-        <div class="cmd-desc">Rotate logs daily (d), weekly (w), monthly (m), or hourly (h)</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">enable_event_handlers=<span class="arg">1</span></div>
-        <div class="cmd-desc">Run event handler scripts on state changes (auto-remediation)</div>
-      </div>
-      <div class="cmd-row">
-        <div class="cmd-code">process_performance_data=<span class="arg">1</span></div>
-        <div class="cmd-desc">Pass plugin perfdata to PNP4Nagios / Graphite / InfluxDB for graphs</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── History ── -->
-  <div class="nag-section hidden" id="tab-history">
-    <p class="sec-title">Timeline</p>
-    <div class="tl">
-      <div class="tl-item">
-        <div class="tl-year">1996</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Ethan Galstad</strong> begins writing a network monitoring tool for internal use at a Minneapolis company. The project starts as a simple host-down alerter.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">1999</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>NetSaint 0.0.1</strong> released publicly on SourceForge. The tool gains traction in the Linux sysadmin community. Galstad renames it <strong>Nagios</strong> (Nagios Ain't Gonna Insist On Sainthood) after trademark pressure.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2002</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Nagios 1.0</strong> released. Plugin API stabilized — any executable returning 0/1/2/3 is a valid check. The community begins building hundreds of plugins. NRPE released for remote host monitoring.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2006</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Nagios 2.0</strong> — major rewrite with improved performance, flap detection, and web CGI redesign. NDOUtils released to store Nagios data in MySQL for reporting.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2007</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Nagios Enterprises</strong> founded. Commercial <strong>Nagios XI</strong> announced — a web-based configuration wizard and expanded dashboards built on Nagios Core. The split between "Core" (open source) and "XI" (commercial) begins.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2009</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Nagios 3.0</strong> — embedded Perl interpreter removed, adaptive monitoring, improved dependency handling, and template-based object caching. Remains the most widely deployed version for years.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2013</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Naemon</strong> forked from Nagios Core by contributors frustrated with slow upstream development. <strong>Nagios Core 4.0</strong> also released, adding parallel check processing and improved performance for large installations.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2015</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Icinga 2</strong> (another fork) gains widespread adoption in Europe, offering a modern config DSL and native clustering. Nagios remains dominant in North America.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2019</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Nagios Core 4.4.x</strong> released with security hardening and fixes. The plugin ecosystem exceeds 4,000 community-contributed plugins via Nagios Exchange.</div>
-      </div>
-      <div class="tl-item">
-        <div class="tl-year">2024</div>
-        <div class="tl-dot"></div>
-        <div class="tl-body"><strong>Nagios Core 4.5.x</strong> — continued security patches and maintenance. Still in production at thousands of enterprises globally. Prometheus and Grafana have replaced it for new deployments, but Nagios remains the template that all modern monitoring systems were designed against.</div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script>
-(function(){
-  var tabs = document.querySelectorAll('.nag-tab');
-  var sections = document.querySelectorAll('.nag-section');
-  tabs.forEach(function(tab){
-    tab.addEventListener('click', function(){
-      tabs.forEach(function(t){ t.classList.remove('active'); });
-      sections.forEach(function(s){ s.classList.add('hidden'); });
-      tab.classList.add('active');
-      document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
-      localStorage.setItem('nagios_tab', tab.dataset.tab);
-    });
-  });
-  var saved = localStorage.getItem('nagios_tab');
-  if(saved){
-    var t = document.querySelector('[data-tab="' + saved + '"]');
-    if(t) t.click();
-  }
-})();
-</script>
+</section>
 <script src="/shared/nav.js?v=3"></script>
 </body>
 </html>

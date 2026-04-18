@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Table Relationships — ER Diagram">
+<title>Database Visualizer — database.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+  .subnav{position:sticky;top:44px;z-index:90;background:#070720;border-bottom:1px solid #1e293b;display:flex;justify-content:center;overflow-x:auto}
+  .subnav button{background:none;border:none;color:#94a3b8;padding:12px 22px;cursor:pointer;font-size:.9rem;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+  .subnav button:hover{color:#e2e8f0;background:#0f172a}
+  .subnav button.active{color:#14b8a6;border-bottom-color:#14b8a6}
+  h2{font-size:1.4rem;margin-bottom:6px;color:#f1f5f9}
+  .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
+  .panel{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:16px}
+  .btn{background:#14b8a6;border:none;color:#000;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:700;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn.blue{background:#3b82f6;color:#fff}
+  .btn.gray{background:#1e293b;color:#94a3b8}
+  .btn.gray:hover{background:#334155;color:#e2e8f0}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .data-table{border-collapse:collapse;font-size:.82rem;width:100%}
+  .data-table th{background:#0f172a;color:#64748b;font-weight:500;padding:7px 12px;text-align:left;border-bottom:2px solid #1e293b}
+  .data-table td{padding:6px 12px;border-bottom:1px solid #0f172a}
+  .data-table tr:hover td{background:#0a0e1a}
+  .data-table tr.highlight td{background:#14b8a622;border-left:3px solid #14b8a6}
+  .data-table tr.dimmed td{opacity:.3}
+  select,input[type=text],input[type=number]{background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:.85rem}
+  select:focus,input:focus{outline:none;border-color:#14b8a6}
+  .code-block{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:12px;font-family:'Courier New',monospace;font-size:.82rem;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+  .info-box{background:#0f172a;border-left:3px solid #14b8a6;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.83rem;color:#94a3b8;line-height:1.6}
+  canvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px}
+
+  /* ER Diagram */
+  #erCanvas{cursor:pointer;width:100%;max-width:800px}
+  .er-legend{display:flex;gap:16px;margin-top:10px;font-size:.8rem;flex-wrap:wrap}
+  .er-legend span{display:flex;align-items:center;gap:6px}
+  .er-legend .dot{width:10px;height:10px;border-radius:50%}
+
+  /* JOIN */
+  .join-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:700px){.join-layout{grid-template-columns:1fr}}
+  .join-result{margin-top:16px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .controls label{font-size:.82rem;color:#94a3b8}
+
+  /* Query Builder */
+  .qb-layout{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:700px){.qb-layout{grid-template-columns:1fr}}
+  .qb-section{display:flex;flex-direction:column;gap:10px}
+  .qb-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .qb-row label{font-size:.82rem;color:#94a3b8;min-width:70px}
+  .cb-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .cb-item{display:flex;align-items:center;gap:5px;font-size:.82rem;color:#94a3b8;cursor:pointer}
+  .cb-item input{accent-color:#14b8a6}
+
+  /* Index Performance */
+  #perfCanvas{width:100%;max-width:800px;height:200px}
+  .perf-bar{height:28px;border-radius:4px;transition:width .1s;display:flex;align-items:center;padding-left:10px;font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden}
+  .perf-wrap{margin-top:16px}
+</style>
+</head>
+<body>
+<nav class="subnav">
+  <a class="active" href="index.html">Table Relationships</a>
+  <a href="join.html">JOIN Visualizer</a>
+  <a href="query.html">Query Builder</a>
+  <a href="index.html">Index Performance</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/database') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="query">
+<h2>Visual Query Builder</h2>
+  <p class="subtitle">Build a SQL query visually — see the generated SQL and simulated results</p>
+  <div class="qb-layout">
+    <div class="qb-section panel">
+      <h3 style="font-size:.85rem;color:#94a3b8;margin-bottom:6px">Build Query</h3>
+      <div class="qb-row">
+        <label>FROM</label>
+        <select id="qbTable" style="flex:1">
+          <option value="users">users</option>
+          <option value="orders">orders</option>
+          <option value="products">products</option>
+          <option value="categories">categories</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:.82rem;color:#94a3b8;margin-bottom:6px">SELECT columns:</div>
+        <div class="cb-group" id="qbCols"></div>
+      </div>
+      <div class="qb-row">
+        <label>WHERE</label>
+        <select id="qbWhereCol" style="flex:1"></select>
+        <select id="qbWhereOp"><option>=</option><option>!=</option><option>&gt;</option><option>&lt;</option><option>LIKE</option></select>
+        <input type="text" id="qbWhereVal" placeholder="value" style="width:100px">
+      </div>
+      <div class="qb-row">
+        <label>ORDER BY</label>
+        <select id="qbOrderCol" style="flex:1"></select>
+        <select id="qbOrderDir"><option>ASC</option><option>DESC</option></select>
+      </div>
+      <div class="qb-row">
+        <label>LIMIT</label>
+        <select id="qbLimit"><option>5</option><option selected>10</option><option>25</option><option>ALL</option></select>
+      </div>
+      <button class="btn" id="qbRun">Run Query</button>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <h3 style="font-size:.85rem;color:#94a3b8">Generated SQL</h3>
+      <div class="code-block" id="qbSQL"></div>
+      <h3 style="font-size:.85rem;color:#94a3b8">Results</h3>
+      <div style="overflow-x:auto"><table class="data-table" id="qbResults"></table></div>
+      <div id="qbResultCount" style="font-size:.8rem;color:#64748b"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 4: INDEX PERFORMANCE ───────────────────────────────────────────── -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

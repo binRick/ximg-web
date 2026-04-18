@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Compound Interest &amp; Wealth Calculator">
+  <title>Compound Interest & Wealth Calculator — compound.ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#02020f;--card:#070720;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --green:#22c55e;--emerald:#10b981;
+      --accent:var(--green);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+
+    /* ── sticky subnav ── */
+    .subnav{position:sticky;top:44px;z-index:100;background:rgba(2,2,15,.92);
+      backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+      display:flex;justify-content:center;gap:.25rem;padding:.4rem .75rem;overflow-x:auto}
+    .subnav::-webkit-scrollbar{display:none}
+    .tab-btn{background:none;border:1px solid transparent;border-radius:6px;
+      color:var(--muted);font-family:inherit;font-size:.78rem;font-weight:600;
+      padding:.3rem .75rem;cursor:pointer;white-space:nowrap;transition:all .15s}
+    .tab-btn:hover{color:var(--text);border-color:var(--border)}
+    .tab-btn.active{color:var(--green);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.07)}
+
+    /* ── layout ── */
+    .page{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+
+    /* ── card ── */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.4rem;font-weight:600}
+
+    /* ── grid ── */
+    .g2{display:grid;grid-template-columns:320px 1fr;gap:1.25rem}
+    @media(max-width:720px){.g2{grid-template-columns:1fr}}
+
+    /* ── inputs ── */
+    .field{margin-bottom:.85rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.25rem;font-weight:500}
+    input[type=number]{
+      background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.92rem;padding:.5rem .75rem;
+      outline:none;width:100%;transition:border-color .15s}
+    input[type=number]:focus{border-color:var(--green)}
+    input[type=number]::-webkit-inner-spin-button{opacity:.5}
+
+    .seg-group{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.85rem}
+    .seg{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;
+      color:var(--muted);font-family:inherit;font-size:.76rem;font-weight:600;
+      padding:.3rem .7rem;cursor:pointer;transition:all .15s}
+    .seg:hover{border-color:rgba(255,255,255,.2);color:var(--text)}
+    .seg.active{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4);color:var(--green)}
+
+    /* ── result stats ── */
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-bottom:1rem}
+    .stat-box{background:#0b0b1e;border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+    .stat-val{font-size:1.4rem;font-weight:700;color:var(--green);margin-bottom:.15rem}
+    .stat-val.accent2{color:var(--emerald)}
+    .stat-val.white{color:#fff}
+    .stat-val.red{color:#ef4444}
+    .stat-lbl{font-size:.7rem;color:var(--muted)}
+
+    /* ── canvas chart ── */
+    canvas{display:block;border-radius:8px;max-width:100%}
+    .chart-wrap{position:relative;background:#0b0b1e;border:1px solid var(--border);border-radius:10px;padding:1rem}
+    .chart-legend{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem;font-size:.73rem;color:var(--muted)}
+    .legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:.3rem;flex-shrink:0}
+
+    /* ── toggle ── */
+    .toggle-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;flex-wrap:wrap}
+    .toggle-row label{font-size:.78rem;color:var(--muted)}
+
+    /* ── amortization table ── */
+    .amort-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:.5rem}
+    .amort-table th{color:var(--muted);text-align:left;padding:.4rem .75rem;border-bottom:1px solid var(--border);font-weight:600;font-size:.68rem;text-transform:uppercase}
+    .amort-table td{padding:.4rem .75rem;border-bottom:1px solid rgba(30,41,59,.6)}
+    .amort-table tr:hover td{background:rgba(255,255,255,.025)}
+    .amort-table .num{text-align:right;color:var(--green);font-variant-numeric:tabular-nums}
+    .amort-table .red{color:#ef4444}
+    .amort-table .dim{color:var(--muted)}
+
+    /* ── FIRE thresholds ── */
+    .fire-badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+    .fire-badge{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;
+      padding:.5rem 1rem;text-align:center;cursor:pointer;transition:all .15s;min-width:90px}
+    .fire-badge:hover{border-color:rgba(34,197,94,.3)}
+    .fire-badge.active{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.4)}
+    .fire-badge-name{font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.1rem}
+    .fire-badge-mult{font-size:.68rem;color:var(--muted)}
+    .fire-progress{height:8px;background:rgba(255,255,255,.06);border-radius:4px;margin-bottom:.75rem;overflow:hidden}
+    .fire-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--emerald),var(--green));transition:width .4s}
+  </style>
+</head>
+<body>
+<nav class="subnav">
+  <a class="tab-btn " href="index.html">Compound Interest</a>
+  <a class="tab-btn" href="retirement.html">Retirement</a>
+  <a class="tab-btn" href="debt.html">Debt Payoff</a>
+  <a class="tab-btn" href="fire.html">FIRE Calculator</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/compound') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="retirement">
+<div class="g2">
+      <div class="card">
+        <div class="lbl">Inputs</div>
+        <div class="field">
+          <label>Current Age</label>
+          <input type="number" id="ret-age" value="30" min="18" max="80" step="1">
+        </div>
+        <div class="field">
+          <label>Retirement Age</label>
+          <input type="number" id="ret-retire" value="65" min="40" max="90" step="1">
+        </div>
+        <div class="field">
+          <label>Current Savings ($)</label>
+          <input type="number" id="ret-savings" value="25000" min="0" step="1000">
+        </div>
+        <div class="field">
+          <label>Monthly Contribution ($)</label>
+          <input type="number" id="ret-monthly" value="800" min="0" step="50">
+        </div>
+        <div class="field">
+          <label>Expected Annual Return (%)</label>
+          <input type="number" id="ret-return" value="7" min="0" max="30" step="0.1">
+        </div>
+        <div class="field">
+          <label>Expected Inflation Rate (%)</label>
+          <input type="number" id="ret-inflation" value="3" min="0" max="20" step="0.1">
+        </div>
+      </div>
+      <div>
+        <div class="stats-row" id="ret-stats"></div>
+        <div class="chart-wrap">
+          <canvas id="ret-canvas" height="260"></canvas>
+          <div class="chart-legend" id="ret-legend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: DEBT PAYOFF ════════════════════════════════════════════════ -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

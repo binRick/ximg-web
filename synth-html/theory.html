@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Web Audio Synthesizer">
+  <title>Web Audio Synthesizer — synth.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #02020f;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 1.5rem 1rem .5rem;
+      font-size: 1.6rem;
+      background: linear-gradient(90deg, #ec4899, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: .85rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .tab-nav {
+      position: sticky;
+      top: 44px;
+      z-index: 100;
+      display: flex;
+      gap: .3rem;
+      padding: .5rem 1rem;
+      background: rgba(2,2,15,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #1e293b;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: .45rem 1rem;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: #070720;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .tab-btn:hover { border-color: #ec4899; color: #f9a8d4; }
+    .tab-btn.active { background: #2d0a1f; border-color: #ec4899; color: #f472b6; }
+
+    canvas {
+      border-radius: 10px;
+      background: #070720;
+      border: 1px solid #1e293b;
+      display: block;
+      width: 100%;
+    }
+
+    .ctrl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+      margin: .8rem 0;
+      align-items: center;
+    }
+
+    .btn {
+      padding: .4rem .9rem;
+      border-radius: 7px;
+      border: 1px solid #ec4899;
+      background: #2d0a1f;
+      color: #f472b6;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      transition: all .18s;
+    }
+    .btn:hover { background: #4a0f32; }
+    .btn.active-btn { background: #be185d; color: #fff; border-color: #f472b6; }
+    .btn-purple { border-color: #8b5cf6; background: #1e1040; color: #a78bfa; }
+    .btn-purple:hover { background: #2d1b69; }
+    .btn-purple.active-btn { background: #7c3aed; color: #fff; }
+
+    label { font-size: .83rem; color: #94a3b8; }
+    input[type=range] { accent-color: #ec4899; cursor: pointer; }
+    select {
+      background: #0f0f2a;
+      border: 1px solid #1e293b;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: .35rem .6rem;
+      font-size: .82rem;
+      cursor: pointer;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin: .4rem 0;
+    }
+    .slider-label { font-size: .8rem; color: #94a3b8; width: 90px; flex-shrink: 0; }
+    .slider-val { font-size: .82rem; color: #ec4899; min-width: 48px; font-family: monospace; }
+
+    /* ── Piano keyboard ── */
+    #piano-wrap {
+      overflow-x: auto;
+      margin: .8rem 0;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
+      background: #040414;
+      padding: .6rem .6rem 0;
+    }
+    #piano-canvas {
+      display: block;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .info-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin: .8rem 0;
+      font-size: .88rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+    .info-card h3 { color: #f472b6; font-size: .95rem; margin-bottom: .4rem; }
+    .info-card .label {
+      color: #ec4899;
+      font-weight: 700;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .25rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .8rem;
+      margin: .8rem 0;
+    }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* Effects chain */
+    .effect-block {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 1rem;
+      margin: .6rem 0;
+    }
+    .effect-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .6rem;
+    }
+    .effect-name { font-weight: 700; color: #f472b6; font-size: .92rem; }
+    .bypass-btn {
+      padding: .25rem .6rem;
+      border-radius: 5px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #64748b;
+      cursor: pointer;
+      font-size: .75rem;
+    }
+    .bypass-btn.active { border-color: #ec4899; color: #f472b6; background: #2d0a1f; }
+
+    .flow-arrow {
+      text-align: center;
+      color: #334155;
+      font-size: 1.2rem;
+      margin: .2rem 0;
+    }
+
+    /* Spectrum */
+    #spectrum-canvas, #oscilloscope-canvas {
+      border-radius: 10px;
+      background: #000d00;
+      border: 1px solid #0d2b0d;
+      display: block;
+      width: 100%;
+    }
+
+    /* Presets */
+    .preset-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: .8rem 0;
+    }
+    .preset-btn {
+      padding: .5rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f0f2a;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      transition: all .18s;
+    }
+    .preset-btn:hover { border-color: #ec4899; color: #f472b6; background: #2d0a1f; }
+
+    /* Chord theory */
+    .chord-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: .6rem;
+      margin: .8rem 0;
+    }
+    .chord-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: .7rem;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .chord-card:hover { border-color: #8b5cf6; }
+    .chord-name { font-weight: 700; color: #a78bfa; font-size: .9rem; }
+    .chord-notes { font-size: .8rem; color: #64748b; font-family: monospace; margin-top: .2rem; }
+    .chord-formula { font-size: .75rem; color: #475569; margin-top: .15rem; }
+
+    .status-bar {
+      background: #0f0f2a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: .5rem 1rem;
+      font-size: .82rem;
+      font-family: monospace;
+      color: #64748b;
+      margin: .5rem 0;
+    }
+    .status-bar span { color: #ec4899; }
+  </style>
+</head>
+<body>
+<div class="tab-nav">
+  <a class="tab-btn " href="index.html">Synthesizer</a>
+  <a class="tab-btn" href="effects.html">Effects</a>
+  <a class="tab-btn" href="spectrum.html">Spectrum</a>
+  <a class="tab-btn" href="theory.html">Presets &amp; Theory</a>
+</div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/synth') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="theory">
+<div class="info-card">
+    <div class="label">Synth Presets</div>
+    <div class="preset-grid" id="preset-grid">
+      <button class="preset-btn" data-preset="pad">Pad</button>
+      <button class="preset-btn" data-preset="bass">Bass</button>
+      <button class="preset-btn" data-preset="lead">Lead</button>
+      <button class="preset-btn" data-preset="bell">Bell</button>
+      <button class="preset-btn" data-preset="pluck">Pluck</button>
+    </div>
+    <div id="preset-desc" style="font-size:.83rem;color:#64748b;margin-top:.4rem">Click a preset to load its settings</div>
+  </div>
+
+  <div class="info-card">
+    <div class="label">Harmonic Series</div>
+    <canvas id="harmonic-canvas" height="100" style="border-radius:6px;background:#0a0a2a;border:1px solid #1e293b;"></canvas>
+    <p style="font-size:.8rem;color:#64748b;margin-top:.4rem">Harmonic content of current oscillator type. Fundamental = f, harmonics at 2f, 3f, 4f…</p>
+  </div>
+
+  <div class="info-card">
+    <div class="label">Chord Theory</div>
+    <p style="font-size:.82rem;color:#64748b;margin-bottom:.6rem">Root note: C4 &nbsp;|&nbsp; Click a chord to hear it played</p>
+    <div class="chord-grid" id="chord-grid"></div>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

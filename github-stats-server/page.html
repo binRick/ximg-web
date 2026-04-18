@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GitHub Traffic Stats — binRick</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #080b0e;
+    --surface: #0e1317;
+    --border: rgba(255,255,255,.07);
+    --accent: #6366f1;
+    --accent2: #22d3ee;
+    --text: #c9d1d9;
+    --muted: #5a6070;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+  #subnav {
+    position: sticky;
+    top: 52px;
+    z-index: 150;
+    background: rgba(8,11,14,.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .2rem;
+    padding: .4rem 1rem;
+  }
+  #subnav a {
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: .3rem .65rem;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: color .2s, background .2s;
+  }
+  #subnav a:hover, #subnav a.active {
+    color: var(--accent);
+    background: rgba(255,255,255,.06);
+  }
+
+  .hero {
+    padding: 2.5rem 1.5rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 { font-size: 1.6rem; letter-spacing: .08em; color: #fff; }
+  .hero p { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
+  .meta {
+    display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap;
+  }
+  .meta-item { font-size: .7rem; color: var(--muted); }
+  .meta-item span { color: var(--accent); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+
+  .status-bar {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .6rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    font-size: .72rem;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+  .dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .status-text { color: var(--muted); flex: 1; }
+  .refresh-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: .25rem .6rem; border-radius: 4px; cursor: pointer; font-size: .68rem;
+    font-family: inherit; letter-spacing: .06em; transition: all .2s;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .summary-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 1rem; text-align: center;
+  }
+  .summary-card .val { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+  .summary-card .lbl { font-size: .68rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-top: .2rem; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    padding: .5rem .75rem; border-bottom: 1px solid var(--border); text-align: right;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  thead th:hover { color: var(--accent); }
+  thead th.sorted { color: var(--accent2); }
+  thead th.sorted::after { content: ' ▾'; }
+  thead th.sorted.asc::after { content: ' ▴'; }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:hover { background: rgba(255,255,255,.025); }
+  td { padding: .55rem .75rem; font-size: .78rem; text-align: right; }
+  td:first-child { text-align: left; }
+
+  .repo-name a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .repo-name a:hover { color: var(--accent2); }
+  .repo-desc { color: var(--muted); font-size: .68rem; margin-top: .15rem; max-width: 300px; }
+  .lang-badge {
+    display: inline-block; font-size: .6rem; padding: .1rem .4rem; border-radius: 3px;
+    background: rgba(99,102,241,.15); color: var(--accent); border: 1px solid rgba(99,102,241,.25);
+    margin-left: .4rem; vertical-align: middle;
+  }
+
+  .num { color: #fff; }
+  .num-zero { color: var(--muted); }
+  .num-high { color: var(--green); }
+  .star { color: var(--yellow); }
+
+  .bar-cell { min-width: 80px; }
+  .bar-wrap { display: flex; align-items: center; gap: .4rem; justify-content: flex-end; }
+  .bar-bg { width: 48px; height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
+
+  .window-note {
+    text-align: center; color: var(--muted); font-size: .68rem; margin-top: 1.5rem; padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .loading { text-align: center; padding: 3rem; color: var(--muted); }
+  .error-msg { color: var(--red); background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); padding: .75rem 1rem; border-radius: 6px; font-size: .78rem; margin-bottom: 1rem; }
+
+  @media (max-width: 640px) {
+    .bar-cell, .views-col, .uviewers-col { display: none; }
+    .repo-desc { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="/">Overview</a>
+</nav>
+
+<div class="hero">
+  <h1>GitHub Traffic Stats</h1>
+  <p>Clone &amp; view counts for the latest 20 repositories — updated hourly</p>
+  <div class="meta">
+    <div class="meta-item">User: <span>binRick</span></div>
+    <div class="meta-item">Window: <span>14 days</span></div>
+    <div class="meta-item">Repos: <span id="meta-repos">—</span></div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="status-bar">
+    <div class="dot" id="status-dot"></div>
+    <div class="status-text" id="status-text">Loading…</div>
+    <button class="refresh-btn" onclick="load()">Refresh</button>
+  </div>
+
+  <div id="error-box" style="display:none" class="error-msg"></div>
+
+  <div class="summary-grid" id="summary-grid"></div>
+
+  <div id="loading" class="loading">Fetching stats…</div>
+  <div id="table-wrap" style="display:none">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('name')">Repository</th>
+          <th onclick="sortBy('clones')" class="sorted">Clones</th>
+          <th onclick="sortBy('uniqueCloners')">Unique</th>
+          <th onclick="sortBy('views')" class="views-col">Views</th>
+          <th onclick="sortBy('uniqueViewers')" class="uviewers-col">Uniq Views</th>
+          <th onclick="sortBy('stars')" class="bar-cell">Stars</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="window-note">Data reflects the last 14 days (GitHub API limit). Each <code>git pull</code> and <code>git fetch</code> counts as a clone.</div>
+  </div>
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+<script>
+let data = null;
+let sortKey = 'clones';
+let sortAsc = false;
+
+async function load() {
+  try {
+    const res = await fetch('/api/stats');
+    data = await res.json();
+    render();
+  } catch (e) {
+    document.getElementById('status-text').textContent = 'Fetch failed: ' + e.message;
+    document.getElementById('status-dot').className = 'dot error';
+  }
+}
+
+function fmt(n) {
+  if (n === 0) return '<span class="num-zero">0</span>';
+  if (n >= 1000) return '<span class="num' + (n >= 100 ? ' num-high' : '') + '">' + n.toLocaleString() + '</span>';
+  return '<span class="num">' + n + '</span>';
+}
+
+function render() {
+  const dot  = document.getElementById('status-dot');
+  const stxt = document.getElementById('status-text');
+  const errBox = document.getElementById('error-box');
+
+  if (data.syncing) {
+    dot.className = 'dot syncing';
+    stxt.textContent = 'Syncing with GitHub API…';
+  } else if (data.error) {
+    dot.className = 'dot error';
+    stxt.textContent = 'Last sync failed';
+    errBox.style.display = '';
+    errBox.textContent = 'Error: ' + data.error;
+  } else {
+    dot.className = 'dot';
+    const ts = data.lastSync ? new Date(data.lastSync).toLocaleString() : 'never';
+    stxt.textContent = 'Last synced: ' + ts + ' · auto-refreshes hourly';
+    errBox.style.display = 'none';
+  }
+
+  const repos = data.repos || [];
+  document.getElementById('meta-repos').textContent = repos.length;
+
+  // Summary totals
+  const totClones  = repos.reduce((s, r) => s + r.clones, 0);
+  const totUnique  = repos.reduce((s, r) => s + r.uniqueCloners, 0);
+  const totViews   = repos.reduce((s, r) => s + r.views, 0);
+  const totStars   = repos.reduce((s, r) => s + r.stars, 0);
+  const activeRepos = repos.filter(r => r.clones > 0).length;
+
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="summary-card"><div class="val">${totClones.toLocaleString()}</div><div class="lbl">Total Clones</div></div>
+    <div class="summary-card"><div class="val">${totUnique.toLocaleString()}</div><div class="lbl">Unique Cloners</div></div>
+    <div class="summary-card"><div class="val">${totViews.toLocaleString()}</div><div class="lbl">Total Views</div></div>
+    <div class="summary-card"><div class="val">${totStars}</div><div class="lbl">Total Stars</div></div>
+    <div class="summary-card"><div class="val">${activeRepos}</div><div class="lbl">Active Repos</div></div>
+  `;
+
+  // Sort
+  const sorted = [...repos].sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return sortAsc ? av - bv : bv - av;
+  });
+
+  const maxClones = Math.max(...repos.map(r => r.clones), 1);
+
+  const rows = sorted.map(r => {
+    const pct = Math.round((r.clones / maxClones) * 100);
+    const desc = r.description ? `<div class="repo-desc">${r.description.slice(0, 80)}${r.description.length > 80 ? '…' : ''}</div>` : '';
+    const lang = r.language ? `<span class="lang-badge">${r.language}</span>` : '';
+    const star = r.stars > 0 ? `<span class="star">★</span> ${r.stars}` : `<span class="num-zero">0</span>`;
+    return `<tr>
+      <td class="repo-name">
+        <a href="${r.html_url}" target="_blank" rel="noopener">${r.name}</a>${lang}
+        ${desc}
+      </td>
+      <td class="bar-cell">
+        <div class="bar-wrap">
+          ${fmt(r.clones)}
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+      <td>${fmt(r.uniqueCloners)}</td>
+      <td class="views-col">${fmt(r.views)}</td>
+      <td class="uviewers-col">${fmt(r.uniqueViewers)}</td>
+      <td>${star}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tbody').innerHTML = rows;
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('table-wrap').style.display = '';
+}
+
+function sortBy(key) {
+  if (sortKey === key) { sortAsc = !sortAsc; }
+  else { sortKey = key; sortAsc = false; }
+  document.querySelectorAll('thead th').forEach(th => th.classList.remove('sorted', 'asc'));
+  const idx = ['name','clones','uniqueCloners','views','uniqueViewers','stars'].indexOf(key);
+  const ths = document.querySelectorAll('thead th');
+  if (ths[idx]) {
+    ths[idx].classList.add('sorted');
+    if (sortAsc) ths[idx].classList.add('asc');
+  }
+  if (data) render();
+}
+
+load();
+// Auto-refresh every 5 minutes to pick up new sync
+setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>

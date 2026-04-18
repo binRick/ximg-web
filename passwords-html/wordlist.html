@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="⚡ Random Password Generator">
+  <title>Passwords — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #070b10;
+      --panel:   #0c1118;
+      --green:   #00ff88;
+      --dkgreen: #00cc66;
+      --teal:    #00d4aa;
+      --amber:   #f59e0b;
+      --red:     #ef4444;
+      --text:    #e2e8f0;
+      --muted:   #4a5568;
+      --border:  rgba(0,255,136,.12);
+      --card:    rgba(12,17,24,.95);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,255,136,.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 30% at 80% 80%, rgba(0,212,170,.05) 0%, transparent 60%),
+        linear-gradient(180deg, #070b10 0%, #050809 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(0,255,136,.012) 0, rgba(0,255,136,.012) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, rgba(0,212,170,.008) 0, rgba(0,212,170,.008) 1px, transparent 1px, transparent 80px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1000px; margin: 0 auto; width: 100%;
+      padding: 5rem 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: .75rem;
+      animation: fadeUp .6s ease both;
+    }
+    .hero-icon { font-size: 3rem; filter: drop-shadow(0 0 24px rgba(0,255,136,.6)); }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #00ff88 0%, #00d4aa 50%, #00aaff 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -.02em;
+    }
+    .hero-sub { font-size: .9rem; color: var(--muted); max-width: 560px; line-height: 1.7; }
+
+    /* Subnav */
+    .subnav {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+      justify-content: center;
+      animation: fadeUp .6s .1s ease both;
+    }
+    .snav-btn {
+      background: rgba(0,255,136,.05);
+      border: 1px solid rgba(0,255,136,.2);
+      color: var(--muted);
+      font-family: inherit; font-size: .8rem; font-weight: 600;
+      padding: .45rem 1rem; border-radius: 6px;
+      cursor: pointer; transition: all .2s;
+      letter-spacing: .03em;
+    }
+    .snav-btn:hover { background: rgba(0,255,136,.1); color: var(--text); border-color: rgba(0,255,136,.4); }
+    .snav-btn.active { color: var(--green); border-color: rgba(0,255,136,.5); background: rgba(0,255,136,.1); pointer-events: none; }
+
+    /* Tab panels */
+    .tab-panel { display: flex; flex-direction: column; gap: 1.5rem; animation: fadeUp .4s ease both; }
+    .tab-panel
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.75rem;
+    }
+    .card h2 {
+      font-size: 1.05rem; font-weight: 700; color: var(--green);
+      margin-bottom: 1rem; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .card h3 { font-size: .9rem; color: var(--teal); margin-bottom: .5rem; }
+
+    /* ── Generator ── */
+    .gen-output {
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(0,255,136,.25);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: .05em;
+      word-break: break-all;
+      min-height: 3.2rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    .gen-output:hover { border-color: rgba(0,255,136,.5); }
+    .copy-hint { font-size: .7rem; color: var(--muted); font-weight: 400; white-space: nowrap; flex-shrink: 0; letter-spacing: 0; }
+
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;
+      margin-top: .75rem;
+    }
+    .ctrl-group { display: flex; flex-direction: column; gap: .35rem; }
+    .ctrl-group label { font-size: .75rem; color: var(--muted); letter-spacing: .04em; }
+
+    input[type=range] {
+      accent-color: var(--green);
+      width: 160px;
+      cursor: pointer;
+    }
+    .range-val { color: var(--green); font-weight: 700; margin-left: .4rem; }
+
+    .checkboxes { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .25rem; }
+    .cb-label {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .78rem; cursor: pointer; color: var(--text);
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      padding: .3rem .7rem; border-radius: 5px; transition: all .15s;
+      user-select: none;
+    }
+    .cb-label:hover { background: rgba(0,255,136,.07); border-color: rgba(0,255,136,.3); }
+    .cb-label input { accent-color: var(--green); }
+
+    .btn-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+    .btn {
+      background: rgba(0,255,136,.12);
+      border: 1px solid rgba(0,255,136,.35);
+      color: var(--green);
+      font-family: inherit; font-size: .82rem; font-weight: 700;
+      padding: .55rem 1.25rem; border-radius: 6px;
+      cursor: pointer; transition: all .2s; letter-spacing: .04em;
+    }
+    .btn:hover { background: rgba(0,255,136,.22); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn.secondary { color: var(--teal); border-color: rgba(0,212,170,.35); background: rgba(0,212,170,.08); }
+    .btn.secondary:hover { background: rgba(0,212,170,.18); }
+
+    /* Strength meter */
+    .strength-bar-wrap {
+      height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,.07);
+      margin: .5rem 0;
+      overflow: hidden;
+    }
+    .strength-bar {
+      height: 100%; border-radius: 4px;
+      transition: width .4s ease, background .4s ease;
+      width: 0%;
+    }
+
+    .strength-input {
+      width: 100%;
+      background: rgba(0,0,0,.4);
+      border: 1px solid rgba(0,255,136,.2);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      color: var(--text);
+      font-family: inherit; font-size: 1rem;
+      outline: none; transition: border-color .2s;
+      letter-spacing: .04em;
+    }
+    .strength-input:focus { border-color: rgba(0,255,136,.5); }
+
+    .strength-score { font-size: 2.5rem; font-weight: 900; text-align: center; margin: .5rem 0; }
+    .strength-label { text-align: center; font-size: .85rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1rem; }
+    .strength-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .sf { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 6px; padding: .6rem .9rem; }
+    .sf-label { font-size: .7rem; color: var(--muted); margin-bottom: .2rem; letter-spacing: .05em; }
+    .sf-val { font-size: .88rem; font-weight: 700; color: var(--text); }
+
+    /* Tips list */
+    .tips { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .tips li {
+      display: flex; align-items: flex-start; gap: .75rem;
+      padding: .65rem 1rem; border-radius: 7px;
+      background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.05);
+      font-size: .85rem; line-height: 1.55; color: var(--text);
+    }
+    .tips li .ico { font-size: 1.1rem; flex-shrink: 0; margin-top: .05rem; }
+
+    /* Grid of info cards */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+    .info-card {
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(0,255,136,.1);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+    }
+    .info-card .ic-icon { font-size: 1.5rem; margin-bottom: .4rem; }
+    .info-card h3 { font-size: .85rem; color: var(--green); margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .05em; }
+    .info-card p { font-size: .8rem; color: var(--muted); line-height: 1.6; }
+
+    /* Wordlist tab */
+    .phrase-display {
+      background: rgba(0,0,0,.5);
+      border: 1px solid rgba(0,212,170,.3);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 1.1rem; font-weight: 700;
+      color: var(--teal);
+      letter-spacing: .04em;
+      word-break: break-all;
+      min-height: 3rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      cursor: pointer; transition: border-color .2s;
+    }
+    .phrase-display:hover { border-color: rgba(0,212,170,.6); }
+
+    .words-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .4rem; margin-top: .75rem; }
+    .word-chip {
+      background: rgba(0,212,170,.06);
+      border: 1px solid rgba(0,212,170,.2);
+      border-radius: 5px;
+      padding: .3rem .6rem;
+      font-size: .78rem; color: var(--teal);
+      text-align: center;
+    }
+
+    /* Crack time table */
+    .crack-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .crack-table th { text-align: left; color: var(--green); padding: .5rem .75rem; border-bottom: 1px solid rgba(0,255,136,.15); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+    .crack-table td { padding: .5rem .75rem; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text); }
+    .crack-table tr:last-child td { border-bottom: none; }
+    .crack-table .good { color: var(--green); }
+    .crack-table .ok   { color: var(--amber); }
+    .crack-table .bad  { color: var(--red); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px);
+      background: rgba(0,255,136,.15); border: 1px solid rgba(0,255,136,.4);
+      color: var(--green); padding: .55rem 1.4rem; border-radius: 8px;
+      font-size: .82rem; font-weight: 700; letter-spacing: .05em;
+      opacity: 0; pointer-events: none; transition: all .3s; z-index: 9999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+<div class="subnav">
+    <a class="snav-btn " href="index.html">⚡ Generator</a>
+    <a class="snav-btn" href="strength.html">📊 Strength Checker</a>
+    <a class="snav-btn" href="wordlist.html">📖 Passphrase</a>
+    <a class="snav-btn" href="guide.html">🛡️ Best Practices</a>
+    <a class="snav-btn" href="crack.html">⏱️ Crack Times</a>
+    <a class="snav-btn" href="history.html">📜 History</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/passwords') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="wordlist">
+<div class="card">
+      <h2>📖 Diceware Passphrase Generator</h2>
+      <p style="font-size:.83rem;color:var(--muted);margin-bottom:1rem;line-height:1.65;">A passphrase made of random common words is both easy to remember <em>and</em> extremely strong. Four random words give ~52 bits of entropy — enough to resist everything short of a nation-state.</p>
+      <div class="phrase-display" id="phrase-output" onclick="copyPhrase()" title="Click to copy">
+        <span id="phrase-text">Click Generate</span>
+        <span class="copy-hint">click to copy</span>
+      </div>
+      <div class="controls" style="margin-top:.75rem;">
+        <div class="ctrl-group">
+          <label>WORDS: <span class="range-val" id="words-val">4</span></label>
+          <input type="range" id="words-range" min="3" max="8" value="4" oninput="document.getElementById('words-val').textContent=this.value">
+        </div>
+        <div class="ctrl-group">
+          <label>SEPARATOR</label>
+          <select id="sep-select" style="background:#0c1118;border:1px solid rgba(0,255,136,.2);color:var(--text);font-family:inherit;font-size:.82rem;padding:.35rem .6rem;border-radius:5px;cursor:pointer;">
+            <option value="-">hyphen  ( - )</option>
+            <option value=".">dot  ( . )</option>
+            <option value="_">underscore  ( _ )</option>
+            <option value=" ">space</option>
+            <option value="">none</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <label>&nbsp;</label>
+          <label class="cb-label"><input type="checkbox" id="cb-capitalize" checked> Capitalize</label>
+        </div>
+        <div class="ctrl-group">
+          <label>&nbsp;</label>
+          <label class="cb-label"><input type="checkbox" id="cb-number"> Add number</label>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="generatePhrase()">📖 Generate Phrase</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔢 Entropy Breakdown</h2>
+      <div id="entropy-info" style="font-size:.85rem;color:var(--muted);line-height:1.7;"></div>
+    </div>
+
+    <div class="card">
+      <h2>📚 About Diceware</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="ic-icon">🎲</div>
+          <h3>How It Works</h3>
+          <p>Roll five dice, map the result to a word in a numbered list. Each word adds ~12.9 bits of entropy (7776 word choices).</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">🧠</div>
+          <h3>Memorability</h3>
+          <p>Random words like "correct-horse-battery-staple" are far easier to remember than "Tr0ub4dor&3" and dramatically stronger.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">📐</div>
+          <h3>5-Word Standard</h3>
+          <p>Five Diceware words (~64 bits) is the minimum recommended for long-term secrets. Six words (~77 bits) for high-value accounts.</p>
+        </div>
+        <div class="info-card">
+          <div class="ic-icon">✅</div>
+          <h3>EFF Word List</h3>
+          <p>This generator uses the EFF Long Wordlist — 7,776 common English words, chosen for clarity and minimal ambiguity.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Best Practices ── -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

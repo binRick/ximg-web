@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Domain Name System — the distributed directory that maps names to addresses">
+  <title>dns.ximg.app</title>
+  <link rel="icon" href="/favicon.png">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:   #080d14;
+      --blue: #38bdf8;
+      --cyan: #22d3ee;
+      --grn:  #4ade80;
+      --yel:  #fbbf24;
+      --red:  #f87171;
+      --purp: #a78bfa;
+      --dim:  #64748b;
+      --text: #e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(56,189,248,.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(56,189,248,.03) 1px,transparent 1px);
+      background-size:40px 40px}
+
+    .glow{position:fixed;border-radius:50%;filter:blur(120px);opacity:.13;pointer-events:none;z-index:0}
+    .glow-1{width:700px;height:700px;background:#0ea5e9;top:-250px;left:-200px}
+    .glow-2{width:500px;height:500px;background:#6d28d9;bottom:-150px;right:-150px}
+
+    .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;width:100%;
+      padding:1.5rem 1rem 3rem;display:flex;flex-direction:column;gap:1.5rem}
+
+    h1{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;
+      background:linear-gradient(135deg,#38bdf8 0%,#22d3ee 40%,#a78bfa 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{font-size:.78rem;color:var(--dim);margin-top:.25rem;letter-spacing:.04em}
+
+    /* ── Tabs ── */
+    .dns-tabs{display:flex;justify-content:center;gap:.4rem;flex-wrap:wrap;
+      border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:.6rem}
+    .dns-tab{font-size:.8rem;padding:.3rem .9rem;border-radius:6px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--dim);
+      font-family:inherit;transition:all .2s}
+    .dns-tab.active{color:var(--blue);border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.07)}
+    .dns-tab:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.15)}
+    .dns-section{display:flex;flex-direction:column;gap:1.3rem}
+    .dns-section
+
+    .sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--blue);margin-bottom:-.2rem}
+
+    /* ── Cards & grids ── */
+    .card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:1.25rem 1.5rem}
+    .card p{font-size:.84rem;line-height:1.75;color:#94a3b8}
+    .card p+p{margin-top:.6rem}
+
+    /* ── Record type grid ── */
+    .rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8rem}
+    .rec-card{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem}
+    .rec-name{font-family:'Courier New',monospace;font-size:.95rem;font-weight:700;color:var(--cyan);margin-bottom:.35rem}
+    .rec-desc{font-size:.8rem;color:#94a3b8;line-height:1.6}
+    .rec-example{font-family:'Courier New',monospace;font-size:.73rem;color:var(--grn);
+      background:rgba(0,0,0,.4);border-radius:6px;padding:.35rem .6rem;margin-top:.5rem;word-break:break-all}
+
+    /* ── Command table ── */
+    .cmd-card{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden}
+    .cmd-row{display:grid;grid-template-columns:minmax(200px,auto) 1fr;
+      border-bottom:1px solid rgba(255,255,255,.05);align-items:start}
+    .cmd-row:last-child{border-bottom:none}
+    .cmd-code{font-family:'Courier New',monospace;font-size:.78rem;padding:.6rem 1rem;
+      color:var(--cyan);background:rgba(0,0,0,.25);border-right:1px solid rgba(255,255,255,.05);
+      word-break:break-all;line-height:1.5}
+    .cmd-code .arg{color:var(--yel)}
+    .cmd-code .flag{color:var(--grn)}
+    .cmd-desc{font-size:.78rem;padding:.6rem 1rem;color:#94a3b8;line-height:1.5}
+
+    /* ── Resolution flow ── */
+    .flow{display:flex;flex-direction:column;gap:.5rem}
+    .flow-step{display:grid;grid-template-columns:2rem 1fr;gap:.75rem;align-items:start}
+    .flow-num{width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:.78rem;font-weight:800;background:rgba(56,189,248,.12);color:var(--blue);
+      border:1px solid rgba(56,189,248,.3);flex-shrink:0;margin-top:.1rem}
+    .flow-body{font-size:.83rem;line-height:1.7;color:#94a3b8}
+    .flow-body strong{color:var(--text)}
+
+    /* ── DNSSEC chain ── */
+    .chain{display:flex;flex-direction:column;gap:.5rem}
+    .chain-item{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.07);
+      border-radius:10px;padding:.8rem 1rem;display:grid;grid-template-columns:auto 1fr;gap:.75rem;align-items:center}
+    .chain-badge{font-family:'Courier New',monospace;font-size:.72rem;font-weight:700;
+      padding:.2rem .5rem;border-radius:5px;white-space:nowrap}
+    .chain-badge.rrsig{background:rgba(167,139,250,.12);color:var(--purp);border:1px solid rgba(167,139,250,.3)}
+    .chain-badge.ds{background:rgba(56,189,248,.1);color:var(--blue);border:1px solid rgba(56,189,248,.3)}
+    .chain-badge.dnskey{background:rgba(34,211,238,.1);color:var(--cyan);border:1px solid rgba(34,211,238,.3)}
+    .chain-badge.nsec{background:rgba(251,191,36,.1);color:var(--yel);border:1px solid rgba(251,191,36,.3)}
+    .chain-text{font-size:.8rem;color:#94a3b8;line-height:1.6}
+
+    /* ── Hierarchy diagram ── */
+    .hier{font-family:'Courier New',monospace;font-size:.8rem;line-height:1.9;
+      background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.07);border-radius:12px;
+      padding:1.2rem 1.5rem;color:#94a3b8}
+    .hier .hl-root{color:var(--blue)}
+    .hier .hl-tld{color:var(--cyan)}
+    .hier .hl-auth{color:var(--grn)}
+    .hier .hl-sub{color:var(--yel)}
+
+    /* ── Fact row ── */
+    .fact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.7rem}
+    .fact{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;
+      padding:.9rem 1rem;text-align:center}
+    .fact-val{font-size:1.3rem;font-weight:800;color:var(--cyan);font-family:'Courier New',monospace}
+    .fact-lbl{font-size:.72rem;color:var(--dim);margin-top:.25rem}
+
+    /* ── SRV warning styles ── */
+    .warn-card{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.25);
+      border-radius:14px;padding:1.25rem 1.5rem}
+    .warn-card p{font-size:.84rem;line-height:1.75;color:#94a3b8}
+    .warn-card p+p{margin-top:.6rem}
+    .warn-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+      color:var(--red);margin-bottom:-.2rem}
+    .srv-field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.7rem}
+    .srv-field{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:.9rem 1rem}
+    .srv-field-name{font-family:'Courier New',monospace;font-size:.85rem;font-weight:700;color:var(--yel);margin-bottom:.3rem}
+    .srv-field-desc{font-size:.78rem;color:#94a3b8;line-height:1.6}
+    .opinion-list{display:flex;flex-direction:column;gap:.5rem}
+    .opinion-item{display:grid;grid-template-columns:1.5rem 1fr;gap:.6rem;align-items:start;
+      font-size:.83rem;line-height:1.7;color:#94a3b8}
+    .opinion-item strong{color:var(--text)}
+    .opinion-x{color:var(--red);font-weight:800;font-size:.9rem;margin-top:.15rem}
+  </style>
+</head>
+<body>
+<div class="dns-tabs">
+    <a class="dns-tab " href="index.html">Overview</a>
+    <a class="dns-tab" href="records.html">Record Types</a>
+    <a class="dns-tab" href="resolution.html">Resolution</a>
+    <a class="dns-tab" href="tools.html">dig / nslookup</a>
+    <a class="dns-tab" href="dnssec.html">DNSSEC</a>
+    <a class="dns-tab" href="srv.html">SRV Records</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/dns') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="records">
+<p class="sec-title">Common Resource Record Types</p>
+    <div class="rec-grid">
+      <div class="rec-card">
+        <div class="rec-name">A</div>
+        <div class="rec-desc">Maps a hostname to an IPv4 address. The most fundamental record type — the end goal of most lookups.</div>
+        <div class="rec-example">ximg.app. 300 IN A 172.238.205.61</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">AAAA</div>
+        <div class="rec-desc">Maps a hostname to an IPv6 address. Named "quad-A" because IPv6 is 4× the size of IPv4.</div>
+        <div class="rec-example">ximg.app. 300 IN AAAA 2a01:7e04::2000:30ff:fed5:d413</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">CNAME</div>
+        <div class="rec-desc">Canonical Name — an alias pointing to another hostname. The resolver follows the chain until it hits an A/AAAA record. Cannot coexist with other records at the same name.</div>
+        <div class="rec-example">www.ximg.app. 3600 IN CNAME ximg.app.</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">MX</div>
+        <div class="rec-desc">Mail Exchanger — designates the mail server(s) for a domain, with a priority value. Lower priority number = higher preference.</div>
+        <div class="rec-example">ximg.app. 3600 IN MX 10 mail.ximg.app.</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">TXT</div>
+        <div class="rec-desc">Free-form text. Used for SPF, DKIM, DMARC email authentication, domain ownership verification (Google, Let's Encrypt), and ACME DNS-01 challenges.</div>
+        <div class="rec-example">ximg.app. 300 IN TXT "v=spf1 mx ~all"</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">NS</div>
+        <div class="rec-desc">Name Server — declares which servers are authoritative for a zone. Every zone must have at least two NS records for redundancy.</div>
+        <div class="rec-example">ximg.app. 86400 IN NS ns1.linode.com.</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">SOA</div>
+        <div class="rec-desc">Start of Authority — one per zone. Contains the primary nameserver, admin email, zone serial, and timing parameters (refresh, retry, expire, minimum TTL).</div>
+        <div class="rec-example">ximg.app. IN SOA ns1.linode.com. admin.ximg.app. 2026040401 3600 900 604800 300</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">PTR</div>
+        <div class="rec-desc">Pointer — reverse DNS. Maps an IP address back to a hostname. Lives under the special <code style="color:var(--yel)">in-addr.arpa.</code> zone. Used by mail servers and logging tools.</div>
+        <div class="rec-example">61.205.238.172.in-addr.arpa. IN PTR ximg.app.</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">SRV</div>
+        <div class="rec-desc">Service record — specifies host and port for a service. Used by SIP, XMPP, Minecraft, and other protocols to advertise endpoints.</div>
+        <div class="rec-example">_sip._tcp.ximg.app. IN SRV 10 20 5060 sip.ximg.app.</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">CAA</div>
+        <div class="rec-desc">Certification Authority Authorization — restricts which CAs may issue TLS certificates for a domain. Prevents misissuance by unauthorized CAs.</div>
+        <div class="rec-example">ximg.app. IN CAA 0 issue "letsencrypt.org"</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">DNSKEY</div>
+        <div class="rec-desc">Holds a public signing key for DNSSEC validation. Zone Signing Keys (ZSK) sign RRsets; Key Signing Keys (KSK) sign ZSKs.</div>
+        <div class="rec-example">ximg.app. IN DNSKEY 257 3 13 &lt;base64-key&gt;</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-name">DS</div>
+        <div class="rec-desc">Delegation Signer — a hash of a child zone's KSK, stored in the parent zone. Creates the chain of trust from parent to child in DNSSEC.</div>
+        <div class="rec-example">ximg.app. IN DS 12345 13 2 &lt;sha256-hash&gt;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Resolution ── -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

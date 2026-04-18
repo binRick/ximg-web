@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The Man Who Invented a Genre">
+  <title>SimCity — simcity.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #020a0f;
+      --bg2:    #061420;
+      --sky:    #38c0ff;
+      --green:  #3ddd6a;
+      --amber:  #ffcc00;
+      --road:   #6b7a8d;
+      --text:   #a8cce0;
+      --dim:    #3a6070;
+      --border: rgba(56,192,255,.1);
+    }
+
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+      pointer-events: none; z-index: 1;
+    }
+
+    /* ── Header ── */
+    .sc-header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(2,20,40,.9) 0%, transparent 100%);
+    }
+    .sc-title {
+      font-size: clamp(1.8rem,6vw,3.5rem);
+      font-weight: 900;
+      letter-spacing: .12em;
+      color: var(--sky);
+      text-shadow: 0 0 30px rgba(56,192,255,.5), 0 0 60px rgba(56,192,255,.2);
+      line-height: 1;
+    }
+    .sc-subtitle {
+      font-size: .72rem;
+      color: var(--dim);
+      letter-spacing: .2em;
+      margin-top: .5rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Sub-nav ── */
+    .sub-nav {
+      position: sticky;
+      top: 44px; z-index: 100;
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .4rem .75rem;
+      background: rgba(2,10,15,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .sc-tab {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .28rem .8rem;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--dim); cursor: pointer; border-radius: 3px;
+      letter-spacing: .1em; transition: all .2s; white-space: nowrap;
+    }
+    .sc-tab:hover { background: rgba(56,192,255,.08); border-color: rgba(56,192,255,.3); color: var(--sky); }
+    .sc-tab.active { background: rgba(56,192,255,.12); border-color: rgba(56,192,255,.5); color: var(--sky); text-shadow: 0 0 8px rgba(56,192,255,.4); }
+
+    /* ── Sections ── */
+    .section { padding: 2rem 1rem 4rem; max-width: 1300px; margin: 0 auto; }
+
+    .section-title {
+      font-size: .85rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--sky); text-transform: uppercase;
+      margin-bottom: 1.5rem; padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+      position: relative;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent, var(--sky)), transparent);
+      opacity: .5;
+    }
+    .card:hover { border-color: rgba(56,192,255,.28); box-shadow: 0 0 24px rgba(56,192,255,.05); }
+
+    /* ── Game card image ── */
+    .card-img-wrap {
+      height: 180px; overflow: hidden;
+      background: #030c14;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0; transition: opacity .5s;
+    }
+    .card-img-wrap img.loaded { opacity: 1; }
+    .card-img-ph {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .5rem;
+    }
+    .card-img-ph .ph-icon { font-size: 2.8rem; opacity: .15; }
+    .card-img-ph .ph-year { font-size: .6rem; letter-spacing: .2em; color: var(--dim); opacity: .6; }
+
+    .card-body { padding: 1.2rem; }
+    .card-name { font-size: 1rem; font-weight: 700; color: #c8e8f8; letter-spacing: .04em; margin-bottom: .45rem; }
+    .card-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+
+    .badge {
+      font-size: .62rem; font-weight: 700; letter-spacing: .08em;
+      padding: .15rem .5rem; border-radius: 2px; border: 1px solid; white-space: nowrap;
+    }
+    .by  { color: var(--amber);  border-color: rgba(255,204,0,.4);   background: rgba(255,204,0,.07); }
+    .bw  { color: #9be8d0;       border-color: rgba(155,232,208,.3); background: rgba(155,232,208,.05); }
+    .bp  { color: #c890ff;       border-color: rgba(200,144,255,.3); background: rgba(200,144,255,.05); }
+    .bg  { color: var(--green);  border-color: rgba(61,221,106,.35); background: rgba(61,221,106,.06); }
+    .br  { color: #7090a0;       border-color: rgba(112,144,160,.3); background: transparent; font-weight: 400; font-style: italic; }
+    .bx  { color: #ff6677;       border-color: rgba(255,102,119,.35); background: rgba(255,102,119,.06); }
+
+    .card-desc { font-size: .78rem; line-height: 1.7; color: #5a8898; }
+    .card-desc p { margin-bottom: .5rem; }
+    .card-desc p:last-child { margin-bottom: 0; }
+
+    .card-feats { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid rgba(255,255,255,.05); }
+    .card-feats ul { list-style: none; }
+    .card-feats li { font-size: .72rem; color: #4a7080; padding: .15rem 0 .15rem .85rem; position: relative; }
+    .card-feats li::before { content: '▸'; position: absolute; left: 0; color: var(--sky); opacity: .4; }
+
+    /* ── Timeline divider ── */
+    .era {
+      grid-column: 1/-1;
+      font-size: .66rem; font-weight: 700; letter-spacing: .2em;
+      color: var(--dim); text-transform: uppercase;
+      padding: .25rem 0; margin-top: .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .era:first-child { margin-top: 0; }
+
+    /* ── Lore / article layout ── */
+    .article-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+    @media(max-width: 500px) { .article-grid { grid-template-columns: 1fr; } }
+
+    .art-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.5rem;
+    }
+    .art-card.wide { grid-column: span 2; }
+    @media(max-width: 900px) { .art-card.wide { grid-column: span 1; } }
+
+    .art-card h2 { font-size: 1rem; font-weight: 700; color: var(--sky); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .2rem; }
+    .art-card .asub { font-size: .64rem; color: var(--dim); letter-spacing: .15em; margin-bottom: .9rem; text-transform: uppercase; }
+    .art-card p { font-size: .78rem; line-height: 1.72; color: #5a8898; margin-bottom: .7rem; }
+    .art-card p:last-child { margin-bottom: 0; }
+    .art-card h3 { font-size: .75rem; font-weight: 700; color: #8ac8e0; letter-spacing: .08em; margin: 1rem 0 .3rem; text-transform: uppercase; }
+    .hi { color: #b0ddf0; font-style: italic; }
+
+    /* ── Screenshot gallery ── */
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+      margin-top: .9rem;
+    }
+    .screenshot-grid a { display: block; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+    .screenshot-grid img {
+      width: 100%; height: 140px; object-fit: cover;
+      display: block; opacity: 0; transition: opacity .4s;
+    }
+    .screenshot-grid img.loaded { opacity: 1; }
+    @media (max-width: 600px) { .screenshot-grid { grid-template-columns: 1fr; } }
+
+    /* ── Wright portrait ── */
+    .wright-portrait {
+      float: right;
+      margin: 0 0 1.2rem 1.4rem;
+      width: clamp(140px, 28%, 220px);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 0 24px rgba(56,192,255,.08);
+    }
+    .wright-portrait img {
+      width: 100%; display: block;
+      opacity: 0; transition: opacity .5s;
+    }
+    .wright-portrait img.loaded { opacity: 1; }
+    .wright-portrait figcaption {
+      font-size: .6rem; letter-spacing: .1em; color: var(--dim);
+      text-align: center; padding: .35rem .5rem;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,.3);
+    }
+
+    /* ── History timeline ── */
+    .tl { position: relative; display: flex; flex-direction: column; gap: 0; max-width: 780px; }
+    .tl::before { content: ''; position: absolute; left: 58px; top: 8px; bottom: 8px; width: 2px;
+      background: linear-gradient(to bottom, transparent, rgba(56,192,255,.35) 8%, rgba(56,192,255,.35) 92%, transparent); }
+    .tl-item { display: flex; gap: 1rem; padding: .85rem 0; align-items: flex-start; }
+    .tl-year { font-family: 'Courier New', monospace; font-size: .78rem; font-weight: 700;
+      color: var(--sky); min-width: 44px; text-align: right; padding-top: .18rem; flex-shrink: 0; }
+    .tl-dot-wrap { width: 28px; display: flex; justify-content: center; padding-top: .24rem;
+      flex-shrink: 0; position: relative; z-index: 1; }
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sky);
+      box-shadow: 0 0 8px rgba(56,192,255,.7); flex-shrink: 0; }
+    .tl-dot.minor { width: 7px; height: 7px; background: #2a8ab0; box-shadow: 0 0 5px rgba(42,138,176,.5); }
+    .tl-body { flex: 1; }
+    .tl-title { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+    .tl-desc { font-size: .74rem; color: var(--dim); line-height: 1.6; }
+    .tl-tag { display: inline-block; font-size: .62rem; font-weight: 700; padding: .1rem .42rem;
+      border-radius: 2px; margin-left: .4rem; vertical-align: middle; letter-spacing: .06em; }
+    .tag-release { background: rgba(56,192,255,.1); color: var(--sky); border: 1px solid rgba(56,192,255,.3); }
+    .tag-company { background: rgba(255,204,0,.1); color: var(--amber); border: 1px solid rgba(255,204,0,.3); }
+    .tag-milestone { background: rgba(61,221,106,.1); color: var(--green); border: 1px solid rgba(61,221,106,.3); }
+    .tag-bad { background: rgba(255,102,119,.1); color: #ff6677; border: 1px solid rgba(255,102,119,.3); }
+
+    /* ── Comparison table ── */
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .73rem; margin-top: .8rem; }
+    .cmp-table th { text-align: left; padding: .4rem .6rem; font-size: .62rem; letter-spacing: .12em; color: var(--dim); border-bottom: 1px solid var(--border); }
+    .cmp-table td { padding: .4rem .6rem; border-bottom: 1px solid rgba(255,255,255,.04); color: #5a8898; vertical-align: top; }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table td:first-child { color: #8ac8e0; font-weight: 700; white-space: nowrap; }
+    .cmp-table .yes { color: var(--green); }
+    .cmp-table .no  { color: #ff6677; }
+  </style>
+</head>
+<body>
+<div class="sub-nav">
+    <a class="sc-tab " href="index.html">GAMES</a>
+    <a class="sc-tab" href="wright.html">WILL WRIGHT</a>
+    <a class="sc-tab" href="skylines.html">CITIES: SKYLINES</a>
+    <a class="sc-tab" href="history.html">HISTORY</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/simcity') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="skylines">
+<div class="section-title">Cities: Skylines — The Heir</div>
+    <div class="article-grid">
+
+      <div class="art-card wide">
+        <h2>The Game SimCity Should Have Been</h2>
+        <div class="asub">Colossal Order · Paradox Interactive · Released March 10, 2015</div>
+        <p>When SimCity 2013 launched in ruins — plagued by mandatory online connectivity, collapsed servers, and city sizes a fraction of SimCity 4's — the city-building genre had no home. Maxis had squandered its goodwill. EA had no credible path to redemption. Into that vacuum, a 14-person Finnish studio named Colossal Order shipped Cities: Skylines for $30, and the genre found its new standard-bearer overnight.</p>
+        <p>Within a week, Skylines had sold a million copies. Within a month, it had surpassed SimCity 2013's total lifetime sales. The community that had waited years for a worthy successor to SimCity 4 had found it. <span class="hi">Cities: Skylines didn't just fill the void left by SimCity — it made SimCity feel like a historical footnote.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>What Skylines Got Right</h2>
+        <div class="asub">The Lessons of SimCity's Failure, Applied</div>
+        <p>Colossal Order studied SimCity 4's community exhaustively before building Skylines. They knew what the hardcore audience wanted: large maps, real traffic simulation, mod support, and no online requirement. They delivered all four on launch day.</p>
+        <h3>Scale</h3>
+        <p>Where SimCity 2013 offered city tiles roughly 2km × 2km, Skylines launched with maps up to 36km². A single fully unlocked map in Skylines is larger than all of SimCity 2013's regions combined. The scale difference wasn't incremental — it was a statement about design philosophy.</p>
+        <h3>Traffic</h3>
+        <p>Skylines models individual vehicles traveling on real paths to real destinations. The traffic simulation is sophisticated enough that real urban planners have used the game to prototype intersection designs and study traffic flow. Road hierarchy, roundabouts, grade separation — Skylines rewards genuine urban planning knowledge in a way no SimCity ever did.</p>
+        <h3>Modding</h3>
+        <p>Steam Workshop integration at launch meant the modding community could build on Skylines immediately. Within months, mods had added features that surpassed the base game. <span class="hi">The modding ecosystem became the game's greatest feature — a multiplier on Colossal Order's own work that no single studio could replicate alone.</span></p>
+      </div>
+
+      <div class="art-card">
+        <h2>The Expansion Record</h2>
+        <div class="asub">Ten Years of DLC — Building the Complete City Sim</div>
+        <p>Cities: Skylines has received more than twenty expansions since 2015, each adding a major new system to the game. After Dark added a day/night cycle and tourism-specific zones. Snowfall introduced seasonal weather and heating infrastructure. Mass Transit overhauled public transport with ferries, blimps, cable cars, and monorails. Industries added detailed production chains from raw resources to consumer goods. Campus, Green Cities, Parklife, and Natural Disasters each introduced complete new subsystems.</p>
+        <p>The cumulative result — base game plus expansions — is the most detailed city simulation ever shipped. No single system is modeled at the depth of a dedicated simulator, but the breadth and integration of systems produces emergent complexity that rivals anything in the genre's history.</p>
+        <h3>Cities: Skylines II</h3>
+        <p>The sequel launched in October 2023 to a mixed reception — performance issues and missing features at launch disappointed a community with high expectations. The development team has been transparent about the challenges and committed to a long roadmap of fixes and additions. The situation echoes, ironically, SimCity 2013's troubled launch — a reminder that even the successor to the genre is not immune to the pressures that felled the original.</p>
+      </div>
+
+      <div class="art-card">
+        <h2>SimCity vs. Cities: Skylines</h2>
+        <div class="asub">A Direct Comparison</div>
+        <table class="cmp-table">
+          <tr>
+            <th>Feature</th>
+            <th>SimCity (2013)</th>
+            <th>Cities: Skylines</th>
+          </tr>
+          <tr><td>City size</td><td class="no">~2 km²</td><td class="yes">Up to 36 km²</td></tr>
+          <tr><td>Offline play</td><td class="no">No (DRM)</td><td class="yes">Yes, always</td></tr>
+          <tr><td>Traffic simulation</td><td>Agent-based</td><td class="yes">Agent-based + planning depth</td></tr>
+          <tr><td>Mod support</td><td class="no">Limited</td><td class="yes">Full Steam Workshop</td></tr>
+          <tr><td>Map editor</td><td class="no">No</td><td class="yes">Full terrain editor</td></tr>
+          <tr><td>Multiplayer</td><td>Regions (unstable)</td><td>No (by design)</td></tr>
+          <tr><td>Launch price</td><td>$60</td><td class="yes">$30</td></tr>
+          <tr><td>Launch stability</td><td class="no">Server failure</td><td class="yes">Stable</td></tr>
+          <tr><td>Active community</td><td class="no">Abandoned</td><td class="yes">Thriving</td></tr>
+        </table>
+      </div>
+
+      <div class="art-card">
+        <h2>The Spiritual Inheritance</h2>
+        <div class="asub">What Skylines Owes to Wright's Vision</div>
+        <p>Colossal Order has always been explicit about their debt to SimCity. The core design language — zone, build infrastructure, watch the city develop, react to problems — is pure Will Wright. The satisfaction of Skylines is the satisfaction Wright identified in 1989: <span class="hi">the pleasure of understanding a complex system well enough to make it thrive.</span></p>
+        <p>Where Skylines diverges is in depth and fidelity. Wright's games were toys — accessible, forgiving, focused on the pleasure of the system rather than mastery of it. Skylines trends harder toward simulation, rewarding genuine urban planning knowledge and penalizing poor road design in ways that Wright deliberately avoided. Both approaches are valid. They serve different players.</p>
+        <h3>The Succession Question</h3>
+        <p>Whether Cities: Skylines is SimCity's "successor" depends on what you think SimCity was. If SimCity was a simulation of urban systems, Skylines is the successor — it simulates more, better, at greater scale. If SimCity was Will Wright's software toy philosophy applied to cities — a creative sandbox with no wrong answers — then Skylines is something adjacent but distinct: it has opinions about good urban design, and it enforces them through its traffic simulation.</p>
+        <p>The truth is probably that Skylines is the closest thing to a new SimCity that the market has produced, and that it carries the torch with far more care and competence than EA ever showed after Wright left. <span class="hi">If Wright's original dream was a city simulation that respected the player's intelligence and gave them real tools, Cities: Skylines is the most complete realization of that dream yet built.</span></p>
+      </div>
+
+      <div class="art-card wide">
+        <h2>Gameplay Screenshots</h2>
+        <div class="asub">Cities: Skylines — Colossal Order / Paradox Interactive</div>
+        <div class="screenshot-grid">
+          <a href="images/skylines-gameplay1.jpg" target="_blank">
+            <img src="images/skylines-gameplay1.jpg" alt="Cities: Skylines gameplay" onload="this.classList.add('loaded')" loading="lazy" decoding="async">
+          </a>
+          <a href="images/skylines-gameplay2.jpg" target="_blank">
+            <img src="images/skylines-gameplay2.jpg" alt="Cities: Skylines city view" onload="this.classList.add('loaded')" loading="lazy" decoding="async">
+          </a>
+          <a href="images/skylines-gameplay3.jpg" target="_blank">
+            <img src="images/skylines-gameplay3.jpg" alt="Cities: Skylines road network" onload="this.classList.add('loaded')" loading="lazy" decoding="async">
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════
+       HISTORY
+  ══════════════════════════════════════════════ -->
+</section>
+<script src="/shared/nav.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Particle Simulation — click canvas to add particles">
+  <title>Physics Sandbox — ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #02020f;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding-top: 44px;
+      min-height: 100vh;
+    }
+
+    .page-header {
+      background: #070720;
+      border-bottom: 1px solid #1e293b;
+      padding: 18px 24px 14px;
+    }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #22c55e; }
+    .page-header p  { font-size: 0.82rem; color: #64748b; margin-top: 3px; }
+
+    .tab-nav {
+      display: flex;
+      justify-content: center;
+      background: #070720;
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
+      top: 44px;
+      z-index: 10;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 11px 22px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #64748b;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: #cbd5e1; }
+    .tab-btn.active { color: #22c55e; border-bottom-color: #22c55e; }
+
+    .tab-pane { display: none; padding: 20px; }
+    .tab-pane.active { display: block; }
+
+    .sim-layout {
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 16px;
+    }
+    .canvas-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .canvas-card h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #22c55e;
+      margin-bottom: 10px;
+    }
+    .controls-card {
+      background: #070720;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .controls-card h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #eab308;
+      margin-bottom: 2px;
+    }
+
+    .ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+    .ctrl-row { display: flex; flex-direction: column; gap: 3px; }
+    .ctrl-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .ctrl-val { color: #22c55e; font-weight: 600; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #22c55e;
+      cursor: pointer;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border: 1px solid #1e293b;
+      border-radius: 5px;
+      background: #0f172a;
+      color: #94a3b8;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.8rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn:hover { border-color: #22c55e; color: #22c55e; }
+    .btn.active-btn { border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.08); }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .info-badge {
+      font-size: 0.76rem;
+      color: #64748b;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 4px;
+      padding: 6px 10px;
+    }
+    .info-badge span { color: #22c55e; font-weight: 600; }
+
+    canvas { display: block; cursor: crosshair; }
+
+    /* Waves */
+    #waves-controls input[type=number] {
+      width: 60px; padding: 4px 6px;
+      background: #0f172a; border: 1px solid #1e293b;
+      color: #e2e8f0; border-radius: 4px;
+      font-family: inherit; font-size: 0.82rem;
+    }
+
+    /* Collisions */
+    .ball-config {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .ball-config h3 { font-size: 0.78rem; color: #eab308; margin-bottom: 8px; }
+
+    @media (max-width: 860px) {
+      .sim-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<nav class="tab-nav">
+  <a class="tab-btn " href="index.html">Particles</a>
+  <a class="tab-btn" href="waves.html">Waves</a>
+  <a class="tab-btn" href="collisions.html">Collisions</a>
+  <a class="tab-btn" href="springs.html">Springs</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/sandbox') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="springs">
+<div class="sim-layout">
+    <div class="canvas-card">
+      <h2>Spring-Mass Oscillator — drag the mass</h2>
+      <canvas id="spring-canvas"></canvas>
+    </div>
+    <div class="controls-card">
+      <h2>Parameters</h2>
+      <div class="ctrl-group">
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>Spring Constant k</span><span class="ctrl-val" id="sk-val">40</span></div>
+          <input type="range" id="sk" min="5" max="200" step="5" value="40">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>Mass m (kg)</span><span class="ctrl-val" id="sm-val">1.0</span></div>
+          <input type="range" id="sm" min="0.1" max="5" step="0.1" value="1.0">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>Damping b</span><span class="ctrl-val" id="sd-val">0.3</span></div>
+          <input type="range" id="sd" min="0" max="3" step="0.05" value="0.3">
+        </div>
+      </div>
+      <div class="info-badge" style="line-height:1.6; font-size:0.74rem">
+        <div>Position: <span id="sp-pos" style="color:#22c55e">0.00</span> m</div>
+        <div>Velocity: <span id="sp-vel" style="color:#eab308">0.00</span> m/s</div>
+        <div>Period:   <span id="sp-period" style="color:#a78bfa">—</span> s</div>
+      </div>
+      <div class="info-badge" style="font-size:0.72rem;color:#475569">Phase diagram updates in real-time on canvas right panel</div>
+    </div>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

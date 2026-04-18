@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Picker, palette generator, contrast checker &amp; gradient builder — HEX, RGB, HSL, HSV, OKLCH">
+  <title>Color Tools — color.ximg.app</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#02020f;--card:#070720;--border:#1e293b;
+      --text:#e2e8f0;--muted:#64748b;--dim:#475569;
+      --pink:#ec4899;--purple:#8b5cf6;
+      --accent:var(--pink);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;padding-top:44px}
+    a{color:var(--pink);text-decoration:none}
+
+    /* ── sticky subnav ── */
+    .subnav{position:sticky;top:44px;z-index:100;background:rgba(2,2,15,.92);
+      backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+      display:flex;justify-content:center;gap:.25rem;padding:.4rem .75rem;overflow-x:auto}
+    .subnav::-webkit-scrollbar{display:none}
+    .tab-btn{background:none;border:1px solid transparent;border-radius:6px;
+      color:var(--muted);font-family:inherit;font-size:.78rem;font-weight:600;
+      padding:.3rem .75rem;cursor:pointer;white-space:nowrap;transition:all .15s}
+    .tab-btn:hover{color:var(--text);border-color:var(--border)}
+    .tab-btn.active{color:var(--pink);border-color:rgba(236,72,153,.4);background:rgba(236,72,153,.07)}
+
+    /* ── layout ── */
+    .page{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:1.5rem 1rem 3rem}
+    h1{font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+    .subtitle{font-size:.8rem;color:var(--muted);margin-bottom:1.5rem}
+
+    /* ── card ── */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.4rem;font-weight:600}
+
+    /* ── grid layouts ── */
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+    @media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+
+    /* ── inputs ── */
+    input[type=text],input[type=number]{
+      background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.85rem;padding:.45rem .7rem;
+      outline:none;width:100%;transition:border-color .15s}
+    input[type=text]:focus,input[type=number]:focus{border-color:var(--pink)}
+    input[type=range]{width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;
+      -webkit-appearance:none;appearance:none;background:var(--border)}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+      border-radius:50%;background:#fff;cursor:pointer;border:2px solid var(--bg)}
+    input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+      background:#fff;cursor:pointer;border:2px solid var(--bg)}
+
+    /* ── buttons ── */
+    .btn{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;
+      color:var(--text);font-family:inherit;font-size:.78rem;padding:.35rem .8rem;
+      cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
+    .btn.active{background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.4);color:var(--pink)}
+    .btn.copied,.btn.success{color:#22c55e;border-color:rgba(34,197,94,.4)}
+
+    /* ── picker canvas ── */
+    #picker-canvas{border-radius:8px;cursor:crosshair;display:block;border:1px solid var(--border)}
+    .hue-wrap{margin:.6rem 0}
+    .sl-label{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:.2rem}
+
+    /* ── preview swatch ── */
+    .preview-swatch{width:100%;height:130px;border-radius:8px;border:1px solid var(--border);
+      margin-bottom:.75rem;transition:background .1s}
+
+    /* ── format boxes ── */
+    .fmt-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.6rem}
+    .fmt-box{background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      padding:.45rem .65rem;display:flex;justify-content:space-between;align-items:center;
+      cursor:pointer;transition:border-color .15s}
+    .fmt-box:hover{border-color:var(--pink)}
+    .fmt-key{font-size:.68rem;color:var(--muted)}
+    .fmt-val{font-size:.78rem;color:var(--text);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fmt-copied{border-color:rgba(34,197,94,.5)!important}
+
+    /* ── harmony swatches (small) ── */
+    .harmony-row{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
+    .h-swatch{width:36px;height:36px;border-radius:6px;border:1px solid rgba(255,255,255,.1);
+      cursor:pointer;transition:transform .1s;flex-shrink:0}
+    .h-swatch:hover{transform:scale(1.12)}
+    .h-label{font-size:.65rem;color:var(--muted);margin-bottom:.15rem}
+
+    /* ── Tab 2 palette ── */
+    .palette-btns{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1rem}
+    .palette-row{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+    .pal-swatch{flex:1;min-width:70px;height:90px;border-radius:8px;border:1px solid rgba(255,255,255,.1);
+      cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:.3rem;
+      transition:transform .12s;position:relative}
+    .pal-swatch:hover{transform:translateY(-3px)}
+    .pal-hex{font-size:.65rem;background:rgba(0,0,0,.6);color:#fff;padding:.1rem .3rem;
+      border-radius:3px;text-align:center}
+    .export-box{background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      padding:.75rem 1rem;font-size:.78rem;color:#7dd3fc;white-space:pre;overflow-x:auto;margin-top:.5rem}
+
+    /* ── Tab 3 contrast ── */
+    .contrast-preview-box{border-radius:10px;padding:1.5rem;min-height:110px;
+      display:flex;flex-direction:column;gap:.6rem;border:1px solid var(--border);margin-bottom:1rem}
+    .prev-xl{font-size:1.6rem;font-weight:700}
+    .prev-lg{font-size:1rem}
+    .prev-sm{font-size:.8rem}
+
+    .score-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem;margin-bottom:1rem}
+    .score-box{background:var(--card);border:1px solid var(--border);border-radius:8px;
+      padding:.75rem;text-align:center}
+    .score-num{font-size:1.4rem;font-weight:700;margin-bottom:.2rem}
+    .score-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em}
+    .score-sub{font-size:.67rem;color:var(--muted);margin-top:.15rem}
+    .pass{color:#22c55e}.fail{color:#ef4444}
+
+    .alt-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem}
+    .alt-swatch{width:32px;height:32px;border-radius:5px;cursor:pointer;
+      border:1px solid rgba(255,255,255,.1);transition:transform .1s}
+    .alt-swatch:hover{transform:scale(1.1)}
+
+    /* ── Tab 4 gradients ── */
+    .gradient-preview{width:100%;height:110px;border-radius:10px;border:1px solid var(--border);
+      margin-bottom:.75rem;transition:background .15s}
+    .grad-stops{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;align-items:center}
+    .stop-swatch{width:38px;height:38px;border-radius:6px;border:2px solid var(--border);
+      cursor:pointer;position:relative;flex-shrink:0;transition:border-color .15s}
+    .stop-swatch.selected{border-color:var(--pink)}
+    .stop-del{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;
+      background:#ef4444;color:#fff;font-size:.6rem;display:flex;align-items:center;
+      justify-content:center;cursor:pointer;line-height:1}
+    .stop-add{background:rgba(255,255,255,.05);border:1px dashed var(--border);border-radius:6px;
+      width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      color:var(--muted);font-size:1.1rem;transition:all .15s}
+    .stop-add:hover{border-color:var(--pink);color:var(--pink)}
+
+    .grad-types{display:flex;gap:.35rem;margin-bottom:.75rem}
+    .angle-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;font-size:.8rem;color:var(--muted)}
+
+    .css-output{background:#0b0b1e;border:1px solid var(--border);border-radius:6px;
+      padding:.75rem 1rem;font-size:.8rem;color:#7dd3fc;word-break:break-all;margin-bottom:.75rem}
+
+    .presets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;margin-top:1rem}
+    .preset{height:56px;border-radius:7px;cursor:pointer;border:1px solid var(--border);
+      display:flex;align-items:flex-end;padding:.3rem .5rem;font-size:.65rem;color:#fff;
+      text-shadow:0 1px 2px rgba(0,0,0,.8);transition:transform .12s}
+    .preset:hover{transform:scale(1.04)}
+
+    .color-input-row{display:grid;grid-template-columns:auto 1fr;gap:.5rem;align-items:center;margin-bottom:.5rem}
+    .color-dot{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+    .swatch-med{width:100%;height:50px;border-radius:6px;margin-bottom:.4rem;border:1px solid var(--border)}
+  </style>
+</head>
+<body>
+<nav class="subnav">
+  <a class="tab-btn " href="index.html">Picker</a>
+  <a class="tab-btn" href="palette.html">Palette</a>
+  <a class="tab-btn" href="contrast.html">Contrast</a>
+  <a class="tab-btn" href="gradients.html">Gradients</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/color') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="gradients">
+<div class="card" style="margin-bottom:1rem">
+      <div class="lbl">Gradient Preview</div>
+      <div class="gradient-preview" id="grad-preview"></div>
+      <div class="lbl">Type</div>
+      <div class="grad-types">
+        <button class="btn active" data-gtype="linear">Linear</button>
+        <button class="btn" data-gtype="radial">Radial</button>
+      </div>
+      <div class="angle-row" id="angle-row">
+        <span>Angle</span>
+        <input type="range" id="grad-angle" min="0" max="360" value="135" style="flex:1">
+        <span id="angle-disp" style="color:var(--text);min-width:3rem">135°</span>
+      </div>
+      <div class="lbl">Color Stops <span style="font-size:.65rem;color:var(--muted)">(click to select, then use hue/sat/lit sliders below)</span></div>
+      <div class="grad-stops" id="grad-stops"></div>
+      <div class="hue-wrap" style="margin-top:.5rem">
+        <div class="sl-label"><span>Stop Hue</span><span id="gs-h-disp">135°</span></div>
+        <input type="range" id="gs-h" min="0" max="359" value="135"
+          style="background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red)">
+      </div>
+      <div class="hue-wrap">
+        <div class="sl-label"><span>Stop Saturation</span><span id="gs-s-disp">70%</span></div>
+        <input type="range" id="gs-s" min="0" max="100" value="70">
+      </div>
+      <div class="hue-wrap">
+        <div class="sl-label"><span>Stop Lightness</span><span id="gs-l-disp">55%</span></div>
+        <input type="range" id="gs-l" min="0" max="100" value="55">
+      </div>
+    </div>
+    <div class="lbl">CSS Output</div>
+    <div class="css-output" id="grad-css"></div>
+    <div style="display:flex;gap:.4rem;margin-bottom:1.5rem">
+      <button class="btn" id="grad-copy-btn">Copy CSS</button>
+    </div>
+    <div class="lbl">Preset Galleries</div>
+    <div class="presets-grid" id="presets-grid"></div>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

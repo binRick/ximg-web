@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The Agent Loop — Step by Step">
+  <title>AI Agent Loops — ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #02020f; --card: #070720; --border: #1e293b;
+      --accent: #8b5cf6; --pink: #ec4899; --text: #e2e8f0;
+      --muted: #64748b; --green: #10b981; --blue: #3b82f6; --yellow: #f59e0b;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding-top: 44px; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: .3rem; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+    .tab-nav { display: flex; gap: .5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .tab-btn { padding: .5rem 1.1rem; font-size: .85rem; font-weight: 600; cursor: pointer; background: none; border: none; color: var(--muted); border-bottom: 2px solid transparent; transition: all .18s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .card + .card { margin-top: 1rem; }
+    .section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .75rem; }
+    .info-box { background: rgba(139,92,246,.07); border: 1px solid rgba(139,92,246,.2); border-radius: 8px; padding: 1rem; font-size: .87rem; line-height: 1.7; margin-top: 1rem; }
+    .info-box strong { color: var(--accent); }
+    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1.2rem; border-radius: 7px; font-size: .85rem; font-weight: 600; cursor: pointer; border: 1px solid; transition: all .18s; background: none; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .btn-primary:hover { background: #7c3aed; }
+    .btn-ghost { border-color: var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Agent Loop tab ── */
+    .loop-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .loop-wrapper { grid-template-columns: 1fr; } }
+
+    /* Flowchart */
+    .flowchart { position: relative; }
+    .flow-node {
+      border: 2px solid var(--border); border-radius: 10px; padding: .7rem 1rem;
+      text-align: center; font-weight: 600; font-size: .88rem; margin: .4rem 0;
+      transition: border-color .3s, background .3s, box-shadow .3s; position: relative;
+    }
+    .flow-node.active {
+      border-color: var(--accent); background: rgba(139,92,246,.15);
+      box-shadow: 0 0 18px rgba(139,92,246,.35);
+    }
+    .flow-node.done { border-color: var(--green); background: rgba(16,185,129,.1); }
+    .flow-arrow { text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.4; margin: .1rem 0; }
+    .flow-diamond {
+      width: 120px; height: 50px; transform: rotate(45deg); margin: .5rem auto;
+      border: 2px solid var(--border); border-radius: 4px;
+      display: flex; align-items: center; justify-content: center; position: relative;
+      transition: border-color .3s, background .3s, box-shadow .3s;
+    }
+    .flow-diamond.active { border-color: var(--pink); background: rgba(236,72,153,.15); box-shadow: 0 0 18px rgba(236,72,153,.3); }
+    .flow-diamond-inner { transform: rotate(-45deg); font-size: .75rem; font-weight: 700; text-align: center; line-height: 1.3; color: var(--muted); }
+    .flow-diamond.active .flow-diamond-inner { color: var(--pink); }
+
+    /* Step log */
+    .step-log { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: .75rem; height: 360px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: .82rem; }
+    .log-entry { padding: .25rem .4rem; border-radius: 4px; margin: .15rem 0; opacity: 0; transform: translateY(4px); transition: opacity .3s, transform .3s; }
+    .log-entry.visible { opacity: 1; transform: none; }
+    .log-entry.user { color: var(--blue); }
+    .log-entry.llm { color: var(--accent); }
+    .log-entry.tool { color: var(--yellow); }
+    .log-entry.result { color: var(--green); }
+    .log-entry.done { color: var(--pink); }
+    .log-entry.sys { color: var(--muted); }
+
+    /* ── Tool Use tab ── */
+    .tool-scenario { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 700px) { .tool-scenario { grid-template-columns: 1fr; } }
+    .message-thread { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: .75rem; min-height: 300px; }
+    .msg { padding: .5rem .75rem; border-radius: 7px; margin: .4rem 0; font-size: .83rem; line-height: 1.6; transition: opacity .3s, transform .3s; opacity: 0; transform: translateY(6px); }
+    .msg.visible { opacity: 1; transform: none; }
+    .msg.user-msg { background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.2); }
+    .msg.assistant-msg { background: rgba(139,92,246,.1); border: 1px solid rgba(139,92,246,.2); }
+    .msg.tool-call-msg { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); font-family: 'Courier New', monospace; }
+    .msg.tool-result-msg { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.2); font-family: 'Courier New', monospace; }
+    .msg-role { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .3rem; }
+    .msg-role.user { color: var(--blue); }
+    .msg-role.assistant { color: var(--accent); }
+    .msg-role.tool { color: var(--yellow); }
+    .msg-role.result { color: var(--green); }
+
+    .tool-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .5rem; }
+    .tool-card { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: .75rem; font-size: .82rem; transition: border-color .3s; }
+    .tool-card.active { border-color: var(--yellow); background: rgba(245,158,11,.07); }
+    .tool-card .tool-name { font-weight: 700; color: var(--yellow); margin-bottom: .25rem; }
+    .tool-card p { color: var(--muted); font-size: .78rem; }
+    .task-selector { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+
+    /* ── Memory tab ── */
+    .memory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .memory-card { border-radius: 10px; padding: 1rem; border: 1px solid; position: relative; overflow: hidden; }
+    .memory-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .memory-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+    .memory-card p { font-size: .82rem; line-height: 1.6; margin-bottom: .6rem; }
+    .memory-card .example { font-family: 'Courier New', monospace; font-size: .78rem; padding: .5rem; border-radius: 5px; }
+
+    .memory-diagram { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 1rem 0; }
+    .mem-box { display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-radius: 8px; border: 1px solid; font-size: .82rem; font-weight: 600; min-width: 240px; }
+    .mem-arrow { font-size: 1.2rem; color: var(--muted); }
+
+    /* ── Multi-agent tab ── */
+    .agent-canvas-wrapper { position: relative; }
+    #agent-canvas { width: 100%; border-radius: 8px; background: #0a0a20; display: block; border: 1px solid var(--border); }
+    .multi-log { background: #0a0a20; border: 1px solid var(--border); border-radius: 8px; padding: .75rem; max-height: 200px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: .8rem; margin-top: 1rem; }
+    .mlog-entry { padding: .15rem .3rem; margin: .1rem 0; border-radius: 3px; }
+
+    /* ── Hardware tab ── */
+    .hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .hw-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .18s, transform .18s; }
+    .hw-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .hw-card img { width: 100%; height: 200px; object-fit: cover; display: block; transition: filter .3s; }
+    .hw-card img:hover { filter: brightness(1.1); }
+    .hw-card-body { padding: .75rem 1rem; }
+    .hw-card-title { font-size: .9rem; font-weight: 700; color: var(--accent); margin-bottom: .2rem; }
+    .hw-card-desc { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="tab-nav">
+    <a class="tab-btn " href="index.html">Agent Loop</a>
+    <a class="tab-btn" href="tools.html">Tool Use</a>
+    <a class="tab-btn" href="memory.html">Memory Types</a>
+    <a class="tab-btn" href="multiagent.html">Multi-Agent</a>
+    <a class="tab-btn" href="hardware.html">Hardware</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/agents') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="hardware">
+<div class="card" style="margin-bottom:1rem;">
+      <div class="section-title">AI Compute Infrastructure</div>
+      <p style="font-size:.88rem;color:var(--muted);line-height:1.7;">Behind every agent loop is a stack of physical hardware — GPUs, memory, interconnects, and power. Modern AI agents run on purpose-built data centers with thousands of accelerator chips working in parallel.</p>
+    </div>
+    <div class="hw-grid">
+      <div class="hw-card">
+        <img src="images/data_center.jpg" alt="Summit Supercomputer data center" loading="lazy" decoding="async">
+        <div class="hw-card-body">
+          <div class="hw-card-title">Data Center</div>
+          <div class="hw-card-desc">Modern AI data centers house thousands of GPU/TPU nodes. Summit at ORNL delivers 200+ petaflops — the kind of scale needed to train and serve large language models.</div>
+        </div>
+      </div>
+      <div class="hw-card">
+        <img src="images/supercomputer.jpg" alt="Mira Blue Gene supercomputer" loading="lazy" decoding="async">
+        <div class="hw-card-body">
+          <div class="hw-card-title">Supercomputer</div>
+          <div class="hw-card-desc">IBM Blue Gene/Q "Mira" at Argonne. Massively parallel architectures like this pioneered the distributed compute patterns that underpin large-scale model training.</div>
+        </div>
+      </div>
+      <div class="hw-card">
+        <img src="images/server_rack.jpg" alt="Server rack technician" loading="lazy" decoding="async">
+        <div class="hw-card-body">
+          <div class="hw-card-title">Server Infrastructure</div>
+          <div class="hw-card-desc">Dense server racks provide the memory bandwidth and storage I/O required for serving LLMs. Inference clusters handle millions of agent requests per day.</div>
+        </div>
+      </div>
+      <div class="hw-card">
+        <img src="images/robot_arm.jpg" alt="KUKA industrial robot arm" loading="lazy" decoding="async">
+        <div class="hw-card-body">
+          <div class="hw-card-title">Robotic Agents</div>
+          <div class="hw-card-desc">AI agents are not limited to software — robotic systems like this KUKA arm use agent loop principles: perceive, reason, act. Tool use in the physical world.</div>
+        </div>
+      </div>
+      <div class="hw-card">
+        <img src="images/circuit_board.jpg" alt="PCB circuit board" loading="lazy" decoding="async">
+        <div class="hw-card-body">
+          <div class="hw-card-title">Silicon Foundation</div>
+          <div class="hw-card-desc">Every LLM call ultimately executes on silicon — GPU dies packed with CUDA cores and SRAM. The physical substrate beneath the agent abstraction layer.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

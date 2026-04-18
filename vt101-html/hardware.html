@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Digital Equipment Corporation's iconic video terminal — ancestor of every modern terminal emulator">
+  <title>VT101 — DEC Terminal History &amp; ANSI Escape Codes</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a00;
+      --surface: #111100;
+      --surface2: #1a1a00;
+      --border: rgba(204,180,0,.2);
+      --amber: #ccb400;
+      --amber-dim: rgba(204,180,0,.1);
+      --amber-bright: #ffdf00;
+      --green: #33ff33;
+      --cyan: #00dddd;
+      --text: #d4c800;
+      --muted: #7a7000;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* CRT scanline effect */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.08) 2px,
+        rgba(0,0,0,.08) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* ── Sub-nav ── */
+    .subnav {
+      position: sticky;
+      top: 44px;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: .35rem;
+      padding: .45rem 1.25rem;
+      background: rgba(8,8,0,.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .subnav::-webkit-scrollbar { display: none; }
+    .subnav-label {
+      font-size: .62rem;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: var(--muted);
+      margin-right: .5rem;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+    .subnav-item {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding: .28rem .8rem;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all .18s;
+      cursor: pointer;
+      letter-spacing: .06em;
+      background: none;
+      font-family: 'Courier New', monospace;
+    }
+    .subnav-item:hover { color: var(--amber); border-color: rgba(204,180,0,.3); background: var(--amber-dim); }
+    .subnav-item.active { color: var(--amber-bright); border-color: rgba(204,180,0,.55); background: rgba(204,180,0,.12); text-shadow: 0 0 8px rgba(204,180,0,.5); }
+
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(204,180,0,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-terminal {
+      font-size: .6rem;
+      line-height: 1.25;
+      color: var(--amber);
+      text-shadow: 0 0 6px var(--amber);
+      margin-bottom: 1rem;
+      white-space: pre;
+      display: inline-block;
+    }
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--amber-bright);
+      text-shadow: 0 0 20px rgba(204,180,0,.6);
+      letter-spacing: .1em;
+      margin-bottom: .4rem;
+    }
+    .hero-sub { font-size: .95rem; color: var(--muted); margin-bottom: 1rem; }
+    .hero-badge {
+      display: inline-block;
+      font-size: .78rem;
+      padding: .2rem .8rem;
+      border: 1px solid var(--amber);
+      border-radius: 2px;
+      color: var(--amber);
+      background: var(--amber-dim);
+      letter-spacing: .08em;
+    }
+
+    /* ── Tab sections ── */
+    .tab-section { display: none; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; width: 100%; }
+    .tab-section.active { display: block; }
+
+    .section-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--amber-bright);
+      margin: 2.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      text-shadow: 0 0 8px var(--amber);
+    }
+    .section-title:first-child { margin-top: 0; }
+    .section-title::before { content: '> '; color: var(--amber); opacity: .7; }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: .5rem;
+    }
+
+    /* terminal demo */
+    .term-demo {
+      background: #020200;
+      border: 1px solid var(--amber);
+      border-radius: 4px;
+      padding: 1.25rem 1.5rem;
+      font-size: .82rem;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+      box-shadow: 0 0 20px rgba(204,180,0,.1), inset 0 0 40px rgba(0,0,0,.5);
+    }
+    .term-demo .prompt { color: var(--amber); }
+    .term-demo .typed { color: var(--amber-bright); }
+    .term-demo .output { color: var(--text); }
+    .term-demo .cursor {
+      display: inline-block;
+      width: .5em; height: 1em;
+      background: var(--amber);
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+      margin-left: 1px;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* timeline */
+    .timeline { display: flex; flex-direction: column; gap: 0; margin-bottom: 2.5rem; }
+    .tl-item {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 1rem;
+      position: relative;
+      padding-bottom: 1.3rem;
+    }
+    .tl-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 44px; top: 22px; bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+    .tl-year {
+      text-align: right;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--amber);
+      text-shadow: 0 0 6px var(--amber);
+      padding-top: .2rem;
+    }
+    .tl-dot {
+      position: absolute;
+      left: 40px; top: 6px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 10px var(--amber);
+    }
+    .tl-content { font-size: .87rem; line-height: 1.6; }
+    .tl-content strong { color: var(--amber-bright); }
+    .tl-content span { color: var(--muted); }
+
+    /* ── Hardware gallery ── */
+    .hw-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .hw-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .hw-card:hover { border-color: rgba(204,180,0,.5); box-shadow: 0 0 24px rgba(204,180,0,.08); }
+    .hw-img-wrap {
+      aspect-ratio: 4/3;
+      background: #050500;
+      overflow: hidden;
+      position: relative;
+    }
+    .hw-img-wrap img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center top;
+      display: block; transition: transform .4s;
+      filter: sepia(.15) brightness(.95);
+    }
+    .hw-card:hover .hw-img-wrap img { transform: scale(1.04); }
+    .hw-badge {
+      position: absolute; top: .6rem; left: .6rem;
+      background: rgba(0,0,0,.8); border: 1px solid var(--amber);
+      color: var(--amber-bright); font-size: .62rem; font-weight: 700;
+      padding: .18rem .55rem; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .hw-body { padding: 1rem; }
+    .hw-model { font-size: 1.05rem; font-weight: 700; color: var(--amber-bright); text-shadow: 0 0 6px rgba(204,180,0,.4); margin-bottom: .2rem; }
+    .hw-year { font-size: .7rem; color: var(--muted); margin-bottom: .6rem; }
+    .hw-desc { font-size: .82rem; line-height: 1.55; color: var(--text); margin-bottom: .75rem; }
+    .hw-specs { display: flex; flex-direction: column; gap: .25rem; }
+    .hw-spec { font-size: .75rem; color: var(--muted); }
+    .hw-spec span { color: var(--text); }
+
+    /* ── Escape codes ── */
+    .esc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .8rem;
+      margin-bottom: 2rem;
+    }
+    .esc-table th {
+      background: var(--surface2);
+      color: var(--amber-bright);
+      padding: .5rem .75rem;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+    }
+    .esc-table td {
+      padding: .4rem .75rem;
+      border-bottom: 1px solid rgba(204,180,0,.05);
+      vertical-align: top;
+    }
+    .esc-table tr:hover td { background: rgba(204,180,0,.04); }
+    .esc-table .seq { font-family: 'Courier New', monospace; color: var(--amber-bright); white-space: nowrap; text-shadow: 0 0 6px rgba(204,180,0,.4); }
+    .esc-table .desc { color: var(--muted); }
+    .esc-table .ex { color: var(--text); font-family: 'Courier New', monospace; white-space: nowrap; }
+
+    /* ref grid */
+    .ref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+    .ref-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    .ref-card-hdr { background: var(--surface2); padding: .55rem 1rem; font-size: .8rem; font-weight: 700; color: var(--amber-bright); border-bottom: 1px solid var(--border); }
+    .ref-card-body { padding: .75rem; }
+
+    .snippet {
+      background: #050500;
+      border-radius: 3px;
+      padding: .5rem .75rem;
+      margin-bottom: .5rem;
+      font-size: .78rem;
+      line-height: 1.75;
+      border-left: 2px solid var(--amber-dim);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .snippet:last-child { margin-bottom: 0; }
+
+    .esc  { color: var(--amber-bright); font-weight: 700; }
+    .code { color: var(--cyan); }
+    .cm   { color: #3a3800; }
+    .hi   { color: var(--green); }
+    .dim  { color: var(--muted); }
+
+    /* ── Color palette ── */
+    .color-swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      position: relative;
+      cursor: default;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: .55rem;
+      font-family: 'Courier New', monospace;
+      border: 1px solid rgba(255,255,255,.08);
+      transition: transform .15s;
+    }
+    .swatch:hover { transform: scale(1.1); z-index: 2; }
+    .swatch .sw-num { font-size: .5rem; opacity: .6; margin-bottom: 1px; }
+
+    .palette-256 {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 2px;
+      margin-bottom: 1.5rem;
+    }
+    .p256 {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      position: relative;
+      transition: transform .12s;
+    }
+    .p256:hover { transform: scale(1.3); z-index: 2; }
+
+    .truecolor-bar {
+      height: 28px;
+      border-radius: 4px;
+      margin-bottom: .5rem;
+      background: linear-gradient(90deg,
+        hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%), hsl(90,100%,50%),
+        hsl(120,100%,50%), hsl(150,100%,50%), hsl(180,100%,50%), hsl(210,100%,50%),
+        hsl(240,100%,50%), hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%), hsl(360,100%,50%)
+      );
+    }
+    .lightness-bar {
+      height: 28px;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, #000 0%, #888 50%, #fff 100%);
+    }
+
+    /* ── Emulators ── */
+    .emu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .emu-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
+      transition: border-color .2s;
+    }
+    .emu-card:hover { border-color: rgba(204,180,0,.45); }
+    .emu-name { font-size: 1rem; font-weight: 700; color: var(--amber-bright); margin-bottom: .15rem; text-shadow: 0 0 6px rgba(204,180,0,.35); }
+    .emu-platform { font-size: .68rem; color: var(--muted); margin-bottom: .5rem; letter-spacing: .05em; }
+    .emu-desc { font-size: .82rem; line-height: 1.55; color: var(--text); margin-bottom: .7rem; }
+    .emu-pills { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .emu-pill { font-size: .62rem; padding: .15rem .5rem; border: 1px solid rgba(204,180,0,.25); background: rgba(204,180,0,.05); color: var(--amber); border-radius: 2px; }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--muted);
+      font-size: .75rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+<div class="subnav" id="subnav">
+    <span class="subnav-label">VT101</span>
+    <a class="subnav-item " href="index.html">Overview</a>
+    <a class="subnav-item" href="hardware.html">Hardware</a>
+    <a class="subnav-item" href="escape.html">Escape Codes</a>
+    <a class="subnav-item" href="colors.html">Colors &amp; SGR</a>
+    <a class="subnav-item" href="emulators.html">Emulators</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/vt101') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="hardware">
+<div class="section-title">DEC Terminal Hardware Gallery</div>
+    <div class="hw-grid">
+
+      <div class="hw-card">
+        <div class="hw-img-wrap">
+          <img src="images/vt100.jpg" alt="DEC VT100 terminal" loading="lazy" decoding="async">
+          <div class="hw-badge">VT100</div>
+        </div>
+        <div class="hw-body">
+          <div class="hw-model">VT100</div>
+          <div class="hw-year">1978 · ~$1,500 (~$7,200 today)</div>
+          <div class="hw-desc">The most influential terminal ever built. First affordable ANSI X3.64 compliant terminal. Introduced 80/132 column modes, smooth scrolling, box-drawing graphics characters, and the DEC Special Graphics character set. Cloned by virtually every competitor — ADM, WYSE, Televideo all made "VT100 compatible" terminals.</div>
+          <div class="hw-specs">
+            <div class="hw-spec">Display: <span>24×80 / 14×132</span></div>
+            <div class="hw-spec">Baud: <span>Up to 19,200</span></div>
+            <div class="hw-spec">CPU: <span>8085 at 3.07 MHz</span></div>
+            <div class="hw-spec">Screen: <span>12" P4 white phosphor</span></div>
+            <div class="hw-spec">Weight: <span>~35 lbs (16 kg)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hw-card">
+        <div class="hw-img-wrap">
+          <img src="images/vt101.jpg" alt="DEC VT101 terminal" loading="lazy" decoding="async">
+          <div class="hw-badge">VT101</div>
+        </div>
+        <div class="hw-body">
+          <div class="hw-model">VT101</div>
+          <div class="hw-year">1982 · ~$795 (~$2,500 today)</div>
+          <div class="hw-desc">The budget VT100 — same form factor, same ANSI compatibility, half the price. DEC cut costs by removing smooth scroll, downloadable character sets, and the 132-column mode. The amber phosphor option made it the choice of late-night hackers in university labs. Identical outer shell to VT100.</div>
+          <div class="hw-specs">
+            <div class="hw-spec">Display: <span>24×80 (fixed)</span></div>
+            <div class="hw-spec">Baud: <span>Up to 9,600</span></div>
+            <div class="hw-spec">CPU: <span>8085 at 2 MHz</span></div>
+            <div class="hw-spec">Screen: <span>12" P4 white or amber phosphor</span></div>
+            <div class="hw-spec">RAM: <span>2 KB screen memory</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hw-card">
+        <div class="hw-img-wrap">
+          <img src="images/vt220.jpg" alt="DEC VT220 terminal" loading="lazy" decoding="async">
+          <div class="hw-badge">VT220</div>
+        </div>
+        <div class="hw-body">
+          <div class="hw-model">VT220</div>
+          <div class="hw-year">1987 · ~$900</div>
+          <div class="hw-desc">A massive leap over the VT101 generation. 8-bit character sets for international use (Latin-1, Hebrew, Greek), PC-style keyboard with F1–F20 and a numeric keypad, 132-column standard. The keyboard detached for the first time. National Replacement Character Sets supported 30+ languages. Introduced the "setup screens" UI for configuration without a manual.</div>
+          <div class="hw-specs">
+            <div class="hw-spec">Display: <span>24×80 / 24×132</span></div>
+            <div class="hw-spec">Baud: <span>Up to 38,400</span></div>
+            <div class="hw-spec">Interface: <span>RS-232 + printer port</span></div>
+            <div class="hw-spec">Keyboard: <span>LK201 detachable</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hw-card">
+        <div class="hw-img-wrap">
+          <img src="images/vt420.jpg" alt="DEC VT420 terminal" loading="lazy" decoding="async">
+          <div class="hw-badge">VT420</div>
+        </div>
+        <div class="hw-body">
+          <div class="hw-model">VT420</div>
+          <div class="hw-year">1993 — DEC's final text terminal</div>
+          <div class="hw-desc">The last great DEC terminal. Two simultaneous host sessions (switch with a keypress), 4-page screen memory for rapid context switching, enhanced NVRAM settings. VT52/VT100/VT220 emulation modes for backward compatibility. 14" amber or white monitor with tilt-swivel base. By this point, cheap PC hardware was making dedicated terminals obsolete.</div>
+          <div class="hw-specs">
+            <div class="hw-spec">Display: <span>24–48 rows × 80–132 cols</span></div>
+            <div class="hw-spec">Sessions: <span>2 simultaneous hosts</span></div>
+            <div class="hw-spec">Ports: <span>RS-232 + printer + AUX</span></div>
+            <div class="hw-spec">Screen: <span>14" amber or white</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hw-card">
+        <div class="hw-img-wrap">
+          <img src="images/pdp11.jpg" alt="VAX 11/780 computer system" loading="lazy" decoding="async">
+          <div class="hw-badge">VAX</div>
+        </div>
+        <div class="hw-body">
+          <div class="hw-model">VAX-11/780</div>
+          <div class="hw-year">1977 · ~$200,000</div>
+          <div class="hw-desc">The host machine that VT101 terminals connected to. DEC's VAX (Virtual Address eXtension) architecture dominated university and research computing in the 1980s. Running VAX/VMS or Ultrix (DEC's Unix), a single VAX-11/780 could serve dozens of simultaneous VT101 users via RS-232 terminal concentrators. 1 MIPS — roughly 1/4000th of a modern smartphone.</div>
+          <div class="hw-specs">
+            <div class="hw-spec">CPU: <span>VAX-11/780 @ 5 MHz</span></div>
+            <div class="hw-spec">Performance: <span>~1 MIPS</span></div>
+            <div class="hw-spec">Memory: <span>1–8 MB</span></div>
+            <div class="hw-spec">OS: <span>VAX/VMS, Ultrix</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hw-card">
+        <div class="hw-img-wrap">
+          <img src="images/tty.jpg" alt="Teletype Model 33 ASR" loading="lazy" decoding="async">
+          <div class="hw-badge">TTY</div>
+        </div>
+        <div class="hw-body">
+          <div class="hw-model">Teletype Model 33 ASR</div>
+          <div class="hw-year">1963 · The original "TTY"</div>
+          <div class="hw-desc">The ancestor of all terminals. A Teletype connected to a computer: you type, it prints on paper. No screen — just a roll of paper. The Model 33 ASR (Automatic Send-Receive) used ASCII encoding and ran at 110 baud (10 chars/sec). Unix was designed around the Teletype — the "/" in file paths comes from Teletype paper-tape conventions. The word "tty" in Unix refers to this device to this day.</div>
+          <div class="hw-specs">
+            <div class="hw-spec">Speed: <span>110 baud (10 cps)</span></div>
+            <div class="hw-spec">Encoding: <span>7-bit ASCII</span></div>
+            <div class="hw-spec">Interface: <span>RS-232, 20mA current loop</span></div>
+            <div class="hw-spec">Legacy: <span>Unix /dev/tty, stty, tput</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="section-title">Physical Characteristics — VT101 vs VT100</div>
+    <div class="ref-grid">
+      <div class="ref-card">
+        <div class="ref-card-hdr">VT101 Hardware Specs</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+Screen:      12" CRT, P4 white or amber phosphor
+Resolution:  800×240 pixels (80×24 character grid)
+Char cell:   10×10 pixels (7×10 active)
+Interface:   RS-232 serial, EIA RS-423
+Baud rates:  75 – 9,600 baud
+RAM:         2 KB screen memory
+ROM:         16 KB firmware
+CPU:         Intel 8085 @ 2 MHz
+Weight:      ~25 lbs (11 kg)
+Dimensions:  14" × 16" × 14" (W×D×H)
+Price (1982): $795 (~$2,500 today)</div>
+        </div>
+      </div>
+      <div class="ref-card">
+        <div class="ref-card-hdr">What VT101 Dropped vs VT100</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+REMOVED from VT100 to make VT101:
+
+  × Smooth scroll (jump scroll only)
+  × 132-column mode (80 col fixed)
+  × Downloadable character sets
+  × AVO (Advanced Video Option)
+    — no double-width/height chars
+  × Printer port (added back in VT102)
+  × Second RS-232 port
+
+KEPT from VT100:
+
+  ✓ Full ANSI X3.64 / CSI sequences
+  ✓ VT52 compatibility mode
+  ✓ 24×80 display, 9600 baud max
+  ✓ Amber phosphor screen option
+  ✓ Same keyboard and outer shell</div>
+        </div>
+      </div>
+      <div class="ref-card">
+        <div class="ref-card-hdr">Phosphor Types</div>
+        <div class="ref-card-body">
+          <div class="snippet">
+P4  — white phosphor (standard VT100)
+    Fast decay, high brightness, crisp
+    text. Most common in offices.
+
+P31 — green phosphor (VT100 option)
+    The classic "green screen". Long
+    persistence — good for steady text,
+    blurs fast-scrolling content.
+
+P38 — amber phosphor (VT101 option)
+    Warmer, easier on eyes for long
+    sessions. Popular in labs.
+    Amber had less eyestrain in dimly
+    lit computer rooms.
+
+All are P-type (zinc sulfide based)
+and produce characteristic glow and
+slight "bloom" around bright pixels.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-hardware -->
+
+  <!-- ══════════ TAB: ESCAPE CODES ══════════ -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

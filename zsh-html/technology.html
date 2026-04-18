@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Z Shell — the modern shell with powerful interactive features">
+  <title>Zsh — Z Shell Reference</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --blue: #79c0ff;
+      --blue-dim: rgba(121,192,255,.1);
+      --cyan: #56d364;
+      --yellow: #e3b341;
+      --orange: #f0883e;
+      --purple: #d2a8ff;
+      --red: #ff7b72;
+      --text: #e6edf3;
+      --muted: #8b949e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── hero ── */
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% -10%, rgba(121,192,255,.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-ascii {
+      font-size: .6rem;
+      line-height: 1.2;
+      color: var(--blue);
+      text-shadow: 0 0 8px var(--blue);
+      margin-bottom: 1rem;
+      white-space: pre;
+      display: inline-block;
+    }
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--blue);
+      text-shadow: 0 0 20px rgba(121,192,255,.4);
+      letter-spacing: .05em;
+      margin-bottom: .4rem;
+    }
+    .hero-sub { font-size: 1rem; color: var(--muted); margin-bottom: 1rem; }
+    .hero-version {
+      display: inline-block;
+      font-size: .78rem;
+      padding: .2rem .7rem;
+      border: 1px solid var(--blue);
+      border-radius: 4px;
+      color: var(--blue);
+      background: var(--blue-dim);
+    }
+
+    /* ── sub-nav ── */
+    .sub-nav {
+      display: flex;
+      justify-content: center;
+      gap: .5rem;
+      padding: .75rem 1rem 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .sub-tab {
+      padding: .45rem 1.2rem;
+      font-size: .82rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      background: none;
+      transition: color .15s, background .15s, border-color .15s;
+      position: relative;
+      bottom: -1px;
+    }
+    .sub-tab:hover { color: var(--text); background: var(--surface); }
+    .sub-tab.active {
+      color: var(--blue);
+      background: var(--surface);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+    }
+
+    /* ── tab panels ── */
+
+    /* ── main layout ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      width: 100%;
+    }
+
+    /* ── section titles ── */
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin: 2.5rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .section-title:first-child { margin-top: 0; }
+    .section-title::before { content: '## '; opacity: .5; }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: .5rem;
+    }
+
+    /* ── ref grid / cards ── */
+    .ref-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+    .ref-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .ref-card-hdr {
+      background: var(--surface2);
+      padding: .6rem 1rem;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--blue);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .ref-card-hdr::before { content: '▸'; color: var(--blue); }
+    .ref-card-body { padding: .75rem; }
+
+    /* ── code snippets ── */
+    .snippet {
+      background: #080c10;
+      border-radius: 6px;
+      padding: .5rem .75rem;
+      margin-bottom: .5rem;
+      font-size: .78rem;
+      line-height: 1.7;
+      border-left: 2px solid var(--blue-dim);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .snippet:last-child { margin-bottom: 0; }
+
+    .kw  { color: var(--orange); }
+    .str { color: var(--yellow); }
+    .var { color: var(--blue); }
+    .cm  { color: #484f58; }
+    .op  { color: var(--cyan); }
+    .fn  { color: var(--purple); }
+    .num { color: #79c0ff; }
+    .hi  { color: #ff7b72; }
+
+    /* ── comparison table ── */
+    .vs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+      margin-bottom: 2.5rem;
+    }
+    .vs-table th {
+      padding: .55rem .9rem;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+      font-weight: 700;
+    }
+    .vs-table th:nth-child(1) { background: var(--surface2); color: var(--muted); }
+    .vs-table th:nth-child(2) { background: rgba(48,54,61,.5); color: #56d364; }
+    .vs-table th:nth-child(3) { background: rgba(121,192,255,.06); color: var(--blue); }
+    .vs-table td {
+      padding: .45rem .9rem;
+      border-bottom: 1px solid rgba(48,54,61,.7);
+      vertical-align: top;
+    }
+    .vs-table tr:hover td { background: rgba(255,255,255,.02); }
+    .check { color: var(--cyan); }
+    .cross { color: var(--red); }
+
+    /* ── plugin grid ── */
+    .plugin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .plugin-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .9rem;
+    }
+    .plugin-name { font-weight: 700; color: var(--blue); margin-bottom: .3rem; font-size: .85rem; }
+    .plugin-desc { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── history timeline ── */
+    .timeline { display: flex; flex-direction: column; }
+    .tl-item {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 1rem;
+      position: relative;
+      padding-bottom: 1.4rem;
+    }
+    .tl-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 44px; top: 22px; bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+    .tl-year {
+      text-align: right;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--blue);
+      padding-top: .2rem;
+      font-family: 'Courier New', monospace;
+    }
+    .tl-dot {
+      position: absolute;
+      left: 40px; top: 6px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 8px var(--blue);
+    }
+    .tl-content { font-size: .87rem; line-height: 1.65; }
+    .tl-content strong { color: var(--text); }
+    .tl-content span { color: var(--muted); }
+
+    /* ── reason cards ── */
+    .reason-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.1rem;
+      margin-bottom: 2.5rem;
+    }
+    .reason-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+      border-left: 3px solid var(--blue);
+    }
+    .reason-icon { font-size: 1.5rem; margin-bottom: .5rem; }
+    .reason-label { font-size: .9rem; font-weight: 700; color: var(--blue); margin-bottom: .35rem; }
+    .reason-desc { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--muted);
+      font-size: .75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── demo tab ── */
+    .demo-wrap { max-width: 780px; margin: 0 auto; }
+
+    .scene-bar {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+      margin-bottom: 1.25rem; justify-content: center;
+    }
+    .scene-btn {
+      font-family: 'Courier New', monospace;
+      font-size: .75rem; font-weight: 700;
+      padding: .3rem .85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .scene-btn:hover { color: var(--text); border-color: var(--blue); }
+    .scene-btn.active { color: var(--blue); border-color: var(--blue); background: var(--blue-dim); }
+
+    /* terminal window */
+    .term-win {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: .75rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      position: relative;
+    }
+    .term-chrome {
+      background: #21262d;
+      padding: .55rem 1rem;
+      display: flex; align-items: center; gap: .45rem;
+      border-bottom: 1px solid #30363d;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot-r { background: #ff5f56; }
+    .dot-y { background: #ffbd2e; }
+    .dot-g { background: #27c93f; }
+    .term-title { margin-left: .5rem; font-size: .75rem; color: var(--muted); flex: 1; text-align: center; }
+
+    .term-body {
+      padding: .75rem 1rem;
+      min-height: 280px;
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+
+    .term-output {
+      flex: 1; overflow: hidden;
+      display: flex; flex-direction: column;
+      justify-content: flex-end;
+      gap: 0;
+    }
+    .tl { font-size: .82rem; line-height: 1.65; white-space: pre; }
+    .tl-prompt { color: #56d364; }
+    .tl-cmd    { color: #e6edf3; }
+    .tl-dim    { color: #484f58; }
+    .tl-ok     { color: #56d364; }
+    .tl-err    { color: #ff7b72; }
+    .tl-warn   { color: #e3b341; }
+    .tl-dir    { color: #79c0ff; }
+    .tl-file   { color: #e6edf3; }
+    .tl-cursor-inline {
+      display: inline-block; width: .5em; height: 1em;
+      background: var(--yellow); vertical-align: text-bottom;
+      animation: cblink 1s step-end infinite;
+    }
+
+    /* completion popup */
+    .comp-popup {
+      display: none;
+      position: absolute; bottom: 44px; left: 1rem;
+      background: #161b22; border: 1px solid #388bfd;
+      border-radius: 6px; padding: .3rem;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    .comp-item {
+      font-size: .8rem; padding: .2rem .65rem;
+      border-radius: 4px; color: #c9d1d9;
+      white-space: nowrap; cursor: default;
+    }
+    .comp-item.comp-sel { background: #388bfd; color: #fff; }
+
+    /* history search popup */
+    .hs-popup {
+      display: none;
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: #161b22; border-top: 1px solid #30363d;
+      z-index: 10; padding: .5rem .75rem;
+    }
+    .hs-header {
+      font-size: .78rem; color: var(--muted);
+      margin-bottom: .3rem; display: flex; align-items: center; gap: .2rem;
+    }
+    .hs-label { color: var(--blue); font-weight: 700; }
+    .hs-query-text { color: var(--text); }
+    .hs-cur { display: inline-block; width: .5em; height: .9em; background: var(--blue); vertical-align: text-bottom; animation: cblink 1s step-end infinite; }
+    .hs-results { display: flex; flex-direction: column; gap: .05rem; }
+    .hs-item { font-size: .78rem; padding: .15rem .5rem; border-radius: 4px; color: #484f58; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hs-item.hs-sel { background: rgba(56,139,253,.15); color: #e6edf3; }
+
+    /* key indicator */
+    .key-pill {
+      display: none;
+      position: absolute; top: 2.5rem; right: 1rem;
+      background: #21262d; border: 1px solid var(--blue);
+      color: var(--blue); font-size: .72rem; font-weight: 700;
+      padding: .2rem .65rem; border-radius: 4px;
+      z-index: 20; pointer-events: none;
+      transition: opacity .3s;
+    }
+    .key-pill.fading { opacity: 0; }
+
+    /* current input row */
+    .term-input-row {
+      display: flex; align-items: baseline;
+      font-size: .82rem; padding-top: .35rem;
+      flex-shrink: 0;
+    }
+    .tp-dir   { color: #7dd3fc; }
+    .tp-git   { color: #56d364; margin: 0 .3rem; }
+    .tp-arrow { color: #56d364; font-weight: 700; margin-right: .45rem; }
+
+    #term-typed   { color: #e6edf3; white-space: pre; }
+    #term-suggest { color: #3d444d; white-space: pre; }
+    .th-valid   { color: #56d364; }
+    .th-invalid { color: #ff7b72; }
+
+    .term-cursor {
+      display: inline-block; width: .55em; height: 1em;
+      background: #e6edf3; vertical-align: text-bottom;
+      animation: cblink 1s step-end infinite;
+    }
+    @keyframes cblink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* desc + controls */
+    .demo-desc {
+      text-align: center; margin: .75rem 0 .5rem;
+    }
+    .demo-feat {
+      font-size: .95rem; font-weight: 700; color: var(--blue); margin-bottom: .3rem;
+    }
+    .demo-explain { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+    .demo-controls {
+      display: flex; justify-content: center; gap: .75rem; margin-top: .75rem;
+    }
+    .demo-controls button {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem; font-weight: 700;
+      padding: .3rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .demo-controls button:hover { color: var(--blue); border-color: var(--blue); }
+  </style>
+</head>
+<body>
+<div class="sub-nav">
+    <a class="sub-tab " href="index.html">Reasons</a>
+    <a class="sub-tab" href="history.html">History</a>
+    <a class="sub-tab" href="technology.html">Technology</a>
+    <a class="sub-tab" href="demo.html">Demo</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/zsh') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="technology">
+<div class="section-title">Zsh Configuration (.zshrc)</div>
+      <div class="ref-grid">
+        <div class="ref-card">
+          <div class="ref-card-hdr">Options (setopt)</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">setopt</span> AUTO_CD           <span class="cm"># cd by typing dirname</span>
+<span class="fn">setopt</span> CORRECT           <span class="cm"># spell correction</span>
+<span class="fn">setopt</span> GLOB_DOTS         <span class="cm"># glob matches dotfiles</span>
+<span class="fn">setopt</span> EXTENDED_GLOB     <span class="cm"># *, **, ^, (#…)</span>
+<span class="fn">setopt</span> NO_CASE_GLOB      <span class="cm"># case-insensitive glob</span>
+<span class="fn">setopt</span> HIST_IGNORE_DUPS  <span class="cm"># no duplicate history</span>
+<span class="fn">setopt</span> SHARE_HISTORY     <span class="cm"># sync across sessions</span>
+<span class="fn">setopt</span> AUTO_PUSHD        <span class="cm"># pushd automatically</span>
+<span class="fn">setopt</span> PUSHD_IGNORE_DUPS <span class="cm"># no dup dirstack</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">History Config</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="var">HISTFILE</span>=~/.zsh_history
+<span class="var">HISTSIZE</span>=<span class="num">50000</span>
+<span class="var">SAVEHIST</span>=<span class="num">50000</span>
+<span class="fn">setopt</span> HIST_EXPIRE_DUPS_FIRST
+<span class="fn">setopt</span> HIST_FIND_NO_DUPS
+<span class="fn">setopt</span> INC_APPEND_HISTORY  <span class="cm"># write immediately</span>
+<span class="cm"># Ctrl+R — interactive history search</span>
+<span class="cm"># !! — repeat last command</span>
+<span class="cm"># !$ — last argument of prev cmd</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Completion Setup</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">autoload</span> -Uz compinit
+<span class="fn">compinit</span>
+
+<span class="cm"># use menu selection</span>
+<span class="fn">zstyle</span> <span class="str">':completion:*'</span> menu select
+<span class="cm"># case-insensitive matching</span>
+<span class="fn">zstyle</span> <span class="str">':completion:*'</span> matcher-list <span class="str">'m:{a-z}={A-Z}'</span>
+<span class="cm"># group by category</span>
+<span class="fn">zstyle</span> <span class="str">':completion:*'</span> group-name <span class="str">''</span>
+<span class="cm"># colored completion</span>
+<span class="fn">zstyle</span> <span class="str">':completion:*'</span> list-colors <span class="str">''</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Key Bindings</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">bindkey</span> -e                  <span class="cm"># emacs mode (default)</span>
+<span class="fn">bindkey</span> -v                  <span class="cm"># vi mode</span>
+<span class="fn">bindkey</span> <span class="str">'^[[A'</span> history-search-backward
+<span class="fn">bindkey</span> <span class="str">'^[[B'</span> history-search-forward
+<span class="fn">bindkey</span> <span class="str">'^[.'</span> insert-last-word
+<span class="fn">bindkey</span> <span class="str">'^U'</span>  backward-kill-line</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Zsh-Specific Syntax</div>
+      <div class="ref-grid">
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Extended Globbing</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">setopt</span> EXTENDED_GLOB
+<span class="fn">ls</span> **/<span class="op">*</span>.py          <span class="cm"># recursive glob</span>
+<span class="fn">ls</span> <span class="op">^</span>*.py           <span class="cm"># negate: not .py files</span>
+<span class="fn">ls</span> <span class="op">*</span>.(py|js)       <span class="cm"># alternation</span>
+<span class="fn">ls</span> <span class="op">*</span>.py(.)          <span class="cm"># plain files only</span>
+<span class="fn">ls</span> <span class="op">*</span>.py(Om)         <span class="cm"># sort by mtime oldest</span>
+<span class="fn">ls</span> <span class="op">*</span>.log(Lm+1)      <span class="cm"># files &gt; 1MB</span>
+<span class="fn">ls</span> <span class="op">*</span>(<span class="num">/</span>)             <span class="cm"># directories only</span>
+<span class="fn">ls</span> <span class="op">*</span>(N)             <span class="cm"># null glob (no error)</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Arrays (1-indexed)</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="var">arr</span>=(<span class="str">a</span> <span class="str">b</span> <span class="str">c</span> <span class="str">d</span>)
+<span class="fn">echo</span> <span class="str">$arr[1]</span>        <span class="cm"># a (1-indexed!)</span>
+<span class="fn">echo</span> <span class="str">$arr[-1]</span>       <span class="cm"># d (last)</span>
+<span class="fn">echo</span> <span class="str">$arr[2,3]</span>      <span class="cm"># b c (slice)</span>
+<span class="fn">echo</span> <span class="str">${#arr}</span>        <span class="cm"># length: 4</span>
+<span class="fn">echo</span> <span class="str">${arr:u}</span>       <span class="cm"># UPPERCASE</span>
+<span class="fn">echo</span> <span class="str">${(j:,:)arr}</span>   <span class="cm"># join: a,b,c,d</span>
+<span class="fn">echo</span> <span class="str">${(s:,:)csv}</span>   <span class="cm"># split on comma</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Parameter Flags</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="str">${(U)var}</span>    <span class="cm"># UPPERCASE</span>
+<span class="str">${(L)var}</span>    <span class="cm"># lowercase</span>
+<span class="str">${(C)var}</span>    <span class="cm"># Capitalize Words</span>
+<span class="str">${(q)var}</span>    <span class="cm"># shell-quote</span>
+<span class="str">${(Q)var}</span>    <span class="cm"># unquote</span>
+<span class="str">${(r:10:)var}</span> <span class="cm"># right-pad to 10</span>
+<span class="str">${(l:10:)var}</span> <span class="cm"># left-pad to 10</span>
+<span class="str">${(f)var}</span>    <span class="cm"># split by newlines → array</span>
+<span class="str">${(o)arr}</span>    <span class="cm"># sort array</span>
+<span class="str">${(u)arr}</span>    <span class="cm"># unique elements</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Aliases</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="cm"># regular alias</span>
+<span class="kw">alias</span> <span class="var">ll</span>=<span class="str">'ls -lah'</span>
+
+<span class="cm"># global alias (expands anywhere)</span>
+<span class="kw">alias</span> -g <span class="var">G</span>=<span class="str">'| grep'</span>
+<span class="kw">alias</span> -g <span class="var">L</span>=<span class="str">'| less'</span>
+<span class="kw">alias</span> -g <span class="var">T</span>=<span class="str">'| tail -f'</span>
+<span class="fn">dmesg</span> G error         <span class="cm"># grep errors</span>
+
+<span class="cm"># suffix alias (open by extension)</span>
+<span class="kw">alias</span> -s <span class="var">pdf</span>=evince
+<span class="kw">alias</span> -s <span class="var">py</span>=python3
+<span class="var">doc.pdf</span>               <span class="cm"># opens in evince</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Prompt Customization</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">autoload</span> -Uz colors &amp;&amp; <span class="fn">colors</span>
+<span class="fn">setopt</span> PROMPT_SUBST
+
+<span class="cm"># simple prompt with git branch</span>
+<span class="var">PROMPT</span>=<span class="str">'%F{blue}%~%f $(git branch --show-current 2>/dev/null | sed "s/.*/ [&]/")
+%F{green}❯%f '</span>
+
+<span class="cm"># prompt codes</span>
+<span class="cm"># %~ = cwd  %n = user  %m = host</span>
+<span class="cm"># %? = exit code  %# = $ or #</span>
+<span class="cm"># %F{color}…%f = foreground color</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Floating Point</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">zmodload</span> zsh/mathfunc
+<span class="kw">typeset</span> -F <span class="var">x</span>=<span class="num">3.14</span>
+<span class="fn">echo</span> $(( <span class="var">x</span> * <span class="num">2.0</span> ))    <span class="cm"># 6.28</span>
+<span class="fn">echo</span> $(( <span class="fn">sqrt</span>(<span class="num">2.0</span>) )) <span class="cm"># 1.4142...</span>
+<span class="fn">echo</span> $(( <span class="fn">log</span>(<span class="var">M_E</span>) ))  <span class="cm"># 1.0 (natural log of e)</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Functions &amp; Autoload</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="cm"># define inline</span>
+<span class="fn">mkcd</span>() { <span class="fn">mkdir</span> -p <span class="str">"$1"</span> &amp;&amp; <span class="fn">cd</span> <span class="str">"$1"</span>; }
+
+<span class="cm"># autoload from fpath</span>
+<span class="var">fpath</span>=(~/.zfuncs <span class="var">$fpath</span>)
+<span class="fn">autoload</span> -Uz <span class="var">myfunc</span>   <span class="cm"># lazy-load</span>
+
+<span class="cm"># hook functions</span>
+<span class="fn">chpwd</span>() { <span class="fn">ls</span> -la; }     <span class="cm"># runs on cd</span>
+<span class="fn">precmd</span>() { }            <span class="cm"># before prompt</span>
+<span class="fn">preexec</span>() { }           <span class="cm"># before each cmd</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Directory Stack</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="fn">setopt</span> AUTO_PUSHD
+<span class="fn">setopt</span> PUSHD_IGNORE_DUPS
+<span class="var">DIRSTACKSIZE</span>=<span class="num">20</span>
+
+<span class="fn">dirs</span> -v              <span class="cm"># show stack</span>
+<span class="fn">cd</span> -<span class="num">2</span>               <span class="cm"># go to entry 2</span>
+<span class="fn">popd</span>                 <span class="cm"># pop top</span>
+<span class="cm"># ~1 ~2 etc expand to stack entries</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Oh-My-Zsh Plugins</div>
+      <div class="plugin-grid">
+        <div class="plugin-card"><div class="plugin-name">git</div><div class="plugin-desc">Hundreds of git aliases: gst, gco, gcb, glog, gp, gl, etc.</div></div>
+        <div class="plugin-card"><div class="plugin-name">z</div><div class="plugin-desc">Jump to frecent directories: <code>z proj</code> jumps to your most-used projects dir.</div></div>
+        <div class="plugin-card"><div class="plugin-name">docker</div><div class="plugin-desc">Tab-completion for docker commands, images, containers, and compose.</div></div>
+        <div class="plugin-card"><div class="plugin-name">kubectl</div><div class="plugin-desc">Kubectl completion + k alias. Show current context in prompt.</div></div>
+        <div class="plugin-card"><div class="plugin-name">zsh-autosuggestions</div><div class="plugin-desc">Fish-style greyed-out suggestions from history. Press → to accept.</div></div>
+        <div class="plugin-card"><div class="plugin-name">zsh-syntax-highlighting</div><div class="plugin-desc">Colors commands as you type: green for valid, red for unknown.</div></div>
+        <div class="plugin-card"><div class="plugin-name">fzf</div><div class="plugin-desc">Fuzzy file/history search. Ctrl+R for history, Ctrl+T for files.</div></div>
+        <div class="plugin-card"><div class="plugin-name">nvm</div><div class="plugin-desc">Auto-switch Node version when entering directories with .nvmrc.</div></div>
+        <div class="plugin-card"><div class="plugin-name">sudo</div><div class="plugin-desc">Press Esc twice to prepend sudo to the current command.</div></div>
+        <div class="plugin-card"><div class="plugin-name">web-search</div><div class="plugin-desc">Search from terminal: <code>google zsh tips</code>, <code>ddg bash arrays</code>.</div></div>
+        <div class="plugin-card"><div class="plugin-name">extract</div><div class="plugin-desc">Universal extract: <code>extract file.tar.gz</code> — detects format automatically.</div></div>
+        <div class="plugin-card"><div class="plugin-name">colored-man-pages</div><div class="plugin-desc">Colorizes man pages for much better readability.</div></div>
+      </div>
+
+      <div class="section-title">Popular Themes &amp; Plugin Managers</div>
+      <div class="ref-grid">
+        <div class="ref-card">
+          <div class="ref-card-hdr">Powerlevel10k</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="cm"># install</span>
+<span class="fn">git</span> clone --depth=1 \
+  https://github.com/romkatv/powerlevel10k.git \
+  ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
+
+<span class="cm"># .zshrc</span>
+<span class="var">ZSH_THEME</span>=<span class="str">"powerlevel10k/powerlevel10k"</span>
+<span class="cm"># then: p10k configure</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Starship (cross-shell)</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="cm"># install</span>
+<span class="fn">curl</span> -sS https://starship.rs/install.sh | sh
+
+<span class="cm"># add to .zshrc</span>
+<span class="kw">eval</span> <span class="str">"$(starship init zsh)"</span>
+
+<span class="cm"># configure ~/.config/starship.toml</span>
+<span class="cm"># shows git, language, exit code etc</span></div>
+          </div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-card-hdr">Zinit (fast plugin manager)</div>
+          <div class="ref-card-body">
+            <div class="snippet">
+<span class="cm"># install Zinit</span>
+<span class="fn">bash</span> -c <span class="str">"$(curl -fsSL https://git.io/zinit-install)"</span>
+
+<span class="cm"># .zshrc</span>
+<span class="fn">zinit</span> light zsh-users/zsh-autosuggestions
+<span class="fn">zinit</span> light zsh-users/zsh-syntax-highlighting
+<span class="fn">zinit</span> ice depth=1
+<span class="fn">zinit</span> light romkatv/powerlevel10k</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-technology -->
+
+    <!-- ═══════════════ DEMO ═══════════════ -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

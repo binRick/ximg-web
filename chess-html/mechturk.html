@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The game of kings — 1,500 years of strategy, brilliance, and the eternal battle between order and chaos on 64 squares.">
+  <title>Chess — chess.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0d0a07;
+      --panel:   #16120d;
+      --dark-sq: #b58863;
+      --lite-sq: #f0d9b5;
+      --gold:    #c8a030;
+      --amber:   #e8b840;
+      --cream:   #ede0c8;
+      --text:    #d4c4a0;
+      --muted:   #7a6a50;
+      --card:    rgba(18,14,9,.92);
+      --border:  rgba(184,136,99,.18);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 100% 60% at 50% 0%, rgba(184,136,99,.12) 0%, transparent 60%),
+        linear-gradient(180deg, #0d0a07 0%, #080604 100%);
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        repeating-linear-gradient(0deg,  rgba(184,136,99,.012) 0, rgba(184,136,99,.012) 1px, transparent 1px, transparent 64px),
+        repeating-linear-gradient(90deg, rgba(240,217,181,.008) 0, rgba(240,217,181,.008) 1px, transparent 1px, transparent 80px);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      padding: 102px 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 2.5rem 1.5rem 1rem;
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: .75rem;
+      animation: fadeUp .7s ease both;
+    }
+    .hero-icon { font-size: 3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(200,160,48,.5)); }
+    .hero h1 {
+      font-size: clamp(2rem,6vw,3.6rem);
+      font-weight: 900; line-height: 1.05; letter-spacing: -.02em;
+      background: linear-gradient(135deg, #f0d9b5 0%, #c8a030 45%, #b58863 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-sub {
+      font-size: .92rem; color: var(--muted); font-style: italic;
+      max-width: 640px; line-height: 1.65; letter-spacing: .02em;
+    }
+    .hero-divider {
+      width: 180px; height: 2px; margin-top: .25rem;
+      background: linear-gradient(90deg, #f0d9b5, #c8a030, #b58863);
+    }
+    .hero-chips {
+      display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; margin-top: .25rem;
+    }
+    .hero-chip {
+      font-size: .66rem; font-weight: 700; padding: .22rem .72rem; border-radius: 99px;
+      letter-spacing: .07em; text-transform: uppercase;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .chip-a { background: rgba(240,217,181,.1);  border: 1px solid rgba(240,217,181,.3); color: var(--cream); }
+    .chip-b { background: rgba(181,136,99,.12);  border: 1px solid rgba(181,136,99,.35);  color: var(--dark-sq); }
+    .chip-c { background: rgba(200,160,48,.08);  border: 1px solid rgba(200,160,48,.3);   color: var(--gold); }
+
+    /* ── Tabs ── */
+    .tabs {
+      position: fixed; top: 44px; left: 0; right: 0; z-index: 100;
+      height: 44px;
+      background: var(--bg);
+      border-bottom: 1px solid rgba(184,136,99,.18);
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: 0 1rem;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      font-size: .78rem; padding: .36rem 1rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--muted);
+      font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      transition: all .2s; font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .tab-btn.active { color: var(--amber); border-color: rgba(232,184,64,.45); background: rgba(232,184,64,.07); }
+    .tab-btn:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.18); }
+
+    .tab-panel { display: flex; flex-direction: column; gap: 1.75rem; }
+    .tab-panel
+
+    /* ── Section header ── */
+    .sec-header {
+      display: flex; align-items: center; gap: 1rem;
+      font-size: .6rem; text-transform: uppercase; letter-spacing: .2em;
+      color: var(--amber); font-weight: 700;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .sec-header::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(232,184,64,.35), transparent); }
+
+    /* ── Cards grid ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    @media(max-width:540px){ .cards-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: border-color .25s, box-shadow .25s, transform .25s;
+    }
+    .card:hover {
+      border-color: rgba(184,136,99,.45);
+      box-shadow: 0 8px 36px rgba(184,136,99,.12);
+      transform: translateY(-2px);
+    }
+    .card-head {
+      padding: 1rem 1.1rem .6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .card-icon { font-size: 1.8rem; line-height: 1; }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--cream); line-height: 1.2; }
+    .card-sub   { font-size: .7rem; color: var(--muted); font-family: 'Segoe UI', system-ui, sans-serif; margin-top: .15rem; }
+    .card-body  { padding: .9rem 1.1rem 1rem; font-size: .84rem; line-height: 1.7; color: var(--text); flex: 1; }
+    .card-body p + p { margin-top: .5rem; }
+
+    /* ── Piece cards wide ── */
+    .pieces-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    .piece-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.1rem .9rem; text-align: center;
+      transition: border-color .2s, transform .2s;
+    }
+    .piece-card:hover { border-color: rgba(184,136,99,.5); transform: translateY(-2px); }
+    .piece-sym  { font-size: 2.8rem; line-height: 1.1; margin-bottom: .4rem; }
+    .piece-name { font-size: .88rem; font-weight: 700; color: var(--cream); }
+    .piece-val  { font-size: .7rem; color: var(--gold); font-weight: 700; margin: .2rem 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .piece-move { font-size: .72rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Chessboard ── */
+    .board-wrap {
+      display: flex; justify-content: center;
+      animation: fadeUp .6s ease both .15s;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      width: min(400px, 90vw);
+      border: 3px solid var(--dark-sq);
+      border-radius: 4px;
+      box-shadow: 0 0 40px rgba(184,136,99,.25), 0 0 80px rgba(0,0,0,.6);
+      overflow: hidden;
+    }
+    .sq {
+      aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+      line-height: 1;
+      user-select: none;
+    }
+    .sq.lite { background: var(--lite-sq); }
+    .sq.dark { background: var(--dark-sq); }
+
+    /* ── Opening table ── */
+    .opening-list {
+      display: flex; flex-direction: column; gap: .65rem;
+    }
+    .opening-row {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: .75rem 1rem;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: .4rem 1rem; align-items: start;
+      transition: border-color .2s;
+    }
+    .opening-row:hover { border-color: rgba(184,136,99,.4); }
+    .opening-name  { font-size: .9rem; font-weight: 700; color: var(--cream); }
+    .opening-moves { font-size: .72rem; color: var(--gold); font-family: 'Courier New', monospace; text-align: right; white-space: nowrap; }
+    .opening-desc  { font-size: .78rem; color: var(--muted); line-height: 1.5; grid-column: 1; }
+    .opening-tag   {
+      font-size: .62rem; font-weight: 700; padding: .18rem .55rem; border-radius: 99px;
+      font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: .05em; white-space: nowrap;
+    }
+    .tag-open   { background: rgba(100,200,100,.1); border: 1px solid rgba(100,200,100,.3); color: #90d890; }
+    .tag-closed { background: rgba(200,100,100,.1); border: 1px solid rgba(200,100,100,.3); color: #e09090; }
+    .tag-semi   { background: rgba(100,150,220,.1); border: 1px solid rgba(100,150,220,.3); color: #90b8f8; }
+
+    /* ── Champions timeline ── */
+    .timeline {
+      display: flex; flex-direction: column; gap: 0;
+      border-left: 2px solid rgba(184,136,99,.25);
+      padding-left: 1.5rem;
+      margin-left: .5rem;
+    }
+    .tl-item {
+      position: relative;
+      padding: .6rem 0 .9rem;
+    }
+    .tl-item::before {
+      content: '♟';
+      position: absolute; left: -1.75rem; top: .55rem;
+      font-size: .85rem; color: var(--gold);
+    }
+    .tl-year  { font-size: .68rem; color: var(--gold); font-weight: 700; letter-spacing: .1em; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .tl-name  { font-size: .96rem; font-weight: 700; color: var(--cream); margin: .1rem 0; }
+    .tl-from  { font-size: .72rem; color: var(--muted); margin-bottom: .2rem; }
+    .tl-desc  { font-size: .78rem; color: var(--text); line-height: 1.55; }
+
+    /* ── Tactics grid ── */
+    .tactics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .tactic-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1rem 1.1rem; transition: border-color .2s, transform .2s;
+    }
+    .tactic-card:hover { border-color: rgba(184,136,99,.4); transform: translateY(-2px); }
+    .tactic-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; }
+    .tactic-icon { font-size: 1.5rem; }
+    .tactic-name { font-size: .92rem; font-weight: 700; color: var(--cream); }
+    .tactic-body { font-size: .8rem; line-height: 1.6; color: var(--text); }
+    .tactic-eg   { font-size: .72rem; color: var(--gold); font-family: 'Courier New', monospace; margin-top: .35rem; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .stat-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1rem 1.1rem; text-align: center;
+    }
+    .stat-num  { font-size: 2rem; font-weight: 900; color: var(--amber); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1; }
+    .stat-label{ font-size: .72rem; color: var(--muted); margin-top: .3rem; text-transform: uppercase; letter-spacing: .08em; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ── Notation block ── */
+    .notation {
+      font-family: 'Courier New', monospace;
+      font-size: .82rem; color: var(--cream);
+      background: rgba(0,0,0,.35); border: 1px solid rgba(184,136,99,.15);
+      border-radius: 8px; padding: .7rem 1rem; line-height: 1.8;
+    }
+    .notation span { color: var(--gold); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Champions with portraits ── */
+    .tl-portrait {
+      width: 72px; height: 72px; border-radius: 50%;
+      object-fit: cover; object-position: top;
+      border: 2px solid rgba(184,136,99,.45);
+      flex-shrink: 0;
+      background: var(--panel);
+    }
+    .tl-item-inner {
+      display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .tl-text { flex: 1; }
+
+    /* ── Play tab ── */
+    .play-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media(max-width:700px){ .play-layout { grid-template-columns: 1fr; } }
+
+    /* Opponent selector */
+    .opponent-grid {
+      display: flex; flex-direction: column; gap: .65rem;
+    }
+    .opp-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: .7rem .9rem; cursor: pointer; transition: border-color .2s, background .2s;
+      display: flex; align-items: center; gap: .8rem;
+    }
+    .opp-card.selected { border-color: var(--amber); background: rgba(232,184,64,.07); }
+    .opp-card:hover:not(.selected) { border-color: rgba(184,136,99,.45); }
+    .opp-avatar {
+      width: 52px; height: 52px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .opp-avatar svg { width: 52px; height: 52px; }
+    .opp-info { flex: 1; min-width: 0; }
+    .opp-name  { font-size: .88rem; font-weight: 700; color: var(--cream); }
+    .opp-level { font-size: .7rem; color: var(--gold); font-family: 'Segoe UI', system-ui, sans-serif; }
+    .opp-desc  { font-size: .7rem; color: var(--muted); margin-top: .1rem; line-height: 1.4; }
+
+    /* Game board area */
+    .game-area { display: flex; flex-direction: column; gap: 1rem; }
+
+    .game-status {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: .6rem 1rem; font-size: .82rem; color: var(--text);
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    }
+    .game-status-msg { font-weight: 700; color: var(--cream); }
+    .game-timer { font-family: 'Courier New', monospace; color: var(--gold); font-size: .85rem; }
+
+    .play-board-wrap {
+      display: flex; justify-content: center;
+    }
+    #play-board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      width: min(480px, 92vw);
+      border: 3px solid var(--dark-sq);
+      border-radius: 4px;
+      box-shadow: 0 0 40px rgba(184,136,99,.25), 0 0 80px rgba(0,0,0,.6);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .psq {
+      aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(1.5rem, 5vw, 2.4rem);
+      line-height: 1; user-select: none; position: relative;
+      transition: background .1s;
+    }
+    .psq.lite { background: var(--lite-sq); }
+    .psq.dark { background: var(--dark-sq); }
+    .psq.selected { background: #f6f669 !important; }
+    .psq.legal    { background: rgba(50,200,50,.35) !important; }
+    .psq.last-move{ background: rgba(200,200,50,.4) !important; }
+    .psq.in-check { background: rgba(220,50,50,.55) !important; }
+
+    .coord-file {
+      position: absolute; bottom: 1px; right: 3px;
+      font-size: .55rem; font-weight: 700; opacity: .55;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      pointer-events: none;
+    }
+    .coord-rank {
+      position: absolute; top: 1px; left: 3px;
+      font-size: .55rem; font-weight: 700; opacity: .55;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      pointer-events: none;
+    }
+
+    .captured-row {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: .5rem .85rem; font-size: 1.1rem; line-height: 1.6; min-height: 2.5rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .captured-label { font-size: .65rem; color: var(--muted); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .move-history {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: .6rem .85rem; max-height: 120px; overflow-y: auto;
+      font-family: 'Courier New', monospace; font-size: .78rem; color: var(--text);
+      line-height: 1.8;
+    }
+    .move-history span { color: var(--gold); }
+
+    .game-controls {
+      display: flex; gap: .6rem; flex-wrap: wrap;
+    }
+    .ctrl-btn {
+      font-size: .74rem; padding: .38rem .9rem; border-radius: 7px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,.12); background: transparent; color: var(--text);
+      font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      transition: all .2s; font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .ctrl-btn:hover { border-color: rgba(232,184,64,.5); color: var(--amber); }
+    .ctrl-btn.primary { background: rgba(232,184,64,.12); border-color: rgba(232,184,64,.4); color: var(--amber); }
+
+    /* Promotion modal */
+    #promo-modal {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.75);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #promo-modal
+    .promo-box {
+      background: var(--panel); border: 2px solid var(--dark-sq);
+      border-radius: 14px; padding: 1.5rem 2rem; text-align: center;
+    }
+    .promo-box h3 { color: var(--cream); margin-bottom: 1rem; }
+    .promo-pieces { display: flex; gap: .75rem; justify-content: center; }
+    .promo-piece {
+      font-size: 2.5rem; cursor: pointer; padding: .3rem .5rem;
+      border-radius: 8px; border: 2px solid transparent;
+      transition: border-color .2s;
+    }
+    .promo-piece:hover { border-color: var(--amber); }
+
+    /* Mech Turk tab */
+    .mt-hero {
+      display: flex; flex-wrap: wrap; gap: 2rem; align-items: flex-start;
+    }
+    .mt-ascii {
+      font-family: 'Courier New', monospace; font-size: .68rem; line-height: 1.35;
+      color: var(--gold); white-space: pre; flex-shrink: 0;
+      background: rgba(0,0,0,.3); border: 1px solid rgba(184,136,99,.2);
+      border-radius: 10px; padding: .9rem 1.1rem;
+    }
+    .mt-img-block { flex-shrink: 0; }
+    .mt-intro { flex: 1; min-width: 220px; font-size: .88rem; line-height: 1.75; color: var(--text); }
+    .mt-intro strong { color: var(--cream); }
+  </style>
+</head>
+<body>
+<div class="tabs">
+    <a class="tab-btn " href="index.html">Board</a>
+    <a class="tab-btn" href="play.html">Play</a>
+    <a class="tab-btn" href="pieces.html">Pieces</a>
+    <a class="tab-btn" href="openings.html">Openings</a>
+    <a class="tab-btn" href="champions.html">Champions</a>
+    <a class="tab-btn" href="tactics.html">Tactics</a>
+    <a class="tab-btn" href="history.html">History</a>
+    <a class="tab-btn" href="mechturk.html">Mech Turk</a>
+  </div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/chess') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="mechturk">
+<div class="sec-header">The Mechanical Turk — 1770</div>
+
+    <div class="mt-hero">
+      <div class="mt-img-block">
+        <img src="images/mechanical-turk.jpg" alt="The Mechanical Turk" style="width:100%;max-width:340px;border-radius:10px;border:1px solid rgba(255,255,255,.12);display:block;" loading="lazy" decoding="async">
+        <div style="font-size:.68rem;color:var(--dim);margin-top:.4rem;text-align:center">The Turk — 1783 engraving by Joseph Racknitz</div>
+        <div style="margin-top:.8rem;display:flex;align-items:center;gap:.6rem">
+          <img src="images/von-kempelen.jpg" alt="Wolfgang von Kempelen" style="width:60px;height:60px;object-fit:cover;border-radius:50%;border:2px solid rgba(255,255,255,.15);" loading="lazy" decoding="async">
+          <div>
+            <div style="font-size:.8rem;font-weight:700;color:var(--cream)">Wolfgang von Kempelen</div>
+            <div style="font-size:.7rem;color:var(--dim)">Hungarian inventor · 1734–1804</div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-intro">
+        <p>In 1770, Hungarian inventor <strong>Wolfgang von Kempelen</strong> unveiled an extraordinary creation before the court of Empress Maria Theresa: a chess-playing automaton dressed in Ottoman robes, seated behind a large cabinet. The figure could apparently play a strong game of chess against any human challenger — and win.</p>
+        <p style="margin-top:.75rem">It was called <strong>The Turk</strong>, and for 84 years it would mystify, astonish, and deceive the greatest minds of the Enlightenment.</p>
+      </div>
+    </div>
+
+    <div class="sec-header">How It Really Worked</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🎭</span>
+          <div><div class="card-title">The Illusion</div><div class="card-sub">A masterpiece of misdirection</div></div>
+        </div>
+        <div class="card-body">
+          <p>The cabinet beneath the chess table contained a series of compartments. Before each performance, von Kempelen would dramatically open each door to show the audience the clockwork machinery inside — but the compartments were arranged so that a <strong style="color:var(--cream)">hidden human operator</strong> could slide between sections as each door opened.</p>
+          <p>Magnets beneath the board tracked the positions of chess pieces. The operator inside could see the board through a hidden peephole and manipulate the Turk's arm via a system of levers and pulleys.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🔧</span>
+          <div><div class="card-title">The Machinery</div><div class="card-sub">Clockwork and misdirection</div></div>
+        </div>
+        <div class="card-body">
+          <p>The cabinet was filled with elaborate but non-functional clockwork — gears, levers, and cylinders that looked impressive but served only to fool the audience into thinking the machine was mechanical. The clockwork made convincing noises when wound up.</p>
+          <p>The actual chess moves were executed by the human operator who controlled a mechanical arm connected to the Turk figurine above. The operator used a candle for light and a pantograph to track the board state.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🧑‍💼</span>
+          <div><div class="card-title">The Operators</div><div class="card-sub">Real masters hidden inside</div></div>
+        </div>
+        <div class="card-body">
+          <p>Several strong chess masters operated the Turk over its 84-year history. The most notable was <strong style="color:var(--cream)">Johann Allgaier</strong>, a Vienna chess master who operated it in the early 1800s. Later operators included <strong style="color:var(--cream)">William Lewis</strong> and <strong style="color:var(--cream)">Jacques Mouret</strong>, both strong players of their era.</p>
+          <p>The operators were chosen for both chess skill and physical compactness — the cabinet space was extremely confined, requiring flexibility and the ability to remain still for hours during exhibitions.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">💡</span>
+          <div><div class="card-title">The Ventilation Problem</div><div class="card-sub">Heat, smoke, and secrecy</div></div>
+        </div>
+        <div class="card-body">
+          <p>Operating inside the cabinet was physically grueling. The operator had to manage a candle for light — the smoke was vented through a pipe hidden in the Turk's pipe-stem prop. The heat inside the cabinet during long demonstrations could be intense.</p>
+          <p>When the Turk checkmated an opponent, the figurine would nod its head three times — a signal controlled by the operator inside via a separate lever mechanism.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-header">Famous Matches</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-head">
+          <img src="images/napoleon.jpg" alt="Napoleon Bonaparte" style="width:54px;height:54px;object-fit:cover;object-position:top;border-radius:50%;border:2px solid rgba(255,255,255,.15);flex-shrink:0" loading="lazy" decoding="async">
+          <div><div class="card-title">Napoleon Bonaparte</div><div class="card-sub">Paris, 1809</div></div>
+        </div>
+        <div class="card-body">
+          <p>Napoleon was famously defeated by the Turk in Paris — though accounts suggest he tried to cheat twice, moving pieces illegally to test the machine's reaction. The Turk responded each time by replacing the piece to its correct position and nodding disapprovingly.</p>
+          <p>Napoleon reportedly lost three times and was so frustrated that he swept the pieces off the board. The Turk operator inside — reportedly Allgaier — reportedly laughed. Napoleon later requested a second session.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <img src="images/benjamin-franklin.jpg" alt="Benjamin Franklin" style="width:54px;height:54px;object-fit:cover;object-position:top;border-radius:50%;border:2px solid rgba(255,255,255,.15);flex-shrink:0" loading="lazy" decoding="async">
+          <div><div class="card-title">Benjamin Franklin</div><div class="card-sub">Paris, 1783</div></div>
+        </div>
+        <div class="card-body">
+          <p>Benjamin Franklin, serving as American Ambassador to France, played the Turk during its Paris tour and was defeated. Franklin was a keen chess player and one of the first Americans to write about the game — his 1779 essay <em>"The Morals of Chess"</em> was the first chess publication in America.</p>
+          <p>Unlike many skeptics, Franklin accepted the loss graciously. He did not believe the machine was truly mechanical but admitted he could not determine the deception mechanism.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">📜</span>
+          <div><div class="card-title">Catherine the Great</div><div class="card-sub">St. Petersburg, 1780s</div></div>
+        </div>
+        <div class="card-body">
+          <p>Catherine the Great of Russia was among the Turk's most high-profile opponents during its European tour. The Turk's reputation as a chess-playing wonder brought it before the greatest rulers and thinkers of the age.</p>
+          <p>After von Kempelen's death in 1804, the Turk was sold to Johann Nepomuk Mälzel, a showman and inventor who brought it to America. Mälzel toured it as entertainment alongside his famous "Panharmonicon" musical automaton.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🌊</span>
+          <div><div class="card-title">American Tour</div><div class="card-sub">1826–1838</div></div>
+        </div>
+        <div class="card-body">
+          <p>Mälzel toured the Turk across American cities including New York, Boston, Philadelphia, Baltimore, and Richmond — where Edgar Allan Poe encountered it in 1836. The machine played public matches against challengers, drawing massive crowds.</p>
+          <p>The Turk lost only about 7% of its games during documented tours — a remarkable record reflecting the skill of its hidden operators. It used a standard chess strategy with aggressive openings and precise endgames.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-header">The Exposure</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-head">
+          <img src="images/edgar-allan-poe.jpg" alt="Edgar Allan Poe" style="width:54px;height:54px;object-fit:cover;object-position:top;border-radius:50%;border:2px solid rgba(255,255,255,.15);flex-shrink:0" loading="lazy" decoding="async">
+          <div><div class="card-title">Edgar Allan Poe's Analysis</div><div class="card-sub">1836 — Maelzel's Chess-Player</div></div>
+        </div>
+        <div class="card-body">
+          <p>In 1836, Edgar Allan Poe published <em>"Maelzel's Chess-Player"</em> in the Southern Literary Messenger — a meticulous logical argument that the machine must contain a human operator. Poe never definitively proved it, but his reasoning was sound: a purely mechanical system could not handle the variability of chess.</p>
+          <p>Poe's key argument: <em>"Arithmetical or algebraical calculations are, from their nature, fixed and determinate. The Algebraist... works his way to the result... by a succession of unerring steps... But with the Chess-Player, the case is widely different."</em></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">💀</span>
+          <div><div class="card-title">The Final Exposure</div><div class="card-sub">1857 — The Chess Monthly</div></div>
+        </div>
+        <div class="card-body">
+          <p>The full truth was revealed in 1857 by <strong style="color:var(--cream)">Silas Weir Mitchell</strong> in <em>The Chess Monthly</em>, using testimony from one of the operators' relatives — Jacques Mouret's nephew. Mitchell named the operators, described the mechanism in detail, and ended the 87-year mystery.</p>
+          <p>By this time, the Turk had already been destroyed: it was lost to a fire at the Chinese Museum in Philadelphia in 1854, where Mälzel's estate had donated it. The most famous automaton in history perished in the flames.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🔥</span>
+          <div><div class="card-title">The Philadelphia Fire</div><div class="card-sub">1854 — End of the Turk</div></div>
+        </div>
+        <div class="card-body">
+          <p>After Mälzel died aboard a ship in 1838, the Turk passed through several owners before being donated to the Chinese Museum in Philadelphia. On July 5, 1854, the museum caught fire and the Turk was destroyed — more than 80 years after its creation.</p>
+          <p>Contemporary reports described the fire consuming the museum's collections. One account noted that as the Turk burned, its voice box (used to say "échec" for check) emitted strange groans — the last sounds of the most famous chess player never to have existed.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-header">Legacy &amp; Influence</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">⚙️</span>
+          <div><div class="card-title">Charles Babbage</div><div class="card-sub">Seeds of computing</div></div>
+        </div>
+        <div class="card-body">
+          <p>Charles Babbage, inventor of the Difference Engine (an early mechanical computer), was fascinated by the Turk and played against it. He wrote that it helped inspire his interest in automating calculation — wondering whether <em>truly</em> mechanical thought might be possible.</p>
+          <p>The Turk raised, for the first time in mass culture, the question of whether machines could think — a question that would define the 20th century and launch the field of artificial intelligence.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">☁️</span>
+          <div><div class="card-title">Amazon Mechanical Turk</div><div class="card-sub">2005 — Named in its honor</div></div>
+        </div>
+        <div class="card-body">
+          <p>In 2005, Amazon launched its crowdsourcing platform <strong style="color:var(--cream)">Amazon Mechanical Turk</strong> — deliberately named after von Kempelen's automaton. The service lets software applications direct humans to perform tasks that computers cannot do well.</p>
+          <p>The naming is apt: like the original Turk, the platform creates the illusion of automated intelligence while actual humans do the thinking behind the scenes. The motto: "Artificial Artificial Intelligence."</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">🤖</span>
+          <div><div class="card-title">The Turing Test Connection</div><div class="card-sub">Can machines think?</div></div>
+        </div>
+        <div class="card-body">
+          <p>Alan Turing explicitly referenced chess-playing machines in his 1950 paper "Computing Machinery and Intelligence" — the paper that introduced the Turing Test. The long history of chess automata (real and fraudulent) provided the cultural backdrop for serious questions about machine cognition.</p>
+          <p>The Turk's 84-year run demonstrated that humans would readily <em>believe</em> a machine was thinking if the outputs were convincing enough — a psychological insight that proved prophetic for the AI era.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-icon">♟</span>
+          <div><div class="card-title">The Irony of Deep Blue</div><div class="card-sub">1997 — Real machine beats human</div></div>
+        </div>
+        <div class="card-body">
+          <p>When IBM's Deep Blue defeated Kasparov in 1997, commentators noted the irony: for 200 years, chess automata had been fraudulent; now a real machine had finally achieved what the Turk only pretended to do.</p>
+          <p>Von Kempelen could not have imagined that his theatrical deception would seed a tradition of thought that culminated in genuine artificial chess mastery. The Turk was fake — but the questions it raised were entirely real.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-header">Timeline</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">1770</div>
+        <div class="tl-name">The Turk Debuts</div>
+        <div class="tl-desc">Wolfgang von Kempelen unveils the Mechanical Turk at the court of Empress Maria Theresa in Vienna. It defeats all challengers.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1783</div>
+        <div class="tl-name">Paris Tour — Franklin Defeated</div>
+        <div class="tl-desc">The Turk tours France and defeats Benjamin Franklin among others. Paris is captivated.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1809</div>
+        <div class="tl-name">Napoleon Loses</div>
+        <div class="tl-desc">Napoleon Bonaparte tries to cheat and is corrected by the Turk three times before losing the match.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1804</div>
+        <div class="tl-name">Von Kempelen Dies</div>
+        <div class="tl-desc">The inventor dies; the Turk is sold to Johann Nepomuk Mälzel who takes it on European and American tours.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1826</div>
+        <div class="tl-name">American Debut</div>
+        <div class="tl-desc">The Turk arrives in America, touring major cities and drawing huge crowds to public chess exhibitions.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1836</div>
+        <div class="tl-name">Poe's Analysis</div>
+        <div class="tl-desc">Edgar Allan Poe publishes "Maelzel's Chess-Player," arguing logically that the machine must contain a human operator.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1854</div>
+        <div class="tl-name">Fire in Philadelphia</div>
+        <div class="tl-desc">The Chinese Museum burns. The Mechanical Turk is destroyed after 84 years of operation.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">1857</div>
+        <div class="tl-name">Full Exposure</div>
+        <div class="tl-desc">Silas Weir Mitchell publishes the complete truth in The Chess Monthly, naming the operators and describing the mechanism.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">2005</div>
+        <div class="tl-name">Amazon Mechanical Turk</div>
+        <div class="tl-desc">Amazon launches its crowdsourcing platform named in honor of the original Turk — "Artificial Artificial Intelligence."</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+</section>
+<script>
+(function () {
+  function adjustLayout() {
+    var nav = document.querySelector('nav');
+    if (!nav) return;
+    var navH = nav.offsetHeight;
+    var tabs = document.querySelector('.tabs');
+    if (tabs) tabs.style.top = navH + 'px';
+    document.querySelector('.wrap').style.paddingTop = (navH + 44 + 16) + 'px';
+  }
+  adjustLayout();
+  window.addEventListener('resize', adjustLayout);
+})();
+</script>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

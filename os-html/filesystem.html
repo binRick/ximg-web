@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Process Scheduler">
+<title>OS Simulator — os.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#02020f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;padding-top:44px;min-height:100vh}
+  .subnav{position:sticky;top:44px;z-index:90;background:#070720;border-bottom:1px solid #1e293b;display:flex;justify-content:center;overflow-x:auto}
+  .subnav button{background:none;border:none;color:#94a3b8;padding:12px 22px;cursor:pointer;font-size:.9rem;white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s}
+  .subnav button:hover{color:#e2e8f0;background:#0f172a}
+  .subnav button.active{color:#22c55e;border-bottom-color:#22c55e}
+  h2{font-size:1.4rem;margin-bottom:6px;color:#f1f5f9}
+  .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px;align-items:center}
+  .controls label{font-size:.82rem;color:#94a3b8}
+  .controls select{background:#070720;border:1px solid #1e293b;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.85rem}
+  .btn{background:#22c55e;border:none;color:#000;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:700;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn.blue{background:#3b82f6;color:#fff}
+  .btn.red{background:#ef4444;color:#fff}
+  .btn.gray{background:#1e293b;color:#94a3b8}
+  .btn.gray:hover{background:#334155;color:#e2e8f0}
+  .panel{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:16px}
+
+  /* ── Scheduler ── */
+  #schedCanvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px;width:100%;max-width:800px}
+  .proc-table{margin-top:16px;width:100%;border-collapse:collapse;font-size:.82rem}
+  .proc-table th,.proc-table td{padding:6px 12px;border-bottom:1px solid #1e293b;text-align:left}
+  .proc-table th{color:#64748b;font-weight:500}
+  .status-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:700}
+
+  /* ── Memory ── */
+  #memCanvas{display:block;background:#070720;border:1px solid #1e293b;border-radius:8px}
+  .mem-stats{display:flex;gap:24px;margin-top:12px;font-size:.85rem}
+  .mem-stat{display:flex;flex-direction:column;gap:4px}
+  .mem-stat-label{color:#64748b;font-size:.75rem}
+  .mem-stat-val{font-weight:700;color:#e2e8f0}
+
+  /* ── File System ── */
+  .fs-layout{display:flex;gap:20px;flex-wrap:wrap}
+  .fs-tree{flex:0 0 280px;background:#070720;border:1px solid #1e293b;border-radius:8px;padding:12px;min-height:340px;overflow-y:auto;font-size:.83rem;font-family:'Courier New',monospace}
+  .fs-node{cursor:pointer;padding:3px 0;user-select:none;white-space:nowrap}
+  .fs-node:hover{color:#22c55e}
+  .fs-node.selected{color:#3b82f6}
+  .fs-info{flex:1;min-width:280px}
+  .fs-info-table{width:100%;border-collapse:collapse;font-size:.82rem}
+  .fs-info-table td{padding:6px 10px;border-bottom:1px solid #1e293b}
+  .fs-info-table td:first-child{color:#64748b;width:40%}
+  .fs-input-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .fs-input-row input{background:#070720;border:1px solid #1e293b;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:.85rem;width:160px}
+
+  /* ── System Monitor ── */
+  .monitor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .mon-card{background:#070720;border:1px solid #1e293b;border-radius:8px;padding:14px}
+  .mon-card h3{font-size:.9rem;color:#94a3b8;margin-bottom:10px}
+  .mon-card canvas{display:block;width:100%;background:transparent}
+  .mon-val{font-size:1.4rem;font-weight:700;margin-bottom:6px}
+</style>
+</head>
+<body>
+<nav class="subnav">
+  <a class="active" href="index.html">Process Scheduler</a>
+  <a href="memory.html">Memory Manager</a>
+  <a href="filesystem.html">File System</a>
+  <a href="monitor.html">System Monitor</a>
+</nav>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/os') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="filesystem">
+<h2>Virtual File System</h2>
+  <p class="subtitle">Click to expand directories, select items to view metadata</p>
+  <div class="fs-layout">
+    <div>
+      <div class="fs-tree" id="fsTree"></div>
+      <div class="fs-input-row">
+        <input id="fsNewName" placeholder="name" maxlength="20">
+        <button class="btn" id="fsNewFile">New File</button>
+        <button class="btn blue" id="fsNewDir">New Dir</button>
+        <button class="btn red" id="fsDelete">Delete</button>
+      </div>
+    </div>
+    <div class="fs-info panel">
+      <div id="fsInfoContent" style="color:#64748b;font-size:.85rem">Select a file or folder to view details.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TAB 4: SYSTEM MONITOR ─────────────────────────────────────────────── -->
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

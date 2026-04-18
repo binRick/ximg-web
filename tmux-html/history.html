@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Split panes · Persist sessions · Navigate without a mouse">
+  <title>tmux — Terminal Multiplexer Reference</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --green: #00ff41;
+      --green-dim: rgba(0,255,65,.15);
+      --green-mid: rgba(0,255,65,.3);
+      --cyan: #79c0ff;
+      --yellow: #e3b341;
+      --orange: #f0883e;
+      --purple: #d2a8ff;
+      --red: #ff7b72;
+      --text: #e6edf3;
+      --muted: #8b949e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── hero ── */
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% -10%, rgba(0,255,65,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-ascii {
+      font-size: .65rem;
+      line-height: 1.2;
+      color: var(--green);
+      text-shadow: 0 0 8px var(--green);
+      margin-bottom: 1rem;
+      white-space: pre;
+      display: inline-block;
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      color: var(--text);
+    }
+    .hero h1 span { color: var(--green); }
+    .hero p {
+      color: var(--muted);
+      margin-top: .5rem;
+      font-size: .95rem;
+    }
+
+    /* ── tabs ── */
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: .4rem;
+      padding: .75rem 1.5rem 0;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .82rem;
+      font-weight: 600;
+      padding: .45rem 1rem;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .tab-btn:hover { color: var(--text); border-color: var(--border); }
+    .tab-btn.active {
+      color: var(--green);
+      border-color: var(--border);
+      border-bottom-color: var(--bg);
+      background: var(--bg);
+    }
+
+    /* ── main content ── */
+
+    /* ── section headers ── */
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin: 2rem 0 .8rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── cheatsheet grid ── */
+    .cs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+    .cs-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .cs-card-header {
+      background: var(--surface2);
+      padding: .5rem .85rem;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+    }
+    .cs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .45rem .85rem;
+      gap: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .cs-row:last-child { border-bottom: none; }
+    .cs-desc { font-size: .82rem; color: var(--muted); flex: 1; }
+    .keys { display: flex; gap: .25rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-bottom: 2px solid #484f58;
+      border-radius: 4px;
+      padding: .15rem .4rem;
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .kbd.green { color: var(--green); border-color: rgba(0,255,65,.3); }
+    .kbd.yellow { color: var(--yellow); border-color: rgba(227,179,65,.3); }
+    .kbd.purple { color: var(--purple); border-color: rgba(210,168,255,.3); }
+    .plus { font-size: .7rem; color: var(--muted); }
+
+    /* prefix badge */
+    .prefix-note {
+      background: var(--green-dim);
+      border: 1px solid var(--green-mid);
+      border-radius: 6px;
+      padding: .6rem 1rem;
+      font-size: .82rem;
+      color: var(--text);
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .prefix-note .kbd { font-size: .78rem; }
+
+    /* ── simulator ── */
+    .sim-wrap {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+    }
+    .sim-titlebar {
+      background: #1c1c1c;
+      border-bottom: 1px solid #333;
+      padding: .3rem .75rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .72rem;
+      color: #aaa;
+    }
+    .sim-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28c840; }
+    .sim-body {
+      display: flex;
+      flex-direction: column;
+      height: 420px;
+    }
+    .sim-panes {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .sim-pane {
+      flex: 1;
+      padding: .5rem;
+      font-size: .72rem;
+      line-height: 1.6;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+      cursor: pointer;
+    }
+    .sim-pane.active { border-color: var(--green); }
+    .sim-pane + .sim-pane { border-left: 1px solid #333; }
+    .sim-pane-label {
+      position: absolute;
+      top: .3rem;
+      right: .4rem;
+      font-size: .65rem;
+      color: var(--muted);
+      opacity: .6;
+    }
+    .sim-right {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      border-left: 1px solid #333;
+    }
+    .sim-right .sim-pane + .sim-pane { border-left: none; border-top: 1px solid #333; }
+    .sim-statusbar {
+      background: var(--green);
+      color: #000;
+      font-size: .72rem;
+      font-weight: 700;
+      padding: .2rem .6rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .sim-win {
+      background: #000;
+      color: var(--green);
+      padding: .15rem .5rem;
+      border-radius: 3px;
+      font-size: .7rem;
+    }
+    .sim-win.active { background: var(--green); color: #000; }
+    .sim-ctrl {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: 1rem;
+    }
+    .sim-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .78rem;
+      padding: .4rem .8rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .sim-btn:hover { background: var(--surface2); border-color: var(--green); color: var(--green); }
+    .sim-btn.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+
+    .prompt { color: var(--green); }
+    .cmd-text { color: var(--text); }
+    .out-text { color: var(--muted); }
+    .highlight { color: var(--cyan); }
+    .warn-text { color: var(--yellow); }
+
+    /* ── config ── */
+    .config-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+    }
+    .config-block-header {
+      background: var(--surface2);
+      padding: .45rem .85rem;
+      font-size: .78rem;
+      color: var(--yellow);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+    .config-body { padding: .75rem .85rem; }
+    .config-line {
+      display: flex;
+      gap: 1rem;
+      padding: .25rem 0;
+      font-size: .8rem;
+      border-bottom: 1px solid rgba(255,255,255,.03);
+      align-items: flex-start;
+    }
+    .config-line:last-child { border-bottom: none; }
+    .config-code {
+      color: var(--cyan);
+      font-weight: 600;
+      min-width: 280px;
+      flex-shrink: 0;
+      white-space: pre;
+    }
+    .config-explain { color: var(--muted); font-size: .77rem; line-height: 1.5; }
+    .config-comment { color: #484f58; font-style: italic; }
+
+    /* ── history timeline ── */
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: .45rem;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -1.68rem;
+      top: .3rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 6px var(--green);
+    }
+    .tl-dot.minor {
+      width: 8px;
+      height: 8px;
+      left: -1.5rem;
+      background: var(--border);
+      box-shadow: none;
+    }
+    .tl-year {
+      font-size: .72rem;
+      color: var(--green);
+      font-weight: 700;
+      letter-spacing: .05em;
+      margin-bottom: .2rem;
+    }
+    .tl-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .3rem;
+    }
+    .tl-body {
+      font-size: .82rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── concepts grid ── */
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .85rem;
+    }
+    .concept-icon { font-size: 1.5rem; margin-bottom: .4rem; }
+    .concept-name { font-size: .9rem; font-weight: 700; color: var(--cyan); margin-bottom: .3rem; }
+    .concept-desc { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+
+    @media(max-width:640px){
+      .cs-grid { grid-template-columns: 1fr; }
+      .concept-grid { grid-template-columns: 1fr 1fr; }
+      .config-line { flex-direction: column; gap: .2rem; }
+      .config-code { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+<div class="tabs">
+  <a class="tab-btn " href="index.html">Cheatsheet</a>
+  <a class="tab-btn" href="simulator.html">Simulator</a>
+  <a class="tab-btn" href="config.html">Config</a>
+  <a class="tab-btn" href="history.html">History</a>
+  <a class="tab-btn" href="reasons.html">Reasons</a>
+</div>
+
+<script>
+(function(){
+  var p = location.pathname;
+  document.querySelectorAll('a[href]').forEach(function(a){
+    var h = a.getAttribute('href');
+    if (!h || !h.endsWith('.html') && h !== 'index.html') return;
+    if (p.endsWith(h) || (h==='index.html' && (p.endsWith('/') || p.endsWith('/tmux') || p.endsWith('index.html')))) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+<section id="history">
+<div class="section-title">Timeline</div>
+  <div class="timeline">
+
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2007</div>
+      <div class="tl-title">tmux Born</div>
+      <div class="tl-body">Nicholas Marriott releases tmux 0.8 as an alternative to GNU Screen. Written in C, BSD-licensed, it brings a clean client-server architecture and a scriptable command interface missing from Screen.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot minor"></div>
+      <div class="tl-year">2009</div>
+      <div class="tl-title">OpenBSD Adoption</div>
+      <div class="tl-body">tmux is added to the OpenBSD base system, replacing Screen. This gives it immediate credibility in the Unix community and drives rapid feature development from security-focused contributors.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2011</div>
+      <div class="tl-title">tmux 1.5 — Activity & Alerts</div>
+      <div class="tl-body">Adds window activity monitoring, bell alerts, and significant improvements to copy mode. The pane synchronization feature (broadcast input to all panes) debuts — a power-user favourite for multi-server management.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot minor"></div>
+      <div class="tl-year">2012</div>
+      <div class="tl-title">tpm — Tmux Plugin Manager</div>
+      <div class="tl-body">Bruno Sutic creates tpm, inspired by vim's Vundle/Pathogen. Plugins like tmux-resurrect and tmux-continuum follow, enabling persistent session save/restore — solving one of terminal multiplexing's biggest pain points.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2014</div>
+      <div class="tl-title">tmux 1.9 — Path Inheritance</div>
+      <div class="tl-body">New panes and windows can now inherit the current working directory of the active pane, a highly requested feature. The <code>pane_current_path</code> format variable enables the now-standard split binding pattern.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot minor"></div>
+      <div class="tl-year">2015</div>
+      <div class="tl-title">tmux 2.0 — True Color &amp; UTF-8</div>
+      <div class="tl-body">Version 2.0 ships with true colour support and better UTF-8 rendering. This makes tmux viable for modern terminal applications that rely on 24-bit colour — including popular editors like Neovim.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2017</div>
+      <div class="tl-title">tmux 2.6 — Popup Windows</div>
+      <div class="tl-body">Floating overlay panes (display-popup) land, allowing scripts and plugins to open temporary windows on top of the current layout — used heavily by modern fuzzy-finder integrations like fzf-tmux.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot minor"></div>
+      <div class="tl-year">2019</div>
+      <div class="tl-title">tmux 2.9 — Style Unification</div>
+      <div class="tl-body">A major refactor of the style and format system makes theming dramatically easier. Catppuccin, Dracula, and Gruvbox themes emerge as community staples, fuelling a resurgence of aesthetic tmux customisation.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">2021</div>
+      <div class="tl-title">tmux 3.2 — Extended Keys &amp; Menus</div>
+      <div class="tl-body">Adds support for extended key sequences (allowing modifiers like Shift+arrows in more terminals), and interactive menus via <code>display-menu</code>. Mouse right-click menus become a standard tmux interaction pattern.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot minor"></div>
+      <div class="tl-year">2023</div>
+      <div class="tl-title">tmux 3.4 — Window Options &amp; Passthrough</div>
+      <div class="tl-body">Improved OSC passthrough lets applications like kitty, Ghostty, and iTerm2 render inline images through tmux — finally closing the gap between multiplexed and raw-terminal image rendering.</div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">Today</div>
+      <div class="tl-title">17+ Years of Multiplexing</div>
+      <div class="tl-body">tmux is installed on virtually every Linux server, embedded in developer workflows from Neovim to VS Code remote sessions. With ~35k GitHub stars and active maintenance, it remains the definitive terminal multiplexer.</div>
+    </div>
+
+  </div>
+</section>
+<script src="/shared/nav.js?v=3"></script>
+</body>
+</html>
