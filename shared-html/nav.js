@@ -74,6 +74,7 @@
       ['rpm-bundler','rpm'],
     ]},
     { label: 'Projects', apps: [
+      ['projects-info','what & why'],
       ['rx','RxFitt'],
       ['esp32','Freenove ESP32-S3 Dev Kit FNK0086'],
       ['esp32-s3-lcd','Waveshare ESP32-S3-Touch-LCD-1.69'],
@@ -737,7 +738,7 @@
       var isActive = subdomain + '.ximg.app' === curHost ||
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
-      item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
+      item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
       item.href = appHref(subdomain);
       dd.appendChild(item);
@@ -846,7 +847,7 @@
       var isActive = subdomain + '.ximg.app' === curHost ||
                      (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
       var item = document.createElement('a');
-      item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' ? ' nav-dd-featured' : '');
+      item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
       item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
       item.href = appHref(subdomain);
       mApps.appendChild(item);

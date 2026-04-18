@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-239 virtual hosts (root + 238 subdomains), all static sites served by a single nginx container.
+240 virtual hosts (root + 239 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -248,6 +248,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [honeypot.ximg.app](https://honeypot.ximg.app) | SSH Honeypot Terminal — live simulation of the actual SSH honeypot: watch 9 auth failures then break in on attempt 10, interactive Ubuntu shell with ps, find, cat, sudo. |
 | [bundler-info.ximg.app](https://bundler-info.ximg.app) | Bundlers — What & Why — newbie explainer for offline package bundlers: why you need them, how they work, and cards for every bundler (Python, Node.js, Go, APT, RPM, Docker, Linux ISO). |
 | [devtools-info.ximg.app](https://devtools-info.ximg.app) | Dev Tools — What & Why — 23 browser-based developer tools explained: encoding, security, networking, time, generation, HTTP, and more, with search and category filters. |
+| [projects-info.ximg.app](https://projects-info.ximg.app) | Projects — What & Why — 9 real-world projects documented with live demos: ESP32 hardware builds, Linux eBPF kernel tracers (exec, net, DNS, TLS), Go CLI tools (pal, tls-ca-fetch), and the RxFitt fitness app. |
 | [communism.ximg.app](https://communism.ximg.app) | Communism — the deadliest ideology: 100M dead, Gulag, Mao's famine, Pol Pot's genocide, animated death counter. |
 | [ww2.ximg.app](https://ww2.ximg.app) | World War II — battles, leaders, radar, interactive Chain Home radar sweep visualization. |
 | [ww1.ximg.app](https://ww1.ximg.app) | World War I — trenches, battles, causes (MAIN), interactive Western Front trench scene. |
