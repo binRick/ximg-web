@@ -1164,7 +1164,7 @@ const HTML = `<!DOCTYPE html>
 
     function connect(site) {
       clearTimeout(reconnectTimer);
-      if (ws) { ws.onclose = null; ws.close(); }
+      if (ws) { ws.onclose = null; ws.onerror = null; ws.onmessage = null; ws.close(); }
       container.innerHTML = '<div class="connecting">connecting…</div>';
       stats.total = stats['2xx'] = stats['3xx'] = stats['4xx'] = stats['5xx'] = 0;
       stTotal.textContent = st2xx.textContent = st3xx.textContent = st4xx.textContent = st5xx.textContent = '0';
