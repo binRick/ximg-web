@@ -9,11 +9,7 @@ const LOGS_DIR       = '/logs';
 const SSH_DIR        = '/ssh-logs';
 const DL_LOG_FILE    = '/data/dockerimagedownloader.log';
 const BUNDLER_LOG_FILE = '/data/bundler-downloads.log';
-const DNS_DB_PATH      = '/proc-trace/dns.db';
 const PORT           = 3000;
-
-let Database = null;
-try { Database = require('better-sqlite3'); } catch(_) {}
 
 function stripAnsi(s) {
   return s.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '')
@@ -637,32 +633,7 @@ const HTML = `<!DOCTYPE html>
     .bot-sites{color:var(--dim);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
     .bot-empty{color:var(--dim);padding:2rem;text-align:center;font-size:.8rem}
 
-    /* ── DNS queries tab ────────────────────────────────────────────────── */
-    #dns-container{flex:1;overflow:hidden;display:none;flex-direction:column}
-    #dns-header{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;
-      border-bottom:1px solid rgba(255,255,255,.06);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
-    #dns-header .dh-val{color:var(--text);font-weight:700}
-    #dns-header .dh-err{color:#f87171;font-weight:700}
-    #dns-table-wrap{flex:1;overflow-y:auto;padding:.5rem .75rem}
-    #dns-table-wrap::-webkit-scrollbar{width:6px}
-    #dns-table-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-    .dns-table{width:100%;border-collapse:collapse;font-size:.76rem}
-    .dns-table th{color:var(--dim);font-weight:600;text-align:left;padding:.3rem .5rem;
-      border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap;
-      position:sticky;top:0;background:#0d1117;z-index:1;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em}
-    .dns-table td{padding:.35rem .5rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;word-break:break-word}
-    .dns-table tr:hover td{background:rgba(255,255,255,.025)}
-    .dns-table tr.dns-nxdomain td{background:rgba(248,113,113,.04)}
-    .dns-table tr.dns-nxdomain td.dns-rcode{color:#f87171}
-    .dns-table tr.dns-ok td.dns-rcode{color:#4ade80}
-    .dns-proc{color:#a78bfa;font-size:.74rem}
-    .dns-type{color:#06b6d4;font-size:.72rem;font-family:'Courier New',monospace}
-    .dns-query{color:#f1f5f9}
-    .dns-answer{color:#38bdf8;font-size:.72rem}
-    .dns-lat{color:var(--dim);font-size:.72rem;text-align:right}
-    .dns-empty{color:var(--dim);padding:2rem;text-align:center;font-size:.8rem}
-
-    #map-container{flex:1;overflow:hidden;display:none;flex-direction:column;position:relative}
+#map-container{flex:1;overflow:hidden;display:none;flex-direction:column;position:relative}
     #map-header{display:flex;align-items:center;gap:.9rem;padding:.4rem .75rem;
       border-bottom:1px solid rgba(255,255,255,.06);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
     #map-header .mh-stat{color:var(--text);font-weight:700}
@@ -1007,8 +978,7 @@ const HTML = `<!DOCTYPE html>
     <button class="tab" id="dl-tab">bundler downloads</button>
     <button class="tab" id="bot-tab">🤖 bots</button>
     <button class="tab" id="map-tab">🌍 global map</button>
-    <button class="tab" id="dns-tab">dns queries</button>
-    <div class="stats">
+<div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>
       <span>3xx <span class="stat-val s3xx" id="st-3xx">0</span></span>
@@ -1095,30 +1065,8 @@ const HTML = `<!DOCTYPE html>
   </div>
   <div id="map-tooltip"></div>
 
-  <div id="dns-container">
-    <div id="dns-header">
-      <span>total</span> <span class="dh-val" id="dh-total">—</span>
-      <span>NXDOMAIN</span> <span class="dh-err" id="dh-nxdomain">—</span>
-      <span>avg latency</span> <span class="dh-val" id="dh-latency">—</span>
-      <button onclick="loadDnsQueries()" style="margin-left:.3rem;background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:'Courier New',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">↺ refresh</button>
-    </div>
-    <div id="dns-table-wrap">
-      <table class="dns-table">
-        <thead><tr>
-          <th>Time</th>
-          <th>Process</th>
-          <th>Type</th>
-          <th>Query</th>
-          <th>Answers</th>
-          <th>RCode</th>
-          <th style="text-align:right">Latency</th>
-        </tr></thead>
-        <tbody id="dns-tbody"><tr><td colspan="7" class="dns-empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
 
-  <script>
+<script>
     const MAX_LINES = 500;
     let currentSite = 'all';
     let ws = null;
@@ -1288,7 +1236,6 @@ const HTML = `<!DOCTYPE html>
 
     function enterSshMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
-      if (typeof dnsMode !== 'undefined' && dnsMode) leaveDnsMode();
       sshMode = true;
       sshTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
@@ -1369,7 +1316,7 @@ const HTML = `<!DOCTYPE html>
       if (dlMode) leaveDlMode();
     });
 
-    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab):not(#dns-tab)').forEach(btn => {
+    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
         if (sshMode) leaveSshMode();
         if (dlMode) leaveDlMode();
@@ -1386,7 +1333,6 @@ const HTML = `<!DOCTYPE html>
 
     function enterDlMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
-      if (typeof dnsMode !== 'undefined' && dnsMode) leaveDnsMode();
       dlMode = true;
       dlTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
@@ -1543,7 +1489,6 @@ const HTML = `<!DOCTYPE html>
 
     function enterBotMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
-      if (typeof dnsMode !== 'undefined' && dnsMode) leaveDnsMode();
       if (dlMode) leaveDlMode();
       if (sshMode) leaveSshMode();
       botMode = true;
@@ -1575,90 +1520,6 @@ const HTML = `<!DOCTYPE html>
     botTab.addEventListener('click', () => { if (!botMode) enterBotMode(); });
     document.getElementById('bot-refresh').addEventListener('click', loadBotData);
 
-    // ── DNS Queries tab ───────────────────────────────────────────────────────
-    const dnsTab       = document.getElementById('dns-tab');
-    const dnsContainer = document.getElementById('dns-container');
-    let dnsMode = false;
-    let dnsPollTimer = null;
-
-    function fmtDnsTs(ms) {
-      try {
-        const d = new Date(ms);
-        return d.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
-      } catch(_) { return String(ms); }
-    }
-
-    function loadDnsQueries() {
-      fetch('/dns-queries')
-        .then(r => r.json())
-        .then(data => {
-          document.getElementById('dh-total').textContent   = data.total != null ? data.total.toLocaleString() : '—';
-          document.getElementById('dh-nxdomain').textContent = data.nxdomain != null ? data.nxdomain.toLocaleString() : '—';
-          document.getElementById('dh-latency').textContent  = data.avg_latency_ms != null ? data.avg_latency_ms.toFixed(1) + ' ms' : '—';
-          const tbody = document.getElementById('dns-tbody');
-          if (!data.rows || !data.rows.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="dns-empty">No DNS events recorded yet.</td></tr>';
-            return;
-          }
-          tbody.innerHTML = data.rows.map(r => {
-            const nxd = r.rcode === 'NXDOMAIN';
-            const cls = nxd ? 'dns-nxdomain' : (r.rcode === 'NOERROR' ? 'dns-ok' : '');
-            let answers = '—';
-            try { const a = JSON.parse(r.answers); answers = a.length ? a.join(', ') : '—'; } catch(_) {}
-            return '<tr class="' + cls + '">' +
-              '<td style="white-space:nowrap;color:var(--dim);font-size:.71rem">' + esc(fmtDnsTs(r.ts)) + '</td>' +
-              '<td class="dns-proc">' + esc(r.name || '?') + '</td>' +
-              '<td class="dns-type">' + esc(r.type) + '</td>' +
-              '<td class="dns-query">' + esc(r.query) + '</td>' +
-              '<td class="dns-answer">' + esc(answers) + '</td>' +
-              '<td class="dns-rcode">' + esc(r.rcode) + '</td>' +
-              '<td class="dns-lat">' + (r.latency_ms != null ? r.latency_ms.toFixed(1) + ' ms' : '—') + '</td>' +
-            '</tr>';
-          }).join('');
-        })
-        .catch(() => {
-          document.getElementById('dns-tbody').innerHTML =
-            '<tr><td colspan="7" class="dns-empty">Failed to load DNS queries.</td></tr>';
-        });
-    }
-
-    function enterDnsMode() {
-      if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
-      if (sshMode) leaveSshMode();
-      if (dlMode) leaveDlMode();
-      if (botMode) leaveBotMode();
-      dnsMode = true;
-      dnsTab.classList.add('active');
-      document.querySelector('.tab[data-site="all"]').classList.remove('active');
-      pickerBtn.classList.remove('has-selection');
-      pickerBtn.textContent = '☰ app ▾';
-      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
-      document.getElementById('pause-btn').style.display = 'none';
-      document.querySelector('.stats').style.display = 'none';
-      clearTimeout(reconnectTimer);
-      if (ws) { ws.onclose = null; ws.close(); ws = null; }
-      logContainer.style.display = 'none';
-      sshContainer.style.display = 'none';
-      dlContainer.style.display = 'none';
-      botContainer.style.display = 'none';
-      dnsContainer.style.display = 'flex';
-      loadDnsQueries();
-      dnsPollTimer = setInterval(loadDnsQueries, 5000);
-    }
-
-    function leaveDnsMode() {
-      dnsMode = false;
-      dnsTab.classList.remove('active');
-      document.getElementById('pause-btn').style.display = '';
-      document.querySelector('.stats').style.display = '';
-      dnsContainer.style.display = 'none';
-      logContainer.style.display = '';
-      clearInterval(dnsPollTimer);
-      selectSite('all');
-    }
-
-    dnsTab.addEventListener('click', () => { if (!dnsMode) enterDnsMode(); });
-
     // ── Global IP Map ─────────────────────────────────────────────────────────
     const mapTab       = document.getElementById('map-tab');
     const mapContainer = document.getElementById('map-container');
@@ -1678,7 +1539,6 @@ const HTML = `<!DOCTYPE html>
     let dragging = false, dragStart = null, dragOffset = null;
 
     function enterMapMode() {
-      if (typeof dnsMode !== 'undefined' && dnsMode) leaveDnsMode();
       mapMode = true;
       mapTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
@@ -2159,34 +2019,6 @@ const server = http.createServer(async (req, res) => {
     } catch(e) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('[]');
-    }
-    return;
-  }
-
-  if (req.url === '/dns-queries') {
-    try {
-      if (!Database || !fs.existsSync(DNS_DB_PATH)) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ total: 0, nxdomain: 0, avg_latency_ms: 0, rows: [] }));
-        return;
-      }
-      const db = new Database(DNS_DB_PATH, { readonly: true, fileMustExist: true });
-      const overview = db.prepare(
-        `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN rcode='NXDOMAIN' THEN 1 ELSE 0 END) AS nxdomain,
-                ROUND(AVG(latency_ms),2) AS avg_latency_ms
-         FROM dns_events`
-      ).get();
-      const rows = db.prepare(
-        `SELECT ts, pid, name, type, query, answers, rcode, ROUND(latency_ms,2) AS latency_ms
-         FROM dns_events ORDER BY ts DESC LIMIT 200`
-      ).all();
-      db.close();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ...overview, rows }));
-    } catch(e) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ total: 0, nxdomain: 0, avg_latency_ms: 0, rows: [], error: String(e) }));
     }
     return;
   }
