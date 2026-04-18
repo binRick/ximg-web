@@ -310,6 +310,17 @@ Each web app has the same sub-nav structure: **Overview** (`index.html`), **Inst
 
 **Build:** each tool has a `build.sh` that cross-compiles via Docker (no local Go required) and outputs binaries to `dist/` or the project root.
 
+### proc-trace-dns Logger
+
+`proc-trace-logger/` — a companion Go daemon that pipes `proc-trace-dns -j -t` output into SQLite for historical querying.
+
+- **Systemd unit:** `install/proc-trace-dns-logger.service` — installed at `/etc/systemd/system/proc-trace-dns-logger.service`, enabled and running on this server
+- **SQLite DB:** `/var/lib/proc-trace/dns.db` (created automatically by `StateDirectory=proc-trace`)
+- **Schema:** `dns_events(id, ts, pid, name, type, query, answers, rcode, latency_ms)`
+- **Binaries:** `/usr/local/bin/proc-trace-dns` and `/usr/local/bin/proc-trace-logger`
+- **Logs:** `journalctl -fu proc-trace-dns-logger`
+- **Query:** `sqlite3 /var/lib/proc-trace/dns.db "SELECT name, query, rcode FROM dns_events ORDER BY id DESC LIMIT 20;"`
+
 ## SSH Honeypot
 
 - Accepts any password, drops user into `/bin/bash` as non-root `user` inside isolated container
