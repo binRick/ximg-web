@@ -420,6 +420,13 @@ function lastLines(filePath, n) {
   } catch (_) { return []; }
 }
 
+const MONTH_NUM = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+function logLineSortKey(line) {
+  const m = line.match(/\[(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/);
+  if (!m) return '';
+  return m[3] + (MONTH_NUM[m[2]] || '00') + m[1].padStart(2, '0') + m[4] + m[5] + m[6];
+}
+
 // ── Tail a file, call onLine for each new line ───────────────────────────────
 function tailFile(filePath, onLine) {
   let pos = 0;
@@ -2395,11 +2402,18 @@ wss.on('connection', (ws, req) => {
 
   if (site === 'all') {
     const stopFns = [];
+    const seedLines = [];
     for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
       const logFile = path.join(LOGS_DIR, logFilename);
       const send = makeSend(siteName);
+      for (const line of lastLines(logFile, 5)) {
+        seedLines.push({ ts: logLineSortKey(line), line, send });
+      }
       stopFns.push(tailFile(logFile, send));
     }
+    // Send oldest-first so newest lands at top (client prepends)
+    seedLines.sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
+    seedLines.slice(-500).forEach(({ line, send }) => send(line));
     const stopAll = () => stopFns.forEach(fn => fn());
     ws.on('close', stopAll);
     ws.on('error', stopAll);
