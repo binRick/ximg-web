@@ -282,7 +282,50 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "9/11  Start Docker Compose stack"
+section "9/11  Environment (.env)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+ENV_FILE="$REPO/.env"
+
+# Preserve any existing values so re-runs don't wipe them
+existing_token=""
+existing_username=""
+if [[ -f "$ENV_FILE" ]]; then
+  existing_token="$(grep -oP '^GITHUB_TOKEN=\K.*' "$ENV_FILE" || true)"
+  existing_username="$(grep -oP '^GITHUB_USERNAME=\K.*' "$ENV_FILE" || true)"
+fi
+
+if [[ -n "$existing_token" ]]; then
+  ok "GITHUB_TOKEN already set in .env (${existing_token:0:8}...)"
+else
+  echo
+  info "A GitHub Personal Access Token with 'repo' scope is required for github-stats.ximg.app"
+  info "Generate one at: https://github.com/settings/tokens/new?scopes=repo&description=ximg-github-stats"
+  echo
+  read -rp "$(echo -e "  ${YEL}?${RST}  GITHUB_TOKEN (leave blank to skip): ")" input_token
+  if [[ -n "$input_token" ]]; then
+    existing_token="$input_token"
+    ok "GITHUB_TOKEN accepted"
+  else
+    warn "GITHUB_TOKEN not set — github-stats.ximg.app will show zero views/clones"
+  fi
+fi
+
+if [[ -z "$existing_username" ]]; then
+  read -rp "$(echo -e "  ${YEL}?${RST}  GITHUB_USERNAME [binRick]: ")" input_username
+  existing_username="${input_username:-binRick}"
+fi
+
+# Write .env (always overwrite so values stay in sync)
+{
+  echo "GITHUB_TOKEN=${existing_token}"
+  echo "GITHUB_USERNAME=${existing_username}"
+} > "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+ok ".env written (GITHUB_USERNAME=${existing_username})"
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "10/11  Start Docker Compose stack"
 # ─────────────────────────────────────────────────────────────────────────────
 
 cd "$REPO"
@@ -293,7 +336,7 @@ docker compose up -d --remove-orphans
 ok "stack started"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "10/11  SSH honeypot — outbound iptables isolation"
+section "11/12  SSH honeypot — outbound iptables isolation"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Wait for Docker to create the ssh-net bridge
