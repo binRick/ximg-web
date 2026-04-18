@@ -1232,17 +1232,6 @@ const HTML = `<!DOCTYPE html>
       this.classList.toggle('paused', paused);
     });
 
-    // ── Restore state from URL hash on page load ───────────────────────────────
-    (function restoreHash() {
-      const h = location.hash.slice(1);
-      if (h === 'ssh') { enterSshMode(); return; }
-      if (h === 'dl')  { enterDlMode();  return; }
-      if (h === 'bot') { enterBotMode(); return; }
-      if (h === 'map') { enterMapMode(); return; }
-      if (h && h !== 'all') { selectSite(h); return; }
-      connect(currentSite);
-    })();
-
     // ── SSH session viewer ────────────────────────────────────────────────────
     const sshTab       = document.getElementById('ssh-tab');
     const sshContainer = document.getElementById('ssh-container');
@@ -1930,6 +1919,17 @@ const HTML = `<!DOCTYPE html>
         enterMapMode();
       }
     });
+
+    // ── Restore state from URL hash on page load ───────────────────────────────
+    (function restoreHash() {
+      const h = location.hash.slice(1);
+      if (h === 'ssh') { enterSshMode(); return; }
+      if (h === 'dl')  { enterDlMode();  return; }
+      if (h === 'bot') { enterBotMode(); return; }
+      if (h === 'map') { enterMapMode(); return; }
+      if (h && h !== 'all') { selectSite(h); return; }
+      connect(currentSite);
+    })();
   </script>
 </body>
 </html>`;
