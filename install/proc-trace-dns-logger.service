@@ -1,0 +1,32 @@
+[Unit]
+Description=proc-trace-dns → SQLite logger
+Documentation=https://proc-trace-dns.ximg.app/stats.html
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+
+# Pipe JSON output from proc-trace-dns into proc-trace-logger.
+# KillMode=control-group ensures both sides of the pipe receive SIGTERM on stop,
+# so proc-trace-logger can flush its batch before exiting.
+ExecStart=/bin/bash -c '/usr/local/bin/proc-trace-dns -j -t | /usr/local/bin/proc-trace-logger'
+KillMode=control-group
+KillSignal=SIGTERM
+
+# proc-trace-dns requires CAP_NET_RAW to open raw AF_PACKET sockets.
+User=root
+
+# Automatically creates and owns /var/lib/proc-trace/ (default DB location).
+StateDirectory=proc-trace
+StateDirectoryMode=0755
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=proc-trace-dns-logger
+
+[Install]
+WantedBy=multi-user.target

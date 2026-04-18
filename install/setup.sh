@@ -22,7 +22,8 @@
 #   8b. SSL: dockerimage.dev via certbot standalone
 #   9.  Start Docker Compose stack
 #  10.  SSH honeypot outbound iptables isolation
-#  11.  Verification
+#  11.  proc-trace-dns-logger  (systemd — DNS → SQLite)
+#  12.  Verification
 
 set -euo pipefail
 
@@ -353,7 +354,49 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "11/11  Verification"
+section "11/12  proc-trace-dns-logger  (DNS → SQLite)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Detect architecture for selecting the right pre-built binary.
+ARCH="$(uname -m)"
+case "$ARCH" in
+  x86_64)  LOGGER_ARCH="amd64" ;;
+  aarch64) LOGGER_ARCH="arm64" ;;
+  *)        warn "unsupported arch $ARCH — skipping proc-trace-dns-logger install"; LOGGER_ARCH="" ;;
+esac
+
+if [[ -n "$LOGGER_ARCH" ]]; then
+  LOGGER_BIN="$REPO/proc-trace-logger/dist/proc-trace-logger-linux-${LOGGER_ARCH}"
+  DNS_BIN="$REPO/proc-trace-dns/proc-trace-dns"
+
+  if [[ ! -f "$LOGGER_BIN" ]]; then
+    warn "logger binary not found: $LOGGER_BIN"
+    warn "run: cd $REPO/proc-trace-logger && bash build.sh"
+  elif [[ ! -f "$DNS_BIN" ]]; then
+    warn "proc-trace-dns binary not found: $DNS_BIN"
+    warn "run: cd $REPO/proc-trace-dns && bash build.sh"
+  else
+    install -m 755 "$LOGGER_BIN" /usr/local/bin/proc-trace-logger
+    install -m 755 "$DNS_BIN"    /usr/local/bin/proc-trace-dns
+    ok "installed /usr/local/bin/proc-trace-dns and /usr/local/bin/proc-trace-logger"
+
+    # Grant CAP_NET_RAW so the binary can be run without sudo (optional; service runs as root).
+    setcap cap_net_raw+eip /usr/local/bin/proc-trace-dns 2>/dev/null \
+      && ok "CAP_NET_RAW granted on proc-trace-dns" \
+      || warn "setcap failed — proc-trace-dns will require root (service already runs as root)"
+
+    cp "$REPO/install/proc-trace-dns-logger.service" /etc/systemd/system/
+    chmod 644 /etc/systemd/system/proc-trace-dns-logger.service
+    systemctl daemon-reload
+    systemctl enable --now proc-trace-dns-logger.service
+    ok "proc-trace-dns-logger.service enabled and started"
+    info "DB: /var/lib/proc-trace/dns.db"
+    info "logs: journalctl -fu proc-trace-dns-logger"
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "12/12  Verification"
 # ─────────────────────────────────────────────────────────────────────────────
 
 sleep 4
@@ -397,6 +440,7 @@ check_container() {
 
 check_service  suricata
 check_service  ximg-web
+check_service  proc-trace-dns-logger
 check_container nginx
 check_container logs
 check_container ids
@@ -425,4 +469,6 @@ echo -e "  journalctl -fu suricata                            # IDS live logs"
 echo -e "  suricata-update && systemctl reload suricata       # refresh rules"
 echo -e "  /root/.acme.sh/acme.sh --renew -d ximg.app        # force cert renewal"
 echo -e "  certbot renew --standalone                         # renew dockerimage.dev cert"
+echo -e "  journalctl -fu proc-trace-dns-logger               # DNS logger live output"
+echo -e "  sqlite3 /var/lib/proc-trace/dns.db                 # query DNS event history"
 echo
