@@ -25,6 +25,7 @@ class HoneypotServer(paramiko.ServerInterface):
         self.username = ''
         self.password = ''
         self.ip = ip
+        self.env = {}
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == 'session' \
@@ -52,6 +53,10 @@ class HoneypotServer(paramiko.ServerInterface):
 
     def check_channel_shell_request(self, ch):
         self.shell_ready.set()
+        return True
+
+    def check_channel_env_request(self, channel, name, value):
+        self.env[name] = value
         return True
 
     def check_channel_window_change_request(self, ch, w, h, pw, ph):
@@ -83,6 +88,9 @@ def handle(sock, addr):
         trans.close()
         return
 
+    # Use real client IP passed via SSH env var from web proxy; fall back to socket peer
+    real_ip = srv.env.get('X_REAL_IP') or addr[0]
+
     master, slave = pty.openpty()
     fcntl.ioctl(master, termios.TIOCSWINSZ,
                 struct.pack('HHHH', srv.pty_h, srv.pty_w, 0, 0))
@@ -112,14 +120,14 @@ def handle(sock, addr):
     )
     os.close(slave)
 
-    logpath = logfile_path(addr)
+    logpath = logfile_path((real_ip, addr[1]))
     with open(logpath, 'wb', buffering=0) as log:
         os.chmod(logpath, 0o600)
         os.chown(logpath, 0, 0)
         log.write((
             f"=== SSH Honeypot Session ===\n"
             f"Time:   {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n"
-            f"Client: {addr[0]}:{addr[1]}\n"
+            f"Client: {real_ip}:{addr[1]}\n"
             f"User:   {srv.username}\n"
             f"Pass:   {srv.password}\n"
             f"{'='*28}\n\n"
@@ -178,7 +186,7 @@ def handle(sock, addr):
         pass
     ch.close()
     trans.close()
-    print(f'[honeypot] session closed {addr}', flush=True)
+    print(f'[honeypot] session closed {real_ip}:{addr[1]}', flush=True)
 
 
 def main():

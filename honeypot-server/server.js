@@ -69,7 +69,7 @@ async function prewarm () {
 }
 
 // ── Retry SSH until auth succeeds ─────────────────────────────────────────
-function openShell ({ cols, rows, onReady, onGiveUp }) {
+function openShell ({ cols, rows, ip, onReady, onGiveUp }) {
   let alive   = true;
   let attempt = 0;
 
@@ -80,7 +80,7 @@ function openShell ({ cols, rows, onReady, onGiveUp }) {
 
     conn.on('ready', () => {
       if (!alive) { conn.end(); return; }
-      conn.shell({ term: 'xterm-256color', cols, rows }, (err, stream) => {
+      conn.shell({ term: 'xterm-256color', cols, rows, env: { X_REAL_IP: ip || '' } }, (err, stream) => {
         if (err || !alive) { conn.end(); setTimeout(try_, 400); return; }
         onReady(conn, stream);
       });
@@ -157,7 +157,7 @@ wss.on('connection', (ws, req) => {
 
     // Start SSH in background — will succeed immediately if pre-warmed
     handle = openShell({
-      cols, rows,
+      cols, rows, ip: clientIP,
       onReady (conn, stream) {
         if (ws.readyState !== 1) { stream.end(); conn.end(); return; }
         sshConn   = conn;
