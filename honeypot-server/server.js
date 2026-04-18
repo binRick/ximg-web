@@ -28,7 +28,7 @@ const PASSWORDS = [
 
 // Gaps between successive auth_fail display messages on the client (ms).
 // 9 values → 9 failures → ~9.5 s total animation.
-const FAIL_GAPS = [1400, 1300, 1200, 1100, 1050, 1000, 950, 900, 850];
+const FAIL_GAPS = [700, 650, 600, 550, 525, 500, 475, 450, 425];
 
 // Stable per-process fingerprint (looks like a real RSA key hash)
 const SESSION_FP =
@@ -212,10 +212,12 @@ wss.on('connection', (ws, req) => {
       } else {
         try {
           const obj = JSON.parse(raw.toString());
-          if (obj.t === 'resize') {
+          if (obj && obj.t === 'resize') {
             cols = obj.cols;
             rows = obj.rows;
             sshStream.setWindow?.(rows, cols, 0, 0);
+          } else {
+            sshStream.write(raw.toString());
           }
         } catch {
           sshStream.write(raw.toString());

@@ -1222,6 +1222,7 @@ const HTML = `<!DOCTYPE html>
       pickerBtn.classList.toggle('has-selection', !isAll);
       pickerBtn.textContent = isAll ? '☰ app ▾' : '☰ ' + site + ' ▾';
       siteList.querySelectorAll('.site-opt').forEach(o => o.classList.toggle('active', o.dataset.site === site));
+      history.replaceState(null, '', isAll ? location.pathname : '#' + site);
       connect(site);
     }
 
@@ -1231,7 +1232,16 @@ const HTML = `<!DOCTYPE html>
       this.classList.toggle('paused', paused);
     });
 
-    connect(currentSite);
+    // ── Restore state from URL hash on page load ───────────────────────────────
+    (function restoreHash() {
+      const h = location.hash.slice(1);
+      if (h === 'ssh') { enterSshMode(); return; }
+      if (h === 'dl')  { enterDlMode();  return; }
+      if (h === 'bot') { enterBotMode(); return; }
+      if (h === 'map') { enterMapMode(); return; }
+      if (h && h !== 'all') { selectSite(h); return; }
+      connect(currentSite);
+    })();
 
     // ── SSH session viewer ────────────────────────────────────────────────────
     const sshTab       = document.getElementById('ssh-tab');
@@ -1244,6 +1254,7 @@ const HTML = `<!DOCTYPE html>
     function enterSshMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       sshMode = true;
+      history.replaceState(null, '', '#ssh');
       sshTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
       pickerBtn.classList.remove('has-selection');
@@ -1261,6 +1272,7 @@ const HTML = `<!DOCTYPE html>
 
     function leaveSshMode() {
       sshMode = false;
+      history.replaceState(null, '', location.pathname);
       sshTab.classList.remove('active');
       document.getElementById('pause-btn').style.display = '';
       document.querySelector('.stats').style.display = '';
@@ -1341,6 +1353,7 @@ const HTML = `<!DOCTYPE html>
     function enterDlMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       dlMode = true;
+      history.replaceState(null, '', '#dl');
       dlTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
       pickerBtn.classList.remove('has-selection');
@@ -1360,6 +1373,7 @@ const HTML = `<!DOCTYPE html>
 
     function leaveDlMode() {
       dlMode = false;
+      history.replaceState(null, '', location.pathname);
       dlTab.classList.remove('active');
       document.getElementById('pause-btn').style.display = '';
       document.querySelector('.stats').style.display = '';
@@ -1499,6 +1513,7 @@ const HTML = `<!DOCTYPE html>
       if (dlMode) leaveDlMode();
       if (sshMode) leaveSshMode();
       botMode = true;
+      history.replaceState(null, '', '#bot');
       botTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
       pickerBtn.classList.remove('has-selection');
@@ -1517,6 +1532,7 @@ const HTML = `<!DOCTYPE html>
 
     function leaveBotMode() {
       botMode = false;
+      history.replaceState(null, '', location.pathname);
       botTab.classList.remove('active');
       document.getElementById('pause-btn').style.display = '';
       document.querySelector('.stats').style.display = '';
@@ -1547,6 +1563,7 @@ const HTML = `<!DOCTYPE html>
 
     function enterMapMode() {
       mapMode = true;
+      history.replaceState(null, '', '#map');
       mapTab.classList.add('active');
       document.querySelector('.tab[data-site="all"]').classList.remove('active');
       pickerBtn.classList.remove('has-selection');
@@ -1569,6 +1586,7 @@ const HTML = `<!DOCTYPE html>
 
     function leaveMapMode() {
       mapMode = false;
+      history.replaceState(null, '', location.pathname);
       mapTab.classList.remove('active');
       document.getElementById('pause-btn').style.display = '';
       document.querySelector('.stats').style.display = '';
