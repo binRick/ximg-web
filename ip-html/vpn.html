@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="VPN & Anonymity — how VPNs mask your IP address, detection techniques, protocols, and DNS/WebRTC leaks">
+<title>VPN &amp; Anonymity — ip.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040810;--bg1:#07101a;--bg2:#0b1623;
+  --border:#1a2535;--border2:#253040;
+  --text:#b8c5d4;--text-dim:#3d5068;--text-bright:#dde6f0;
+  --accent:#00d4aa;--blue:#3b82f6;--green:#4ade80;
+  --amber:#f59e0b;--red:#f87171;--purple:#a78bfa;
+  --mono:'Courier New',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px;line-height:1.65}
+a{color:inherit;text-decoration:none}
+.container{max-width:1000px;margin:0 auto;padding:1.5rem 1rem 4rem}
+
+#subnav{position:sticky;top:44px;z-index:150;background:rgba(4,8,16,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem}
+#subnav a{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);padding:.3rem .65rem;border-radius:3px;text-decoration:none;transition:color .2s,background .2s;font-family:var(--mono)}
+#subnav a:hover,#subnav a.active{color:var(--accent);background:rgba(0,212,170,.07)}
+
+/* ── Hero ── */
+.page-hero{padding:2rem 0 1.5rem;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.page-hero-label{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);font-family:var(--mono);margin-bottom:.5rem}
+.page-hero-title{font-size:clamp(1.5rem,4vw,2.2rem);font-weight:700;color:var(--text-bright);margin-bottom:.6rem}
+.page-hero-desc{font-size:.9rem;color:var(--text);max-width:680px;line-height:1.7}
+
+/* ── Sections ── */
+.section{margin-bottom:2.5rem}
+.section-title{font-size:1rem;font-weight:700;color:var(--text-bright);margin-bottom:.75rem;display:flex;align-items:center;gap:.6rem}
+.section-title::before{content:'';display:inline-block;width:3px;height:1em;background:var(--accent);border-radius:2px;flex-shrink:0}
+.body-text{font-size:.875rem;color:var(--text);line-height:1.75;margin-bottom:.75rem}
+.body-text strong{color:var(--text-bright)}
+
+/* ── Diagram ── */
+.diagram{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin:1rem 0;overflow-x:auto}
+.diagram pre{font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.7;white-space:pre}
+.diagram pre .hi{color:var(--accent)}
+.diagram pre .hi2{color:var(--blue)}
+.diagram pre .hi3{color:var(--amber)}
+.diagram pre .hi4{color:var(--green)}
+.diagram pre .dim{color:var(--text-dim)}
+
+/* ── Two-col grid ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+
+/* ── Card ── */
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:7px;padding:1rem;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-bright);font-family:var(--mono);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.card-dot.teal{background:var(--accent)}
+.card-dot.blue{background:var(--blue)}
+.card-dot.green{background:var(--green)}
+.card-dot.amber{background:var(--amber)}
+.card-dot.red{background:var(--red)}
+.card-dot.purple{background:var(--purple)}
+.card-body{font-size:.82rem;color:var(--text);line-height:1.65}
+.card-meta{font-size:.7rem;color:var(--text-dim);font-family:var(--mono);margin-top:.5rem}
+
+/* ── Protocol table ── */
+.ptable{width:100%;border-collapse:collapse;font-size:.8rem;margin:1rem 0}
+.ptable th{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);font-family:var(--mono);font-weight:600;padding:.5rem .75rem;border-bottom:1px solid var(--border);text-align:left}
+.ptable td{padding:.5rem .75rem;border-bottom:1px solid rgba(26,37,53,.4);font-family:var(--mono);color:var(--text);font-size:.78rem;vertical-align:top}
+.ptable tr:last-child td{border-bottom:none}
+.ptable tr:hover td{background:rgba(255,255,255,.02)}
+.ptable .name{color:var(--text-bright);font-weight:600}
+.ptable .ok{color:var(--green)}
+.ptable .warn{color:var(--amber)}
+.ptable .bad{color:var(--red)}
+
+/* ── Detection method rows ── */
+.det-row{display:flex;gap:1rem;padding:.75rem 0;border-bottom:1px solid rgba(26,37,53,.5);align-items:flex-start}
+.det-row:last-child{border-bottom:none}
+.det-num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700;min-width:1.5rem;flex-shrink:0;padding-top:.1rem}
+.det-content{flex:1}
+.det-title{font-size:.82rem;font-weight:700;color:var(--text-bright);margin-bottom:.3rem;font-family:var(--mono)}
+.det-desc{font-size:.8rem;color:var(--text);line-height:1.6}
+.det-code{font-family:var(--mono);font-size:.73rem;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:.4rem .65rem;margin-top:.4rem;color:var(--accent);display:inline-block;word-break:break-all}
+
+/* ── Leak types ── */
+.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin:1rem 0}
+@media(max-width:640px){.leak-grid{grid-template-columns:1fr}}
+.leak-card{background:var(--bg1);border:1px solid var(--border);border-radius:7px;padding:.85rem;border-top:2px solid var(--red)}
+.leak-card.warn{border-top-color:var(--amber)}
+.leak-card.ok{border-top-color:var(--green)}
+.leak-card-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text-bright);font-family:var(--mono);margin-bottom:.4rem}
+.leak-card-body{font-size:.78rem;color:var(--text);line-height:1.6}
+
+/* ── Callout ── */
+.callout{background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.2);border-radius:7px;padding:.9rem 1.1rem;margin:1rem 0;font-size:.82rem;color:var(--text);line-height:1.65}
+.callout strong{color:var(--accent)}
+.callout.warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.2)}
+.callout.warn strong{color:var(--amber)}
+.callout.danger{background:rgba(248,113,113,.06);border-color:rgba(248,113,113,.2)}
+.callout.danger strong{color:var(--red)}
+
+/* ── Inline code ── */
+code{font-family:var(--mono);font-size:.8em;background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:.08em .35em;color:var(--accent)}
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">IP Intelligence</a>
+  <a href="vpn.html">VPN &amp; Anonymity</a>
+</nav>
+<script>
+document.querySelectorAll('#subnav a').forEach(function(a){
+  var href=a.getAttribute('href');
+  var path=location.pathname;
+  if(path.endsWith(href)){a.classList.add('active');}
+});
+</script>
+
+<div class="container">
+  <div class="page-hero">
+    <div class="page-hero-label">// vpn &amp; anonymity reference</div>
+    <div class="page-hero-title">How VPNs Mask Your IP Address</div>
+    <div class="page-hero-desc">A technical deep-dive into how Virtual Private Networks hide your real IP, how detection works, what leaks expose you, and what each detection technique on the previous page actually measures.</div>
+  </div>
+
+  <!-- What is a VPN -->
+  <div class="section">
+    <div class="section-title">What a VPN Does (and Doesn't Do)</div>
+    <p class="body-text">A <strong>Virtual Private Network</strong> creates an encrypted tunnel between your device and a VPN server. All traffic is wrapped inside that tunnel, so websites, services, and intermediate networks see only the VPN server's IP — not yours.</p>
+    <p class="body-text">What a VPN <strong>does</strong>: masks your public IP, encrypts traffic in transit, bypasses geo-restrictions, hides activity from your ISP.</p>
+    <p class="body-text">What a VPN <strong>doesn't do</strong>: make you anonymous (the VPN provider sees your real IP and traffic), prevent browser fingerprinting, fix DNS leaks if misconfigured, or hide you from a determined adversary with legal reach.</p>
+
+    <div class="diagram">
+<pre><span class="hi">WITHOUT VPN</span>
+<span class="dim">──────────────────────────────────────────────────────</span>
+Your Device           ISP / Network           Website
+<span class="hi4">[192.168.1.42]</span> ──────── <span class="hi3">[plaintext]</span> ─────────► <span class="hi2">[server]</span>
+                       sees: your IP + SNI      sees: your IP
+
+<span class="hi">WITH VPN</span>
+<span class="dim">──────────────────────────────────────────────────────</span>
+Your Device           ISP / Network    VPN Server      Website
+<span class="hi4">[192.168.1.42]</span> ─── <span class="hi">[encrypted tunnel]</span> ─► <span class="hi3">[45.83.91.1]</span> ─► <span class="hi2">[server]</span>
+                  sees: encrypted blob    sees: VPN IP    sees: VPN IP
+                  can't read content</pre>
+    </div>
+  </div>
+
+  <!-- How IP masking works technically -->
+  <div class="section">
+    <div class="section-title">IP Masking — The Technical Path</div>
+    <p class="body-text">When you connect to a VPN, your OS installs a <strong>virtual network interface</strong> (e.g. <code>tun0</code> on Linux, <code>utun</code> on macOS). All packets are routed through it. The VPN client wraps each IP packet in its own protocol and ships it to the VPN server over UDP or TCP. The server decapsulates it, rewrites the source IP to its own, and forwards it outbound.</p>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><div class="card-dot teal"></div>Client side</div>
+        <div class="card-body">OS routing table is rewritten: <code>0.0.0.0/0</code> points at <code>tun0</code>. The only exception is the VPN server's own IP (still routed via your real gateway so the tunnel doesn't eat itself).</div>
+        <div class="card-meta">ip route / netstat -rn</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-dot blue"></div>Server side</div>
+        <div class="card-body">VPN server performs SNAT (Source NAT) via <code>iptables</code> or <code>nftables</code>: rewrites the source address of every forwarded packet to the server's IP before it hits the internet.</div>
+        <div class="card-meta">iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Protocols -->
+  <div class="section">
+    <div class="section-title">VPN Protocols Compared</div>
+    <p class="body-text">The protocol determines how packets are encapsulated, which cipher suite protects them, and how negotiation works. Modern deployments use <strong>WireGuard</strong> or <strong>OpenVPN</strong>; legacy deployments still run L2TP/IPSec or PPTP.</p>
+    <table class="ptable">
+      <thead>
+        <tr><th>Protocol</th><th>Transport</th><th>Cipher</th><th>Overhead</th><th>Speed</th><th>Auditability</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name">WireGuard</td><td>UDP 51820</td><td>ChaCha20-Poly1305 / Curve25519</td><td class="ok">Very low</td><td class="ok">Fastest</td><td class="ok">Open source, ~4k LoC</td></tr>
+        <tr><td class="name">OpenVPN</td><td>UDP/TCP 1194</td><td>AES-256-GCM / TLS</td><td class="warn">Medium</td><td class="warn">Good</td><td class="ok">Mature, widely audited</td></tr>
+        <tr><td class="name">IKEv2/IPSec</td><td>UDP 500 / 4500</td><td>AES-256-GCM / SHA-384</td><td class="warn">Low–medium</td><td class="ok">Fast</td><td class="warn">Complex spec, varies</td></tr>
+        <tr><td class="name">L2TP/IPSec</td><td>UDP 1701</td><td>AES-256 (outer)</td><td class="warn">Double encap.</td><td class="warn">Slower</td><td class="warn">Legacy, deprecated</td></tr>
+        <tr><td class="name">PPTP</td><td>TCP 1723</td><td>MPPE (RC4 40/128)</td><td class="ok">Minimal</td><td class="ok">Fast</td><td class="bad">Broken — do not use</td></tr>
+        <tr><td class="name">SSTP</td><td>TCP 443 (TLS)</td><td>AES-256-GCM</td><td class="warn">Medium</td><td class="warn">Medium</td><td class="bad">Windows-only, closed</td></tr>
+        <tr><td class="name">Shadowsocks</td><td>TCP/UDP (any)</td><td>AES-GCM / ChaCha20</td><td class="ok">Low</td><td class="ok">Fast</td><td class="ok">Proxy / obfuscation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Detection techniques -->
+  <div class="section">
+    <div class="section-title">How VPN Detection Works</div>
+    <p class="body-text">The IP Intelligence page uses several signals simultaneously. No single check is definitive — VPN determination is probabilistic. Here's what each signal actually measures:</p>
+    <div style="background:var(--bg1);border:1px solid var(--border);border-radius:7px;padding:.75rem 1rem;margin:1rem 0">
+      <div class="det-row">
+        <div class="det-num">01</div>
+        <div class="det-content">
+          <div class="det-title">proxycheck.io — Commercial Proxy Database</div>
+          <div class="det-desc">Queries a curated database of known proxy, VPN, and datacenter IP ranges. Returns <code>proxy: yes/no</code>, the detection type (VPN, SOCKS, HTTPS, TOR), and a risk score 0–100. This is the most reliable single signal — maintained databases cross-reference BGP ASN data, abuse reports, and voluntary disclosure by providers.</div>
+          <div class="det-code">GET https://proxycheck.io/v2/{ip}?vpn=1&amp;asn=1&amp;risk=1</div>
+        </div>
+      </div>
+      <div class="det-row">
+        <div class="det-num">02</div>
+        <div class="det-content">
+          <div class="det-title">ASN Heuristic — Autonomous System Name Matching</div>
+          <div class="det-desc">Every IP block is registered to an AS (Autonomous System). Consumer ISPs have names like <em>Comcast</em>, <em>Deutsche Telekom</em>, <em>BT</em>. VPN providers and cloud hosts have names like <em>M247</em>, <em>Choopa</em>, <em>Frantech</em>, <em>Hetzner</em>, <em>DigitalOcean</em>. Matching the ASN description against a keyword list catches providers not yet in commercial databases.</div>
+          <div class="det-code">AS name includes: vpn, proxy, hosting, datacenter, vps, dedicated...</div>
+        </div>
+      </div>
+      <div class="det-row">
+        <div class="det-num">03</div>
+        <div class="det-content">
+          <div class="det-title">BGP Prefix Analysis — Route Origin</div>
+          <div class="det-desc">BGP routing data (from api.bgpview.io) shows which AS announces your IP prefix and the network description. VPN exit nodes are often in small prefixes (/24 or narrower) announced by ASNs that operate no retail residential service. The <strong>RIR allocation date</strong> matters too — very recent allocations in known hosting ASNs are a strong signal.</div>
+          <div class="det-code">GET https://api.bgpview.io/ip/{ip} → prefixes[].asn.description</div>
+        </div>
+      </div>
+      <div class="det-row">
+        <div class="det-num">04</div>
+        <div class="det-content">
+          <div class="det-title">WebRTC IP Delta — Real IP Leak Test</div>
+          <div class="det-desc">The browser's WebRTC stack (<code>RTCPeerConnection</code>) solicits ICE candidates from a STUN server. STUN responds with your <strong>reflexive address</strong> — the IP the STUN server sees, which may be your real IP even if you're behind a VPN proxy. If the WebRTC-reported public IP differs from the HTTP-reported IP, the VPN is leaking your true address.</div>
+          <div class="det-code">new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]})</div>
+        </div>
+      </div>
+      <div class="det-row">
+        <div class="det-num">05</div>
+        <div class="det-content">
+          <div class="det-title">Carrier-Grade NAT (CGN) Detection</div>
+          <div class="det-desc">RFC 6598 reserves <code>100.64.0.0/10</code> for Carrier-Grade NAT — used by ISPs to share a single public IP among thousands of subscribers. A CGN IP indicates the visitor is behind their ISP's shared NAT, which is normal but means the "public" IP they present may be shared with others. Not a VPN, but relevant context.</div>
+          <div class="det-code">100.64.0.0 – 100.127.255.255 (RFC 6598, Shared Address Space)</div>
+        </div>
+      </div>
+      <div class="det-row">
+        <div class="det-num">06</div>
+        <div class="det-content">
+          <div class="det-title">Risk Score</div>
+          <div class="det-desc">proxycheck.io's risk score (0–100) aggregates multiple sub-signals: IP reputation across abuse databases, known VPN exit history, ratio of anonymizing traffic from that IP, and cross-referenced blocklists. Scores above 75 indicate high confidence of anonymizing use. Scores 25–75 are ambiguous (could be a legitimate hosting provider).</div>
+          <div class="det-code">risk: 0 = clean residential / 100 = confirmed VPN/proxy</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaks -->
+  <div class="section">
+    <div class="section-title">Leak Vectors — Ways a VPN Fails to Hide You</div>
+    <p class="body-text">Even a running VPN can expose your real identity through misconfiguration or browser behavior. These are the three main leak categories:</p>
+    <div class="leak-grid">
+      <div class="leak-card">
+        <div class="leak-card-title">WebRTC Leak</div>
+        <div class="leak-card-body">The browser exposes your real IP via STUN even if all HTTP goes through the VPN tunnel. Occurs because WebRTC bypasses the OS routing table via direct UDP sockets. Fix: disable WebRTC in browser settings, or use a browser extension that forces WebRTC to use only the VPN interface.</div>
+      </div>
+      <div class="leak-card warn">
+        <div class="leak-card-title">DNS Leak</div>
+        <div class="leak-card-body">DNS queries may be sent to your ISP's resolver instead of the VPN provider's, revealing the domains you visit. Occurs when the OS DNS configuration isn't overridden by the VPN client, or when "split tunneling" routes DNS outside the tunnel. Fix: set DNS to the VPN provider's resolver or a trusted DoH/DoT endpoint.</div>
+      </div>
+      <div class="leak-card ok">
+        <div class="leak-card-title">IPv6 Leak</div>
+        <div class="leak-card-body">Most VPN tunnels only carry IPv4. If your ISP assigns you an IPv6 address and the VPN doesn't tunnel IPv6, your real IPv6 address is exposed to IPv6-capable destinations. Fix: disable IPv6 at the OS level while on VPN, or use a VPN client that explicitly routes and NATes IPv6.</div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <strong>The WebRTC leak is detected on the IP Intelligence page.</strong> If the WebRTC IP Delta field shows "DIFF", your real IP is visible to any website using WebRTC, even through a VPN. The local IPs panel also shows all browser-visible addresses.
+    </div>
+  </div>
+
+  <!-- VPN types -->
+  <div class="section">
+    <div class="section-title">Types of VPNs</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><div class="card-dot teal"></div>Commercial / Consumer</div>
+        <div class="card-body">NordVPN, Mullvad, ExpressVPN, Surfshark. Operate large networks of exit nodes across many countries. Run on rented datacenter infrastructure — which is exactly why their ASN names and IP ranges appear in detection databases.</div>
+        <div class="card-meta">High detectability · Easy to use · Shared exit IPs</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-dot blue"></div>Corporate / Enterprise</div>
+        <div class="card-body">Cisco AnyConnect, Palo Alto GlobalProtect, Zscaler. Connect remote employees to private corporate networks. Exit traffic usually appears to come from the company's own IP space — registered to the company, not a VPN provider.</div>
+        <div class="card-meta">Lower detectability · Org IP space · Access control focus</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-dot green"></div>Self-Hosted</div>
+        <div class="card-body">WireGuard or OpenVPN running on a personal VPS. The exit IP is a VPS IP — a datacenter range (DigitalOcean, Hetzner, Vultr, Linode). Very detectable by hosting ASN, but harder to attribute to a specific VPN provider. The ASN heuristic on the previous page catches these.</div>
+        <div class="card-meta">Medium detectability · Unique exit IP · Full control</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-dot amber"></div>Tor Network</div>
+        <div class="card-body">Not a VPN but provides stronger anonymity via onion routing across three relay nodes. Exit node IPs are publicly listed by the Tor Project. Trivial to detect: any site can download the <a href="https://check.torproject.org/torbulkexitlist" style="color:var(--accent)" target="_blank" rel="noopener">bulk exit list</a> and check. Very high latency; not suitable for streaming.</div>
+        <div class="card-meta">Very high detectability · Strongest anonymity · Slow</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- What sites actually see -->
+  <div class="section">
+    <div class="section-title">What Servers See — The Full HTTP Context</div>
+    <p class="body-text">Beyond the IP address, a server receives a rich set of browser signals that can deanonymize even VPN users. IP masking is only one layer.</p>
+    <div class="diagram">
+<pre><span class="hi">HTTP headers received by every web server:</span>
+<span class="dim">──────────────────────────────────────────────────</span>
+<span class="hi2">X-Real-IP:</span>         <span class="hi3">45.83.91.1</span>         <span class="dim">← VPN exit IP (masked)</span>
+<span class="hi2">X-Forwarded-For:</span>   <span class="hi3">45.83.91.1</span>         <span class="dim">← proxy chain</span>
+<span class="hi2">User-Agent:</span>        <span class="hi3">Mozilla/5.0 (Win…) Chrome/124</span>
+<span class="hi2">Accept-Language:</span>   <span class="hi3">en-US,en;q=0.9</span>    <span class="dim">← locale fingerprint</span>
+<span class="hi2">Accept-Encoding:</span>   <span class="hi3">gzip, deflate, br</span>
+<span class="hi2">Cookie:</span>            <span class="hi3">session=abc123…</span>    <span class="dim">← persistent identity</span>
+
+<span class="hi">TLS ClientHello (before HTTP — seen by ISP &amp; VPN):</span>
+<span class="dim">──────────────────────────────────────────────────</span>
+<span class="hi2">SNI:</span>               <span class="hi3">example.com</span>        <span class="dim">← visible pre-TLS (ECH hides this)</span>
+<span class="hi2">Cipher suites:</span>     <span class="hi3">[TLS_AES_128_GCM…]</span> <span class="dim">← browser fingerprint</span>
+<span class="hi2">Extensions:</span>        <span class="hi3">[ALPN, key_share]</span>  <span class="dim">← JA3/JA4 hash</span></pre>
+    </div>
+    <div class="callout">
+      <strong>Browser fingerprinting</strong> (canvas, fonts, screen resolution, timezone, WebGL renderer) can identify you across sessions regardless of IP. Tools like the EFF's Cover Your Tracks measure your fingerprint uniqueness.
+    </div>
+  </div>
+
+  <!-- Evasion arms race -->
+  <div class="section">
+    <div class="section-title">Evasion vs. Detection — The Arms Race</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><div class="card-dot purple"></div>Detection Improvements</div>
+        <div class="card-body">Behavioral analysis (traffic patterns, timing), ML-based ASN classification, IPv6 leak correlation, JA3/JA4 TLS fingerprinting, canvas fingerprinting, WebGL renderer checks, battery API (deprecated), cross-site cookie tracking, and real-time BGP prefix databases updated by feeds from RPKI.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-dot red"></div>Evasion Techniques</div>
+        <div class="card-body">Residential proxy networks (real ISP IPs rented from users), obfuscation protocols (obfs4, Shadowsocks, V2Ray — look like normal HTTPS), split tunneling to route only specific traffic, ECH (Encrypted Client Hello) to hide SNI, browser isolation (Whonix, Tails), and rotating exit IPs.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DNS deep dive -->
+  <div class="section">
+    <div class="section-title">Reverse DNS — What PTR Records Reveal</div>
+    <p class="body-text">A <strong>PTR record</strong> maps an IP back to a hostname. ISPs and hosting providers assign these automatically. The format often encodes the IP itself and hints at the network type:</p>
+    <div class="diagram">
+<pre><span class="dim"># Consumer ISP — reveals residential customer</span>
+<span class="hi4">c-73-123-45-67.hsd1.wa.comcast.net</span>     <span class="dim">← Comcast residential</span>
+<span class="hi4">pool-96-248-85-101.nycmny.fios.verizon.net</span>
+
+<span class="dim"># Hosting / Datacenter — VPN candidate</span>
+<span class="hi3">45.83.91.1.static.choopa.net</span>           <span class="dim">← Choopa (known VPN host)</span>
+<span class="hi3">vps-0f5c3e.fra1.digitaloceanspaces.com</span>
+
+<span class="dim"># VPN provider explicit PTR</span>
+<span class="hi2">exit.mullvad.net</span>                        <span class="dim">← Mullvad VPN</span>
+<span class="hi2">nl-ams.nordvpn.com</span>                      <span class="dim">← NordVPN exit node</span>
+
+<span class="dim"># No PTR (NXDOMAIN)</span>
+<span class="hi">no reverse DNS entry</span>                    <span class="dim">← common for dynamic IPs</span></pre>
+    </div>
+    <p class="body-text">The <strong>Forward Confirmed Reverse DNS (FCrDNS)</strong> check validates that the PTR hostname resolves back to the original IP. Mail servers require this; a mismatch is a strong spam signal and also indicates possible IP spoofing or misconfiguration.</p>
+  </div>
+
+</div>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

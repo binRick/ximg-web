@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="IP Intelligence — ip.ximg.app — geolocation, ASN, BGP routing, reverse DNS, WebRTC leak detection, and VPN detection for your IP address">
+<title>IP Intelligence — ip.ximg.app</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040810;--bg1:#07101a;--bg2:#0b1623;
+  --border:#1a2535;--border2:#253040;
+  --text:#b8c5d4;--text-dim:#3d5068;--text-bright:#dde6f0;
+  --accent:#00d4aa;--blue:#3b82f6;--green:#4ade80;
+  --amber:#f59e0b;--red:#f87171;--purple:#a78bfa;
+  --mono:'Courier New',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding-top:44px}
+a{color:inherit;text-decoration:none}
+.container{max-width:1080px;margin:0 auto;padding:1.5rem 1rem 4rem}
+
+/* ── Sub-nav ── */
+#subnav{position:sticky;top:44px;z-index:150;background:rgba(4,8,16,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem}
+#subnav a{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);padding:.3rem .65rem;border-radius:3px;text-decoration:none;transition:color .2s,background .2s;font-family:var(--mono)}
+#subnav a:hover,#subnav a.active{color:var(--accent);background:rgba(0,212,170,.07)}
+
+/* ── Hero ── */
+.hero{text-align:center;padding:1.75rem 0 1.25rem}
+.hero-label{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);font-family:var(--mono);margin-bottom:.65rem}
+.hero-ip{font-size:clamp(1.6rem,5vw,2.8rem);font-family:var(--mono);font-weight:700;color:var(--text-bright);letter-spacing:.04em;margin-bottom:.35rem;display:flex;align-items:center;justify-content:center;gap:.75rem;flex-wrap:wrap}
+.ip-badge{font-size:.65rem;font-family:var(--mono);padding:.18rem .55rem;border-radius:3px;letter-spacing:.1em;font-weight:600;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:var(--accent)}
+.copy-btn{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--text-dim);cursor:pointer;font-family:var(--mono);font-size:.68rem;padding:.22rem .6rem;transition:all .15s;letter-spacing:.08em}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.copy-btn.copied{border-color:var(--green);color:var(--green)}
+.hero-ptr{font-size:.8rem;font-family:var(--mono);color:var(--text-dim);margin-top:.2rem}
+.hero-ptr .ptr-val{color:var(--blue)}
+
+/* ── Status bar ── */
+.status-bar{display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+.s-item{font-size:.65rem;font-family:var(--mono);color:var(--text-dim);display:flex;align-items:center;gap:.35rem;padding:.22rem .55rem;border:1px solid var(--border);border-radius:3px;background:var(--bg1);transition:color .3s}
+.s-item.done{color:var(--text)}
+.s-item.err{color:var(--red)}
+.s-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);transition:background .3s;flex-shrink:0}
+.s-dot.loading{background:var(--amber);animation:blink 1s ease-in-out infinite}
+.s-dot.done{background:var(--green)}
+.s-dot.err{background:var(--red)}
+@keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ── Section labels ── */
+.section-lbl{font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);font-family:var(--mono);margin:1.5rem 0 .65rem;display:flex;align-items:center;gap:.65rem}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:.9rem}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+.grid-full{grid-template-columns:1fr!important}
+
+/* ── Panel ── */
+.panel{background:var(--bg1);border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.panel-hdr{display:flex;align-items:center;gap:.55rem;padding:.5rem .9rem;border-bottom:1px solid var(--border);background:var(--bg2)}
+.p-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.p-dot.teal{background:var(--accent)}
+.p-dot.blue{background:var(--blue)}
+.p-dot.green{background:var(--green)}
+.p-dot.amber{background:var(--amber)}
+.p-dot.purple{background:var(--purple)}
+.p-dot.red{background:var(--red)}
+.panel-title{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);font-family:var(--mono);font-weight:600}
+.panel-body{padding:.7rem .9rem}
+
+/* ── Data rows ── */
+.d-row{display:flex;justify-content:space-between;align-items:baseline;padding:.3rem 0;border-bottom:1px solid rgba(26,37,53,.5)}
+.d-row:last-child{border-bottom:none}
+.d-key{font-size:.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);flex-shrink:0;padding-right:.75rem}
+.d-val{font-size:.78rem;font-family:var(--mono);color:var(--text-bright);text-align:right;word-break:break-all;max-width:60%}
+.d-val.dim{color:var(--text-dim)}
+.d-val.accent{color:var(--accent)}
+.d-val.blue{color:var(--blue)}
+.d-val.green{color:var(--green)}
+.d-val.amber{color:var(--amber)}
+.d-val.red{color:var(--red)}
+.d-val.purple{color:var(--purple)}
+
+/* ── Shimmer ── */
+.shim{background:linear-gradient(90deg,var(--border) 25%,var(--border2) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:3px;height:.8em;display:inline-block;vertical-align:middle}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Badges ── */
+.badges{display:flex;gap:.45rem;flex-wrap:wrap;padding:.7rem .9rem}
+.badge{font-size:.66rem;font-family:var(--mono);padding:.25rem .65rem;border-radius:3px;letter-spacing:.1em;font-weight:600;border:1px solid;text-transform:uppercase}
+.badge.ok{background:rgba(74,222,128,.07);border-color:rgba(74,222,128,.25);color:var(--green)}
+.badge.warn{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25);color:var(--amber)}
+.badge.info{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);color:var(--blue)}
+.badge.neutral{background:rgba(100,116,139,.07);border-color:rgba(100,116,139,.2);color:#64748b}
+.badge.danger{background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.25);color:var(--red)}
+.badge.accent{background:rgba(0,212,170,.07);border-color:rgba(0,212,170,.25);color:var(--accent)}
+
+/* ── VPN verdict ── */
+.vpn-verdict{display:flex;align-items:center;gap:1rem;padding:.9rem .9rem;border-bottom:1px solid var(--border)}
+.vpn-led{width:14px;height:14px;border-radius:50%;flex-shrink:0;box-shadow:0 0 10px currentColor}
+.vpn-led.green{background:var(--green);color:var(--green)}
+.vpn-led.red{background:var(--red);color:var(--red)}
+.vpn-led.amber{background:var(--amber);color:var(--amber)}
+.vpn-verdict-text{font-size:.95rem;font-family:var(--mono);font-weight:700;color:var(--text-bright)}
+.vpn-verdict-sub{font-size:.68rem;font-family:var(--mono);color:var(--text-dim);margin-top:.1rem}
+.vpn-signals{padding:.65rem .9rem}
+.vpn-signal{display:flex;justify-content:space-between;align-items:center;padding:.28rem 0;border-bottom:1px solid rgba(26,37,53,.5)}
+.vpn-signal:last-child{border-bottom:none}
+.vpn-sig-name{font-size:.67rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono)}
+.vpn-sig-val{font-size:.75rem;font-family:var(--mono);font-weight:600}
+.vpn-sig-val.green{color:var(--green)}
+.vpn-sig-val.red{color:var(--red)}
+.vpn-sig-val.amber{color:var(--amber)}
+.vpn-sig-val.dim{color:var(--text-dim)}
+
+/* ── WebRTC ── */
+.rtc-ip{font-family:var(--mono);font-size:.77rem;padding:.25rem 0;display:flex;align-items:center;gap:.55rem}
+.rtc-tag{font-size:.62rem;padding:.1rem .38rem;border-radius:3px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);color:var(--purple);letter-spacing:.08em}
+.rtc-none{font-size:.75rem;color:var(--text-dim);font-family:var(--mono);padding:.25rem 0}
+
+/* ── Map link ── */
+a.map-link{color:var(--blue);font-family:var(--mono);font-size:.78rem;text-decoration:none;transition:opacity .15s;opacity:.8}
+a.map-link:hover{opacity:1}
+
+/* ── Prefix list ── */
+.prefix-list{margin:0;padding:0;list-style:none}
+.prefix-item{padding:.28rem 0;border-bottom:1px solid rgba(26,37,53,.5);font-size:.75rem;font-family:var(--mono)}
+.prefix-item:last-child{border-bottom:none}
+.prefix-name{color:var(--text-bright);font-weight:600}
+.prefix-meta{color:var(--text-dim);font-size:.67rem;margin-top:.08rem}
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">IP Intelligence</a>
+  <a href="vpn.html">VPN &amp; Anonymity</a>
+</nav>
+<script>
+document.querySelectorAll('#subnav a').forEach(function(a){
+  var href=a.getAttribute('href');
+  var path=location.pathname;
+  if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('/ip')||path.endsWith('index.html')))){
+    a.classList.add('active');
+  }
+});
+</script>
+
+<div class="container">
+  <div class="hero">
+    <div class="hero-label">// network intelligence report</div>
+    <div class="hero-ip" id="heroIp">
+      <span class="shim" style="width:220px;height:1.9em"></span>
+    </div>
+    <div class="hero-ptr" id="heroPtr" style="display:none">PTR &rarr; <span class="ptr-val" id="ptrVal"></span></div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <span class="s-item" id="si-geo"><span class="s-dot loading" id="sd-geo"></span>Geolocation</span>
+    <span class="s-item" id="si-bgp"><span class="s-dot loading" id="sd-bgp"></span>BGP / Routing</span>
+    <span class="s-item" id="si-ptr"><span class="s-dot loading" id="sd-ptr"></span>Reverse DNS</span>
+    <span class="s-item" id="si-vpn"><span class="s-dot loading" id="sd-vpn"></span>VPN Detection</span>
+    <span class="s-item" id="si-rtc"><span class="s-dot loading" id="sd-rtc"></span>WebRTC</span>
+  </div>
+
+  <div class="section-lbl">identity &amp; network</div>
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot teal"></div><div class="panel-title">Geolocation</div></div>
+      <div class="panel-body">
+        <div class="d-row"><span class="d-key">Country</span><span class="d-val" id="g-country"><span class="shim" style="width:120px"></span></span></div>
+        <div class="d-row"><span class="d-key">Region</span><span class="d-val" id="g-region"><span class="shim" style="width:90px"></span></span></div>
+        <div class="d-row"><span class="d-key">City</span><span class="d-val" id="g-city"><span class="shim" style="width:80px"></span></span></div>
+        <div class="d-row"><span class="d-key">Postal Code</span><span class="d-val" id="g-postal"><span class="shim" style="width:55px"></span></span></div>
+        <div class="d-row"><span class="d-key">Coordinates</span><span class="d-val" id="g-coords"><span class="shim" style="width:140px"></span></span></div>
+        <div class="d-row"><span class="d-key">Timezone</span><span class="d-val" id="g-tz"><span class="shim" style="width:110px"></span></span></div>
+        <div class="d-row"><span class="d-key">UTC Offset</span><span class="d-val" id="g-utc"><span class="shim" style="width:50px"></span></span></div>
+        <div class="d-row"><span class="d-key">Country TLD</span><span class="d-val" id="g-tld"><span class="shim" style="width:38px"></span></span></div>
+        <div class="d-row"><span class="d-key">Calling Code</span><span class="d-val" id="g-call"><span class="shim" style="width:45px"></span></span></div>
+        <div class="d-row"><span class="d-key">In EU</span><span class="d-val" id="g-eu"><span class="shim" style="width:35px"></span></span></div>
+        <div class="d-row"><span class="d-key">Languages</span><span class="d-val" id="g-lang"><span class="shim" style="width:90px"></span></span></div>
+        <div class="d-row"><span class="d-key">Country Area</span><span class="d-val" id="g-area"><span class="shim" style="width:80px"></span></span></div>
+        <div class="d-row"><span class="d-key">Capital</span><span class="d-val" id="g-capital"><span class="shim" style="width:80px"></span></span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot blue"></div><div class="panel-title">Network / ASN</div></div>
+      <div class="panel-body">
+        <div class="d-row"><span class="d-key">IP Address</span><span class="d-val accent" id="n-ip"><span class="shim" style="width:120px"></span></span></div>
+        <div class="d-row"><span class="d-key">IP Version</span><span class="d-val" id="n-ver"><span class="shim" style="width:40px"></span></span></div>
+        <div class="d-row"><span class="d-key">ASN</span><span class="d-val" id="n-asn"><span class="shim" style="width:80px"></span></span></div>
+        <div class="d-row"><span class="d-key">AS Name</span><span class="d-val" id="n-asname"><span class="shim" style="width:120px"></span></span></div>
+        <div class="d-row"><span class="d-key">Organization</span><span class="d-val" id="n-org"><span class="shim" style="width:130px"></span></span></div>
+        <div class="d-row"><span class="d-key">Network (CIDR)</span><span class="d-val accent" id="n-network"><span class="shim" style="width:110px"></span></span></div>
+        <div class="d-row"><span class="d-key">Net Name</span><span class="d-val" id="n-netname"><span class="shim" style="width:100px"></span></span></div>
+        <div class="d-row"><span class="d-key">RIR</span><span class="d-val" id="n-rir"><span class="shim" style="width:55px"></span></span></div>
+        <div class="d-row"><span class="d-key">Alloc. Date</span><span class="d-val" id="n-allocdate"><span class="shim" style="width:85px"></span></span></div>
+        <div class="d-row"><span class="d-key">Country Code</span><span class="d-val" id="n-cc"><span class="shim" style="width:38px"></span></span></div>
+        <div class="d-row"><span class="d-key">Currency</span><span class="d-val" id="n-currency"><span class="shim" style="width:90px"></span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-lbl">routing &amp; dns</div>
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot amber"></div><div class="panel-title">BGP Routing</div></div>
+      <div class="panel-body">
+        <div class="d-row"><span class="d-key">Route Prefix</span><span class="d-val amber" id="b-prefix"><span class="shim" style="width:120px"></span></span></div>
+        <div class="d-row"><span class="d-key">Prefix Length</span><span class="d-val" id="b-prefixlen"><span class="shim" style="width:50px"></span></span></div>
+        <div class="d-row"><span class="d-key">Origin ASN</span><span class="d-val" id="b-asn"><span class="shim" style="width:80px"></span></span></div>
+        <div class="d-row"><span class="d-key">AS Name</span><span class="d-val" id="b-asname"><span class="shim" style="width:130px"></span></span></div>
+        <div class="d-row"><span class="d-key">AS Description</span><span class="d-val" id="b-asdesc"><span class="shim" style="width:140px"></span></span></div>
+        <div class="d-row"><span class="d-key">Prefix Country</span><span class="d-val" id="b-country"><span class="shim" style="width:100px"></span></span></div>
+        <div class="d-row"><span class="d-key">RIR Allocation</span><span class="d-val" id="b-rir"><span class="shim" style="width:75px"></span></span></div>
+        <div class="d-row"><span class="d-key">Alloc. Date</span><span class="d-val" id="b-allocdate"><span class="shim" style="width:90px"></span></span></div>
+        <div id="b-extra-wrap" style="display:none;margin-top:.5rem">
+          <div class="d-key" style="margin-bottom:.3rem">More Announced Prefixes</div>
+          <ul class="prefix-list" id="b-extra-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot green"></div><div class="panel-title">Reverse DNS (rDNS)</div></div>
+      <div class="panel-body">
+        <div class="d-row"><span class="d-key">PTR Query</span><span class="d-val" id="r-query"><span class="shim" style="width:150px"></span></span></div>
+        <div class="d-row"><span class="d-key">PTR Record</span><span class="d-val green" id="r-ptr"><span class="shim" style="width:160px"></span></span></div>
+        <div class="d-row"><span class="d-key">RCODE</span><span class="d-val" id="r-rcode"><span class="shim" style="width:70px"></span></span></div>
+        <div class="d-row"><span class="d-key">TTL</span><span class="d-val" id="r-ttl"><span class="shim" style="width:50px"></span></span></div>
+        <div class="d-row"><span class="d-key">Forward Match</span><span class="d-val" id="r-fwd"><span class="shim" style="width:110px"></span></span></div>
+        <div class="d-row"><span class="d-key">Resolver</span><span class="d-val dim">8.8.8.8 (Google)</span></div>
+        <div class="d-row"><span class="d-key">Transport</span><span class="d-val dim">DNS-over-HTTPS</span></div>
+        <div class="d-row"><span class="d-key">Endpoint</span><span class="d-val dim" style="font-size:.68rem">dns.google/resolve</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-lbl">anonymity &amp; classification</div>
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot red"></div><div class="panel-title">VPN / Proxy Detection</div></div>
+      <div id="vpnVerdict" class="vpn-verdict">
+        <div class="vpn-led amber" id="vpnLed"></div>
+        <div>
+          <div class="vpn-verdict-text" id="vpnText">Probing...</div>
+          <div class="vpn-verdict-sub" id="vpnSub">Querying detection endpoints</div>
+        </div>
+      </div>
+      <div class="vpn-signals">
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">proxycheck.io</span>
+          <span class="vpn-sig-val dim" id="vpc-proxy"><span class="shim" style="width:60px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">Detection Type</span>
+          <span class="vpn-sig-val dim" id="vpc-type"><span class="shim" style="width:50px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">Risk Score</span>
+          <span class="vpn-sig-val dim" id="vpc-risk"><span class="shim" style="width:45px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">Provider (proxycheck)</span>
+          <span class="vpn-sig-val dim" id="vpc-provider"><span class="shim" style="width:100px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">ASN Heuristic</span>
+          <span class="vpn-sig-val dim" id="vpc-asn-heur"><span class="shim" style="width:70px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">Datacenter / Hosting</span>
+          <span class="vpn-sig-val dim" id="vpc-hosting"><span class="shim" style="width:60px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">WebRTC IP Delta</span>
+          <span class="vpn-sig-val dim" id="vpc-rtc-delta"><span class="shim" style="width:80px"></span></span>
+        </div>
+        <div class="vpn-signal">
+          <span class="vpn-sig-name">CGN / Shared Space</span>
+          <span class="vpn-sig-val dim" id="vpc-cgn"><span class="shim" style="width:55px"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot purple"></div><div class="panel-title">WebRTC &amp; Local IPs</div></div>
+      <div class="panel-body">
+        <div style="font-size:.68rem;color:var(--text-dim);font-family:var(--mono);margin-bottom:.6rem;line-height:1.5">
+          WebRTC exposes your true IP even through a VPN proxy.<br>
+          These addresses come directly from your browser.
+        </div>
+        <div id="rtcList"><span class="shim" style="width:150px"></span></div>
+        <div style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--border)">
+          <div class="d-row"><span class="d-key">Technique</span><span class="d-val dim">RTCPeerConnection</span></div>
+          <div class="d-row"><span class="d-key">STUN Server</span><span class="d-val dim">stun.l.google.com</span></div>
+          <div class="d-row"><span class="d-key">ICE Candidates</span><span class="d-val" id="r-candidates"><span class="shim" style="width:30px"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-full">
+    <div class="panel">
+      <div class="panel-hdr"><div class="p-dot teal"></div><div class="panel-title">IP Classification</div></div>
+      <div id="classificationBadges" class="badges">
+        <span class="shim" style="width:70px;height:1.5em"></span>
+        <span class="shim" style="width:60px;height:1.5em"></span>
+        <span class="shim" style="width:85px;height:1.5em"></span>
+        <span class="shim" style="width:55px;height:1.5em"></span>
+      </div>
+      <div class="panel-body" style="padding-top:.1rem">
+        <div class="d-row"><span class="d-key">Address Type</span><span class="d-val" id="c-type"><span class="shim" style="width:60px"></span></span></div>
+        <div class="d-row"><span class="d-key">Scope</span><span class="d-val" id="c-scope"><span class="shim" style="width:90px"></span></span></div>
+        <div class="d-row"><span class="d-key">Bogon</span><span class="d-val" id="c-bogon"><span class="shim" style="width:35px"></span></span></div>
+        <div class="d-row"><span class="d-key">Special Use RFC</span><span class="d-val" id="c-special"><span class="shim" style="width:100px"></span></span></div>
+        <div class="d-row"><span class="d-key">Multicast</span><span class="d-val" id="c-mcast"><span class="shim" style="width:35px"></span></span></div>
+        <div class="d-row"><span class="d-key">Loopback</span><span class="d-val" id="c-loop"><span class="shim" style="width:35px"></span></span></div>
+        <div class="d-row"><span class="d-key">Link-Local</span><span class="d-val" id="c-ll"><span class="shim" style="width:35px"></span></span></div>
+        <div class="d-row"><span class="d-key">Documentation IP</span><span class="d-val" id="c-doc"><span class="shim" style="width:35px"></span></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function sh(id,html){var el=document.getElementById(id);if(el)el.innerHTML=html;}
+function sv(id,txt,cls){var el=document.getElementById(id);if(el){el.textContent=txt;if(cls){el.className='d-val '+cls;}}}
+function setStatus(name,state){
+  var dot=document.getElementById('sd-'+name);
+  var item=document.getElementById('si-'+name);
+  if(dot){dot.className='s-dot '+state;}
+  if(item){item.className='s-item'+(state==='done'?' done':state==='err'?' err':'');}
+}
+function ipVer(ip){return ip&&ip.includes(':')? 6 : 4;}
+function flag(cc){
+  if(!cc||cc.length!==2)return '';
+  try{return String.fromCodePoint(...[...cc.toUpperCase()].map(function(c){return 0x1F1E0+c.charCodeAt(0)-65;}))+' ';}catch(e){return '';}
+}
+function ptrZone(ip){
+  if(!ip||ip.includes(':'))return null;
+  return ip.split('.').reverse().join('.')+'.in-addr.arpa';
+}
+function fmtArea(n){
+  if(!n)return '—';
+  return Number(n).toLocaleString()+' km²';
+}
+
+// ── IP Classification ─────────────────────────────────────────────────────────
+function classifyIp(ip){
+  var v=ipVer(ip);
+  var r={version:v,bogon:false,special:'None',scope:'Global Unicast',type:'Public',multicast:false,loopback:false,linklocal:false,documentation:false};
+  if(v===4){
+    var p=ip.split('.').map(Number),a=p[0],b=p[1],c=p[2];
+    if(a===10){r.type='Private (RFC1918)';r.scope='Private';}
+    else if(a===172&&b>=16&&b<=31){r.type='Private (RFC1918)';r.scope='Private';}
+    else if(a===192&&b===168){r.type='Private (RFC1918)';r.scope='Private';}
+    else if(a===127){r.type='Loopback';r.scope='Host';r.loopback=true;r.special='Loopback (RFC5735)';}
+    else if(a===169&&b===254){r.type='Link-Local';r.scope='Link';r.linklocal=true;r.special='APIPA (RFC3927)';}
+    else if(a===100&&b>=64&&b<=127){r.type='Shared / CGN';r.scope='Limited';r.special='Carrier-Grade NAT (RFC6598)';}
+    else if(a===192&&b===0&&c===2){r.bogon=true;r.type='Documentation';r.documentation=true;r.special='TEST-NET-1 (RFC5737)';}
+    else if(a===198&&b===51&&c===100){r.bogon=true;r.type='Documentation';r.documentation=true;r.special='TEST-NET-2 (RFC5737)';}
+    else if(a===203&&b===0&&c===113){r.bogon=true;r.type='Documentation';r.documentation=true;r.special='TEST-NET-3 (RFC5737)';}
+    else if(a>=224&&a<=239){r.type='Multicast';r.scope='Multicast';r.multicast=true;r.special='Multicast (RFC3171)';}
+    else if(a>=240){r.bogon=true;r.type='Reserved';r.scope='Reserved';r.special='Future Use (RFC1112)';}
+    else if(a===0){r.bogon=true;r.type='Unspecified';r.special='"This" Network (RFC791)';}
+  }else{
+    if(ip==='::1'){r.type='Loopback';r.scope='Host';r.loopback=true;r.special='IPv6 Loopback (RFC4291)';}
+    else if(ip.startsWith('fe80')){r.type='Link-Local';r.scope='Link';r.linklocal=true;r.special='IPv6 Link-Local (RFC4291)';}
+    else if(ip.startsWith('fc')||ip.startsWith('fd')){r.type='Unique Local';r.scope='Private';r.special='ULA (RFC4193)';}
+    else if(ip.startsWith('ff')){r.type='Multicast';r.scope='Multicast';r.multicast=true;r.special='IPv6 Multicast (RFC4291)';}
+  }
+  return r;
+}
+
+// ── VPN ASN heuristic ─────────────────────────────────────────────────────────
+var VPN_KEYWORDS=['vpn','proxy','datacenter','data center','hosting','cloud','server','vps','dedicated','colocation','colo','digital ocean','linode','vultr','hetzner','ovh','leaseweb','m247','mullvad','nordvpn','expressvpn','surfshark','private internet','pia ','cyberghost','ipvanish','hidemyass','strongvpn','torguard','bulletproof','servermania','sharktech','singlehop','psychz','buyvm','frantech','alpharacks','hostwinds','choopa','quadranet','tzulo','netriplex'];
+function checkAsnHeuristic(asn,org){
+  var s=(asn+' '+org).toLowerCase();
+  for(var i=0;i<VPN_KEYWORDS.length;i++){if(s.indexOf(VPN_KEYWORDS[i])>=0)return VPN_KEYWORDS[i];}
+  return null;
+}
+
+// ── WebRTC probe ──────────────────────────────────────────────────────────────
+function probeWebRTC(){
+  return new Promise(function(resolve){
+    var ips=[];var seen={};var done=false;
+    var timer=setTimeout(function(){done=true;resolve(ips);},3000);
+    try{
+      var pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+      pc.createDataChannel('');
+      pc.createOffer().then(function(o){pc.setLocalDescription(o);});
+      pc.onicecandidate=function(e){
+        if(!e||!e.candidate||!e.candidate.candidate)return;
+        var m=(e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+|[0-9a-f:]{4,})/gi)||[]);
+        m.forEach(function(ip){
+          if(ip==='0.0.0.0'||ip.startsWith('0.')||seen[ip])return;
+          seen[ip]=1;ips.push(ip);
+        });
+      };
+      setTimeout(function(){if(!done){done=true;try{pc.close();}catch(e){}resolve(ips);}},2500);
+    }catch(e){clearTimeout(timer);resolve([]);}
+  });
+}
+
+// ── PTR lookup via DoH ────────────────────────────────────────────────────────
+async function lookupPtr(ip){
+  var q=ptrZone(ip);
+  if(!q)return{ptr:null,ttl:null,rcode:'SKIP'};
+  try{
+    var r=await fetch('https://dns.google/resolve?name='+q+'&type=PTR');
+    var d=await r.json();
+    if(d.Status===0&&d.Answer&&d.Answer.length){
+      return{ptr:d.Answer[0].data.replace(/\.$/,''),ttl:d.Answer[0].TTL,rcode:'NOERROR'};
+    }
+    var codes={1:'FORMERR',2:'SERVFAIL',3:'NXDOMAIN',5:'REFUSED'};
+    return{ptr:null,ttl:null,rcode:codes[d.Status]||'RCODE:'+d.Status};
+  }catch(e){return{ptr:null,ttl:null,rcode:'ERROR'};}
+}
+
+// ── Forward confirm ───────────────────────────────────────────────────────────
+async function confirmFwd(hostname,ip){
+  if(!hostname)return null;
+  try{
+    var r=await fetch('https://dns.google/resolve?name='+hostname+'&type=A');
+    var d=await r.json();
+    if(d.Answer){
+      var ips=d.Answer.filter(function(a){return a.type===1;}).map(function(a){return a.data;});
+      if(ips.length===0)return'NO A RECORD';
+      return ips.indexOf(ip)>=0?'MATCH ('+ips.join(', ')+')':'MISMATCH ('+ips.join(', ')+')';
+    }
+    return'NO RECORD';
+  }catch(e){return'ERROR';}
+}
+
+// ── BGP view ─────────────────────────────────────────────────────────────────
+async function fetchBGP(ip){
+  try{
+    var r=await fetch('https://api.bgpview.io/ip/'+ip,{signal:AbortSignal.timeout(8000)});
+    var d=await r.json();
+    if(d.status==='ok')return d.data;
+  }catch(e){}
+  return null;
+}
+
+// ── proxycheck.io VPN detection ───────────────────────────────────────────────
+async function fetchProxycheck(ip){
+  try{
+    var r=await fetch('https://proxycheck.io/v2/'+ip+'?vpn=1&asn=1&risk=1',{signal:AbortSignal.timeout(7000)});
+    var d=await r.json();
+    if(d.status==='ok'&&d[ip])return d[ip];
+  }catch(e){}
+  return null;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+async function main(){
+  var geoData=null,bgpData=null,ptrResult=null,rtcIps=[],proxycheckData=null;
+  var publicIp=null;
+  var orgStr='',asnStr='';
+
+  // ── Geo ──
+  try{
+    var r=await fetch('https://ipapi.co/json/');
+    geoData=await r.json();
+  }catch(e){setStatus('geo','err');}
+
+  if(geoData&&geoData.ip){
+    publicIp=geoData.ip;
+    var v=ipVer(publicIp);
+    var cls=classifyIp(publicIp);
+    asnStr=geoData.asn||'';
+    orgStr=geoData.org||'';
+    var orgName=orgStr.replace(/^AS\d+\s*/,'');
+
+    // Hero
+    sh('heroIp',publicIp+' <span class="ip-badge">IPv'+v+'</span> <button class="copy-btn" id="copyBtn" onclick="copyIp(\''+publicIp+'\')">copy</button>');
+
+    // PTR zone (show immediately as query)
+    var q=ptrZone(publicIp);
+    if(q){sh('r-query',q);}
+
+    // Geo panel
+    var cc=geoData.country_code||'';
+    sh('g-country',flag(cc)+(geoData.country_name||'—'));
+    sv('g-region',geoData.region||'—');
+    sv('g-city',geoData.city||'—');
+    sv('g-postal',geoData.postal||'—');
+    var lat=geoData.latitude,lon=geoData.longitude;
+    if(lat&&lon){
+      sh('g-coords','<a class="map-link" href="https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'&zoom=12" target="_blank" rel="noopener">'+lat.toFixed(4)+', '+lon.toFixed(4)+' &#8599;</a>');
+    }else sv('g-coords','—');
+    sv('g-tz',geoData.timezone||'—');
+    sv('g-utc',geoData.utc_offset||'—');
+    sv('g-tld',geoData.country_tld||'—');
+    sv('g-call',geoData.country_calling_code?'+'+geoData.country_calling_code:'—');
+    sv('g-eu',geoData.in_eu?'Yes':'No',geoData.in_eu?'blue':'');
+    sv('g-lang',(geoData.languages||'—').replace(/,/g,', '));
+    sv('g-area',fmtArea(geoData.country_area));
+    sv('g-capital',geoData.country_capital||'—');
+    setStatus('geo','done');
+
+    // Network panel
+    sh('n-asn',asnStr?'<a href="https://bgp.he.net/'+asnStr+'" target="_blank" rel="noopener" style="color:var(--blue);font-family:var(--mono)">'+asnStr+'</a>':'—');
+    sv('n-ip',publicIp,'accent');
+    sv('n-ver','IPv'+v);
+    sv('n-asname',orgName||'—');
+    sv('n-org',orgStr||'—');
+    sv('n-network',geoData.network||'—','accent');
+    sv('n-cc',cc||'—');
+    sv('n-currency',geoData.currency?geoData.currency+' ('+geoData.currency_name+')':'—');
+    // netname, rir, allocdate filled by BGP
+
+    // Classification
+    var badges=[];
+    if(cls.type.startsWith('Private'))badges.push('<span class="badge warn">Private</span>');
+    else if(cls.type==='Loopback')badges.push('<span class="badge warn">Loopback</span>');
+    else if(cls.type==='Documentation')badges.push('<span class="badge danger">Documentation</span>');
+    else badges.push('<span class="badge ok">Public</span>');
+    if(cls.bogon)badges.push('<span class="badge danger">Bogon</span>');
+    else badges.push('<span class="badge ok">Not Bogon</span>');
+    badges.push('<span class="badge info">IPv'+v+'</span>');
+    if(geoData.in_eu)badges.push('<span class="badge info">EU</span>');
+    if(cc)badges.push('<span class="badge neutral">'+cc+'</span>');
+    if(cls.special&&cls.special!=='None')badges.push('<span class="badge neutral">'+cls.special+'</span>');
+    sh('classificationBadges',badges.join(''));
+    sv('c-type',cls.type);
+    sv('c-scope',cls.scope);
+    sv('c-bogon',cls.bogon?'Yes':'No',cls.bogon?'amber':'green');
+    sv('c-special',cls.special!=='None'?cls.special:'—');
+    sv('c-mcast',cls.multicast?'Yes':'No',cls.multicast?'amber':'');
+    sv('c-loop',cls.loopback?'Yes':'No',cls.loopback?'amber':'');
+    sv('c-ll',cls.linklocal?'Yes':'No',cls.linklocal?'amber':'');
+    sv('c-doc',cls.documentation?'Yes':'No',cls.documentation?'danger':'');
+
+    // CGN signal
+    var p=publicIp.split('.').map(Number);
+    var isCGN=(p[0]===100&&p[1]>=64&&p[1]<=127);
+    sh('vpc-cgn','<span class="vpn-sig-val '+(isCGN?'amber':'green')+'">'+(isCGN?'Yes (RFC6598)':'No')+'</span>');
+
+    // ── Parallel: BGP + PTR + VPN + WebRTC ──
+    var bgpPromise=fetchBGP(publicIp);
+    var ptrPromise=lookupPtr(publicIp);
+    var vpnPromise=fetchProxycheck(publicIp);
+    var rtcPromise=probeWebRTC();
+
+    // BGP
+    bgpData=await bgpPromise;
+    if(bgpData){
+      var prefixes=bgpData.prefixes||[];
+      if(prefixes.length>0){
+        var px=prefixes[0];
+        var asn=px.asn||{};
+        var parts=px.prefix?px.prefix.split('/'):['',''];
+        sh('b-prefix','<span style="color:var(--amber)">'+px.prefix+'</span>');
+        sv('b-prefixlen',parts[1]?'/'+parts[1]+' ('+(Math.pow(2,32-parseInt(parts[1]))||0).toLocaleString()+' IPs)':'—');
+        sh('b-asn',asn.asn?'<a href="https://bgp.he.net/AS'+asn.asn+'" target="_blank" rel="noopener" style="color:var(--text-bright);font-family:var(--mono)">AS'+asn.asn+'</a>':'—');
+        sv('b-asname',asn.name||'—');
+        sv('b-asdesc',asn.description||'—');
+        sv('b-country',flag(px.country_code)+(px.country_code||'—'));
+        var rir=bgpData.rir_allocation||{};
+        sv('b-rir',rir.rir_name||'—');
+        sv('b-allocdate',rir.date_allocated?rir.date_allocated.split('T')[0]:'—');
+        sv('n-netname',px.name||'—');
+        sv('n-rir',rir.rir_name||'—');
+        sv('n-allocdate',rir.date_allocated?rir.date_allocated.split('T')[0]:'—');
+        if(prefixes.length>1){
+          var extra=prefixes.slice(1).map(function(p2){
+            return '<li class="prefix-item"><div class="prefix-name">'+p2.prefix+'</div><div class="prefix-meta">'+
+              (p2.name||'')+(p2.asn?' — AS'+p2.asn.asn+' '+(p2.asn.name||''):'')+
+              '</div></li>';
+          }).join('');
+          sh('b-extra-list',extra);
+          document.getElementById('b-extra-wrap').style.display='block';
+        }
+      }else{
+        sv('b-prefix','No BGP route','dim');
+        ['b-prefixlen','b-asn','b-asname','b-asdesc','b-country','b-rir','b-allocdate'].forEach(function(id){sv(id,'—','dim');});
+      }
+      setStatus('bgp','done');
+    }else{
+      sv('b-prefix','Unavailable','dim');
+      ['b-prefixlen','b-asn','b-asname','b-asdesc','b-country','b-rir','b-allocdate'].forEach(function(id){sv(id,'—','dim');});
+      sv('n-netname','—','dim');sv('n-rir','—','dim');sv('n-allocdate','—','dim');
+      setStatus('bgp','err');
+    }
+
+    // PTR
+    ptrResult=await ptrPromise;
+    setStatus('ptr','done');
+    if(ptrResult.ptr){
+      sh('heroPtr','PTR &rarr; <span class="ptr-val">'+ptrResult.ptr+'</span>');
+      document.getElementById('heroPtr').style.display='block';
+      sv('r-ptr',ptrResult.ptr,'green');
+      sh('r-rcode','<span style="color:var(--green)">'+ptrResult.rcode+'</span>');
+      sv('r-ttl',ptrResult.ttl?ptrResult.ttl+'s':'—');
+      var fwd=await confirmFwd(ptrResult.ptr,publicIp);
+      var fwdClass=fwd&&fwd.startsWith('MATCH')?'green':'amber';
+      sh('r-fwd','<span class="d-val '+fwdClass+'">'+fwd+'</span>');
+    }else{
+      sv('r-ptr','No PTR record','dim');
+      sh('r-rcode','<span style="color:var(--amber)">'+ptrResult.rcode+'</span>');
+      sv('r-ttl','—');sv('r-fwd','—');
+    }
+
+    // VPN / proxycheck
+    proxycheckData=await vpnPromise;
+    var isVpn=false,vpnType='',vpnRisk=0,vpnProvider='';
+    if(proxycheckData){
+      isVpn=(proxycheckData.proxy==='yes');
+      vpnType=proxycheckData.type||'';
+      vpnRisk=proxycheckData.risk||0;
+      vpnProvider=proxycheckData.provider||proxycheckData.organisation||'';
+      sh('vpc-proxy','<span class="vpn-sig-val '+(isVpn?'red':'green')+'">'+(isVpn?'YES':'NO')+'</span>');
+      sh('vpc-type','<span class="vpn-sig-val '+(vpnType?'amber':'dim')+'">'+( vpnType||'—')+'</span>');
+      var riskClass=vpnRisk>75?'red':vpnRisk>25?'amber':'green';
+      sh('vpc-risk','<span class="vpn-sig-val '+riskClass+'">'+vpnRisk+' / 100</span>');
+      sh('vpc-provider','<span class="vpn-sig-val dim">'+(vpnProvider||'—')+'</span>');
+      sh('vpc-hosting','<span class="vpn-sig-val '+(proxycheckData.hosting==='yes'?'amber':'green')+'">'+(proxycheckData.hosting==='yes'?'Yes':'No')+'</span>');
+    }else{
+      ['vpc-proxy','vpc-type','vpc-risk','vpc-provider','vpc-hosting'].forEach(function(id){sh(id,'<span class="vpn-sig-val dim">N/A</span>');});
+    }
+
+    // ASN heuristic
+    var heurMatch=checkAsnHeuristic(asnStr,orgStr);
+    var bgpDescMatch=bgpData?checkAsnHeuristic(asnStr,(bgpData.prefixes||[]).map(function(p){return (p.asn||{}).description||'';}).join(' ')):null;
+    var heurHit=heurMatch||bgpDescMatch;
+    sh('vpc-asn-heur','<span class="vpn-sig-val '+(heurHit?'amber':'green')+'">'+(heurHit?'MATCH: '+heurHit:'Clean')+'</span>');
+
+    // VPN verdict (after WebRTC too)
+    rtcIps=await rtcPromise;
+    setStatus('rtc','done');
+
+    // Check WebRTC delta (private IPs present when visiting from VPN suggests leak)
+    var rtcPrivate=rtcIps.filter(function(ip){var cls2=classifyIp(ip);return cls2.type.startsWith('Private');});
+    var rtcPublicDiff=rtcIps.filter(function(ip){return !ip.includes(':')&&ip!==publicIp&&!classifyIp(ip).type.startsWith('Private')&&ip!=='0.0.0.0';});
+    var rtcDeltaText='None detected';
+    var rtcDeltaClass='green';
+    if(rtcPublicDiff.length>0){
+      rtcDeltaText='DIFF ('+rtcPublicDiff.join(', ')+')';rtcDeltaClass='red';
+    }else if(rtcPrivate.length>0){
+      rtcDeltaText='Private IPs exposed';rtcDeltaClass='amber';
+    }
+    sh('vpc-rtc-delta','<span class="vpn-sig-val '+rtcDeltaClass+'">'+rtcDeltaText+'</span>');
+
+    // Final VPN verdict
+    var vpnScore=0;
+    if(isVpn)vpnScore+=3;
+    if(vpnRisk>75)vpnScore+=2;
+    if(heurHit)vpnScore+=1;
+    if(proxycheckData&&proxycheckData.hosting==='yes')vpnScore+=1;
+    if(rtcPublicDiff.length>0)vpnScore+=2;
+
+    var led=document.getElementById('vpnLed');
+    var text=document.getElementById('vpnText');
+    var sub=document.getElementById('vpnSub');
+    if(vpnScore>=3){
+      led.className='vpn-led red';text.style.color='var(--red)';text.textContent='VPN / Proxy Detected';
+      sub.textContent=(vpnType||'Proxy/VPN')+' — risk score '+vpnRisk+'/100';
+      var existBadges=document.getElementById('classificationBadges').innerHTML;
+      sh('classificationBadges',existBadges+'<span class="badge danger">VPN</span>');
+    }else if(vpnScore>0){
+      led.className='vpn-led amber';text.style.color='var(--amber)';text.textContent='Possibly Anonymized';
+      sub.textContent='Some signals present — not conclusive';
+    }else{
+      led.className='vpn-led green';text.style.color='var(--green)';text.textContent='No VPN Detected';
+      sub.textContent='No proxy or VPN signals found';
+    }
+    setStatus('vpn','done');
+
+    // WebRTC panel
+    sh('r-candidates',String(rtcIps.length));
+    if(rtcIps.length>0){
+      var items=rtcIps.map(function(ip2){
+        var c=classifyIp(ip2);
+        var tag=c.type.startsWith('Private')?'private':ip2.includes(':')?'ipv6':'public';
+        return '<div class="rtc-ip"><span class="rtc-tag">'+tag+'</span><span style="font-family:var(--mono);font-size:.78rem;color:var(--text-bright)">'+ip2+'</span></div>';
+      }).join('');
+      sh('rtcList',items);
+    }else{
+      sh('rtcList','<div class="rtc-none">No IPs detected (WebRTC disabled or no candidates)</div>');
+    }
+
+  }else{
+    sh('heroIp','<span style="color:var(--red)">Failed to resolve IP</span>');
+    setStatus('geo','err');setStatus('bgp','err');setStatus('ptr','err');setStatus('vpn','err');setStatus('rtc','err');
+  }
+}
+
+function copyIp(ip){
+  navigator.clipboard.writeText(ip).then(function(){
+    var btn=document.getElementById('copyBtn');
+    if(btn){btn.textContent='copied!';btn.classList.add('copied');setTimeout(function(){btn.textContent='copy';btn.classList.remove('copied');},1500);}
+  });
+}
+
+main();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
