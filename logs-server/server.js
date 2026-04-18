@@ -163,6 +163,7 @@ const LOG_FILES = {
   'tls-ca-fetch': 'tls-ca-fetch.access.log',
   'github-stats': 'github-stats.access.log',
   ip:            'ip.access.log',
+  pal:           'pal.access.log',
   conway:       'conway.access.log',
   vim:         'vim.access.log',
   http:        'http.access.log',
@@ -738,6 +739,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="conway">conway</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>
+          <button class="site-opt" data-site="clamav">clamav</button>
           <button class="site-opt" data-site="chemistry">chemistry</button>
           <button class="site-opt" data-site="chess">chess</button>
           <button class="site-opt" data-site="chinese">chinese</button>
@@ -778,6 +780,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="moto">moto</button>
           <button class="site-opt" data-site="nav">nav</button>
           <button class="site-opt" data-site="nintendo">nintendo</button>
+          <button class="site-opt" data-site="pal">pal</button>
           <button class="site-opt" data-site="passwords">passwords</button>
           <button class="site-opt" data-site="physics">physics</button>
           <button class="site-opt" data-site="pirates">pirates</button>
