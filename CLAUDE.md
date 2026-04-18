@@ -92,6 +92,16 @@ All static sites share a single `static` nginx container. Each subdomain's files
 
 **All images must be hosted on the website — never reference images from external URLs (no CDNs, no Wikipedia, no third-party hosts).** Download images locally and serve them from the app's own directory (e.g., `cnc-html/images/`, `mario-html/images/`).
 
+## JavaScript &amp; CSS Libraries
+
+**Never reference JS or CSS libraries from external CDN URLs (no cdnjs, unpkg, jsDelivr, googleapis, etc.).** Download library files locally into the app's directory and reference them with relative paths. For example:
+
+```bash
+curl -sL "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" -o myapp-html/leaflet.min.js
+```
+
+Then reference it as `<script src="leaflet.min.js"></script>` — not from the CDN URL. This applies to all `.js` and `.css` library files. Data APIs (fetch calls to external services) are fine.
+
 ## Container Operations
 
 Use the right command for the situation:
