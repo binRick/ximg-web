@@ -735,7 +735,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="esp32-s3-lcd">esp32-s3-lcd</button>
           <button class="site-opt" data-site="tls-ca-fetch">tls-ca-fetch</button>
           <button class="site-opt" data-site="github-stats">github-stats</button>
-          <button class="site-opt" data-site="ip">ip</button>
+          <button class="site-opt" data-site="ip">ip intel</button>
           <button class="site-opt" data-site="conway">conway</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>
