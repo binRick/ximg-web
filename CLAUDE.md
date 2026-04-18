@@ -295,6 +295,23 @@ After adding a server block, reload nginx:
 docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 ```
 
+## proc-trace CLI Tools
+
+Four Go-based Linux process tracing tools, each with a companion web app (`*-html/`) at the corresponding subdomain. All are single static binaries, zero runtime dependencies, Linux-only.
+
+| Tool | Directory | Web App | What it traces | Mechanism | Requires |
+|------|-----------|---------|----------------|-----------|----------|
+| `proc-trace-exec` | `proc-trace-exec/` | `proc-trace-exec-html/` | Every `exec()` call system-wide, with process tree, exit status, timing | Linux proc connector (`AF_NETLINK / NETLINK_CONNECTOR`) | `CAP_NET_ADMIN` |
+| `proc-trace-dns` | `proc-trace-dns/` | `proc-trace-dns-html/` | Every DNS query per-process — query type, resolved IPs, NXDOMAIN, latency | Raw `AF_PACKET / SOCK_RAW` socket, parses DNS wire format, correlates via `/proc/net/udp` inode lookup | `CAP_NET_RAW` |
+| `proc-trace-net` | `proc-trace-net/` | `proc-trace-net-html/` | Every TCP/UDP connection open/close system-wide, with PID, direction, timing | Linux conntrack netlink (`NETLINK_NETFILTER`) | `CAP_NET_ADMIN` |
+| `proc-trace-tls` | `proc-trace-tls/` | `proc-trace-tls-html/` | Plaintext TLS traffic before encryption / after decryption, per-process | ftrace uprobes on `SSL_read` / `SSL_write` in `libssl.so`; reads `/sys/kernel/debug/tracing/trace_pipe` | `CAP_SYS_ADMIN` + debugfs |
+
+Each web app has the same sub-nav structure: **Overview** (`index.html`), **Install** (`install.html`), **Usage** (`usage.html`), **Building** (`building.html`), **Screenshots** (`screenshots.html` — exec/net/tls only).
+
+**Key design principle for all four:** no eBPF, no ptrace, no kernel modules, no libpcap — only standard kernel interfaces (netlink sockets, ftrace, `/proc`).
+
+**Build:** each tool has a `build.sh` that cross-compiles via Docker (no local Go required) and outputs binaries to `dist/` or the project root.
+
 ## SSH Honeypot
 
 - Accepts any password, drops user into `/bin/bash` as non-root `user` inside isolated container
