@@ -9,6 +9,7 @@ const LOGS_DIR       = '/logs';
 const SSH_DIR        = '/ssh-logs';
 const DL_LOG_FILE    = '/data/dockerimagedownloader.log';
 const BUNDLER_LOG_FILE = '/data/bundler-downloads.log';
+const MAP_ALLTIME_FILE = '/data/map-alltime.json';
 const PORT           = 3000;
 
 function stripAnsi(s) {
@@ -29,6 +30,62 @@ function lookupGeo(ip) {
     : { countryCode: '', country: '', city: '', lat: 0, lon: 0 };
   ipGeoCache.set(ip, geo);
   return Promise.resolve(geo);
+}
+
+// ── All-time IP map (persisted across log rotations) ─────────────────────────
+let mapAlltimeStore = { processedFiles: [], ips: {} };
+const INTERNAL_IPS = new Set(['172.18.0.1', '127.0.0.1', '::1']);
+
+function loadAlltimeStore() {
+  try {
+    const raw = fs.readFileSync(MAP_ALLTIME_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    mapAlltimeStore.processedFiles = parsed.processedFiles || [];
+    mapAlltimeStore.ips = parsed.ips || {};
+  } catch (_) {}
+}
+
+function saveAlltimeStore() {
+  try { fs.writeFileSync(MAP_ALLTIME_FILE, JSON.stringify(mapAlltimeStore)); } catch (_) {}
+}
+
+loadAlltimeStore();
+
+function harvestLogFile(filepath) {
+  try {
+    let content;
+    if (filepath.endsWith('.gz')) {
+      content = zlib.gunzipSync(fs.readFileSync(filepath)).toString('utf8');
+    } else {
+      content = fs.readFileSync(filepath, 'utf8');
+    }
+    for (const line of content.split('\n')) {
+      const m = line.match(/^(\S+)\s/);
+      if (!m) continue;
+      const ip = m[1];
+      if (INTERNAL_IPS.has(ip)) continue;
+      mapAlltimeStore.ips[ip] = (mapAlltimeStore.ips[ip] || 0) + 1;
+    }
+  } catch (_) {}
+}
+
+async function scanAndHarvest() {
+  const processed = new Set(mapAlltimeStore.processedFiles);
+  let files;
+  try {
+    files = fs.readdirSync(LOGS_DIR).filter(f => /\.log-\d{8}(\.gz)?$/.test(f));
+  } catch (_) { return 0; }
+  let newCount = 0;
+  for (const fname of files) {
+    if (processed.has(fname)) continue;
+    await new Promise(resolve => setImmediate(resolve));
+    harvestLogFile(path.join(LOGS_DIR, fname));
+    mapAlltimeStore.processedFiles.push(fname);
+    newCount++;
+    if (newCount % 50 === 0) saveAlltimeStore();
+  }
+  if (newCount > 0) saveAlltimeStore();
+  return newCount;
 }
 
 function ipFromFilename(filename) {
@@ -404,6 +461,9 @@ async function idsEnrichAndBroadcast(alert) {
     }))).catch(() => {});
   } catch (_) {}
 })();
+
+// Background scan for any unprocessed rotated log files
+setImmediate(() => { scanAndHarvest().catch(() => {}); });
 
 // ── Read last N lines from end of file ───────────────────────────────────────
 function lastLines(filePath, n) {
@@ -1055,7 +1115,7 @@ const HTML = `<!DOCTYPE html>
     <div id="map-header">
       <span class="mh-label">unique IPs</span> <span class="mh-stat" id="mh-ips">—</span>
       <span class="mh-label">countries</span> <span class="mh-stat" id="mh-countries">—</span>
-      <span class="mh-label">requests sampled</span> <span class="mh-stat" id="mh-reqs">—</span>
+      <span class="mh-label">all-time requests</span> <span class="mh-stat" id="mh-reqs">—</span>
       <button id="map-refresh" onclick="loadMapData()">↺ refresh</button>
       <span id="mh-ts"></span>
     </div>
@@ -1551,6 +1611,7 @@ const HTML = `<!DOCTYPE html>
     let dragging = false, dragStart = null, dragOffset = null;
 
     function enterMapMode() {
+      if (botMode) leaveBotMode();
       mapMode = true;
       history.replaceState(null, '', '#map');
       mapTab.classList.add('active');
@@ -1979,11 +2040,16 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/map-data') {
     const LINES_PER_FILE = 300;
     const ipMap = new Map();
+    // Seed with all-time historical counts from harvested rotated logs
+    for (const [ip, count] of Object.entries(mapAlltimeStore.ips)) {
+      ipMap.set(ip, { count, apps: new Map(), urls: new Set() });
+    }
+    // Merge current live log data (today's traffic not yet rotated)
     for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
       const lines = lastLines(path.join(LOGS_DIR, logFilename), LINES_PER_FILE);
       for (const line of lines) {
         const p = parseLine(line);
-        if (!p.ip || p.ip === '172.18.0.1' || p.ip === '127.0.0.1' || p.ip === '::1') continue;
+        if (!p.ip || INTERNAL_IPS.has(p.ip)) continue;
         if (!ipMap.has(p.ip)) ipMap.set(p.ip, { count: 0, apps: new Map(), urls: new Set() });
         const e = ipMap.get(p.ip);
         e.count++;
@@ -2011,6 +2077,13 @@ const server = http.createServer(async (req, res) => {
     const totalRequests  = ips.reduce((s, e) => s + e.count, 0);
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ ts: new Date().toISOString(), total_ips: ips.length, total_requests: totalRequests, total_countries: totalCountries, ips }));
+    return;
+  }
+
+  if (req.url === '/map-harvest') {
+    const newCount = await scanAndHarvest();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, newFiles: newCount, totalIps: Object.keys(mapAlltimeStore.ips).length }));
     return;
   }
 
