@@ -2398,7 +2398,6 @@ wss.on('connection', (ws, req) => {
     for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
       const logFile = path.join(LOGS_DIR, logFilename);
       const send = makeSend(siteName);
-      lastLines(logFile, 10).forEach(send);
       stopFns.push(tailFile(logFile, send));
     }
     const stopAll = () => stopFns.forEach(fn => fn());
