@@ -1011,6 +1011,15 @@ const HTML = `<!DOCTYPE html>
       <span>5xx <span class="stat-val s5xx" id="st-5xx">0</span></span>
     </div>
     <button id="pause-btn">⏸ pause</button>
+    <span id="ip-filter-wrap" style="display:inline-flex;align-items:center;gap:.3rem;margin-left:.3rem">
+      <input id="ip-filter" type="text" placeholder="filter IP…" autocomplete="off" spellcheck="false"
+        style="font-family:'Courier New',monospace;font-size:.75rem;background:rgba(255,255,255,.04);
+        border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:.25rem .55rem;color:var(--green);
+        width:130px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='rgba(0,255,65,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+      <button id="ip-filter-clear" style="display:none;font-size:.7rem;padding:.2rem .45rem;border-radius:4px;
+        cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+        color:#586069;font-family:'Courier New',monospace" title="Clear filter">✕</button>
+    </span>
   </div>
 
   <div id="log-container">
@@ -1151,6 +1160,41 @@ const HTML = `<!DOCTYPE html>
       return 's5xx';
     }
 
+    var ipFilter = '';
+    var ipFilterEl = document.getElementById('ip-filter');
+    var ipFilterClear = document.getElementById('ip-filter-clear');
+
+    ipFilterEl.addEventListener('input', function() {
+      ipFilter = this.value.trim();
+      ipFilterClear.style.display = ipFilter ? '' : 'none';
+      // Re-filter existing lines
+      var lines = container.querySelectorAll('.log-line');
+      lines.forEach(function(el) {
+        var ipSpan = el.querySelector('.col-ip');
+        if (!ipSpan) return;
+        var lineIp = ipSpan.textContent.trim();
+        el.style.display = (!ipFilter || lineIp.indexOf(ipFilter) !== -1) ? '' : 'none';
+      });
+    });
+
+    ipFilterClear.addEventListener('click', function() {
+      ipFilterEl.value = '';
+      ipFilter = '';
+      this.style.display = 'none';
+      container.querySelectorAll('.log-line').forEach(function(el) { el.style.display = ''; });
+    });
+
+    // Click IP to filter by it
+    container.addEventListener('click', function(e) {
+      var link = e.target.closest('.ip-link');
+      if (link && e.shiftKey) {
+        e.preventDefault();
+        var ip = link.textContent.trim();
+        ipFilterEl.value = ip;
+        ipFilterEl.dispatchEvent(new Event('input'));
+      }
+    });
+
     function addLine(data) {
       if (paused) return;
       if (container.querySelector('.connecting')) container.innerHTML = '';
@@ -1176,6 +1220,7 @@ const HTML = `<!DOCTYPE html>
         el.className = 'raw-line';
         el.textContent = data.raw || '';
       }
+      if (ipFilter && data.ip && data.ip.indexOf(ipFilter) === -1) el.style.display = 'none';
       container.prepend(el);
       while (container.children.length > MAX_LINES) container.removeChild(container.lastChild);
     }
@@ -1267,7 +1312,7 @@ const HTML = `<!DOCTYPE html>
       pickerBtn.classList.remove('has-selection');
       pickerBtn.textContent = '☰ app ▾';
       siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
-      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('pause-btn').style.display = 'none'; document.getElementById('ip-filter-wrap').style.display = 'none';
       document.querySelector('.stats').style.display = 'none';
       clearTimeout(reconnectTimer);
       if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -1281,7 +1326,7 @@ const HTML = `<!DOCTYPE html>
       sshMode = false;
       history.replaceState(null, '', location.pathname);
       sshTab.classList.remove('active');
-      document.getElementById('pause-btn').style.display = '';
+      document.getElementById('pause-btn').style.display = ''; document.getElementById('ip-filter-wrap').style.display = '';
       document.querySelector('.stats').style.display = '';
       sshContainer.style.display = 'none';
       logContainer.style.display = '';
@@ -1369,7 +1414,7 @@ const HTML = `<!DOCTYPE html>
       pickerBtn.classList.remove('has-selection');
       pickerBtn.textContent = '☰ app ▾';
       siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
-      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('pause-btn').style.display = 'none'; document.getElementById('ip-filter-wrap').style.display = 'none';
       document.querySelector('.stats').style.display = 'none';
       clearTimeout(reconnectTimer);
       if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -1385,7 +1430,7 @@ const HTML = `<!DOCTYPE html>
       dlMode = false;
       history.replaceState(null, '', location.pathname);
       dlTab.classList.remove('active');
-      document.getElementById('pause-btn').style.display = '';
+      document.getElementById('pause-btn').style.display = ''; document.getElementById('ip-filter-wrap').style.display = '';
       document.querySelector('.stats').style.display = '';
       dlContainer.style.display = 'none';
       logContainer.style.display = '';
@@ -1529,7 +1574,7 @@ const HTML = `<!DOCTYPE html>
       pickerBtn.classList.remove('has-selection');
       pickerBtn.textContent = '☰ app ▾';
       siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
-      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('pause-btn').style.display = 'none'; document.getElementById('ip-filter-wrap').style.display = 'none';
       document.querySelector('.stats').style.display = 'none';
       clearTimeout(reconnectTimer);
       if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -1544,7 +1589,7 @@ const HTML = `<!DOCTYPE html>
       botMode = false;
       history.replaceState(null, '', location.pathname);
       botTab.classList.remove('active');
-      document.getElementById('pause-btn').style.display = '';
+      document.getElementById('pause-btn').style.display = ''; document.getElementById('ip-filter-wrap').style.display = '';
       document.querySelector('.stats').style.display = '';
       botContainer.style.display = 'none';
       logContainer.style.display = '';
@@ -1580,7 +1625,7 @@ const HTML = `<!DOCTYPE html>
       pickerBtn.classList.remove('has-selection');
       pickerBtn.textContent = '☰ app ▾';
       siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
-      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('pause-btn').style.display = 'none'; document.getElementById('ip-filter-wrap').style.display = 'none';
       document.querySelector('.stats').style.display = 'none';
       clearTimeout(reconnectTimer);
       if (ws) { ws.onclose = null; ws.close(); ws = null; }
@@ -1599,7 +1644,7 @@ const HTML = `<!DOCTYPE html>
       mapMode = false;
       history.replaceState(null, '', location.pathname);
       mapTab.classList.remove('active');
-      document.getElementById('pause-btn').style.display = '';
+      document.getElementById('pause-btn').style.display = ''; document.getElementById('ip-filter-wrap').style.display = '';
       document.querySelector('.stats').style.display = '';
       clearInterval(mapAutoRefreshTimer);
       if (mapAnimFrame) { cancelAnimationFrame(mapAnimFrame); mapAnimFrame = null; }
@@ -2311,8 +2356,25 @@ const server = http.createServer(async (req, res) => {
            + `<div style="color:#484f58;font-size:.66rem;word-break:break-all;line-height:1.4">${esc2(ua)}</div>`;
     }
 
+    // Group hits by day for expandable detail
+    const hitsByDay = {};
+    for (const h of hits) {
+      if (h.ts) {
+        const dk = h.ts.slice(0,11);
+        if (!hitsByDay[dk]) hitsByDay[dk] = [];
+        hitsByDay[dk].push(h);
+      }
+    }
     const dayRows = Object.entries(byDay).sort((a,b)=>a[0]<b[0]?-1:1)
-      .map(([day,n])=>`<tr><td>${esc2(day)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
+      .map(([day,n]) => {
+        const dayHits = (hitsByDay[day]||[]).slice(-200).reverse();
+        const detailRows = dayHits.map(h =>
+          `<tr><td class="col-ts">${esc2(h.ts)}</td><td style="color:#a5b4fc;font-size:.72rem">${esc2(h.site||'')}</td><td class="${sc(h.status)}">${esc2(h.status)}</td><td style="color:#c9d1d9;word-break:break-all">${esc2((h.method||'')+' '+(h.path||''))}</td></tr>`
+        ).join('');
+        const detailId = 'day-' + day.replace(/[^a-zA-Z0-9]/g,'');
+        return `<tr class="day-row" style="cursor:pointer" onclick="var d=document.getElementById('${detailId}');d.style.display=d.style.display==='none'?'':'none';this.querySelector('.day-arrow').textContent=d.style.display==='none'?'▸':'▾'"><td style="white-space:nowrap"><span class="day-arrow" style="display:inline-block;width:1em;color:var(--dim)">▸</span> ${esc2(day)}</td><td style="color:#c9d1d9">${n}</td></tr>`
+             + `<tr id="${detailId}" style="display:none"><td colspan="2" style="padding:0"><table style="width:100%;margin:.2rem 0 .5rem;background:rgba(255,255,255,.02);border-radius:6px"><thead><tr><th>timestamp</th><th>site</th><th>status</th><th>request</th></tr></thead><tbody>${detailRows}</tbody></table></td></tr>`;
+      }).join('');
     const siteRows = topSites.map(([s,n])=>`<tr><td><a href="/?site=${esc2(s)}" style="color:#79c0ff;text-decoration:none">${esc2(s)}</a></td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
     const pathRows = topPaths.map(([p,n])=>`<tr><td style="color:#c9d1d9;word-break:break-all">${esc2(p)}</td><td style="color:#c9d1d9">${n}</td></tr>`).join('');
     const uaRows   = topUA.map(([u,n])=>`<tr><td style="padding:.45rem .4rem">${renderUA(u)}</td><td style="color:#c9d1d9;vertical-align:top;padding:.45rem .4rem;white-space:nowrap">${n}</td></tr>`).join('');
