@@ -44,7 +44,7 @@
       ['tea','tea'],['thai','thai'],['wine','wine'],
     ]},
     { label: 'Games', apps: [
-      ['butterfly','butterfly'],['chess','chess'],['cnc','cnc'],['doom','doom'],['ironfist','iron fist 3D'],['kart','kart'],['kombat','kombat'],
+      ['butterfly','butterfly'],['chess','chess'],['cnc','cnc'],['doom','doom'],['kart','kart'],['kombat','kombat'],
       ['mario','mario'],['monkey','monkey'],['nintendo','nintendo'],['poker','poker'],['quake','quake'],['simcity','simcity'],['tetris','tetris'],['warcraft','warcraft']
     ]},
     { label: 'Electronics', apps: [
@@ -81,7 +81,8 @@
       ['proc-trace-tls','proc-trace-tls'],
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch'],
-      ['github-stats','github stats']
+      ['github-stats','github stats'],
+      ['ironfist','Iron Fist 3D']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
