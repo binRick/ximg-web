@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-221 virtual hosts (root + 220 subdomains), all static sites served by a single nginx container.
+223 virtual hosts (root + 222 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -244,6 +244,8 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [github-stats.ximg.app](https://github-stats.ximg.app) | GitHub traffic stats dashboard — clones, views, and unique visitor counts for the latest 20 repos, pulled hourly from the GitHub API. |
 | [ironfist.ximg.app](https://ironfist.ximg.app) | Iron Fist — Duke Nukem-style FPS built from scratch in C with raylib. Single game.c, 3 weapons, chef enemies, Q3 platforms, custom GLSL lighting. |
 | [ip.ximg.app](https://ip.ximg.app) | IP Intelligence — geolocation, ASN, BGP routing, reverse DNS, WebRTC leak detection, and VPN/proxy detection for your public IP address. |
+| [rbterm.ximg.app](https://rbterm.ximg.app) | rbterm — cross-platform terminal emulator in C with raylib. 16 tabs, 5000-line scrollback, truecolor, mouse selection, emoji, OSC palette support. |
+| [scumm.ximg.app](https://scumm.ximg.app) | scumm-game — SCUMM-style point-and-click adventure engine in C with raylib. Dijkstra pathfinding, animated sprites, verb bar, walk-behind foregrounds. |
 ## Architecture
 
 ```

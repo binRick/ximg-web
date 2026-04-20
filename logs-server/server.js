@@ -223,6 +223,8 @@ const LOG_FILES = {
   pal:           'pal.access.log',
   conway:       'conway.access.log',
   ironfist:     'ironfist.access.log',
+  rbterm:       'rbterm.access.log',
+  scumm:        'scumm.access.log',
   vim:         'vim.access.log',
   http:        'http.access.log',
   ssh:         'ssh.access.log',
@@ -777,6 +779,8 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="ip">ip intel</button>
           <button class="site-opt" data-site="conway">conway</button>
           <button class="site-opt" data-site="ironfist">ironfist</button>
+          <button class="site-opt" data-site="rbterm">rbterm</button>
+          <button class="site-opt" data-site="scumm">scumm</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>
           <button class="site-opt" data-site="clamav">clamav</button>

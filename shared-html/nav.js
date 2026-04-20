@@ -82,7 +82,9 @@
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch'],
       ['github-stats','github stats'],
-      ['ironfist','Iron Fist']
+      ['ironfist','Iron Fist'],
+      ['rbterm','rbterm'],
+      ['scumm','scumm-game']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
