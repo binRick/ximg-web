@@ -37,6 +37,21 @@ The `esp32.ximg.app` web app (`esp32-html/`) is directly based on the `esp32-dev
 3. Add a card to the **"What We Built"** session grid in `esp32-html/index.html`
 4. Update this table in `CLAUDE.md` to mark the new sketch as ✓
 
+## Iron Fist
+
+Whenever the conversation involves the Iron Fist game or the `Iron-Fist` submodule is updated, always pull the latest and rebuild the web version:
+
+```bash
+cd Iron-Fist
+git pull origin main
+source vendor/emsdk/emsdk_env.sh
+make web
+cp dist-web/* ../ironfist-html/game/
+cd ..
+```
+
+Then commit and push both the updated submodule pointer and the rebuilt `ironfist-html/game/` files.
+
 ## Git Workflow
 
 **All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
