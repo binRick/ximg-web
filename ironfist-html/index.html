@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iron Fist 3D</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0806;--bg2:#141010;--bg3:#1c1414;
+  --red:#c0392b;--orange:#e67e22;--fire:#ff4500;
+  --gold:#d4a017;--text:#c8bfb0;--dim:#5a524a;
+  --mono:'Courier New',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);line-height:1.6;overflow-x:hidden}
+a{color:var(--orange);text-decoration:none;transition:color .2s}
+a:hover{color:var(--fire)}
+
+/* ── Scanline overlay ── */
+body::after{
+  content:'';position:fixed;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+/* ── Hero ── */
+.hero{
+  position:relative;min-height:90vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  padding:6rem 1rem 4rem;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 80%,rgba(192,57,43,.15),transparent 60%),
+             radial-gradient(ellipse at 20% 20%,rgba(230,126,34,.08),transparent 50%);
+  pointer-events:none;
+}
+.hero-title{
+  font-size:clamp(3rem,10vw,7rem);font-weight:900;letter-spacing:.15em;
+  text-transform:uppercase;color:#fff;position:relative;
+  text-shadow:0 0 40px rgba(255,69,0,.5),0 0 80px rgba(192,57,43,.3),0 4px 0 #1a0a0a;
+  animation:titlePulse 3s ease-in-out infinite;
+}
+@keyframes titlePulse{
+  0%,100%{text-shadow:0 0 40px rgba(255,69,0,.5),0 0 80px rgba(192,57,43,.3),0 4px 0 #1a0a0a}
+  50%{text-shadow:0 0 60px rgba(255,69,0,.7),0 0 120px rgba(192,57,43,.5),0 4px 0 #1a0a0a}
+}
+.hero-sub{
+  font-size:clamp(.8rem,2vw,1.1rem);color:var(--dim);margin-top:1rem;
+  letter-spacing:.2em;text-transform:uppercase;max-width:700px;
+}
+.hero-sub span{color:var(--orange)}
+.hero-img{
+  margin-top:2.5rem;max-width:900px;width:95%;border:2px solid rgba(192,57,43,.4);
+  border-radius:4px;box-shadow:0 0 60px rgba(255,69,0,.15),0 20px 60px rgba(0,0,0,.6);
+  cursor:pointer;transition:transform .3s,box-shadow .3s;
+}
+.hero-img:hover{transform:scale(1.01);box-shadow:0 0 80px rgba(255,69,0,.25),0 20px 60px rgba(0,0,0,.6)}
+.hero-badge{
+  display:inline-block;margin-top:2rem;padding:.5rem 1.5rem;
+  border:1px solid var(--red);border-radius:2px;color:var(--red);
+  font-size:.7rem;letter-spacing:.25em;text-transform:uppercase;
+  animation:badgeBlink 2s step-end infinite;
+}
+@keyframes badgeBlink{50%{opacity:.6}}
+
+/* ── Sections ── */
+section{padding:5rem 1rem;max-width:1100px;margin:0 auto}
+.section-title{
+  font-size:clamp(1.4rem,4vw,2rem);font-weight:700;color:#fff;
+  letter-spacing:.15em;text-transform:uppercase;margin-bottom:.5rem;
+  border-left:4px solid var(--red);padding-left:1rem;
+}
+.section-rule{
+  width:80px;height:2px;background:linear-gradient(90deg,var(--red),transparent);
+  margin-bottom:2.5rem;margin-left:1.2rem;
+}
+
+/* ── Screenshots ── */
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.2rem}
+.gallery img{
+  width:100%;border:1px solid rgba(192,57,43,.3);border-radius:3px;
+  cursor:pointer;transition:transform .3s,box-shadow .3s;
+}
+.gallery img:hover{transform:scale(1.03);box-shadow:0 0 30px rgba(255,69,0,.2)}
+
+/* ── Weapons ── */
+.weapons-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
+.weapon-card{
+  background:var(--bg2);border:1px solid rgba(192,57,43,.25);border-radius:4px;
+  padding:1.8rem;position:relative;overflow:hidden;transition:border-color .3s;
+}
+.weapon-card:hover{border-color:var(--fire)}
+.weapon-card::before{
+  content:'';position:absolute;top:0;left:0;width:100%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--red),transparent);
+}
+.weapon-name{
+  font-size:1.3rem;font-weight:700;color:var(--fire);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:.2rem;
+}
+.weapon-real{font-size:.75rem;color:var(--dim);margin-bottom:1rem;letter-spacing:.15em}
+.weapon-stats{list-style:none}
+.weapon-stats li{
+  padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:.82rem;display:flex;justify-content:space-between;
+}
+.weapon-stats li:last-child{border-bottom:none}
+.stat-label{color:var(--dim)}
+.stat-val{color:var(--orange);font-weight:700}
+
+/* ── Enemy ── */
+.enemy-section{background:var(--bg2);border-radius:4px;padding:2.5rem;border:1px solid rgba(192,57,43,.15)}
+.enemy-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem;margin:1.5rem 0}
+.enemy-type{
+  background:var(--bg);border:1px solid rgba(192,57,43,.2);border-radius:3px;
+  padding:1.2rem;text-align:center;transition:border-color .3s;
+}
+.enemy-type:hover{border-color:var(--fire)}
+.enemy-type h4{color:var(--fire);font-size:1rem;letter-spacing:.1em;text-transform:uppercase}
+.enemy-type .hp{font-size:2rem;font-weight:900;color:var(--red);margin:.5rem 0}
+.enemy-type p{font-size:.75rem;color:var(--dim)}
+.ai-flow{
+  margin-top:1.5rem;display:flex;align-items:center;justify-content:center;
+  flex-wrap:wrap;gap:.5rem;font-size:.85rem;
+}
+.ai-state{
+  background:var(--bg);border:1px solid var(--red);padding:.4rem .8rem;
+  border-radius:2px;color:var(--orange);letter-spacing:.1em;text-transform:uppercase;
+  font-size:.75rem;
+}
+.ai-arrow{color:var(--dim);font-size:1.2rem}
+
+/* ── Controls ── */
+.controls-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.5rem}
+.control-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.6rem .8rem;border-bottom:1px solid rgba(255,255,255,.04);
+}
+.key{
+  background:var(--bg2);border:1px solid rgba(255,255,255,.12);border-radius:3px;
+  padding:.2rem .6rem;font-size:.8rem;color:#fff;font-weight:700;
+  box-shadow:0 2px 0 rgba(0,0,0,.4);min-width:40px;text-align:center;
+}
+.key-action{font-size:.8rem;color:var(--dim)}
+
+/* ── Architecture ── */
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.arch-card{
+  background:var(--bg2);border-left:3px solid var(--red);padding:1.2rem;
+  border-radius:0 3px 3px 0;
+}
+.arch-card h4{color:var(--orange);font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+.arch-card p{font-size:.8rem;color:var(--dim);line-height:1.7}
+.loc-badge{
+  display:inline-block;margin-top:1rem;padding:.3rem 1rem;
+  border:1px solid var(--gold);border-radius:2px;
+  color:var(--gold);font-size:.75rem;letter-spacing:.15em;
+}
+
+/* ── Sound ── */
+.sound-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+.sound-item{
+  background:var(--bg2);border:1px solid rgba(192,57,43,.15);
+  border-radius:3px;padding:1.2rem;
+}
+.sound-item h4{
+  color:var(--fire);font-size:.85rem;letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:.4rem;
+}
+.sound-item p{font-size:.78rem;color:var(--dim)}
+
+/* ── GitHub CTA ── */
+.cta{
+  text-align:center;padding:5rem 1rem;
+}
+.cta-btn{
+  display:inline-block;padding:.9rem 2.5rem;border:2px solid var(--red);
+  color:#fff;font-family:var(--mono);font-size:1rem;letter-spacing:.2em;
+  text-transform:uppercase;border-radius:3px;transition:all .3s;
+  background:transparent;position:relative;overflow:hidden;
+}
+.cta-btn:hover{background:var(--red);color:#fff;box-shadow:0 0 30px rgba(192,57,43,.4)}
+.cta-tagline{margin-top:1rem;font-size:.75rem;color:var(--dim);letter-spacing:.15em}
+
+/* ── Ember particles ── */
+.ember{
+  position:fixed;width:3px;height:3px;background:var(--fire);border-radius:50%;
+  pointer-events:none;opacity:0;z-index:0;
+  animation:emberRise linear forwards;
+}
+@keyframes emberRise{
+  0%{opacity:0;transform:translateY(0) scale(1)}
+  10%{opacity:.8}
+  100%{opacity:0;transform:translateY(-100vh) scale(0);filter:blur(1px)}
+}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  section{padding:3rem .8rem}
+  .hero{min-height:70vh;padding:5rem .8rem 3rem}
+  .controls-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <h1 class="hero-title">Iron Fist 3D</h1>
+  <p class="hero-sub">A from-scratch FPS built in pure <span>C</span> with <span>raylib</span> &mdash; no engine, no scripting layer, one file</p>
+  <img class="hero-img" src="images/screenshot-1.png" alt="Iron Fist 3D gameplay">
+  <span class="hero-badge">2,900+ lines of C &bull; zero dependencies beyond raylib</span>
+</section>
+
+<!-- ── SCREENSHOTS ── -->
+<section>
+  <h2 class="section-title">Screenshots</h2>
+  <div class="section-rule"></div>
+  <div class="gallery">
+    <img src="images/screenshot-1.png" alt="Iron Fist 3D - Arena combat">
+    <img src="images/screenshot-2.png" alt="Iron Fist 3D - Weapon view">
+    <img src="images/screenshot-3.png" alt="Iron Fist 3D - Environment">
+  </div>
+</section>
+
+<!-- ── WEAPONS ── -->
+<section>
+  <h2 class="section-title">Arsenal</h2>
+  <div class="section-rule"></div>
+  <div class="weapons-grid">
+    <div class="weapon-card">
+      <div class="weapon-name">Shotgun</div>
+      <div class="weapon-real">Browning Auto-5</div>
+      <ul class="weapon-stats">
+        <li><span class="stat-label">Fire Rate</span><span class="stat-val">0.59s</span></li>
+        <li><span class="stat-label">Damage</span><span class="stat-val">15 &times; 8 pellets</span></li>
+        <li><span class="stat-label">Max Ammo</span><span class="stat-val">32 shells</span></li>
+        <li><span class="stat-label">Special</span><span class="stat-val">Distance-scaled</span></li>
+      </ul>
+    </div>
+    <div class="weapon-card">
+      <div class="weapon-name">Machine Gun</div>
+      <div class="weapon-real">MP40</div>
+      <ul class="weapon-stats">
+        <li><span class="stat-label">Fire Rate</span><span class="stat-val">0.09s</span></li>
+        <li><span class="stat-label">Damage</span><span class="stat-val">18 per round</span></li>
+        <li><span class="stat-label">Max Ammo</span><span class="stat-val">120 rounds</span></li>
+        <li><span class="stat-label">Special</span><span class="stat-val">Full-auto</span></li>
+      </ul>
+    </div>
+    <div class="weapon-card">
+      <div class="weapon-name">Launcher</div>
+      <div class="weapon-real">Panzerschreck</div>
+      <ul class="weapon-stats">
+        <li><span class="stat-label">Fire Rate</span><span class="stat-val">0.96s</span></li>
+        <li><span class="stat-label">Damage</span><span class="stat-val">200 + 200 splash</span></li>
+        <li><span class="stat-label">Max Ammo</span><span class="stat-val">8 rockets</span></li>
+        <li><span class="stat-label">Splash Radius</span><span class="stat-val">5 meters</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── THE CHEF ── -->
+<section>
+  <h2 class="section-title">The Chef</h2>
+  <div class="section-rule"></div>
+  <div class="enemy-section">
+    <p style="color:var(--dim);font-size:.85rem;margin-bottom:1rem">Billboard-sprited enemies with boids separation and multi-state AI. Three subtypes roam the arena:</p>
+    <div class="enemy-types">
+      <div class="enemy-type">
+        <h4>Chef</h4>
+        <div class="hp">65 <span style="font-size:.7rem;color:var(--dim)">HP</span></div>
+        <p>Standard combatant. Balanced speed and damage output.</p>
+      </div>
+      <div class="enemy-type">
+        <h4>Heavy Chef</h4>
+        <div class="hp">145 <span style="font-size:.7rem;color:var(--dim)">HP</span></div>
+        <p>Tank variant. Absorbs punishment, hits harder.</p>
+      </div>
+      <div class="enemy-type">
+        <h4>Fast Chef</h4>
+        <div class="hp">42 <span style="font-size:.7rem;color:var(--dim)">HP</span></div>
+        <p>Glass cannon. Closes distance quickly, low survivability.</p>
+      </div>
+    </div>
+    <p style="color:var(--dim);font-size:.8rem;margin-top:1rem;text-align:center;letter-spacing:.1em">AI STATE MACHINE</p>
+    <div class="ai-flow">
+      <span class="ai-state">Patrol</span>
+      <span class="ai-arrow">&rarr;</span>
+      <span class="ai-state">Chase</span>
+      <span class="ai-arrow">&rarr;</span>
+      <span class="ai-state">Attack</span>
+      <span class="ai-arrow">&rarr;</span>
+      <span class="ai-state">Dying</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── CONTROLS ── -->
+<section>
+  <h2 class="section-title">Controls</h2>
+  <div class="section-rule"></div>
+  <div class="controls-grid">
+    <div>
+      <div class="control-row"><span class="key">W A S D</span><span class="key-action">Move</span></div>
+      <div class="control-row"><span class="key">Mouse</span><span class="key-action">Aim / Look</span></div>
+      <div class="control-row"><span class="key">LMB</span><span class="key-action">Fire</span></div>
+      <div class="control-row"><span class="key">Space</span><span class="key-action">Jump</span></div>
+    </div>
+    <div>
+      <div class="control-row"><span class="key">Shift</span><span class="key-action">Sprint</span></div>
+      <div class="control-row"><span class="key">1 2 3</span><span class="key-action">Switch Weapon</span></div>
+      <div class="control-row"><span class="key">- / +</span><span class="key-action">Music Volume</span></div>
+      <div class="control-row"><span class="key">Esc</span><span class="key-action">Quit</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ARCHITECTURE ── -->
+<section>
+  <h2 class="section-title">Architecture</h2>
+  <div class="section-rule"></div>
+  <div class="arch-grid">
+    <div class="arch-card">
+      <h4>Single File</h4>
+      <p>The entire game lives in one <code style="color:var(--orange)">game.c</code> file. No engine, no scripting layer, no abstraction layers &mdash; just raw C and raylib.</p>
+    </div>
+    <div class="arch-card">
+      <h4>Custom GLSL Lighting</h4>
+      <p>Hand-written fragment shader with 6 dynamic point lights, distance fog, and per-pixel attenuation. Lights flicker and pulse.</p>
+    </div>
+    <div class="arch-card">
+      <h4>Billboard Sprites</h4>
+      <p>Enemies rendered as camera-facing quads, back-to-front sorted each frame for correct transparency. Classic 2.5D aesthetic.</p>
+    </div>
+    <div class="arch-card">
+      <h4>Blood Particles</h4>
+      <p>Hit-spawned particle system with floor decals. Particles inherit velocity, fade over time, and stick to surfaces as permanent blood splats.</p>
+    </div>
+    <div class="arch-card">
+      <h4>Q3-Style Platforms</h4>
+      <p>Moving platforms with Quake 3 Arena-inspired mechanics. Elevators, jump pads, and vertical combat arenas.</p>
+    </div>
+    <div class="arch-card">
+      <h4>No Engine</h4>
+      <p>No eBPF, no Unity, no Unreal, no Godot. Just C, raylib for windowing/GL, and raw OpenGL shaders. Build with a single <code style="color:var(--orange)">gcc</code> invocation.</p>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:2rem">
+    <span class="loc-badge">~2,900 lines of C &bull; single game.c &bull; compiles in seconds</span>
+  </div>
+</section>
+
+<!-- ── SOUND DESIGN ── -->
+<section>
+  <h2 class="section-title">Sound Design</h2>
+  <div class="section-rule"></div>
+  <div class="sound-items">
+    <div class="sound-item">
+      <h4>Hell March Loop</h4>
+      <p>Iconic background music loop that sets the tone. Volume adjustable in-game with -/+ keys.</p>
+    </div>
+    <div class="sound-item">
+      <h4>Announcer Stingers</h4>
+      <p>UT/MK-style voice lines: First Blood, Headshot, Multi-Kill, Killing Spree, Fatality. Triggered by kill streaks and special shots.</p>
+    </div>
+    <div class="sound-item">
+      <h4>Distance-Scaled FX</h4>
+      <p>Explosions and gunfire attenuate with distance. Spatial audio gives positional feedback on enemy locations.</p>
+    </div>
+    <div class="sound-item">
+      <h4>Impact Feedback</h4>
+      <p>Per-weapon fire sounds, shell casings, rocket trails, meat impacts. Every action has distinct audio confirmation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── GITHUB CTA ── -->
+<section class="cta">
+  <a href="https://github.com/binRick/Iron-Fist" class="cta-btn" target="_blank" rel="noopener">View on GitHub</a>
+  <p class="cta-tagline">Source code &bull; Build instructions &bull; Asset pipeline</p>
+</section>
+
+<!-- ── Ember particles ── -->
+<script>
+(function(){
+  function spawnEmber(){
+    var e=document.createElement('div');
+    e.className='ember';
+    e.style.left=Math.random()*100+'vw';
+    e.style.bottom='-4px';
+    e.style.animationDuration=(4+Math.random()*6)+'s';
+    e.style.width=e.style.height=(1+Math.random()*3)+'px';
+    e.style.background=['#ff4500','#c0392b','#e67e22','#ff6347'][Math.floor(Math.random()*4)];
+    document.body.appendChild(e);
+    e.addEventListener('animationend',function(){e.remove()});
+  }
+  setInterval(spawnEmber,300);
+})();
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
