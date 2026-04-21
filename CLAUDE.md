@@ -52,6 +52,17 @@ cd ..
 
 Then commit and push both the updated submodule pointer and the rebuilt `ironfist-html/game/` files.
 
+## Project Sub-Repos
+
+The following cloned repos have corresponding app pages under Projects:
+
+| Repo directory | App page (`*-html/`) | Subdomain |
+|----------------|----------------------|-----------|
+| `rbterm/` | `rbterm-html/` | rbterm.ximg.app |
+| `scumm-game/` | `scumm-html/` | scumm.ximg.app |
+
+Whenever a sub-repo is pulled (`git -C <repo> pull origin main`), read the repo's README and recent commits to identify important changes (new features, removed features, changed build steps, new screenshots, etc.), then update the corresponding app page to reflect those changes. This includes updating descriptions, feature cards, build instructions, specs, and screenshots. Commit and push the updated app page together with the updated repo pointer.
+
 ## Git Workflow
 
 **All new and modified code must be committed and pushed to the repo.** After completing any set of changes, run:
