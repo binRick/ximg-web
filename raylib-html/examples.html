@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="raylib code examples — annotated C samples for 2D, 3D, audio, shaders, and game logic">
+  <title>raylib — Code Examples</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #161b22; --border: rgba(255,255,255,.07);
+      --text: #e6edf3; --muted: #6a7385;
+      --ray-blue: #4da6ff; --ray-green: #2ec463; --ray-yellow: #f0c040;
+      --ray-orange: #e8913a; --ray-purple: #b07cd8; --ray-red: #e63946;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      padding: .3rem .65rem; border-radius: 3px; text-decoration: none;
+      transition: color .2s, background .2s; font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--ray-blue); background: rgba(77,166,255,.08); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(135deg, #fff, var(--ray-blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-hero p { color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .15em; color: var(--ray-blue); margin-bottom: .4rem; }
+    .section-title { font-size: clamp(1.2rem, 2.5vw, 1.6rem); font-weight: 700; margin-bottom: .5rem; }
+    .section-desc { color: var(--muted); line-height: 1.6; margin-bottom: 1rem; font-size: .82rem; max-width: 800px; }
+
+    pre {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 1.2rem; overflow-x: auto; font-size: .75rem; line-height: 1.65;
+      margin: 1rem 0; position: relative;
+    }
+    .kw { color: var(--ray-blue); }
+    .fn { color: var(--ray-yellow); }
+    .str { color: var(--ray-green); }
+    .num { color: var(--ray-orange); }
+    .cm { color: #555; }
+    .type { color: var(--ray-purple); }
+    .pp { color: var(--ray-red); }
+
+    .example-note {
+      background: rgba(77,166,255,.06); border: 1px solid rgba(77,166,255,.15); border-radius: 6px;
+      padding: .8rem 1rem; margin: .8rem 0; font-size: .75rem; color: var(--muted); line-height: 1.5;
+    }
+    .example-note strong { color: var(--ray-blue); }
+
+    .footer { text-align: center; padding: 2rem 1rem; font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="features.html">Features</a>
+    <a href="author.html">Ramon Santamaria</a>
+    <a href="gallery.html">Gallery</a>
+    <a href="examples.html">Code Examples</a>
+    <a href="philosophy.html">Philosophy</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) a.classList.add('active');
+    });
+  </script>
+
+  <div class="page-hero">
+    <h1>Code Examples</h1>
+    <p>Annotated raylib code samples from beginner to advanced. Every example compiles and runs.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- 1: Bouncing Ball -->
+    <div class="section">
+      <div class="section-label">2D Basics</div>
+      <div class="section-title">Bouncing Ball</div>
+      <div class="section-desc">A ball that bounces off the screen edges. Demonstrates the game loop, delta-time movement, and shape drawing.</div>
+      <pre><code><span class="pp">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="kw">const</span> <span class="type">int</span> W = <span class="num">800</span>, H = <span class="num">450</span>;
+    <span class="fn">InitWindow</span>(W, H, <span class="str">"Bouncing Ball"</span>);
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="type">Vector2</span> pos = { W/<span class="num">2.0f</span>, H/<span class="num">2.0f</span> };
+    <span class="type">Vector2</span> vel = { <span class="num">300.0f</span>, <span class="num">250.0f</span> };
+    <span class="type">float</span> radius = <span class="num">20.0f</span>;
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="type">float</span> dt = <span class="fn">GetFrameTime</span>();
+
+        <span class="cm">// Move</span>
+        pos.x += vel.x * dt;
+        pos.y += vel.y * dt;
+
+        <span class="cm">// Bounce off edges</span>
+        <span class="kw">if</span> (pos.x - radius &lt; <span class="num">0</span> || pos.x + radius &gt; W) vel.x *= -<span class="num">1</span>;
+        <span class="kw">if</span> (pos.y - radius &lt; <span class="num">0</span> || pos.y + radius &gt; H) vel.y *= -<span class="num">1</span>;
+
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">DrawCircleV</span>(pos, radius, <span class="num">RED</span>);
+            <span class="fn">DrawText</span>(<span class="fn">TextFormat</span>(<span class="str">"FPS: %d"</span>, <span class="fn">GetFPS</span>()), <span class="num">10</span>, <span class="num">10</span>, <span class="num">20</span>, <span class="num">DARKGRAY</span>);
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <div class="example-note">
+        <strong>Key concepts:</strong> <code>GetFrameTime()</code> returns delta time for frame-rate-independent movement. <code>DrawCircleV()</code> takes a Vector2 instead of separate x,y. <code>TextFormat()</code> is raylib's sprintf replacement that returns a static buffer.
+      </div>
+    </div>
+
+    <!-- 2: Texture & Input -->
+    <div class="section">
+      <div class="section-label">Textures &amp; Input</div>
+      <div class="section-title">Draggable Sprite</div>
+      <div class="section-desc">Load an image, draw it as a texture, and make it follow the mouse when clicked.</div>
+      <pre><code><span class="pp">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="fn">InitWindow</span>(<span class="num">800</span>, <span class="num">450</span>, <span class="str">"Draggable Sprite"</span>);
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="type">Texture2D</span> tex = <span class="fn">LoadTexture</span>(<span class="str">"sprite.png"</span>);
+    <span class="type">Vector2</span>   pos = { <span class="num">400</span>, <span class="num">225</span> };
+    <span class="type">bool</span> dragging = <span class="num">false</span>;
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="type">Vector2</span> mouse = <span class="fn">GetMousePosition</span>();
+        <span class="type">Rectangle</span> rect = { pos.x, pos.y, tex.width, tex.height };
+
+        <span class="kw">if</span> (<span class="fn">IsMouseButtonPressed</span>(<span class="num">MOUSE_BUTTON_LEFT</span>)
+            &amp;&amp; <span class="fn">CheckCollisionPointRec</span>(mouse, rect))
+            dragging = <span class="num">true</span>;
+
+        <span class="kw">if</span> (<span class="fn">IsMouseButtonReleased</span>(<span class="num">MOUSE_BUTTON_LEFT</span>))
+            dragging = <span class="num">false</span>;
+
+        <span class="kw">if</span> (dragging) {
+            pos.x += <span class="fn">GetMouseDelta</span>().x;
+            pos.y += <span class="fn">GetMouseDelta</span>().y;
+        }
+
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">DrawTexture</span>(tex, (<span class="type">int</span>)pos.x, (<span class="type">int</span>)pos.y, <span class="num">WHITE</span>);
+            <span class="fn">DrawText</span>(dragging ? <span class="str">"DRAGGING"</span> : <span class="str">"Click sprite to drag"</span>,
+                     <span class="num">10</span>, <span class="num">10</span>, <span class="num">20</span>, <span class="num">DARKGRAY</span>);
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">UnloadTexture</span>(tex);
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <div class="example-note">
+        <strong>Key concepts:</strong> <code>LoadTexture()</code> reads an image and uploads it to the GPU. <code>GetMouseDelta()</code> returns frame-to-frame mouse movement. <code>CheckCollisionPointRec()</code> tests if a point is inside a rectangle. Always <code>UnloadTexture()</code> before closing.
+      </div>
+    </div>
+
+    <!-- 3: 3D Camera -->
+    <div class="section">
+      <div class="section-label">3D</div>
+      <div class="section-title">First-Person Camera</div>
+      <div class="section-desc">A full first-person 3D scene with WASD movement, mouse look, and a grid floor. Under 40 lines.</div>
+      <pre><code><span class="pp">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="fn">InitWindow</span>(<span class="num">1280</span>, <span class="num">720</span>, <span class="str">"First Person"</span>);
+
+    <span class="type">Camera3D</span> cam = { <span class="num">0</span> };
+    cam.position   = (<span class="type">Vector3</span>){ <span class="num">4.0f</span>, <span class="num">2.0f</span>, <span class="num">4.0f</span> };
+    cam.target     = (<span class="type">Vector3</span>){ <span class="num">0.0f</span>, <span class="num">1.8f</span>, <span class="num">0.0f</span> };
+    cam.up         = (<span class="type">Vector3</span>){ <span class="num">0.0f</span>, <span class="num">1.0f</span>, <span class="num">0.0f</span> };
+    cam.fovy       = <span class="num">60.0f</span>;
+    cam.projection = <span class="num">CAMERA_PERSPECTIVE</span>;
+
+    <span class="fn">DisableCursor</span>();              <span class="cm">// Lock mouse for FPS look</span>
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="fn">UpdateCamera</span>(&amp;cam, <span class="num">CAMERA_FIRST_PERSON</span>);
+
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">SKYBLUE</span>);
+            <span class="fn">BeginMode3D</span>(cam);
+                <span class="fn">DrawPlane</span>((<span class="type">Vector3</span>){<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>}, (<span class="type">Vector2</span>){<span class="num">32</span>,<span class="num">32</span>}, <span class="num">LIGHTGRAY</span>);
+                <span class="fn">DrawCube</span>((<span class="type">Vector3</span>){<span class="num">0</span>,<span class="num">1</span>,<span class="num">0</span>}, <span class="num">2</span>, <span class="num">2</span>, <span class="num">2</span>, <span class="num">RED</span>);
+                <span class="fn">DrawCubeWires</span>((<span class="type">Vector3</span>){<span class="num">0</span>,<span class="num">1</span>,<span class="num">0</span>}, <span class="num">2</span>, <span class="num">2</span>, <span class="num">2</span>, <span class="num">MAROON</span>);
+                <span class="fn">DrawGrid</span>(<span class="num">20</span>, <span class="num">1.0f</span>);
+            <span class="fn">EndMode3D</span>();
+            <span class="fn">DrawFPS</span>(<span class="num">10</span>, <span class="num">10</span>);
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <div class="example-note">
+        <strong>Key concepts:</strong> <code>Camera3D</code> struct holds position, target, up vector, FOV, and projection type. <code>UpdateCamera()</code> handles all WASD + mouse movement internally &mdash; one function call. <code>BeginMode3D()</code> / <code>EndMode3D()</code> bracket 3D drawing.
+      </div>
+    </div>
+
+    <!-- 4: Audio -->
+    <div class="section">
+      <div class="section-label">Audio</div>
+      <div class="section-title">Music Streaming</div>
+      <div class="section-desc">Stream an OGG music file with play/pause/restart controls.</div>
+      <pre><code><span class="pp">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="fn">InitWindow</span>(<span class="num">800</span>, <span class="num">450</span>, <span class="str">"Music Player"</span>);
+    <span class="fn">InitAudioDevice</span>();
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="type">Music</span> music = <span class="fn">LoadMusicStream</span>(<span class="str">"song.ogg"</span>);
+    <span class="fn">PlayMusicStream</span>(music);
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="fn">UpdateMusicStream</span>(music);   <span class="cm">// MUST call every frame</span>
+
+        <span class="kw">if</span> (<span class="fn">IsKeyPressed</span>(<span class="num">KEY_SPACE</span>)) {
+            <span class="kw">if</span> (<span class="fn">IsMusicStreamPlaying</span>(music))
+                <span class="fn">PauseMusicStream</span>(music);
+            <span class="kw">else</span>
+                <span class="fn">ResumeMusicStream</span>(music);
+        }
+        <span class="kw">if</span> (<span class="fn">IsKeyPressed</span>(<span class="num">KEY_R</span>)) {
+            <span class="fn">StopMusicStream</span>(music);
+            <span class="fn">PlayMusicStream</span>(music);
+        }
+
+        <span class="type">float</span> played = <span class="fn">GetMusicTimePlayed</span>(music);
+        <span class="type">float</span> total  = <span class="fn">GetMusicTimeLength</span>(music);
+
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">DrawText</span>(<span class="str">"SPACE = play/pause   R = restart"</span>, <span class="num">10</span>, <span class="num">10</span>, <span class="num">20</span>, <span class="num">DARKGRAY</span>);
+            <span class="fn">DrawRectangle</span>(<span class="num">50</span>, <span class="num">200</span>, (<span class="type">int</span>)(<span class="num">700</span> * (played/total)), <span class="num">30</span>, <span class="num">MAROON</span>);
+            <span class="fn">DrawRectangleLines</span>(<span class="num">50</span>, <span class="num">200</span>, <span class="num">700</span>, <span class="num">30</span>, <span class="num">GRAY</span>);
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">UnloadMusicStream</span>(music);
+    <span class="fn">CloseAudioDevice</span>();
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <div class="example-note">
+        <strong>Key concepts:</strong> <code>LoadMusicStream()</code> streams audio from disk (unlike <code>LoadSound()</code> which loads entirely into memory). <strong>You must call <code>UpdateMusicStream()</code> every frame</strong> or the music will stutter. Supports OGG, MP3, FLAC, WAV, XM, and MOD.
+      </div>
+    </div>
+
+    <!-- 5: Shader -->
+    <div class="section">
+      <div class="section-label">Shaders</div>
+      <div class="section-title">Custom Fragment Shader</div>
+      <div class="section-desc">Apply a custom GLSL post-processing effect to the entire screen.</div>
+      <pre><code><span class="pp">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="fn">InitWindow</span>(<span class="num">800</span>, <span class="num">450</span>, <span class="str">"Shader Example"</span>);
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="cm">// Render to texture, then draw texture with shader</span>
+    <span class="type">RenderTexture2D</span> target = <span class="fn">LoadRenderTexture</span>(<span class="num">800</span>, <span class="num">450</span>);
+    <span class="type">Shader</span> shader = <span class="fn">LoadShader</span>(<span class="num">0</span>, <span class="str">"grayscale.fs"</span>);
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="cm">// Draw scene into render texture</span>
+        <span class="fn">BeginTextureMode</span>(target);
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">DrawCircle</span>(<span class="num">400</span>, <span class="num">225</span>, <span class="num">100</span>, <span class="num">RED</span>);
+            <span class="fn">DrawRectangle</span>(<span class="num">50</span>, <span class="num">50</span>, <span class="num">200</span>, <span class="num">150</span>, <span class="num">BLUE</span>);
+            <span class="fn">DrawText</span>(<span class="str">"Shader applied!"</span>, <span class="num">280</span>, <span class="num">380</span>, <span class="num">30</span>, <span class="num">DARKGRAY</span>);
+        <span class="fn">EndTextureMode</span>();
+
+        <span class="cm">// Draw render texture to screen with shader</span>
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">BeginShaderMode</span>(shader);
+                <span class="fn">DrawTextureRec</span>(target.texture,
+                    (<span class="type">Rectangle</span>){<span class="num">0</span>, <span class="num">0</span>, <span class="num">800</span>, -<span class="num">450</span>},
+                    (<span class="type">Vector2</span>){<span class="num">0</span>, <span class="num">0</span>}, <span class="num">WHITE</span>);
+            <span class="fn">EndShaderMode</span>();
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">UnloadShader</span>(shader);
+    <span class="fn">UnloadRenderTexture</span>(target);
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <div class="example-note">
+        <strong>Key concepts:</strong> The pattern is: draw to <code>RenderTexture2D</code>, then draw that texture to screen inside a <code>BeginShaderMode()</code> block. The -450 height in the source rectangle flips the texture (OpenGL convention). <code>LoadShader(0, "file.fs")</code> uses the default vertex shader with your custom fragment shader.
+      </div>
+    </div>
+
+    <!-- 6: Collision -->
+    <div class="section">
+      <div class="section-label">Game Logic</div>
+      <div class="section-title">AABB Collision Detection</div>
+      <div class="section-desc">Move a box with arrow keys and detect collisions with obstacles. Changes color on overlap.</div>
+      <pre><code><span class="pp">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="fn">InitWindow</span>(<span class="num">800</span>, <span class="num">450</span>, <span class="str">"Collision"</span>);
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="type">Rectangle</span> player = { <span class="num">100</span>, <span class="num">200</span>, <span class="num">40</span>, <span class="num">40</span> };
+    <span class="type">Rectangle</span> wall   = { <span class="num">350</span>, <span class="num">150</span>, <span class="num">100</span>, <span class="num">150</span> };
+    <span class="type">float</span> speed = <span class="num">300.0f</span>;
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="type">float</span> dt = <span class="fn">GetFrameTime</span>();
+
+        <span class="kw">if</span> (<span class="fn">IsKeyDown</span>(<span class="num">KEY_RIGHT</span>)) player.x += speed * dt;
+        <span class="kw">if</span> (<span class="fn">IsKeyDown</span>(<span class="num">KEY_LEFT</span>))  player.x -= speed * dt;
+        <span class="kw">if</span> (<span class="fn">IsKeyDown</span>(<span class="num">KEY_DOWN</span>))  player.y += speed * dt;
+        <span class="kw">if</span> (<span class="fn">IsKeyDown</span>(<span class="num">KEY_UP</span>))    player.y -= speed * dt;
+
+        <span class="type">bool</span> hit = <span class="fn">CheckCollisionRecs</span>(player, wall);
+
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">DrawRectangleRec</span>(wall, <span class="num">GRAY</span>);
+            <span class="fn">DrawRectangleRec</span>(player, hit ? <span class="num">RED</span> : <span class="num">GREEN</span>);
+            <span class="fn">DrawText</span>(hit ? <span class="str">"COLLISION!"</span> : <span class="str">"Arrow keys to move"</span>,
+                     <span class="num">10</span>, <span class="num">10</span>, <span class="num">20</span>, <span class="num">DARKGRAY</span>);
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <div class="example-note">
+        <strong>Key concepts:</strong> <code>CheckCollisionRecs()</code> performs AABB (axis-aligned bounding box) collision between two rectangles. raylib also offers <code>CheckCollisionCircles()</code>, <code>CheckCollisionCircleRec()</code>, <code>CheckCollisionPointRec()</code>, and 3D variants like <code>GetRayCollisionBox()</code>.
+      </div>
+    </div>
+
+    <!-- compile note -->
+    <div class="section">
+      <div class="section-label">Build</div>
+      <div class="section-title">How to Compile These Examples</div>
+      <div class="section-desc">All examples compile with a single command. No build system required.</div>
+      <pre><code><span class="cm"># Linux</span>
+gcc example.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 -o example
+
+<span class="cm"># macOS</span>
+clang example.c -lraylib -framework OpenGL -framework Cocoa -framework IOKit -o example
+
+<span class="cm"># Windows (MinGW)</span>
+gcc example.c -lraylib -lopengl32 -lgdi32 -lwinmm -o example.exe
+
+<span class="cm"># Web (Emscripten)</span>
+emcc example.c -lraylib -s USE_GLFW=3 -s ASYNCIFY -o example.html</code></pre>
+    </div>
+
+  </div>
+
+  <div class="footer">All examples based on the official raylib examples &mdash; github.com/raysan5/raylib/examples</div>
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

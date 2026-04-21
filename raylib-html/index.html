@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="raylib — a simple and easy-to-use C library to enjoy videogames programming">
+  <title>raylib — Simple Gamedev for Everyone</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #0f1218;
+      --surface: #161b22;
+      --surface2: #1c2230;
+      --border: rgba(255,255,255,.07);
+      --text: #e6edf3;
+      --muted: #6a7385;
+      --accent: #f5f5f5;
+      --ray-black: #191919;
+      --ray-white: #f5f5f5;
+      --ray-red: #e63946;
+      --ray-green: #2ec463;
+      --ray-blue: #4da6ff;
+      --ray-yellow: #f0c040;
+      --ray-orange: #e8913a;
+      --ray-purple: #b07cd8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+    }
+
+    /* ── hero ── */
+    .hero {
+      text-align: center;
+      padding: 4rem 1.5rem 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(78,166,255,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-logo {
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 1.5rem;
+      display: block;
+      image-rendering: auto;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      letter-spacing: .04em;
+      margin-bottom: .5rem;
+      background: linear-gradient(135deg, var(--ray-white), var(--ray-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 650px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.6;
+    }
+    .hero-sub em { color: var(--ray-blue); font-style: normal; font-weight: 600; }
+    .hero-badges {
+      display: flex;
+      gap: .6rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .hero-badge {
+      font-size: .72rem;
+      padding: .25rem .75rem;
+      border-radius: 4px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .hero-badge.lang { border: 1px solid var(--ray-blue); color: var(--ray-blue); background: rgba(77,166,255,.08); }
+    .hero-badge.lic  { border: 1px solid var(--ray-green); color: var(--ray-green); background: rgba(46,196,99,.08); }
+    .hero-badge.ver  { border: 1px solid var(--ray-yellow); color: var(--ray-yellow); background: rgba(240,192,64,.08); }
+    .hero-badge.plat { border: 1px solid var(--ray-purple); color: var(--ray-purple); background: rgba(176,124,216,.08); }
+
+    /* ── sub-nav ── */
+    #subnav {
+      position: sticky;
+      top: 52px;
+      z-index: 150;
+      background: rgba(8,11,14,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: .2rem;
+      padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: .3rem .65rem;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active {
+      color: var(--ray-blue);
+      background: rgba(77,166,255,.08);
+    }
+
+    /* ── container ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ── stats row ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin: 2.5rem 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+      text-align: center;
+    }
+    .stat-num {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--ray-blue);
+      line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .stat-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+
+    /* ── section ── */
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label {
+      font-size: .68rem;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      color: var(--ray-blue);
+      margin-bottom: .4rem;
+    }
+    .section-title {
+      font-size: clamp(1.3rem, 3vw, 1.8rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .section p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+      max-width: 800px;
+    }
+
+    /* ── feature grid ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(77,166,255,.3);
+      transform: translateY(-2px);
+    }
+    .feature-icon { font-size: 1.5rem; margin-bottom: .5rem; }
+    .feature-name { font-size: .85rem; font-weight: 700; margin-bottom: .3rem; }
+    .feature-desc { font-size: .75rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── code block ── */
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.2rem;
+      overflow-x: auto;
+      font-size: .78rem;
+      line-height: 1.6;
+      margin: 1rem 0;
+      position: relative;
+    }
+    .kw { color: var(--ray-blue); }
+    .fn { color: var(--ray-yellow); }
+    .str { color: var(--ray-green); }
+    .num { color: var(--ray-orange); }
+    .cm { color: #555; }
+    .type { color: var(--ray-purple); }
+
+    /* ── preview grid ── */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .preview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      text-decoration: none;
+      transition: border-color .2s, transform .2s;
+    }
+    .preview-card:hover {
+      border-color: rgba(77,166,255,.3);
+      transform: translateY(-2px);
+    }
+    .preview-card img {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      display: block;
+    }
+    .preview-card .label {
+      padding: .6rem .8rem;
+      font-size: .75rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .preview-card .sublabel {
+      padding: 0 .8rem .6rem;
+      font-size: .68rem;
+      color: var(--muted);
+    }
+
+    /* ── page links ── */
+    .page-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0 3rem;
+    }
+    .page-link {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem;
+      text-decoration: none;
+      transition: border-color .2s, transform .2s;
+    }
+    .page-link:hover {
+      border-color: rgba(77,166,255,.3);
+      transform: translateY(-2px);
+    }
+    .page-link .pl-title { font-size: .85rem; font-weight: 700; color: var(--ray-blue); margin-bottom: .3rem; }
+    .page-link .pl-desc  { font-size: .72rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── footer ── */
+    .footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: .7rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .features { grid-template-columns: 1fr; }
+      .preview-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- hero -->
+  <div class="hero">
+    <img src="images/raylib-anim.gif" alt="raylib logo" class="hero-logo" loading="lazy">
+    <h1>raylib</h1>
+    <p class="hero-sub">
+      A simple and easy-to-use library to enjoy <em>videogames programming</em>. No fancy interface, no visual helpers, no auto-complete — just coding in the most <em>pure spartan way</em>.
+    </p>
+    <div class="hero-badges">
+      <span class="hero-badge lang">C99</span>
+      <span class="hero-badge lic">zlib/libpng</span>
+      <span class="hero-badge ver">v5.5</span>
+      <span class="hero-badge plat">14 Platforms</span>
+    </div>
+  </div>
+
+  <!-- sub-nav -->
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="features.html">Features</a>
+    <a href="author.html">Ramon Santamaria</a>
+    <a href="gallery.html">Gallery</a>
+    <a href="examples.html">Code Examples</a>
+    <a href="philosophy.html">Philosophy</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) {
+        a.classList.add('active');
+      }
+    });
+  </script>
+
+  <div class="container">
+
+    <!-- stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-num">22K+</div>
+        <div class="stat-label">GitHub Stars</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">140+</div>
+        <div class="stat-label">Code Examples</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">60+</div>
+        <div class="stat-label">Language Bindings</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">14</div>
+        <div class="stat-label">Target Platforms</div>
+      </div>
+    </div>
+
+    <!-- what is raylib -->
+    <div class="section">
+      <div class="section-label">What is it</div>
+      <div class="section-title">A C Library for Videogames Programming</div>
+      <p>
+        raylib is a free, open-source C programming library designed for building 2D and 3D games, graphical tools, and multimedia applications. Created by Ramon Santamaria in 2013, it has grown from a simple teaching tool into one of the most-used indie game development libraries in the world.
+      </p>
+      <p>
+        Unlike engines like Unity or Godot, raylib is not an engine. It's a <strong>library</strong> &mdash; a set of functions you call from your own code. There's no editor, no GUI, no scene tree. You write C (or one of 60+ language bindings), call raylib functions, and compile. That's it.
+      </p>
+      <p>
+        raylib is inspired by Borland BGI graphics lib and by XNA framework. It was originally intended as a tool for teaching game programming to students, but it has evolved far beyond that into a seriously capable multimedia library used by hobbyists, indie developers, and professionals alike.
+      </p>
+    </div>
+
+    <!-- hello world -->
+    <div class="section">
+      <div class="section-label">Quick Start</div>
+      <div class="section-title">Your First raylib Program</div>
+      <p>raylib is famously simple to get started with. Here's a complete, working program:</p>
+      <pre><code><span class="cm">// hello_raylib.c — 8 lines of actual code</span>
+<span class="kw">#include</span> <span class="str">"raylib.h"</span>
+
+<span class="type">int</span> <span class="fn">main</span>(<span class="type">void</span>)
+{
+    <span class="fn">InitWindow</span>(<span class="num">800</span>, <span class="num">450</span>, <span class="str">"raylib — hello world"</span>);
+    <span class="fn">SetTargetFPS</span>(<span class="num">60</span>);
+
+    <span class="kw">while</span> (!<span class="fn">WindowShouldClose</span>())
+    {
+        <span class="fn">BeginDrawing</span>();
+            <span class="fn">ClearBackground</span>(<span class="num">RAYWHITE</span>);
+            <span class="fn">DrawText</span>(<span class="str">"Hello, raylib!"</span>, <span class="num">340</span>, <span class="num">200</span>, <span class="num">20</span>, <span class="num">DARKGRAY</span>);
+        <span class="fn">EndDrawing</span>();
+    }
+
+    <span class="fn">CloseWindow</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+      <p>
+        Compile with <code>gcc hello_raylib.c -lraylib -lm -o hello</code> on Linux. That's a window with text rendering, a game loop, and proper shutdown in under 20 lines. No boilerplate, no class hierarchies, no initialization wizards.
+      </p>
+    </div>
+
+    <!-- gallery preview -->
+    <div class="section">
+      <div class="section-label">Gallery Preview</div>
+      <div class="section-title">What You Can Build</div>
+      <div class="preview-grid">
+        <div class="preview-card">
+          <img src="images/screenshot-shapes.png" alt="raylib shapes example" loading="lazy">
+          <div class="label">2D Shapes</div>
+          <div class="sublabel">Rectangles, circles, triangles, lines, polygons</div>
+        </div>
+        <div class="preview-card">
+          <img src="images/screenshot-3d.png" alt="raylib 3D models" loading="lazy">
+          <div class="label">3D Models</div>
+          <div class="sublabel">OBJ/GLTF loading, cameras, lighting</div>
+        </div>
+        <div class="preview-card">
+          <img src="images/screenshot-shaders.png" alt="raylib shader effects" loading="lazy">
+          <div class="label">Shader Effects</div>
+          <div class="sublabel">Custom GLSL shaders, post-processing</div>
+        </div>
+        <div class="preview-card">
+          <img src="images/screenshot-textures.png" alt="raylib textures" loading="lazy">
+          <div class="label">Textures & Sprites</div>
+          <div class="sublabel">Image loading, sprite animation, atlases</div>
+        </div>
+        <div class="preview-card">
+          <img src="images/screenshot-text.png" alt="raylib text rendering" loading="lazy">
+          <div class="label">Text & Fonts</div>
+          <div class="sublabel">TTF/OTF loading, SDF fonts, Unicode</div>
+        </div>
+        <div class="preview-card">
+          <img src="images/screenshot-core.png" alt="raylib first person camera" loading="lazy">
+          <div class="label">First-Person 3D</div>
+          <div class="sublabel">3D cameras, collision, raycasting</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- core features preview -->
+    <div class="section">
+      <div class="section-label">At a Glance</div>
+      <div class="section-title">Core Capabilities</div>
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">🎮</div>
+          <div class="feature-name">2D & 3D Rendering</div>
+          <div class="feature-desc">Shapes, sprites, models, cameras, lighting, billboard rendering. Full OpenGL 3.3+ or ES 2.0 backend.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖼️</div>
+          <div class="feature-name">Textures & Images</div>
+          <div class="feature-desc">PNG, BMP, TGA, JPG, GIF, QOI, DDS, HDR, KTX, ASTC, PKM. GPU compression, mipmaps, render textures.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔤</div>
+          <div class="feature-name">Text & Fonts</div>
+          <div class="feature-desc">TTF/OTF loading, SDF fonts, bitmap fonts, Unicode support, measurement, and wrapping.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔊</div>
+          <div class="feature-name">Audio</div>
+          <div class="feature-desc">WAV, OGG, MP3, FLAC, XM, MOD. Streaming, multi-channel, audio processing callbacks.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🕹️</div>
+          <div class="feature-name">Input</div>
+          <div class="feature-desc">Keyboard, mouse, gamepad, touch. Multi-touch gestures: tap, double-tap, hold, drag, swipe, pinch.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✨</div>
+          <div class="feature-name">Shaders</div>
+          <div class="feature-desc">Custom GLSL vertex and fragment shaders, post-processing pipeline, uniform management.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <div class="feature-name">3D Model Formats</div>
+          <div class="feature-desc">OBJ, IQM, GLTF, VOX, M3D. Skeletal animation, mesh generation, material system.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <div class="feature-name">Cross-Platform</div>
+          <div class="feature-desc">Windows, Linux, macOS, Android, iOS, Raspberry Pi, Web (Emscripten), and more.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧩</div>
+          <div class="feature-name">60+ Language Bindings</div>
+          <div class="feature-desc">Python, Go, Rust, Zig, Lua, C#, Java, Ruby, Nim, Odin, V, and many more.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- explore pages -->
+    <div class="section">
+      <div class="section-label">Explore</div>
+      <div class="section-title">Dive Deeper</div>
+      <div class="page-links">
+        <a href="features.html" class="page-link">
+          <div class="pl-title">Features &amp; Modules &rarr;</div>
+          <div class="pl-desc">Deep dive into raylib's 7 modules: rcore, rshapes, rtextures, rtext, rmodels, raudio, and the rlgl abstraction layer.</div>
+        </a>
+        <a href="author.html" class="page-link">
+          <div class="pl-title">Ramon Santamaria &rarr;</div>
+          <div class="pl-desc">The one-person army behind raylib. From a Spanish university teacher to the creator of one of GitHub's most-starred C libraries.</div>
+        </a>
+        <a href="gallery.html" class="page-link">
+          <div class="pl-title">Gallery &rarr;</div>
+          <div class="pl-desc">Screenshots and examples of games and tools built with raylib. Shapes, 3D models, shaders, text, and more.</div>
+        </a>
+        <a href="examples.html" class="page-link">
+          <div class="pl-title">Code Examples &rarr;</div>
+          <div class="pl-desc">Annotated raylib code samples from basic window creation to 3D cameras, audio, physics, and shader effects.</div>
+        </a>
+        <a href="philosophy.html" class="page-link">
+          <div class="pl-title">Philosophy &rarr;</div>
+          <div class="pl-desc">Why raylib exists, what makes it different from game engines, and the design principles behind its radical simplicity.</div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    raylib is created by Ramon Santamaria (@raysan5) and released under the zlib/libpng license.
+  </div>
+
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>
