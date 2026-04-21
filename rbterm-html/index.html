@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>rbterm — Cross-Platform Terminal Emulator</title>
-<meta name="description" content="rbterm is a cross-platform terminal emulator written in C with raylib. Tabs, scrollback, truecolor, emoji, mouse selection, and live palette switching.">
+<meta name="description" content="rbterm is a cross-platform terminal emulator written in C with raylib. Tabs, embedded SSH, scrollback, truecolor, emoji, mouse selection, session logging, and live palette switching.">
 <link rel="icon" href="favicon.png">
 <style>
   :root { --accent: #4fc3f7; --bg: #0a0c10; --card: #12151a; --border: rgba(255,255,255,.08); --text: #c9d1d9; --dim: #6a737d; }
@@ -33,6 +33,11 @@
   .spec .value { font-size: .85rem; color: #fff; }
   pre { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .8rem; color: var(--dim); margin-bottom: 1.5rem; }
   code { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+  th, td { text-align: left; padding: .5rem .75rem; font-size: .8rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; }
+  td { color: var(--dim); }
+  td:first-child { color: #fff; font-weight: 600; }
   .arch { font-size: .82rem; color: var(--dim); line-height: 1.8; }
   .arch pre { color: var(--text); }
   footer { text-align: center; padding: 2rem; color: var(--dim); font-size: .7rem; border-top: 1px solid var(--border); margin-top: 2rem; }
@@ -44,7 +49,7 @@
 <div class="hero">
   <div class="badge">Open Source</div>
   <h1><span>rbterm</span></h1>
-  <p class="tagline">A cross-platform terminal emulator written in C, rendered with raylib. Tabs, scrollback, truecolor, emoji, mouse selection, and live palette switching — no Electron, no frameworks.</p>
+  <p class="tagline">A cross-platform terminal emulator written in C, rendered with raylib. Tabs, embedded SSH, scrollback, truecolor, emoji, mouse selection, session logging, and live palette switching — no Electron, no frameworks.</p>
   <img src="screenshot.png" alt="rbterm screenshot — tabbed terminal with colored prompt" loading="lazy">
   <div class="links">
     <a class="primary" href="https://github.com/binRick/rbterm">GitHub</a>
@@ -62,6 +67,8 @@
     <div class="spec"><div class="label">Colors</div><div class="value">16 / 256 / truecolor SGR</div></div>
     <div class="spec"><div class="label">Emoji</div><div class="value">macOS Core Text SBIX</div></div>
     <div class="spec"><div class="label">PTY</div><div class="value">forkpty (Unix) / ConPTY (Win)</div></div>
+    <div class="spec"><div class="label">SSH</div><div class="value">Embedded via libssh (key + agent auth)</div></div>
+    <div class="spec"><div class="label">Logging</div><div class="value">Raw PTY session logging to file</div></div>
   </div>
 </section>
 
@@ -100,7 +107,37 @@
       <h3>Cross-Platform PTY</h3>
       <p>macOS/Linux use forkpty with non-blocking read. Windows 10+ uses ConPTY with a reader thread and ring buffer. Same binary on every platform.</p>
     </div>
+    <div class="card">
+      <h3>Embedded SSH</h3>
+      <p>Cmd+Shift+T opens an SSH form with saved hosts from ~/.ssh/config. Key auth via ssh-agent or ~/.ssh/id_*. Trust-on-first-use host keys. Each SSH session is a native tab — no shell in the middle.</p>
+    </div>
+    <div class="card">
+      <h3>Settings Modal</h3>
+      <p>Cmd+, opens settings: live font size adjustment and session logging toggle. Logging writes raw PTY bytes to timestamped files — good for replay and debugging.</p>
+    </div>
   </div>
+</section>
+
+<section>
+  <h2>Keybindings</h2>
+  <p style="font-size:.78rem;color:var(--dim);margin-bottom:1rem;">Cmd on macOS; Ctrl on Linux/Windows.</p>
+  <table>
+    <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>Cmd+T</td><td>New tab (local shell)</td></tr>
+      <tr><td>Cmd+Shift+T</td><td>New tab over SSH (form with saved hosts from ~/.ssh/config)</td></tr>
+      <tr><td>Cmd+W</td><td>Close tab</td></tr>
+      <tr><td>Cmd+,</td><td>Settings (font size, session logging)</td></tr>
+      <tr><td>Cmd+1..9</td><td>Jump to tab N</td></tr>
+      <tr><td>Cmd+[ / Cmd+]</td><td>Prev / next tab</td></tr>
+      <tr><td>Cmd++ / Cmd+- / Cmd+0</td><td>Grow / shrink / reset font</td></tr>
+      <tr><td>Cmd+C / Cmd+V</td><td>Copy selection / paste</td></tr>
+      <tr><td>Shift+PgUp / PgDn</td><td>Scroll history</td></tr>
+      <tr><td>Mouse wheel</td><td>Scroll history</td></tr>
+      <tr><td>Double-click</td><td>Select word</td></tr>
+      <tr><td>Triple-click</td><td>Select row</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <section>
@@ -119,10 +156,13 @@ renderer_draw() (raylib output)</pre>
 
 <section>
   <h2>Source Layout</h2>
-  <pre>src/main.c          Event loop, tab bar UI, clipboard, input routing
-src/pty.h           Cross-platform PTY abstraction
-src/pty_unix.c      Unix/macOS (forkpty)
-src/pty_win.c       Windows ConPTY
+  <pre>src/main.c          Event loop, tab bar UI, SSH modal, settings, clipboard
+src/pty.h           Platform-agnostic PTY interface (public)
+src/pty_internal.h  Shared struct Pty + backend prototypes
+src/pty_dispatch.c  Dispatches pty_* calls to local/SSH backend
+src/pty_unix.c      Local PTY via forkpty (macOS/Linux)
+src/pty_win.c       Local PTY via ConPTY (Windows)
+src/pty_ssh.c       SSH backend via libssh — key auth, TOFU host keys
 src/screen.c        ANSI/VT parser, grid buffer, scrollback, reflow
 src/render.c        raylib rendering, glyph atlas, emoji cache
 src/input.c         Input translation (raylib events → PTY bytes)
@@ -134,11 +174,15 @@ Makefile            Quick macOS/Linux build</pre>
 
 <section>
   <h2>Build</h2>
-  <pre># CMake (recommended, cross-platform)
+  <pre># macOS (fastest path)
+brew install raylib libssh
+make                # ./rbterm
+make app            # ./rbterm.app with icon + Info.plist
+
+# CMake (cross-platform, self-contained)
 cmake -S . -B build &amp;&amp; cmake --build build
 
-# Makefile (macOS/Linux, requires raylib installed)
-make</pre>
+# Linux: also needs libssh-dev (apt install libssh-dev)</pre>
 </section>
 
 <footer>rbterm — a binRick project</footer>
