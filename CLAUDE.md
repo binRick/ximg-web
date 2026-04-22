@@ -37,29 +37,87 @@ The `esp32.ximg.app` web app (`esp32-html/`) is directly based on the `esp32-dev
 3. Add a card to the **"What We Built"** session grid in `esp32-html/index.html`
 4. Update this table in `CLAUDE.md` to mark the new sketch as ✓
 
-## Iron Fist
+## WebAssembly Apps
 
-Whenever the conversation involves the Iron Fist game or the `Iron-Fist` submodule is updated, always pull the latest and rebuild the web version:
+Three apps serve pre-built WebAssembly. **Pulling a submodule alone does NOT update the live site** — you must rebuild (or re-download) and copy the artifacts into the corresponding `*-html/` directory.
+
+All three use the Emscripten SDK bundled in `Iron-Fist/vendor/emsdk/`. Source it before any build:
+
+```bash
+source Iron-Fist/vendor/emsdk/emsdk_env.sh
+```
+
+### Iron Fist
+
+Submodule: `Iron-Fist/` → Web app: `ironfist-html/game/`
 
 ```bash
 cd Iron-Fist
 git pull origin main
 source vendor/emsdk/emsdk_env.sh
 make web
-cp dist-web/* ../ironfist-html/game/
+\cp -f dist-web/* ../ironfist-html/game/
 cd ..
 ```
 
-Then commit and push both the updated submodule pointer and the rebuilt `ironfist-html/game/` files.
+### scumm-game
+
+Submodule: `scumm-game/` → Web app: `scumm-html/game/`
+
+The submodule ships **prebuilt wasm** in its `docs/` directory (built on macOS with raylib 5.5). **Do NOT rebuild locally** — the server's emsdk/raylib produces incompatible binaries. Just copy the prebuilt artifacts:
+
+```bash
+cd scumm-game
+git pull origin main
+\cp -f docs/index.{html,js,wasm,data} ../scumm-html/game/
+cd ..
+```
+
+If a local rebuild is ever needed, use the submodule's `build_web.sh` (requires macOS with raylib 5.5 + Emscripten installed via Homebrew).
+
+### rbterm
+
+**Not built locally** — the wasm is compiled in rbterm's GitHub Actions CI and published to GitHub Pages. To update, download the latest artifacts:
+
+```bash
+cd rbterm-html/demo
+curl -sL -o rbterm.wasm https://binrick.github.io/rbterm/rbterm.wasm
+curl -sL -o rbterm.js   https://binrick.github.io/rbterm/rbterm.js
+curl -sL -o rbterm.data https://binrick.github.io/rbterm/rbterm.data
+curl -sL -o index.html  https://binrick.github.io/rbterm/index.html
+cd ../..
+```
+
+### Update all three at once
+
+```bash
+source Iron-Fist/vendor/emsdk/emsdk_env.sh
+
+# Iron Fist — rebuild from source
+(cd Iron-Fist && make web && \cp -f dist-web/* ../ironfist-html/game/)
+
+# scumm-game — copy prebuilt wasm from submodule (do NOT rebuild locally)
+(cd scumm-game && \cp -f docs/index.{html,js,wasm,data} ../scumm-html/game/)
+
+# rbterm — download from GitHub Pages
+(cd rbterm-html/demo && \
+ curl -sL -o rbterm.wasm https://binrick.github.io/rbterm/rbterm.wasm && \
+ curl -sL -o rbterm.js   https://binrick.github.io/rbterm/rbterm.js && \
+ curl -sL -o rbterm.data https://binrick.github.io/rbterm/rbterm.data && \
+ curl -sL -o index.html  https://binrick.github.io/rbterm/index.html)
+```
+
+Then commit and push the updated submodule pointers and rebuilt `*-html/` artifacts.
 
 ## Project Sub-Repos
 
-The following cloned repos have corresponding app pages under Projects:
+The following submodules/repos have corresponding app pages under Projects:
 
-| Repo directory | App page (`*-html/`) | Subdomain |
-|----------------|----------------------|-----------|
-| `rbterm/` | `rbterm-html/` | rbterm.ximg.app |
-| `scumm-game/` | `scumm-html/` | scumm.ximg.app |
+| Repo directory | App page (`*-html/`) | Subdomain | Wasm rebuild? |
+|----------------|----------------------|-----------|---------------|
+| `Iron-Fist/` | `ironfist-html/` | ironfist.ximg.app | Yes — `make web` via emsdk |
+| `scumm-game/` | `scumm-html/` | scumm.ximg.app | No — copy prebuilt from submodule `docs/` |
+| `rbterm/` | `rbterm-html/` | rbterm.ximg.app | No — download from GitHub Pages |
 
 Whenever a sub-repo is pulled (`git -C <repo> pull origin main`), read the repo's README and recent commits to identify important changes (new features, removed features, changed build steps, new screenshots, etc.), then update the corresponding app page to reflect those changes. This includes updating descriptions, feature cards, build instructions, specs, and screenshots. Commit and push the updated app page together with the updated repo pointer.
 
@@ -86,7 +144,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 222+ is in `README.md` and `apps-html/index.html`.
+All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 223+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|

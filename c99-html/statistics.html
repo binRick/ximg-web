@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="C statistics — TIOBE rankings, lines of code in major projects, compiler market share, and C's dominance in numbers">
+  <title>C99 — Statistics</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #161b22; --border: rgba(255,255,255,.07);
+      --text: #e6edf3; --muted: #6a7385;
+      --accent: #4da6ff; --accent2: #f0c040; --green: #2ec463;
+      --orange: #e8913a; --purple: #b07cd8; --red: #e63946;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      padding: .3rem .65rem; border-radius: 3px; text-decoration: none;
+      transition: color .2s, background .2s; font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(77,166,255,.08); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-hero p { color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .15em; color: var(--accent); margin-bottom: .4rem; }
+    .section-title { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; margin-bottom: 1rem; }
+    .section p { color: var(--muted); line-height: 1.7; margin-bottom: 1rem; max-width: 800px; }
+
+    /* big stats grid */
+    .big-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0;
+    }
+    .big-stat {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.5rem; text-align: center;
+    }
+    .big-stat .num { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: .3rem; }
+    .big-stat .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+    .num.blue { color: var(--accent); }
+    .num.gold { color: var(--accent2); }
+    .num.green { color: var(--green); }
+    .num.orange { color: var(--orange); }
+    .num.purple { color: var(--purple); }
+    .num.red { color: var(--red); }
+
+    /* LOC table */
+    .loc-table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .78rem;
+    }
+    .loc-table th {
+      text-align: left; padding: .6rem .8rem; border-bottom: 2px solid var(--accent);
+      color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+    }
+    .loc-table td {
+      padding: .6rem .8rem; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top;
+    }
+    .loc-table td:first-child { color: var(--text); font-weight: 600; }
+    .loc-table tr:hover td { background: rgba(77,166,255,.03); }
+
+    /* bar chart (CSS-only) */
+    .bar-chart { margin: 1.5rem 0; }
+    .bar-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .6rem; }
+    .bar-label { width: 100px; font-size: .75rem; text-align: right; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; height: 22px; background: rgba(255,255,255,.03); border-radius: 3px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: .5rem; font-size: .65rem; font-weight: 700; color: #fff; min-width: 30px; }
+    .bar-fill.c { background: var(--accent); }
+    .bar-fill.py { background: var(--green); }
+    .bar-fill.cpp { background: var(--purple); }
+    .bar-fill.java { background: var(--orange); }
+    .bar-fill.cs { background: var(--accent2); }
+    .bar-fill.js { background: var(--red); }
+
+    .footer { text-align: center; padding: 2rem 1rem; font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+    @media (max-width: 768px) { .big-stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="history.html">History</a>
+    <a href="advantages.html">Advantages</a>
+    <a href="pioneers.html">Pioneers</a>
+    <a href="usecases.html">Use Cases</a>
+    <a href="statistics.html">Statistics</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) a.classList.add('active');
+    });
+  </script>
+
+  <div class="page-hero">
+    <h1>Statistics</h1>
+    <p>C by the numbers. Rankings, lines of code, market share, and the scale of C's dominance.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- headline stats -->
+    <div class="section">
+      <div class="section-label">At a Glance</div>
+      <div class="section-title">The Numbers</div>
+
+      <div class="big-stats">
+        <div class="big-stat"><div class="num blue">#1</div><div class="label">TIOBE Index (2024)</div></div>
+        <div class="big-stat"><div class="num gold">52</div><div class="label">Years since creation</div></div>
+        <div class="big-stat"><div class="num green">15B+</div><div class="label">Devices running C</div></div>
+        <div class="big-stat"><div class="num orange">30M+</div><div class="label">Lines in Linux kernel</div></div>
+        <div class="big-stat"><div class="num purple">100%</div><div class="label">CPU archs with C compiler</div></div>
+        <div class="big-stat"><div class="num red">3</div><div class="label">Mars rovers powered by C</div></div>
+      </div>
+    </div>
+
+    <!-- TIOBE -->
+    <div class="section">
+      <div class="section-label">Rankings</div>
+      <div class="section-title">TIOBE Index — Language Popularity</div>
+      <p>The TIOBE index measures programming language popularity based on search engine queries. C has been in the top 2 for essentially the entire 25-year history of the index, winning "Language of the Year" in 2008, 2017, and 2019.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">C</div>
+          <div class="bar-track"><div class="bar-fill c" style="width:100%">16.1%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Python</div>
+          <div class="bar-track"><div class="bar-fill py" style="width:93%">15.0%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">C++</div>
+          <div class="bar-track"><div class="bar-fill cpp" style="width:65%">10.5%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Java</div>
+          <div class="bar-track"><div class="bar-fill java" style="width:53%">8.6%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">C#</div>
+          <div class="bar-track"><div class="bar-fill cs" style="width:41%">6.7%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">JavaScript</div>
+          <div class="bar-track"><div class="bar-fill js" style="width:18%">2.9%</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: TIOBE Index, approximate 2024 values. C has topped the index more times than any other language.</p>
+    </div>
+
+    <!-- LOC -->
+    <div class="section">
+      <div class="section-label">Scale</div>
+      <div class="section-title">Lines of C Code in Major Projects</div>
+      <table class="loc-table">
+        <thead>
+          <tr><th>Project</th><th>Lines of C</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Linux kernel</td><td>~30,000,000</td><td>Runs Android, servers, supercomputers, embedded, IoT, and 96.3% of the world's top 500 supercomputers</td></tr>
+          <tr><td>GCC</td><td>~15,000,000</td><td>The GNU Compiler Collection — compiles C, C++, Fortran, Ada, Go, and more</td></tr>
+          <tr><td>PostgreSQL</td><td>~1,500,000</td><td>The world's most advanced open-source relational database</td></tr>
+          <tr><td>SQLite</td><td>~250,000</td><td>The most deployed database in history — in every phone, browser, and OS</td></tr>
+          <tr><td>nginx</td><td>~190,000</td><td>Powers 34% of the world's web servers</td></tr>
+          <tr><td>Redis</td><td>~170,000</td><td>In-memory key-value store — caching backbone of modern web apps</td></tr>
+          <tr><td>CPython</td><td>~800,000</td><td>The reference implementation of Python</td></tr>
+          <tr><td>curl</td><td>~180,000</td><td>The most-used HTTP client library on Earth — installed on 10+ billion devices</td></tr>
+          <tr><td>Git</td><td>~400,000</td><td>The world's dominant version control system</td></tr>
+          <tr><td>OpenSSL</td><td>~500,000</td><td>TLS library securing most HTTPS connections on the internet</td></tr>
+          <tr><td>FFmpeg</td><td>~1,200,000</td><td>The multimedia framework behind nearly all video processing software</td></tr>
+          <tr><td>Vim</td><td>~380,000</td><td>The ubiquitous terminal text editor, installed on virtually every Unix system</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- compiler market share -->
+    <div class="section">
+      <div class="section-label">Compilers</div>
+      <div class="section-title">C Compiler Landscape</div>
+      <p>C has some of the most mature and aggressively optimizing compilers in existence:</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-top:1rem;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;">GCC</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">GNU Compiler Collection. Since 1987. Default on Linux. Supports C89, C99, C11, C17, C23. Targets 70+ CPU architectures.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;">Clang/LLVM</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">Since 2007. Default on macOS/iOS. Superior error messages and static analysis. Powers AddressSanitizer, ThreadSanitizer, UBSanitizer.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;">MSVC</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">Microsoft Visual C++. Default on Windows. Full C17 support, partial C11. Integrated with Visual Studio.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;">TCC</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">Tiny C Compiler by Fabrice Bellard. Compiles C99 in milliseconds. Self-hosting. The entire compiler is ~100KB. Used for scripting-speed C compilation.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;">ICC / ICX</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">Intel C Compiler. Generates highly optimized code for Intel CPUs. Vectorization, OpenMP, and MKL integration for HPC workloads.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;">Emscripten</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">Compiles C to WebAssembly. Runs C code in the browser at near-native speed. Powers game ports, audio engines, and crypto libraries on the web.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- fun facts -->
+    <div class="section">
+      <div class="section-label">Fun Facts</div>
+      <div class="section-title">C By the Numbers</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:1rem;">
+        <div class="big-stat"><div class="num blue">37</div><div class="label">Keywords in C99</div></div>
+        <div class="big-stat"><div class="num gold">552</div><div class="label">Pages in C99 standard</div></div>
+        <div class="big-stat"><div class="num green">1978</div><div class="label">First K&amp;R book published</div></div>
+        <div class="big-stat"><div class="num orange">228</div><div class="label">K&amp;R pages (1st edition)</div></div>
+        <div class="big-stat"><div class="num purple">96.3%</div><div class="label">Top-500 supercomputers run Linux (C)</div></div>
+        <div class="big-stat"><div class="num red">10B+</div><div class="label">Devices with curl (C)</div></div>
+        <div class="big-stat"><div class="num blue">1T+</div><div class="label">SQLite databases in active use</div></div>
+        <div class="big-stat"><div class="num gold">2.5B+</div><div class="label">Android devices (Linux kernel in C)</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Perspective</div>
+      <div class="section-title">Why These Numbers Matter</div>
+      <p>
+        Languages like Python, JavaScript, and Go get the headlines. C gets the infrastructure. Every Python script runs on CPython (C). Every JavaScript app runs on V8 (C++) which links against libc (C). Every Go binary is compiled by a compiler that was bootstrapped from C.
+      </p>
+      <p>
+        <strong>C is not competing with other languages. C is the substrate on which other languages exist.</strong> When you measure C's usage, you're not measuring popularity &mdash; you're measuring the foundation of computing itself. And foundations don't trend on Twitter. They just work, silently, forever.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="footer">C99 Statistics &mdash; data from TIOBE, OpenHub, GitHub, and project documentation</div>
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

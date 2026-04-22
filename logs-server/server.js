@@ -226,6 +226,7 @@ const LOG_FILES = {
   rbterm:       'rbterm.access.log',
   scumm:        'scumm.access.log',
   raylib:       'raylib.access.log',
+  c99:          'c99.access.log',
   vim:         'vim.access.log',
   http:        'http.access.log',
   ssh:         'ssh.access.log',
@@ -783,6 +784,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="rbterm">rbterm</button>
           <button class="site-opt" data-site="scumm">scumm</button>
           <button class="site-opt" data-site="raylib">raylib</button>
+          <button class="site-opt" data-site="c99">c99</button>
           <button class="site-opt" data-site="butterfly">butterfly</button>
           <button class="site-opt" data-site="change">change</button>
           <button class="site-opt" data-site="clamav">clamav</button>
