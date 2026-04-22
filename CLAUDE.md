@@ -77,15 +77,19 @@ If a local rebuild is ever needed, use the submodule's `build_web.sh` (requires 
 
 ### rbterm
 
-**Not built locally** — the wasm is compiled in rbterm's GitHub Actions CI and published to GitHub Pages. To update, download the latest artifacts:
+Repo: `rbterm/` (cloned, not a submodule) → Web app: `rbterm-html/demo/`
+
+Built locally via CMake + emsdk. **Do NOT use the GitHub Pages CI build** (emsdk 3.1.67 produces broken hit-testing). Use the emsdk from Iron-Fist (5.0.6):
 
 ```bash
-cd rbterm-html/demo
-curl -sL -o rbterm.wasm https://binrick.github.io/rbterm/rbterm.wasm
-curl -sL -o rbterm.js   https://binrick.github.io/rbterm/rbterm.js
-curl -sL -o rbterm.data https://binrick.github.io/rbterm/rbterm.data
-curl -sL -o index.html  https://binrick.github.io/rbterm/index.html
-cd ../..
+cd rbterm
+git pull origin main
+source ../Iron-Fist/vendor/emsdk/emsdk_env.sh
+emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release -DRBTERM_WEB=ON
+cmake --build build-web --config Release
+\cp -f build-web/rbterm.{wasm,js,data} ../rbterm-html/demo/
+\cp -f build-web/rbterm.html ../rbterm-html/demo/index.html
+cd ..
 ```
 
 ### Update all three at once
@@ -99,12 +103,12 @@ source Iron-Fist/vendor/emsdk/emsdk_env.sh
 # scumm-game — copy prebuilt wasm from submodule (do NOT rebuild locally)
 (cd scumm-game && \cp -f docs/index.{html,js,wasm,data} ../scumm-html/game/)
 
-# rbterm — download from GitHub Pages
-(cd rbterm-html/demo && \
- curl -sL -o rbterm.wasm https://binrick.github.io/rbterm/rbterm.wasm && \
- curl -sL -o rbterm.js   https://binrick.github.io/rbterm/rbterm.js && \
- curl -sL -o rbterm.data https://binrick.github.io/rbterm/rbterm.data && \
- curl -sL -o index.html  https://binrick.github.io/rbterm/index.html)
+# rbterm — build locally via CMake
+(cd rbterm && \
+ emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release -DRBTERM_WEB=ON 2>/dev/null && \
+ cmake --build build-web --config Release && \
+ \cp -f build-web/rbterm.{wasm,js,data} ../rbterm-html/demo/ && \
+ \cp -f build-web/rbterm.html ../rbterm-html/demo/index.html)
 ```
 
 Then commit and push the updated submodule pointers and rebuilt `*-html/` artifacts.
@@ -117,7 +121,7 @@ The following submodules/repos have corresponding app pages under Projects:
 |----------------|----------------------|-----------|---------------|
 | `Iron-Fist/` | `ironfist-html/` | ironfist.ximg.app | Yes — `make web` via emsdk |
 | `scumm-game/` | `scumm-html/` | scumm.ximg.app | No — copy prebuilt from submodule `docs/` |
-| `rbterm/` | `rbterm-html/` | rbterm.ximg.app | No — download from GitHub Pages |
+| `rbterm/` | `rbterm-html/` | rbterm.ximg.app | Yes — CMake + emsdk (do NOT use CI build) |
 
 Whenever a sub-repo is pulled (`git -C <repo> pull origin main`), read the repo's README and recent commits to identify important changes (new features, removed features, changed build steps, new screenshots, etc.), then update the corresponding app page to reflect those changes. This includes updating descriptions, feature cards, build instructions, specs, and screenshots. Commit and push the updated app page together with the updated repo pointer.
 
@@ -144,7 +148,7 @@ Frontend: vanilla JS only, no frameworks. Canvas API for visualizations. WebSock
 
 ## Subdomains & Containers
 
-All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 223+ is in `README.md` and `apps-html/index.html`.
+All static sites share a single `static` nginx container. Each subdomain's files live in a `*-html/` directory, volume-mounted into the `static` container at `/sites/<subdomain>.ximg.app`. Dynamic services (logs, change, awstats, mail, ssh) keep their own containers. The table below lists representative subdomains — the full list of 227+ is in `README.md` and `apps-html/index.html`.
 
 | Subdomain | Directory | Description |
 |-----------|-----------|-------------|

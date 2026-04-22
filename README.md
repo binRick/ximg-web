@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-225 virtual hosts (root + 224 subdomains), all static sites served by a single nginx container.
+229 virtual hosts (root + 228 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -248,6 +248,10 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [scumm.ximg.app](https://scumm.ximg.app) | scumm-game — SCUMM-style point-and-click adventure engine in C with raylib. Dijkstra pathfinding, animated sprites, verb bar, walk-behind foregrounds. |
 | [raylib.ximg.app](https://raylib.ximg.app) | raylib deep dive — the simple C99 game library by Ramon Santamaria. Features, architecture, code examples, gallery, and design philosophy. |
 | [c99.ximg.app](https://c99.ximg.app) | C99 deep dive — history from Bell Labs to C23, advantages, pioneers (Ritchie, Thompson, Kernighan), use cases, and statistics. |
+| [golang.ximg.app](https://golang.ximg.app) | Go deep dive — Google's language for cloud infrastructure. History, goroutines, pioneers (Pike, Thompson, Griesemer), use cases, and statistics. |
+| [python.ximg.app](https://python.ximg.app) | Python deep dive — the world's most popular language. History, AI/ML dominance, PyPI ecosystem, pioneers, and statistics. |
+| [nodejs.ximg.app](https://nodejs.ximg.app) | Node.js deep dive — JavaScript runtime that conquered the server. Event loop, npm ecosystem, pioneers, use cases, and statistics. |
+| [php.ximg.app](https://php.ximg.app) | PHP deep dive — the language powering 77% of the web. History, modern PHP 8, WordPress/Laravel, pioneers, and statistics. |
 ## Architecture
 
 ```

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Node.js statistics — npm growth, Stack Overflow surveys, GitHub stars, Fortune 500 adoption, and Node.js by the numbers">
+  <title>Node.js — Statistics</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #161b22; --border: rgba(255,255,255,.07);
+      --text: #e6edf3; --muted: #6a7385;
+      --accent: #68A063; --accent2: #F0DB4F; --green: #2ec463;
+      --orange: #e8913a; --purple: #b07cd8; --red: #e63946;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      padding: .3rem .65rem; border-radius: 3px; text-decoration: none;
+      transition: color .2s, background .2s; font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(104,160,99,.08); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-hero p { color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .15em; color: var(--accent); margin-bottom: .4rem; }
+    .section-title { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; margin-bottom: 1rem; }
+    .section p { color: var(--muted); line-height: 1.7; margin-bottom: 1rem; max-width: 800px; }
+
+    /* big stats grid */
+    .big-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0;
+    }
+    .big-stat {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.5rem; text-align: center;
+    }
+    .big-stat .num { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: .3rem; }
+    .big-stat .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+    .num.blue { color: var(--accent); }
+    .num.gold { color: var(--accent2); }
+    .num.green { color: var(--green); }
+    .num.orange { color: var(--orange); }
+    .num.purple { color: var(--purple); }
+    .num.red { color: var(--red); }
+
+    /* table */
+    .loc-table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .78rem;
+    }
+    .loc-table th {
+      text-align: left; padding: .6rem .8rem; border-bottom: 2px solid var(--accent);
+      color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+    }
+    .loc-table td {
+      padding: .6rem .8rem; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top;
+    }
+    .loc-table td:first-child { color: var(--text); font-weight: 600; }
+    .loc-table tr:hover td { background: rgba(104,160,99,.03); }
+
+    /* bar chart (CSS-only) */
+    .bar-chart { margin: 1.5rem 0; }
+    .bar-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .6rem; }
+    .bar-label { width: 100px; font-size: .75rem; text-align: right; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; height: 22px; background: rgba(255,255,255,.03); border-radius: 3px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: .5rem; font-size: .65rem; font-weight: 700; color: #fff; min-width: 30px; }
+    .bar-fill.node { background: var(--accent); }
+    .bar-fill.py { background: var(--green); }
+    .bar-fill.java { background: var(--orange); }
+    .bar-fill.dotnet { background: var(--purple); }
+    .bar-fill.php { background: #8892BF; }
+    .bar-fill.ruby { background: var(--red); }
+
+    .footer { text-align: center; padding: 2rem 1rem; font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+    @media (max-width: 768px) { .big-stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="history.html">History</a>
+    <a href="advantages.html">Advantages</a>
+    <a href="pioneers.html">Pioneers</a>
+    <a href="usecases.html">Use Cases</a>
+    <a href="statistics.html">Statistics</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) a.classList.add('active');
+    });
+  </script>
+
+  <div class="page-hero">
+    <h1>Statistics</h1>
+    <p>Node.js by the numbers. Adoption, ecosystem size, developer surveys, and the scale of its impact.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- headline stats -->
+    <div class="section">
+      <div class="section-label">At a Glance</div>
+      <div class="section-title">The Numbers</div>
+
+      <div class="big-stats">
+        <div class="big-stat"><div class="num blue">2.5M+</div><div class="label">npm packages</div></div>
+        <div class="big-stat"><div class="num gold">30M+</div><div class="label">Node.js developers</div></div>
+        <div class="big-stat"><div class="num green">98%</div><div class="label">Fortune 500 use Node</div></div>
+        <div class="big-stat"><div class="num orange">3B+</div><div class="label">npm downloads/week</div></div>
+        <div class="big-stat"><div class="num purple">110K+</div><div class="label">GitHub stars (Node.js)</div></div>
+        <div class="big-stat"><div class="num red">15+</div><div class="label">Years since creation</div></div>
+      </div>
+    </div>
+
+    <!-- npm growth -->
+    <div class="section">
+      <div class="section-label">Ecosystem Growth</div>
+      <div class="section-title">npm Registry &mdash; Package Count Over Time</div>
+      <p>npm's growth has been exponential. It surpassed every other package registry within a few years and now has more packages than all other major registries combined.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">2012</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:3%">15K</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">2014</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:8%">100K</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">2016</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:18%">350K</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">2018</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:35%">800K</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">2020</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:55%">1.3M</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">2022</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:78%">1.9M</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">2024</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:100%">2.5M+</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: npm registry statistics. npm has been the world's largest software registry since approximately 2016.</p>
+    </div>
+
+    <!-- Stack Overflow survey -->
+    <div class="section">
+      <div class="section-label">Developer Surveys</div>
+      <div class="section-title">Stack Overflow Developer Survey &mdash; Web Frameworks</div>
+      <p>Node.js consistently ranks as one of the most used technologies in Stack Overflow's annual developer survey. In the "Other frameworks and libraries" category, Node.js has been #1 for multiple years running.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">Node.js</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:100%">42.7%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Python</div>
+          <div class="bar-track"><div class="bar-fill py" style="width:90%">38.4%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Spring</div>
+          <div class="bar-track"><div class="bar-fill java" style="width:35%">15.0%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">ASP.NET</div>
+          <div class="bar-track"><div class="bar-fill dotnet" style="width:38%">16.2%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Laravel</div>
+          <div class="bar-track"><div class="bar-fill php" style="width:18%">7.9%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Rails</div>
+          <div class="bar-track"><div class="bar-fill ruby" style="width:12%">5.1%</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: Stack Overflow Developer Survey 2024. Percentage of respondents who use each technology professionally.</p>
+    </div>
+
+    <!-- Major Node.js projects -->
+    <div class="section">
+      <div class="section-label">Ecosystem</div>
+      <div class="section-title">Major Node.js Projects &amp; GitHub Stars</div>
+      <table class="loc-table">
+        <thead>
+          <tr><th>Project</th><th>GitHub Stars</th><th>Category</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Node.js</td><td>~110K</td><td>Runtime</td><td>The JavaScript runtime itself, built on V8</td></tr>
+          <tr><td>Express</td><td>~65K</td><td>Web Framework</td><td>Minimalist web framework, the most popular Node.js framework</td></tr>
+          <tr><td>Next.js</td><td>~130K</td><td>Full-Stack Framework</td><td>React framework with SSR, static generation, and API routes</td></tr>
+          <tr><td>VS Code</td><td>~165K</td><td>Desktop App (Electron)</td><td>The most popular code editor in the world, built on Node.js</td></tr>
+          <tr><td>webpack</td><td>~64K</td><td>Build Tool</td><td>Module bundler that defined modern frontend build pipelines</td></tr>
+          <tr><td>Socket.io</td><td>~61K</td><td>Real-Time</td><td>Real-time bidirectional event-based communication</td></tr>
+          <tr><td>Electron</td><td>~115K</td><td>Desktop Framework</td><td>Build cross-platform desktop apps with JavaScript</td></tr>
+          <tr><td>Axios</td><td>~106K</td><td>HTTP Client</td><td>Promise-based HTTP client for Node.js and browsers</td></tr>
+          <tr><td>Prisma</td><td>~40K</td><td>ORM</td><td>Next-generation Node.js and TypeScript ORM</td></tr>
+          <tr><td>Fastify</td><td>~33K</td><td>Web Framework</td><td>High-performance web framework focused on speed</td></tr>
+          <tr><td>NestJS</td><td>~69K</td><td>Enterprise Framework</td><td>Progressive Node.js framework for enterprise applications</td></tr>
+          <tr><td>PM2</td><td>~42K</td><td>Process Manager</td><td>Production process manager with built-in load balancer</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- fun facts -->
+    <div class="section">
+      <div class="section-label">Fun Facts</div>
+      <div class="section-title">Node.js By the Numbers</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:1rem;">
+        <div class="big-stat"><div class="num blue">6</div><div class="label">Lines for an HTTP server</div></div>
+        <div class="big-stat"><div class="num gold">1.8B+</div><div class="label">npm downloads per day</div></div>
+        <div class="big-stat"><div class="num green">70%</div><div class="label">Reduction in Netflix startup time</div></div>
+        <div class="big-stat"><div class="num orange">33%</div><div class="label">Fewer lines of code (PayPal)</div></div>
+        <div class="big-stat"><div class="num purple">30 &rarr; 3</div><div class="label">LinkedIn server reduction</div></div>
+        <div class="big-stat"><div class="num red">50ms</div><div class="label">Cold start (AWS Lambda)</div></div>
+        <div class="big-stat"><div class="num blue">500+</div><div class="label">Packages by TJ Holowaychuk</div></div>
+        <div class="big-stat"><div class="num gold">2009</div><div class="label">Year of JSConf EU launch</div></div>
+      </div>
+    </div>
+
+    <!-- registry comparison -->
+    <div class="section">
+      <div class="section-label">Registry Comparison</div>
+      <div class="section-title">npm vs Other Package Registries</div>
+      <p>npm has more packages than every other major package registry. The gap is not close.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">npm (JS)</div>
+          <div class="bar-track"><div class="bar-fill node" style="width:100%">2,500,000+</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">PyPI (Python)</div>
+          <div class="bar-track"><div class="bar-fill py" style="width:22%">550,000+</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Maven (Java)</div>
+          <div class="bar-track"><div class="bar-fill java" style="width:22%">550,000+</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">NuGet (.NET)</div>
+          <div class="bar-track"><div class="bar-fill dotnet" style="width:16%">400,000+</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">RubyGems</div>
+          <div class="bar-track"><div class="bar-fill ruby" style="width:7%">180,000+</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Crates (Rust)</div>
+          <div class="bar-track"><div class="bar-fill" style="width:6%;background:#dea584;">150,000+</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Perspective</div>
+      <div class="section-title">Why These Numbers Matter</div>
+      <p>
+        Node.js didn't just create a server-side runtime. It created an <strong>ecosystem gravity well</strong> that pulled the entire software industry toward JavaScript. The npm registry's explosive growth created a flywheel: more packages attracted more developers, who created more packages, which attracted more developers.
+      </p>
+      <p>
+        <strong>Node.js proved that developer experience matters more than raw performance.</strong> It's not the fastest runtime (V8 is fast, but Go, Rust, and C are faster). It's not the most type-safe (TypeScript helps, but it's bolted on). What Node got right was friction: zero compilation, instant feedback, one language everywhere, and a package manager that made code sharing effortless. That combination was unstoppable.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="footer">Node.js Statistics &mdash; data from npm, Stack Overflow, GitHub, and company engineering blogs</div>
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="History of Node.js — from Ryan Dahl's 2009 JSConf talk through the io.js fork, reunification, and modern LTS releases">
+  <title>Node.js — History</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #161b22; --border: rgba(255,255,255,.07);
+      --text: #e6edf3; --muted: #6a7385;
+      --accent: #68A063; --accent2: #F0DB4F; --green: #2ec463;
+      --orange: #e8913a; --purple: #b07cd8; --red: #e63946;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      padding: .3rem .65rem; border-radius: 3px; text-decoration: none;
+      transition: color .2s, background .2s; font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(104,160,99,.08); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-hero p { color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .15em; color: var(--accent); margin-bottom: .4rem; }
+    .section-title { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; margin-bottom: 1rem; }
+    .section p { color: var(--muted); line-height: 1.7; margin-bottom: 1rem; max-width: 800px; }
+    .section p strong { color: var(--text); }
+
+    /* timeline */
+    .timeline { position: relative; padding-left: 2rem; margin-top: 1.5rem; }
+    .timeline::before {
+      content: ''; position: absolute; left: 6px; top: 0; bottom: 0;
+      width: 2px; background: rgba(104,160,99,.2);
+    }
+    .tl-item { position: relative; margin-bottom: 2rem; }
+    .tl-item::before {
+      content: ''; position: absolute; left: -2rem; top: .35rem;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--bg);
+    }
+    .tl-item.major::before { background: var(--accent2); width: 14px; height: 14px; }
+    .tl-year { font-size: .75rem; color: var(--accent); font-weight: 700; margin-bottom: .2rem; letter-spacing: .05em; }
+    .tl-item.major .tl-year { color: var(--accent2); }
+    .tl-title { font-size: .95rem; font-weight: 700; margin-bottom: .3rem; }
+    .tl-text { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+    .tl-text strong { color: var(--text); }
+
+    .quote-block {
+      background: var(--surface); border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0; padding: 1.2rem 1.5rem; margin: 1.5rem 0;
+      font-style: italic; color: var(--text); line-height: 1.7; font-size: .88rem;
+    }
+    .quote-block .attr { font-style: normal; color: var(--muted); font-size: .75rem; margin-top: .5rem; }
+
+    /* release table */
+    .std-table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .78rem;
+    }
+    .std-table th {
+      text-align: left; padding: .6rem .8rem; border-bottom: 2px solid var(--accent);
+      color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+    }
+    .std-table td {
+      padding: .6rem .8rem; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top;
+    }
+    .std-table td:first-child { color: var(--accent2); font-weight: 700; white-space: nowrap; }
+    .std-table tr:hover td { background: rgba(104,160,99,.03); }
+
+    .footer { text-align: center; padding: 2rem 1rem; font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="history.html">History</a>
+    <a href="advantages.html">Advantages</a>
+    <a href="pioneers.html">Pioneers</a>
+    <a href="usecases.html">Use Cases</a>
+    <a href="statistics.html">Statistics</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) a.classList.add('active');
+    });
+  </script>
+
+  <div class="page-hero">
+    <h1>History of Node.js</h1>
+    <p>From a frustrated developer's insight about blocking I/O to the runtime that powers the modern web. 15 years of revolution.</p>
+  </div>
+
+  <div class="container">
+
+    <div class="section">
+      <div class="section-label">Origins</div>
+      <div class="section-title">Born from Frustration</div>
+      <p>
+        In 2009, <strong>Ryan Dahl</strong> was frustrated. He was watching a file upload progress bar on Flickr and realized the browser had no way to know how much of the file had been uploaded &mdash; because web servers like Apache used blocking I/O. Each connection consumed a thread, and threads were expensive. The server couldn't push real-time progress updates.
+      </p>
+      <p>
+        Dahl had been experimenting with event-driven, non-blocking I/O servers in C, Lua, and Haskell. But none of these languages had the right combination of a fast VM, no existing I/O libraries (that would be blocking), and a massive developer base. Then he realized: <strong>JavaScript had all three.</strong> V8 was blazing fast, JavaScript had no server-side I/O conventions to break, and millions of web developers already knew the language.
+      </p>
+      <p>
+        He built a prototype in just a few weeks: a C++ wrapper around Google's V8 engine, with a custom event loop based on libev (later libuv), and non-blocking bindings for file I/O, networking, and DNS. He called it Node.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Timeline</div>
+      <div class="section-title">The Evolution of Node.js</div>
+
+      <div class="timeline">
+        <div class="tl-item major">
+          <div class="tl-year">November 2009</div>
+          <div class="tl-title">JSConf EU &mdash; Node.js is Born</div>
+          <div class="tl-text">Ryan Dahl presents Node.js at JSConf EU in Berlin. The demo shows a real-time IRC chat server in ~40 lines of JavaScript. The audience gives a standing ovation. The talk goes viral and the GitHub repo explodes with stars.</div>
+        </div>
+
+        <div class="tl-item major">
+          <div class="tl-year">January 2010</div>
+          <div class="tl-title">npm is Created</div>
+          <div class="tl-text"><strong>Isaac Z. Schlueter</strong> releases npm (Node Package Manager), giving Node.js a package ecosystem. npm's flat dependency model and <code>package.json</code> convention make sharing and reusing code trivially easy. This single tool would become the world's largest software registry.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2010</div>
+          <div class="tl-title">Joyent Sponsors Node.js</div>
+          <div class="tl-text">Cloud computing company Joyent hires Ryan Dahl and takes stewardship of the Node.js project. Joyent provides infrastructure, funding, and corporate credibility. Dahl works on Node full-time.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">June 2011</div>
+          <div class="tl-title">Windows Support &amp; libuv</div>
+          <div class="tl-text">Node.js 0.6 adds native Windows support via <strong>libuv</strong>, a new cross-platform async I/O library that replaces libev. Microsoft contributes to the Windows port. libuv becomes one of Node's most important architectural components.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2012</div>
+          <div class="tl-title">Ryan Dahl Steps Down</div>
+          <div class="tl-text">Dahl hands the project over to <strong>Isaac Z. Schlueter</strong> (npm creator) and moves on to other interests. He later says Node.js was "done" in his mind &mdash; the core architecture was complete. He would spend years reflecting on what he got wrong.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2013 &ndash; 2014</div>
+          <div class="tl-title">Growing Pains</div>
+          <div class="tl-text">The community grows frustrated with Joyent's slow release cadence and centralized governance. Contributors want faster V8 updates, better ES6 support, and a more open decision-making process. Tensions build.</div>
+        </div>
+
+        <div class="tl-item major">
+          <div class="tl-year">December 2014</div>
+          <div class="tl-title">The io.js Fork</div>
+          <div class="tl-text">Key contributors fork Node.js as <strong>io.js</strong>, an open-governance alternative. io.js ships rapidly, updating V8 frequently and adding ES6 features. The fork creates chaos in the ecosystem &mdash; packages must decide which runtime to support.</div>
+        </div>
+
+        <div class="tl-item major">
+          <div class="tl-year">September 2015</div>
+          <div class="tl-title">Node.js Foundation &mdash; Reunification</div>
+          <div class="tl-text">io.js and Node.js merge under the newly formed <strong>Node.js Foundation</strong> (under the Linux Foundation). The merged project adopts io.js's open governance model, its rapid release schedule, and its modern V8. Node.js 4.0 is the first unified release.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2016 &ndash; 2017</div>
+          <div class="tl-title">Enterprise Adoption Explodes</div>
+          <div class="tl-text">Netflix, PayPal, Uber, LinkedIn, Walmart, NASA, and hundreds of Fortune 500 companies adopt Node.js for production workloads. The LTS (Long-Term Support) release schedule gives enterprises the stability they need.</div>
+        </div>
+
+        <div class="tl-item major">
+          <div class="tl-year">June 2018</div>
+          <div class="tl-title">Ryan Dahl Returns with Deno</div>
+          <div class="tl-text">Dahl gives a talk titled <strong>"10 Things I Regret About Node.js"</strong> at JSConf EU and announces <strong>Deno</strong>, a new runtime built on V8 with TypeScript support, secure-by-default permissions, and no <code>node_modules</code>. It's both a critique and a spiritual successor.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">March 2019</div>
+          <div class="tl-title">OpenJS Foundation</div>
+          <div class="tl-text">The Node.js Foundation merges with the JS Foundation to form the <strong>OpenJS Foundation</strong>, consolidating governance of Node.js, jQuery, webpack, ESLint, Electron, and other JavaScript projects under one umbrella.</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-year">2023 &ndash; 2024</div>
+          <div class="tl-title">Node.js 20 &amp; 22 LTS</div>
+          <div class="tl-text">Modern Node.js adds native test runner, <code>--watch</code> mode, single executable applications, built-in <code>.env</code> file support, and experimental TypeScript stripping. Node.js 22 becomes the current LTS with stable WebSocket client support.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">The Fork</div>
+      <div class="section-title">The io.js Split &amp; Reunification</div>
+      <p>
+        The io.js fork of 2014 was one of the most dramatic events in open-source JavaScript history. The core issue was <strong>governance</strong>: Joyent controlled the project, releases were slow, and V8 updates lagged months behind Chrome. Contributors felt locked out of decision-making.
+      </p>
+      <p>
+        io.js adopted an <strong>open governance model</strong> with a Technical Committee (TC) where decisions were made by consensus among active contributors, not by a corporate sponsor. It shipped weekly releases, updated V8 aggressively, and added ES6 features (arrow functions, generators, template literals) months before Node.js did.
+      </p>
+      <p>
+        The reunification in September 2015 was a victory for the community. Node.js adopted io.js's governance, its codebase, and its release cadence. The result was a project that was both <strong>enterprise-stable</strong> (via LTS releases) and <strong>community-driven</strong> (via open governance). The fork, while painful, ultimately made Node.js stronger.
+      </p>
+
+      <div class="quote-block">
+        "I think Node is not the best system to ever be created. It's just the right amount of bad ideas and the right amount of good ideas to be a useful tool."
+        <div class="attr">&mdash; Ryan Dahl, creator of Node.js</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Release Schedule</div>
+      <div class="section-title">Node.js LTS &amp; Current Releases</div>
+      <table class="std-table">
+        <thead>
+          <tr><th>Version</th><th>Codename</th><th>Release Date</th><th>Status</th><th>Key Additions</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>v0.1</td><td>&mdash;</td><td>2009</td><td>Historical</td><td>Initial release, event loop, HTTP server</td></tr>
+          <tr><td>v4.0</td><td>Argon</td><td>Sep 2015</td><td>End of Life</td><td>First merged io.js + Node.js release, ES6 support</td></tr>
+          <tr><td>v6.0</td><td>Boron</td><td>Apr 2016</td><td>End of Life</td><td>93% ES6 coverage, inspector protocol</td></tr>
+          <tr><td>v8.0</td><td>Carbon</td><td>May 2017</td><td>End of Life</td><td>async/await, N-API, npm 5</td></tr>
+          <tr><td>v10.0</td><td>Dubnium</td><td>Apr 2018</td><td>End of Life</td><td>fs.promises, HTTP/2 stable, Worker Threads experimental</td></tr>
+          <tr><td>v12.0</td><td>Erbium</td><td>Apr 2019</td><td>End of Life</td><td>Worker Threads stable, ES modules, V8 7.4</td></tr>
+          <tr><td>v14.0</td><td>Fermium</td><td>Apr 2020</td><td>End of Life</td><td>Diagnostic reports, optional chaining, nullish coalescing</td></tr>
+          <tr><td>v16.0</td><td>Gallium</td><td>Apr 2021</td><td>End of Life</td><td>Timers Promises API, Web Crypto API, Apple Silicon builds</td></tr>
+          <tr><td>v18.0</td><td>Hydrogen</td><td>Apr 2022</td><td>Maintenance</td><td>fetch API, test runner, watch mode, Web Streams</td></tr>
+          <tr><td>v20.0</td><td>Iron</td><td>Apr 2023</td><td>LTS Active</td><td>Permission model, stable test runner, V8 11.3</td></tr>
+          <tr><td>v22.0</td><td>Jod</td><td>Apr 2024</td><td>LTS Active</td><td>WebSocket client, require(esm), glob/globSync, V8 12.4</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:.72rem;">Even-numbered releases become LTS (Long-Term Support) with 30 months of maintenance. Odd-numbered releases are short-lived "Current" releases for early adopters.</p>
+    </div>
+
+  </div>
+
+  <div class="footer">Node.js History &mdash; from JSConf 2009 to the modern web</div>
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

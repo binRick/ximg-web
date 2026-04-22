@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Go statistics — TIOBE rankings, GitHub stats, Stack Overflow surveys, adoption rates, and the numbers behind Go's rise">
+  <title>Go — Statistics</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #161b22; --border: rgba(255,255,255,.07);
+      --text: #e6edf3; --muted: #6a7385;
+      --accent: #00ADD8; --accent2: #FFD166; --green: #2ec463;
+      --orange: #e8913a; --purple: #b07cd8; --red: #e63946;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      padding: .3rem .65rem; border-radius: 3px; text-decoration: none;
+      transition: color .2s, background .2s; font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(0,173,216,.08); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-hero p { color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .15em; color: var(--accent); margin-bottom: .4rem; }
+    .section-title { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; margin-bottom: 1rem; }
+    .section p { color: var(--muted); line-height: 1.7; margin-bottom: 1rem; max-width: 800px; }
+
+    /* big stats grid */
+    .big-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0;
+    }
+    .big-stat {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.5rem; text-align: center;
+    }
+    .big-stat .num { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: .3rem; }
+    .big-stat .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+    .num.blue { color: var(--accent); }
+    .num.gold { color: var(--accent2); }
+    .num.green { color: var(--green); }
+    .num.orange { color: var(--orange); }
+    .num.purple { color: var(--purple); }
+    .num.red { color: var(--red); }
+
+    /* projects table */
+    .loc-table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .78rem;
+    }
+    .loc-table th {
+      text-align: left; padding: .6rem .8rem; border-bottom: 2px solid var(--accent);
+      color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+    }
+    .loc-table td {
+      padding: .6rem .8rem; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top;
+    }
+    .loc-table td:first-child { color: var(--text); font-weight: 600; }
+    .loc-table tr:hover td { background: rgba(0,173,216,.03); }
+
+    /* bar chart (CSS-only) */
+    .bar-chart { margin: 1.5rem 0; }
+    .bar-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .6rem; }
+    .bar-label { width: 100px; font-size: .75rem; text-align: right; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; height: 22px; background: rgba(255,255,255,.03); border-radius: 3px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: .5rem; font-size: .65rem; font-weight: 700; color: #fff; min-width: 30px; }
+    .bar-fill.go { background: var(--accent); }
+    .bar-fill.py { background: var(--green); }
+    .bar-fill.js { background: var(--orange); }
+    .bar-fill.ts { background: var(--purple); }
+    .bar-fill.rust { background: var(--red); }
+    .bar-fill.java { background: var(--accent2); }
+
+    .footer { text-align: center; padding: 2rem 1rem; font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+    @media (max-width: 768px) { .big-stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="history.html">History</a>
+    <a href="advantages.html">Advantages</a>
+    <a href="pioneers.html">Pioneers</a>
+    <a href="usecases.html">Use Cases</a>
+    <a href="statistics.html">Statistics</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) a.classList.add('active');
+    });
+  </script>
+
+  <div class="page-hero">
+    <h1>Statistics</h1>
+    <p>Go by the numbers. Rankings, adoption rates, GitHub activity, and the scale of Go's ecosystem.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- headline stats -->
+    <div class="section">
+      <div class="section-label">At a Glance</div>
+      <div class="section-title">The Numbers</div>
+
+      <div class="big-stats">
+        <div class="big-stat"><div class="num blue">#8</div><div class="label">TIOBE Index (2024)</div></div>
+        <div class="big-stat"><div class="num gold">15+</div><div class="label">Years since creation</div></div>
+        <div class="big-stat"><div class="num green">2M+</div><div class="label">GitHub repositories</div></div>
+        <div class="big-stat"><div class="num orange">2M+</div><div class="label">Active developers</div></div>
+        <div class="big-stat"><div class="num purple">75%+</div><div class="label">CNCF projects in Go</div></div>
+        <div class="big-stat"><div class="num red">25</div><div class="label">Keywords in the language</div></div>
+      </div>
+    </div>
+
+    <!-- TIOBE -->
+    <div class="section">
+      <div class="section-label">Rankings</div>
+      <div class="section-title">TIOBE Index &mdash; Language Popularity</div>
+      <p>Go entered the TIOBE index shortly after its 2009 release and has climbed steadily. It won "Language of the Year" in 2009 and 2016, and has been consistently in the top 10 since 2020. Go's rise correlates directly with the adoption of cloud-native infrastructure.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">Python</div>
+          <div class="bar-track"><div class="bar-fill py" style="width:100%">15.5%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Java</div>
+          <div class="bar-track"><div class="bar-fill java" style="width:61%">9.5%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">JavaScript</div>
+          <div class="bar-track"><div class="bar-fill js" style="width:22%">3.4%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Go</div>
+          <div class="bar-track"><div class="bar-fill go" style="width:13%">2.0%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Rust</div>
+          <div class="bar-track"><div class="bar-fill rust" style="width:10%">1.5%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">TypeScript</div>
+          <div class="bar-track"><div class="bar-fill ts" style="width:8%">1.2%</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: TIOBE Index, approximate 2024 values. Go has been a top-10 language since 2020.</p>
+    </div>
+
+    <!-- Stack Overflow Survey -->
+    <div class="section">
+      <div class="section-label">Developer Survey</div>
+      <div class="section-title">Stack Overflow Developer Survey</div>
+      <p>In the 2024 Stack Overflow Developer Survey, Go ranked among the most desired languages &mdash; developers who don't use it want to learn it. Go also consistently ranks in the top 5 for highest-paying languages globally.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">Wanted</div>
+          <div class="bar-track"><div class="bar-fill go" style="width:35%">~18% want to learn Go</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Used</div>
+          <div class="bar-track"><div class="bar-fill go" style="width:27%">~14% actively use Go</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Admired</div>
+          <div class="bar-track"><div class="bar-fill go" style="width:60%">~62% admire Go</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: Stack Overflow Developer Survey 2024. "Admired" = % of developers who use Go and want to continue using it.</p>
+    </div>
+
+    <!-- Major Projects Table -->
+    <div class="section">
+      <div class="section-label">Ecosystem</div>
+      <div class="section-title">Major Go Projects &mdash; GitHub Stars</div>
+      <table class="loc-table">
+        <thead>
+          <tr><th>Project</th><th>GitHub Stars</th><th>What It Does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Kubernetes</td><td>~108k</td><td>Container orchestration platform &mdash; the operating system of the cloud</td></tr>
+          <tr><td>Docker (Moby)</td><td>~69k</td><td>Container runtime that started the container revolution</td></tr>
+          <tr><td>Terraform</td><td>~42k</td><td>Infrastructure as Code &mdash; declarative cloud provisioning</td></tr>
+          <tr><td>etcd</td><td>~47k</td><td>Distributed key-value store, the brain of Kubernetes</td></tr>
+          <tr><td>Prometheus</td><td>~55k</td><td>Monitoring and alerting toolkit, CNCF graduated project</td></tr>
+          <tr><td>Grafana</td><td>~63k</td><td>Observability and dashboarding platform</td></tr>
+          <tr><td>Hugo</td><td>~75k</td><td>The world's fastest static site generator</td></tr>
+          <tr><td>CockroachDB</td><td>~30k</td><td>Distributed SQL database, PostgreSQL-compatible</td></tr>
+          <tr><td>Caddy</td><td>~57k</td><td>Automatic HTTPS web server with zero config</td></tr>
+          <tr><td>Vault</td><td>~31k</td><td>Secrets management and data encryption</td></tr>
+          <tr><td>Consul</td><td>~28k</td><td>Service mesh and service discovery</td></tr>
+          <tr><td>NATS</td><td>~16k</td><td>Cloud-native messaging system for microservices</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Go Adoption Stats -->
+    <div class="section">
+      <div class="section-label">Adoption</div>
+      <div class="section-title">Go Adoption by the Numbers</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:1rem;">
+        <div class="big-stat"><div class="num blue">2009</div><div class="label">Open-sourced</div></div>
+        <div class="big-stat"><div class="num gold">2012</div><div class="label">Go 1.0 released</div></div>
+        <div class="big-stat"><div class="num green">3M+</div><div class="label">Lines in Kubernetes</div></div>
+        <div class="big-stat"><div class="num orange">1.5M+</div><div class="label">Go modules on pkg.go.dev</div></div>
+        <div class="big-stat"><div class="num purple">13+</div><div class="label">Years of Go 1 compatibility</div></div>
+        <div class="big-stat"><div class="num red">6 mo</div><div class="label">Release cadence</div></div>
+        <div class="big-stat"><div class="num blue">$140k+</div><div class="label">Median US Go dev salary</div></div>
+        <div class="big-stat"><div class="num gold">75%+</div><div class="label">CNCF graduated projects in Go</div></div>
+      </div>
+    </div>
+
+    <!-- Companies Using Go -->
+    <div class="section">
+      <div class="section-label">Industry</div>
+      <div class="section-title">Companies Using Go in Production</div>
+      <p>
+        Go is used in production by some of the largest technology companies in the world: <strong>Google</strong> (where it was created), <strong>Uber</strong>, <strong>Dropbox</strong>, <strong>Twitch</strong>, <strong>Cloudflare</strong>, <strong>Netflix</strong>, <strong>American Express</strong>, <strong>PayPal</strong>, <strong>Meta</strong>, <strong>Salesforce</strong>, <strong>Twitter/X</strong>, <strong>Shopify</strong>, and <strong>Stripe</strong>.
+      </p>
+      <p>
+        The pattern is consistent: companies adopt Go for backend services, infrastructure tooling, and microservices where <strong>performance, deployment simplicity, and developer productivity</strong> all matter. Go's fast compilation, small container images, and easy onboarding make it particularly attractive for large engineering organizations.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Perspective</div>
+      <div class="section-title">Why These Numbers Matter</div>
+      <p>
+        Go is not the most popular language by raw developer count. Python, JavaScript, and Java all have more users. But Go has <strong>disproportionate influence</strong>. The tools that manage, deploy, monitor, and secure modern software are overwhelmingly written in Go.
+      </p>
+      <p>
+        <strong>If you use the cloud, you use Go.</strong> Every Kubernetes cluster, every Terraform plan, every Prometheus alert, every Docker container, every Vault secret, every Consul service registration &mdash; Go code. Go doesn't just run applications. It runs the platform that runs applications.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="footer">Go Statistics &mdash; data from TIOBE, Stack Overflow, GitHub, and pkg.go.dev</div>
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PHP statistics — web usage share, CMS market, framework popularity, Packagist downloads, and major PHP projects">
+  <title>PHP — Statistics</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #161b22; --border: rgba(255,255,255,.07);
+      --text: #e6edf3; --muted: #6a7385;
+      --accent: #777BB4; --accent2: #FF9A00; --green: #2ec463;
+      --orange: #e8913a; --purple: #b07cd8; --red: #e63946;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      padding: .3rem .65rem; border-radius: 3px; text-decoration: none;
+      transition: color .2s, background .2s; font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(119,123,180,.08); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-hero { text-align: center; padding: 3rem 1rem 2rem; }
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-hero p { color: var(--muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .section { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+    .section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .15em; color: var(--accent); margin-bottom: .4rem; }
+    .section-title { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; margin-bottom: 1rem; }
+    .section p { color: var(--muted); line-height: 1.7; margin-bottom: 1rem; max-width: 800px; }
+
+    /* big stats grid */
+    .big-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0;
+    }
+    .big-stat {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1.5rem; text-align: center;
+    }
+    .big-stat .num { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: .3rem; }
+    .big-stat .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+    .num.blue { color: var(--accent); }
+    .num.gold { color: var(--accent2); }
+    .num.green { color: var(--green); }
+    .num.orange { color: var(--orange); }
+    .num.purple { color: var(--purple); }
+    .num.red { color: var(--red); }
+
+    /* bar chart (CSS-only) */
+    .bar-chart { margin: 1.5rem 0; }
+    .bar-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .6rem; }
+    .bar-label { width: 100px; font-size: .75rem; text-align: right; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; height: 22px; background: rgba(255,255,255,.03); border-radius: 3px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: .5rem; font-size: .65rem; font-weight: 700; color: #fff; min-width: 30px; }
+    .bar-fill.php { background: var(--accent); }
+    .bar-fill.asp { background: var(--orange); }
+    .bar-fill.ruby { background: var(--red); }
+    .bar-fill.java { background: var(--accent2); }
+    .bar-fill.py { background: var(--green); }
+    .bar-fill.js { background: var(--purple); }
+
+    /* project table */
+    .loc-table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .78rem;
+    }
+    .loc-table th {
+      text-align: left; padding: .6rem .8rem; border-bottom: 2px solid var(--accent);
+      color: var(--accent); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+    }
+    .loc-table td {
+      padding: .6rem .8rem; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top;
+    }
+    .loc-table td:first-child { color: var(--text); font-weight: 600; }
+    .loc-table tr:hover td { background: rgba(119,123,180,.03); }
+
+    .footer { text-align: center; padding: 2rem 1rem; font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+    @media (max-width: 768px) { .big-stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+  <nav id="subnav">
+    <a href="index.html">Overview</a>
+    <a href="history.html">History</a>
+    <a href="advantages.html">Advantages</a>
+    <a href="pioneers.html">Pioneers</a>
+    <a href="usecases.html">Use Cases</a>
+    <a href="statistics.html">Statistics</a>
+  </nav>
+  <script>
+    document.querySelectorAll('#subnav a').forEach(function(a) {
+      var href = a.getAttribute('href');
+      var path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) a.classList.add('active');
+    });
+  </script>
+
+  <div class="page-hero">
+    <h1>Statistics</h1>
+    <p>PHP by the numbers. Web share, CMS dominance, framework popularity, and the scale of PHP's reach.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- headline stats -->
+    <div class="section">
+      <div class="section-label">At a Glance</div>
+      <div class="section-title">The Numbers</div>
+
+      <div class="big-stats">
+        <div class="big-stat"><div class="num blue">77%</div><div class="label">Server-side web share</div></div>
+        <div class="big-stat"><div class="num gold">30</div><div class="label">Years since creation</div></div>
+        <div class="big-stat"><div class="num green">300K+</div><div class="label">Packagist packages</div></div>
+        <div class="big-stat"><div class="num orange">43%</div><div class="label">Websites via WordPress</div></div>
+        <div class="big-stat"><div class="num purple">1M+</div><div class="label">Active developers</div></div>
+        <div class="big-stat"><div class="num red">60B+</div><div class="label">Packagist downloads (total)</div></div>
+      </div>
+    </div>
+
+    <!-- server-side language share -->
+    <div class="section">
+      <div class="section-label">Web Usage</div>
+      <div class="section-title">Server-Side Language Market Share</div>
+      <p>PHP dominates server-side web usage. According to W3Techs, PHP is used by 77% of all websites whose server-side programming language is known. No other language comes close.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">PHP</div>
+          <div class="bar-track"><div class="bar-fill php" style="width:100%">77.2%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">ASP.NET</div>
+          <div class="bar-track"><div class="bar-fill asp" style="width:9%">6.8%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Ruby</div>
+          <div class="bar-track"><div class="bar-fill ruby" style="width:7%">5.4%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Java</div>
+          <div class="bar-track"><div class="bar-fill java" style="width:6%">4.5%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Python</div>
+          <div class="bar-track"><div class="bar-fill py" style="width:3%">2.3%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">JavaScript</div>
+          <div class="bar-track"><div class="bar-fill js" style="width:3%">2.1%</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: W3Techs, approximate 2024 values. Percentages of websites whose server-side language is known.</p>
+    </div>
+
+    <!-- CMS market share -->
+    <div class="section">
+      <div class="section-label">CMS Market</div>
+      <div class="section-title">Content Management System Market Share</div>
+      <p>The CMS market is overwhelmingly PHP. WordPress alone holds 62.8% of the CMS market (43% of all websites). The top 4 CMSes are all PHP.</p>
+
+      <div class="bar-chart">
+        <div class="bar-row">
+          <div class="bar-label">WordPress</div>
+          <div class="bar-track"><div class="bar-fill php" style="width:100%">62.8%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Shopify</div>
+          <div class="bar-track"><div class="bar-fill ruby" style="width:10%">6.3%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Wix</div>
+          <div class="bar-track"><div class="bar-fill js" style="width:6%">3.7%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Joomla</div>
+          <div class="bar-track"><div class="bar-fill php" style="width:4%">2.6%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Drupal</div>
+          <div class="bar-track"><div class="bar-fill php" style="width:3%">1.7%</div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Squarespace</div>
+          <div class="bar-track"><div class="bar-fill java" style="width:3%">1.7%</div></div>
+        </div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);">Source: W3Techs CMS usage statistics, approximate 2024 values.</p>
+    </div>
+
+    <!-- framework popularity -->
+    <div class="section">
+      <div class="section-label">Frameworks</div>
+      <div class="section-title">PHP Framework Popularity</div>
+      <p>Laravel dominates the PHP framework ecosystem. GitHub stars and Packagist downloads tell the story.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-top:1rem;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:var(--accent);">Laravel</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">78K+ GitHub stars. Most-starred PHP repository. 300M+ Packagist installs. The dominant modern PHP framework.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:var(--accent);">Symfony</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">29K+ GitHub stars. Enterprise standard. Symfony components are used by Laravel, Drupal 8+, phpBB, and thousands of projects.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:var(--accent);">CodeIgniter</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">5K+ GitHub stars. Lightweight, minimal footprint. Popular in Asia and for projects that need simplicity over features.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:var(--accent);">CakePHP</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">8K+ GitHub stars. Convention over configuration. One of the earliest PHP MVC frameworks (2005). Still actively maintained.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:var(--accent);">Slim</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">12K+ GitHub stars. Micro-framework for APIs and small apps. PSR-7/PSR-15 compliant. Minimal overhead.</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.2rem;">
+          <div style="font-size:.95rem;font-weight:700;margin-bottom:.3rem;color:var(--accent);">Yii</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.5;">14K+ GitHub stars. High-performance framework. Strong in code generation (Gii) and ActiveRecord. Popular in enterprise.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- major projects -->
+    <div class="section">
+      <div class="section-label">Projects</div>
+      <div class="section-title">Major PHP Projects</div>
+      <table class="loc-table">
+        <thead>
+          <tr><th>Project</th><th>Users / Scale</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>WordPress</td><td>810M+ websites</td><td>The world's most popular CMS. 43% of all websites. Plugins, themes, WooCommerce.</td></tr>
+          <tr><td>MediaWiki</td><td>Billions of views/mo</td><td>Powers Wikipedia and Wikimedia projects. One of the highest-traffic PHP apps.</td></tr>
+          <tr><td>Laravel</td><td>78K+ GitHub stars</td><td>Most popular PHP framework. Eloquent ORM, Blade, queues, broadcasting.</td></tr>
+          <tr><td>Drupal</td><td>1.3M+ websites</td><td>Enterprise CMS. Used by governments, universities, and large organizations.</td></tr>
+          <tr><td>Magento</td><td>250K+ stores</td><td>Enterprise e-commerce platform. Now Adobe Commerce.</td></tr>
+          <tr><td>Moodle</td><td>300M+ users</td><td>World's most-used open-source learning management system.</td></tr>
+          <tr><td>phpMyAdmin</td><td>Millions of installs</td><td>Web-based MySQL administration. Installed on nearly every shared hosting account.</td></tr>
+          <tr><td>Composer</td><td>300K+ packages</td><td>PHP dependency manager. Packagist registry. Autoloading standard (PSR-4).</td></tr>
+          <tr><td>Matomo</td><td>1.4M+ websites</td><td>Open-source web analytics. Privacy-focused Google Analytics alternative.</td></tr>
+          <tr><td>phpBB</td><td>Millions of forums</td><td>One of the most-used open-source forum platforms. Since 2000.</td></tr>
+          <tr><td>NextCloud</td><td>400K+ servers</td><td>Self-hosted cloud storage and collaboration platform. Dropbox/Google Drive alternative.</td></tr>
+          <tr><td>Symfony</td><td>29K+ GitHub stars</td><td>Enterprise PHP framework. Reusable components used across the ecosystem.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- fun facts -->
+    <div class="section">
+      <div class="section-label">PHP by the Numbers</div>
+      <div class="section-title">More Numbers</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-top:1rem;">
+        <div class="big-stat"><div class="num blue">77%</div><div class="label">Server-side web share</div></div>
+        <div class="big-stat"><div class="num gold">810M+</div><div class="label">WordPress websites</div></div>
+        <div class="big-stat"><div class="num green">2x</div><div class="label">PHP 7 speedup over PHP 5</div></div>
+        <div class="big-stat"><div class="num orange">78K+</div><div class="label">Laravel GitHub stars</div></div>
+        <div class="big-stat"><div class="num purple">300K+</div><div class="label">Packagist packages</div></div>
+        <div class="big-stat"><div class="num red">60B+</div><div class="label">Total Packagist downloads</div></div>
+        <div class="big-stat"><div class="num blue">28%</div><div class="label">Online stores (WooCommerce)</div></div>
+        <div class="big-stat"><div class="num gold">1994</div><div class="label">Year PHP was created</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Perspective</div>
+      <div class="section-title">Why These Numbers Matter</div>
+      <p>
+        PHP's critics have predicted its death for over a decade. Meanwhile, PHP's actual market share has remained remarkably stable at around 77-80% of server-side web usage. Languages like Node.js, Python, and Go have grown, but primarily in niches that PHP never dominated (real-time apps, data science, infrastructure tooling).
+      </p>
+      <p>
+        <strong>PHP's dominance is not about hype. It's about installed base.</strong> With 810+ million WordPress websites, millions of Drupal and Joomla installations, and the entire Composer ecosystem, PHP has an inertia that no amount of "PHP is dead" blog posts can overcome. The web was built on PHP, and the web isn't going anywhere.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="footer">PHP Statistics &mdash; data from W3Techs, Packagist, GitHub, and project documentation</div>
+  <script src="/shared/nav.js?v=3"></script>
+</body>
+</html>
