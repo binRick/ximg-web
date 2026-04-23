@@ -147,6 +147,9 @@
       '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
       '.nav-dd-item.active .nav-dd-dot{background:' + c.acc + ';}' +
       '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+      '@keyframes navrainbow{0%{color:#ff6b6b}14%{color:#ffa500}28%{color:#ffd93d}42%{color:#6bcb77}57%{color:#4fc3f7}71%{color:#a78bfa}85%{color:#f472b6}100%{color:#ff6b6b}}' +
+      '.nav-rainbow{animation:navrainbow 3s linear infinite;font-weight:700!important;}' +
+      '.nav-rainbow .nav-dd-dot{animation:navrainbow 3s linear infinite;background:currentColor!important;}' +
 
       '.nav-flyout{position:absolute;top:calc(100% + 4px);left:0;display:flex;' +
       'background:' + (c.ddbg || c.bg) + ';border:' + c.ddbord + ';border-radius:' + r + ';' +
@@ -299,6 +302,9 @@
     '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
     '.nav-dd-item.active .nav-dd-dot{background:#000080;}' +
     '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+    '@keyframes navrainbow{0%{color:#ff6b6b}14%{color:#ffa500}28%{color:#ffd93d}42%{color:#6bcb77}57%{color:#4fc3f7}71%{color:#a78bfa}85%{color:#f472b6}100%{color:#ff6b6b}}' +
+    '.nav-rainbow{animation:navrainbow 3s linear infinite;font-weight:700!important;}' +
+    '.nav-rainbow .nav-dd-dot{animation:navrainbow 3s linear infinite;background:currentColor!important;}' +
     '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
     'background:#c0c0c0;border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
     'border-bottom-color:#000;border-right-color:#000;' +
@@ -641,6 +647,9 @@
     '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
     '.nav-dd-item.active .nav-dd-dot{background:#ff0;}' +
     '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+    '@keyframes navrainbow{0%{color:#ff6b6b}14%{color:#ffa500}28%{color:#ffd93d}42%{color:#6bcb77}57%{color:#4fc3f7}71%{color:#a78bfa}85%{color:#f472b6}100%{color:#ff6b6b}}' +
+    '.nav-rainbow{animation:navrainbow 3s linear infinite;font-weight:700!important;}' +
+    '.nav-rainbow .nav-dd-dot{animation:navrainbow 3s linear infinite;background:currentColor!important;}' +
     '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
     'background:#000;border:2px solid #fff;z-index:300;opacity:0;pointer-events:none;transition:none;}' +
     '.nav-flyout.open{opacity:1;pointer-events:all;}' +
@@ -815,7 +824,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         flat.appendChild(item);
@@ -853,7 +862,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-dd-item' + (isActive ? ' active' : '');
+          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : '');
           item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
           item.href = appHref(subdomain);
           panel.appendChild(item);
@@ -880,7 +889,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         dd.appendChild(item);
@@ -1001,7 +1010,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-mobile-app' + (isActive ? ' active' : '');
+          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : '');
           item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
           item.href = appHref(subdomain);
           mApps.appendChild(item);
@@ -1013,7 +1022,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
+        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : '');
         item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
         item.href = appHref(subdomain);
         mApps.appendChild(item);
