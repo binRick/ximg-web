@@ -540,6 +540,14 @@ function parseUA(ua) {
   return { browser, version, os, bot: isBot, tool: isTool };
 }
 
+// ── Hack attempt detection (mirrors nginx shared.conf scanner ban list) ─────
+const HACK_PATTERN = /\/exec\/show\/|tmUnblock\.cgi|\/cgi-bin\/|\.php($|\?)|\/wp-login|\/wp-admin|\/wp-content\/|\/wp-includes\/|\/wp-json\/|\/wp-config|\/xmlrpc\.php|wlwmanifest\.xml|\/solr\/|\/actuator\/|\/\.env($|\?|\.)|\/\.git\/|\/\.gitlab|\/\.aws\/|\/\.DS_Store|\/\.bash|\/\.zsh|\/\.sh_history|\/\.profile|\/\.python_history|\/\.node_repl_history|etc\/passwd|phpinfo|eval-stdin|\/vendor\/phpunit\/|\/phpMyAdmin|\/HNAP1|\/boaform\/|\/geoserver\/|\/hudson|\/SDK\/webLanguage|\/server-status|\/debug\/default\/|\/webui\/|XDEBUG_SESSION|169\.254\.169\.254|\/parameters\.yml|\/docker-compose\.yml|\/kustomization\.yaml|\/\_ignition\/|\/\_profiler\//i;
+
+function isHackAttempt(urlPath) {
+  if (!urlPath || urlPath === '-' || urlPath === '/') return false;
+  return HACK_PATTERN.test(urlPath);
+}
+
 // ── Parse nginx combined log line ────────────────────────────────────────────
 function parseLine(raw) {
   const m = raw.match(
@@ -727,6 +735,49 @@ const HTML = `<!DOCTYPE html>
       border-radius:5px;color:var(--dim);cursor:pointer;font-size:1rem;line-height:1;
       display:flex;align-items:center;justify-content:center}
     .mz-btn:hover{color:var(--text);border-color:rgba(255,255,255,.25)}
+
+    /* ── Live Hacks ──────────────────────────────────────────────────── */
+    #hack-live-container{flex:1;overflow:hidden;display:none;flex-direction:column}
+    #hack-live-header{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;
+      border-bottom:1px solid rgba(255,107,107,.15);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
+    #hack-live-header .hl-val{color:#ff6b6b;font-weight:700}
+    #hack-live-log{flex:1;overflow-y:auto;padding:.75rem 1rem 1rem;font-size:.78rem;line-height:1.7}
+    #hack-live-log::-webkit-scrollbar{width:6px}
+    #hack-live-log::-webkit-scrollbar-thumb{background:rgba(255,107,107,.15);border-radius:3px}
+    #hack-live-log .log-line.new{animation:hackFlash .5s ease}
+    @keyframes hackFlash{from{background:rgba(255,107,107,.12)}to{background:transparent}}
+    #hack-live-log .col-path{color:#ff6b6b}
+
+    /* ── Hacks Report ────────────────────────────────────────────────── */
+    #hack-report-container{flex:1;overflow:hidden;display:none;flex-direction:column}
+    #hr-header{display:flex;align-items:center;gap:.75rem;padding:.45rem .75rem;
+      border-bottom:1px solid rgba(255,107,107,.15);font-size:.73rem;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
+    #hr-header .hr-val{color:#ff6b6b;font-weight:700}
+    #hr-body{flex:1;overflow-y:auto;padding:.75rem}
+    #hr-body::-webkit-scrollbar{width:6px}
+    #hr-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    #hr-panels{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    @media(max-width:900px){#hr-panels{grid-template-columns:1fr}}
+    .hr-panel{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
+      border-radius:8px;overflow:hidden;display:flex;flex-direction:column;max-height:480px}
+    .hr-panel-title{font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:#ff6b6b;
+      padding:.5rem .65rem;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,107,107,.04);flex-shrink:0}
+    .hr-table{width:100%;border-collapse:collapse;font-size:.74rem}
+    .hr-table thead{position:sticky;top:0;z-index:1}
+    .hr-table th{color:var(--dim);font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;
+      text-align:left;padding:.3rem .5rem;border-bottom:1px solid rgba(255,255,255,.07);background:#0d1117}
+    .hr-table td{padding:.32rem .5rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;word-break:break-all}
+    .hr-table tr:hover td{background:rgba(255,255,255,.025)}
+    .hr-table tbody{overflow-y:auto}
+    .hr-panel .hr-table-wrap{flex:1;overflow-y:auto}
+    .hr-ip{color:#79c0ff;text-decoration:none;font-size:.74rem}
+    .hr-ip:hover{text-decoration:underline;color:#fff}
+    .hr-uri{color:#ff6b6b;font-size:.72rem}
+    .hr-geo{color:#a5b4fc;font-size:.71rem}
+    .hr-ua{color:var(--dim);font-size:.68rem;word-break:break-all;max-width:400px}
+    .hr-hits{color:var(--text);text-align:right;font-size:.74rem;white-space:nowrap}
+    .hr-bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:3px;max-width:120px}
+    .hr-bar{height:100%;background:#ff6b6b;border-radius:2px}
 
     .site-picker{position:relative}
     #site-picker-btn{font-size:.75rem;padding:.25rem .65rem;border-radius:6px;cursor:pointer;
@@ -1021,6 +1072,8 @@ const HTML = `<!DOCTYPE html>
     <button class="tab" id="dl-tab">bundler downloads</button>
     <button class="tab" id="bot-tab">🤖 bots</button>
     <button class="tab" id="map-tab">🌍 global map</button>
+    <button class="tab" id="hack-live-tab">⚡ live hacks</button>
+    <button class="tab" id="hack-report-tab">🛡 hacks report</button>
 <div class="stats">
       <span>total <span class="stat-val" id="st-total">0</span></span>
       <span>2xx <span class="stat-val s2xx" id="st-2xx">0</span></span>
@@ -1117,6 +1170,59 @@ const HTML = `<!DOCTYPE html>
   </div>
   <div id="map-tooltip"></div>
 
+  <div id="hack-live-container">
+    <div id="hack-live-header">
+      <span>⚡ real-time hack attempts</span>
+      <span>total <span class="hl-val" id="hl-total">0</span></span>
+      <button id="hack-live-pause" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:'Courier New',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">⏸ pause</button>
+      <span id="hack-live-ip-wrap" style="display:inline-flex;align-items:center;gap:.3rem;margin-left:.3rem">
+        <input id="hack-live-ip-filter" type="text" placeholder="filter IP…" autocomplete="off" spellcheck="false"
+          style="font-family:'Courier New',monospace;font-size:.75rem;background:rgba(255,255,255,.04);
+          border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:.25rem .55rem;color:#ff6b6b;
+          width:130px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='rgba(255,107,107,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+        <button id="hack-live-ip-clear" style="display:none;font-size:.7rem;padding:.2rem .45rem;border-radius:4px;
+          cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+          color:#586069;font-family:'Courier New',monospace" title="Clear filter">✕</button>
+      </span>
+    </div>
+    <div id="hack-live-log">
+      <div class="connecting">connecting…</div>
+    </div>
+  </div>
+
+  <div id="hack-report-container">
+    <div id="hr-header">
+      <span>🛡 hack attempts report</span>
+      <span>total attacks <span class="hr-val" id="hr-total">—</span></span>
+      <span>unique IPs <span class="hr-val" id="hr-ips">—</span></span>
+      <span>countries <span class="hr-val" id="hr-countries">—</span></span>
+      <button id="hr-refresh" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:#586069;font-family:'Courier New',monospace;font-size:.72rem;padding:.2rem .55rem;cursor:pointer">↺ refresh</button>
+    </div>
+    <div id="hr-body">
+      <div id="hr-panels">
+        <div class="hr-panel">
+          <div class="hr-panel-title">top request URIs</div>
+          <table class="hr-table"><thead><tr><th>URI</th><th style="text-align:right">hits</th></tr></thead>
+          <tbody id="hr-uris"></tbody></table>
+        </div>
+        <div class="hr-panel">
+          <div class="hr-panel-title">top attacker IPs</div>
+          <table class="hr-table"><thead><tr><th>IP</th><th>location</th><th style="text-align:right">hits</th></tr></thead>
+          <tbody id="hr-ips-table"></tbody></table>
+        </div>
+        <div class="hr-panel">
+          <div class="hr-panel-title">top countries</div>
+          <table class="hr-table"><thead><tr><th>country</th><th style="text-align:right">hits</th><th style="text-align:right">IPs</th></tr></thead>
+          <tbody id="hr-countries-table"></tbody></table>
+        </div>
+        <div class="hr-panel">
+          <div class="hr-panel-title">top user agents</div>
+          <table class="hr-table"><thead><tr><th>user agent</th><th style="text-align:right">hits</th></tr></thead>
+          <tbody id="hr-ua-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
     const MAX_LINES = 500;
@@ -1323,6 +1429,8 @@ const HTML = `<!DOCTYPE html>
 
     function enterSshMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
+      if (typeof hackLiveMode !== 'undefined' && hackLiveMode) leaveHackLiveMode();
+      if (typeof hackReportMode !== 'undefined' && hackReportMode) leaveHackReportMode();
       sshMode = true;
       history.replaceState(null, '', '#ssh');
       sshTab.classList.add('active');
@@ -1408,12 +1516,14 @@ const HTML = `<!DOCTYPE html>
       }
     });
 
-    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab)').forEach(btn => {
+    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab):not(#hack-live-tab):not(#hack-report-tab)').forEach(btn => {
       btn.addEventListener('click', () => {
         if (sshMode) leaveSshMode();
         if (dlMode) leaveDlMode();
         if (botMode) leaveBotMode();
         if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
+        if (typeof hackLiveMode !== 'undefined' && hackLiveMode) leaveHackLiveMode();
+        if (typeof hackReportMode !== 'undefined' && hackReportMode) leaveHackReportMode();
       });
     });
 
@@ -1425,6 +1535,8 @@ const HTML = `<!DOCTYPE html>
 
     function enterDlMode() {
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
+      if (typeof hackLiveMode !== 'undefined' && hackLiveMode) leaveHackLiveMode();
+      if (typeof hackReportMode !== 'undefined' && hackReportMode) leaveHackReportMode();
       dlMode = true;
       history.replaceState(null, '', '#dl');
       dlTab.classList.add('active');
@@ -1585,6 +1697,8 @@ const HTML = `<!DOCTYPE html>
       if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
       if (dlMode) leaveDlMode();
       if (sshMode) leaveSshMode();
+      if (typeof hackLiveMode !== 'undefined' && hackLiveMode) leaveHackLiveMode();
+      if (typeof hackReportMode !== 'undefined' && hackReportMode) leaveHackReportMode();
       botMode = true;
       history.replaceState(null, '', '#bot');
       botTab.classList.add('active');
@@ -1636,6 +1750,8 @@ const HTML = `<!DOCTYPE html>
 
     function enterMapMode() {
       if (botMode) leaveBotMode();
+      if (typeof hackLiveMode !== 'undefined' && hackLiveMode) leaveHackLiveMode();
+      if (typeof hackReportMode !== 'undefined' && hackReportMode) leaveHackReportMode();
       mapMode = true;
       history.replaceState(null, '', '#map');
       mapTab.classList.add('active');
@@ -2006,6 +2122,207 @@ const HTML = `<!DOCTYPE html>
       }
     });
 
+    // ── Live Hacks tab ─────────────────────────────────────────────────────────
+    const hackLiveTab       = document.getElementById('hack-live-tab');
+    const hackLiveContainer = document.getElementById('hack-live-container');
+    const hackLiveLog       = document.getElementById('hack-live-log');
+    let hackLiveMode = false;
+    let hackLiveWs = null;
+    let hackLivePaused = false;
+    let hackLiveTotal = 0;
+    let hackLiveIpFilter = '';
+
+    const hackLiveIpInput = document.getElementById('hack-live-ip-filter');
+    const hackLiveIpClear = document.getElementById('hack-live-ip-clear');
+
+    hackLiveIpInput.addEventListener('input', function() {
+      hackLiveIpFilter = this.value.trim();
+      hackLiveIpClear.style.display = hackLiveIpFilter ? '' : 'none';
+      hackLiveLog.querySelectorAll('.log-line').forEach(function(el) {
+        var ipSpan = el.querySelector('.col-ip');
+        if (!ipSpan) return;
+        el.style.display = (!hackLiveIpFilter || ipSpan.textContent.trim().indexOf(hackLiveIpFilter) !== -1) ? '' : 'none';
+      });
+    });
+
+    hackLiveIpClear.addEventListener('click', function() {
+      hackLiveIpInput.value = '';
+      hackLiveIpFilter = '';
+      this.style.display = 'none';
+      hackLiveLog.querySelectorAll('.log-line').forEach(function(el) { el.style.display = ''; });
+    });
+
+    document.getElementById('hack-live-pause').addEventListener('click', function() {
+      hackLivePaused = !hackLivePaused;
+      this.textContent = hackLivePaused ? '▶ resume' : '⏸ pause';
+    });
+
+    function addHackLine(data) {
+      if (hackLivePaused) return;
+      if (hackLiveLog.querySelector('.connecting')) hackLiveLog.innerHTML = '';
+      const el = document.createElement('div');
+      if (data.path) {
+        const sc = statusClass(data.status);
+        el.className = 'log-line new';
+        el.innerHTML =
+          '<span class="col-ts">'  + esc(fmtLogTs(data.ts))                    + '</span>' +
+          '<span class="col-ip"><a class="ip-link" href="/ip/' + encodeURIComponent(data.ip||'') + '">' + esc(data.ip) + '</a></span>' +
+          '<span class="col-geo">' + esc(geoLabel(data))                      + '</span>' +
+          '<span class="' + sc + '">' + esc(data.status)                      + '</span>' +
+          '<span class="col-bytes">' + fmtBytes(data.bytes)                   + '</span>' +
+          '<span class="col-app">'  + esc(data.site || '')                    + '</span>' +
+          '<span class="col-path">' + esc((data.method||'') + ' ' + (data.path||'')) + '</span>';
+        hackLiveTotal++;
+        document.getElementById('hl-total').textContent = hackLiveTotal;
+      }
+      if (hackLiveIpFilter && data.ip && data.ip.indexOf(hackLiveIpFilter) === -1) el.style.display = 'none';
+      hackLiveLog.prepend(el);
+      while (hackLiveLog.children.length > MAX_LINES) hackLiveLog.removeChild(hackLiveLog.lastChild);
+    }
+
+    function connectHackLive() {
+      if (hackLiveWs) { hackLiveWs.onclose = null; hackLiveWs.close(); }
+      hackLiveLog.innerHTML = '<div class="connecting">connecting…</div>';
+      hackLiveTotal = 0;
+      document.getElementById('hl-total').textContent = '0';
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      hackLiveWs = new WebSocket(proto + '//' + location.host + '/ws?site=hacks');
+      hackLiveWs.onmessage = e => { try { const d = JSON.parse(e.data); if (!d.ping) addHackLine(d); } catch(_) {} };
+      hackLiveWs.onclose = () => { if (hackLiveMode) setTimeout(connectHackLive, 3000); };
+      hackLiveWs.onerror = () => { try { hackLiveWs && hackLiveWs.close(); } catch(_) {} };
+    }
+
+    function enterHackLiveMode() {
+      if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
+      if (botMode) leaveBotMode();
+      if (dlMode) leaveDlMode();
+      if (sshMode) leaveSshMode();
+      if (hackReportMode) leaveHackReportMode();
+      hackLiveMode = true;
+      history.replaceState(null, '', '#hack-live');
+      hackLiveTab.classList.add('active');
+      document.querySelector('.tab[data-site="all"]').classList.remove('active');
+      pickerBtn.classList.remove('has-selection');
+      pickerBtn.textContent = '☰ app ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
+      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('ip-filter-wrap').style.display = 'none';
+      document.querySelector('.stats').style.display = 'none';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      logContainer.style.display = 'none';
+      sshContainer.style.display = 'none';
+      dlContainer.style.display = 'none';
+      botContainer.style.display = 'none';
+      if (typeof mapContainer !== 'undefined') mapContainer.style.display = 'none';
+      hackReportContainer.style.display = 'none';
+      hackLiveContainer.style.display = 'flex';
+      connectHackLive();
+    }
+
+    function leaveHackLiveMode() {
+      hackLiveMode = false;
+      history.replaceState(null, '', location.pathname);
+      hackLiveTab.classList.remove('active');
+      if (hackLiveWs) { hackLiveWs.onclose = null; hackLiveWs.close(); hackLiveWs = null; }
+      document.getElementById('pause-btn').style.display = '';
+      document.getElementById('ip-filter-wrap').style.display = '';
+      document.querySelector('.stats').style.display = '';
+      hackLiveContainer.style.display = 'none';
+      logContainer.style.display = '';
+    }
+
+    hackLiveTab.addEventListener('click', () => { if (!hackLiveMode) enterHackLiveMode(); });
+
+    // ── Hacks Report tab ────────────────────────────────────────────────────────
+    const hackReportTab       = document.getElementById('hack-report-tab');
+    const hackReportContainer = document.getElementById('hack-report-container');
+    let hackReportMode = false;
+
+    function loadHackReport() {
+      document.getElementById('hr-uris').innerHTML = '<tr><td colspan="2" style="color:var(--dim);padding:1rem;text-align:center">Loading…</td></tr>';
+      document.getElementById('hr-ips-table').innerHTML = '<tr><td colspan="3" style="color:var(--dim);padding:1rem;text-align:center">Loading…</td></tr>';
+      document.getElementById('hr-countries-table').innerHTML = '<tr><td colspan="3" style="color:var(--dim);padding:1rem;text-align:center">Loading…</td></tr>';
+      document.getElementById('hr-ua-table').innerHTML = '<tr><td colspan="2" style="color:var(--dim);padding:1rem;text-align:center">Loading…</td></tr>';
+      fetch('/hack-data')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('hr-total').textContent = (data.totalHacks||0).toLocaleString();
+          document.getElementById('hr-ips').textContent = (data.uniqueIps||0).toLocaleString();
+          document.getElementById('hr-countries').textContent = (data.totalCountries||0).toLocaleString();
+          const maxUri = data.topUris && data.topUris[0] ? data.topUris[0][1] : 1;
+          document.getElementById('hr-uris').innerHTML = (data.topUris||[]).map(function(e) {
+            return '<tr><td class="hr-uri">' + esc(e[0]) + '<div class="hr-bar-wrap"><div class="hr-bar" style="width:' + Math.round(e[1]/maxUri*100) + '%"></div></div></td><td class="hr-hits">' + e[1].toLocaleString() + '</td></tr>';
+          }).join('') || '<tr><td colspan="2" style="color:var(--dim);padding:1rem;text-align:center">No hack attempts found</td></tr>';
+          const maxIp = data.topIps && data.topIps[0] ? data.topIps[0].hits : 1;
+          document.getElementById('hr-ips-table').innerHTML = (data.topIps||[]).map(function(e) {
+            var geo = [e.city, e.country].filter(Boolean).join(', ');
+            return '<tr><td><a class="hr-ip" href="/ip/' + encodeURIComponent(e.ip) + '">' + esc(e.ip) + '</a><div class="hr-bar-wrap"><div class="hr-bar" style="width:' + Math.round(e.hits/maxIp*100) + '%"></div></div></td><td class="hr-geo">' + (e.countryCode ? countryFlag(e.countryCode) + ' ' : '') + esc(geo || '—') + '</td><td class="hr-hits">' + e.hits.toLocaleString() + '</td></tr>';
+          }).join('') || '<tr><td colspan="3" style="color:var(--dim);padding:1rem;text-align:center">No attackers found</td></tr>';
+          const maxCountry = data.topCountries && data.topCountries[0] ? data.topCountries[0].hits : 1;
+          document.getElementById('hr-countries-table').innerHTML = (data.topCountries||[]).map(function(e) {
+            return '<tr><td>' + (e.code ? countryFlag(e.code) + ' ' : '') + esc(e.name || e.code || '—') + '</td><td class="hr-hits">' + e.hits.toLocaleString() + '</td><td class="hr-hits">' + e.ips + '</td></tr>';
+          }).join('') || '<tr><td colspan="3" style="color:var(--dim);padding:1rem;text-align:center">No data</td></tr>';
+          const maxUa = data.topUAs && data.topUAs[0] ? data.topUAs[0][1] : 1;
+          document.getElementById('hr-ua-table').innerHTML = (data.topUAs||[]).map(function(e) {
+            return '<tr><td class="hr-ua">' + esc(e[0]) + '</td><td class="hr-hits">' + e[1].toLocaleString() + '</td></tr>';
+          }).join('') || '<tr><td colspan="2" style="color:var(--dim);padding:1rem;text-align:center">No data</td></tr>';
+        })
+        .catch(function() {
+          document.getElementById('hr-uris').innerHTML = '<tr><td colspan="2" style="color:var(--dim);padding:1rem;text-align:center">Failed to load hack data.</td></tr>';
+        });
+    }
+
+    function enterHackReportMode() {
+      if (typeof mapMode !== 'undefined' && mapMode) leaveMapMode();
+      if (botMode) leaveBotMode();
+      if (dlMode) leaveDlMode();
+      if (sshMode) leaveSshMode();
+      if (hackLiveMode) leaveHackLiveMode();
+      hackReportMode = true;
+      history.replaceState(null, '', '#hack-report');
+      hackReportTab.classList.add('active');
+      document.querySelector('.tab[data-site="all"]').classList.remove('active');
+      pickerBtn.classList.remove('has-selection');
+      pickerBtn.textContent = '☰ app ▾';
+      siteList.querySelectorAll('.site-opt').forEach(o => o.classList.remove('active'));
+      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('ip-filter-wrap').style.display = 'none';
+      document.querySelector('.stats').style.display = 'none';
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      logContainer.style.display = 'none';
+      sshContainer.style.display = 'none';
+      dlContainer.style.display = 'none';
+      botContainer.style.display = 'none';
+      if (typeof mapContainer !== 'undefined') mapContainer.style.display = 'none';
+      hackLiveContainer.style.display = 'none';
+      hackReportContainer.style.display = 'flex';
+      loadHackReport();
+    }
+
+    function leaveHackReportMode() {
+      hackReportMode = false;
+      history.replaceState(null, '', location.pathname);
+      hackReportTab.classList.remove('active');
+      document.getElementById('pause-btn').style.display = '';
+      document.getElementById('ip-filter-wrap').style.display = '';
+      document.querySelector('.stats').style.display = '';
+      hackReportContainer.style.display = 'none';
+      logContainer.style.display = '';
+    }
+
+    hackReportTab.addEventListener('click', () => { if (!hackReportMode) enterHackReportMode(); });
+    document.getElementById('hr-refresh').addEventListener('click', loadHackReport);
+
+    // Update other tab handlers to also leave hack modes
+    document.querySelectorAll('.tab:not(#ssh-tab):not(#dl-tab):not(#bot-tab):not(#map-tab):not(#hack-live-tab):not(#hack-report-tab)').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (hackLiveMode) leaveHackLiveMode();
+        if (hackReportMode) leaveHackReportMode();
+      });
+    });
+
     // ── Restore state from URL hash on page load ───────────────────────────────
     (function restoreHash() {
       const h = location.hash.slice(1);
@@ -2013,6 +2330,8 @@ const HTML = `<!DOCTYPE html>
       if (h === 'dl')  { enterDlMode();  return; }
       if (h === 'bot') { enterBotMode(); return; }
       if (h === 'map') { enterMapMode(); return; }
+      if (h === 'hack-live') { enterHackLiveMode(); return; }
+      if (h === 'hack-report') { enterHackReportMode(); return; }
       if (h && h !== 'all') { selectSite(h); return; }
       connect(currentSite);
     })();
@@ -2308,6 +2627,98 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Hack report data ────────────────────────────────────────────────────────
+  if (req.url === '/hack-data') {
+    const LINES_PER_FILE = 2000;
+    const uriMap = new Map();     // uri -> count
+    const ipMap  = new Map();     // ip -> { hits, uris }
+    const uaMap  = new Map();     // ua -> count
+    let totalHacks = 0;
+
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      const lines = lastLines(path.join(LOGS_DIR, logFilename), LINES_PER_FILE);
+      for (const line of lines) {
+        const p = parseLine(line);
+        if (!p.ip || INTERNAL_IPS.has(p.ip) || !isHackAttempt(p.path)) continue;
+        totalHacks++;
+        uriMap.set(p.path, (uriMap.get(p.path) || 0) + 1);
+        if (!ipMap.has(p.ip)) ipMap.set(p.ip, { hits: 0, uris: new Set() });
+        const e = ipMap.get(p.ip);
+        e.hits++;
+        if (e.uris.size < 30) e.uris.add(p.path);
+        if (p.ua && p.ua !== '-') uaMap.set(p.ua, (uaMap.get(p.ua) || 0) + 1);
+      }
+    }
+
+    // Also scan recent rotated logs (last 3 days)
+    const now = Date.now();
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      for (let d = 1; d <= 3; d++) {
+        const dt = new Date(now - d * 86400000);
+        const ds = dt.toISOString().slice(0,10).replace(/-/g,'');
+        const paths = [
+          path.join(LOGS_DIR, logFilename + '-' + ds),
+          path.join(LOGS_DIR, logFilename + '-' + ds + '.gz'),
+        ];
+        for (const fp of paths) {
+          try {
+            let content;
+            if (fp.endsWith('.gz')) {
+              content = zlib.gunzipSync(fs.readFileSync(fp)).toString('utf8');
+            } else {
+              content = fs.readFileSync(fp, 'utf8');
+            }
+            for (const line of content.split('\n')) {
+              const p = parseLine(line);
+              if (!p.ip || INTERNAL_IPS.has(p.ip) || !isHackAttempt(p.path)) continue;
+              totalHacks++;
+              uriMap.set(p.path, (uriMap.get(p.path) || 0) + 1);
+              if (!ipMap.has(p.ip)) ipMap.set(p.ip, { hits: 0, uris: new Set() });
+              const e = ipMap.get(p.ip);
+              e.hits++;
+              if (e.uris.size < 30) e.uris.add(p.path);
+              if (p.ua && p.ua !== '-') uaMap.set(p.ua, (uaMap.get(p.ua) || 0) + 1);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    const uniqueIps = [...ipMap.keys()];
+    await Promise.all(uniqueIps.map(ip => lookupGeo(ip)));
+
+    const topUris = [...uriMap.entries()].sort((a,b) => b[1]-a[1]).slice(0, 50);
+    const topIps  = [...ipMap.entries()]
+      .sort((a,b) => b[1].hits - a[1].hits)
+      .slice(0, 50)
+      .map(([ip, d]) => {
+        const g = ipGeoCache.get(ip) || {};
+        return { ip, hits: d.hits, countryCode: g.countryCode||'', country: g.country||'', city: g.city||'' };
+      });
+
+    // Aggregate by country
+    const countryMap = new Map(); // cc -> { hits, ips: Set }
+    for (const [ip, d] of ipMap.entries()) {
+      const g = ipGeoCache.get(ip) || {};
+      const cc = g.countryCode || '??';
+      if (!countryMap.has(cc)) countryMap.set(cc, { hits: 0, ips: new Set(), name: g.country || cc });
+      const c = countryMap.get(cc);
+      c.hits += d.hits;
+      c.ips.add(ip);
+    }
+    const topCountries = [...countryMap.entries()]
+      .sort((a,b) => b[1].hits - a[1].hits)
+      .slice(0, 30)
+      .map(([code, d]) => ({ code, name: d.name, hits: d.hits, ips: d.ips.size }));
+
+    const topUAs = [...uaMap.entries()].sort((a,b) => b[1]-a[1]).slice(0, 30);
+    const totalCountries = countryMap.size;
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ totalHacks, uniqueIps: ipMap.size, totalCountries, topUris, topIps, topCountries, topUAs }));
+    return;
+  }
+
   // ── IP profile page ─────────────────────────────────────────────────────────
   const ipRouteM = req.url.match(/^\/ip\/([^/?]+)/);
   if (ipRouteM) {
@@ -2538,6 +2949,45 @@ wss.on('connection', (ws, req) => {
       ws.send(JSON.stringify(parsed));
     } catch (_) {}
   };
+
+  if (site === 'hacks') {
+    // Like 'all' but only sends hack attempts
+    const makeSendHack = (siteName) => async line => {
+      if (ws.readyState !== ws.OPEN) return;
+      try {
+        const parsed = parseLine(line);
+        if (parsed.ip === '172.18.0.1') return;
+        if (!isHackAttempt(parsed.path)) return;
+        if (siteName) parsed.site = siteName;
+        if (parsed.ip) {
+          const geo = await lookupGeo(parsed.ip);
+          parsed.countryCode = geo.countryCode;
+          parsed.country = geo.country;
+          parsed.city = geo.city;
+        }
+        ws.send(JSON.stringify(parsed));
+      } catch (_) {}
+    };
+    const stopFns = [];
+    const seedLines = [];
+    for (const [siteName, logFilename] of Object.entries(LOG_FILES)) {
+      const logFile = path.join(LOGS_DIR, logFilename);
+      const send = makeSendHack(siteName);
+      for (const line of lastLines(logFile, 200)) {
+        const p = parseLine(line);
+        if (isHackAttempt(p.path)) {
+          seedLines.push({ ts: logLineSortKey(line), line, send });
+        }
+      }
+      stopFns.push(tailFile(logFile, makeSendHack(siteName)));
+    }
+    seedLines.sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
+    seedLines.slice(-200).forEach(({ line, send }) => send(line));
+    const stopAll = () => stopFns.forEach(fn => fn());
+    ws.on('close', stopAll);
+    ws.on('error', stopAll);
+    return;
+  }
 
   if (site === 'all') {
     const stopFns = [];
