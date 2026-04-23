@@ -4,7 +4,7 @@
  *
  * Connects to the real SSH honeypot (ssh:22), pre-warms the per-IP auth
  * counter to ≥ 10, then for each browser session:
- *   1. Sends timed auth_fail messages so the client can animate 9 failures.
+ *   1. Sends timed auth_fail messages so the client can animate 2 failures.
  *   2. Simultaneously opens a real SSH shell (always succeeds after warm-up).
  *   3. When both the animation finishes AND SSH is ready, sends auth_ok
  *      and relays the live PTY bidirectionally over WebSocket.
@@ -27,8 +27,8 @@ const PASSWORDS = [
 ];
 
 // Gaps between successive auth_fail display messages on the client (ms).
-// 9 values → 9 failures → ~9.5 s total animation.
-const FAIL_GAPS = [700, 650, 600, 550, 525, 500, 475, 450, 425];
+// 2 values → 2 failures → succeed on 3rd attempt.
+const FAIL_GAPS = [800, 700];
 
 // Stable per-process fingerprint (looks like a real RSA key hash)
 const SESSION_FP =
@@ -186,9 +186,9 @@ wss.on('connection', (ws, req) => {
     // Send SSH banner immediately
     sendJ({ t: 'banner', fp: SESSION_FP });
 
-    // Schedule the 9 failure messages
+    // Schedule failure messages
     let elapsed = 0;
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < FAIL_GAPS.length; i++) {
       elapsed += FAIL_GAPS[i];
       const n = i + 1;
       setTimeout(() => {
