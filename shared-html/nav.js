@@ -19,9 +19,9 @@
   var GROUPS = [
     { label: 'Tech', subs: [
       { label: 'AI / ML', apps: [['agents','agents'],['ai','ai'],['claude','claude'],['embeddings','embeddings'],['playground','playground'],['tokens','tokens']] },
-      { label: 'DevOps', apps: [['ansible','ansible'],['docker','docker'],['git','git'],['makefile','makefile'],['queue','queue'],['systemdesign','system design']] },
+      { label: 'DevOps', apps: [['ansible','ansible'],['docker','docker'],['git','git'],['queue','queue'],['systemdesign','system design']] },
       { label: 'General CS', apps: [['algorithms','algorithms'],['ascii','ascii'],['computers','computers'],['database','database'],['programming','programming'],['raylib','raylib'],['temperature','temp'],['vr','vr']] },
-      { label: 'Languages', apps: [['bash','bash'],['c99','c99'],['golang','golang'],['json','json'],['nodejs','nodejs'],['php','php'],['python','python'],['sql','sql'],['utf8','utf8'],['yaml','yaml'],['zsh','zsh']] },
+      { label: 'Languages', apps: [['bash','bash'],['c99','c99'],['golang','golang'],['json','json'],['makefile','makefile'],['nodejs','nodejs'],['php','php'],['python','python'],['sql','sql'],['utf8','utf8'],['yaml','yaml'],['zsh','zsh']] },
       { label: 'Networking', apps: [['bgp','bgp'],['cdn','cdn'],['dns','dns'],['http','http'],['internet','internet'],['loadbalancer','loadbalancer'],['network','network'],['request','request'],['smtp','smtp'],['ssh','ssh'],['tls','tls']] },
       { label: 'OS & Systems', apps: [['bsd','bsd'],['chmod','chmod'],['gentoo','gentoo'],['linux','linux'],['mac','mac'],['os','os'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vt101','vt101']] },
       { label: 'Security', apps: [['clamav','clamav'],['crypto','crypto'],['iptables','iptables'],['passwords','passwords'],['security','security'],['suricata','suricata']] },
