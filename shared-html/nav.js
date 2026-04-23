@@ -17,10 +17,14 @@
   gtag('config', 'G-SFB2VH4MNH');
 
   var GROUPS = [
-    { label: 'Tech', apps: [
-      ['agents','agents'],['ai','ai'],['algorithms','algorithms'],['ansible','ansible'],['ascii','ascii'],['bash','bash'],['bgp','bgp'],['bsd','bsd'],
-      ['c99','c99'],['cdn','cdn'],['chmod','chmod'],['clamav','clamav'],['claude','claude'],['computers','computers'],['crypto','crypto'],['database','database'],['dns','dns'],['docker','docker'],
-      ['embeddings','embeddings'],['gentoo','gentoo'],['git','git'],['golang','golang'],['http','http'],['internet','internet'],['iptables','iptables'],['json','json'],['linux','linux'],['loadbalancer','loadbalancer'],['mac','mac'],['makefile','makefile'],['network','network'],['nodejs','nodejs'],['os','os'],['passwords','passwords'],['php','php'],['playground','playground'],['programming','programming'],['python','python'],['queue','queue'],['raylib','raylib'],['request','request'],['security','security'],['smtp','smtp'],['sql','sql'],['ssh','ssh'],['suricata','suricata'],['systemd','systemd'],['systemdesign','systemdesign'],['temperature','temp'],['tls','tls'],['tmux','tmux'],['tokens','tokens'],['unix','unix'],['utf8','utf8'],['vim','vim'],['vr','vr'],['vt101','vt101'],['yaml','yaml'],['zsh','zsh']
+    { label: 'Tech', subs: [
+      { label: 'AI / ML', apps: [['agents','agents'],['ai','ai'],['claude','claude'],['embeddings','embeddings'],['playground','playground'],['tokens','tokens']] },
+      { label: 'DevOps', apps: [['ansible','ansible'],['docker','docker'],['git','git'],['makefile','makefile'],['queue','queue'],['systemdesign','system design']] },
+      { label: 'General CS', apps: [['algorithms','algorithms'],['ascii','ascii'],['computers','computers'],['database','database'],['programming','programming'],['raylib','raylib'],['temperature','temp'],['vr','vr']] },
+      { label: 'Languages', apps: [['bash','bash'],['c99','c99'],['golang','golang'],['json','json'],['nodejs','nodejs'],['php','php'],['python','python'],['sql','sql'],['utf8','utf8'],['yaml','yaml'],['zsh','zsh']] },
+      { label: 'Networking', apps: [['bgp','bgp'],['cdn','cdn'],['dns','dns'],['http','http'],['internet','internet'],['loadbalancer','loadbalancer'],['network','network'],['request','request'],['smtp','smtp'],['ssh','ssh'],['tls','tls']] },
+      { label: 'OS & Systems', apps: [['bsd','bsd'],['chmod','chmod'],['gentoo','gentoo'],['linux','linux'],['mac','mac'],['os','os'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vt101','vt101']] },
+      { label: 'Security', apps: [['clamav','clamav'],['crypto','crypto'],['iptables','iptables'],['passwords','passwords'],['security','security'],['suricata','suricata']] },
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['architecture','architecture'],['bourbon','bourbon'],['coffee','coffee'],['florida','florida'],
@@ -143,6 +147,28 @@
       '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
       '.nav-dd-item.active .nav-dd-dot{background:' + c.acc + ';}' +
       '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+
+      '.nav-flyout{position:absolute;top:calc(100% + 4px);left:0;display:flex;' +
+      'background:' + (c.ddbg || c.bg) + ';border:' + c.ddbord + ';border-radius:' + r + ';' +
+      'box-shadow:' + (c.ddshad || '0 8px 32px rgba(0,0,0,.7)') + ';z-index:300;' +
+      'opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;transform:translateY(-4px);}' +
+      '.nav-flyout.open{opacity:1;pointer-events:all;transform:none;}' +
+      '.nav-flyout.active-only .nav-flyout-cats,' +
+      '.nav-flyout.active-only .nav-flyout-panels{display:none!important;}' +
+      '.nav-flyout:not(.active-only) .nav-flyout-flat{display:none!important;}' +
+      '.nav-flyout.active-only .nav-flyout-flat .nav-dd-item:not(.active){display:none;}' +
+      '.nav-flyout.active-only{min-width:0;width:auto;}' +
+      '.nav-flyout-flat{padding:4px;}' +
+      '.nav-flyout-cats{display:flex;flex-direction:column;padding:4px 0;border-right:' + c.ddbord + ';}' +
+      '.nav-flyout-cat{font-size:.73rem;font-weight:600;color:' + c.dc + ';padding:6px 16px 6px 10px;' +
+      'cursor:default;white-space:nowrap;font-family:' + f + ';transition:' + tr + ';letter-spacing:.03em;}' +
+      '.nav-flyout-cat:hover,.nav-flyout-cat.hover{background:' + c.dHbg + ';color:' + c.dHc + ';}' +
+      '.nav-flyout-cat.has-active{color:' + c.acc + ';}' +
+      '.nav-flyout-panels{min-width:140px;}' +
+      '.nav-flyout-panel{display:none;padding:4px;}' +
+      '.nav-flyout-panel.show{display:flex;flex-direction:column;}' +
+      '.nav-mobile-sub-label{grid-column:1/-1;font-size:.65rem;color:' + c.dc + ';padding:8px 8px 2px;' +
+      'font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-family:' + f + ';}' +
 
       '.nav-hamburger{display:none;margin-left:auto;flex-shrink:0;cursor:pointer;' +
       'background:' + c.tbg + ';border:' + c.tbord + ';border-radius:' + r + ';' +
@@ -273,6 +299,28 @@
     '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
     '.nav-dd-item.active .nav-dd-dot{background:#000080;}' +
     '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+    '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
+    'background:#c0c0c0;border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
+    'border-bottom-color:#000;border-right-color:#000;' +
+    'box-shadow:2px 2px 0 #000,inset 1px 1px 0 #dfdfdf,inset -1px -1px 0 #808080;' +
+    'z-index:300;opacity:0;pointer-events:none;transition:none;}' +
+    '.nav-flyout.open{opacity:1;pointer-events:all;}' +
+    '.nav-flyout.active-only .nav-flyout-cats,' +
+    '.nav-flyout.active-only .nav-flyout-panels{display:none!important;}' +
+    '.nav-flyout:not(.active-only) .nav-flyout-flat{display:none!important;}' +
+    '.nav-flyout.active-only .nav-flyout-flat .nav-dd-item:not(.active){display:none;}' +
+    '.nav-flyout.active-only{min-width:0;width:auto;}' +
+    '.nav-flyout-flat{padding:2px;}' +
+    '.nav-flyout-cats{display:flex;flex-direction:column;padding:2px 0;border-right:1px solid #808080;}' +
+    '.nav-flyout-cat{font-size:.73rem;font-weight:400;color:#000;padding:4px 16px 4px 8px;' +
+    'cursor:default;white-space:nowrap;font-family:"MS Sans Serif",Arial,sans-serif;}' +
+    '.nav-flyout-cat:hover,.nav-flyout-cat.hover{background:#000080;color:#fff;}' +
+    '.nav-flyout-cat.has-active{font-weight:700;color:#000080;}' +
+    '.nav-flyout-panels{min-width:140px;}' +
+    '.nav-flyout-panel{display:none;padding:2px;}' +
+    '.nav-flyout-panel.show{display:flex;flex-direction:column;}' +
+    '.nav-mobile-sub-label{grid-column:1/-1;font-size:.65rem;color:#000;padding:8px 8px 2px;' +
+    'font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-family:"MS Sans Serif",Arial,sans-serif;}' +
     '.nav-hamburger{display:none;margin-left:auto;flex-shrink:0;cursor:pointer;' +
     'background:#c0c0c0;border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
     'border-bottom-color:#000;border-right-color:#000;' +
@@ -593,6 +641,25 @@
     '.nav-dd-dot{width:4px;height:4px;flex-shrink:0;background:transparent;}' +
     '.nav-dd-item.active .nav-dd-dot{background:#ff0;}' +
     '@keyframes navpulse{0%,100%{opacity:1}50%{opacity:.4}}' +
+    '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
+    'background:#000;border:2px solid #fff;z-index:300;opacity:0;pointer-events:none;transition:none;}' +
+    '.nav-flyout.open{opacity:1;pointer-events:all;}' +
+    '.nav-flyout.active-only .nav-flyout-cats,' +
+    '.nav-flyout.active-only .nav-flyout-panels{display:none!important;}' +
+    '.nav-flyout:not(.active-only) .nav-flyout-flat{display:none!important;}' +
+    '.nav-flyout.active-only .nav-flyout-flat .nav-dd-item:not(.active){display:none;}' +
+    '.nav-flyout.active-only{min-width:0;width:auto;}' +
+    '.nav-flyout-flat{padding:2px;}' +
+    '.nav-flyout-cats{display:flex;flex-direction:column;padding:2px 0;border-right:1px solid #fff;}' +
+    '.nav-flyout-cat{font-size:.73rem;font-weight:700;color:#0ff;padding:4px 16px 4px 8px;' +
+    'cursor:default;white-space:nowrap;font-family:\'Courier New\',monospace;}' +
+    '.nav-flyout-cat:hover,.nav-flyout-cat.hover{background:#00aaaa;color:#000;}' +
+    '.nav-flyout-cat.has-active{color:#ff0;}' +
+    '.nav-flyout-panels{min-width:140px;}' +
+    '.nav-flyout-panel{display:none;padding:2px;}' +
+    '.nav-flyout-panel.show{display:flex;flex-direction:column;}' +
+    '.nav-mobile-sub-label{grid-column:1/-1;font-size:.65rem;color:#0ff;padding:8px 8px 2px;' +
+    'font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-family:\'Courier New\',monospace;}' +
     '.nav-hamburger{display:none;margin-left:auto;flex-shrink:0;cursor:pointer;' +
     'background:#0000aa;border:none;border-radius:0;padding:3px 8px;color:#fff;font-size:1rem;line-height:1;' +
     'font-family:\'Courier New\',monospace;user-select:none;transition:none;}' +
@@ -718,7 +785,11 @@
 
   // ── Desktop dropdowns ──────────────────────────────────────────────────────
   GROUPS.forEach(function (g) {
-    var hasActive = g.apps.some(function (a) {
+    var allApps = g.subs
+      ? g.subs.reduce(function (acc, s) { return acc.concat(s.apps); }, [])
+      : g.apps;
+
+    var hasActive = allApps.some(function (a) {
       var sub = a[0];
       return sub + '.ximg.app' === curHost ||
              (PATH_APPS[sub] && curHost === 'ximg.app' && curPath === sub);
@@ -731,19 +802,90 @@
     trigger.className = 'nav-trigger' + (hasActive ? ' has-active' : '');
     trigger.innerHTML = g.label + ' <span class="nav-caret">▾</span>';
 
-    var dd = document.createElement('div');
-    dd.className = 'nav-dropdown' + (g.apps.length >= 18 ? ' wider' : g.apps.length >= 9 ? ' wide' : '');
+    var dd;
 
-    g.apps.forEach(function (a) {
-      var subdomain = a[0], label = a[1];
-      var isActive = subdomain + '.ximg.app' === curHost ||
-                     (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
-      var item = document.createElement('a');
-      item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
-      item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
-      item.href = appHref(subdomain);
-      dd.appendChild(item);
-    });
+    if (g.subs) {
+      dd = document.createElement('div');
+      dd.className = 'nav-flyout';
+
+      var flat = document.createElement('div');
+      flat.className = 'nav-flyout-flat';
+      allApps.forEach(function (a) {
+        var subdomain = a[0], label = a[1];
+        var isActive = subdomain + '.ximg.app' === curHost ||
+                       (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
+        var item = document.createElement('a');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '');
+        item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
+        item.href = appHref(subdomain);
+        flat.appendChild(item);
+      });
+      dd.appendChild(flat);
+
+      var catsDiv = document.createElement('div');
+      catsDiv.className = 'nav-flyout-cats';
+      var panelsDiv = document.createElement('div');
+      panelsDiv.className = 'nav-flyout-panels';
+      var panels = [];
+
+      g.subs.forEach(function (sub, idx) {
+        var subHasActive = sub.apps.some(function (a) {
+          return a[0] + '.ximg.app' === curHost ||
+                 (PATH_APPS[a[0]] && curHost === 'ximg.app' && curPath === a[0]);
+        });
+
+        var cat = document.createElement('div');
+        cat.className = 'nav-flyout-cat' + (subHasActive ? ' has-active' : '');
+        cat.textContent = sub.label;
+
+        cat.addEventListener('mouseenter', function () {
+          panels.forEach(function (p, i) { p.classList.toggle('show', i === idx); });
+          catsDiv.querySelectorAll('.nav-flyout-cat').forEach(function (c) { c.classList.remove('hover'); });
+          cat.classList.add('hover');
+        });
+
+        catsDiv.appendChild(cat);
+
+        var panel = document.createElement('div');
+        panel.className = 'nav-flyout-panel';
+        sub.apps.forEach(function (a) {
+          var subdomain = a[0], label = a[1];
+          var isActive = subdomain + '.ximg.app' === curHost ||
+                         (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
+          var item = document.createElement('a');
+          item.className = 'nav-dd-item' + (isActive ? ' active' : '');
+          item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
+          item.href = appHref(subdomain);
+          panel.appendChild(item);
+        });
+
+        panels.push(panel);
+        panelsDiv.appendChild(panel);
+      });
+
+      dd.appendChild(catsDiv);
+      dd.appendChild(panelsDiv);
+
+      dd.addEventListener('mouseleave', function () {
+        panels.forEach(function (p) { p.classList.remove('show'); });
+        catsDiv.querySelectorAll('.nav-flyout-cat').forEach(function (c) { c.classList.remove('hover'); });
+      });
+
+    } else {
+      dd = document.createElement('div');
+      dd.className = 'nav-dropdown' + (g.apps.length >= 18 ? ' wider' : g.apps.length >= 9 ? ' wide' : '');
+
+      g.apps.forEach(function (a) {
+        var subdomain = a[0], label = a[1];
+        var isActive = subdomain + '.ximg.app' === curHost ||
+                       (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
+        var item = document.createElement('a');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
+        item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
+        item.href = appHref(subdomain);
+        dd.appendChild(item);
+      });
+    }
 
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -827,7 +969,11 @@
   mobilePanel.className = 'nav-mobile-panel';
 
   GROUPS.forEach(function (g) {
-    var hasActive = g.apps.some(function (a) {
+    var allApps = g.subs
+      ? g.subs.reduce(function (acc, s) { return acc.concat(s.apps); }, [])
+      : g.apps;
+
+    var hasActive = allApps.some(function (a) {
       var sub = a[0];
       return sub + '.ximg.app' === curHost ||
              (PATH_APPS[sub] && curHost === 'ximg.app' && curPath === sub);
@@ -843,16 +989,36 @@
     var mApps = document.createElement('div');
     mApps.className = 'nav-mobile-apps';
 
-    g.apps.forEach(function (a) {
-      var subdomain = a[0], label = a[1];
-      var isActive = subdomain + '.ximg.app' === curHost ||
-                     (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
-      var item = document.createElement('a');
-      item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
-      item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
-      item.href = appHref(subdomain);
-      mApps.appendChild(item);
-    });
+    if (g.subs) {
+      g.subs.forEach(function (sub) {
+        var subLabel = document.createElement('div');
+        subLabel.className = 'nav-mobile-sub-label';
+        subLabel.textContent = sub.label;
+        mApps.appendChild(subLabel);
+
+        sub.apps.forEach(function (a) {
+          var subdomain = a[0], label = a[1];
+          var isActive = subdomain + '.ximg.app' === curHost ||
+                         (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
+          var item = document.createElement('a');
+          item.className = 'nav-mobile-app' + (isActive ? ' active' : '');
+          item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
+          item.href = appHref(subdomain);
+          mApps.appendChild(item);
+        });
+      });
+    } else {
+      g.apps.forEach(function (a) {
+        var subdomain = a[0], label = a[1];
+        var isActive = subdomain + '.ximg.app' === curHost ||
+                       (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
+        var item = document.createElement('a');
+        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '');
+        item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
+        item.href = appHref(subdomain);
+        mApps.appendChild(item);
+      });
+    }
 
     mLabel.addEventListener('click', function () {
       mGroup.classList.toggle('open');
@@ -883,6 +1049,7 @@
 
   function closeAll() {
     nav.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+    nav.querySelectorAll('.nav-flyout.open').forEach(function (d) { d.classList.remove('open'); });
     nav.querySelectorAll('.nav-trigger.open').forEach(function (t) { t.classList.remove('open'); });
     if (themeDD) themeDD.classList.remove('open');
     mobilePanel.classList.remove('open');
@@ -907,7 +1074,7 @@
   // Auto-open the dropdown for the active group so the current page is visible on load
   var activeDD = null;
   nav.querySelectorAll('.nav-group').forEach(function (g) {
-    if (g._autoOpen) { g._autoOpen(); activeDD = g.querySelector('.nav-dropdown'); }
+    if (g._autoOpen) { g._autoOpen(); activeDD = g.querySelector('.nav-dropdown') || g.querySelector('.nav-flyout'); }
   });
 
   function syncSpacer() {

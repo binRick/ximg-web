@@ -171,7 +171,7 @@ All static sites share a single `static` nginx container. Each subdomain's files
 
 **IMPORTANT:** The nav script MUST be loaded at the end of `<body>`, NOT in `<head>`. It calls `document.body.prepend()` and will silently fail if the body doesn't exist yet. Always place it as the last `<script>` before `</body>`:
 ```html
-<script src="/shared/nav.js?v=4"></script>
+<script src="/shared/nav.js?v=5"></script>
 ```
 
 **Version bump:** If nav.js is significantly changed (new groups, layout changes), increment the `?v=4` query string to bust browser caches across all sites.
@@ -309,7 +309,7 @@ Every sub-page must include:
 
 4. **All links use relative paths** — `href="index.html"`, `href="chapter2.html"` — not absolute URLs.
 
-5. **Shared nav at end of body**: `<script src="/shared/nav.js?v=4"></script>`
+5. **Shared nav at end of body**: `<script src="/shared/nav.js?v=5"></script>`
 
 ### index.html for multi-page apps
 
@@ -331,7 +331,7 @@ This is the single authoritative checklist. Follow every step in order.
 
 1. **Create `*-html/` directory** with `index.html` as the entry point
 2. **Favicon** — download a thematically appropriate image, save as `favicon.ico` or `favicon.png`, reference it in `<head>`. Download a real image; don't use a generic placeholder.
-3. **Nav script** — add `<script src="/shared/nav.js?v=4"></script>` as the last `<script>` before `</body>`
+3. **Nav script** — add `<script src="/shared/nav.js?v=5"></script>` as the last `<script>` before `</body>`
 4. **compose.yaml** — add a new volume mount to the `static` service: `- ./<name>-html:/sites/<subdomain>.ximg.app:ro`
 5. **nginx.conf (HTTP block)** — add the new subdomain to the HTTP→HTTPS redirect `server_name` list (the block at the top of the HTTPS server section that redirects port 80)
 6. **nginx.conf (HTTPS block)** — add a new `server { listen 443 ssl; server_name <subdomain>.ximg.app; ... }` block proxying to `static` (`set $upstream static`)
