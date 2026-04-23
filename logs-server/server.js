@@ -2261,7 +2261,7 @@ const HTML = `<!DOCTYPE html>
           }).join('') || '<tr><td colspan="3" style="color:var(--dim);padding:1rem;text-align:center">No attackers found</td></tr>';
           const maxCountry = data.topCountries && data.topCountries[0] ? data.topCountries[0].hits : 1;
           document.getElementById('hr-countries-table').innerHTML = (data.topCountries||[]).map(function(e) {
-            return '<tr><td>' + (e.code ? countryFlag(e.code) + ' ' : '') + esc(e.name || e.code || '—') + '</td><td class="hr-hits">' + e.hits.toLocaleString() + '</td><td class="hr-hits">' + e.ips + '</td></tr>';
+            return '<tr><td>' + (e.code ? countryFlag(e.code) + ' ' : '🌐 ') + esc(e.name || 'Unknown') + '</td><td class="hr-hits">' + e.hits.toLocaleString() + '</td><td class="hr-hits">' + e.ips + '</td></tr>';
           }).join('') || '<tr><td colspan="3" style="color:var(--dim);padding:1rem;text-align:center">No data</td></tr>';
           const maxUa = data.topUAs && data.topUAs[0] ? data.topUAs[0][1] : 1;
           document.getElementById('hr-ua-table').innerHTML = (data.topUAs||[]).map(function(e) {
@@ -2700,7 +2700,7 @@ const server = http.createServer(async (req, res) => {
     const countryMap = new Map(); // cc -> { hits, ips: Set }
     for (const [ip, d] of ipMap.entries()) {
       const g = ipGeoCache.get(ip) || {};
-      const cc = g.countryCode || '??';
+      const cc = g.countryCode || '';
       if (!countryMap.has(cc)) countryMap.set(cc, { hits: 0, ips: new Set(), name: g.country || cc });
       const c = countryMap.get(cc);
       c.hits += d.hits;
