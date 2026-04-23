@@ -43,8 +43,8 @@ class HoneypotServer(paramiko.ServerInterface):
         with _auth_lock:
             _auth_attempts[self.ip] = _auth_attempts.get(self.ip, 0) + 1
             count = _auth_attempts[self.ip]
-        # Let the first attempt fail (looks realistic), accept on 2nd+
-        if count < 2:
+        # Let first 2 attempts fail (looks realistic), accept on 3rd+
+        if count < 3:
             return paramiko.AUTH_FAILED
         return paramiko.AUTH_SUCCESSFUL
 
