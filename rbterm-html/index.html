@@ -76,7 +76,7 @@
 <div class="hero">
   <div class="badge">Open Source</div>
   <h1><span>rbterm</span></h1>
-  <p class="tagline">A cross-platform terminal emulator written in pure C99, rendered with raylib. Sixel &amp; kitty image protocols, 252 built-in themes, 16 bundled fonts, tabs, embedded SSH, scrollback, truecolor — no Electron, no frameworks. Single self-contained binary.</p>
+  <p class="tagline">A cross-platform terminal emulator written in pure C99, rendered with raylib. Sixel &amp; kitty image protocols, OSC 8 hyperlinks, 252 built-in themes, 31 bundled fonts, tabs, split panes, embedded SSH, in-scrollback search, truecolor — no Electron, no frameworks. Single self-contained binary.</p>
   <img src="screenshot.png" alt="rbterm screenshot — tabbed terminal with colored prompt" loading="lazy">
   <div class="links">
     <a class="primary" href="https://github.com/binRick/rbterm">GitHub</a>
@@ -93,7 +93,7 @@
     <div class="spec"><div class="label">Scrollback</div><div class="value">5,000 lines per tab</div></div>
     <div class="spec"><div class="label">Colors</div><div class="value">16 / 256 / truecolor SGR</div></div>
     <div class="spec"><div class="label">Themes</div><div class="value">252 colour palettes baked into binary</div></div>
-    <div class="spec"><div class="label">Fonts</div><div class="value">16 monospace fonts embedded (JetBrains Mono, Fira Code, Hack, Monaspace…)</div></div>
+    <div class="spec"><div class="label">Fonts</div><div class="value">31 monospace fonts embedded (JetBrains Mono, Fira Code, Hack, Monaspace, terroo…)</div></div>
     <div class="spec"><div class="label">Graphics</div><div class="value">Sixel + kitty image protocol</div></div>
     <div class="spec"><div class="label">Emoji</div><div class="value">macOS Core Text SBIX</div></div>
     <div class="spec"><div class="label">PTY</div><div class="value">forkpty (Unix) / ConPTY (Win)</div></div>
@@ -114,8 +114,12 @@
       <p>Full SGR support (16/256/truecolor), cursor movement, scroll regions, alt screen. UTF-8 and wide-character rendering with intelligent reflow on resize.</p>
     </div>
     <div class="card">
+      <h3>Search (Cmd+F)</h3>
+      <p>Per-pane search bar with live substring matching across scrollback and the visible grid. Enter/Down for next match, Shift+Enter/Up for previous. Matches highlighted with translucent overlays.</p>
+    </div>
+    <div class="card">
       <h3>Mouse Selection</h3>
-      <p>Click-drag to select, double-click for word, triple-click for row. Translucent overlay highlights the selection. Cmd+C to copy, Cmd+V to paste.</p>
+      <p>Click-drag to select, double-click for word (smart-trimmed), triple-click for row. Selection follows auto-wrap across rows. Cmd+C to copy, Cmd+V to paste.</p>
     </div>
     <div class="card">
       <h3>Live Font Resize</h3>
@@ -138,8 +142,16 @@
       <p>Colour palettes baked into the binary at compile time from the <code>pal</code> submodule. Open Settings, pick a theme — it applies per-tab instantly, no restart, no config file.</p>
     </div>
     <div class="card">
-      <h3>16 Bundled Fonts</h3>
-      <p>JetBrains Mono, Fira Code, Hack, Monaspace (Argon/Krypton/Neon/Radon/Xenon) and more — embedded via <code>.incbin</code> so the binary carries them as raw bytes. No external font folder needed.</p>
+      <h3>OSC 8 Hyperlinks</h3>
+      <p>Clickable hyperlinks with colored underlines. Hover highlights the full link run; Cmd+click opens the URL in the default browser.</p>
+    </div>
+    <div class="card">
+      <h3>Split Panes</h3>
+      <p>Cmd+D splits vertically, Cmd+Shift+D horizontally (two panes per tab). Each pane has its own PTY, screen state, selection, and theme — changes in one never leak into the other.</p>
+    </div>
+    <div class="card">
+      <h3>31 Bundled Fonts</h3>
+      <p>JetBrains Mono, Fira Code, Hack, Monaspace (5 variants + Nerd Font), terroo mono (11 variants), Arabic/Persian hybrids — all embedded via <code>.incbin</code>. No external font folder needed.</p>
     </div>
     <div class="card">
       <h3>Color Emoji (macOS)</h3>
@@ -155,11 +167,19 @@
     </div>
     <div class="card">
       <h3>Embedded SSH</h3>
-      <p>Cmd+Shift+T opens an SSH form with saved hosts from ~/.ssh/config. Key auth via ssh-agent or ~/.ssh/id_*. Trust-on-first-use host keys. Each SSH session is a native tab — no shell in the middle.</p>
+      <p>Cmd+Shift+T opens an SSH form with saved hosts from ~/.ssh/config. Key auth, password, and keyboard-interactive (PAM). Per-host theme/font/cursor overrides via <code># rbterm-*</code> comments in ssh config. Copy/paste and Cmd+Z undo in every text field.</p>
+    </div>
+    <div class="card">
+      <h3>Underline Styles</h3>
+      <p>Full 4:N underline menagerie — single, double, curly, dotted, dashed — with SGR 58 colored underlines. DECSCUSR cursor shape control via CSI N SP q.</p>
+    </div>
+    <div class="card">
+      <h3>Desktop Notifications</h3>
+      <p>OSC 9 / OSC 777 desktop notifications — fire native macOS, Linux, or Windows alerts from any shell command.</p>
     </div>
     <div class="card">
       <h3>Settings Modal</h3>
-      <p>Cmd+, opens settings: live font size adjustment and session logging toggle. Logging writes raw PTY bytes to timestamped files — good for replay and debugging.</p>
+      <p>Cmd+, opens a tabbed settings panel: font &amp; theme picker, cursor style, startup window size, key-repeat sliders, and session logging toggle. Changes apply live.</p>
     </div>
   </div>
 </section>
@@ -172,12 +192,16 @@
     <tbody>
       <tr><td>Cmd+T</td><td>New tab (local shell)</td></tr>
       <tr><td>Cmd+Shift+T</td><td>New tab over SSH (form with saved hosts from ~/.ssh/config)</td></tr>
-      <tr><td>Cmd+W</td><td>Close tab</td></tr>
-      <tr><td>Cmd+,</td><td>Settings (font size, session logging)</td></tr>
+      <tr><td>Cmd+W</td><td>Close tab (or pane, if split)</td></tr>
+      <tr><td>Cmd+F</td><td>Search in scrollback</td></tr>
+      <tr><td>Cmd+D / Cmd+Shift+D</td><td>Split pane vertically / horizontally</td></tr>
+      <tr><td>Cmd+,</td><td>Settings (font, theme, cursor, key repeat, logging)</td></tr>
       <tr><td>Cmd+1..9</td><td>Jump to tab N</td></tr>
       <tr><td>Cmd+[ / Cmd+]</td><td>Prev / next tab</td></tr>
       <tr><td>Cmd++ / Cmd+- / Cmd+0</td><td>Grow / shrink / reset font</td></tr>
+      <tr><td>Ctrl+Tab / Ctrl+Shift+Tab</td><td>Next / previous tab</td></tr>
       <tr><td>Cmd+C / Cmd+V</td><td>Copy selection / paste</td></tr>
+      <tr><td>Cmd+click</td><td>Open OSC 8 hyperlink</td></tr>
       <tr><td>Shift+PgUp / PgDn</td><td>Scroll history</td></tr>
       <tr><td>Mouse wheel</td><td>Scroll history</td></tr>
       <tr><td>Double-click</td><td>Select word</td></tr>
@@ -233,7 +257,7 @@ cmake -S . -B build &amp;&amp; cmake --build build
 
 <footer>rbterm — a binRick project</footer>
 
-<script src="/shared/nav.js?v=2"></script>
+<script src="/shared/nav.js?v=5"></script>
 
 </body>
 </html>
