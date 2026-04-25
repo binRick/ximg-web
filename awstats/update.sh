@@ -19,6 +19,8 @@ inject_theme() {
         s|</head>|<link rel="stylesheet" href="/dark.css"></head>|;
         s|</body>|<script src="/shared/nav.js?v=2"></script></body>|;
     ' "$f"
+    # Strip the When/Who/Navigation/Referrers/Others nav table
+    perl -i -0777 -pe 's|<table>\s*<tr><td class="awsm"[^>]*><b>When:</b>.*?</table>\s*<br />||s' "$f"
 }
 
 # ── Per-site update ───────────────────────────────────────────────────────────
