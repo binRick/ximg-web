@@ -61,9 +61,13 @@ const server = http.createServer(async (req, res) => {
         return res.end(JSON.stringify({ error: 'invalid score' }));
       }
 
-      const kills = parseInt(body.kills, 10) || 0;
-      const wave  = parseInt(body.wave, 10) || 0;
-      const weapon = String(body.weapon || '').slice(0, 20);
+      const kills    = parseInt(body.kills, 10) || 0;
+      const wave     = parseInt(body.wave, 10) || 0;
+      const weapon   = String(body.weapon || '').slice(0, 20);
+      const time     = parseFloat(body.time) || 0;        // seconds played
+      const pickups  = parseInt(body.pickups, 10) || 0;
+      const shots    = parseInt(body.shots, 10) || 0;
+      const damage   = parseInt(body.damage, 10) || 0;    // total damage dealt
 
       const entry = {
         initials,
@@ -71,6 +75,10 @@ const server = http.createServer(async (req, res) => {
         kills,
         wave,
         weapon,
+        time,
+        pickups,
+        shots,
+        damage,
         ts: new Date().toISOString(),
       };
 
@@ -81,7 +89,7 @@ const server = http.createServer(async (req, res) => {
       saveScores(trimmed);
 
       const rank = trimmed.findIndex(s => s === entry) + 1;
-      console.log(`[${entry.ts}] NEW SCORE: ${initials} ${score} (wave ${wave}, ${kills} kills) — rank #${rank}`);
+      console.log(`[${entry.ts}] NEW SCORE: ${initials} ${score} (wave ${wave}, ${kills} kills, ${time.toFixed(0)}s, ${shots} shots, ${damage} dmg) — rank #${rank}`);
 
       res.writeHead(201, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ rank, entry }));
