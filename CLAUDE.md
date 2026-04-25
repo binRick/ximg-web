@@ -200,7 +200,8 @@ Use the right command for the situation:
 |-----------|---------|
 | Static file change (HTML/CSS/JS in `*-html/`) | No restart needed — nginx `static` serves files live |
 | nginx config change (`nginx/nginx.conf`) | `docker compose exec nginx nginx -s reload` — but if the file was replaced (new inode), use `docker compose up -d --force-recreate nginx` instead, or the container will serve the stale config |
-| Node.js server change (`logs-server/`, `change-server/`, `github-stats-server/`, etc.) | `docker compose restart <service>` — **these servers read HTML templates at startup and cache them in memory**, so any change to their `page.html` or embedded HTML requires a restart to take effect |
+| Node.js server change (volume-mounted, e.g. `logs-server/`, `change-server/`) | `docker compose restart <service>` — these servers read HTML templates at startup and cache them in memory, so any change requires a restart |
+| Node.js server change (build-context, e.g. `github-stats-server/`) | `docker compose up -d --build <service>` — **services without volume mounts bake files into the Docker image at build time**; a restart or recreate alone serves stale code — you MUST rebuild the image |
 | compose.yaml change (new volume mount to `static`) | `docker compose up -d` |
 | Dockerfile or build context change | `docker compose up -d --build <service>` |
 
