@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iron Fist - High Scores</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0806;--bg2:#141010;--bg3:#1c1414;
+  --red:#c0392b;--orange:#e67e22;--fire:#ff4500;
+  --gold:#d4a017;--text:#c8bfb0;--dim:#5a524a;
+  --mono:'Courier New',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);line-height:1.6;overflow-x:hidden}
+a{color:var(--orange);text-decoration:none;transition:color .2s}
+a:hover{color:var(--fire)}
+body::after{
+  content:'';position:fixed;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+#subnav{
+  position:sticky;top:52px;z-index:150;
+  background:rgba(8,11,14,.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem;
+}
+#subnav a{
+  font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+  color:#5a6070;padding:.3rem .65rem;border-radius:3px;text-decoration:none;
+  transition:color .2s,background .2s;font-family:'Courier New',monospace;
+}
+#subnav a:hover,#subnav a.active{color:var(--fire);background:rgba(255,255,255,.06)}
+
+.container{max-width:800px;margin:0 auto;padding:3rem 1rem}
+h1{font-size:clamp(1.6rem,5vw,2.4rem);font-weight:900;color:#fff;letter-spacing:.15em;
+  text-transform:uppercase;text-align:center;margin-bottom:.3rem;
+  text-shadow:0 0 40px rgba(255,69,0,.4)}
+.subtitle{text-align:center;color:var(--dim);font-size:.8rem;letter-spacing:.15em;margin-bottom:2.5rem}
+
+.scores-table{width:100%;border-collapse:collapse}
+.scores-table th{
+  text-align:left;padding:.6rem .8rem;font-size:.7rem;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--dim);border-bottom:2px solid rgba(192,57,43,.3);
+}
+.scores-table td{
+  padding:.55rem .8rem;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;
+}
+.scores-table tr:hover td{background:rgba(255,255,255,.02)}
+
+.rank{color:var(--dim);font-size:.75rem;width:40px}
+.rank-1 .rank,.rank-1 .initials,.rank-1 .score-val{color:var(--gold);font-weight:700}
+.rank-2 .rank,.rank-2 .initials,.rank-2 .score-val{color:#c0c0c0;font-weight:700}
+.rank-3 .rank,.rank-3 .initials,.rank-3 .score-val{color:#cd7f32;font-weight:700}
+.initials{color:var(--fire);font-weight:700;letter-spacing:.15em;font-size:1rem}
+.score-val{color:var(--orange);font-weight:700;font-variant-numeric:tabular-nums}
+.meta{color:var(--dim);font-size:.75rem}
+.wave-badge{
+  display:inline-block;padding:.1rem .4rem;background:rgba(192,57,43,.15);
+  border:1px solid rgba(192,57,43,.3);border-radius:2px;font-size:.7rem;color:var(--red);
+}
+
+.empty{text-align:center;padding:4rem 1rem;color:var(--dim);font-size:.9rem}
+.loading{text-align:center;padding:4rem 1rem;color:var(--dim);font-size:.85rem;letter-spacing:.1em}
+
+.refresh-btn{
+  display:block;margin:2rem auto 0;padding:.4rem 1.2rem;
+  background:transparent;border:1px solid rgba(255,255,255,.12);
+  color:var(--dim);font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;
+  text-transform:uppercase;border-radius:3px;cursor:pointer;transition:all .2s;
+}
+.refresh-btn:hover{border-color:var(--fire);color:var(--fire)}
+
+@media(max-width:600px){
+  .container{padding:2rem .5rem}
+  .scores-table td,.scores-table th{padding:.4rem .5rem}
+  .meta{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="play.html">Play</a>
+  <a href="scores.html">High Scores</a>
+</nav>
+<script>
+document.querySelectorAll('#subnav a').forEach(function(a){
+  var href=a.getAttribute('href');
+  var path=location.pathname;
+  if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('index.html')))){
+    a.classList.add('active');
+  }
+});
+</script>
+
+<div class="container">
+  <h1>High Scores</h1>
+  <p class="subtitle">Top 100 Iron Fist warriors</p>
+
+  <div id="scores-body">
+    <div class="loading">Loading scores...</div>
+  </div>
+
+  <button class="refresh-btn" onclick="loadScores()">Refresh</button>
+</div>
+
+<script>
+function loadScores() {
+  var body = document.getElementById('scores-body');
+  body.innerHTML = '<div class="loading">Loading scores...</div>';
+
+  fetch('/api/scores')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var scores = data.scores || [];
+      if (!scores.length) {
+        body.innerHTML = '<div class="empty">No scores yet. Be the first to play!</div>';
+        return;
+      }
+
+      var html = '<table class="scores-table"><thead><tr>' +
+        '<th>Rank</th><th>Name</th><th>Score</th><th>Kills</th><th>Wave</th><th class="meta">Date</th>' +
+        '</tr></thead><tbody>';
+
+      scores.forEach(function(s, i) {
+        var rankClass = i < 3 ? ' rank-' + (i + 1) : '';
+        var medal = i === 0 ? ' &#x1F947;' : i === 1 ? ' &#x1F948;' : i === 2 ? ' &#x1F949;' : '';
+        var date = s.ts ? new Date(s.ts).toLocaleDateString() : '';
+        html += '<tr class="' + rankClass + '">' +
+          '<td class="rank">#' + (i + 1) + medal + '</td>' +
+          '<td class="initials">' + s.initials + '</td>' +
+          '<td class="score-val">' + s.score.toLocaleString() + '</td>' +
+          '<td>' + s.kills + '</td>' +
+          '<td><span class="wave-badge">W' + s.wave + '</span></td>' +
+          '<td class="meta">' + date + '</td>' +
+          '</tr>';
+      });
+
+      html += '</tbody></table>';
+      body.innerHTML = html;
+    })
+    .catch(function() {
+      body.innerHTML = '<div class="empty">Failed to load scores. Try again.</div>';
+    });
+}
+
+loadScores();
+setInterval(loadScores, 60000);
+</script>
+
+<script src="/shared/nav.js?v=5"></script>
+</body>
+</html>
