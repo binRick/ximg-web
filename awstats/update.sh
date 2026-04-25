@@ -21,6 +21,8 @@ inject_theme() {
     ' "$f"
     # Strip the When/Who/Navigation/Referrers/Others nav table
     perl -i -0777 -pe 's|<table>\s*<tr><td class="awsm"[^>]*><b>When:</b>.*?</table>\s*<br />||s' "$f"
+    # Strip the AWStats footer branding
+    perl -i -pe 's|<span dir="ltr"[^>]*>.*?Advanced Web Statistics.*?</span><br />||' "$f"
 }
 
 # ── Per-site update ───────────────────────────────────────────────────────────
