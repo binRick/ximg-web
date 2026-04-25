@@ -37,6 +37,10 @@ The `esp32.ximg.app` web app (`esp32-html/`) is directly based on the `esp32-dev
 3. Add a card to the **"What We Built"** session grid in `esp32-html/index.html`
 4. Update this table in `CLAUDE.md` to mark the new sketch as ✓
 
+## Submodule Compilation Errors
+
+**Do NOT fix compilation errors in submodule code.** If a wasm build or any submodule compilation fails, stop and report the error to the user. Another Claude instance (running in the submodule repo) handles those fixes. Only proceed with app page updates and artifact copying after the build succeeds.
+
 ## WebAssembly Apps
 
 Three apps serve pre-built WebAssembly. **Pulling a submodule alone does NOT update the live site** — you must rebuild (or re-download) and copy the artifacts into the corresponding `*-html/` directory.
@@ -435,7 +439,7 @@ Each web app has the same sub-nav structure: **Overview** (`index.html`), **Inst
 - Outbound traffic blocked via iptables; runs on separate `ssh-net` Docker network
 - Sessions recorded to `ssh-logs/YYYYMMDD-HHMMSS-IP-PID.log` (root:root 600, gitignored)
 - Browsable in `logs.ximg.app` under "SSH Sessions" tab
-- **Auto-summarization:** `ssh-server/summarize-sessions.sh` runs every 5 minutes via system cron (`*/5 * * * *`). It finds `.log` files without a `.summary` companion, extracts commands via `strings`/`grep`, and sends them to Claude Haiku (`/root/.local/bin/claude --print --model haiku --permission-mode acceptEdits`) for analysis. Summaries include attacker intent, techniques, and IOCs. Logs to `ssh-logs/summarize.log`. Uses `flock` to prevent overlapping runs; skips files <60s old (still being written) and <500 bytes (trivial sessions).
+- **Auto-summarization:** `ssh-server/summarize-sessions.sh` runs every hour via system cron (`0 * * * *`). It finds `.log` files without a `.summary` companion, extracts commands via `strings`/`grep`, and sends them to Claude Haiku (`/root/.local/bin/claude --print --model haiku --permission-mode acceptEdits`) for analysis. Summaries include attacker intent, techniques, and IOCs. Logs to `ssh-logs/summarize.log`. Uses `flock` to prevent overlapping runs; skips files <60s old (still being written) and <500 bytes (trivial sessions).
 
 ## Key Paths
 
