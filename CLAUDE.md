@@ -439,7 +439,7 @@ Each web app has the same sub-nav structure: **Overview** (`index.html`), **Inst
 - Outbound traffic blocked via iptables; runs on separate `ssh-net` Docker network
 - Sessions recorded to `ssh-logs/YYYYMMDD-HHMMSS-IP-PID.log` (root:root 600, gitignored)
 - Browsable in `logs.ximg.app` under "SSH Sessions" tab
-- **Auto-summarization:** `ssh-server/summarize-sessions.sh` runs every hour via system cron (`0 * * * *`). It finds `.log` files without a `.summary` companion, extracts commands via `strings`/`grep`, and sends them to Claude Haiku (`/root/.local/bin/claude --print --model haiku --permission-mode acceptEdits`) for analysis. Summaries include attacker intent, techniques, and IOCs. Logs to `ssh-logs/summarize.log`. Uses `flock` to prevent overlapping runs; skips files <60s old (still being written) and <500 bytes (trivial sessions).
+- **Auto-summarization:** triggered by a systemd path unit (`ssh-summarize.path`) that watches `ssh-logs/` for changes and runs `ssh-server/summarize-sessions.sh` automatically when a session ends. No cron needed. The script finds `.log` files without a `.summary` companion, extracts commands via `strings`/`grep`, and sends them to Claude Haiku (`/root/.local/bin/claude --print --model haiku --permission-mode acceptEdits`) for analysis. Summaries include attacker intent, techniques, and IOCs. Logs to `ssh-logs/summarize.log`. Uses `flock` to prevent overlapping runs; skips files <60s old (still being written) and <500 bytes (trivial sessions). Systemd units: `install/ssh-summarize.{path,service}`, installed to `/etc/systemd/system/`.
 
 ## Key Paths
 
