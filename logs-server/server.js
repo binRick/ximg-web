@@ -1100,6 +1100,10 @@ const HTML = `<!DOCTYPE html>
   <div id="ssh-container">
     <div id="ssh-list"><div class="ssh-empty">Loading sessions…</div></div>
     <div id="ssh-right">
+      <div id="ssh-subnav" style="display:none;border-bottom:1px solid rgba(255,255,255,.07);padding:.35rem .7rem;display:none;gap:.3rem;flex-shrink:0">
+        <button class="ssh-view-btn active" data-view="log" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(255,255,255,.06);color:var(--green);border:1px solid rgba(0,255,65,.3);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Session Log</button>
+        <button class="ssh-view-btn" data-view="summary" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:none;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Summary</button>
+      </div>
       <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
     </div>
   </div>
@@ -1483,13 +1487,14 @@ const HTML = `<!DOCTYPE html>
             el.className = 'ssh-session-item';
             const kb = (f.size / 1024).toFixed(1);
             const flag = f.countryCode ? '<span class="ssh-flag">' + countryFlag(f.countryCode) + '</span>' : '';
+            const sumBadge = f.hasSummary ? ' <span style="color:var(--green);font-size:.6rem;opacity:.7" title="AI summary available">&#x2713;</span>' : '';
             el.innerHTML =
-              '<div class="ssh-session-name">' + flag + '<span>' + esc(f.name) + '</span></div>' +
+              '<div class="ssh-session-name">' + flag + '<span>' + esc(f.name) + '</span>' + sumBadge + '</div>' +
               '<div class="ssh-session-meta">' + kb + ' KB</div>';
             el.addEventListener('click', () => {
               document.querySelectorAll('.ssh-session-item').forEach(i => i.classList.remove('active'));
               el.classList.add('active');
-              loadSession(f.name);
+              loadSession(f.name, f.hasSummary);
             });
             sshList.appendChild(el);
           });
@@ -1497,16 +1502,59 @@ const HTML = `<!DOCTYPE html>
         .catch(() => { sshList.innerHTML = '<div class="ssh-empty">Failed to load sessions.</div>'; });
     }
 
-    function loadSession(filename) {
+    let currentSshFile = null;
+    let currentSshHasSummary = false;
+    const sshSubnav = document.getElementById('ssh-subnav');
+    const sshViewBtns = document.querySelectorAll('.ssh-view-btn');
+
+    function loadSession(filename, hasSummary) {
+      currentSshFile = filename;
+      currentSshHasSummary = hasSummary;
+      // Show sub-nav and reset to log view
+      sshSubnav.style.display = 'flex';
+      sshViewBtns.forEach(b => {
+        b.classList.toggle('active', b.dataset.view === 'log');
+        b.style.background = b.dataset.view === 'log' ? 'rgba(255,255,255,.06)' : 'none';
+        b.style.color = b.dataset.view === 'log' ? 'var(--green)' : 'var(--dim)';
+        b.style.borderColor = b.dataset.view === 'log' ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.08)';
+      });
+      // Dim summary button if no summary available
+      const summaryBtn = document.querySelector('.ssh-view-btn[data-view="summary"]');
+      summaryBtn.style.opacity = hasSummary ? '1' : '.4';
+      summaryBtn.style.pointerEvents = hasSummary ? '' : 'none';
+      loadSshView('log');
+    }
+
+    function loadSshView(view) {
       sshContent.textContent = 'Loading…';
-      fetch('/ssh-session?file=' + encodeURIComponent(filename))
+      const url = view === 'summary'
+        ? '/ssh-summary?file=' + encodeURIComponent(currentSshFile)
+        : '/ssh-session?file=' + encodeURIComponent(currentSshFile);
+      fetch(url)
         .then(r => r.text())
         .then(text => {
-          sshContent.textContent = text;
+          if (view === 'summary') {
+            sshContent.innerHTML = '<div style="white-space:pre-wrap;line-height:1.7">' + esc(text) + '</div>';
+          } else {
+            sshContent.textContent = text;
+          }
           sshContent.scrollTop = 0;
         })
-        .catch(() => { sshContent.textContent = 'Failed to load session.'; });
+        .catch(() => { sshContent.textContent = 'Failed to load ' + view + '.'; });
     }
+
+    sshViewBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!currentSshFile) return;
+        sshViewBtns.forEach(b => {
+          b.classList.toggle('active', b === btn);
+          b.style.background = b === btn ? 'rgba(255,255,255,.06)' : 'none';
+          b.style.color = b === btn ? 'var(--green)' : 'var(--dim)';
+          b.style.borderColor = b === btn ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.08)';
+        });
+        loadSshView(btn.dataset.view);
+      });
+    });
 
     sshTab.addEventListener('click', () => {
       if (!sshMode) {
@@ -2352,17 +2400,19 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/ssh-sessions') {
     try {
       const files = fs.readdirSync(SSH_DIR)
-        .filter(f => f.endsWith('.log'))
+        .filter(f => f.endsWith('.log') && /^20\d{6}-/.test(f))
         .sort().reverse()
         .map(f => {
           const st = fs.statSync(path.join(SSH_DIR, f));
-          return { name: f, size: st.size, ip: ipFromFilename(f) };
+          const summaryFile = f.replace(/\.log$/, '.summary');
+          const hasSummary = fs.existsSync(path.join(SSH_DIR, summaryFile));
+          return { name: f, size: st.size, ip: ipFromFilename(f), hasSummary };
         });
       const uniqueIps = [...new Set(files.map(f => f.ip))];
       await Promise.all(uniqueIps.map(lookupGeo));
       const result = files.map(f => {
         const g = ipGeoCache.get(f.ip) || {};
-        return { name: f.name, size: f.size, countryCode: g.countryCode || '', country: g.country || '', city: g.city || '', lat: g.lat || 0, lon: g.lon || 0 };
+        return { name: f.name, size: f.size, hasSummary: f.hasSummary, countryCode: g.countryCode || '', country: g.country || '', city: g.city || '', lat: g.lat || 0, lon: g.lon || 0 };
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -2381,6 +2431,20 @@ const server = http.createServer(async (req, res) => {
     } catch (_) { res.writeHead(404); res.end(); }
     return;
   }
+
+  const summaryMatch = req.url.match(/^\/ssh-summary\?file=([^&]+)$/);
+  if (summaryMatch) {
+    const filename = decodeURIComponent(summaryMatch[1]);
+    if (!/^[\w.-]+\.log$/.test(filename)) { res.writeHead(400); res.end(); return; }
+    const summaryFile = filename.replace(/\.log$/, '.summary');
+    try {
+      const text = fs.readFileSync(path.join(SSH_DIR, summaryFile), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(text);
+    } catch (_) { res.writeHead(404); res.end('No summary available.'); }
+    return;
+  }
+
   if (req.url === '/map-data') {
     const LINES_PER_FILE = 300;
     const ipMap = new Map();
