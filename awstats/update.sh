@@ -38,6 +38,16 @@ for site in $SITES; do
         -output -staticlinks > "${outdir}/index.html" 2>/dev/null || true
     inject_theme "${outdir}/index.html"
 
+    # Generate sub-report pages (linked from the main page via -staticlinks)
+    for report in alldomains allhosts allrobots browserdetail downloads errors404 \
+        keyphrases keywords lasthosts lastrobots osdetail refererpages refererse \
+        unknownbrowser unknownip unknownos urldetail urlentry urlexit; do
+        outfile="${outdir}/awstats.${site}.${report}.html"
+        awstats.pl -config="$site" -configdir="$CONFDIR" \
+            -output="$report" -staticlinks > "$outfile" 2>/dev/null || true
+        inject_theme "$outfile"
+    done
+
     # Generate one HTML file per historical data file
     for datafile in "${datadir}"/awstats[0-9]*.${site}.txt; do
         [ -f "$datafile" ] || continue
@@ -60,6 +70,16 @@ awstats.pl -update -config=combined -configdir="$CONFDIR" > /dev/null 2>&1 || tr
 awstats.pl -config=combined -configdir="$CONFDIR" \
     -output -staticlinks > "${OUTDIR}/combined/index.html" 2>/dev/null || true
 inject_theme "${OUTDIR}/combined/index.html"
+
+# Generate combined sub-report pages
+for report in alldomains allhosts allrobots browserdetail downloads errors404 \
+    keyphrases keywords lasthosts lastrobots osdetail refererpages refererse \
+    unknownbrowser unknownip unknownos urldetail urlentry urlexit; do
+    outfile="${OUTDIR}/combined/awstats.combined.${report}.html"
+    awstats.pl -config=combined -configdir="$CONFDIR" \
+        -output="$report" -staticlinks > "$outfile" 2>/dev/null || true
+    inject_theme "$outfile"
+done
 
 for datafile in "${DATADIR}/combined"/awstats[0-9]*.combined.txt; do
     [ -f "$datafile" ] || continue
