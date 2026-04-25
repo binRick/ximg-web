@@ -37,9 +37,9 @@ The `esp32.ximg.app` web app (`esp32-html/`) is directly based on the `esp32-dev
 3. Add a card to the **"What We Built"** session grid in `esp32-html/index.html`
 4. Update this table in `CLAUDE.md` to mark the new sketch as ✓
 
-## Submodule Compilation Errors
+## Submodule Issues
 
-**Do NOT fix compilation errors in submodule code.** If a wasm build or any submodule compilation fails, stop and report the error to the user. Another Claude instance (running in the submodule repo) handles those fixes. Only proceed with app page updates and artifact copying after the build succeeds.
+**Do NOT fix issues in submodule code — not compilation errors, not bugs, not gameplay issues, not rendering problems.** Another Claude instance manages each submodule repo (e.g., Iron-Fist has its own Claude). If anything is wrong with a submodule — build failure, visual bug, gameplay issue, missing feature — report the exact error or problem to the user so they can relay it to the other Claude. Only proceed with app page updates and artifact copying after the build succeeds and the output is correct.
 
 ## WebAssembly Apps
 
