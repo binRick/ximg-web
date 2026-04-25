@@ -1103,6 +1103,7 @@ const HTML = `<!DOCTYPE html>
       <div id="ssh-subnav" style="display:none;border-bottom:1px solid rgba(255,255,255,.07);padding:.35rem .7rem;display:none;gap:.3rem;flex-shrink:0">
         <button class="ssh-view-btn active" data-view="log" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(255,255,255,.06);color:var(--green);border:1px solid rgba(0,255,65,.3);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Session Log</button>
         <button class="ssh-view-btn" data-view="summary" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:none;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Summary</button>
+        <button class="ssh-view-btn" data-view="exposure" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:none;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Exposure</button>
       </div>
       <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
     </div>
@@ -1494,7 +1495,7 @@ const HTML = `<!DOCTYPE html>
             el.addEventListener('click', () => {
               document.querySelectorAll('.ssh-session-item').forEach(i => i.classList.remove('active'));
               el.classList.add('active');
-              loadSession(f.name, f.hasSummary);
+              loadSession(f.name, f.hasSummary, f.hasExposure);
             });
             sshList.appendChild(el);
           });
@@ -1504,12 +1505,14 @@ const HTML = `<!DOCTYPE html>
 
     let currentSshFile = null;
     let currentSshHasSummary = false;
+    let currentSshHasExposure = false;
     const sshSubnav = document.getElementById('ssh-subnav');
     const sshViewBtns = document.querySelectorAll('.ssh-view-btn');
 
-    function loadSession(filename, hasSummary) {
+    function loadSession(filename, hasSummary, hasExposure) {
       currentSshFile = filename;
       currentSshHasSummary = hasSummary;
+      currentSshHasExposure = hasExposure;
       // Show sub-nav and reset to log view
       sshSubnav.style.display = 'flex';
       sshViewBtns.forEach(b => {
@@ -1518,29 +1521,34 @@ const HTML = `<!DOCTYPE html>
         b.style.color = b.dataset.view === 'log' ? 'var(--green)' : 'var(--dim)';
         b.style.borderColor = b.dataset.view === 'log' ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.08)';
       });
-      // Dim summary button if no summary available
-      const summaryBtn = document.querySelector('.ssh-view-btn[data-view="summary"]');
+      // Dim buttons if no data available
+      var summaryBtn = document.querySelector('.ssh-view-btn[data-view="summary"]');
       summaryBtn.style.opacity = hasSummary ? '1' : '.4';
       summaryBtn.style.pointerEvents = hasSummary ? '' : 'none';
+      var exposureBtn = document.querySelector('.ssh-view-btn[data-view="exposure"]');
+      exposureBtn.style.opacity = hasExposure ? '1' : '.4';
+      exposureBtn.style.pointerEvents = hasExposure ? '' : 'none';
       loadSshView('log');
     }
 
     function loadSshView(view) {
       sshContent.textContent = 'Loading…';
-      const url = view === 'summary'
+      var url = view === 'summary'
         ? '/ssh-summary?file=' + encodeURIComponent(currentSshFile)
+        : view === 'exposure'
+        ? '/ssh-exposure?file=' + encodeURIComponent(currentSshFile)
         : '/ssh-session?file=' + encodeURIComponent(currentSshFile);
       fetch(url)
-        .then(r => r.text())
-        .then(text => {
-          if (view === 'summary') {
+        .then(function(r) { return r.text(); })
+        .then(function(text) {
+          if (view === 'summary' || view === 'exposure') {
             sshContent.innerHTML = '<div style="white-space:pre-wrap;line-height:1.7">' + esc(text) + '</div>';
           } else {
             sshContent.textContent = text;
           }
           sshContent.scrollTop = 0;
         })
-        .catch(() => { sshContent.textContent = 'Failed to load ' + view + '.'; });
+        .catch(function() { sshContent.textContent = 'Failed to load ' + view + '.'; });
     }
 
     sshViewBtns.forEach(btn => {
@@ -2405,14 +2413,16 @@ const server = http.createServer(async (req, res) => {
         .map(f => {
           const st = fs.statSync(path.join(SSH_DIR, f));
           const summaryFile = f.replace(/\.log$/, '.summary');
+          const exposureFile = f.replace(/\.log$/, '.exposure');
           const hasSummary = fs.existsSync(path.join(SSH_DIR, summaryFile));
-          return { name: f, size: st.size, ip: ipFromFilename(f), hasSummary };
+          const hasExposure = fs.existsSync(path.join(SSH_DIR, exposureFile));
+          return { name: f, size: st.size, ip: ipFromFilename(f), hasSummary, hasExposure };
         });
       const uniqueIps = [...new Set(files.map(f => f.ip))];
       await Promise.all(uniqueIps.map(lookupGeo));
       const result = files.map(f => {
         const g = ipGeoCache.get(f.ip) || {};
-        return { name: f.name, size: f.size, hasSummary: f.hasSummary, countryCode: g.countryCode || '', country: g.country || '', city: g.city || '', lat: g.lat || 0, lon: g.lon || 0 };
+        return { name: f.name, size: f.size, hasSummary: f.hasSummary, hasExposure: f.hasExposure, countryCode: g.countryCode || '', country: g.country || '', city: g.city || '', lat: g.lat || 0, lon: g.lon || 0 };
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -2442,6 +2452,19 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end(text);
     } catch (_) { res.writeHead(404); res.end('No summary available.'); }
+    return;
+  }
+
+  const exposureMatch = req.url.match(/^\/ssh-exposure\?file=([^&]+)$/);
+  if (exposureMatch) {
+    const filename = decodeURIComponent(exposureMatch[1]);
+    if (!/^[\w.-]+\.log$/.test(filename)) { res.writeHead(400); res.end(); return; }
+    const exposureFile = filename.replace(/\.log$/, '.exposure');
+    try {
+      const text = fs.readFileSync(path.join(SSH_DIR, exposureFile), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(text);
+    } catch (_) { res.writeHead(404); res.end('No exposure analysis available.'); }
     return;
   }
 
