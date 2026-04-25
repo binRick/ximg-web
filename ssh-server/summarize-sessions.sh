@@ -12,7 +12,8 @@ LOCK="/tmp/ssh-summarize.lock"
 exec 9>"$LOCK"
 flock -n 9 || exit 0
 
-for logfile in "$LOG_DIR"/*.log; do
+# Only match session logs (YYYYMMDD-HHMMSS-IP-PID.log), not summarize.log etc.
+for logfile in "$LOG_DIR"/20[0-9][0-9]*.log; do
   [ -f "$logfile" ] || continue
 
   summary="${logfile%.log}.summary"
