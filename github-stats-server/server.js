@@ -43,8 +43,8 @@ async function fetchStats() {
   console.log(`[${new Date().toISOString()}] Syncing GitHub traffic stats for ${USERNAME}...`);
 
   try {
-    // Get latest 20 repos
-    const reposUrl = `https://api.github.com/users/${USERNAME}/repos?sort=pushed&direction=desc&per_page=${REPO_LIMIT}`;
+    // Get latest 20 updated repos
+    const reposUrl = `https://api.github.com/users/${USERNAME}/repos?sort=updated&direction=desc&per_page=${REPO_LIMIT}`;
     const { body: repos, status } = await githubGet(reposUrl);
     if (status !== 200) throw new Error(`GitHub repos API ${status}: ${JSON.stringify(repos)}`);
 
