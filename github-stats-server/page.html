@@ -94,6 +94,7 @@
     padding: 1rem; text-align: center;
   }
   .summary-card .val { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+  .summary-card .spark { display: block; margin: .4rem auto .1rem; }
   .summary-card .lbl { font-size: .68rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-top: .2rem; }
 
   table { width: 100%; border-collapse: collapse; }
@@ -215,6 +216,34 @@ function fmt(n) {
   return '<span class="num">' + n + '</span>';
 }
 
+function sparkline(values, color) {
+  if (!values.length) return '';
+  var w = 120, h = 28, pad = 2;
+  var max = Math.max.apply(null, values) || 1;
+  var n = values.length;
+  var pts = values.map(function(v, i) {
+    var x = pad + (i / Math.max(n - 1, 1)) * (w - pad * 2);
+    var y = pad + (1 - v / max) * (h - pad * 2);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  });
+  var fill = pts.concat([(w - pad) + ',' + (h - pad), pad + ',' + (h - pad)]).join(' ');
+  return '<svg class="spark" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
+    + '<polygon points="' + fill + '" fill="' + color + '" opacity=".15"/>'
+    + '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '</svg>';
+}
+
+function aggregateDays(repos, key) {
+  var byDate = {};
+  repos.forEach(function(r) {
+    (r.days || []).forEach(function(d) {
+      byDate[d.date] = (byDate[d.date] || 0) + (d[key] || 0);
+    });
+  });
+  var dates = Object.keys(byDate).sort();
+  return dates.map(function(k) { return byDate[k]; });
+}
+
 function render() {
   const dot  = document.getElementById('status-dot');
   const stxt = document.getElementById('status-text');
@@ -245,13 +274,17 @@ function render() {
   const totStars   = repos.reduce((s, r) => s + r.stars, 0);
   const activeRepos = repos.filter(r => r.clones > 0).length;
 
-  document.getElementById('summary-grid').innerHTML = `
-    <div class="summary-card"><div class="val">${totClones.toLocaleString()}</div><div class="lbl">Total Clones</div></div>
-    <div class="summary-card"><div class="val">${totUnique.toLocaleString()}</div><div class="lbl">Unique Cloners</div></div>
-    <div class="summary-card"><div class="val">${totViews.toLocaleString()}</div><div class="lbl">Total Views</div></div>
-    <div class="summary-card"><div class="val">${totStars}</div><div class="lbl">Total Stars</div></div>
-    <div class="summary-card"><div class="val">${activeRepos}</div><div class="lbl">Active Repos</div></div>
-  `;
+  var spClones  = sparkline(aggregateDays(repos, 'clones'),        '#6366f1');
+  var spUnique  = sparkline(aggregateDays(repos, 'uniqueCloners'), '#22d3ee');
+  var spViews   = sparkline(aggregateDays(repos, 'views'),         '#22c55e');
+  var spUViewers = sparkline(aggregateDays(repos, 'uniqueViewers'),'#f59e0b');
+
+  document.getElementById('summary-grid').innerHTML =
+    '<div class="summary-card"><div class="val">' + totClones.toLocaleString() + '</div>' + spClones + '<div class="lbl">Total Clones</div></div>'
+  + '<div class="summary-card"><div class="val">' + totUnique.toLocaleString() + '</div>' + spUnique + '<div class="lbl">Unique Cloners</div></div>'
+  + '<div class="summary-card"><div class="val">' + totViews.toLocaleString()  + '</div>' + spViews  + '<div class="lbl">Total Views</div></div>'
+  + '<div class="summary-card"><div class="val">' + totStars                   + '</div><div class="lbl">Total Stars</div></div>'
+  + '<div class="summary-card"><div class="val">' + activeRepos                + '</div><div class="lbl">Active Repos</div></div>';
 
   // Sort
   const sorted = [...repos].sort((a, b) => {
