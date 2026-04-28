@@ -105,7 +105,7 @@ const stmtInsertReplay = db.prepare(
 );
 const stmtGetReplay = db.prepare('SELECT * FROM replays WHERE id = ?');
 const stmtDeleteReplay = db.prepare('DELETE FROM replays WHERE id = ?');
-const stmtGetReplayByScoreIdx = db.prepare('SELECT id FROM replays WHERE score_idx = ?');
+const stmtGetReplayByScoreIdx = db.prepare('SELECT id, build_hash FROM replays WHERE score_idx = ?');
 
 // --- Server ---
 const server = http.createServer(async (req, res) => {
@@ -128,7 +128,7 @@ const server = http.createServer(async (req, res) => {
     // Attach replay_id to each score
     const enriched = scores.map((s, idx) => {
       const replay = stmtGetReplayByScoreIdx.get(idx);
-      return { ...s, replay_id: replay ? replay.id : null };
+      return { ...s, replay_id: replay ? replay.id : null, build_hash: replay ? replay.build_hash : null };
     });
     return json(res, 200, { scores: enriched });
   }
