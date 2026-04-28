@@ -164,13 +164,11 @@ const server = http.createServer(async (req, res) => {
       saveScores(trimmed);
 
       const rank = trimmed.findIndex(s => s === entry) + 1;
-      // score_id is the index in the sorted array (stable as long as scores don't change)
-      // Use a more stable id: hash of initials+score+ts
-      const score_id = rank > 0 ? rank - 1 : -1;
+      const id = rank > 0 ? rank - 1 : -1;
 
       console.log(`[${entry.ts}] NEW SCORE: ${initials} ${score} (wave ${wave}, ${kills} kills, ${time.toFixed(0)}s, ${shots} shots, ${damage} dmg) — rank #${rank}`);
 
-      return json(res, 201, { rank, entry, score_id });
+      return json(res, 201, { rank, entry, id });
     } catch (err) {
       return json(res, 400, { error: 'invalid JSON body' });
     }
