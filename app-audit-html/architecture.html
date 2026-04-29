@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>app-audit — Architecture</title>
+<meta name="description" content="How app-audit works: eBPF tracing, honeytoken provisioning, TLS interception, detector pipeline, and report generation.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e74c3c'/><text x='16' y='22' font-family='monospace' font-size='18' font-weight='bold' text-anchor='middle' fill='%23fff'>🛡</text></svg>">
+<style>
+  :root { --accent: #e74c3c; --accent2: #f39c12; --bg: #0a0c10; --card: #12151a; --border: rgba(255,255,255,.08); --text: #c9d1d9; --dim: #6a737d; --green: #22c55e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; line-height: 1.7; padding-top: 60px; }
+
+  #gate { position: fixed; inset: 0; z-index: 9000; background: rgba(10,12,16,.97); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+  #gate.hidden { display: none; }
+  .gate-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2.5rem 2rem; text-align: center; max-width: 380px; width: 90%; }
+  .gate-box h2 { font-size: 1.1rem; color: #fff; margin-bottom: .3rem; letter-spacing: .08em; }
+  .gate-box p { font-size: .78rem; color: var(--dim); margin-bottom: 1.5rem; }
+  .gate-box .lock { font-size: 2rem; margin-bottom: 1rem; }
+  .pin-input { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1rem; }
+  .pin-input input { width: 48px; height: 56px; text-align: center; font-size: 1.4rem; font-family: 'Courier New', monospace; font-weight: 700; background: var(--bg); border: 2px solid var(--border); border-radius: 8px; color: #fff; outline: none; transition: border-color .2s; -moz-appearance: textfield; }
+  .pin-input input::-webkit-outer-spin-button, .pin-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .pin-input input:focus { border-color: var(--accent); }
+  .pin-input input.error { border-color: var(--accent); animation: shake .4s; }
+  .pin-input input.success { border-color: var(--green); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .gate-hint { font-size: .68rem; color: var(--dim); margin-top: .5rem; min-height: 1.2em; }
+  .gate-hint.error { color: var(--accent); }
+
+  #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+  #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: 'Courier New', monospace; }
+  #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+
+  section { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 1.8rem; color: #fff; text-align: center; margin-bottom: .3rem; padding-top: 2rem; }
+  .subtitle { text-align: center; color: var(--dim); font-size: .82rem; margin-bottom: 2rem; }
+  h2 { font-size: 1.2rem; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+  h3 { font-size: .95rem; color: var(--accent); margin: 1.2rem 0 .5rem; }
+
+  .layer {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1.2rem 1.5rem; margin-bottom: 1.2rem;
+  }
+  .layer-num {
+    display: inline-block; width: 28px; height: 28px; line-height: 28px;
+    text-align: center; background: var(--accent); color: #fff; font-weight: 900;
+    border-radius: 50%; font-size: .75rem; margin-right: .6rem; flex-shrink: 0;
+  }
+  .layer-title { font-size: .95rem; color: #fff; font-weight: 700; display: inline; }
+  .layer p { font-size: .8rem; color: var(--dim); line-height: 1.6; margin-top: .5rem; }
+  .layer code { color: var(--accent); font-size: .78rem; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .card h3 { font-size: .88rem; color: var(--accent); margin-bottom: .4rem; margin-top: 0; }
+  .card p { font-size: .78rem; color: var(--dim); line-height: 1.6; }
+
+  .pipe {
+    display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+    margin: 1rem 0 2rem; padding: 1rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .pipe-step {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: .4rem .8rem; font-size: .72rem; color: var(--text);
+  }
+  .pipe-arrow { color: var(--accent); font-weight: 700; font-size: .9rem; }
+
+  .compliance { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .5rem; margin-bottom: 2rem; }
+  .compliance-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    padding: .6rem .8rem; font-size: .75rem;
+  }
+  .compliance-item .fw { color: var(--accent); font-weight: 700; }
+  .compliance-item .ctrl { color: var(--dim); }
+
+  footer { text-align: center; padding: 2rem; color: var(--dim); font-size: .7rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+  @media (max-width: 600px) { h1 { font-size: 1.4rem; } }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="lock">&#128274;</div>
+    <h2>Protected Project</h2>
+    <p>This is a private repository. Enter the PIN to view the project summary.</p>
+    <div class="pin-input" id="pin-input">
+      <input type="number" min="0" max="9" maxlength="1" autofocus>
+      <input type="number" min="0" max="9" maxlength="1">
+      <input type="number" min="0" max="9" maxlength="1">
+    </div>
+    <div class="gate-hint" id="gate-hint"></div>
+  </div>
+</div>
+<script>
+(function() {
+  var PIN = '666';
+  var inputs = document.querySelectorAll('#pin-input input');
+  var hint = document.getElementById('gate-hint');
+  var gate = document.getElementById('gate');
+  if (sessionStorage.getItem('app-audit-ok') === '1') { gate.classList.add('hidden'); return; }
+  inputs.forEach(function(inp, i) {
+    inp.addEventListener('input', function() {
+      if (inp.value.length > 1) inp.value = inp.value.slice(-1);
+      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus(); checkPin();
+    });
+    inp.addEventListener('keydown', function(e) { if (e.key === 'Backspace' && !inp.value && i > 0) { inputs[i - 1].focus(); inputs[i - 1].value = ''; } });
+    inp.addEventListener('paste', function(e) { e.preventDefault(); var text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 3); for (var j = 0; j < text.length && j < inputs.length; j++) inputs[j].value = text[j]; if (text.length > 0) inputs[Math.min(text.length, inputs.length) - 1].focus(); checkPin(); });
+  });
+  function checkPin() {
+    var val = ''; inputs.forEach(function(inp) { val += inp.value; });
+    if (val.length < 3) { hint.textContent = ''; hint.className = 'gate-hint'; return; }
+    if (val === PIN) { inputs.forEach(function(inp) { inp.classList.add('success'); inp.disabled = true; }); hint.textContent = 'Access granted'; hint.className = 'gate-hint'; hint.style.color = 'var(--green)'; sessionStorage.setItem('app-audit-ok', '1'); setTimeout(function() { gate.classList.add('hidden'); }, 400); }
+    else { inputs.forEach(function(inp) { inp.classList.add('error'); }); hint.textContent = 'Incorrect PIN'; hint.className = 'gate-hint error'; setTimeout(function() { inputs.forEach(function(inp) { inp.classList.remove('error'); inp.value = ''; }); inputs[0].focus(); hint.textContent = ''; hint.className = 'gate-hint'; }, 800); }
+  }
+})();
+</script>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="demo.html">Demo</a>
+  <a href="report.html">Sample Report</a>
+  <a href="architecture.html">Architecture</a>
+</nav>
+<script>document.querySelectorAll('#subnav a').forEach(function(a){ if(location.pathname.endsWith(a.getAttribute('href'))){a.classList.add('active')} });</script>
+
+<h1>Architecture</h1>
+<p class="subtitle">From kernel tracepoint to boardroom-ready report in under 2 seconds</p>
+
+<section>
+  <h2>Execution Pipeline</h2>
+
+  <div class="pipe">
+    <div class="pipe-step">Provision honeytokens</div>
+    <div class="pipe-arrow">&rarr;</div>
+    <div class="pipe-step">Attach eBPF tracepoints</div>
+    <div class="pipe-arrow">&rarr;</div>
+    <div class="pipe-step">Launch target binary</div>
+    <div class="pipe-arrow">&rarr;</div>
+    <div class="pipe-step">Stream events via ringbuf</div>
+    <div class="pipe-arrow">&rarr;</div>
+    <div class="pipe-step">Run detector pipeline</div>
+    <div class="pipe-arrow">&rarr;</div>
+    <div class="pipe-step">Enrich destinations</div>
+    <div class="pipe-arrow">&rarr;</div>
+    <div class="pipe-step">Render report</div>
+  </div>
+
+  <h2>Layered Architecture</h2>
+
+  <div class="layer">
+    <span class="layer-num">1</span>
+    <div class="layer-title">Kernel Layer — eBPF Tracepoints + Uprobes</div>
+    <p>Four tracepoints capture syscalls in real time: <code>sys_enter_execve</code>, <code>sys_enter_openat</code> (with O_FLAGS), <code>sys_enter_connect</code>, and <code>sys_exit_connect</code>. Two uprobes hook <code>SSL_write</code>/<code>SSL_read</code> in libssl.so for OpenSSL TLS plaintext capture. One uprobe hooks <code>crypto/tls.(*Conn).Write</code> for Go binaries. Events flow through a BPF ring buffer to userspace — zero copy, no packet loss.</p>
+  </div>
+
+  <div class="layer">
+    <span class="layer-num">2</span>
+    <div class="layer-title">TLS Proxy Layer — MITM for Non-OpenSSL Libraries</div>
+    <p>Complementary capture path for rustls, BoringSSL, GnuTLS, and other TLS libraries that uprobes can't hook. Container-egress iptables redirect routes HTTPS traffic through a TLS-terminating proxy with an injected CA certificate. Events flow into the same detector pipeline as uprobe-captured payloads. Two capture paths, one unified analysis.</p>
+  </div>
+
+  <div class="layer">
+    <span class="layer-num">3</span>
+    <div class="layer-title">Honeytoken Provisioning</div>
+    <p>Before tracepoints attach, <code>audit.Provision()</code> seeds 18 unique markers across 9 files and 8 environment variables. Each marker is freshly minted via <code>crypto/rand</code> — two simultaneous audits never share a marker. Files include <code>/root/.aws/credentials</code>, <code>/root/.ssh/id_rsa</code>, <code>/root/.pgpass</code>, browser cookie databases, and a fake customer PII document. The JWT marker has a real <code>eyJ</code> base64 prefix to survive casual format checks.</p>
+  </div>
+
+  <div class="layer">
+    <span class="layer-num">4</span>
+    <div class="layer-title">Streaming Detector Pipeline</div>
+    <p>Events fan out to all detectors via a mutex-protected pipeline. Each detector implements the <code>audit.Detector</code> interface and processes events as they arrive — no batching, no delay. Findings are emitted as JSON lines tagged <code>"kind":"finding"</code> in the event stream. Stateful detectors (beaconing, PII) guard internal state with mutexes for thread safety.</p>
+  </div>
+
+  <div class="layer">
+    <span class="layer-num">5</span>
+    <div class="layer-title">Post-Enrichment Analysis</div>
+    <p>After the trace ends, every unique destination IP is enriched via Team Cymru's DNS-based WHOIS: reverse DNS (PTR), ASN number, AS organization name, and country code. 8-way concurrent with a 30-second budget. Post-enrichment detectors (KnownBadASN, KnownBadDomain, GeoPolicy) then run against the enriched data — they need the full picture that only exists at end-of-run.</p>
+  </div>
+
+  <div class="layer">
+    <span class="layer-num">6</span>
+    <div class="layer-title">Report Generation + Signing</div>
+    <p>Findings are grouped by severity, deduplicated, and rendered into Markdown + HTML reports with a recommended verdict (REJECT / REVIEW / APPROVE WITH CONDITIONS / APPROVE). Each report includes a provenance block with run ID, target SHA-256, manifest hash, tracer version, and detector list. A SHA-256 sidecar file is written alongside the report — the <code>verify-report</code> CLI recomputes the hash for tamper detection.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Why eBPF, Not...</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Not ptrace</h3>
+      <p>ptrace is single-threaded, stop-the-world, and the target knows it's being traced (PTRACE_TRACEME detection). eBPF is invisible to the target, handles multi-threaded targets natively, and has near-zero overhead.</p>
+    </div>
+    <div class="card">
+      <h3>Not strace</h3>
+      <p>strace is a ptrace wrapper with the same limitations. It also can't capture TLS plaintext — it sees encrypted bytes on the wire, not the HTTP request body containing your stolen API key.</p>
+    </div>
+    <div class="card">
+      <h3>Not a Kernel Module</h3>
+      <p>Kernel modules crash the host if buggy and require root to load. eBPF programs are verified by the kernel before execution — they can't crash, can't loop infinitely, and can't write to arbitrary memory. Safe by design.</p>
+    </div>
+    <div class="card">
+      <h3>Not Network-Only</h3>
+      <p>Packet capture (tcpdump, Wireshark) sees encrypted TLS traffic but can't attribute it to a process or read the plaintext. app-audit captures at the library boundary — after decryption, before the application sees the data. Process attribution is native via PID/comm from the kernel.</p>
+    </div>
+    <div class="card">
+      <h3>Not Static Analysis</h3>
+      <p>Static tools analyze code structure but can't detect runtime behavior: a binary that looks clean in Ghidra can dynamically load a second-stage payload, read your credentials, and exfiltrate them over TLS. Static analysis answers "what could it do?" — dynamic analysis answers "what did it do?"</p>
+    </div>
+    <div class="card">
+      <h3>Not a Sandbox Report</h3>
+      <p>Services like VirusTotal and Joe Sandbox run malware and report behavior — but they run YOUR binary on THEIR infrastructure. app-audit runs on your hardware, in your datacenter, with your policy. The binary never leaves your environment.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Compliance Crosswalk</h2>
+  <p style="color:var(--dim);font-size:.8rem;margin-bottom:1rem">app-audit reports map to these framework controls:</p>
+  <div class="compliance">
+    <div class="compliance-item"><div class="fw">NIST 800-53</div><div class="ctrl">SA-12, SI-7, CM-7</div></div>
+    <div class="compliance-item"><div class="fw">ISO 27001</div><div class="ctrl">A.12.2, A.14.2, A.15.1</div></div>
+    <div class="compliance-item"><div class="fw">SOC 2</div><div class="ctrl">CC6.1, CC6.6, CC7.1</div></div>
+    <div class="compliance-item"><div class="fw">PCI DSS 4.0</div><div class="ctrl">6.3, 6.5, 11.3</div></div>
+    <div class="compliance-item"><div class="fw">GDPR</div><div class="ctrl">Art. 25, Art. 32, Art. 35</div></div>
+    <div class="compliance-item"><div class="fw">FedRAMP</div><div class="ctrl">SA-12, SI-7, RA-5</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Test Coverage</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>228 Unit Tests</h3>
+      <p>Every detector, every edge case — Luhn all-same-digit filtering, RFC1918 skip for VendorDiff, mutex safety under race detector, FindingKey stability for baseline diffs. Race detector on by default.</p>
+    </div>
+    <div class="card">
+      <h3>34 Integration Tests</h3>
+      <p>End-to-end: build the Docker image, run both the misbehaving target and a clean-target control, grep the JSON event stream and rendered reports for expected findings and expected non-findings. Zero false positives on the clean target.</p>
+    </div>
+    <div class="card">
+      <h3>27 False-Positive Resistance Tests</h3>
+      <p>Dedicated suite that verifies detectors don't fire on benign behavior: legitimate DNS lookups, reading /etc/hostname, standard library file opens, non-periodic network activity. Because a tool that cries wolf is worse than no tool.</p>
+    </div>
+  </div>
+</section>
+
+<footer>app-audit — a binRick project</footer>
+
+<script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

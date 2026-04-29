@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>app-audit — Sample Report</title>
+<meta name="description" content="A real audit report from app-audit: 8 high-severity findings, REJECT verdict, full evidence chain.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e74c3c'/><text x='16' y='22' font-family='monospace' font-size='18' font-weight='bold' text-anchor='middle' fill='%23fff'>🛡</text></svg>">
+<style>
+  :root { --accent: #e74c3c; --accent2: #f39c12; --bg: #0a0c10; --card: #12151a; --border: rgba(255,255,255,.08); --text: #c9d1d9; --dim: #6a737d; --green: #22c55e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; line-height: 1.7; padding-top: 60px; }
+
+  #gate { position: fixed; inset: 0; z-index: 9000; background: rgba(10,12,16,.97); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+  #gate.hidden { display: none; }
+  .gate-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2.5rem 2rem; text-align: center; max-width: 380px; width: 90%; }
+  .gate-box h2 { font-size: 1.1rem; color: #fff; margin-bottom: .3rem; letter-spacing: .08em; }
+  .gate-box p { font-size: .78rem; color: var(--dim); margin-bottom: 1.5rem; }
+  .gate-box .lock { font-size: 2rem; margin-bottom: 1rem; }
+  .pin-input { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1rem; }
+  .pin-input input { width: 48px; height: 56px; text-align: center; font-size: 1.4rem; font-family: 'Courier New', monospace; font-weight: 700; background: var(--bg); border: 2px solid var(--border); border-radius: 8px; color: #fff; outline: none; transition: border-color .2s; -moz-appearance: textfield; }
+  .pin-input input::-webkit-outer-spin-button, .pin-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .pin-input input:focus { border-color: var(--accent); }
+  .pin-input input.error { border-color: var(--accent); animation: shake .4s; }
+  .pin-input input.success { border-color: var(--green); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .gate-hint { font-size: .68rem; color: var(--dim); margin-top: .5rem; min-height: 1.2em; }
+  .gate-hint.error { color: var(--accent); }
+
+  #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+  #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: 'Courier New', monospace; }
+  #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+
+  .report { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 1.8rem; color: #fff; text-align: center; margin-bottom: .3rem; padding-top: 2rem; }
+  .subtitle { text-align: center; color: var(--dim); font-size: .82rem; margin-bottom: 2rem; }
+
+  .verdict-box {
+    background: rgba(231,76,60,.1); border: 2px solid rgba(231,76,60,.4);
+    border-radius: 8px; padding: 1.5rem; text-align: center; margin-bottom: 2rem;
+  }
+  .verdict-box .verdict { font-size: 1.6rem; font-weight: 900; color: var(--accent); letter-spacing: .1em; }
+  .verdict-box .reason { font-size: .82rem; color: var(--dim); margin-top: .3rem; }
+
+  .meta-row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2rem; }
+  .meta-chip { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: .4rem .8rem; font-size: .72rem; }
+  .meta-chip .label { color: var(--dim); }
+  .meta-chip .val { color: #fff; font-weight: 700; }
+  .meta-chip .val.high { color: var(--accent); }
+  .meta-chip .val.med { color: var(--accent2); }
+
+  h2 { font-size: 1.1rem; color: #fff; margin: 2rem 0 1rem; border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+  h3 { font-size: .88rem; color: var(--accent); margin: 1.2rem 0 .4rem; }
+
+  .finding { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+  .finding .f-meta { font-size: .7rem; color: var(--dim); margin-bottom: .4rem; }
+  .finding .f-meta .det { color: var(--accent); font-weight: 600; }
+  .finding .f-desc { font-size: .8rem; color: var(--text); line-height: 1.6; margin-bottom: .6rem; }
+  .finding .f-evidence {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: .6rem .8rem; font-size: .72rem; color: var(--dim); overflow-x: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+
+  .dest-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: .75rem; }
+  .dest-table th, .dest-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--border); }
+  .dest-table th { color: var(--accent); font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; }
+  .dest-table td { color: var(--dim); }
+  .dest-table td:first-child { color: #fff; font-weight: 600; font-family: 'Courier New', monospace; }
+
+  .prov-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+  .prov-table td { padding: .35rem .6rem; border-bottom: 1px solid var(--border); }
+  .prov-table td:first-child { color: var(--dim); width: 180px; }
+  .prov-table td:last-child { color: #fff; word-break: break-all; }
+
+  footer { text-align: center; padding: 2rem; color: var(--dim); font-size: .7rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+  @media (max-width: 600px) { h1 { font-size: 1.4rem; } .meta-row { flex-direction: column; align-items: center; } }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="lock">&#128274;</div>
+    <h2>Protected Project</h2>
+    <p>This is a private repository. Enter the PIN to view the project summary.</p>
+    <div class="pin-input" id="pin-input">
+      <input type="number" min="0" max="9" maxlength="1" autofocus>
+      <input type="number" min="0" max="9" maxlength="1">
+      <input type="number" min="0" max="9" maxlength="1">
+    </div>
+    <div class="gate-hint" id="gate-hint"></div>
+  </div>
+</div>
+<script>
+(function() {
+  var PIN = '666';
+  var inputs = document.querySelectorAll('#pin-input input');
+  var hint = document.getElementById('gate-hint');
+  var gate = document.getElementById('gate');
+  if (sessionStorage.getItem('app-audit-ok') === '1') { gate.classList.add('hidden'); return; }
+  inputs.forEach(function(inp, i) {
+    inp.addEventListener('input', function() {
+      if (inp.value.length > 1) inp.value = inp.value.slice(-1);
+      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus(); checkPin();
+    });
+    inp.addEventListener('keydown', function(e) { if (e.key === 'Backspace' && !inp.value && i > 0) { inputs[i - 1].focus(); inputs[i - 1].value = ''; } });
+    inp.addEventListener('paste', function(e) { e.preventDefault(); var text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 3); for (var j = 0; j < text.length && j < inputs.length; j++) inputs[j].value = text[j]; if (text.length > 0) inputs[Math.min(text.length, inputs.length) - 1].focus(); checkPin(); });
+  });
+  function checkPin() {
+    var val = ''; inputs.forEach(function(inp) { val += inp.value; });
+    if (val.length < 3) { hint.textContent = ''; hint.className = 'gate-hint'; return; }
+    if (val === PIN) { inputs.forEach(function(inp) { inp.classList.add('success'); inp.disabled = true; }); hint.textContent = 'Access granted'; hint.className = 'gate-hint'; hint.style.color = 'var(--green)'; sessionStorage.setItem('app-audit-ok', '1'); setTimeout(function() { gate.classList.add('hidden'); }, 400); }
+    else { inputs.forEach(function(inp) { inp.classList.add('error'); }); hint.textContent = 'Incorrect PIN'; hint.className = 'gate-hint error'; setTimeout(function() { inputs.forEach(function(inp) { inp.classList.remove('error'); inp.value = ''; }); inputs[0].focus(); hint.textContent = ''; hint.className = 'gate-hint'; }, 800); }
+  }
+})();
+</script>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="demo.html">Demo</a>
+  <a href="report.html">Sample Report</a>
+  <a href="architecture.html">Architecture</a>
+</nav>
+<script>document.querySelectorAll('#subnav a').forEach(function(a){ if(location.pathname.endsWith(a.getAttribute('href'))){a.classList.add('active')} });</script>
+
+<h1>Sample Audit Report</h1>
+<p class="subtitle">Real output from auditing a misbehaving test binary</p>
+
+<div class="report">
+  <div class="verdict-box">
+    <div class="verdict">REJECT</div>
+    <div class="reason">8 high-severity finding(s). Honeytoken exfiltration or other unambiguous evidence of malicious behavior.</div>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-chip"><span class="label">Target: </span><span class="val">/usr/local/bin/target</span></div>
+    <div class="meta-chip"><span class="label">Run window: </span><span class="val">1.983s</span></div>
+    <div class="meta-chip"><span class="label">High: </span><span class="val high">8</span></div>
+    <div class="meta-chip"><span class="label">Medium: </span><span class="val med">16</span></div>
+    <div class="meta-chip"><span class="label">Low: </span><span class="val">0</span></div>
+    <div class="meta-chip"><span class="label">Info: </span><span class="val">10</span></div>
+  </div>
+
+  <h2>High Findings</h2>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">sandbox_detection</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "target" (pid 26442) read "/proc/cpuinfo". Reads CPU strings looking for hypervisor brands (QEMU / VirtualBox / VMware). Sandbox-detection probes are themselves a strong indicator of evasive behavior: well-behaved software does not need to know whether it's running in a VM or container.</div>
+    <div class="f-evidence">2026-04-29T02:55:58Z open comm=target pid=26442 filename=/proc/cpuinfo</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">honeytoken_hit</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "curl" (pid 26450) caused a tls_write event whose payload contained the honeytoken "AWS_ACCESS_KEY_ID" (fake AWS access key planted in /root/.aws/credentials). This token was planted by app-audit at sandbox start and has no legitimate reason to appear anywhere outside its seed location.</div>
+    <div class="f-evidence">tls_write comm=curl data="POST / HTTP/1.1\r\nHost: example.com\r\n...aws_access_key_id=AKIAIOSFODNN7EXAMPLE..."</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">honeytoken_hit</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "curl" (pid 26450) exfiltrated the planted AWS_SECRET_ACCESS_KEY via TLS POST to example.com. The secret key was planted in /root/.aws/credentials and has no legitimate reason to appear in outbound traffic.</div>
+    <div class="f-evidence">tls_write comm=curl data="POST / HTTP/1.1\r\nHost: example.com\r\n...aws_secret_access_key=wJalrXUtnFEMI/K7MDENG..."</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">honeytoken_hit</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "curl" (pid 26452) exfiltrated the planted GITHUB_TOKEN via Authorization header to example.com.</div>
+    <div class="f-evidence">tls_write comm=curl data="GET / HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer ghp_6744e41dfb9e84a7\r\n\r\n"</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">honeytoken_hit</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "target" (pid 26446) exfiltrated the planted OPENAI_API_KEY via Go HTTPS POST body. The key was planted as an environment variable.</div>
+    <div class="f-evidence">tls_write comm=target data="..{\"api_key\":\"sk-proj-0eabbf61f1a8f77d\"}"</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">beaconing</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "curl" connected to 1.1.1.1:443 at least 4 times with regular spacing (mean interval 261ms, coefficient of variation 0.05). Regular-interval outbound connections are the classic C2 callback fingerprint.</div>
+    <div class="f-evidence">connect comm=curl pid=26459 dst=1.1.1.1:443 interval=261ms cv=0.05</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">honeytoken_hit</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "curl" (pid 26461) exfiltrated the planted SLACK_BOT_TOKEN via TLS POST to example.com.</div>
+    <div class="f-evidence">tls_write comm=curl data="POST / HTTP/1.1\r\nHost: example.com\r\n...slack_token=xoxb-6d99d9b64e1bbca7"</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-meta"><span class="det">pii_outbound</span> &mdash; HIGH</div>
+    <div class="f-desc">Process "target" (pid 26446) sent a payload containing a Luhn-valid 16-digit sequence (last 4: 4242). Confirm whether the vendor's stated data flows include payment-card data.</div>
+    <div class="f-evidence">tls_write comm=target data="..{\"card\":\"4242424242424242\",\"cvc\":\"123\"}"</div>
+  </div>
+
+  <h2>Network Destinations</h2>
+  <table class="dest-table">
+    <thead><tr><th>Destination</th><th>ASN</th><th>Country</th><th>First seen by</th></tr></thead>
+    <tbody>
+      <tr><td>192.168.65.7:53</td><td>-</td><td>-</td><td>tracer</td></tr>
+      <tr><td>104.20.23.154:443</td><td>AS13335 CLOUDFLARENET</td><td>US</td><td>curl</td></tr>
+      <tr><td>172.66.147.243:443</td><td>AS13335 CLOUDFLARENET</td><td>US</td><td>curl</td></tr>
+      <tr><td>1.1.1.1:443</td><td>AS13335 CLOUDFLARENET</td><td>AU</td><td>curl</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Process Activity Summary</h2>
+  <table class="dest-table">
+    <thead><tr><th>Process</th><th>High</th><th>Medium</th><th>Low</th><th>Info</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr><td>curl</td><td style="color:var(--accent);font-weight:700">5</td><td style="color:var(--accent2)">13</td><td>0</td><td>5</td><td style="font-weight:700">23</td></tr>
+      <tr><td>target</td><td style="color:var(--accent);font-weight:700">3</td><td style="color:var(--accent2)">3</td><td>0</td><td>0</td><td style="font-weight:700">6</td></tr>
+      <tr><td>tracer</td><td>0</td><td>0</td><td>0</td><td>5</td><td style="font-weight:700">5</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Honeytokens Planted (18)</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.5rem;margin-bottom:2rem">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">AWS_ACCESS_KEY_ID</span> <span style="color:var(--dim)">/root/.aws/credentials</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">AWS_SECRET_ACCESS_KEY</span> <span style="color:var(--dim)">/root/.aws/credentials</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">SSH_PRIVATE_KEY</span> <span style="color:var(--dim)">/root/.ssh/id_rsa</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">SENSITIVE_DOC</span> <span style="color:var(--dim)">customer_pii.txt</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">GITHUB_TOKEN</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">OPENAI_API_KEY</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">ANTHROPIC_API_KEY</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">STRIPE_API_KEY</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">SLACK_BOT_TOKEN</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">SLACK_WEBHOOK</span> <span style="color:var(--dim)">app config</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">TWILIO_SID</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">TWILIO_AUTH</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">CLOUDFLARE_TOKEN</span> <span style="color:var(--dim)">env var</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">JWT_TOKEN</span> <span style="color:var(--dim)">app config</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">CHROME_COOKIES</span> <span style="color:var(--dim)">Chrome Default/</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">FIREFOX_COOKIES</span> <span style="color:var(--dim)">Firefox profile</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">BTC_WALLET</span> <span style="color:var(--dim)">wallet.dat</span></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:.5rem .7rem;font-size:.7rem"><span style="color:var(--accent)">PG_PASSWORD</span> <span style="color:var(--dim)">/root/.pgpass</span></div>
+  </div>
+
+  <h2>Chain of Custody</h2>
+  <table class="prov-table">
+    <tr><td>Run ID</td><td>d6ba21f9-8aac-403c-aec7-bd6b86a5a9c3</td></tr>
+    <tr><td>Generated at</td><td>2026-04-29T02:56:00Z</td></tr>
+    <tr><td>Tracer version</td><td>v1-rc16</td></tr>
+    <tr><td>Go version</td><td>go1.22.12</td></tr>
+    <tr><td>Host OS / arch</td><td>linux / arm64</td></tr>
+    <tr><td>Target SHA-256</td><td>2147f8215423f518bf582ab422b0322b67b6909a5bb31d602c19c1c433459aaa</td></tr>
+    <tr><td>Target size</td><td>7,077,384 bytes</td></tr>
+    <tr><td>Manifest SHA-256</td><td>2f8cacee317e63660f78eb20551cf706302e9ff943250648ecbd6efcfd20ce08</td></tr>
+    <tr><td>Honeytokens planted</td><td>18</td></tr>
+    <tr><td>Detectors run</td><td>11</td></tr>
+  </table>
+</div>
+
+<footer>app-audit — a binRick project</footer>
+
+<script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

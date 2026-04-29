@@ -170,8 +170,20 @@
 </script>
 
 <nav id="subnav">
-  <a href="/">Overview</a>
+  <a href="index.html">Overview</a>
+  <a href="demo.html">Demo</a>
+  <a href="report.html">Sample Report</a>
+  <a href="architecture.html">Architecture</a>
 </nav>
+<script>
+document.querySelectorAll('#subnav a').forEach(function(a){
+  var href=a.getAttribute('href');
+  var path=location.pathname;
+  if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('index.html')))){
+    a.classList.add('active');
+  }
+});
+</script>
 
 <div class="hero">
   <div class="badge">Private / Source-Available</div>
@@ -205,7 +217,7 @@
     <div class="spec"><div class="label">Platforms</div><div class="value">macOS + Linux hosts (Docker)</div></div>
     <div class="spec"><div class="label">Targets</div><div class="value">Linux ELF binaries</div></div>
     <div class="spec"><div class="label">Honeytokens</div><div class="value">18 unique-per-run markers</div></div>
-    <div class="spec"><div class="label">Detectors</div><div class="value">9 streaming + 1 post-enrichment</div></div>
+    <div class="spec"><div class="label">Detectors</div><div class="value">11 streaming + 3 post-enrichment</div></div>
     <div class="spec"><div class="label">Tests</div><div class="value">228 unit + 34 integration</div></div>
     <div class="spec"><div class="label">Output</div><div class="value">Markdown + HTML report with verdict</div></div>
   </div>
@@ -250,6 +262,26 @@
       <h3>Known-Bad ASN Blocking</h3>
       <p>Post-enrichment detector flags connections to ASNs on a curated bulletproof-hosting list. Catches traffic to infrastructure commonly associated with malware C2 and data exfiltration services.</p>
     </div>
+    <div class="card">
+      <h3>TLS-Terminating MITM Proxy</h3>
+      <p>Container-egress proxy with iptables redirect + injected CA. Catches TLS traffic from non-OpenSSL libraries (rustls, BoringSSL, GnuTLS) that uprobes can't hook. Complementary capture path — events flow into the same detector pipeline.</p>
+    </div>
+    <div class="card">
+      <h3>Web UI — Approval Queue</h3>
+      <p>Built-in web interface with approval queue, org policy viewer, and report integrity verifier. Submit binaries, review REJECT/APPROVE verdicts, and verify SHA-256 report hashes — all from the browser. No CLI required for approvers.</p>
+    </div>
+    <div class="card">
+      <h3>Enterprise Org Policy</h3>
+      <p>Organization-wide policy overlay: geographic restrictions (allowed/blocked countries), ASN block-lists, severity thresholds for auto-reject, per-detector auto-reject rules, external threat-intel feed files. Policy overrides per-vendor manifests.</p>
+    </div>
+    <div class="card">
+      <h3>Chain of Custody</h3>
+      <p>Every report includes provenance: run ID, tracer version, Go version, host OS/arch, target SHA-256, manifest hash, honeytoken count, detector list. SHA-256 sidecar file + verify-report CLI for tamper detection. Reports are defensible evidence.</p>
+    </div>
+    <div class="card">
+      <h3>Crypto Mining Detection</h3>
+      <p>Catches binaries that spawn cryptocurrency miners — detects Stratum protocol patterns, mining pool connections, and suspicious CPU-intensive child processes. Because your vendor's "monitoring agent" shouldn't be mining Monero.</p>
+    </div>
   </div>
 </section>
 
@@ -267,6 +299,10 @@
       <tr><td>SensitivePath</td><td class="sev-med">MEDIUM</td><td>Read of credentials/PII path</td></tr>
       <tr><td>HostFingerprint</td><td class="sev-med">MEDIUM</td><td>Read /etc/machine-id, MAC address</td></tr>
       <tr><td>PersistencePath</td><td class="sev-med">MEDIUM/HIGH</td><td>Touch of cron/systemd/shell-rc paths</td></tr>
+      <tr><td>CryptoMining</td><td class="sev-high">HIGH</td><td>Stratum protocol patterns, pool connections</td></tr>
+      <tr><td>TimeManipulation</td><td class="sev-med">MEDIUM</td><td>Probes /etc/localtime, /etc/timezone (anti-analysis)</td></tr>
+      <tr><td>KnownBadDomain</td><td class="sev-high">HIGH</td><td>PTR matches .onion, ngrok, trycloudflare, etc.</td></tr>
+      <tr><td>GeoPolicy</td><td class="sev-high">HIGH</td><td>Connection to country blocked by org policy</td></tr>
       <tr><td>NetworkDestination</td><td class="sev-low">INFO</td><td>Every unique destination (for the report)</td></tr>
     </tbody>
   </table>

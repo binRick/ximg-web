@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>app-audit — Live Demo</title>
+<meta name="description" content="Watch app-audit catch a misbehaving binary in real time — honeytoken exfiltration, C2 beaconing, PII leakage, sandbox detection.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e74c3c'/><text x='16' y='22' font-family='monospace' font-size='18' font-weight='bold' text-anchor='middle' fill='%23fff'>🛡</text></svg>">
+<style>
+  :root { --accent: #e74c3c; --accent2: #f39c12; --bg: #0a0c10; --card: #12151a; --border: rgba(255,255,255,.08); --text: #c9d1d9; --dim: #6a737d; --green: #22c55e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; line-height: 1.7; padding-top: 60px; }
+
+  #gate {
+    position: fixed; inset: 0; z-index: 9000;
+    background: rgba(10,12,16,.97);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+  }
+  #gate.hidden { display: none; }
+  .gate-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 2.5rem 2rem; text-align: center; max-width: 380px; width: 90%;
+  }
+  .gate-box h2 { font-size: 1.1rem; color: #fff; margin-bottom: .3rem; letter-spacing: .08em; }
+  .gate-box p { font-size: .78rem; color: var(--dim); margin-bottom: 1.5rem; }
+  .gate-box .lock { font-size: 2rem; margin-bottom: 1rem; }
+  .pin-input { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1rem; }
+  .pin-input input {
+    width: 48px; height: 56px; text-align: center; font-size: 1.4rem;
+    font-family: 'Courier New', monospace; font-weight: 700;
+    background: var(--bg); border: 2px solid var(--border); border-radius: 8px;
+    color: #fff; outline: none; transition: border-color .2s;
+    -moz-appearance: textfield;
+  }
+  .pin-input input::-webkit-outer-spin-button,
+  .pin-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .pin-input input:focus { border-color: var(--accent); }
+  .pin-input input.error { border-color: var(--accent); animation: shake .4s; }
+  .pin-input input.success { border-color: var(--green); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .gate-hint { font-size: .68rem; color: var(--dim); margin-top: .5rem; min-height: 1.2em; }
+  .gate-hint.error { color: var(--accent); }
+
+  #subnav {
+    position: sticky; top: 52px; z-index: 150;
+    background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+  }
+  #subnav a {
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: #5a6070; padding: .3rem .65rem; border-radius: 3px;
+    text-decoration: none; transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+
+  section { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 1.8rem; color: #fff; text-align: center; margin-bottom: .3rem; letter-spacing: -.01em; padding-top: 2rem; }
+  .subtitle { text-align: center; color: var(--dim); font-size: .82rem; margin-bottom: 2rem; }
+  h2 { font-size: 1.3rem; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+
+  .video-wrap {
+    background: #000; border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.08); margin-bottom: 2rem;
+  }
+  video { display: block; width: 100%; max-height: 70vh; background: #000; }
+
+  .screenshot-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-bottom: 2rem; }
+  .screenshot { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .screenshot img { display: block; width: 100%; height: auto; }
+  .screenshot .caption {
+    padding: .8rem 1rem; font-size: .78rem; color: var(--dim); line-height: 1.5;
+    border-top: 1px solid var(--border);
+  }
+  .screenshot .caption strong { color: var(--accent); }
+
+  .callout {
+    background: rgba(231,76,60,.08); border: 1px solid rgba(231,76,60,.2);
+    border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 2rem;
+    font-size: .82rem; color: var(--text); line-height: 1.6;
+  }
+  .callout strong { color: var(--accent); }
+
+  footer { text-align: center; padding: 2rem; color: var(--dim); font-size: .7rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+  @media (max-width: 600px) { h1 { font-size: 1.4rem; } }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="lock">&#128274;</div>
+    <h2>Protected Project</h2>
+    <p>This is a private repository. Enter the PIN to view the project summary.</p>
+    <div class="pin-input" id="pin-input">
+      <input type="number" min="0" max="9" maxlength="1" autofocus>
+      <input type="number" min="0" max="9" maxlength="1">
+      <input type="number" min="0" max="9" maxlength="1">
+    </div>
+    <div class="gate-hint" id="gate-hint"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var PIN = '666';
+  var inputs = document.querySelectorAll('#pin-input input');
+  var hint = document.getElementById('gate-hint');
+  var gate = document.getElementById('gate');
+  if (sessionStorage.getItem('app-audit-ok') === '1') { gate.classList.add('hidden'); return; }
+  inputs.forEach(function(inp, i) {
+    inp.addEventListener('input', function() {
+      if (inp.value.length > 1) inp.value = inp.value.slice(-1);
+      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
+      checkPin();
+    });
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !inp.value && i > 0) { inputs[i - 1].focus(); inputs[i - 1].value = ''; }
+    });
+    inp.addEventListener('paste', function(e) {
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 3);
+      for (var j = 0; j < text.length && j < inputs.length; j++) inputs[j].value = text[j];
+      if (text.length > 0) inputs[Math.min(text.length, inputs.length) - 1].focus();
+      checkPin();
+    });
+  });
+  function checkPin() {
+    var val = ''; inputs.forEach(function(inp) { val += inp.value; });
+    if (val.length < 3) { hint.textContent = ''; hint.className = 'gate-hint'; return; }
+    if (val === PIN) {
+      inputs.forEach(function(inp) { inp.classList.add('success'); inp.disabled = true; });
+      hint.textContent = 'Access granted'; hint.className = 'gate-hint'; hint.style.color = 'var(--green)';
+      sessionStorage.setItem('app-audit-ok', '1');
+      setTimeout(function() { gate.classList.add('hidden'); }, 400);
+    } else {
+      inputs.forEach(function(inp) { inp.classList.add('error'); });
+      hint.textContent = 'Incorrect PIN'; hint.className = 'gate-hint error';
+      setTimeout(function() {
+        inputs.forEach(function(inp) { inp.classList.remove('error'); inp.value = ''; });
+        inputs[0].focus(); hint.textContent = ''; hint.className = 'gate-hint';
+      }, 800);
+    }
+  }
+})();
+</script>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="demo.html">Demo</a>
+  <a href="report.html">Sample Report</a>
+  <a href="architecture.html">Architecture</a>
+</nav>
+<script>
+document.querySelectorAll('#subnav a').forEach(function(a){
+  var href=a.getAttribute('href');
+  var path=location.pathname;
+  if(path.endsWith(href)){a.classList.add('active')}
+});
+</script>
+
+<h1>Live Demo</h1>
+<p class="subtitle">A misbehaving binary audited end-to-end in under 2 seconds</p>
+
+<section>
+  <div class="callout">
+    <strong>What you're watching:</strong> A test binary that reads planted AWS credentials, exfiltrates them over TLS, sends a fake credit card number, beacons to 1.1.1.1 at regular intervals, and probes for sandbox detection. app-audit catches all of it — 8 high-severity findings, 16 medium — and recommends <strong>REJECT</strong> in 1.98 seconds.
+  </div>
+
+  <h2>End-to-End Video</h2>
+  <div class="video-wrap">
+    <video controls playsinline>
+      <source src="demo/demo.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  </div>
+</section>
+
+<section>
+  <h2>Web UI Screenshots</h2>
+  <p style="color:var(--dim);font-size:.8rem;margin-bottom:1.5rem">The built-in web UI provides a complete approval workflow — no CLI needed for reviewers.</p>
+
+  <div class="screenshot-grid">
+    <div class="screenshot">
+      <img src="demo/01_queue.png" alt="Approval queue showing three audit runs with REJECT verdicts" loading="lazy">
+      <div class="caption"><strong>Approval Queue</strong> — Every audit run lands here with its verdict, severity counts, and target path. Click any row to drill into the full report. The queue shows real-time results: "just now", "25 minutes ago", and a replayed JSONL audit from an hour ago.</div>
+    </div>
+    <div class="screenshot">
+      <img src="demo/05_report.png" alt="Full audit report with REJECT verdict and severity summary" loading="lazy">
+      <div class="caption"><strong>Audit Report</strong> — SHA-256 verified against the sidecar file. The report opens with the recommended decision (REJECT), severity breakdown (8 high, 16 medium), and the run window (1.983 seconds). Below: each finding with its detector, timestamp, and raw evidence bytes. This is what the approver signs.</div>
+    </div>
+    <div class="screenshot">
+      <img src="demo/08_policy_page.png" alt="Organization policy editor showing geo restrictions and auto-reject rules" loading="lazy">
+      <div class="caption"><strong>Org Policy</strong> — Enterprise overlay with geographic restrictions (US, CA, GB, DE, FR, IE, NL, JP, AU allowed), blocked ASNs (bulletproof hosting), auto-reject threshold (medium), and auto-reject detectors (honeytoken_hit, crypto_mining, known_bad_asn, known_bad_domain). Policy overrides per-vendor manifests org-wide.</div>
+    </div>
+    <div class="screenshot">
+      <img src="demo/07_verify_page.png" alt="Report integrity verifier with SHA-256 sidecar upload" loading="lazy">
+      <div class="caption"><strong>Verify Report</strong> — Upload any .report.md (or .report.html) and its .sha256 sidecar. The verifier recomputes the hash and confirms whether the report has been tampered with. Chain of custody from audit to boardroom.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What the Demo Binary Does</h2>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.2rem;font-size:.78rem;line-height:1.8;color:var(--dim);overflow-x:auto">
+    <div><span style="color:var(--accent);font-weight:700">1.</span> Reads <code style="color:#fff">/proc/cpuinfo</code> looking for hypervisor brands (sandbox detection)</div>
+    <div><span style="color:var(--accent);font-weight:700">2.</span> Reads <code style="color:#fff">/etc/machine-id</code> (host fingerprinting)</div>
+    <div><span style="color:var(--accent);font-weight:700">3.</span> Opens <code style="color:#fff">/root/.aws/credentials</code> (planted honeytoken)</div>
+    <div><span style="color:var(--accent);font-weight:700">4.</span> POSTs AWS keys to example.com over TLS (honeytoken exfiltration)</div>
+    <div><span style="color:var(--accent);font-weight:700">5.</span> Sends GITHUB_TOKEN in Authorization header (honeytoken exfiltration)</div>
+    <div><span style="color:var(--accent);font-weight:700">6.</span> Sends OPENAI_API_KEY in Go HTTPS POST body (honeytoken exfiltration)</div>
+    <div><span style="color:var(--accent);font-weight:700">7.</span> Beacons to 1.1.1.1:443 every ~261ms (C2 pattern)</div>
+    <div><span style="color:var(--accent);font-weight:700">8.</span> Sends SLACK_BOT_TOKEN to example.com (honeytoken exfiltration)</div>
+    <div><span style="color:var(--accent);font-weight:700">9.</span> POSTs <code style="color:#fff">{"card":"4242424242424242","cvc":"123"}</code> over TLS (PII leakage)</div>
+    <div><span style="color:var(--accent);font-weight:700">10.</span> Reads <code style="color:#fff">/root/.bashrc</code> (persistence probe)</div>
+    <div style="margin-top:.8rem;color:var(--accent);font-weight:700">Result: REJECT — 8 high, 16 medium, 0 low, 10 info findings in 1.98 seconds.</div>
+  </div>
+</section>
+
+<footer>app-audit — a binRick project</footer>
+
+<script src="/shared/nav.js?v=5"></script>
+</body>
+</html>
