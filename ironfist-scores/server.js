@@ -19,7 +19,7 @@ db.pragma('journal_mode = WAL');
 db.exec(`
   CREATE TABLE IF NOT EXISTS replays (
     id TEXT PRIMARY KEY,
-    score_idx INTEGER NOT NULL,
+    score_id TEXT NOT NULL,
     storage_key TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     build_hash TEXT,
@@ -27,8 +27,12 @@ db.exec(`
     created_at TEXT NOT NULL
   )
 `);
+// Migrate: add score_id column if missing (old schema had score_idx)
+try {
+  db.exec(`ALTER TABLE replays ADD COLUMN score_id TEXT NOT NULL DEFAULT ''`);
+} catch (e) { /* column already exists */ }
 
-// --- Scores (JSON, unchanged storage) ---
+// --- Scores (JSON storage) ---
 function loadScores() {
   try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
   catch { return []; }
@@ -37,6 +41,19 @@ function loadScores() {
 function saveScores(scores) {
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
   fs.writeFileSync(DATA_FILE, JSON.stringify(scores, null, 2));
+}
+
+// Backfill: ensure every score has an id
+function ensureScoreIds() {
+  const scores = loadScores();
+  let changed = false;
+  for (const s of scores) {
+    if (!s.id) {
+      s.id = genId();
+      changed = true;
+    }
+  }
+  if (changed) saveScores(scores);
 }
 
 // --- Helpers ---
@@ -50,7 +67,6 @@ function readBody(req) {
 }
 
 function genId() {
-  // Time-sortable id: timestamp hex + random
   const ts = Date.now().toString(36);
   const rnd = crypto.randomBytes(6).toString('hex');
   return `${ts}-${rnd}`;
@@ -100,12 +116,15 @@ function json(res, status, obj) {
 
 // --- Prepared statements ---
 const stmtInsertReplay = db.prepare(
-  `INSERT INTO replays (id, score_idx, storage_key, size_bytes, build_hash, verified, created_at)
+  `INSERT INTO replays (id, score_id, storage_key, size_bytes, build_hash, verified, created_at)
    VALUES (?, ?, ?, ?, ?, 0, ?)`
 );
 const stmtGetReplay = db.prepare('SELECT * FROM replays WHERE id = ?');
 const stmtDeleteReplay = db.prepare('DELETE FROM replays WHERE id = ?');
-const stmtGetReplayByScoreIdx = db.prepare('SELECT id, build_hash FROM replays WHERE score_idx = ?');
+const stmtGetReplayByScoreId = db.prepare('SELECT id, build_hash FROM replays WHERE score_id = ?');
+
+// Backfill score ids on startup
+ensureScoreIds();
 
 // --- Server ---
 const server = http.createServer(async (req, res) => {
@@ -125,9 +144,8 @@ const server = http.createServer(async (req, res) => {
   // GET /api/scores — return top scores with replay_id
   if (req.method === 'GET' && pathname === '/api/scores') {
     const scores = loadScores();
-    // Attach replay_id to each score
-    const enriched = scores.map((s, idx) => {
-      const replay = stmtGetReplayByScoreIdx.get(idx);
+    const enriched = scores.map(s => {
+      const replay = s.id ? stmtGetReplayByScoreId.get(s.id) : null;
       return { ...s, replay_id: replay ? replay.id : null, build_hash: replay ? replay.build_hash : null };
     });
     return json(res, 200, { scores: enriched });
@@ -152,7 +170,9 @@ const server = http.createServer(async (req, res) => {
       const shots    = parseInt(body.shots, 10) || 0;
       const damage   = parseInt(body.damage, 10) || 0;
 
+      const id = genId();
       const entry = {
+        id,
         initials, score, kills, wave, weapon, time, pickups, shots, damage,
         ts: new Date().toISOString(),
       };
@@ -163,10 +183,9 @@ const server = http.createServer(async (req, res) => {
       const trimmed = scores.slice(0, MAX_SCORES);
       saveScores(trimmed);
 
-      const rank = trimmed.findIndex(s => s === entry) + 1;
-      const id = rank > 0 ? rank - 1 : -1;
+      const rank = trimmed.findIndex(s => s.id === id) + 1;
 
-      console.log(`[${entry.ts}] NEW SCORE: ${initials} ${score} (wave ${wave}, ${kills} kills, ${time.toFixed(0)}s, ${shots} shots, ${damage} dmg) — rank #${rank}`);
+      console.log(`[${entry.ts}] NEW SCORE: ${initials} ${score} (wave ${wave}, ${kills} kills, ${time.toFixed(0)}s, ${shots} shots, ${damage} dmg) — rank #${rank}, id=${id}`);
 
       return json(res, 201, { rank, entry, id });
     } catch (err) {
@@ -179,21 +198,22 @@ const server = http.createServer(async (req, res) => {
     try {
       const { fields, fileBuffer } = await parseMultipart(req);
 
-      const scoreIdx = parseInt(fields.score_id, 10);
-      if (isNaN(scoreIdx) || scoreIdx < 0) return json(res, 400, { error: 'score_id required' });
+      const scoreId = fields.score_id;
+      if (!scoreId) return json(res, 400, { error: 'score_id required' });
 
       // Verify score exists
       const scores = loadScores();
-      if (scoreIdx >= scores.length) return json(res, 404, { error: 'score not found' });
+      const scoreEntry = scores.find(s => s.id === scoreId);
+      if (!scoreEntry) return json(res, 404, { error: 'score not found' });
 
       // Check if replay already attached
-      const existing = stmtGetReplayByScoreIdx.get(scoreIdx);
+      const existing = stmtGetReplayByScoreId.get(scoreId);
       if (existing) return json(res, 409, { error: 'replay already attached to this score' });
 
       if (!fileBuffer || fileBuffer.length === 0) return json(res, 400, { error: 'replay file required' });
       if (fileBuffer.length > MAX_REPLAY) return json(res, 413, { error: 'replay too large (max 1 MB)' });
 
-      // Validate IFR magic (first 4 bytes: IFR1 or IFR2)
+      // Validate IFR magic (first 4 bytes: IFR1, IFR2, or IFR3)
       if (fileBuffer.length < 4 ||
           fileBuffer[0] !== 0x49 || // I
           fileBuffer[1] !== 0x46 || // F
@@ -216,11 +236,11 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync(filePath, fileBuffer);
 
       stmtInsertReplay.run(
-        replayId, scoreIdx, key, fileBuffer.length,
+        replayId, scoreId, key, fileBuffer.length,
         buildHash, new Date().toISOString()
       );
 
-      console.log(`[REPLAY] Stored ${replayId} for score #${scoreIdx} (${fileBuffer.length} bytes, build ${buildHash})`);
+      console.log(`[REPLAY] Stored ${replayId} for score ${scoreId} (${fileBuffer.length} bytes, build ${buildHash})`);
 
       return json(res, 201, { replay_id: replayId });
     } catch (err) {
