@@ -193,13 +193,13 @@ const server = http.createServer(async (req, res) => {
       if (!fileBuffer || fileBuffer.length === 0) return json(res, 400, { error: 'replay file required' });
       if (fileBuffer.length > MAX_REPLAY) return json(res, 413, { error: 'replay too large (max 1 MB)' });
 
-      // Validate IFR1 magic (first 4 bytes)
+      // Validate IFR magic (first 4 bytes: IFR1 or IFR2)
       if (fileBuffer.length < 4 ||
           fileBuffer[0] !== 0x49 || // I
           fileBuffer[1] !== 0x46 || // F
           fileBuffer[2] !== 0x52 || // R
-          fileBuffer[3] !== 0x31) { // 1
-        return json(res, 400, { error: 'invalid replay file (bad magic, expected IFR1)' });
+          (fileBuffer[3] !== 0x31 && fileBuffer[3] !== 0x32)) { // 1 or 2
+        return json(res, 400, { error: 'invalid replay file (bad magic, expected IFR1 or IFR2)' });
       }
 
       // Extract build_hash from bytes 24-27 (little-endian u32)
