@@ -9,8 +9,10 @@ const PORT       = 3011;
 const DATA_FILE  = '/data/scores.json';
 const DB_FILE    = '/data/replays.db';
 const REPLAY_DIR = '/data/replays';
+const VIDEO_DIR  = '/data/videos';
 const MAX_SCORES = 100;
-const MAX_REPLAY = 1 * 1024 * 1024; // 1 MB
+const MAX_REPLAY = 1 * 1024 * 1024;  // 1 MB
+const MAX_VIDEO  = 20 * 1024 * 1024; // 20 MB
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'ironfist-admin-secret';
 
 // --- SQLite setup ---
@@ -27,10 +29,16 @@ db.exec(`
     created_at TEXT NOT NULL
   )
 `);
-// Migrate: add score_id column if missing (old schema had score_idx)
-try {
-  db.exec(`ALTER TABLE replays ADD COLUMN score_id TEXT NOT NULL DEFAULT ''`);
-} catch (e) { /* column already exists */ }
+db.exec(`
+  CREATE TABLE IF NOT EXISTS videos (
+    id TEXT PRIMARY KEY,
+    score_id TEXT NOT NULL UNIQUE,
+    storage_key TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    mime_type TEXT NOT NULL DEFAULT 'video/webm',
+    created_at TEXT NOT NULL
+  )
+`);
 
 // --- Scores (JSON storage) ---
 function loadScores() {
@@ -43,7 +51,6 @@ function saveScores(scores) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(scores, null, 2));
 }
 
-// Backfill: ensure every score has an id
 function ensureScoreIds() {
   const scores = loadScores();
   let changed = false;
@@ -72,41 +79,33 @@ function genId() {
   return `${ts}-${rnd}`;
 }
 
-function parseMultipart(req) {
+function parseMultipart(req, maxSize) {
   return new Promise((resolve, reject) => {
     const fields = {};
-    let fileBuffer = null;
-    let fileName = null;
+    const files = {};
 
-    const busboy = Busboy({ headers: req.headers, limits: { fileSize: MAX_REPLAY + 1024 } });
+    const busboy = Busboy({ headers: req.headers, limits: { fileSize: maxSize + 1024 } });
 
     busboy.on('field', (name, val) => { fields[name] = val; });
     busboy.on('file', (name, stream, info) => {
-      if (name === 'replay') {
-        fileName = info.filename;
-        const chunks = [];
-        stream.on('data', d => chunks.push(d));
-        stream.on('end', () => { fileBuffer = Buffer.concat(chunks); });
-      } else {
-        stream.resume();
-      }
+      const chunks = [];
+      stream.on('data', d => chunks.push(d));
+      stream.on('end', () => { files[name] = { buffer: Buffer.concat(chunks), info }; });
     });
-    busboy.on('finish', () => resolve({ fields, fileBuffer, fileName }));
+    busboy.on('finish', () => resolve({ fields, files }));
     busboy.on('error', reject);
 
     req.pipe(busboy);
   });
 }
 
-function ensureReplayDir(id) {
+function ensureDir(base, id) {
   const now = new Date();
   const yyyy = now.getFullYear().toString();
   const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-  const dir = path.join(REPLAY_DIR, yyyy, mm);
+  const dir = path.join(base, yyyy, mm);
   fs.mkdirSync(dir, { recursive: true });
-  const key = `replays/${yyyy}/${mm}/${id}.ifr.zst`;
-  const filePath = path.join(REPLAY_DIR, yyyy, mm, `${id}.ifr.zst`);
-  return { key, filePath };
+  return { yyyy, mm, dir };
 }
 
 function json(res, status, obj) {
@@ -114,7 +113,7 @@ function json(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-// --- Prepared statements ---
+// --- Prepared statements: replays ---
 const stmtInsertReplay = db.prepare(
   `INSERT INTO replays (id, score_id, storage_key, size_bytes, build_hash, verified, created_at)
    VALUES (?, ?, ?, ?, ?, 0, ?)`
@@ -122,6 +121,15 @@ const stmtInsertReplay = db.prepare(
 const stmtGetReplay = db.prepare('SELECT * FROM replays WHERE id = ?');
 const stmtDeleteReplay = db.prepare('DELETE FROM replays WHERE id = ?');
 const stmtGetReplayByScoreId = db.prepare('SELECT id, build_hash FROM replays WHERE score_id = ?');
+
+// --- Prepared statements: videos ---
+const stmtInsertVideo = db.prepare(
+  `INSERT INTO videos (id, score_id, storage_key, size_bytes, mime_type, created_at)
+   VALUES (?, ?, ?, ?, ?, ?)`
+);
+const stmtGetVideo = db.prepare('SELECT * FROM videos WHERE id = ?');
+const stmtDeleteVideo = db.prepare('DELETE FROM videos WHERE id = ?');
+const stmtGetVideoByScoreId = db.prepare('SELECT id FROM videos WHERE score_id = ?');
 
 // Backfill score ids on startup
 ensureScoreIds();
@@ -131,7 +139,7 @@ const server = http.createServer(async (req, res) => {
   // CORS for wasm builds
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -141,12 +149,18 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
 
-  // GET /api/scores — return top scores with replay_id
+  // GET /api/scores — return top scores with replay_id + video_id
   if (req.method === 'GET' && pathname === '/api/scores') {
     const scores = loadScores();
     const enriched = scores.map(s => {
       const replay = s.id ? stmtGetReplayByScoreId.get(s.id) : null;
-      return { ...s, replay_id: replay ? replay.id : null, build_hash: replay ? replay.build_hash : null };
+      const video = s.id ? stmtGetVideoByScoreId.get(s.id) : null;
+      return {
+        ...s,
+        replay_id: replay ? replay.id : null,
+        build_hash: replay ? replay.build_hash : null,
+        video_id: video ? video.id : null,
+      };
     });
     return json(res, 200, { scores: enriched });
   }
@@ -196,17 +210,16 @@ const server = http.createServer(async (req, res) => {
   // POST /api/replays — upload a replay for an existing score
   if (req.method === 'POST' && pathname === '/api/replays') {
     try {
-      const { fields, fileBuffer } = await parseMultipart(req);
+      const { fields, files } = await parseMultipart(req, MAX_REPLAY);
+      const fileBuffer = files.replay ? files.replay.buffer : null;
 
       const scoreId = fields.score_id;
       if (!scoreId) return json(res, 400, { error: 'score_id required' });
 
-      // Verify score exists
       const scores = loadScores();
       const scoreEntry = scores.find(s => s.id === scoreId);
       if (!scoreEntry) return json(res, 404, { error: 'score not found' });
 
-      // Check if replay already attached
       const existing = stmtGetReplayByScoreId.get(scoreId);
       if (existing) return json(res, 409, { error: 'replay already attached to this score' });
 
@@ -215,36 +228,71 @@ const server = http.createServer(async (req, res) => {
 
       // Validate IFR magic (first 4 bytes: IFR1, IFR2, or IFR3)
       if (fileBuffer.length < 4 ||
-          fileBuffer[0] !== 0x49 || // I
-          fileBuffer[1] !== 0x46 || // F
-          fileBuffer[2] !== 0x52 || // R
-          (fileBuffer[3] < 0x31 || fileBuffer[3] > 0x33)) { // 1, 2, or 3
+          fileBuffer[0] !== 0x49 || fileBuffer[1] !== 0x46 ||
+          fileBuffer[2] !== 0x52 || (fileBuffer[3] < 0x31 || fileBuffer[3] > 0x33)) {
         return json(res, 400, { error: 'invalid replay file (bad magic, expected IFR1/IFR2/IFR3)' });
       }
 
-      // Extract build_hash from bytes 24-27 (little-endian u32)
       let buildHash = null;
       if (fileBuffer.length >= 28) {
         const bh = fileBuffer.readUInt32LE(24);
         buildHash = bh.toString(16).padStart(8, '0');
       }
 
-      // Store replay
       const replayId = genId();
-      const { key, filePath } = ensureReplayDir(replayId);
+      const { yyyy, mm, dir } = ensureDir(REPLAY_DIR, replayId);
+      const key = `replays/${yyyy}/${mm}/${replayId}.ifr.zst`;
+      const filePath = path.join(dir, `${replayId}.ifr.zst`);
 
       fs.writeFileSync(filePath, fileBuffer);
-
-      stmtInsertReplay.run(
-        replayId, scoreId, key, fileBuffer.length,
-        buildHash, new Date().toISOString()
-      );
+      stmtInsertReplay.run(replayId, scoreId, key, fileBuffer.length, buildHash, new Date().toISOString());
 
       console.log(`[REPLAY] Stored ${replayId} for score ${scoreId} (${fileBuffer.length} bytes, build ${buildHash})`);
-
       return json(res, 201, { replay_id: replayId });
     } catch (err) {
       console.error('[REPLAY] Upload error:', err.message);
+      return json(res, 400, { error: 'invalid multipart upload' });
+    }
+  }
+
+  // POST /api/videos — upload a video for an existing score
+  if (req.method === 'POST' && pathname === '/api/videos') {
+    try {
+      const { fields, files } = await parseMultipart(req, MAX_VIDEO);
+      const fileBuffer = files.video ? files.video.buffer : null;
+
+      const scoreId = fields.score_id;
+      if (!scoreId) return json(res, 400, { error: 'score_id required' });
+
+      const scores = loadScores();
+      const scoreEntry = scores.find(s => s.id === scoreId);
+      if (!scoreEntry) return json(res, 404, { error: 'score not found' });
+
+      const existing = stmtGetVideoByScoreId.get(scoreId);
+      if (existing) return json(res, 409, { error: 'video already attached to this score' });
+
+      if (!fileBuffer || fileBuffer.length === 0) return json(res, 400, { error: 'video file required' });
+      if (fileBuffer.length > MAX_VIDEO) return json(res, 413, { error: 'video too large (max 20 MB)' });
+
+      // Validate WebM magic (first 4 bytes: 1A 45 DF A3 = EBML header)
+      if (fileBuffer.length < 4 ||
+          fileBuffer[0] !== 0x1A || fileBuffer[1] !== 0x45 ||
+          fileBuffer[2] !== 0xDF || fileBuffer[3] !== 0xA3) {
+        return json(res, 400, { error: 'invalid video file (bad magic, expected WebM/EBML header)' });
+      }
+
+      const videoId = genId();
+      const { yyyy, mm, dir } = ensureDir(VIDEO_DIR, videoId);
+      const key = `videos/${yyyy}/${mm}/${videoId}.webm`;
+      const filePath = path.join(dir, `${videoId}.webm`);
+
+      fs.writeFileSync(filePath, fileBuffer);
+      stmtInsertVideo.run(videoId, scoreId, key, fileBuffer.length, 'video/webm', new Date().toISOString());
+
+      console.log(`[VIDEO] Stored ${videoId} for score ${scoreId} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      return json(res, 201, { video_id: videoId });
+    } catch (err) {
+      console.error('[VIDEO] Upload error:', err.message);
       return json(res, 400, { error: 'invalid multipart upload' });
     }
   }
@@ -254,16 +302,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && replayGetMatch) {
     const replayId = replayGetMatch[1];
     const replay = stmtGetReplay.get(replayId);
-    if (!replay) {
-      res.writeHead(404);
-      return res.end('not found');
-    }
+    if (!replay) { res.writeHead(404); return res.end('not found'); }
 
     const filePath = path.join('/data', replay.storage_key);
-    if (!fs.existsSync(filePath)) {
-      res.writeHead(404);
-      return res.end('replay file missing');
-    }
+    if (!fs.existsSync(filePath)) { res.writeHead(404); return res.end('replay file missing'); }
 
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',
@@ -271,8 +313,46 @@ const server = http.createServer(async (req, res) => {
       'Content-Length': replay.size_bytes,
       'Cache-Control': 'public, max-age=31536000, immutable',
     });
-
     fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
+  // GET /api/videos/:id — stream video with range support
+  const videoGetMatch = pathname.match(/^\/api\/videos\/([a-z0-9-]+)$/);
+  if (req.method === 'GET' && videoGetMatch) {
+    const videoId = videoGetMatch[1];
+    const video = stmtGetVideo.get(videoId);
+    if (!video) { res.writeHead(404); return res.end('not found'); }
+
+    const filePath = path.join('/data', video.storage_key);
+    if (!fs.existsSync(filePath)) { res.writeHead(404); return res.end('video file missing'); }
+
+    const totalSize = video.size_bytes;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+      const chunkSize = end - start + 1;
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': video.mime_type,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      });
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': totalSize,
+        'Content-Type': video.mime_type,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      });
+      fs.createReadStream(filePath).pipe(res);
+    }
     return;
   }
 
@@ -280,23 +360,34 @@ const server = http.createServer(async (req, res) => {
   const replayDelMatch = pathname.match(/^\/api\/replays\/([a-z0-9-]+)$/);
   if (req.method === 'DELETE' && replayDelMatch) {
     const auth = req.headers.authorization;
-    if (!auth || auth !== `Bearer ${ADMIN_TOKEN}`) {
-      return json(res, 401, { error: 'unauthorized' });
-    }
+    if (!auth || auth !== `Bearer ${ADMIN_TOKEN}`) return json(res, 401, { error: 'unauthorized' });
 
     const replayId = replayDelMatch[1];
     const replay = stmtGetReplay.get(replayId);
     if (!replay) return json(res, 404, { error: 'replay not found' });
 
-    // Delete blob from disk
-    const filePath = path.join('/data', replay.storage_key);
-    try { fs.unlinkSync(filePath); } catch {}
-
-    // Delete from DB
+    try { fs.unlinkSync(path.join('/data', replay.storage_key)); } catch {}
     stmtDeleteReplay.run(replayId);
 
     console.log(`[REPLAY] Deleted ${replayId} (admin takedown)`);
     return json(res, 200, { deleted: replayId });
+  }
+
+  // DELETE /api/videos/:id — admin-only takedown
+  const videoDelMatch = pathname.match(/^\/api\/videos\/([a-z0-9-]+)$/);
+  if (req.method === 'DELETE' && videoDelMatch) {
+    const auth = req.headers.authorization;
+    if (!auth || auth !== `Bearer ${ADMIN_TOKEN}`) return json(res, 401, { error: 'unauthorized' });
+
+    const videoId = videoDelMatch[1];
+    const video = stmtGetVideo.get(videoId);
+    if (!video) return json(res, 404, { error: 'video not found' });
+
+    try { fs.unlinkSync(path.join('/data', video.storage_key)); } catch {}
+    stmtDeleteVideo.run(videoId);
+
+    console.log(`[VIDEO] Deleted ${videoId} (admin takedown)`);
+    return json(res, 200, { deleted: videoId });
   }
 
   // Health check
