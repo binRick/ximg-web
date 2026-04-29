@@ -12,7 +12,7 @@ const REPLAY_DIR = '/data/replays';
 const VIDEO_DIR  = '/data/videos';
 const MAX_SCORES = 100;
 const MAX_REPLAY = 1 * 1024 * 1024;  // 1 MB
-const MAX_VIDEO  = 20 * 1024 * 1024; // 20 MB
+const MAX_VIDEO  = 200 * 1024 * 1024; // 200 MB
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'ironfist-admin-secret';
 
 // --- SQLite setup ---
