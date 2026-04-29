@@ -441,6 +441,15 @@ Each web app has the same sub-nav structure: **Overview** (`index.html`), **Inst
 - Browsable in `logs.ximg.app` under "SSH Sessions" tab
 - **Auto-summarization:** triggered by a systemd path unit (`ssh-summarize.path`) that watches `ssh-logs/` for changes and runs `ssh-server/summarize-sessions.sh` automatically when a session ends. No cron needed. The script finds `.log` files without a `.summary` companion, extracts commands via `strings`/`grep`, and sends them to Claude Haiku (`/root/.local/bin/claude --print --model haiku --permission-mode acceptEdits`) for analysis. Summaries include attacker intent, techniques, and IOCs. Logs to `ssh-logs/summarize.log`. Uses `flock` to prevent overlapping runs; skips files <60s old (still being written) and <500 bytes (trivial sessions). Systemd units: `install/ssh-summarize.{path,service}`, installed to `/etc/systemd/system/`.
 
+## External Domain: swaudit.net
+
+`swaudit.net` is a separate site reverse-proxied through this stack's nginx. It is **not** an ximg.app subdomain — it has its own domain, its own SSL cert, and its own Docker Compose stack running on the same server.
+
+- **Reverse proxy:** nginx forwards `swaudit.net` / `www.swaudit.net` traffic to `host.docker.internal:8080`, where a separate Docker Compose project serves the site
+- **SSL cert:** Issued separately via acme.sh (DNS-01 / GoDaddy) — stored at `/etc/letsencrypt/live/swaudit.net/` — **not** covered by the `*.ximg.app` wildcard
+- **compose.yaml:** The nginx service has `extra_hosts: ["host.docker.internal:host-gateway"]` to resolve `host.docker.internal` inside the container
+- **Not listed** in the apps directory, nav bar, landing page, or README — it is an independent site, not part of the ximg.app portfolio
+
 ## Key Paths
 
 - `nginx/nginx.conf` — reverse proxy + virtual hosting config
