@@ -198,8 +198,8 @@ const server = http.createServer(async (req, res) => {
           fileBuffer[0] !== 0x49 || // I
           fileBuffer[1] !== 0x46 || // F
           fileBuffer[2] !== 0x52 || // R
-          (fileBuffer[3] !== 0x31 && fileBuffer[3] !== 0x32)) { // 1 or 2
-        return json(res, 400, { error: 'invalid replay file (bad magic, expected IFR1 or IFR2)' });
+          (fileBuffer[3] < 0x31 || fileBuffer[3] > 0x33)) { // 1, 2, or 3
+        return json(res, 400, { error: 'invalid replay file (bad magic, expected IFR1/IFR2/IFR3)' });
       }
 
       // Extract build_hash from bytes 24-27 (little-endian u32)
