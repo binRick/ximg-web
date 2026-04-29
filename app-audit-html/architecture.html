@@ -108,11 +108,13 @@
     inp.addEventListener('keydown', function(e) { if (e.key === 'Backspace' && !inp.value && i > 0) { inputs[i - 1].focus(); inputs[i - 1].value = ''; } });
     inp.addEventListener('paste', function(e) { e.preventDefault(); var text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 3); for (var j = 0; j < text.length && j < inputs.length; j++) inputs[j].value = text[j]; if (text.length > 0) inputs[Math.min(text.length, inputs.length) - 1].focus(); checkPin(); });
   });
+  var locked = false;
   function checkPin() {
     var val = ''; inputs.forEach(function(inp) { val += inp.value; });
-    if (val.length < 3) { hint.textContent = ''; hint.className = 'gate-hint'; return; }
+    if (val.length < 3) { if (!locked) { hint.textContent = ''; hint.className = 'gate-hint'; } return; }
+    if (locked) return;
     if (val === PIN) { inputs.forEach(function(inp) { inp.classList.add('success'); inp.disabled = true; }); hint.textContent = 'Access granted'; hint.className = 'gate-hint'; hint.style.color = 'var(--green)'; sessionStorage.setItem('app-audit-ok', '1'); setTimeout(function() { gate.classList.add('hidden'); }, 400); }
-    else { inputs.forEach(function(inp) { inp.classList.add('error'); }); hint.textContent = 'Incorrect PIN'; hint.className = 'gate-hint error'; setTimeout(function() { inputs.forEach(function(inp) { inp.classList.remove('error'); inp.value = ''; }); inputs[0].focus(); hint.textContent = ''; hint.className = 'gate-hint'; }, 800); }
+    else { locked = true; inputs.forEach(function(inp) { inp.classList.add('error'); inp.disabled = true; }); var secs = 60; hint.className = 'gate-hint error'; hint.textContent = 'Incorrect PIN — retry in ' + secs + 's'; var iv = setInterval(function() { secs--; if (secs <= 0) { clearInterval(iv); locked = false; inputs.forEach(function(inp) { inp.classList.remove('error'); inp.disabled = false; inp.value = ''; }); inputs[0].focus(); hint.textContent = ''; hint.className = 'gate-hint'; } else { hint.textContent = 'Incorrect PIN — retry in ' + secs + 's'; } }, 1000); }
   }
 })();
 </script>
