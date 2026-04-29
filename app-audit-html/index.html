@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>app-audit — Dynamic Binary Analysis for Software Approval</title>
+<meta name="description" content="app-audit: run a candidate binary in an instrumented sandbox, observe everything it does, produce a defensible approve/reject report.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e74c3c'/><text x='16' y='22' font-family='monospace' font-size='18' font-weight='bold' text-anchor='middle' fill='%23fff'>🛡</text></svg>">
+<style>
+  :root { --accent: #e74c3c; --accent2: #f39c12; --bg: #0a0c10; --card: #12151a; --border: rgba(255,255,255,.08); --text: #c9d1d9; --dim: #6a737d; --green: #22c55e; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; line-height: 1.7; padding-top: 60px; }
+
+  /* Gate overlay */
+  #gate {
+    position: fixed; inset: 0; z-index: 9000;
+    background: rgba(10,12,16,.97);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+  }
+  #gate.hidden { display: none; }
+  .gate-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 2.5rem 2rem; text-align: center; max-width: 380px; width: 90%;
+  }
+  .gate-box h2 { font-size: 1.1rem; color: #fff; margin-bottom: .3rem; letter-spacing: .08em; }
+  .gate-box p { font-size: .78rem; color: var(--dim); margin-bottom: 1.5rem; }
+  .gate-box .lock { font-size: 2rem; margin-bottom: 1rem; }
+  .pin-input {
+    display: flex; gap: .5rem; justify-content: center; margin-bottom: 1rem;
+  }
+  .pin-input input {
+    width: 48px; height: 56px; text-align: center; font-size: 1.4rem;
+    font-family: 'Courier New', monospace; font-weight: 700;
+    background: var(--bg); border: 2px solid var(--border); border-radius: 8px;
+    color: #fff; outline: none; transition: border-color .2s;
+    -moz-appearance: textfield;
+  }
+  .pin-input input::-webkit-outer-spin-button,
+  .pin-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .pin-input input:focus { border-color: var(--accent); }
+  .pin-input input.error { border-color: var(--accent); animation: shake .4s; }
+  .pin-input input.success { border-color: var(--green); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .gate-hint { font-size: .68rem; color: var(--dim); margin-top: .5rem; min-height: 1.2em; }
+  .gate-hint.error { color: var(--accent); }
+
+  /* Subnav */
+  #subnav {
+    position: sticky; top: 52px; z-index: 150;
+    background: rgba(8,11,14,.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem;
+  }
+  #subnav a {
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: #5a6070; padding: .3rem .65rem; border-radius: 3px;
+    text-decoration: none; transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subnav a:hover, #subnav a.active { color: var(--accent); background: rgba(255,255,255,.06); }
+
+  .hero { text-align: center; padding: 3rem 1.5rem 2rem; }
+  .hero h1 { font-size: 2.2rem; color: #fff; margin-bottom: .5rem; letter-spacing: -.02em; }
+  .hero h1 span { color: var(--accent); }
+  .hero .tagline { color: var(--dim); font-size: .92rem; max-width: 700px; margin: 0 auto 1.5rem; }
+  .badge { display: inline-block; font-size: .65rem; text-transform: uppercase; letter-spacing: .15em; padding: .25rem .7rem; border-radius: 3px; background: rgba(231,76,60,.12); color: var(--accent); border: 1px solid rgba(231,76,60,.25); margin-bottom: 1rem; }
+
+  section { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h2 { font-size: 1.3rem; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .card h3 { font-size: .9rem; color: var(--accent); margin-bottom: .4rem; }
+  .card p { font-size: .8rem; color: var(--dim); line-height: 1.6; }
+
+  .specs { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 2rem; }
+  .spec { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: .8rem 1rem; }
+  .spec .label { font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; color: var(--dim); margin-bottom: .2rem; }
+  .spec .value { font-size: .85rem; color: #fff; }
+
+  .detector-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+  .detector-table th, .detector-table td { text-align: left; padding: .5rem .75rem; font-size: .78rem; border-bottom: 1px solid var(--border); }
+  .detector-table th { color: var(--accent); font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; }
+  .detector-table td { color: var(--dim); }
+  .detector-table td:first-child { color: #fff; font-weight: 600; }
+  .sev-high { color: var(--accent); font-weight: 700; }
+  .sev-med { color: var(--accent2); }
+  .sev-low { color: var(--green); }
+
+  footer { text-align: center; padding: 2rem; color: var(--dim); font-size: .7rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+  @media (max-width: 600px) { .specs { grid-template-columns: 1fr; } .hero h1 { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+
+<!-- PIN gate -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="lock">&#128274;</div>
+    <h2>Protected Project</h2>
+    <p>This is a private repository. Enter the PIN to view the project summary.</p>
+    <div class="pin-input" id="pin-input">
+      <input type="number" min="0" max="9" maxlength="1" autofocus>
+      <input type="number" min="0" max="9" maxlength="1">
+      <input type="number" min="0" max="9" maxlength="1">
+    </div>
+    <div class="gate-hint" id="gate-hint"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var PIN = '666';
+  var inputs = document.querySelectorAll('#pin-input input');
+  var hint = document.getElementById('gate-hint');
+  var gate = document.getElementById('gate');
+
+  if (sessionStorage.getItem('app-audit-ok') === '1') {
+    gate.classList.add('hidden');
+    return;
+  }
+
+  inputs.forEach(function(inp, i) {
+    inp.addEventListener('input', function() {
+      if (inp.value.length > 1) inp.value = inp.value.slice(-1);
+      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
+      checkPin();
+    });
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !inp.value && i > 0) {
+        inputs[i - 1].focus();
+        inputs[i - 1].value = '';
+      }
+    });
+    inp.addEventListener('paste', function(e) {
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 3);
+      for (var j = 0; j < text.length && j < inputs.length; j++) {
+        inputs[j].value = text[j];
+      }
+      if (text.length > 0) inputs[Math.min(text.length, inputs.length) - 1].focus();
+      checkPin();
+    });
+  });
+
+  function checkPin() {
+    var val = '';
+    inputs.forEach(function(inp) { val += inp.value; });
+    if (val.length < 3) { hint.textContent = ''; hint.className = 'gate-hint'; return; }
+    if (val === PIN) {
+      inputs.forEach(function(inp) { inp.classList.add('success'); inp.disabled = true; });
+      hint.textContent = 'Access granted';
+      hint.className = 'gate-hint';
+      hint.style.color = 'var(--green)';
+      sessionStorage.setItem('app-audit-ok', '1');
+      setTimeout(function() { gate.classList.add('hidden'); }, 400);
+    } else {
+      inputs.forEach(function(inp) { inp.classList.add('error'); });
+      hint.textContent = 'Incorrect PIN';
+      hint.className = 'gate-hint error';
+      setTimeout(function() {
+        inputs.forEach(function(inp) { inp.classList.remove('error'); inp.value = ''; });
+        inputs[0].focus();
+        hint.textContent = '';
+        hint.className = 'gate-hint';
+      }, 800);
+    }
+  }
+})();
+</script>
+
+<nav id="subnav">
+  <a href="/">Overview</a>
+</nav>
+
+<div class="hero">
+  <div class="badge">Private / Source-Available</div>
+  <h1><span>app-audit</span></h1>
+  <p class="tagline">The software approval problem costs enterprises $50,000–$150,000 per vendor assessment. GRC platforms charge $200K+/year and still can't tell you what a binary actually does at runtime. app-audit replaces all of it with a single Docker run.</p>
+</div>
+
+<section>
+  <h2>The Problem Nobody Solves Well</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>$4.2B GRC Market, Zero Runtime Visibility</h3>
+      <p>Organizations spend billions on governance, risk, and compliance tooling — ServiceNow, OneTrust, Archer, Vanta — and none of them can tell you whether a binary phones home to a bulletproof-hosting ASN in Moldova. They track paperwork. app-audit tracks behavior.</p>
+    </div>
+    <div class="card">
+      <h3>Consulting Firms Charge $50K+ Per Assessment</h3>
+      <p>Big 4 auditors and boutique appsec firms bill $500–$1,200/hour for vendor risk assessments that take 4–8 weeks. Their deliverable is a PDF with screenshots. app-audit produces a machine-verifiable, evidence-backed report in minutes — for free.</p>
+    </div>
+    <div class="card">
+      <h3>Static Analysis Misses Everything Interesting</h3>
+      <p>SCA tools scan dependency manifests. SAST tools parse source code. Neither one can detect a binary that reads your AWS credentials and exfiltrates them over TLS to a server in Hong Kong. Dynamic analysis is the only way to catch runtime betrayal — and app-audit is the only open-source tool purpose-built for this exact scenario.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>At a Glance</h2>
+  <div class="specs">
+    <div class="spec"><div class="label">Language</div><div class="value">Go</div></div>
+    <div class="spec"><div class="label">Tracing</div><div class="value">eBPF (execve, openat, connect, TLS)</div></div>
+    <div class="spec"><div class="label">Platforms</div><div class="value">macOS + Linux hosts (Docker)</div></div>
+    <div class="spec"><div class="label">Targets</div><div class="value">Linux ELF binaries</div></div>
+    <div class="spec"><div class="label">Honeytokens</div><div class="value">18 unique-per-run markers</div></div>
+    <div class="spec"><div class="label">Detectors</div><div class="value">9 streaming + 1 post-enrichment</div></div>
+    <div class="spec"><div class="label">Tests</div><div class="value">228 unit + 34 integration</div></div>
+    <div class="spec"><div class="label">Output</div><div class="value">Markdown + HTML report with verdict</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Key Capabilities</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Credential Exfiltration Detection</h3>
+      <p>Plants 18 unique honeytokens (fake AWS keys, SSH keys, browser cookies, PII docs, API tokens for GitHub/OpenAI/Anthropic/Stripe/Slack). If the binary reads and transmits any, the plaintext payload is captured before encryption via TLS library hooking.</p>
+    </div>
+    <div class="card">
+      <h3>Vendor Claims Gap Analysis</h3>
+      <p>Compares the vendor's declared network destinations against actual observed connections. Flags undeclared destinations with ASN/country enrichment. "Vendor said US-only; we observed traffic to AU" — take it to the vendor.</p>
+    </div>
+    <div class="card">
+      <h3>Sandbox Detection Probes</h3>
+      <p>Catches binaries that check for virtualization (reading /proc/cpuinfo for hypervisor brands, probing /.dockerenv). If the binary behaves differently when it knows it's being watched, that's a high-severity finding.</p>
+    </div>
+    <div class="card">
+      <h3>Persistence Monitoring</h3>
+      <p>Watches for writes to cron, systemd, shell rc files, autostart paths, and ld.so.preload. Write-shape opens (O_WRONLY/O_CREAT) escalate from medium to high — writing to .bashrc is an install action, reading it is just a probe.</p>
+    </div>
+    <div class="card">
+      <h3>PII in Outbound Traffic</h3>
+      <p>Scans TLS payloads for Luhn-valid credit card numbers, JWT-shaped bearer tokens, and email addresses. Catches accidental PII leakage that no static tool would find.</p>
+    </div>
+    <div class="card">
+      <h3>C2 Beaconing Detection</h3>
+      <p>Detects regular-interval outbound connections — the callback fingerprint of command-and-control infrastructure. Statistical analysis of connection timing patterns flags suspiciously periodic phone-home behavior.</p>
+    </div>
+    <div class="card">
+      <h3>Version Baseline Diff</h3>
+      <p>Save a behavioral baseline when you approve v1.2. When v1.3 ships, audit against the baseline and surface only what changed. Catches silent malicious updates without re-vetting unchanged behavior.</p>
+    </div>
+    <div class="card">
+      <h3>Replay Mode</h3>
+      <p>The tracer writes the raw event stream to JSONL. The replay command re-runs the detector pipeline offline — no eBPF, no privileges, runs anywhere Go runs including macOS directly. Iterate on detector logic without re-tracing.</p>
+    </div>
+    <div class="card">
+      <h3>Known-Bad ASN Blocking</h3>
+      <p>Post-enrichment detector flags connections to ASNs on a curated bulletproof-hosting list. Catches traffic to infrastructure commonly associated with malware C2 and data exfiltration services.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Detector Pipeline</h2>
+  <table class="detector-table">
+    <thead><tr><th>Detector</th><th>Severity</th><th>Triggers On</th></tr></thead>
+    <tbody>
+      <tr><td>HoneytokenHit</td><td class="sev-high">HIGH</td><td>Planted credential observed in outbound traffic</td></tr>
+      <tr><td>SandboxDetection</td><td class="sev-high">HIGH</td><td>Probes /proc/cpuinfo, /.dockerenv, etc.</td></tr>
+      <tr><td>Beaconing</td><td class="sev-high">HIGH</td><td>Regular-interval outbound connects (C2 pattern)</td></tr>
+      <tr><td>KnownBadASN</td><td class="sev-high">HIGH</td><td>Connect to bulletproof-hosting ASN</td></tr>
+      <tr><td>PIIOutbound</td><td class="sev-high">HIGH/MED/LOW</td><td>Credit cards, JWTs, emails in TLS payloads</td></tr>
+      <tr><td>VendorDiff</td><td class="sev-med">MEDIUM</td><td>Undeclared network destination</td></tr>
+      <tr><td>SensitivePath</td><td class="sev-med">MEDIUM</td><td>Read of credentials/PII path</td></tr>
+      <tr><td>HostFingerprint</td><td class="sev-med">MEDIUM</td><td>Read /etc/machine-id, MAC address</td></tr>
+      <tr><td>PersistencePath</td><td class="sev-med">MEDIUM/HIGH</td><td>Touch of cron/systemd/shell-rc paths</td></tr>
+      <tr><td>NetworkDestination</td><td class="sev-low">INFO</td><td>Every unique destination (for the report)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Report Output</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Verdict Recommendation</h3>
+      <p>REJECT / REVIEW / APPROVE WITH CONDITIONS / APPROVE — a clear decision the approver can sign. Not raw logs, not a dashboard — a defensible document.</p>
+    </div>
+    <div class="card">
+      <h3>Evidence-Backed Findings</h3>
+      <p>Each finding includes severity, the raw evidence (captured bytes, file paths, network destinations), and the detector that produced it. Unambiguous: "this binary read the planted AWS file and POSTed its contents to example.com."</p>
+    </div>
+    <div class="card">
+      <h3>Network Destinations Table</h3>
+      <p>Every observed destination enriched with PTR record, ASN, and country. Cross-referenced against the vendor's declared list. Undeclared destinations highlighted.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What You'd Pay Without This</h2>
+  <div class="specs">
+    <div class="spec"><div class="label">Big 4 Vendor Assessment</div><div class="value">$50K–$150K per vendor, 4–8 week turnaround</div></div>
+    <div class="spec"><div class="label">GRC Platform License</div><div class="value">$200K–$500K/year (ServiceNow, OneTrust, Archer)</div></div>
+    <div class="spec"><div class="label">Penetration Test (3rd party)</div><div class="value">$15K–$60K per engagement</div></div>
+    <div class="spec"><div class="label">SOC 2 Compliance Audit</div><div class="value">$30K–$100K annually</div></div>
+    <div class="spec"><div class="label">In-House Security Team</div><div class="value">$180K–$350K/engineer/year (fully loaded)</div></div>
+    <div class="spec"><div class="label">app-audit</div><div class="value" style="color:var(--green);font-weight:700">One Docker run. Zero cost. Better evidence.</div></div>
+  </div>
+</section>
+
+<footer>app-audit — a binRick project</footer>
+
+<script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

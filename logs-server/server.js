@@ -181,6 +181,7 @@ const LOG_FILES = {
   change:    'change.access.log',
   apps:      'apps.access.log',
   tmux:      'tmux.access.log',
+  'app-audit': 'app-audit.access.log',
   ansible:   'ansible.access.log',
   crypto:      'crypto.access.log',
   git:         'git.access.log',
@@ -816,6 +817,7 @@ const HTML = `<!DOCTYPE html>
         <div class="site-list" id="site-list">
           <button class="site-opt" data-site="ai">ai</button>
           <button class="site-opt" data-site="america">america</button>
+          <button class="site-opt" data-site="app-audit">app-audit</button>
           <button class="site-opt" data-site="ansible">ansible</button>
           <button class="site-opt" data-site="apps">apps</button>
           <button class="site-opt" data-site="ascii">ascii</button>

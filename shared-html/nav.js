@@ -83,6 +83,7 @@
       ['proc-trace-net','proc-trace-net'],
       ['proc-trace-dns','proc-trace-dns'],
       ['proc-trace-tls','proc-trace-tls'],
+      ['app-audit','&#x1F6E1; app-audit'],
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch'],
       ['github-stats','github stats'],
@@ -153,6 +154,9 @@
       '@keyframes navfire{0%{color:#ff4500}25%{color:#c0392b}50%{color:#e67e22}75%{color:#ff6347}100%{color:#ff4500}}' +
       '.nav-fire{animation:navfire 2s linear infinite;font-weight:700!important;}' +
       '.nav-fire .nav-dd-dot,.nav-fire .nav-mobile-dot{animation:navfire 2s linear infinite;background:currentColor!important;}' +
+      '@keyframes navaudit{0%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}50%{color:#ff2d2d;text-shadow:0 0 12px rgba(255,45,45,.8)}100%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}}' +
+      '.nav-audit{animation:navaudit 1.5s ease-in-out infinite;font-weight:700!important;}' +
+      '.nav-audit .nav-dd-dot,.nav-audit .nav-mobile-dot{animation:navaudit 1.5s ease-in-out infinite;background:currentColor!important;}' +
 
       '.nav-flyout{position:absolute;top:calc(100% + 4px);left:0;display:flex;' +
       'background:' + (c.ddbg || c.bg) + ';border:' + c.ddbord + ';border-radius:' + r + ';' +
@@ -311,6 +315,9 @@
       '@keyframes navfire{0%{color:#ff4500}25%{color:#c0392b}50%{color:#e67e22}75%{color:#ff6347}100%{color:#ff4500}}' +
       '.nav-fire{animation:navfire 2s linear infinite;font-weight:700!important;}' +
       '.nav-fire .nav-dd-dot,.nav-fire .nav-mobile-dot{animation:navfire 2s linear infinite;background:currentColor!important;}' +
+      '@keyframes navaudit{0%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}50%{color:#ff2d2d;text-shadow:0 0 12px rgba(255,45,45,.8)}100%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}}' +
+      '.nav-audit{animation:navaudit 1.5s ease-in-out infinite;font-weight:700!important;}' +
+      '.nav-audit .nav-dd-dot,.nav-audit .nav-mobile-dot{animation:navaudit 1.5s ease-in-out infinite;background:currentColor!important;}' +
     '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
     'background:#c0c0c0;border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
     'border-bottom-color:#000;border-right-color:#000;' +
@@ -659,6 +666,9 @@
       '@keyframes navfire{0%{color:#ff4500}25%{color:#c0392b}50%{color:#e67e22}75%{color:#ff6347}100%{color:#ff4500}}' +
       '.nav-fire{animation:navfire 2s linear infinite;font-weight:700!important;}' +
       '.nav-fire .nav-dd-dot,.nav-fire .nav-mobile-dot{animation:navfire 2s linear infinite;background:currentColor!important;}' +
+      '@keyframes navaudit{0%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}50%{color:#ff2d2d;text-shadow:0 0 12px rgba(255,45,45,.8)}100%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}}' +
+      '.nav-audit{animation:navaudit 1.5s ease-in-out infinite;font-weight:700!important;}' +
+      '.nav-audit .nav-dd-dot,.nav-audit .nav-mobile-dot{animation:navaudit 1.5s ease-in-out infinite;background:currentColor!important;}' +
     '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
     'background:#000;border:2px solid #fff;z-index:300;opacity:0;pointer-events:none;transition:none;}' +
     '.nav-flyout.open{opacity:1;pointer-events:all;}' +
@@ -833,7 +843,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         flat.appendChild(item);
@@ -871,7 +881,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : '');
+          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
           item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
           item.href = appHref(subdomain);
           panel.appendChild(item);
@@ -898,7 +908,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         dd.appendChild(item);
@@ -1019,7 +1029,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : '');
+          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
           item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
           item.href = appHref(subdomain);
           mApps.appendChild(item);
@@ -1031,7 +1041,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : '');
+        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
         item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
         item.href = appHref(subdomain);
         mApps.appendChild(item);

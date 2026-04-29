@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-229 virtual hosts (root + 228 subdomains), all static sites served by a single nginx container.
+230 virtual hosts (root + 229 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -93,6 +93,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [arpanet.ximg.app](https://arpanet.ximg.app) | Animated ARPANET history — watch the network grow from 4 nodes in 1969 to 213 nodes, packet routing animation, the first "LO" message, and the origin story of the Internet. |
 | [passwords.ximg.app](https://passwords.ximg.app) | Generate strong random passwords and passphrases, test password strength, see crack times by attack type, and learn best practices. |
 | [ansible.ximg.app](https://ansible.ximg.app) | Agentless automation — playbooks, modules, inventory, variables, roles, Vault, and the full history from 2012 to AI-assisted authoring. |
+| [app-audit.ximg.app](https://app-audit.ximg.app) | Dynamic binary analysis for software approval — eBPF-instrumented sandbox, honeytokens, TLS interception, credential exfiltration detection, C2 beaconing, vendor claims gap analysis, and defensible approve/reject reports. |
 | [chess.ximg.app](https://chess.ximg.app) | The game of kings — pieces, openings, tactics, all 16 world champions, and 1,500 years of chess history from Chaturanga to Gukesh. |
 | [programming.ximg.app](https://programming.ximg.app) | 180 years of code — languages, paradigms, pioneers, timeline from Ada Lovelace to AI code generation, and the people who built it all. |
 | [git.ximg.app](https://git.ximg.app) | Linus Torvalds' version control system — commands cheatsheet, concepts, branching strategies, config, and the full history from 2005 to today. |
