@@ -274,20 +274,26 @@ const server = http.createServer(async (req, res) => {
       if (!fileBuffer || fileBuffer.length === 0) return json(res, 400, { error: 'video file required' });
       if (fileBuffer.length > MAX_VIDEO) return json(res, 413, { error: 'video too large (max 20 MB)' });
 
-      // Validate WebM magic (first 4 bytes: 1A 45 DF A3 = EBML header)
-      if (fileBuffer.length < 4 ||
-          fileBuffer[0] !== 0x1A || fileBuffer[1] !== 0x45 ||
-          fileBuffer[2] !== 0xDF || fileBuffer[3] !== 0xA3) {
-        return json(res, 400, { error: 'invalid video file (bad magic, expected WebM/EBML header)' });
+      // Validate video magic: WebM (1A 45 DF A3 at byte 0) or MP4 ('ftyp' at byte 4)
+      const isWebM = fileBuffer.length >= 4 &&
+        fileBuffer[0] === 0x1A && fileBuffer[1] === 0x45 &&
+        fileBuffer[2] === 0xDF && fileBuffer[3] === 0xA3;
+      const isMp4 = fileBuffer.length >= 8 &&
+        fileBuffer[4] === 0x66 && fileBuffer[5] === 0x74 &&
+        fileBuffer[6] === 0x79 && fileBuffer[7] === 0x70; // 'ftyp'
+      if (!isWebM && !isMp4) {
+        return json(res, 400, { error: 'invalid video file (expected WebM or MP4)' });
       }
+      const mimeType = isMp4 ? 'video/mp4' : 'video/webm';
+      const ext = isMp4 ? 'mp4' : 'webm';
 
       const videoId = genId();
       const { yyyy, mm, dir } = ensureDir(VIDEO_DIR, videoId);
-      const key = `videos/${yyyy}/${mm}/${videoId}.webm`;
-      const filePath = path.join(dir, `${videoId}.webm`);
+      const key = `videos/${yyyy}/${mm}/${videoId}.${ext}`;
+      const filePath = path.join(dir, `${videoId}.${ext}`);
 
       fs.writeFileSync(filePath, fileBuffer);
-      stmtInsertVideo.run(videoId, scoreId, key, fileBuffer.length, 'video/webm', new Date().toISOString());
+      stmtInsertVideo.run(videoId, scoreId, key, fileBuffer.length, mimeType, new Date().toISOString());
 
       console.log(`[VIDEO] Stored ${videoId} for score ${scoreId} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
       return json(res, 201, { video_id: videoId });
