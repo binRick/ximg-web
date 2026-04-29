@@ -194,10 +194,9 @@ const server = http.createServer(async (req, res) => {
       const scores = loadScores();
       scores.push(entry);
       scores.sort((a, b) => b.score - a.score);
-      const trimmed = scores.slice(0, MAX_SCORES);
-      saveScores(trimmed);
+      saveScores(scores);
 
-      const rank = trimmed.findIndex(s => s.id === id) + 1;
+      const rank = scores.findIndex(s => s.id === id) + 1;
 
       console.log(`[${entry.ts}] NEW SCORE: ${initials} ${score} (wave ${wave}, ${kills} kills, ${time.toFixed(0)}s, ${shots} shots, ${damage} dmg) — rank #${rank}, id=${id}`);
 

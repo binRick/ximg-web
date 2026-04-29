@@ -40,7 +40,19 @@ body::after{
 h1{font-size:clamp(1.6rem,5vw,2.4rem);font-weight:900;color:#fff;letter-spacing:.15em;
   text-transform:uppercase;text-align:center;margin-bottom:.3rem;
   text-shadow:0 0 40px rgba(255,69,0,.4)}
-.subtitle{text-align:center;color:var(--dim);font-size:.8rem;letter-spacing:.15em;margin-bottom:2.5rem}
+.subtitle{text-align:center;color:var(--dim);font-size:.8rem;letter-spacing:.15em;margin-bottom:1.5rem}
+
+.filter-bar{
+  display:flex;justify-content:center;gap:.4rem;margin-bottom:2rem;flex-wrap:wrap;
+}
+.filter-btn{
+  padding:.35rem .9rem;background:transparent;
+  border:1px solid rgba(255,255,255,.1);color:var(--dim);
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;border-radius:3px;cursor:pointer;transition:all .2s;
+}
+.filter-btn:hover{border-color:var(--fire);color:var(--fire)}
+.filter-btn.active{border-color:var(--fire);color:var(--fire);background:rgba(255,69,0,.1)}
 
 .scores-table{width:100%;border-collapse:collapse}
 .scores-table th{
@@ -84,6 +96,8 @@ h1{font-size:clamp(1.6rem,5vw,2.4rem);font-weight:900;color:#fff;letter-spacing:
 }
 .watch-btn:hover{background:rgba(255,69,0,.25);border-color:var(--fire);color:#fff}
 
+.result-count{text-align:center;color:var(--dim);font-size:.72rem;margin-bottom:1rem;letter-spacing:.08em}
+
 @media(max-width:600px){
   .container{padding:2rem .5rem}
   .scores-table td,.scores-table th{padding:.4rem .5rem}
@@ -110,7 +124,14 @@ document.querySelectorAll('#subnav a').forEach(function(a){
 
 <div class="container">
   <h1>High Scores</h1>
-  <p class="subtitle">Top 100 Iron Fist warriors</p>
+  <p class="subtitle">Iron Fist leaderboard</p>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All Time</button>
+    <button class="filter-btn" data-filter="month">This Month</button>
+    <button class="filter-btn" data-filter="week">This Week</button>
+    <button class="filter-btn" data-filter="today">Today</button>
+  </div>
 
   <div id="scores-body">
     <div class="loading">Loading scores...</div>
@@ -120,6 +141,80 @@ document.querySelectorAll('#subnav a').forEach(function(a){
 </div>
 
 <script>
+var allScores = [];
+var currentFilter = 'all';
+
+function getFilterCutoff(filter) {
+  var now = new Date();
+  if (filter === 'today') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  }
+  if (filter === 'week') {
+    var d = new Date(now);
+    d.setDate(d.getDate() - d.getDay());
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
+  if (filter === 'month') {
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  }
+  return null;
+}
+
+function renderScores(scores, filter) {
+  var body = document.getElementById('scores-body');
+  var cutoff = getFilterCutoff(filter);
+  var filtered = scores;
+  if (cutoff) {
+    filtered = scores.filter(function(s) { return s.ts && s.ts >= cutoff; });
+  }
+
+  if (!filtered.length) {
+    var label = filter === 'all' ? '' : filter === 'today' ? ' today' : filter === 'week' ? ' this week' : ' this month';
+    body.innerHTML = '<div class="empty">No scores' + label + ' yet.</div>';
+    return;
+  }
+
+  var countLabel = filtered.length === 1 ? '1 score' : filtered.length + ' scores';
+  var html = '<p class="result-count">' + countLabel + '</p>';
+  html += '<table class="scores-table"><thead><tr>' +
+    '<th>Rank</th><th>Name</th><th>Score</th><th>Kills</th><th>Wave</th>' +
+    '<th class="meta">Time</th><th class="meta">Shots</th><th class="meta">Dmg</th><th class="meta">Date</th>' +
+    '<th>Replay</th>' +
+    '</tr></thead><tbody>';
+
+  filtered.forEach(function(s, i) {
+    var rankClass = i < 3 ? ' rank-' + (i + 1) : '';
+    var medal = i === 0 ? ' &#x1F947;' : i === 1 ? ' &#x1F948;' : i === 2 ? ' &#x1F949;' : '';
+    var date = s.ts ? new Date(s.ts).toLocaleDateString() : '';
+    var mins = s.time ? Math.floor(s.time / 60) + ':' + ('0' + Math.floor(s.time % 60)).slice(-2) : '-';
+    var replayCell;
+    if (s.video_id) {
+      replayCell = '<a class="watch-btn" href="watch.html?v=' + s.video_id + '" target="_blank" rel="noopener" title="Watch video replay">&#9654; Watch</a>';
+    } else if (s.replay_id) {
+      var gamePath = s.build_hash ? '/game/v/' + s.build_hash + '/index.html' : '/game/index.html';
+      replayCell = '<a class="watch-btn" href="' + gamePath + '?replay=/api/replays/' + s.replay_id + '" target="_blank" rel="noopener" title="Watch .ifr replay">&#9654; Watch</a>';
+    } else {
+      replayCell = '<span style="color:var(--dim);font-size:.7rem">—</span>';
+    }
+    html += '<tr class="' + rankClass + '">' +
+      '<td class="rank">#' + (i + 1) + medal + '</td>' +
+      '<td class="initials">' + s.initials + '</td>' +
+      '<td class="score-val">' + s.score.toLocaleString() + '</td>' +
+      '<td>' + s.kills + '</td>' +
+      '<td><span class="wave-badge">W' + s.wave + '</span></td>' +
+      '<td class="meta">' + mins + '</td>' +
+      '<td class="meta">' + (s.shots || '-') + '</td>' +
+      '<td class="meta">' + (s.damage ? s.damage.toLocaleString() : '-') + '</td>' +
+      '<td class="meta">' + date + '</td>' +
+      '<td>' + replayCell + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
 function loadScores() {
   var body = document.getElementById('scores-body');
   body.innerHTML = '<div class="loading">Loading scores...</div>';
@@ -127,53 +222,22 @@ function loadScores() {
   fetch('/api/scores')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      var scores = data.scores || [];
-      if (!scores.length) {
-        body.innerHTML = '<div class="empty">No scores yet. Be the first to play!</div>';
-        return;
-      }
-
-      var html = '<table class="scores-table"><thead><tr>' +
-        '<th>Rank</th><th>Name</th><th>Score</th><th>Kills</th><th>Wave</th>' +
-        '<th class="meta">Time</th><th class="meta">Shots</th><th class="meta">Dmg</th><th class="meta">Date</th>' +
-        '<th>Replay</th>' +
-        '</tr></thead><tbody>';
-
-      scores.forEach(function(s, i) {
-        var rankClass = i < 3 ? ' rank-' + (i + 1) : '';
-        var medal = i === 0 ? ' &#x1F947;' : i === 1 ? ' &#x1F948;' : i === 2 ? ' &#x1F949;' : '';
-        var date = s.ts ? new Date(s.ts).toLocaleDateString() : '';
-        var mins = s.time ? Math.floor(s.time / 60) + ':' + ('0' + Math.floor(s.time % 60)).slice(-2) : '-';
-        var replayCell;
-        if (s.video_id) {
-          replayCell = '<a class="watch-btn" href="watch.html?v=' + s.video_id + '" target="_blank" rel="noopener" title="Watch video replay">&#9654; Watch</a>';
-        } else if (s.replay_id) {
-          var gamePath = s.build_hash ? '/game/v/' + s.build_hash + '/index.html' : '/game/index.html';
-          replayCell = '<a class="watch-btn" href="' + gamePath + '?replay=/api/replays/' + s.replay_id + '" target="_blank" rel="noopener" title="Watch .ifr replay">&#9654; Watch</a>';
-        } else {
-          replayCell = '<span style="color:var(--dim);font-size:.7rem">—</span>';
-        }
-        html += '<tr class="' + rankClass + '">' +
-          '<td class="rank">#' + (i + 1) + medal + '</td>' +
-          '<td class="initials">' + s.initials + '</td>' +
-          '<td class="score-val">' + s.score.toLocaleString() + '</td>' +
-          '<td>' + s.kills + '</td>' +
-          '<td><span class="wave-badge">W' + s.wave + '</span></td>' +
-          '<td class="meta">' + mins + '</td>' +
-          '<td class="meta">' + (s.shots || '-') + '</td>' +
-          '<td class="meta">' + (s.damage ? s.damage.toLocaleString() : '-') + '</td>' +
-          '<td class="meta">' + date + '</td>' +
-          '<td>' + replayCell + '</td>' +
-          '</tr>';
-      });
-
-      html += '</tbody></table>';
-      body.innerHTML = html;
+      allScores = data.scores || [];
+      renderScores(allScores, currentFilter);
     })
     .catch(function() {
       body.innerHTML = '<div class="empty">Failed to load scores. Try again.</div>';
     });
 }
+
+document.querySelectorAll('.filter-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentFilter = btn.getAttribute('data-filter');
+    renderScores(allScores, currentFilter);
+  });
+});
 
 loadScores();
 setInterval(loadScores, 60000);
