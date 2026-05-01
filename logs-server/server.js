@@ -365,6 +365,7 @@ const LOG_FILES = {
   architecture:     'architecture.access.log',
   bourbon:          'bourbon.access.log',
   tetris:           'tetris.access.log',
+  swaudit:          'swaudit.access.log',
 };
 
 
@@ -980,6 +981,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="bundler-info">bundler-info</button>
           <button class="site-opt" data-site="devtools-info">devtools-info</button>
           <button class="site-opt" data-site="projects-info">projects-info</button>
+          <button class="site-opt" data-site="swaudit">swaudit</button>
           <button class="site-opt" data-site="yaml">yaml</button>
           <button class="site-opt" data-site="zsh">zsh</button>
         </div>
