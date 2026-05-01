@@ -24,7 +24,7 @@
       { label: 'Languages', apps: [['bash','bash'],['c99','c99'],['golang','golang'],['json','json'],['makefile','makefile'],['nodejs','nodejs'],['php','php'],['python','python'],['sql','sql'],['utf8','utf8'],['yaml','yaml'],['zsh','zsh']] },
       { label: 'Networking', apps: [['bgp','bgp'],['cdn','cdn'],['dns','dns'],['http','http'],['internet','internet'],['loadbalancer','loadbalancer'],['network','network'],['request','request'],['smtp','smtp'],['ssh','ssh'],['tls','tls']] },
       { label: 'OS & Systems', apps: [['bsd','bsd'],['chmod','chmod'],['gentoo','gentoo'],['linux','linux'],['mac','mac'],['os','os'],['systemd','systemd'],['tmux','tmux'],['unix','unix'],['vim','vim'],['vt101','vt101']] },
-      { label: 'Security', apps: [['clamav','clamav'],['crypto','crypto'],['iptables','iptables'],['passwords','passwords'],['security','security'],['suricata','suricata']] },
+      { label: 'Security', apps: [['clamav','clamav'],['crypto','crypto'],['iptables','iptables'],['passwords','passwords'],['security','security']] },
     ]},
     { label: 'Culture', apps: [
       ['america','america'],['architecture','architecture'],['bourbon','bourbon'],['coffee','coffee'],['florida','florida'],
@@ -92,7 +92,7 @@
       ['scumm','scumm-game']
     ]},
     { label: 'System', apps: [
-      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['ids','IDS'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
+      ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
     ]},
   ];
 

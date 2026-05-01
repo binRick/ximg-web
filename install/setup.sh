@@ -12,10 +12,10 @@
 #
 # Steps:
 #   1.  Docker CE + Compose plugin
-#   2.  System packages  (EPEL · certbot · Suricata)
+#   2.  System packages  (EPEL · certbot)
 #   3.  Runtime directories
 #   4.  Logrotate config
-#   5.  Suricata IDS
+#   5.  (removed — was Suricata IDS)
 #   6.  Firewall  (firewalld — open 80/443/22/25)
 #   7.  systemd unit  (ximg-web.service)
 #   8a. SSL: *.ximg.app wildcard via acme.sh + GoDaddy DNS-01
@@ -83,7 +83,7 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "2/11  System packages  (EPEL · certbot · Suricata)"
+section "2/11  System packages  (EPEL · certbot)"
 # ─────────────────────────────────────────────────────────────────────────────
 
 if ! dnf list installed epel-release &>/dev/null 2>&1; then
@@ -94,14 +94,12 @@ ok "EPEL enabled"
 
 PKGS=()
 command -v certbot  &>/dev/null || PKGS+=(certbot)
-command -v suricata &>/dev/null || PKGS+=(suricata)
 
 if [[ ${#PKGS[@]} -gt 0 ]]; then
   info "installing: ${PKGS[*]}"
   dnf -y install "${PKGS[@]}" &>/dev/null
 fi
 ok "certbot $(certbot --version 2>&1 | grep -oP '[\d.]+' | head -1) installed"
-ok "suricata $(suricata --version 2>&1 | grep -oP '[\d.]+' | head -1) installed"
 
 # ─────────────────────────────────────────────────────────────────────────────
 section "3/11  Runtime directories"
@@ -114,10 +112,6 @@ done
 
 touch "$REPO/logs/.keep"
 ok "log stub files created"
-
-install -d -m 755 /var/log/suricata
-chmod 755 /var/log/suricata
-ok "/var/log/suricata writable"
 
 # Pre-create cert directories so nginx can start after certs are placed
 for cert_dir in /etc/letsencrypt/live/wildcard.ximg.app /etc/letsencrypt/live/dockerimage.dev; do
@@ -136,31 +130,7 @@ ok "logrotate config installed → /etc/logrotate.d/ximg-web"
 info "daily rotation, 14-day retention, compressed, nginx reopen signal"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "5/11  Suricata IDS"
-# ─────────────────────────────────────────────────────────────────────────────
-
-if grep -q '192\.168\.0\.0/16,10\.0\.0\.0/8,172\.16\.0\.0/12' /etc/suricata/suricata.yaml 2>/dev/null; then
-  sed -i "s|HOME_NET: \"\[192\.168\.0\.0/16,10\.0\.0\.0/8,172\.16\.0\.0/12\]\"|HOME_NET: \"[${SERVER_IP}/32,10.0.0.0/8,172.16.0.0/12]\"|" \
-      /etc/suricata/suricata.yaml
-  ok "HOME_NET set to ${SERVER_IP}/32"
-else
-  if grep -q "HOME_NET:" /etc/suricata/suricata.yaml 2>/dev/null; then
-    warn "HOME_NET already customised — verify /etc/suricata/suricata.yaml manually"
-  fi
-fi
-
-info "running suricata-update (downloads ~50k community rules — takes ~1 min)..."
-suricata-update >/dev/null 2>&1 && ok "community rules downloaded" || warn "suricata-update failed — check network"
-
-systemctl enable --now suricata
-ok "suricata.service enabled and running"
-
-sleep 2
-if [[ -f /var/log/suricata/eve.json ]]; then
-  ok "eve.json exists — IDS is writing events"
-else
-  warn "eve.json not found yet — suricata may still be loading rules"
-fi
+section "5/11  (skipped — Suricata removed)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 section "6/11  Firewall  (firewalld)"
@@ -481,18 +451,14 @@ check_container() {
   fi
 }
 
-check_service  suricata
 check_service  ximg-web
 check_service  proc-trace-dns-logger
 check_container nginx
 check_container logs
-check_container ids
 
 if [[ -f "$WILDCARD_CERT" ]]; then
   check_http "https://ximg.app"               "ximg.app"
-  check_http "https://ids.ximg.app"           "ids.ximg.app"
   check_http "https://logs.ximg.app"          "logs.ximg.app"
-  check_http "https://logs.ximg.app/ids-stats" "ids-stats endpoint"
 fi
 
 echo
@@ -506,10 +472,7 @@ echo
 echo -e "${DIM}Useful commands:${RST}"
 echo -e "  systemctl status ximg-web                          # stack status"
 echo -e "  docker compose ps                                  # container status"
-echo -e "  docker compose logs -f logs                        # IDS + nginx log stream"
-echo -e "  systemctl status suricata                          # IDS engine status"
-echo -e "  journalctl -fu suricata                            # IDS live logs"
-echo -e "  suricata-update && systemctl reload suricata       # refresh rules"
+echo -e "  docker compose logs -f logs                        # nginx log stream"
 echo -e "  /root/.acme.sh/acme.sh --renew -d ximg.app        # force cert renewal"
 echo -e "  certbot renew --standalone                         # renew dockerimage.dev cert"
 echo -e "  journalctl -fu proc-trace-dns-logger               # DNS logger live output"

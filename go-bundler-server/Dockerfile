@@ -1,8 +1,8 @@
 FROM python:3.12-alpine
 
-RUN apk add --no-cache go git tar
+RUN apk add --no-cache go git tar clamav
 
-RUN pip install --no-cache-dir flask clamd
+RUN pip install --no-cache-dir flask
 
 WORKDIR /app
 COPY server.py .

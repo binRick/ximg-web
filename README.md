@@ -36,7 +36,6 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ascii.ximg.app](https://ascii.ximg.app) | Three classic ASCII demos: spinning donut (3-D torus), matrix rain, and sine-wave plasma. |
 | [json.ximg.app](https://json.ximg.app) | JSON type reference card with syntax-highlighted examples for every value type — educational quick-ref. |
 | [poker.ximg.app](https://poker.ximg.app) | Texas Hold'em hand evaluator — pick hole cards, see hand rank, probability bar chart, and GTO preflop chart. |
-| [ids.ximg.app](https://ids.ximg.app) | Suricata intrusion detection dashboard — live EVE JSON alert stream, protocol/severity charts, 24h heatmap, attacker world map. |
 | [logs.ximg.app](https://logs.ximg.app) | Real-time nginx access log viewer over WebSocket, one tab per subdomain, plus an SSH honeypot session browser. |
 | [mail.ximg.app](https://mail.ximg.app) | Webmail inbox for @ximg.app addresses — live SMTP receiver with a Gmail-style email reader UI. |
 | [mario.ximg.app](https://mario.ximg.app) | Canvas-based Mario platformer game playable in the browser — move, jump, enemies, score. |
@@ -126,7 +125,6 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [security.ximg.app](https://security.ximg.app) | Hands-on security education — SQL injection demo with live query construction, XSS sandbox safe vs unsafe render comparison, password entropy and crack-time analyzer with SHA-256 hashing, and JWT decoder. |
 | [database.ximg.app](https://database.ximg.app) | Visual database education — interactive ER diagram with clickable table relationships, JOIN type animator (INNER/LEFT/RIGHT/FULL), drag-and-drop SQL query builder, and B-tree index vs full-scan performance demo. |
 | [dns.ximg.app](https://dns.ximg.app) | Domain Name System reference — record types (A, MX, TXT, CNAME, DNSSEC), full resolution flow from root to authoritative, dig/nslookup commands, and DoH/DoT. |
-| [suricata.ximg.app](https://suricata.ximg.app) | Suricata IDS/IPS reference — rule syntax, sticky buffers, protocol keywords, EVE JSON output format, JA3 fingerprinting, and CLI commands for network threat detection. |
 | [network.ximg.app](https://network.ximg.app) | Interactive networking sandbox — animated TCP 3-way handshake, packet hop-by-hop journey, latency/packet-loss simulator with throughput charts, and step-by-step DNS resolution. |
 | [request.ximg.app](https://request.ximg.app) | Enter any URL and watch the full end-to-end journey: DNS lookup, TCP handshake, TLS negotiation, HTTP request/response headers, and browser rendering pipeline with real-world timing. |
 | [readme.ximg.app](https://readme.ximg.app) | The ximg-web project README rendered as a styled web page — live architecture overview, subdomain directory, and stack documentation. |

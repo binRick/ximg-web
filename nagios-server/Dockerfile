@@ -21,9 +21,7 @@ RUN groupadd -g 992 docker 2>/dev/null || true && \
 
 # Install custom check scripts
 COPY check_docker.py   /opt/nagios/libexec/check_docker.py
-COPY check_suricata.sh /opt/nagios/libexec/check_suricata.sh
-RUN chmod +x /opt/nagios/libexec/check_docker.py \
-             /opt/nagios/libexec/check_suricata.sh
+RUN chmod +x /opt/nagios/libexec/check_docker.py
 
 # Hide Nagios branding (version string, homepage link, "Logged in as ?", notifications disabled)
 RUN cat >> /opt/nagios/share/stylesheets/common.css <<'EOF'

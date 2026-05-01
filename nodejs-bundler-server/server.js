@@ -21,30 +21,23 @@ function logBundleDownload(bundler, ip, pkg, extra, sizeMB) {
 }
 
 // ── ClamAV helpers ──────────────────────────────────────────────────
+const { execFile } = require('child_process');
+
 function clamavScanFile(filePath) {
   return new Promise((resolve) => {
-    const sock = net.createConnection({ host: 'clamav', port: 3310 });
-    sock.setTimeout(30000);
-    let response = '';
-    sock.on('connect', () => {
-      sock.write('zINSTREAM\0');
-      const fStream = fs.createReadStream(filePath, { highWaterMark: 8192 });
-      fStream.on('data', (chunk) => {
-        const len = Buffer.allocUnsafe(4);
-        len.writeUInt32BE(chunk.length);
-        sock.write(Buffer.concat([len, chunk]));
+    execFile('clamscan', ['--no-summary', '--database=/var/lib/clamav', filePath],
+      { timeout: 120000 }, (err, stdout) => {
+        if (!err) return resolve('CLEAN');
+        if (err.code === 1) {
+          for (const line of (stdout || '').split('\n')) {
+            if (line.includes('FOUND')) {
+              return resolve(line.split(':').pop().replace('FOUND', '').trim());
+            }
+          }
+          return resolve('UNKNOWN');
+        }
+        resolve(null);
       });
-      fStream.on('end', () => { sock.write(Buffer.alloc(4)); });
-      fStream.on('error', () => { sock.destroy(); resolve(null); });
-    });
-    sock.on('data', (data) => { response += data.toString(); });
-    sock.on('end', () => {
-      const r = response.trim().replace(/\0$/, '');
-      if (r.endsWith(' FOUND')) resolve(r.slice('stream: '.length, -' FOUND'.length));
-      else resolve('CLEAN');
-    });
-    sock.on('error', () => resolve(null));
-    sock.on('timeout', () => { sock.destroy(); resolve(null); });
   });
 }
 

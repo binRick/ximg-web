@@ -83,33 +83,23 @@ PACKAGES = [
 FAVICON_SVG = open('/app/favicon.svg', 'rb').read()
 
 # ── ClamAV helpers ───────────────────────────────────────────────────
-import socket as _socket
-import struct as _struct
+import subprocess as _subprocess
 
-def _clam_scan_file(filepath, host='clamav', port=3310, timeout=30):
-    """Scan one file via clamd INSTREAM. Returns 'CLEAN', virus name, or None if unavailable."""
+def _clam_scan_file(filepath):
+    """Scan one file via clamscan CLI. Returns 'CLEAN', virus name, or None if unavailable."""
     try:
-        with _socket.create_connection((host, port), timeout=timeout) as _s:
-            _s.sendall(b'zINSTREAM\0')
-            with open(filepath, 'rb') as fh:
-                while True:
-                    chunk = fh.read(8192)
-                    if not chunk:
-                        break
-                    _s.sendall(_struct.pack('>I', len(chunk)) + chunk)
-            _s.sendall(b'\x00\x00\x00\x00')
-            resp = b''
-            while True:
-                data = _s.recv(4096)
-                if not data:
-                    break
-                resp += data
-                if b'\0' in data or b'\n' in data:
-                    break
-        text = resp.decode('utf-8', errors='replace').strip().rstrip('\0')
-        if text.endswith(' FOUND'):
-            return text[len('stream: '):-len(' FOUND')]
-        return 'CLEAN'
+        r = _subprocess.run(
+            ['clamscan', '--no-summary', '--database=/var/lib/clamav', filepath],
+            capture_output=True, text=True, timeout=120,
+        )
+        if r.returncode == 0:
+            return 'CLEAN'
+        if r.returncode == 1:
+            for line in r.stdout.splitlines():
+                if 'FOUND' in line:
+                    return line.split(':')[-1].replace('FOUND', '').strip()
+            return 'UNKNOWN'
+        return None
     except Exception:
         return None
 

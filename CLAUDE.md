@@ -162,7 +162,6 @@ All static sites share a single `static` nginx container. Each subdomain's files
 | readme.ximg.app | readme-html/ | README.md rendered as a styled web page |
 | claudemd.ximg.app | claudemd-html/ | CLAUDE.md rendered as a styled web page |
 | stats.ximg.app | awstats/ | AWStats traffic analytics per subdomain |
-| ids.ximg.app | ids-html/ | Suricata IDS live alert feed |
 | netdata.ximg.app | netdata/ | Real-time server metrics (CPU, memory, network, Docker) |
 | change.ximg.app | change-server/ | Live git commit history viewer |
 | mail.ximg.app | mail-server/ | Webmail inbox for @ximg.app |

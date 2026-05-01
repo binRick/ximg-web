@@ -1,6 +1,8 @@
 FROM python:3.12-alpine
 
-RUN pip install --no-cache-dir flask clamd ansible-core
+RUN apk add --no-cache clamav
+
+RUN pip install --no-cache-dir flask ansible-core
 
 WORKDIR /app
 COPY server.py .

@@ -4,9 +4,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Flask first (before adding foreign arches which complicate apt-get update)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-venv && \
+    apt-get install -y --no-install-recommends python3 python3-venv clamav && \
     python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install flask clamd && \
+    /opt/venv/bin/pip install flask && \
     rm -rf /var/lib/apt/lists/*
 
 # Register foreign architectures — needed at runtime for cross-arch apt downloads

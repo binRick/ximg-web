@@ -16,8 +16,9 @@ RUN apt-get update && \
     python3.11 -m ensurepip --upgrade && \
     python3.12 -m ensurepip --upgrade && \
     python3.13 -m ensurepip --upgrade && \
+    apt-get install -y clamav && \
     python3.12 -m venv /opt/venv && \
-    /opt/venv/bin/pip install flask clamd && \
+    /opt/venv/bin/pip install flask && \
     rm -rf /var/lib/apt/lists/* /tmp/get-pip.py
 
 WORKDIR /app
