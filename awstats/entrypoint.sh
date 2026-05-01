@@ -6,74 +6,77 @@ AWSTATS_DATADIR=/data
 AWSTATS_OUTDIR=/output
 AWSTATS_LOGDIR=/logs
 
-# All sites (matches LOG_FILES in logs-server/server.js)
-SITES="555timer agents ai algorithms america ansible apps arduino arpanet ascii base64 bash battery binary biology brain bsd budget butterfly capacitor cdn cell change chaos chemistry chess chinese circuit claude claudemd cnc coffee coldwar color compiler compound computers cron crypto database debt diff dna dns docker doom embeddings epidemic evolution fidonet florida fpga git gravity grilling guns hash http ids immune impedance india inflation internet japan json jwt kart kombat linux loadbalancer logic logs mac mail mainframe mario math medieval monkey mortgage moto nagios nav netdata network nintendo nutrition ohms opamp os oscilloscope passwords pcb physics pinout pirates pizza playground poker probability programming protocol psu punch pwm quake quantum queue readme regex regression request resistor retire rx sandbox security simcity sleep space spectrum spi sql ssh stats statslab status suricata swaudit synth systemd systemdesign tampa temperature terminal tmux tokens training trump uart unix url vim visualize voltage vr vt101 warcraft wargames waves wood world ximg ximg-app yaml zsh"
+# All ximg.app subdomain log files (for merging into one report)
+XIMG_SITES="555timer agents ai algorithms america ansible ansible-bundler antenna app-audit apps apt-bundler architecture arduino arpanet ascii aztec babylon baking base64 bash battery bbq bbs beer bgp binary biology bourbon brain british bsd budget bundler bundler-info butterfly c99 ca-fetcher calories capacitor cdn cell change chaos chemistry chess chinese chmod cia cidr circuit civilwar clamav claude claudemd cnc cocktails coffee coldwar colonial color commodore communism compiler compound computers conway cron crusades crypto csv cuba curl database dcf debt devtools-info diff dna dns docker dockerimage dockerimagedownloader doom dos downloader egypt embeddings epidemic epoch esp32 esp32-s3-lcd evolution ferment fidonet florida forex fpga french gentoo git githubstars github-stats go-bundler golang gravity greece grilling guns hash honeypot http ids immune impedance india industrial inflation internet ip iptables ironfist iso japan json jwt kart knife kombat linux loadbalancer logic logs lorem mac mail mainframe makefile mario markdown market math medieval modem mongols monkey mortgage moto nagios napoleon nav netdata network nintendo nodejs nodejs-bundler nuget-bundler nutrition ohms opamp options os oscilloscope ottoman pal password passwords pasta pcb php physics pinout pirates pizza playground poker probability proc-trace-dns proc-trace-exec proc-trace-net proc-trace-tls programming projects-info protocol ps1 psu punch pwm python python-bundler quake quantum queue ramen raylib rbterm readme recipe regex regression renaissance request resistor retire revolution rome rpm-bundler russianrev rx samurai sandbox savings scumm security silkroad simcity sleep smoker space spacerace spectrum spi spice sql ssh ssl stats statslab status stocks suricata sushi synth systemd systemdesign tacos tampa tax tea temperature templeos terminal tetris thai timespan tls tls-ca-fetch tmux tokens training trump uart unix url utf8 uuid video vikings vim visualize voltage vr vt101 warcraft wargames waves wine wood world ww1 ww2 ximg ximg-app yaml zsh"
 
 # ── GeoIP plugin config ───────────────────────────────────────────────────────
-# Uses AWStats' built-in geoipfree plugin + Geo::IPfree bundled IP database
-# No external database file needed
 GEOIP_PLUGIN='LoadPlugin="geoipfree"'
 
-# ── Generate per-site AWStats configs ────────────────────────────────────────
+SKIP_HOSTS="127.0.0.1 ::1 172.238.205.61 172.17.0.1 172.18.0.1 172.19.0.1 2a01:7e04::2000:30ff:fed5:d413"
+
+# ── Generate configs ─────────────────────────────────────────────────────────
 mkdir -p "$AWSTATS_CONFDIR"
 
-for site in $SITES; do
-    logfile="${AWSTATS_LOGDIR}/${site}.access.log"
-    mkdir -p "${AWSTATS_DATADIR}/${site}"
-
-    # Domain: ximg -> ximg.app, swaudit -> swaudit.net, others -> SITE.ximg.app
-    if [ "$site" = "ximg" ]; then
-        domain="ximg.app"
-        aliases="ximg.app www.ximg.app"
-    elif [ "$site" = "swaudit" ]; then
-        domain="swaudit.net"
-        aliases="swaudit.net www.swaudit.net"
-    else
-        domain="${site}.ximg.app"
-        aliases="${site}.ximg.app"
-    fi
-
-    cat > "${AWSTATS_CONFDIR}/awstats.${site}.conf" << EOF
-LogType=W
-LogFormat=1
-LogFile=${logfile}
-SiteDomain=${domain}
-HostAliases=${aliases}
-DirData=${AWSTATS_DATADIR}/${site}
-DirCgi=/usr/lib/awstats/cgi-bin
-DirIcons=/icons
-AllowToUpdateStatsFromBrowser=0
-DNSLookup=0
-SkipHosts="127.0.0.1 ::1 172.238.205.61 172.17.0.1 172.18.0.1 172.19.0.1 2a01:7e04::2000:30ff:fed5:d413"
-DefaultFile="index.html"
-${GEOIP_PLUGIN}
-EOF
-done
-
-# ── Generate combined config (all sites merged) ───────────────────────────────
-ALL_LOGS=""
-for site in $SITES; do
+# 1. ximg.app — merge all subdomain logs into one report
+XIMG_LOGS=""
+for site in $XIMG_SITES; do
     logfile="${AWSTATS_LOGDIR}/${site}.access.log"
     if [ -f "$logfile" ]; then
-        ALL_LOGS="$ALL_LOGS $logfile"
+        XIMG_LOGS="$XIMG_LOGS $logfile"
     fi
 done
 
-mkdir -p "${AWSTATS_DATADIR}/combined"
-MERGE_CMD="/usr/bin/logresolvemerge.pl${ALL_LOGS} |"
+mkdir -p "${AWSTATS_DATADIR}/ximg-all"
+MERGE_CMD="/usr/bin/logresolvemerge.pl${XIMG_LOGS} |"
 
-cat > "${AWSTATS_CONFDIR}/awstats.combined.conf" << EOF
+cat > "${AWSTATS_CONFDIR}/awstats.ximg-all.conf" << EOF
 LogType=W
 LogFormat=1
 LogFile="${MERGE_CMD}"
 SiteDomain=ximg.app
-HostAliases=ximg.app
-DirData=${AWSTATS_DATADIR}/combined
+HostAliases=ximg.app *.ximg.app
+DirData=${AWSTATS_DATADIR}/ximg-all
 DirCgi=/usr/lib/awstats/cgi-bin
 DirIcons=/icons
 AllowToUpdateStatsFromBrowser=0
 DNSLookup=0
-SkipHosts="127.0.0.1 ::1 172.238.205.61 172.17.0.1 172.18.0.1 172.19.0.1 2a01:7e04::2000:30ff:fed5:d413"
+SkipHosts="${SKIP_HOSTS}"
+DefaultFile="index.html"
+${GEOIP_PLUGIN}
+EOF
+
+# 2. dockerimage.dev
+mkdir -p "${AWSTATS_DATADIR}/dockerimage-dev"
+cat > "${AWSTATS_CONFDIR}/awstats.dockerimage-dev.conf" << EOF
+LogType=W
+LogFormat=1
+LogFile=${AWSTATS_LOGDIR}/dockerimage.dev.access.log
+SiteDomain=dockerimage.dev
+HostAliases=dockerimage.dev www.dockerimage.dev
+DirData=${AWSTATS_DATADIR}/dockerimage-dev
+DirCgi=/usr/lib/awstats/cgi-bin
+DirIcons=/icons
+AllowToUpdateStatsFromBrowser=0
+DNSLookup=0
+SkipHosts="${SKIP_HOSTS}"
+DefaultFile="index.html"
+${GEOIP_PLUGIN}
+EOF
+
+# 3. swaudit.net
+mkdir -p "${AWSTATS_DATADIR}/swaudit"
+cat > "${AWSTATS_CONFDIR}/awstats.swaudit.conf" << EOF
+LogType=W
+LogFormat=1
+LogFile=${AWSTATS_LOGDIR}/swaudit.access.log
+SiteDomain=swaudit.net
+HostAliases=swaudit.net www.swaudit.net
+DirData=${AWSTATS_DATADIR}/swaudit
+DirCgi=/usr/lib/awstats/cgi-bin
+DirIcons=/icons
+AllowToUpdateStatsFromBrowser=0
+DNSLookup=0
+SkipHosts="${SKIP_HOSTS}"
 DefaultFile="index.html"
 ${GEOIP_PLUGIN}
 EOF
