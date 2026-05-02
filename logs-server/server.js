@@ -2437,6 +2437,19 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.url === '/land-110m.json') {
+    const landPath = path.join(__dirname, 'vendor', 'land-110m.json');
+    try {
+      const data = fs.readFileSync(landPath);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' });
+      res.end(data);
+    } catch (e) {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+    return;
+  }
+
   if (req.url === '/docker-downloads') {
     try {
       const lines = fs.existsSync(DL_LOG_FILE)
