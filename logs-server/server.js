@@ -2901,6 +2901,8 @@ wss.on('connection', (ws, req) => {
     try {
       const parsed = parseLine(line);
       if (parsed.ip === '172.18.0.1') return;
+      // Filter out noisy /api/* requests from swaudit logs
+      if ((siteName || site) === 'swaudit' && parsed.path && parsed.path.startsWith('/api/')) return;
       if (siteName) parsed.site = siteName;
       if (parsed.ip) {
         const geo = await lookupGeo(parsed.ip);
