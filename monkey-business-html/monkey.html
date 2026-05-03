@@ -88,7 +88,7 @@
 
     <div id="page" style="display:none;">
       <div class="head-card">
-        <svg class="avatar" id="avatar" viewBox="0 0 80 80"></svg>
+        <svg class="avatar" id="avatar" viewBox="0 -14 80 94"></svg>
         <div>
           <h1 id="m-name">—</h1>
           <div class="id" id="m-id">—</div>
@@ -120,22 +120,104 @@
     }
     function cls(x) { return x>0?'gain':x<0?'loss':''; }
     function fmtTime(ts) { return new Date(ts).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }); }
-    function hue(id) { return ((id * 137.508) | 0) % 360; }
+    function traits(id) {
+      const r = (id * 2654435761) >>> 0;
+      return {
+        hue:      ((id * 137.508) | 0) % 360,
+        mouth:    r        % 5,
+        brow:    ((r >>> 3) % 5) - 2,
+        look:    ((r >>> 5) % 5) - 2,
+        earTilt: ((r >>> 7) % 3) - 1,
+        glasses:  ((r >>> 9)  & 0xff) < 18,
+        tophat:   ((r >>> 13) & 0xff) < 13,
+        mustache: ((r >>> 17) & 0xff) < 13
+      };
+    }
 
     function drawAvatar(id) {
-      const h = hue(id);
-      const fur  = `hsl(${h}, 35%, 28%)`;
-      const face = `hsl(${h}, 25%, 50%)`;
-      const dark = `hsl(${h}, 30%, 18%)`;
+      const t = traits(id);
+      const h = t.hue;
+      const fur     = `hsl(${h}, 40%, 30%)`;
+      const furDk   = `hsl(${h}, 45%, 20%)`;
+      const face    = `hsl(${(h+8)%360}, 32%, 62%)`;
+      const muzzle  = `hsl(${(h+8)%360}, 28%, 52%)`;
+      const earPink = `hsl(${(h+350)%360}, 45%, 55%)`;
+      const eyeDark = `hsl(${h}, 55%, 12%)`;
+      const sheen   = `hsla(${h}, 60%, 90%, 0.22)`;
+
+      const cx = 40, cy = 42;       // head center
+      const lookX = t.look * 1.6;
+      const earTilt = t.earTilt * 1.5;
+
+      // mouth path/element
+      let mouth = '';
+      if (t.mouth === 0) {
+        mouth = `<path d="M ${cx-5} ${cy+22} Q ${cx} ${cy+27} ${cx+5} ${cy+22}" stroke="${eyeDark}" stroke-width="1.4" stroke-linecap="round" fill="none"/>`;
+      } else if (t.mouth === 1) {
+        mouth = `<line x1="${cx-4}" y1="${cy+24}" x2="${cx+4}" y2="${cy+24}" stroke="${eyeDark}" stroke-width="1.4" stroke-linecap="round"/>`;
+      } else if (t.mouth === 2) {
+        mouth = `<ellipse cx="${cx}" cy="${cy+24}" rx="2.3" ry="3" fill="${eyeDark}"/>`;
+      } else if (t.mouth === 3) {
+        mouth = `<line x1="${cx-4}" y1="${cy+25}" x2="${cx+4.5}" y2="${cy+22}" stroke="${eyeDark}" stroke-width="1.4" stroke-linecap="round"/>`;
+      } else {
+        mouth = `<rect x="${cx-3.5}" y="${cy+22}" width="7" height="3" fill="white" stroke="${eyeDark}" stroke-width="0.8"/><line x1="${cx}" y1="${cy+22}" x2="${cx}" y2="${cy+25}" stroke="${eyeDark}" stroke-width="0.5"/>`;
+      }
+
+      const mustache = t.mustache ? `
+        <ellipse cx="${cx-4}" cy="${cy+19}" rx="4.5" ry="1.8" transform="rotate(15 ${cx-4} ${cy+19})" fill="${furDk}"/>
+        <ellipse cx="${cx+4}" cy="${cy+19}" rx="4.5" ry="1.8" transform="rotate(-15 ${cx+4} ${cy+19})" fill="${furDk}"/>` : '';
+
+      const tophat = t.tophat ? `
+        <rect x="${cx-13}" y="${cy-31}" width="26" height="2.6" fill="#0a0a0f"/>
+        <rect x="${cx-9}"  y="${cy-44}" width="18" height="14" fill="#0a0a0f"/>
+        <rect x="${cx-9}"  y="${cy-34}" width="18" height="1.8" fill="#facc15"/>` : '';
+
+      const glasses = t.glasses ? `
+        <circle cx="${cx-7}" cy="${cy+5}" r="6" fill="none" stroke="#facc15" stroke-width="1.2"/>
+        <circle cx="${cx+7}" cy="${cy+5}" r="6" fill="none" stroke="#facc15" stroke-width="1.2"/>
+        <line x1="${cx-1}" y1="${cy+5}" x2="${cx+1}" y2="${cy+5}" stroke="#facc15" stroke-width="1.2"/>` : '';
+
       document.getElementById('avatar').innerHTML = `
         <rect width="80" height="80" rx="12" fill="rgba(255,255,255,0.04)"/>
-        <ellipse cx="40" cy="58" rx="20" ry="16" fill="${fur}"/>
-        <ellipse cx="18" cy="40" rx="9" ry="10" fill="${fur}"/>
-        <ellipse cx="62" cy="40" rx="9" ry="10" fill="${fur}"/>
-        <ellipse cx="40" cy="40" rx="20" ry="22" fill="${fur}"/>
-        <ellipse cx="40" cy="44" rx="13" ry="15" fill="${face}"/>
-        <ellipse cx="34" cy="42" rx="2.4" ry="3" fill="${dark}"/>
-        <ellipse cx="46" cy="42" rx="2.4" ry="3" fill="${dark}"/>
+        <!-- shoulders -->
+        <ellipse cx="${cx}" cy="${cy+38}" rx="28" ry="14" fill="${furDk}"/>
+        <!-- ears outer -->
+        <ellipse cx="${cx-23}" cy="${cy-2+earTilt}" rx="9" ry="11" transform="rotate(-12 ${cx-23} ${cy-2})" fill="${fur}"/>
+        <ellipse cx="${cx+23}" cy="${cy-2-earTilt}" rx="9" ry="11" transform="rotate(12 ${cx+23} ${cy-2})" fill="${fur}"/>
+        <!-- ears inner -->
+        <ellipse cx="${cx-22}" cy="${cy+earTilt}" rx="4" ry="6" transform="rotate(-12 ${cx-22} ${cy})" fill="${earPink}"/>
+        <ellipse cx="${cx+22}" cy="${cy-earTilt}" rx="4" ry="6" transform="rotate(12 ${cx+22} ${cy})" fill="${earPink}"/>
+        <!-- head -->
+        <ellipse cx="${cx}" cy="${cy}" rx="22" ry="24" fill="${fur}"/>
+        <!-- top sheen -->
+        <ellipse cx="${cx-3}" cy="${cy-15}" rx="10" ry="4" transform="rotate(-22 ${cx-3} ${cy-15})" fill="${sheen}"/>
+        <!-- heart-shaped face plate -->
+        <path d="M ${cx-15} ${cy-2}
+                 a 15 14 0 0 1 30 0
+                 C ${cx+15} ${cy+10}, ${cx+4} ${cy+22}, ${cx} ${cy+22}
+                 C ${cx-4}  ${cy+22}, ${cx-15} ${cy+10}, ${cx-15} ${cy-2} Z"
+              fill="${face}"/>
+        <!-- brows -->
+        <line x1="${cx-9}" y1="${cy-7+t.brow*0.6}" x2="${cx-3}" y2="${cy-9-t.brow*0.4}" stroke="${furDk}" stroke-width="1.7" stroke-linecap="round"/>
+        <line x1="${cx+3}" y1="${cy-9-t.brow*0.4}" x2="${cx+9}" y2="${cy-7+t.brow*0.6}" stroke="${furDk}" stroke-width="1.7" stroke-linecap="round"/>
+        <!-- eye whites -->
+        <ellipse cx="${cx-6}" cy="${cy+1}" rx="3.4" ry="4" fill="#f8fafc"/>
+        <ellipse cx="${cx+6}" cy="${cy+1}" rx="3.4" ry="4" fill="#f8fafc"/>
+        <!-- pupils -->
+        <ellipse cx="${cx-6+lookX}" cy="${cy+1.6}" rx="2.0" ry="2.6" fill="${eyeDark}"/>
+        <ellipse cx="${cx+6+lookX}" cy="${cy+1.6}" rx="2.0" ry="2.6" fill="${eyeDark}"/>
+        <!-- catchlights -->
+        <circle cx="${cx-5+lookX}" cy="${cy}" r="0.7" fill="#fff"/>
+        <circle cx="${cx+7+lookX}" cy="${cy}" r="0.7" fill="#fff"/>
+        <!-- muzzle -->
+        <ellipse cx="${cx}" cy="${cy+13}" rx="7.5" ry="5" fill="${muzzle}"/>
+        <!-- nostrils -->
+        <ellipse cx="${cx-2}" cy="${cy+12}" rx="0.7" ry="0.9" fill="${furDk}"/>
+        <ellipse cx="${cx+2}" cy="${cy+12}" rx="0.7" ry="0.9" fill="${furDk}"/>
+        ${mustache}
+        ${mouth}
+        ${glasses}
+        ${tophat}
       `;
     }
 

@@ -4,9 +4,9 @@ const { stmts, asTx } = require('./db');
 const { TICKERS, fetchAllQuotes } = require('./market');
 
 const PORT             = +(process.env.PORT || 3015);
-const ROUND_INTERVAL_MS = +(process.env.ROUND_INTERVAL_MS || 5 * 60 * 1000);
-const BONUS_RATE_MS    = +(process.env.BONUS_RATE_MS || 30 * 1000); // per-IP cooldown
-const BONUS_MIN_GAP_MS = 10 * 1000; // global min gap between bonus rounds
+const ROUND_INTERVAL_MS = +(process.env.ROUND_INTERVAL_MS || 60 * 1000);
+const BONUS_RATE_MS    = +(process.env.BONUS_RATE_MS || 3 * 1000); // per-IP cooldown
+const BONUS_MIN_GAP_MS = 2 * 1000; // global min gap between bonus rounds
 
 // ---- SSE clients ----------------------------------------------------------
 const clients = new Set();
@@ -166,7 +166,7 @@ async function autoTick() {
   if (!result.ok) console.warn('[auto] skipped:', result.reason);
 }
 
-// First round on startup (so the dashboard isn't empty), then every 5 min.
+// First round on startup (so the dashboard isn't empty), then on the cadence.
 setTimeout(() => { autoTick(); }, 2_000);
 setInterval(autoTick, ROUND_INTERVAL_MS);
 
