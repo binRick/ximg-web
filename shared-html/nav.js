@@ -88,7 +88,7 @@
       ['tls-ca-fetch','tls-ca-fetch'],
       ['github-stats','github stats'],
       ['ironfist','&#x1F525; Iron Fist'],
-      ['monkey-business','monkey-business'],
+      ['monkey-business','&#x1F412; <span style="background:linear-gradient(90deg,#ff5e62,#ffaa00,#39ad48,#00c2c7,#a855f7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:600">monkey-business</span> &#x1F34C;'],
       ['rbterm','&#x1F4DF; rbterm'],
       ['scumm','scumm-game']
     ]},
