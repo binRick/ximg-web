@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Full leaderboard of all 100 monkeys: cumulative return, win rate vs market, mean, stdev, Sharpe-ish.">
+  <title>Leaderboard — monkey-business.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9; --muted: #64748b; --accent: #7c3aed; --accent2: #06b6d4;
+      --gain: #22c55e; --loss: #ef4444; --gold: #facc15;
+      --mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; }
+    body::before { content:''; position: fixed; inset: 0; background-image: linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px); background-size: 48px 48px; animation: gridMove 30s linear infinite; z-index: 0; pointer-events: none; }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.18; z-index: 0; pointer-events: none; }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -150px; }
+
+    #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: var(--mono); }
+    #subnav a:hover, #subnav a.active { color: var(--accent2); background: rgba(255,255,255,.06); }
+
+    main { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 1.4rem 1.4rem 4rem; }
+    h1 { font-size: 1.6rem; font-weight: 200; letter-spacing: .02em; }
+    h1 b { font-weight: 600; background: linear-gradient(120deg, var(--accent2), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { color: var(--muted); font-size: .85rem; margin-top: .2rem; margin-bottom: 1.2rem; }
+
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; backdrop-filter: blur(10px); padding: .5rem; }
+
+    table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .85rem; }
+    th, td { padding: .55rem .8rem; text-align: right; border-bottom: 1px solid var(--border); }
+    th { font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); font-weight: 500; cursor: pointer; user-select: none; position: sticky; top: 0; background: rgba(8,11,14,.96); }
+    th:first-child, td:first-child { text-align: center; width: 50px; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+    th.sorted-asc::after  { content: ' ↑'; color: var(--accent2); }
+    th.sorted-desc::after { content: ' ↓'; color: var(--accent2); }
+    tr:hover td { background: rgba(255,255,255,0.025); }
+    a.monkey-link { color: var(--text); text-decoration: none; }
+    a.monkey-link:hover { color: var(--accent2); }
+    a.monkey-link small { color: var(--muted); margin-left: .4rem; font-size: .7rem; }
+    .gain { color: var(--gain); }
+    .loss { color: var(--loss); }
+    .rank-1 { color: var(--gold); font-weight: 600; }
+    .rank-2 { color: #cbd5e1; }
+    .rank-3 { color: #d97706; }
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav id="subnav">
+    <a href="index.html">Arena</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="history.html">History</a>
+    <a href="monkey.html">Monkey</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main>
+    <h1>The <b>Leaderboard</b></h1>
+    <div class="sub">Every monkey, every metric. Click a column to re-sort.</div>
+
+    <div class="panel">
+      <table id="lb">
+        <thead>
+          <tr>
+            <th data-key="rank" class="sorted-asc">#</th>
+            <th data-key="name">Monkey</th>
+            <th data-key="rounds">Rounds</th>
+            <th data-key="cumPct">Cumulative</th>
+            <th data-key="meanPct">Mean / round</th>
+            <th data-key="stdev">Stdev</th>
+            <th data-key="sharpeish">Mean / σ</th>
+            <th data-key="winRate">Beat market</th>
+          </tr>
+        </thead>
+        <tbody><tr><td class="empty" colspan="8">loading…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script type="module">
+    import { getLeaderboard } from './api.js';
+
+    function pct(x, d=2) {
+      if (x===null || x===undefined || !Number.isFinite(x)) return '—';
+      return (x>=0?'+':'') + (x*100).toFixed(d) + '%';
+    }
+    function num(x, d=3) {
+      if (x===null || x===undefined || !Number.isFinite(x)) return '—';
+      return x.toFixed(d);
+    }
+    function cls(x) { return x>0?'gain':x<0?'loss':''; }
+
+    let monkeys = [];
+    let sortKey = 'cumPct';
+    let sortAsc = false;
+
+    function render() {
+      const sorted = [...monkeys].sort((a,b) => {
+        const av = a[sortKey], bv = b[sortKey];
+        if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        return sortAsc ? av - bv : bv - av;
+      });
+      const tbody = document.querySelector('#lb tbody');
+      if (sorted.length === 0) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="8">No data yet — the first round may still be in flight.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = sorted.map((m, i) => {
+        const rankCls = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+        return `<tr>
+          <td class="${rankCls}">${i+1}</td>
+          <td><a class="monkey-link" href="monkey.html?id=${m.id}">${m.name}<small>#${m.id}</small></a></td>
+          <td>${m.rounds}</td>
+          <td class="${cls(m.cumPct)}">${pct(m.cumPct,2)}</td>
+          <td class="${cls(m.meanPct)}">${pct(m.meanPct,3)}</td>
+          <td>${num(m.stdev*100,2)}%</td>
+          <td>${num(m.sharpeish,3)}</td>
+          <td>${(m.winRate*100).toFixed(0)}%</td>
+        </tr>`;
+      }).join('');
+      document.querySelectorAll('th[data-key]').forEach(th => {
+        th.classList.remove('sorted-asc','sorted-desc');
+        if (th.dataset.key === sortKey) th.classList.add(sortAsc ? 'sorted-asc' : 'sorted-desc');
+      });
+    }
+
+    document.querySelectorAll('th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.key;
+        if (k === 'rank') return;
+        if (k === sortKey) sortAsc = !sortAsc; else { sortKey = k; sortAsc = (k === 'name'); }
+        render();
+      });
+    });
+
+    document.querySelectorAll('#subnav a').forEach(a => {
+      const href = a.getAttribute('href');
+      const path = location.pathname;
+      if (path.endsWith(href)) a.classList.add('active');
+    });
+
+    async function refresh() {
+      try {
+        const r = await getLeaderboard();
+        monkeys = r.monkeys;
+        render();
+      } catch (e) { console.warn(e); }
+    }
+    refresh();
+    setInterval(refresh, 30_000);
+  </script>
+
+  <script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

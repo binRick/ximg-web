@@ -1,54 +1,484 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>monkey-business — ximg.app</title>
-<meta name="description" content="monkey-business — a project built with its own dedicated Claude instance. Coming soon.">
-<link rel="icon" href="favicon.svg">
-<style>
-  :root { --accent: #f59e0b; --bg: #0a0c10; --card: #12151a; --border: rgba(255,255,255,.08); --text: #c9d1d9; --dim: #6a737d; }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; line-height: 1.7; padding-top: 60px; }
-  .hero { text-align: center; padding: 3rem 1.5rem 2rem; }
-  .hero h1 { font-size: 2.4rem; color: #fff; margin-bottom: .5rem; letter-spacing: -.02em; }
-  .hero h1 span { color: var(--accent); }
-  .hero .tagline { color: var(--dim); font-size: .95rem; max-width: 640px; margin: 0 auto 1.5rem; }
-  .badge { display: inline-block; font-size: .65rem; text-transform: uppercase; letter-spacing: .15em; padding: .25rem .7rem; border-radius: 3px; background: rgba(245,158,11,.12); color: var(--accent); border: 1px solid rgba(245,158,11,.25); margin-bottom: 1rem; }
-  .links { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
-  .links a { font-size: .78rem; padding: .45rem 1.1rem; border-radius: 5px; text-decoration: none; font-family: 'Courier New', monospace; letter-spacing: .05em; transition: all .2s; }
-  .links .ghost { border: 1px solid var(--border); color: var(--dim); }
-  .links .ghost:hover { color: #fff; border-color: rgba(255,255,255,.25); }
-  section { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
-  h2 { font-size: 1.3rem; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
-  .status-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; text-align: center; }
-  .status-card p { color: var(--dim); font-size: .9rem; line-height: 1.7; }
-  .status-card .icon { font-size: 3rem; margin-bottom: 1rem; }
-  footer { text-align: center; padding: 2rem; color: var(--dim); font-size: .7rem; border-top: 1px solid var(--border); margin-top: 2rem; }
-  @media (max-width: 600px) { .hero h1 { font-size: 1.6rem; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="100 monkeys throw darts at the NASDAQ-100 every 5 minutes. Live, recorded, judged against the market.">
+  <title>Monkey Business — monkey-business.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0f;
+      --panel:    rgba(255,255,255,0.03);
+      --border:   rgba(255,255,255,0.07);
+      --text:     #f1f5f9;
+      --muted:    #64748b;
+      --accent:   #7c3aed;
+      --accent2:  #06b6d4;
+      --gain:     #22c55e;
+      --loss:     #ef4444;
+      --gold:     #facc15;
+      --mono:     ui-monospace, 'SFMono-Regular', 'Menlo', 'Cascadia Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridMove 30s linear infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+
+    .orb {
+      position: fixed; border-radius: 50%; filter: blur(100px);
+      opacity: 0.18; z-index: 0; pointer-events: none;
+    }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent);  top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -150px; }
+    .orb-3 { width: 350px; height: 350px; background: #f472b6;        top: 35%; left: 55%; }
+
+    /* ========== Sub-nav ========== */
+    #subnav {
+      position: sticky; top: 52px; z-index: 150;
+      background: rgba(8,11,14,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: .2rem; padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+      color: #5a6070; padding: .3rem .65rem; border-radius: 3px;
+      text-decoration: none; transition: color .2s, background .2s;
+      font-family: var(--mono);
+    }
+    #subnav a:hover, #subnav a.active {
+      color: var(--accent2); background: rgba(255,255,255,.06);
+    }
+
+    /* ========== Layout ========== */
+    main {
+      position: relative; z-index: 1;
+      max-width: 1640px; margin: 0 auto; padding: 1.4rem 1.4rem 4rem;
+    }
+
+    .hero {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1.2rem; margin-bottom: .9rem; flex-wrap: wrap;
+    }
+    .hero-title { font-size: 1.6rem; font-weight: 200; letter-spacing: .02em; }
+    .hero-title b { font-weight: 600; background: linear-gradient(120deg, var(--accent2), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-sub { color: var(--muted); font-size: .85rem; margin-top: .2rem; }
+    .market-badge {
+      font-family: var(--mono); font-size: .7rem; letter-spacing: .15em;
+      padding: .28rem .6rem; border-radius: 2px; border: 1px solid;
+    }
+    .market-badge.open    { color: var(--gain);  border-color: var(--gain);  background: rgba(34,197,94,.06); }
+    .market-badge.closed  { color: var(--muted); border-color: var(--muted); background: rgba(100,116,139,.06); }
+    .market-badge .dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor; margin-right: .35rem; vertical-align: middle;
+    }
+    .market-badge.open .dot { animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .hud {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: .7rem;
+      margin-bottom: 1rem;
+    }
+    .hud .stat {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      padding: .65rem .8rem; backdrop-filter: blur(10px);
+    }
+    .hud .stat .lbl {
+      font-family: var(--mono); font-size: .65rem; letter-spacing: .15em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .hud .stat .val {
+      font-family: var(--mono); font-size: 1.4rem; margin-top: .2rem;
+    }
+    .hud .stat .val.gain { color: var(--gain); }
+    .hud .stat .val.loss { color: var(--loss); }
+    .hud .stat .val small { font-size: .65rem; color: var(--muted); margin-left: .35rem; letter-spacing: .1em; }
+
+    /* ========== Arena (canvas) ========== */
+    .arena-wrap {
+      position: relative;
+      border: 1px solid var(--border); border-radius: 14px;
+      background: rgba(8,8,16,0.5);
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(124,58,237,0.08);
+    }
+    canvas#arena {
+      display: block; width: 100%;
+      aspect-ratio: 16 / 9;
+    }
+    .tooltip {
+      position: absolute; pointer-events: none; z-index: 5;
+      background: rgba(0,0,0,0.92); border: 1px solid var(--border);
+      padding: .4rem .6rem; border-radius: 4px; font-family: var(--mono);
+      font-size: .75rem; color: var(--text); white-space: nowrap;
+      transform: translate(-50%, -100%); margin-top: -8px;
+      opacity: 0; transition: opacity .12s;
+    }
+    .tooltip.on { opacity: 1; }
+    .tooltip .pnl-up { color: var(--gain); }
+    .tooltip .pnl-dn { color: var(--loss); }
+
+    /* ========== Action strip (button + leaderboard rail) ========== */
+    .action-row {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1rem; margin-top: 1rem;
+    }
+    .throw-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.1rem;
+      backdrop-filter: blur(10px);
+    }
+    .throw-card h3 {
+      font-size: .72rem; letter-spacing: .15em; text-transform: uppercase;
+      color: var(--muted); font-weight: 500; font-family: var(--mono);
+    }
+    .throw-card p { color: var(--muted); font-size: .8rem; margin-top: .35rem; line-height: 1.45; }
+    .throw-btn {
+      display: block; width: 100%; margin-top: .85rem;
+      padding: .9rem 1rem; border: 0; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; font-family: var(--mono); font-size: .8rem;
+      letter-spacing: .14em; text-transform: uppercase; cursor: pointer;
+      transition: transform .12s, box-shadow .2s, opacity .2s;
+      box-shadow: 0 0 0 0 rgba(124,58,237,0.5);
+    }
+    .throw-btn:hover { box-shadow: 0 0 24px 0 rgba(124,58,237,0.4); }
+    .throw-btn:active { transform: scale(0.98); }
+    .throw-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+    .throw-status {
+      margin-top: .6rem; font-family: var(--mono); font-size: .7rem;
+      color: var(--muted); min-height: 1em;
+    }
+    .throw-status.err  { color: var(--loss); }
+    .throw-status.ok   { color: var(--gain); }
+
+    .lb-rail {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.1rem;
+      backdrop-filter: blur(10px);
+    }
+    .lb-rail h3 {
+      font-size: .72rem; letter-spacing: .15em; text-transform: uppercase;
+      color: var(--muted); font-weight: 500; font-family: var(--mono);
+    }
+    .lb-list {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: .55rem;
+      margin-top: .7rem;
+    }
+    .lb-item {
+      display: flex; align-items: center; gap: .55rem;
+      padding: .45rem .55rem; border: 1px solid var(--border);
+      border-radius: 6px; background: rgba(255,255,255,0.012);
+    }
+    .lb-item .rank {
+      font-family: var(--mono); font-size: .7rem;
+      color: var(--gold); width: 18px;
+    }
+    .lb-item .who {
+      flex: 1; font-size: .78rem; line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .lb-item .who small { display: block; color: var(--muted); font-size: .65rem; font-family: var(--mono); }
+    .lb-item .pct {
+      font-family: var(--mono); font-size: .75rem;
+    }
+    .lb-item .pct.gain { color: var(--gain); }
+    .lb-item .pct.loss { color: var(--loss); }
+    .lb-cta {
+      display: block; margin-top: .9rem; text-align: right;
+      font-family: var(--mono); font-size: .65rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted); text-decoration: none;
+    }
+    .lb-cta:hover { color: var(--accent2); }
+
+    .footer-line {
+      margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: .7rem; color: var(--muted);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    }
+
+    @media (max-width: 1100px) {
+      .hud { grid-template-columns: repeat(3, 1fr); }
+      .action-row { grid-template-columns: 1fr; }
+      .lb-list { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .hud { grid-template-columns: repeat(2, 1fr); }
+      .lb-list { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
 <body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
 
-<div class="hero">
-  <div class="badge">Project — In Development</div>
-  <h1><span>monkey-business</span></h1>
-  <p class="tagline">A new project being built by a dedicated Claude instance. This page will be updated with features, screenshots, and documentation once the repo is ready.</p>
-  <div class="links">
-    <a class="ghost" href="https://github.com/binRick/monkey-business">GitHub</a>
-  </div>
-</div>
+  <nav id="subnav">
+    <a href="index.html">Arena</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="history.html">History</a>
+    <a href="monkey.html">Monkey</a>
+    <a href="about.html">About</a>
+  </nav>
 
-<section>
-  <div class="status-card">
-    <div class="icon">&#x1F6A7;</div>
-    <h2>Under Construction</h2>
-    <p>This project is actively being developed. Check back soon for a full interactive page with documentation, features, and live demos.</p>
-  </div>
-</section>
+  <main>
+    <header class="hero">
+      <div>
+        <div class="hero-title">100 monkeys, <b>throwing darts</b> at the NASDAQ-100.</div>
+        <div class="hero-sub">A new round every 5 minutes. Every pick recorded forever. Judged against the market.</div>
+      </div>
+      <div id="market-badge" class="market-badge closed">
+        <span class="dot"></span><span id="market-state-label">MARKET …</span>
+      </div>
+    </header>
 
-<footer>monkey-business.ximg.app &mdash; part of the <a href="https://ximg.app" style="color:var(--accent);text-decoration:none">ximg.app</a> stack</footer>
+    <section class="hud">
+      <div class="stat">
+        <div class="lbl">Round</div>
+        <div class="val" id="hud-round">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Next Auto</div>
+        <div class="val" id="hud-next">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Swarm Cumulative</div>
+        <div class="val" id="hud-swarm">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Nasdaq-100 Baseline</div>
+        <div class="val" id="hud-market">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Top Monkey</div>
+        <div class="val" id="hud-top" style="font-size:1rem">—</div>
+      </div>
+    </section>
 
-<script src="/shared/nav.js?v=5"></script>
+    <div class="arena-wrap">
+      <canvas id="arena"></canvas>
+      <div class="tooltip" id="tip"></div>
+    </div>
+
+    <section class="action-row">
+      <div class="throw-card">
+        <h3>Throw an Extra Round</h3>
+        <p>Trigger a bonus round on top of the 5-minute schedule. Visitors share a brief cooldown so the swarm isn't spammed.</p>
+        <button class="throw-btn" id="throw-btn">Release the monkeys</button>
+        <div class="throw-status" id="throw-status"></div>
+      </div>
+      <div class="lb-rail">
+        <h3>Top 10 Monkeys (cumulative %)</h3>
+        <div class="lb-list" id="lb-list"></div>
+        <a class="lb-cta" href="leaderboard.html">Full leaderboard →</a>
+      </div>
+    </section>
+
+    <div class="footer-line">
+      <span id="counts">—</span>
+      <span>Real prices via Stooq · Equal-weight Nasdaq-100 baseline</span>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initArena, fireBonus, getCurrentState, hitTestMonkey } from './arena.js';
+    import { getState, getLeaderboard } from './api.js';
+
+    const $ = id => document.getElementById(id);
+
+    // ---- HUD updaters
+    function pct(x, digits=2) {
+      if (x === undefined || x === null || !Number.isFinite(x)) return '—';
+      const s = (x * 100).toFixed(digits);
+      return (x >= 0 ? '+' : '') + s + '%';
+    }
+    function pctClass(x) { return x > 0 ? 'gain' : x < 0 ? 'loss' : ''; }
+
+    function renderHud(s) {
+      $('hud-round').textContent  = s.currentRound ? '#' + s.currentRound.id : '—';
+      $('hud-swarm').innerHTML    = `<span class="${pctClass(s.swarm.cumSwarm)}">${pct(s.swarm.cumSwarm)}</span><small>${s.counts.settled} rounds</small>`;
+      $('hud-market').innerHTML   = `<span class="${pctClass(s.swarm.cumMarket)}">${pct(s.swarm.cumMarket)}</span><small>NDX EW</small>`;
+      const top = s.leaderboard[0];
+      if (top) {
+        $('hud-top').innerHTML = `<a href="monkey.html?id=${top.id}" style="color:inherit;text-decoration:none">${top.name} <small style="color:var(--muted)">${pct(top.cumPct)}</small></a>`;
+      }
+      const badge = $('market-badge');
+      const lbl   = $('market-state-label');
+      if (s.marketState === 'open')  { badge.className='market-badge open';   lbl.textContent='MARKET OPEN'; }
+      else                            { badge.className='market-badge closed'; lbl.textContent='MARKET CLOSED'; }
+      $('counts').textContent = `${s.counts.rounds} rounds played · ${s.counts.settled} settled`;
+    }
+
+    function renderLb(s) {
+      const list = $('lb-list');
+      list.innerHTML = '';
+      s.leaderboard.forEach((m, i) => {
+        const div = document.createElement('a');
+        div.href = `monkey.html?id=${m.id}`;
+        div.className = 'lb-item';
+        div.style.textDecoration = 'none';
+        div.style.color = 'inherit';
+        div.innerHTML = `
+          <span class="rank">${String(i+1).padStart(2,'0')}</span>
+          <span class="who">${m.name}<small>#${m.id} · ${m.rounds} rounds</small></span>
+          <span class="pct ${pctClass(m.cumPct)}">${pct(m.cumPct, 2)}</span>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // ---- Countdown ticker
+    let lastFullState = null;
+    function tickCountdown() {
+      const st = getCurrentState();
+      const ms = st.nextRoundAt - Date.now();
+      if (!Number.isFinite(ms) || ms <= 0) {
+        $('hud-next').textContent = '—';
+      } else {
+        const totalS = Math.ceil(ms / 1000);
+        const m = Math.floor(totalS / 60);
+        const s = totalS % 60;
+        $('hud-next').textContent = `${m}:${String(s).padStart(2,'0')}`;
+      }
+    }
+    setInterval(tickCountdown, 500);
+
+    // ---- Bonus throw button
+    let cooldownUntil = 0;
+    $('throw-btn').addEventListener('click', async () => {
+      const btn = $('throw-btn');
+      const status = $('throw-status');
+      btn.disabled = true;
+      status.className = 'throw-status';
+      status.textContent = 'Releasing the monkeys…';
+      try {
+        const { status: code, body } = await fireBonus();
+        if (code === 202) {
+          status.className = 'throw-status ok';
+          status.textContent = 'Bonus round launched.';
+          cooldownUntil = Date.now() + 30_000;
+        } else if (code === 429) {
+          status.className = 'throw-status err';
+          status.textContent = `Cooldown — try again in ${Math.ceil(body.retryAfterMs/1000)}s`;
+          cooldownUntil = Date.now() + (body.retryAfterMs || 5000);
+        } else {
+          status.className = 'throw-status err';
+          status.textContent = `Couldn't throw: ${body?.reason || code}`;
+          cooldownUntil = Date.now() + 5000;
+        }
+      } catch (e) {
+        status.className = 'throw-status err';
+        status.textContent = 'Network error.';
+        cooldownUntil = Date.now() + 5000;
+      }
+      // Re-enable when cooldown elapses
+      const tick = () => {
+        const left = cooldownUntil - Date.now();
+        if (left <= 0) { btn.disabled = false; return; }
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+
+    // ---- Hover tooltip on monkeys (id + name + cumulative if known)
+    let lbById = new Map();
+    const tip = $('tip');
+    const canvas = $('arena');
+    canvas.addEventListener('mousemove', (e) => {
+      const id = hitTestMonkey(e.clientX, e.clientY);
+      if (!id) { tip.classList.remove('on'); return; }
+      const m = lbById.get(id);
+      const rect = canvas.getBoundingClientRect();
+      const st = getCurrentState();
+      // find this monkey's current pick
+      const pick = st.picks?.find(p => p.monkeyId === id);
+      const lastPnl = st.prevPnls?.get(id);
+      tip.style.left = (e.clientX - rect.left) + 'px';
+      tip.style.top  = (e.clientY - rect.top)  + 'px';
+      const name = m?.name || `Monkey #${id}`;
+      const cumStr = m ? `<br>cum ${pct(m.cumPct)} · win ${(m.winRate*100|0)}%` : '';
+      const pickStr = pick ? `<br>this round: <b>${pick.ticker}</b>` : '';
+      const pnlStr = lastPnl != null ? `<br>last: <span class="${lastPnl>0?'pnl-up':'pnl-dn'}">${pct(lastPnl)}</span>` : '';
+      tip.innerHTML = `<b>${name}</b><br>#${id}${cumStr}${pickStr}${pnlStr}`;
+      tip.classList.add('on');
+    });
+    canvas.addEventListener('mouseleave', () => tip.classList.remove('on'));
+    canvas.addEventListener('click', (e) => {
+      const id = hitTestMonkey(e.clientX, e.clientY);
+      if (id) location.href = `monkey.html?id=${id}`;
+    });
+
+    // ---- Sub-nav active highlighter
+    document.querySelectorAll('#subnav a').forEach(a => {
+      const href = a.getAttribute('href');
+      const path = location.pathname;
+      if (path.endsWith(href) || (href === 'index.html' && (path.endsWith('/') || path.endsWith('index.html')))) {
+        a.classList.add('active');
+      }
+    });
+
+    // ---- Init
+    (async () => {
+      await initArena({
+        canvasEl: canvas,
+        onState: (s) => {
+          if (s.tickers) lastFullState = s;
+          if (lastFullState) renderHud(lastFullState);
+        }
+      });
+
+      // Initial leaderboard fetch (top-10 in /api/state is enough; we hit /leaderboard for tooltips' name lookup)
+      try {
+        const lb = await getLeaderboard();
+        lb.monkeys.forEach(m => lbById.set(m.id, m));
+        // Also refresh hud
+        const s = await getState();
+        lastFullState = s;
+        renderHud(s);
+        renderLb(s);
+      } catch (e) { console.warn(e); }
+
+      // Periodically re-fetch /api/state so the hud + top-10 stays current
+      setInterval(async () => {
+        try {
+          const s = await getState();
+          lastFullState = s;
+          renderHud(s);
+          renderLb(s);
+          // refresh per-id leaderboard map for tooltips
+          const full = await getLeaderboard();
+          full.monkeys.forEach(m => lbById.set(m.id, m));
+        } catch {}
+      }, 30_000);
+
+      tickCountdown();
+    })();
+  </script>
+
+  <script src="/shared/nav.js?v=5"></script>
 </body>
 </html>

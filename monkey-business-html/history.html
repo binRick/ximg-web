@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cumulative return of the monkey swarm versus the equal-weight Nasdaq-100 over time.">
+  <title>History — monkey-business.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9; --muted: #64748b; --accent: #7c3aed; --accent2: #06b6d4;
+      --gain: #22c55e; --loss: #ef4444; --gold: #facc15;
+      --mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; }
+    body::before { content:''; position: fixed; inset: 0; background-image: linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px); background-size: 48px 48px; animation: gridMove 30s linear infinite; z-index: 0; pointer-events: none; }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.18; z-index: 0; pointer-events: none; }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -150px; }
+
+    #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: var(--mono); }
+    #subnav a:hover, #subnav a.active { color: var(--accent2); background: rgba(255,255,255,.06); }
+
+    main { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 1.4rem 1.4rem 4rem; }
+    h1 { font-size: 1.6rem; font-weight: 200; }
+    h1 b { font-weight: 600; background: linear-gradient(120deg, var(--accent2), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { color: var(--muted); font-size: .85rem; margin-top: .2rem; margin-bottom: 1.2rem; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; backdrop-filter: blur(10px); }
+
+    .legend { display: flex; gap: 1.5rem; margin-bottom: .8rem; font-family: var(--mono); font-size: .75rem; }
+    .legend .swatch { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: .4rem; }
+    .swatch-swarm  { background: var(--accent2); }
+    .swatch-market { background: var(--gold); }
+    .delta-card {
+      display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .65rem 1rem; }
+    .stat .lbl { font-family: var(--mono); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+    .stat .val { font-family: var(--mono); font-size: 1.3rem; margin-top: .15rem; }
+    .stat .val.gain { color: var(--gain); } .stat .val.loss { color: var(--loss); }
+
+    canvas { display: block; width: 100%; aspect-ratio: 16/7; }
+    .hover-tip {
+      position: absolute; pointer-events: none; background: rgba(0,0,0,.92);
+      border: 1px solid var(--border); padding: .4rem .55rem; border-radius: 4px;
+      font-family: var(--mono); font-size: .72rem; opacity: 0; transition: opacity .12s;
+      transform: translate(-50%, calc(-100% - 6px));
+    }
+    .hover-tip.on { opacity: 1; }
+
+    .recent-list { font-family: var(--mono); font-size: .8rem; }
+    .recent-list .row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 1rem; padding: .4rem 0; border-bottom: 1px solid var(--border); }
+    .recent-list .head { color: var(--muted); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: .55rem; }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav id="subnav">
+    <a href="index.html">Arena</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="history.html">History</a>
+    <a href="monkey.html">Monkey</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main>
+    <h1>The <b>Tape</b></h1>
+    <div class="sub">Cumulative return of the swarm vs the equal-weight NASDAQ-100, settled round by round.</div>
+
+    <div class="delta-card" id="delta"></div>
+
+    <div class="panel" style="position:relative;">
+      <div class="legend">
+        <span><span class="swatch swatch-swarm"></span>Monkey swarm (equal-weight 100 picks/round)</span>
+        <span><span class="swatch swatch-market"></span>NASDAQ-100 baseline (equal-weight)</span>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="hover-tip" id="tip"></div>
+    </div>
+
+    <h2 style="margin-top:1.8rem; font-weight:200; font-size:1.1rem;">Recent rounds</h2>
+    <div class="panel" style="margin-top:.4rem;">
+      <div class="recent-list" id="recent">
+        <div class="row head"><span>Round</span><span>Time</span><span>Swarm</span><span>Market</span></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { getSwarm } from './api.js';
+
+    const chart = document.getElementById('chart');
+    const tip   = document.getElementById('tip');
+
+    let points = [];
+
+    function pct(x, d=2) {
+      if (!Number.isFinite(x)) return '—';
+      return (x>=0?'+':'') + (x*100).toFixed(d) + '%';
+    }
+    function fmtTime(ts) {
+      const d = new Date(ts);
+      return d.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+
+    function fitCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const r = chart.getBoundingClientRect();
+      chart.width = r.width * dpr; chart.height = r.height * dpr;
+    }
+    window.addEventListener('resize', () => { fitCanvas(); draw(); });
+    fitCanvas();
+
+    let plotRect = { x: 60, y: 20, w: 0, h: 0 }; // pixel rect of the plot area
+    let lastDraw = { points: [], xs: [], ys: { swarm: [], market: [] } };
+
+    function draw() {
+      const ctx = chart.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const W = chart.width, H = chart.height;
+      ctx.clearRect(0, 0, W, H);
+      ctx.scale(1, 1);
+
+      if (points.length < 2) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = `${14*dpr}px ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('not enough data yet — wait for a few rounds to settle', W/2, H/2);
+        return;
+      }
+
+      const padL = 70 * dpr, padR = 24 * dpr, padT = 22 * dpr, padB = 30 * dpr;
+      const pw = W - padL - padR, ph = H - padT - padB;
+      plotRect = { x: padL/dpr, y: padT/dpr, w: pw/dpr, h: ph/dpr };
+
+      const xs = points.map((_, i) => i);
+      const ysSwarm  = points.map(p => p.cumSwarm);
+      const ysMarket = points.map(p => p.cumMarket);
+      const ymin = Math.min(0, ...ysSwarm, ...ysMarket);
+      const ymax = Math.max(0, ...ysSwarm, ...ysMarket);
+      const yspan = (ymax - ymin) || 0.01;
+      const ypad  = yspan * 0.1;
+      const yLo = ymin - ypad, yHi = ymax + ypad;
+
+      const xToPx = i => padL + (i / (xs.length - 1 || 1)) * pw;
+      const yToPx = v => padT + (1 - (v - yLo) / (yHi - yLo)) * ph;
+
+      // Y grid + labels
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      const ticks = 5;
+      for (let i = 0; i <= ticks; i++) {
+        const v = yLo + (yHi - yLo) * (i / ticks);
+        const y = yToPx(v);
+        ctx.beginPath();
+        ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+        ctx.fillText(pct(v, 2), padL - 8 * dpr, y);
+      }
+      // zero line
+      if (yLo < 0 && yHi > 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        const y0 = yToPx(0);
+        ctx.beginPath();
+        ctx.moveTo(padL, y0); ctx.lineTo(W - padR, y0); ctx.stroke();
+      }
+
+      // Plot lines
+      function plotLine(ys, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2 * dpr;
+        ctx.beginPath();
+        for (let i = 0; i < ys.length; i++) {
+          const x = xToPx(i), y = yToPx(ys[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      // shaded fills
+      function fillUnder(ys, color) {
+        const grd = ctx.createLinearGradient(0, padT, 0, H - padB);
+        grd.addColorStop(0, color);
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.moveTo(xToPx(0), yToPx(ys[0]));
+        for (let i = 1; i < ys.length; i++) ctx.lineTo(xToPx(i), yToPx(ys[i]));
+        ctx.lineTo(xToPx(ys.length-1), yToPx(0));
+        ctx.lineTo(xToPx(0), yToPx(0));
+        ctx.closePath();
+        ctx.fill();
+      }
+      fillUnder(ysSwarm, 'rgba(6,182,212,0.10)');
+      plotLine(ysMarket, '#facc15');
+      plotLine(ysSwarm,  '#06b6d4');
+
+      // X axis: show first/last/middle round id
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const xLabels = [0, Math.floor((points.length-1)/2), points.length-1];
+      for (const i of xLabels) {
+        ctx.fillText('#' + points[i].roundId, xToPx(i), H - padB + 6 * dpr);
+      }
+
+      lastDraw = {
+        points, padL: padL/dpr, padR: padR/dpr, padT: padT/dpr, padB: padB/dpr,
+        pw: pw/dpr, ph: ph/dpr, dpr, yLo, yHi, xToPx: i => xToPx(i)/dpr, yToPx: v => yToPx(v)/dpr
+      };
+    }
+
+    chart.addEventListener('mousemove', e => {
+      if (!points.length) return;
+      const rect = chart.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const { padL, pw } = lastDraw;
+      if (x < padL || x > padL + pw) { tip.classList.remove('on'); return; }
+      const i = Math.round(((x - padL) / pw) * (points.length - 1));
+      const p = points[i];
+      if (!p) { tip.classList.remove('on'); return; }
+      const px = lastDraw.xToPx(i), py = lastDraw.yToPx(p.cumSwarm);
+      tip.style.left = (px) + 'px';
+      tip.style.top  = (py) + 'px';
+      tip.innerHTML = `Round #${p.roundId}<br>${fmtTime(p.settledAt)}<br>Swarm <b style="color:#06b6d4">${pct(p.cumSwarm)}</b><br>Market <b style="color:#facc15">${pct(p.cumMarket)}</b>`;
+      tip.classList.add('on');
+    });
+    chart.addEventListener('mouseleave', () => tip.classList.remove('on'));
+
+    function renderRecent() {
+      const list = document.getElementById('recent');
+      // keep header
+      list.innerHTML = '<div class="row head"><span>Round</span><span>Time</span><span>Swarm</span><span>Market</span></div>';
+      const recent = points.slice(-25).reverse();
+      for (const p of recent) {
+        const sCls = p.swarmPct  > 0 ? 'gain' : p.swarmPct  < 0 ? 'loss' : '';
+        const mCls = p.marketPct > 0 ? 'gain' : p.marketPct < 0 ? 'loss' : '';
+        list.insertAdjacentHTML('beforeend',
+          `<div class="row">
+             <span>#${p.roundId}</span>
+             <span>${fmtTime(p.settledAt)}</span>
+             <span class="${sCls}">${pct(p.swarmPct, 3)}</span>
+             <span class="${mCls}">${pct(p.marketPct, 3)}</span>
+           </div>`);
+      }
+    }
+
+    function renderDelta() {
+      const last = points[points.length - 1];
+      const wrap = document.getElementById('delta');
+      if (!last) { wrap.innerHTML = ''; return; }
+      const diff = last.cumSwarm - last.cumMarket;
+      const dCls = diff > 0 ? 'gain' : diff < 0 ? 'loss' : '';
+      wrap.innerHTML = `
+        <div class="stat"><div class="lbl">Swarm cumulative</div><div class="val ${last.cumSwarm>=0?'gain':'loss'}">${pct(last.cumSwarm)}</div></div>
+        <div class="stat"><div class="lbl">Market cumulative</div><div class="val ${last.cumMarket>=0?'gain':'loss'}">${pct(last.cumMarket)}</div></div>
+        <div class="stat"><div class="lbl">Swarm − Market</div><div class="val ${dCls}">${pct(diff)}</div></div>
+        <div class="stat"><div class="lbl">Settled rounds</div><div class="val">${points.length}</div></div>
+      `;
+    }
+
+    document.querySelectorAll('#subnav a').forEach(a => {
+      const href = a.getAttribute('href'); if (location.pathname.endsWith(href)) a.classList.add('active');
+    });
+
+    async function refresh() {
+      try {
+        const r = await getSwarm(2000);
+        points = r.points;
+        draw(); renderRecent(); renderDelta();
+      } catch (e) { console.warn(e); }
+    }
+    refresh();
+    setInterval(refresh, 30_000);
+  </script>
+
+  <script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

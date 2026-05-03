@@ -245,7 +245,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [ip.ximg.app](https://ip.ximg.app) | IP Intelligence — geolocation, ASN, BGP routing, reverse DNS, WebRTC leak detection, and VPN/proxy detection for your public IP address. |
 | [rbterm.ximg.app](https://rbterm.ximg.app) | rbterm — cross-platform terminal emulator in C with raylib. 16 tabs, 5000-line scrollback, truecolor, mouse selection, emoji, OSC palette support. |
 | [scumm.ximg.app](https://scumm.ximg.app) | scumm-game — SCUMM-style point-and-click adventure engine in C with raylib. Dijkstra pathfinding, animated sprites, verb bar, walk-behind foregrounds. |
-| [monkey-business.ximg.app](https://monkey-business.ximg.app) | monkey-business — new project built by a dedicated Claude instance, under active development. |
+| [monkey-business.ximg.app](https://monkey-business.ximg.app) | monkey-business — 100 monkeys throw darts at the NASDAQ-100 every 5 minutes; cumulative swarm-vs-market scoreboard, full pick history per monkey. |
 | [raylib.ximg.app](https://raylib.ximg.app) | raylib deep dive — the simple C99 game library by Ramon Santamaria. Features, architecture, code examples, gallery, and design philosophy. |
 | [c99.ximg.app](https://c99.ximg.app) | C99 deep dive — history from Bell Labs to C23, advantages, pioneers (Ritchie, Thompson, Kernighan), use cases, and statistics. |
 | [golang.ximg.app](https://golang.ximg.app) | Go deep dive — Google's language for cloud infrastructure. History, goroutines, pioneers (Pike, Thompson, Griesemer), use cases, and statistics. |
