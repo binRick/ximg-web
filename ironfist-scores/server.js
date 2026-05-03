@@ -281,6 +281,10 @@ const server = http.createServer(async (req, res) => {
         fileBuffer[4] === 0x66 && fileBuffer[5] === 0x74 &&
         fileBuffer[6] === 0x79 && fileBuffer[7] === 0x70; // 'ftyp'
       if (!isWebM && !isMp4) {
+        // Log the first 16 bytes hex so client-side magic-byte bugs are
+        // diagnosable from server logs without round-tripping a fix.
+        const head = fileBuffer.slice(0, Math.min(16, fileBuffer.length)).toString('hex');
+        console.warn('[VIDEO] REJECTED bad magic for score', scoreId, 'size=', fileBuffer.length, 'head=', head);
         return json(res, 400, { error: 'invalid video file (expected WebM or MP4)' });
       }
       const mimeType = isMp4 ? 'video/mp4' : 'video/webm';
