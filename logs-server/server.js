@@ -226,6 +226,7 @@ const LOG_FILES = {
   ironfist:     'ironfist.access.log',
   rbterm:       'rbterm.access.log',
   scumm:        'scumm.access.log',
+  'monkey-business': 'monkey-business.access.log',
   raylib:       'raylib.access.log',
   c99:          'c99.access.log',
   golang:       'golang.access.log',
@@ -758,6 +759,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="ironfist">ironfist</button>
           <button class="site-opt" data-site="rbterm">rbterm</button>
           <button class="site-opt" data-site="scumm">scumm</button>
+          <button class="site-opt" data-site="monkey-business">monkey-business</button>
           <button class="site-opt" data-site="raylib">raylib</button>
           <button class="site-opt" data-site="c99">c99</button>
           <button class="site-opt" data-site="golang">golang</button>

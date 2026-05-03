@@ -88,6 +88,7 @@
       ['tls-ca-fetch','tls-ca-fetch'],
       ['github-stats','github stats'],
       ['ironfist','&#x1F525; Iron Fist'],
+      ['monkey-business','monkey-business'],
       ['rbterm','&#x1F4DF; rbterm'],
       ['scumm','scumm-game']
     ]},
