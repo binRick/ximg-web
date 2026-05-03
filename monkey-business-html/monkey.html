@@ -52,6 +52,12 @@
     .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; backdrop-filter: blur(10px); }
 
     canvas#spark { display: block; width: 100%; aspect-ratio: 16/5; margin-bottom: 1rem; }
+    canvas#spark[hidden] { display: none; }
+    .spark-empty {
+      font-family: var(--mono); font-size: .75rem; color: var(--muted);
+      padding: .65rem .9rem; margin-bottom: 1rem;
+      border: 1px dashed var(--border); border-radius: 6px;
+    }
 
     table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem; }
     th, td { padding: .45rem .8rem; text-align: right; border-bottom: 1px solid var(--border); }
@@ -99,6 +105,7 @@
 
       <div class="panel">
         <canvas id="spark"></canvas>
+        <div id="spark-empty" class="spark-empty" hidden>Not enough settled rounds yet — chart appears after a few minutes of trading.</div>
         <table>
           <thead>
             <tr><th>Round</th><th>Time</th><th>Ticker</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Market</th><th>vs</th></tr>
@@ -315,19 +322,22 @@
 
     function drawSpark(series) {
       const c = document.getElementById('spark');
+      const empty = document.getElementById('spark-empty');
+      if (series.length < 2) {
+        // Hide the canvas so it doesn't reserve its 16:5 area when there's
+        // nothing to plot; show a small inline note instead.
+        c.hidden = true;
+        empty.hidden = false;
+        return;
+      }
+      c.hidden = false;
+      empty.hidden = true;
       const dpr = window.devicePixelRatio || 1;
       const r = c.getBoundingClientRect();
       c.width = r.width * dpr; c.height = r.height * dpr;
       const ctx = c.getContext('2d');
       const W = c.width, H = c.height;
       ctx.clearRect(0, 0, W, H);
-      if (series.length < 2) {
-        ctx.fillStyle = '#64748b';
-        ctx.font = `${12*dpr}px ui-monospace`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('not enough settled rounds yet', W/2, H/2);
-        return;
-      }
       const padL = 50*dpr, padR = 16*dpr, padT = 12*dpr, padB = 22*dpr;
       const pw = W-padL-padR, ph = H-padT-padB;
       const ymin = Math.min(0, ...series), ymax = Math.max(0, ...series);
@@ -370,6 +380,7 @@
     window.addEventListener('popstate', load);
   </script>
 
+  <script src="nav-sound.js"></script>
   <script src="/shared/nav.js?v=5"></script>
 </body>
 </html>
