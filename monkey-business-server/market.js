@@ -1,50 +1,83 @@
 const TICKERS = require('./tickers');
 
-// Stooq batch CSV: free, no key, no crumb. US tickers use `.us` suffix.
-// Returns columns: Symbol,Date,Time,Open,High,Low,Close,Volume
-// Bad/unknown tickers return "N/D" for all fields — silently dropped.
+// Yahoo Finance v7 spark batch: free, no key, no crumb. Returns latest
+// regularMarketPrice per symbol — close enough to a tick since we re-snapshot
+// every round. Outside US hours `regularMarketPrice` is the most recent close,
+// matching the prior Stooq behaviour.
 //
-// We keep the request under URL length limits by chunking 50 tickers per call
-// (giving headroom; the practical limit is ~2KB on most stacks).
-const CHUNK = 50;
+// Yahoo caps spark at 20 symbols per request (returns 400 above that).
+const CHUNK = 20;
 
 async function fetchChunk(symbols) {
-  const q = symbols.map(s => s.toLowerCase() + '.us').join('+');
-  const url = `https://stooq.com/q/l/?s=${q}&f=sd2t2ohlcv&h&e=csv`;
+  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${symbols.join(',')}&range=1d&interval=1m`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'monkey-business/1.0 (+https://monkey-business.ximg.app)' }
+    headers: { 'User-Agent': 'Mozilla/5.0 monkey-business/1.0' }
   });
-  if (!res.ok) throw new Error(`stooq ${res.status} ${res.statusText}`);
-  const text = await res.text();
-  return text;
-}
-
-function parseCsv(text) {
+  if (!res.ok) throw new Error(`yahoo spark ${res.status} ${res.statusText}`);
+  const j = await res.json();
+  const results = j?.spark?.result || [];
   const out = {};
-  const lines = text.trim().split(/\r?\n/);
-  // header: Symbol,Date,Time,Open,High,Low,Close,Volume
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',');
-    if (cols.length < 7) continue;
-    const sym = cols[0].toUpperCase().replace(/\.US$/, '');
-    const close = Number(cols[6]);
-    if (Number.isFinite(close) && close > 0) out[sym] = close;
+  for (const r of results) {
+    const meta = r?.response?.[0]?.meta;
+    const sym  = (meta?.symbol || r?.symbol || '').toUpperCase();
+    const px   = meta?.regularMarketPrice;
+    if (sym && Number.isFinite(px) && px > 0) out[sym] = px;
   }
   return out;
 }
 
 async function fetchAllQuotes() {
-  const chunks = [];
-  for (let i = 0; i < TICKERS.length; i += CHUNK) {
-    chunks.push(TICKERS.slice(i, i + CHUNK));
-  }
-  // sequential — Stooq doesn't love bursts; 2 calls finish in <500ms
   let merged = {};
-  for (const c of chunks) {
-    const text = await fetchChunk(c);
-    Object.assign(merged, parseCsv(text));
+  for (let i = 0; i < TICKERS.length; i += CHUNK) {
+    Object.assign(merged, await fetchChunk(TICKERS.slice(i, i + CHUNK)));
   }
   return merged;
 }
 
-module.exports = { TICKERS, fetchAllQuotes };
+// Yahoo Finance v8 chart endpoint — free, no key, but rate-limits cloud IPs.
+// We aggressively cache per-ticker responses to keep traffic minimal.
+const HISTORY_CACHE_TTL_MS = 60 * 60 * 1000;   // 1 hour
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;   // 5 min on errors
+const historyCache = new Map(); // ticker -> { ts, data | err }
+
+async function fetchHistory(ticker, range = '7d', interval = '1d') {
+  const key = `${ticker}:${range}:${interval}`;
+  const cached = historyCache.get(key);
+  const now = Date.now();
+  if (cached) {
+    const ttl = cached.err ? NEGATIVE_CACHE_TTL_MS : HISTORY_CACHE_TTL_MS;
+    if (now - cached.ts < ttl) return cached;
+  }
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=${interval}`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 monkey-business/1.0' }
+    });
+    if (!res.ok) throw new Error(`yahoo ${res.status}`);
+    const j = await res.json();
+    const r = j?.chart?.result?.[0];
+    if (!r) throw new Error('no chart result');
+    const ts = r.timestamp || [];
+    const closes = r.indicators?.quote?.[0]?.close || [];
+    // pair, drop nulls
+    const points = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = closes[i];
+      if (typeof c === 'number' && Number.isFinite(c)) {
+        points.push({ ts: ts[i] * 1000, close: c });
+      }
+    }
+    const entry = {
+      ts: now, ticker, range, interval,
+      data: { points, currency: r.meta?.currency || 'USD', symbol: r.meta?.symbol || ticker }
+    };
+    historyCache.set(key, entry);
+    return entry;
+  } catch (err) {
+    const entry = { ts: now, err: err.message };
+    historyCache.set(key, entry);
+    return entry;
+  }
+}
+
+module.exports = { TICKERS, fetchAllQuotes, fetchHistory };
