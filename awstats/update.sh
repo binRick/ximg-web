@@ -47,54 +47,81 @@ display_desc() {
 }
 
 # ── 7-day sparkline ───────────────────────────────────────────────────────────
-# Builds an inline SVG polyline from the last 7 days of BEGIN_DAY hits in the
-# site's AWStats data files. Missing days default to 0 so the window is always
-# exactly 7 points wide ending today (UTC).
-sparkline_svg() {
-    local site="$1"
-    local datadir="${DATADIR}/${site}"
-    perl - "$datadir" "$site" << 'PERL'
+# Builds an inline SVG polyline from the last 7 days of unique-visitor counts
+# (distinct client IPs per day) parsed straight from the nginx access logs.
+# Filenames are fed to the perl script over stdin so we can handle the ~1800
+# rotated log files for ximg-all without exceeding ARG_MAX.
+SPARK_PL=/tmp/sparkline.pl
+cat > "$SPARK_PL" << 'PERL'
 use strict;
 use warnings;
 use POSIX qw(strftime);
-my ($datadir, $site) = @ARGV;
 my $now = time;
 my @days = map { strftime("%Y%m%d", gmtime($now - $_ * 86400)) } reverse(0..6);
-my %hits;
-for my $f (glob "$datadir/awstats*.$site.txt") {
-    open my $fh, "<", $f or next;
-    my $in_day = 0;
-    while (<$fh>) {
-        if (/^BEGIN_DAY/) { $in_day = 1; next; }
-        if (/^END_DAY/)   { $in_day = 0; next; }
-        if ($in_day && /^(\d{8})\s+\d+\s+(\d+)/) { $hits{$1} = $2; }
+my %day_set = map { $_ => 1 } @days;
+my %mon = (Jan=>'01',Feb=>'02',Mar=>'03',Apr=>'04',May=>'05',Jun=>'06',
+           Jul=>'07',Aug=>'08',Sep=>'09',Oct=>'10',Nov=>'11',Dec=>'12');
+my %ips;
+while (my $file = <STDIN>) {
+    chomp $file;
+    next unless $file && -f $file;
+    my $fh;
+    if ($file =~ /\.gz$/) {
+        open $fh, "-|", "gunzip", "-c", $file or next;
+    } else {
+        open $fh, "<", $file or next;
+    }
+    while (my $line = <$fh>) {
+        if ($line =~ /^(\S+) \S+ \S+ \[(\d\d)\/([A-Za-z]{3})\/(\d{4}):/) {
+            my $date = $4 . ($mon{$3} // "00") . $2;
+            next unless $day_set{$date};
+            $ips{$date}{$1} = 1;
+        }
     }
     close $fh;
 }
-my @vals = map { $hits{$_} // 0 } @days;
+my @vals = map { scalar keys %{ $ips{$_} // {} } } @days;
 my $max = 1;
 for (@vals) { $max = $_ if $_ > $max; }
-my @pts;
 my @pretty = map {
     my ($y,$m,$d) = ($_ =~ /^(\d{4})(\d{2})(\d{2})$/);
     my @mn = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
     "$mn[$m-1] $d";
 } @days;
+my @pts;
 my $points_html = "";
 for my $i (0 .. $#vals) {
     my $x = $i * 100 / 6;
     my $y = 95 - ($vals[$i] * 85 / $max);
     push @pts, sprintf("%.1f,%.1f", $x, $y);
     $points_html .= sprintf(
-        qq{<span class="sparkpoint" style="left:%.1f%%;top:%.1f%%" data-date="%s" data-hits="%d"></span>},
+        qq{<span class="sparkpoint" style="left:%.1f%%;top:%.1f%%" data-date="%s" data-visitors="%d"></span>},
         $x, $y, $pretty[$i], $vals[$i]
     );
 }
 my $line  = join(" ", @pts);
 my $area  = "0,100 " . $line . " 100,100";
-my $title = "Last 7 days hits: " . join(", ", map { "$pretty[$_]=$vals[$_]" } 0..$#days);
+my $title = "Last 7 days unique visitors: " . join(", ", map { "$pretty[$_]=$vals[$_]" } 0..$#days);
 print qq{<svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><title>$title</title><polygon points="$area" fill="rgba(88,166,255,.12)"/><polyline points="$line" fill="none" stroke="#58a6ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg><div class="sparkpoints">$points_html</div>};
 PERL
+
+sparkline_svg() {
+    local site="$1"
+    case "$site" in
+        ximg-all)
+            find /logs -maxdepth 1 -name '*.access.log*' -mtime -8 2>/dev/null \
+                | grep -v -E '/(dockerimage\.dev|swaudit|access\.log)' \
+                | perl "$SPARK_PL"
+            ;;
+        dockerimage-dev)
+            find /logs -maxdepth 1 -name 'dockerimage.dev.access.log*' -mtime -8 2>/dev/null \
+                | perl "$SPARK_PL"
+            ;;
+        swaudit)
+            find /logs -maxdepth 1 -name 'swaudit.access.log*' -mtime -8 2>/dev/null \
+                | perl "$SPARK_PL"
+            ;;
+    esac
 }
 
 # ── Per-site update ───────────────────────────────────────────────────────────
@@ -207,8 +234,8 @@ cat >> "${OUTDIR}/index.html" << HTML2
   var tip = document.getElementById('spark-tip');
   function show(e){
     var el = e.currentTarget;
-    var n = parseInt(el.dataset.hits, 10);
-    tip.textContent = el.dataset.date + ' — ' + n.toLocaleString() + ' hit' + (n === 1 ? '' : 's');
+    var n = parseInt(el.dataset.visitors, 10);
+    tip.textContent = el.dataset.date + ' — ' + n.toLocaleString() + ' unique visitor' + (n === 1 ? '' : 's');
     tip.style.opacity = '1';
     move(e);
   }
