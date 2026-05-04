@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The biggest NASDAQ-100 winners and losers — pick a period, see who's flying and who's bleeding.">
+  <title>Winners &amp; Losers — monkey-business.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9; --muted: #64748b; --accent: #7c3aed; --accent2: #06b6d4;
+      --gain: #22c55e; --loss: #ef4444; --gold: #facc15;
+      --mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; }
+    body::before { content:''; position: fixed; inset: 0; background-image: linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px); background-size: 48px 48px; animation: gridMove 30s linear infinite; z-index: 0; pointer-events: none; }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.18; z-index: 0; pointer-events: none; }
+    .orb-1 { width: 600px; height: 600px; background: var(--gain); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--loss); bottom: -150px; right: -150px; }
+
+    #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: var(--mono); }
+    #subnav a:hover, #subnav a.active { color: var(--accent2); background: rgba(255,255,255,.06); }
+
+    main { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 1.4rem 1.4rem 4rem; }
+    h1 { font-size: 1.6rem; font-weight: 200; }
+    h1 b { font-weight: 600; background: linear-gradient(120deg, var(--gain), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { color: var(--muted); font-size: .85rem; margin-top: .2rem; margin-bottom: 1.2rem; }
+
+    /* Period selector */
+    .periods { display:flex; gap:.4rem; margin-bottom: 1rem; flex-wrap:wrap; }
+    .periods button {
+      font-family: var(--mono); font-size: .72rem; letter-spacing: .12em;
+      padding: .5rem .9rem; border-radius: 4px; cursor: pointer;
+      background: rgba(255,255,255,0.03); color: var(--muted);
+      border: 1px solid var(--border);
+      text-transform: uppercase;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .periods button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+    .periods button.active {
+      color: var(--accent2);
+      border-color: rgba(6,182,212,.4);
+      background: rgba(6,182,212,0.08);
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; backdrop-filter: blur(10px); }
+    .panel h3 { font-family: var(--mono); font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-bottom: .9rem; display:flex; justify-content: space-between; align-items: center; }
+    .panel.winners h3 .label { color: var(--gain); }
+    .panel.losers  h3 .label { color: var(--loss); }
+    .panel h3 .count { color: var(--muted); font-size: .65rem; }
+
+    /* === Ranked rows === */
+    .rlist { display: flex; flex-direction: column; gap: .45rem; min-height: 400px; }
+    .rrow {
+      display: grid;
+      grid-template-columns: 28px 36px minmax(120px, 1.5fr) minmax(80px, 1fr) 95px;
+      gap: .7rem; align-items: center;
+      padding: .55rem .7rem;
+      background: rgba(255,255,255,0.018);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: border-color .15s, transform .12s;
+      text-decoration: none; color: inherit;
+      position: relative; overflow: hidden;
+    }
+    .rrow:hover { border-color: rgba(255,255,255,0.18); transform: translateX(2px); }
+    .rrow .rank {
+      font-family: var(--mono); font-size: .85rem; color: var(--muted);
+      text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .rrow.top1 .rank { color: var(--gold); font-weight: 700; }
+    .rrow.top2 .rank { color: #cbd5e1; font-weight: 700; }
+    .rrow.top3 .rank { color: #d97706; font-weight: 700; }
+
+    .rrow .logo {
+      width: 32px; height: 32px; border-radius: 6px;
+      background: #fff; display:flex; align-items:center; justify-content:center;
+      overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.4);
+    }
+    .rrow .logo img { width: 100%; height: 100%; object-fit: contain; }
+    .rrow .logo.mono {
+      background: var(--brand, #1f2937); color: #fff;
+      font-family: var(--mono); font-weight: 700; font-size: .7rem;
+    }
+
+    .rrow .meta { min-width: 0; }
+    .rrow .meta .ticker { font-family: var(--mono); font-weight: 700; font-size: .85rem; }
+    .rrow .meta .name {
+      font-size: .76rem; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-top: 1px;
+    }
+
+    .rrow .spark { height: 32px; min-width: 0; }
+    .rrow .spark canvas { display: block; width: 100%; height: 100%; }
+
+    .rrow .change {
+      font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .rrow .change .pct { font-size: 1rem; display: block; }
+    .rrow .change .pct.gain { color: var(--gain); }
+    .rrow .change .pct.loss { color: var(--loss); }
+    .rrow .change .price { font-size: .65rem; color: var(--muted); margin-top: 2px; display: block; }
+
+    .empty { text-align: center; padding: 3rem; color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+    .loading { text-align: center; padding: 4rem 1rem; color: var(--muted); font-family: var(--mono); font-size: .85rem; }
+    .loading .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background: var(--accent2); margin: 0 2px; animation: blink 1.2s infinite; }
+    .loading .dot:nth-child(2) { animation-delay: .15s; }
+    .loading .dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes blink { 0%,80%,100%{opacity:.3} 40%{opacity:1} }
+
+    /* Hero summary cards */
+    .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } }
+    .hero .card {
+      padding: 1.1rem 1.2rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    .hero .card.up   { background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02)); }
+    .hero .card.down { background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02)); }
+    .hero .card .lbl {
+      font-family: var(--mono); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted);
+    }
+    .hero .card .row { display:flex; align-items: center; gap: .9rem; margin-top: .7rem; }
+    .hero .card .logo {
+      width: 56px; height: 56px; border-radius: 10px;
+      background: #fff; display:flex; align-items:center; justify-content:center;
+      overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.4); flex-shrink: 0;
+    }
+    .hero .card .logo img { width:100%; height:100%; object-fit: contain; }
+    .hero .card .logo.mono { background: var(--brand, #1f2937); color: #fff; font-family: var(--mono); font-weight: 700; font-size: 1rem; }
+    .hero .card .who { min-width: 0; flex: 1; }
+    .hero .card .who .ticker { font-family: var(--mono); font-weight: 700; font-size: 1.4rem; }
+    .hero .card .who .name { font-size: .85rem; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hero .card .pct { font-family: var(--mono); font-size: 2.2rem; font-weight: 600; line-height: 1; }
+    .hero .card.up .pct   { color: var(--gain); }
+    .hero .card.down .pct { color: var(--loss); }
+    .hero .card .price { font-family: var(--mono); font-size: .7rem; color: var(--muted); margin-top: 4px; }
+
+    .footer-note { color: var(--muted); font-size: .72rem; margin-top: 1rem; font-family: var(--mono); text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav id="subnav">
+    <a href="index.html">Arena</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="market.html">Market</a>
+    <a href="winners.html">Winners/Losers</a>
+    <a href="history.html">History</a>
+    <a href="monkey.html">Monkey</a>
+    <a href="status.html">Status</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main>
+    <div>
+      <h1><b>Winners</b> &amp; <b style="background:linear-gradient(120deg,var(--loss),#fb7185);-webkit-background-clip:text;background-clip:text;color:transparent;">Losers</b></h1>
+      <div class="sub">The biggest NASDAQ-100 movers — pick a period.</div>
+    </div>
+
+    <div class="periods" id="periods">
+      <button data-range="1d">1 Day</button>
+      <button data-range="5d">1 Week</button>
+      <button data-range="1mo" class="active">1 Month</button>
+      <button data-range="3mo">3 Months</button>
+      <button data-range="6mo">6 Months</button>
+      <button data-range="ytd">YTD</button>
+      <button data-range="1y">1 Year</button>
+      <button data-range="5y">5 Years</button>
+    </div>
+
+    <section class="hero" id="hero" hidden>
+      <div class="card up">
+        <div class="lbl">Top Winner</div>
+        <div class="row">
+          <div class="logo" id="hero-w-logo"></div>
+          <div class="who"><div class="ticker" id="hero-w-ticker">—</div><div class="name" id="hero-w-name">—</div></div>
+          <div style="text-align:right">
+            <div class="pct" id="hero-w-pct">—</div>
+            <div class="price" id="hero-w-price">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="card down">
+        <div class="lbl">Top Loser</div>
+        <div class="row">
+          <div class="logo" id="hero-l-logo"></div>
+          <div class="who"><div class="ticker" id="hero-l-ticker">—</div><div class="name" id="hero-l-name">—</div></div>
+          <div style="text-align:right">
+            <div class="pct" id="hero-l-pct">—</div>
+            <div class="price" id="hero-l-price">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="loading" class="loading">
+      Crunching <span id="period-label">1 month</span> of data
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+
+    <div class="grid" id="grid" hidden>
+      <div class="panel winners">
+        <h3><span class="label">▲ Top Winners</span><span class="count" id="w-count"></span></h3>
+        <div class="rlist" id="winners-list"></div>
+      </div>
+      <div class="panel losers">
+        <h3><span class="label">▼ Top Losers</span><span class="count" id="l-count"></span></h3>
+        <div class="rlist" id="losers-list"></div>
+      </div>
+    </div>
+
+    <div class="footer-note" id="footer-note"></div>
+  </main>
+
+  <script type="module">
+    import { getWinners } from './api.js';
+    import { COMPANIES, info } from './companies.js';
+
+    const TOP_N = 15;
+    const LOGO_MISSES = new Set(['TRI','ROP','XEL','IDXX','GFS']);
+    const WHITE_LOGOS = new Set([
+      'AAPL','ADI','ADSK','APP','ASML','AXON','CDNS','CEG','CSX','CTAS',
+      'DDOG','FANG','FAST','ILMN','INTC','LRCX','MRVL','PLTR','REGN','VRTX'
+    ]);
+    const PERIOD_LABEL = {
+      '1d':'1 day','5d':'1 week','1mo':'1 month','3mo':'3 months',
+      '6mo':'6 months','ytd':'YTD','1y':'1 year','5y':'5 years'
+    };
+
+    let activeRange = '1mo';
+    let inFlight = null;
+
+    function pct(x, d=2) {
+      if (x == null || !Number.isFinite(x)) return '—';
+      return (x>=0?'+':'') + (x*100).toFixed(d) + '%';
+    }
+    function priceStr(p) { if (p == null) return '—'; return p < 10 ? p.toFixed(3) : p.toFixed(2); }
+
+    function logoHtml(ticker, size = 32) {
+      const meta = info(ticker);
+      if (LOGO_MISSES.has(ticker)) {
+        return `<div class="logo mono" style="background:${meta.color}">${ticker.slice(0,4)}</div>`;
+      }
+      const bg = WHITE_LOGOS.has(ticker) ? meta.color : '#fff';
+      return `<div class="logo" style="background:${bg}"><img src="logos/${ticker}.png" alt="${ticker}" loading="lazy" onerror="this.parentNode.classList.add('mono');this.parentNode.style.background='${meta.color}';this.replaceWith(Object.assign(document.createTextNode('${ticker.slice(0,4)}'),{}));"/></div>`;
+    }
+
+    function drawSpark(canvas, ys, up) {
+      const dpr = window.devicePixelRatio || 1;
+      const r = canvas.getBoundingClientRect();
+      canvas.width = Math.max(40, r.width * dpr); canvas.height = Math.max(20, r.height * dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!ys || ys.length < 2) return;
+      const yMin = Math.min(...ys), yMax = Math.max(...ys);
+      const yLo = yMin - (yMax - yMin) * 0.12 - 0.005;
+      const yHi = yMax + (yMax - yMin) * 0.12 + 0.005;
+      const W = canvas.width, H = canvas.height;
+      const xToPx = i => (i / (ys.length - 1)) * W;
+      const yToPx = v => H - ((v - yLo) / (yHi - yLo)) * H;
+      const lineColor = up ? '#22c55e' : '#ef4444';
+      const fillColor = up ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
+      ctx.fillStyle = fillColor;
+      ctx.beginPath();
+      ctx.moveTo(0, yToPx(ys[0]));
+      for (let i = 1; i < ys.length; i++) ctx.lineTo(xToPx(i), yToPx(ys[i]));
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 1.6 * dpr;
+      ctx.beginPath();
+      for (let i = 0; i < ys.length; i++) {
+        const x = xToPx(i), y = yToPx(ys[i]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = lineColor;
+      ctx.beginPath();
+      ctx.arc(xToPx(ys.length - 1), yToPx(ys[ys.length - 1]), 2 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function row(rec, rank, up) {
+      const meta = info(rec.ticker);
+      const a = document.createElement('a');
+      a.className = 'rrow' + (rank === 1 ? ' top1' : rank === 2 ? ' top2' : rank === 3 ? ' top3' : '');
+      a.href = `https://finance.yahoo.com/quote/${encodeURIComponent(rec.ticker)}`;
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.style.setProperty('--brand', meta.color);
+      a.innerHTML = `
+        <span class="rank">#${rank}</span>
+        ${logoHtml(rec.ticker)}
+        <div class="meta"><div class="ticker">${rec.ticker}</div><div class="name">${meta.name}</div></div>
+        <div class="spark"><canvas></canvas></div>
+        <div class="change">
+          <span class="pct ${up?'gain':'loss'}">${pct(rec.pct)}</span>
+          <span class="price">$${priceStr(rec.last)}</span>
+        </div>
+      `;
+      return a;
+    }
+
+    function fillHero(winner, loser) {
+      const hero = document.getElementById('hero');
+      if (!winner && !loser) { hero.hidden = true; return; }
+      hero.hidden = false;
+      function paint(prefix, rec, up) {
+        const ticker = rec?.ticker || '—';
+        const meta = rec ? info(rec.ticker) : { name: '—', color: '#1f2937' };
+        document.getElementById(`hero-${prefix}-ticker`).textContent = ticker;
+        document.getElementById(`hero-${prefix}-name`).textContent   = meta.name;
+        document.getElementById(`hero-${prefix}-pct`).textContent    = rec ? pct(rec.pct) : '—';
+        document.getElementById(`hero-${prefix}-price`).textContent  = rec ? `$${priceStr(rec.last)} now · was $${priceStr(rec.first)}` : '';
+        const logoEl = document.getElementById(`hero-${prefix}-logo`);
+        logoEl.innerHTML = '';
+        if (!rec) return;
+        if (LOGO_MISSES.has(ticker)) {
+          logoEl.classList.add('mono'); logoEl.style.background = meta.color; logoEl.textContent = ticker.slice(0,4);
+        } else {
+          logoEl.classList.remove('mono');
+          logoEl.style.background = WHITE_LOGOS.has(ticker) ? meta.color : '#fff';
+          const img = document.createElement('img');
+          img.src = `logos/${ticker}.png`; img.alt = ticker;
+          img.onerror = () => { logoEl.classList.add('mono'); logoEl.style.background = meta.color; logoEl.textContent = ticker.slice(0,4); };
+          logoEl.appendChild(img);
+        }
+      }
+      paint('w', winner, true);
+      paint('l', loser,  false);
+    }
+
+    async function load(range) {
+      const tag = ++inFlightTag;
+      activeRange = range;
+      document.querySelectorAll('#periods button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+      document.getElementById('grid').hidden  = true;
+      document.getElementById('hero').hidden  = true;
+      document.getElementById('loading').hidden = false;
+      document.getElementById('period-label').textContent = PERIOD_LABEL[range] || range;
+      try {
+        const data = await getWinners(range, '1d');
+        if (tag !== inFlightTag) return; // a newer request superseded us
+        const winners = data.winners.slice(0, TOP_N);
+        const losers  = data.losers.slice(0, TOP_N);
+        fillHero(winners[0] || null, losers[0] || null);
+        const wEl = document.getElementById('winners-list'); wEl.innerHTML = '';
+        const lEl = document.getElementById('losers-list');  lEl.innerHTML = '';
+        if (!winners.length) wEl.innerHTML = '<div class="empty">No gainers in this period.</div>';
+        if (!losers.length)  lEl.innerHTML = '<div class="empty">No decliners in this period.</div>';
+        winners.forEach((r, i) => wEl.appendChild(row(r, i + 1, true)));
+        losers .forEach((r, i) => lEl.appendChild(row(r, i + 1, false)));
+        document.getElementById('w-count').textContent = `${data.winners.length} up`;
+        document.getElementById('l-count').textContent = `${data.losers.length} down`;
+        document.getElementById('loading').hidden = true;
+        document.getElementById('grid').hidden    = false;
+        // Draw sparklines now that rows are in DOM
+        requestAnimationFrame(() => {
+          for (const [el, recs, up] of [[wEl, winners, true], [lEl, losers, false]]) {
+            const canvases = el.querySelectorAll('canvas');
+            canvases.forEach((c, i) => drawSpark(c, recs[i].spark, up));
+          }
+        });
+        const note = data.unavailable && data.unavailable.length
+          ? `Couldn't load history for ${data.unavailable.length} tickers (${data.unavailable.slice(0, 5).join(', ')}${data.unavailable.length > 5 ? '…' : ''}).`
+          : '';
+        document.getElementById('footer-note').textContent = note;
+      } catch (e) {
+        document.getElementById('loading').innerHTML = `Couldn't load: ${e.message}`;
+      }
+    }
+
+    // Tag-based "ignore stale responses" so quick period clicks behave correctly.
+    let inFlightTag = 0;
+
+    document.querySelectorAll('#periods button').forEach(b => {
+      b.addEventListener('click', () => load(b.dataset.range));
+    });
+
+    document.querySelectorAll('#subnav a').forEach(a => {
+      const href = a.getAttribute('href');
+      if (location.pathname.endsWith(href)) a.classList.add('active');
+    });
+
+    load('1mo');
+  </script>
+
+  <script src="nav-sound.js"></script>
+  <script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

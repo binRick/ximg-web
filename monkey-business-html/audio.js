@@ -81,9 +81,9 @@ class MonkeyChorus {
     lfo.stop(when + 0.32);
   }
 
-  // Dart impact thunk — short percussive click. Tiny noise burst through a
+  // Dart impact thunk — short percussive click. Noise burst through a
   // lowpass that drops fast; pitched a hair so a wave of them sounds rhythmic
-  // rather than mushy.
+  // rather than mushy. Layered with a low-frequency body sine for thump.
   thunk(when, pitch = 1) {
     if (this.muted) return;
     this.ensureCtx();
@@ -91,8 +91,8 @@ class MonkeyChorus {
     if (this.ctx.state === 'suspended') this.ctx.resume();
     const ctx = this.ctx;
 
-    // White-noise burst
-    const len = Math.floor(ctx.sampleRate * 0.06);
+    // === Noise crack (the sharp transient) ===
+    const len = Math.floor(ctx.sampleRate * 0.10);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const ch  = buf.getChannelData(0);
     for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
@@ -101,17 +101,29 @@ class MonkeyChorus {
 
     const filt = ctx.createBiquadFilter();
     filt.type = 'lowpass';
-    filt.frequency.setValueAtTime(2400 * pitch, when);
-    filt.frequency.exponentialRampToValueAtTime(220, when + 0.06);
-    filt.Q.value = 6;
+    filt.frequency.setValueAtTime(3200 * pitch, when);
+    filt.frequency.exponentialRampToValueAtTime(180, when + 0.09);
+    filt.Q.value = 8;
 
     const env = ctx.createGain();
-    env.gain.setValueAtTime(0.42, when);
-    env.gain.exponentialRampToValueAtTime(0.001, when + 0.07);
+    env.gain.setValueAtTime(1.05, when);              // was 0.42 — much louder peak
+    env.gain.exponentialRampToValueAtTime(0.001, when + 0.11);
 
     src.connect(filt).connect(env).connect(this.master);
     src.start(when);
-    src.stop(when + 0.08);
+    src.stop(when + 0.12);
+
+    // === Sub-thump (gives the impact body) ===
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(180 * pitch, when);
+    sub.frequency.exponentialRampToValueAtTime(60, when + 0.08);
+    const subEnv = ctx.createGain();
+    subEnv.gain.setValueAtTime(0.55, when);
+    subEnv.gain.exponentialRampToValueAtTime(0.001, when + 0.10);
+    sub.connect(subEnv).connect(this.master);
+    sub.start(when);
+    sub.stop(when + 0.11);
   }
 
   // Convenience for "now"

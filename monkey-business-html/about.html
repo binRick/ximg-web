@@ -52,6 +52,7 @@
     <a href="winners.html">Winners/Losers</a>
     <a href="history.html">History</a>
     <a href="monkey.html">Monkey</a>
+    <a href="status.html">Status</a>
     <a href="about.html">About</a>
   </nav>
 
@@ -97,29 +98,6 @@
     <h2>The stack</h2>
     <p>Vanilla JS on Canvas in the browser. Node.js + SQLite (better-sqlite3) on the server. Quotes from Yahoo Finance's batch spark endpoint (with Stooq's batch CSV as a fallback). Server-Sent Events stream new rounds to every connected client at the same instant — no polling, no WebSocket complexity. All hosted on the same VPS as the rest of <a href="https://ximg.app">ximg.app</a>.</p>
 
-    <h2>Backend status</h2>
-    <p>Per-provider call stats since the server last started. The <i>state</i> column flips to <code>blocked</code> if a provider hits a known rate-limit signature (Stooq's daily-hits string, Yahoo 4xx). It clears as soon as a fresh call succeeds.</p>
-
-    <div class="panel" id="stats-panel">
-      <table id="stats-table" style="width:100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem;">
-        <thead>
-          <tr style="text-align:left; color: var(--muted); border-bottom: 1px solid var(--border);">
-            <th style="padding:.4rem .5rem;">Provider</th>
-            <th style="padding:.4rem .5rem; text-align:right;">Calls</th>
-            <th style="padding:.4rem .5rem; text-align:right;">OK</th>
-            <th style="padding:.4rem .5rem; text-align:right;">Failed</th>
-            <th style="padding:.4rem .5rem;">State</th>
-            <th style="padding:.4rem .5rem;">Last OK</th>
-            <th style="padding:.4rem .5rem;">Last error</th>
-          </tr>
-        </thead>
-        <tbody id="stats-tbody">
-          <tr><td colspan="7" style="padding:.5rem; color: var(--muted);">loading…</td></tr>
-        </tbody>
-      </table>
-      <div id="stats-meta" style="color: var(--muted); font-family: var(--mono); font-size: .72rem; margin-top: .8rem;"></div>
-    </div>
-
     <div class="panel">
       <p style="margin:0;color:var(--muted);font-family:var(--mono);font-size:.8rem;">
         Source on <a href="https://github.com/binRick/monkey-business">GitHub</a>. If you spot a bug or want to suggest a metric, the contact is on the main ximg.app site.
@@ -131,56 +109,6 @@
     document.querySelectorAll('#subnav a').forEach(a => {
       const href = a.getAttribute('href'); if (location.pathname.endsWith(href)) a.classList.add('active');
     });
-  </script>
-  <script type="module">
-    import { getStats } from './api.js';
-
-    const tbody = document.getElementById('stats-tbody');
-    const meta  = document.getElementById('stats-meta');
-
-    function fmtAge(ts, now) {
-      if (!ts) return '—';
-      const s = Math.max(0, Math.floor((now - ts) / 1000));
-      if (s < 60)    return s + 's ago';
-      if (s < 3600)  return Math.floor(s / 60) + 'm ago';
-      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-      return Math.floor(s / 86400) + 'd ago';
-    }
-    function escapeHtml(s) {
-      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    async function refresh() {
-      let s;
-      try { s = await getStats(); }
-      catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" style="padding:.5rem; color: var(--loss);">stats unavailable: ${escapeHtml(e.message)}</td></tr>`;
-        return;
-      }
-      const now = s.serverTime || Date.now();
-      const order = ['yahoo', 'stooq'];
-      tbody.innerHTML = order.map(name => {
-        const p = s.providers[name] || { calls:0, ok:0, failed:0, blocked:false };
-        const stateColor = p.blocked ? 'var(--loss)' : (p.calls === 0 ? 'var(--muted)' : 'var(--gain)');
-        const stateLabel = p.blocked ? 'blocked' : (p.calls === 0 ? 'idle' : 'healthy');
-        const errCell = p.lastError
-          ? `<span title="${escapeHtml(p.lastError)}">${escapeHtml(p.lastError.length > 32 ? p.lastError.slice(0,32) + '…' : p.lastError)}</span> <span style="color:var(--muted);">(${fmtAge(p.lastErrorAt, now)})</span>`
-          : '<span style="color:var(--muted);">none</span>';
-        return `<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:.4rem .5rem; color: var(--text);">${name}</td>
-          <td style="padding:.4rem .5rem; text-align:right;">${p.calls}</td>
-          <td style="padding:.4rem .5rem; text-align:right; color: var(--gain);">${p.ok}</td>
-          <td style="padding:.4rem .5rem; text-align:right; color: ${p.failed ? 'var(--loss)' : 'var(--muted)'};">${p.failed}</td>
-          <td style="padding:.4rem .5rem; color: ${stateColor};">${stateLabel}</td>
-          <td style="padding:.4rem .5rem; color: var(--muted);">${fmtAge(p.lastOkAt, now)}</td>
-          <td style="padding:.4rem .5rem; color: var(--muted);">${errCell}</td>
-        </tr>`;
-      }).join('');
-      meta.textContent = `${s.rounds} rounds in db · refreshed ${new Date(now).toISOString().replace('T',' ').slice(0,19)} UTC`;
-    }
-
-    refresh();
-    setInterval(refresh, 15_000);
   </script>
   <script src="nav-sound.js"></script>
   <script src="/shared/nav.js?v=5"></script>

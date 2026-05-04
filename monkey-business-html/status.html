@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Live backend health for monkey-business — per-provider quote-API call counts and rate-limit state.">
+  <title>Status — monkey-business.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9; --muted: #64748b; --accent: #7c3aed; --accent2: #06b6d4;
+      --gain: #22c55e; --loss: #ef4444; --gold: #facc15;
+      --mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; line-height: 1.6; }
+    body::before { content:''; position: fixed; inset: 0; background-image: linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px); background-size: 48px 48px; animation: gridMove 30s linear infinite; z-index: 0; pointer-events: none; }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.18; z-index: 0; pointer-events: none; }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -150px; }
+
+    #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: var(--mono); }
+    #subnav a:hover, #subnav a.active { color: var(--accent2); background: rgba(255,255,255,.06); }
+
+    main { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 1.4rem 1.4rem 4rem; }
+    h1 { font-size: 1.8rem; font-weight: 200; margin-bottom: .2rem; }
+    h1 b { font-weight: 600; background: linear-gradient(120deg, var(--accent2), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
+    h2 { font-size: 1.1rem; font-weight: 500; margin-top: 2rem; margin-bottom: .5rem; color: var(--accent2); letter-spacing: .02em; }
+    p  { margin-bottom: .9rem; color: #cbd5e1; }
+    code { background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 3px; font-family: var(--mono); font-size: .85em; color: var(--accent2); }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin: 1.5rem 0; backdrop-filter: blur(10px); }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    table#stats-table { width:100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem; }
+    table#stats-table thead tr { text-align:left; color: var(--muted); border-bottom: 1px solid var(--border); }
+    table#stats-table th, table#stats-table td { padding: .5rem .6rem; }
+    table#stats-table th.num, table#stats-table td.num { text-align: right; }
+    table#stats-table tbody tr { border-bottom: 1px solid var(--border); }
+
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; font-family: var(--mono); border: 1px solid currentColor; }
+    .pill.healthy { color: var(--gain); }
+    .pill.idle    { color: var(--muted); }
+    .pill.blocked { color: var(--loss); }
+
+    #headline { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+    #headline b { color: var(--text); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav id="subnav">
+    <a href="index.html">Arena</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="market.html">Market</a>
+    <a href="winners.html">Winners/Losers</a>
+    <a href="history.html">History</a>
+    <a href="monkey.html">Monkey</a>
+    <a href="status.html">Status</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main>
+    <h1>Backend <b>status</b>.</h1>
+    <div class="sub">Live counters for every external API the server has called since it last restarted.</div>
+
+    <div id="headline">
+      <span><b id="hl-rounds">—</b> rounds in db</span>
+      <span><b id="hl-uptime">—</b> since last restart</span>
+      <span id="hl-refresh"></span>
+    </div>
+
+    <div class="panel">
+      <table id="stats-table">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Role</th>
+            <th class="num">Calls</th>
+            <th class="num">OK</th>
+            <th class="num">Failed</th>
+            <th>State</th>
+            <th>Last OK</th>
+            <th>Last error</th>
+          </tr>
+        </thead>
+        <tbody id="stats-tbody">
+          <tr><td colspan="8" style="color: var(--muted);">loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>What this means</h2>
+    <p>The server pulls quotes for all 100 NASDAQ-100 tickers once per round. <b>Yahoo</b> is the primary feed (one batch call per 20 symbols, so 5 calls per round). <b>Stooq</b> is only touched when Yahoo throws, returns sparse data, or otherwise fails — in steady state its counters stay flat.</p>
+    <p>A provider is marked <span class="pill blocked">blocked</span> when its most recent error matches a known rate-limit signature (Stooq's <code>Exceeded the daily hits limit</code> body, or any Yahoo 4xx). It clears as soon as a fresh call from that provider succeeds.</p>
+    <p>Counters reset on every container restart. The raw JSON is at <a href="/api/stats"><code>/api/stats</code></a>.</p>
+  </main>
+
+  <script>
+    document.querySelectorAll('#subnav a').forEach(a => {
+      const href = a.getAttribute('href'); if (location.pathname.endsWith(href)) a.classList.add('active');
+    });
+  </script>
+  <script type="module">
+    import { getStats } from './api.js';
+
+    const tbody = document.getElementById('stats-tbody');
+    const hlRounds  = document.getElementById('hl-rounds');
+    const hlUptime  = document.getElementById('hl-uptime');
+    const hlRefresh = document.getElementById('hl-refresh');
+
+    function fmtAge(ts, now) {
+      if (!ts) return '—';
+      const s = Math.max(0, Math.floor((now - ts) / 1000));
+      if (s < 60)    return s + 's ago';
+      if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      return Math.floor(s / 86400) + 'd ago';
+    }
+    function fmtDuration(seconds) {
+      if (seconds < 60)    return Math.floor(seconds) + 's';
+      if (seconds < 3600)  return Math.floor(seconds / 60) + 'm ' + Math.floor(seconds % 60) + 's';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ' + Math.floor((seconds % 3600) / 60) + 'm';
+      return Math.floor(seconds / 86400) + 'd ' + Math.floor((seconds % 86400) / 3600) + 'h';
+    }
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    const ROLES = { yahoo: 'primary', stooq: 'fallback' };
+    let firstSeenAt = null; // we don't get an explicit start time; approximate from earliest lastOkAt we observe
+
+    async function refresh() {
+      let s;
+      try { s = await getStats(); }
+      catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" style="color: var(--loss);">stats unavailable: ${escapeHtml(e.message)}</td></tr>`;
+        return;
+      }
+      const now = s.serverTime || Date.now();
+      const order = ['yahoo', 'stooq'];
+
+      // best-effort uptime: earliest lastOkAt we've ever seen on this page session
+      for (const k of order) {
+        const t = s.providers[k]?.lastOkAt;
+        if (t && (firstSeenAt === null || t < firstSeenAt)) firstSeenAt = t;
+      }
+
+      tbody.innerHTML = order.map(name => {
+        const p = s.providers[name] || { calls:0, ok:0, failed:0, blocked:false };
+        const stateLabel = p.blocked ? 'blocked' : (p.calls === 0 ? 'idle' : 'healthy');
+        const errCell = p.lastError
+          ? `<span title="${escapeHtml(p.lastError)}">${escapeHtml(p.lastError.length > 36 ? p.lastError.slice(0,36) + '…' : p.lastError)}</span> <span style="color:var(--muted);">(${fmtAge(p.lastErrorAt, now)})</span>`
+          : '<span style="color:var(--muted);">none</span>';
+        return `<tr>
+          <td style="color: var(--text);">${escapeHtml(name)}</td>
+          <td style="color: var(--muted);">${ROLES[name] || ''}</td>
+          <td class="num">${p.calls}</td>
+          <td class="num" style="color: var(--gain);">${p.ok}</td>
+          <td class="num" style="color: ${p.failed ? 'var(--loss)' : 'var(--muted)'};">${p.failed}</td>
+          <td><span class="pill ${stateLabel}">${stateLabel}</span></td>
+          <td style="color: var(--muted);">${fmtAge(p.lastOkAt, now)}</td>
+          <td style="color: var(--muted);">${errCell}</td>
+        </tr>`;
+      }).join('');
+
+      hlRounds.textContent = s.rounds;
+      hlUptime.textContent = firstSeenAt ? fmtDuration((now - firstSeenAt) / 1000) + '+' : '—';
+      hlRefresh.textContent = `refreshed ${new Date(now).toISOString().replace('T',' ').slice(11,19)} UTC`;
+    }
+
+    refresh();
+    setInterval(refresh, 10_000);
+  </script>
+  <script src="nav-sound.js"></script>
+  <script src="/shared/nav.js?v=5"></script>
+</body>
+</html>
