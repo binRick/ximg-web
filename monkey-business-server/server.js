@@ -1,7 +1,7 @@
 const http = require('http');
 const url  = require('url');
 const { stmts, asTx } = require('./db');
-const { TICKERS, fetchAllQuotes } = require('./market');
+const { TICKERS, fetchAllQuotes, fetchHistory, getApiStats } = require('./market');
 
 const PORT             = +(process.env.PORT || 3015);
 const ROUND_INTERVAL_MS = +(process.env.ROUND_INTERVAL_MS || 60 * 1000);
@@ -211,6 +211,52 @@ function marketState(now = Date.now()) {
   return 'closed';
 }
 
+// Yahoo v8 chart accepts: 1d 5d 1mo 3mo 6mo ytd 1y 2y 5y 10y max (and the
+// generic [N](d|wk|mo|y) we already use elsewhere).
+function validRange(s) {
+  return /^([0-9]+(d|wk|mo|y)|ytd|max)$/.test(s);
+}
+
+// Bounded-concurrency map. Avoids hammering Yahoo with 100 sockets at once.
+async function pMap(items, limit, worker) {
+  const out = new Array(items.length);
+  let next = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await worker(items[i], i);
+    }
+  });
+  await Promise.all(runners);
+  return out;
+}
+
+// Reduce a points array to at most `max` evenly-spaced samples, keeping the
+// last point so the spark's endpoint matches `last`.
+function downsample(points, max = 40) {
+  if (points.length <= max) return points.map(p => p.close);
+  const out = [];
+  const step = (points.length - 1) / (max - 1);
+  for (let i = 0; i < max; i++) out.push(points[Math.round(i * step)].close);
+  return out;
+}
+
+async function rankByPctChange(range, interval) {
+  const results = await pMap(TICKERS, 8, async (t) => {
+    const r = await fetchHistory(t, range, interval);
+    if (r.err || !r.data || !r.data.points || r.data.points.length < 2) {
+      return { ticker: t, pct: null, first: null, last: null, spark: [] };
+    }
+    const points = r.data.points;
+    const first  = points[0].close;
+    const last   = points[points.length - 1].close;
+    const pct    = (first > 0) ? (last - first) / first : null;
+    return { ticker: t, pct, first, last, spark: downsample(points, 40) };
+  });
+  return results;
+}
+
 function buildState() {
   const latest = stmts.latestUnsettledRound.get() || stmts.latestSettledRound.get();
   const lastSettled = stmts.latestSettledRound.get();
@@ -360,7 +406,98 @@ const routes = {
     req.on('close', () => clients.delete(res));
   },
 
-  'GET /api/health': (req, res) => json(res, 200, { ok: true, rounds: stmts.roundCount.get().c })
+  'GET /api/health': (req, res) => json(res, 200, { ok: true, rounds: stmts.roundCount.get().c }),
+
+  'GET /api/stats': (req, res) => json(res, 200, {
+    serverTime: Date.now(),
+    rounds: stmts.roundCount.get().c,
+    providers: getApiStats()
+  }),
+
+  'GET /api/ticker': async (req, res) => {
+    const q = url.parse(req.url, true).query;
+    const t = (q.symbol || '').toString().trim().toUpperCase();
+    if (!t || !/^[A-Z][A-Z0-9.\-]{0,9}$/.test(t)) {
+      return json(res, 400, { error: 'bad symbol' });
+    }
+    const range    = (q.range    || '7d').toString();
+    const interval = (q.interval || '1d').toString();
+    if (!validRange(range))                      return json(res, 400, { error: 'bad range' });
+    if (!/^[0-9]+(m|h|d|wk|mo)$/.test(interval)) return json(res, 400, { error: 'bad interval' });
+    const r = await fetchHistory(t, range, interval);
+    if (r.err) return json(res, 502, { error: 'fetch failed', detail: r.err });
+    json(res, 200, { ticker: t, range, interval, ...r.data });
+  },
+
+  'GET /api/winners': async (req, res) => {
+    const q = url.parse(req.url, true).query;
+    const range    = (q.range    || '1mo').toString();
+    const interval = (q.interval || '1d').toString();
+    if (!validRange(range))                      return json(res, 400, { error: 'bad range' });
+    if (!/^[0-9]+(m|h|d|wk|mo)$/.test(interval)) return json(res, 400, { error: 'bad interval' });
+    try {
+      const rows = await rankByPctChange(range, interval);
+      const winners = rows.filter(r => r.pct != null && r.pct > 0).sort((a,b) => b.pct - a.pct);
+      const losers  = rows.filter(r => r.pct != null && r.pct < 0).sort((a,b) => a.pct - b.pct);
+      const flat    = [...rows].filter(r => r.pct == null);
+      json(res, 200, { range, interval, asOf: Date.now(), winners, losers, unavailable: flat.map(r => r.ticker) });
+    } catch (err) {
+      json(res, 502, { error: 'winners failed', detail: err.message });
+    }
+  },
+
+  'GET /api/market': (req, res) => {
+    const latest = stmts.latestSettledRound.get() || stmts.latestUnsettledRound.get();
+    if (!latest) return json(res, 200, {
+      asOf: null, marketState: marketState(),
+      summary: { biggestGainer: null, biggestLoser: null, totalRounds: 0 },
+      tickers: []
+    });
+
+    const latestPrices = new Map(stmts.pricesForRound.all(latest.id).map(r => [r.ticker, r.price]));
+
+    const firstRow = stmts.firstPricedRound.get();
+    const firstPrices = (firstRow && firstRow.round_id !== null && firstRow.round_id !== latest.id)
+      ? new Map(stmts.pricesForRound.all(firstRow.round_id).map(r => [r.ticker, r.price]))
+      : new Map();
+
+    const prevRound = stmts.prevSettledBefore.get(latest.id);
+    const prevPrices = prevRound
+      ? new Map(stmts.pricesForRound.all(prevRound.id).map(r => [r.ticker, r.price]))
+      : new Map();
+
+    const hitCounts = new Map(stmts.pickCountsByTicker.all().map(r => [r.ticker, r.hits]));
+
+    const tickers = TICKERS.map(t => {
+      const price = latestPrices.get(t) ?? null;
+      const first = firstPrices.get(t);
+      const prev  = prevPrices.get(t);
+      return {
+        ticker: t,
+        price,
+        lastRoundPct:  (prev != null && price != null && prev > 0) ? (price - prev) / prev : null,
+        sinceStartPct: (first != null && price != null && first > 0) ? (price - first) / first : null,
+        hits: hitCounts.get(t) || 0
+      };
+    });
+
+    let biggestGainer = null, biggestLoser = null;
+    for (const t of tickers) {
+      if (t.sinceStartPct == null) continue;
+      if (!biggestGainer || t.sinceStartPct > biggestGainer.sinceStartPct) biggestGainer = t;
+      if (!biggestLoser  || t.sinceStartPct < biggestLoser.sinceStartPct)  biggestLoser  = t;
+    }
+
+    json(res, 200, {
+      asOf: latest.settled_at || latest.started_at,
+      marketState: marketState(),
+      summary: {
+        totalRounds: stmts.roundCount.get().c,
+        biggestGainer, biggestLoser
+      },
+      tickers
+    });
+  }
 };
 
 // SSE keepalive — comment frames every 25s so proxies don't drop the connection
