@@ -75,15 +75,25 @@ my @vals = map { $hits{$_} // 0 } @days;
 my $max = 1;
 for (@vals) { $max = $_ if $_ > $max; }
 my @pts;
+my @pretty = map {
+    my ($y,$m,$d) = ($_ =~ /^(\d{4})(\d{2})(\d{2})$/);
+    my @mn = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+    "$mn[$m-1] $d";
+} @days;
+my $points_html = "";
 for my $i (0 .. $#vals) {
     my $x = $i * 100 / 6;
     my $y = 95 - ($vals[$i] * 85 / $max);
     push @pts, sprintf("%.1f,%.1f", $x, $y);
+    $points_html .= sprintf(
+        qq{<span class="sparkpoint" style="left:%.1f%%;top:%.1f%%" data-date="%s" data-hits="%d"></span>},
+        $x, $y, $pretty[$i], $vals[$i]
+    );
 }
-my $line   = join(" ", @pts);
-my $area   = "0,100 " . $line . " 100,100";
-my $title  = "Last 7 days hits: " . join(", ", map { "$days[$_]=$vals[$_]" } 0..$#days);
-print qq{<svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><title>$title</title><polygon points="$area" fill="rgba(88,166,255,.12)"/><polyline points="$line" fill="none" stroke="#58a6ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>};
+my $line  = join(" ", @pts);
+my $area  = "0,100 " . $line . " 100,100";
+my $title = "Last 7 days hits: " . join(", ", map { "$pretty[$_]=$vals[$_]" } 0..$#days);
+print qq{<svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><title>$title</title><polygon points="$area" fill="rgba(88,166,255,.12)"/><polyline points="$line" fill="none" stroke="#58a6ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg><div class="sparkpoints">$points_html</div>};
 PERL
 }
 
@@ -149,6 +159,18 @@ h1{font-size:1.4rem;color:#f1f5f9;margin-bottom:.35rem}
 .site-card>*{position:relative;z-index:1}
 .site-card .sparkline{position:absolute;inset:0;width:100%;height:100%;z-index:0;
   opacity:.45;pointer-events:none;transition:opacity .18s}
+.sparkpoints{position:absolute;inset:0;z-index:2;pointer-events:none}
+.sparkpoint{position:absolute;width:9px;height:9px;border-radius:50%;
+  background:#58a6ff;box-shadow:0 0 0 2px rgba(88,166,255,.18);
+  transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;
+  opacity:0;transition:opacity .15s,box-shadow .15s,background .15s}
+.site-card:hover .sparkpoint{opacity:.85}
+.sparkpoint:hover{opacity:1;background:#79c0ff;box-shadow:0 0 0 4px rgba(121,192,255,.28)}
+#spark-tip{position:fixed;pointer-events:none;background:#161b22;color:#e6edf3;
+  padding:.4rem .6rem;border:1px solid #30363d;border-radius:4px;
+  font-size:.74rem;font-family:'Courier New',monospace;
+  opacity:0;transition:opacity .12s;z-index:1000;white-space:nowrap;
+  box-shadow:0 4px 12px rgba(0,0,0,.4)}
 .site-name{font-size:1rem;font-weight:700;margin-bottom:.3rem}
 .site-desc{font-size:.78rem;color:#8b949e}
 .updated{margin-top:2rem;font-size:.72rem;color:#4a5568}
@@ -179,6 +201,34 @@ cat >> "${OUTDIR}/index.html" << HTML2
   </div>
   <p class="updated">Last updated: $(date -u '+%Y-%m-%d %H:%M UTC')</p>
 </div>
+<div id="spark-tip"></div>
+<script>
+(function(){
+  var tip = document.getElementById('spark-tip');
+  function show(e){
+    var el = e.currentTarget;
+    var n = parseInt(el.dataset.hits, 10);
+    tip.textContent = el.dataset.date + ' — ' + n.toLocaleString() + ' hit' + (n === 1 ? '' : 's');
+    tip.style.opacity = '1';
+    move(e);
+  }
+  function move(e){
+    var pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > window.innerWidth)  x = e.clientX - pad - w;
+    if (y + h > window.innerHeight) y = e.clientY - pad - h;
+    tip.style.left = x + 'px';
+    tip.style.top  = y + 'px';
+  }
+  function hide(){ tip.style.opacity = '0'; }
+  document.querySelectorAll('.sparkpoint').forEach(function(p){
+    p.addEventListener('mouseenter', show);
+    p.addEventListener('mousemove',  move);
+    p.addEventListener('mouseleave', hide);
+    p.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); });
+  });
+})();
+</script>
 </body>
 </html>
 HTML2
