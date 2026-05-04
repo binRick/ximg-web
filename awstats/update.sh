@@ -46,6 +46,47 @@ display_desc() {
     esac
 }
 
+# ── 7-day sparkline ───────────────────────────────────────────────────────────
+# Builds an inline SVG polyline from the last 7 days of BEGIN_DAY hits in the
+# site's AWStats data files. Missing days default to 0 so the window is always
+# exactly 7 points wide ending today (UTC).
+sparkline_svg() {
+    local site="$1"
+    local datadir="${DATADIR}/${site}"
+    perl - "$datadir" "$site" << 'PERL'
+use strict;
+use warnings;
+use POSIX qw(strftime);
+my ($datadir, $site) = @ARGV;
+my $now = time;
+my @days = map { strftime("%Y%m%d", gmtime($now - $_ * 86400)) } reverse(0..6);
+my %hits;
+for my $f (glob "$datadir/awstats*.$site.txt") {
+    open my $fh, "<", $f or next;
+    my $in_day = 0;
+    while (<$fh>) {
+        if (/^BEGIN_DAY/) { $in_day = 1; next; }
+        if (/^END_DAY/)   { $in_day = 0; next; }
+        if ($in_day && /^(\d{8})\s+\d+\s+(\d+)/) { $hits{$1} = $2; }
+    }
+    close $fh;
+}
+my @vals = map { $hits{$_} // 0 } @days;
+my $max = 1;
+for (@vals) { $max = $_ if $_ > $max; }
+my @pts;
+for my $i (0 .. $#vals) {
+    my $x = $i * 100 / 6;
+    my $y = 95 - ($vals[$i] * 85 / $max);
+    push @pts, sprintf("%.1f,%.1f", $x, $y);
+}
+my $line   = join(" ", @pts);
+my $area   = "0,100 " . $line . " 100,100";
+my $title  = "Last 7 days hits: " . join(", ", map { "$days[$_]=$vals[$_]" } 0..$#days);
+print qq{<svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><title>$title</title><polygon points="$area" fill="rgba(88,166,255,.12)"/><polyline points="$line" fill="none" stroke="#58a6ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>};
+PERL
+}
+
 # ── Per-site update ───────────────────────────────────────────────────────────
 for site in $SITES; do
     datadir="${DATADIR}/${site}"
@@ -100,10 +141,14 @@ body{font-family:'Courier New',monospace;background:#0a0a0f;color:#c9d1d9;min-he
 h1{font-size:1.4rem;color:#f1f5f9;margin-bottom:.35rem}
 .subtitle{color:#8b949e;font-size:.82rem;margin-bottom:2rem}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
-.site-card{display:block;padding:1.2rem 1.4rem;background:rgba(255,255,255,.03);
+.site-card{position:relative;overflow:hidden;display:block;padding:1.2rem 1.4rem;background:rgba(255,255,255,.03);
   border:1px solid rgba(255,255,255,.07);border-radius:8px;
   color:#c9d1d9;text-decoration:none;transition:all .18s}
 .site-card:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.15);color:#fff}
+.site-card:hover .sparkline{opacity:.65}
+.site-card>*{position:relative;z-index:1}
+.site-card .sparkline{position:absolute;inset:0;width:100%;height:100%;z-index:0;
+  opacity:.45;pointer-events:none;transition:opacity .18s}
 .site-name{font-size:1rem;font-weight:700;margin-bottom:.3rem}
 .site-desc{font-size:.78rem;color:#8b949e}
 .updated{margin-top:2rem;font-size:.72rem;color:#4a5568}
@@ -122,7 +167,9 @@ for site in $SITES; do
     [ -f "$outfile" ] || continue
     name=$(display_name "$site")
     desc=$(display_desc "$site")
+    spark=$(sparkline_svg "$site")
     echo "    <a class=\"site-card\" href=\"/${site}/\">" >> "${OUTDIR}/index.html"
+    echo "      ${spark}" >> "${OUTDIR}/index.html"
     echo "      <div class=\"site-name\">${name}</div>" >> "${OUTDIR}/index.html"
     echo "      <div class=\"site-desc\">${desc}</div>" >> "${OUTDIR}/index.html"
     echo "    </a>" >> "${OUTDIR}/index.html"
