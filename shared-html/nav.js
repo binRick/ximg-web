@@ -87,7 +87,7 @@
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch'],
       ['github-stats','github stats'],
-      ['ironfist','&#x1F525; Iron Fist'],
+      ['chernobyl','&#x2622; Chernobyl (iron fist)'],
       ['monkey-business','&#x1F412; <span style="background:linear-gradient(90deg,#ff5e62,#ffaa00,#39ad48,#00c2c7,#a855f7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:600">monkey-business</span> &#x1F34C;'],
       ['rbterm','&#x1F4DF; rbterm'],
       ['scumm','scumm-game']
@@ -844,7 +844,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         flat.appendChild(item);
@@ -882,7 +882,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
           item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
           item.href = appHref(subdomain);
           panel.appendChild(item);
@@ -909,7 +909,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         dd.appendChild(item);
@@ -1030,7 +1030,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
           item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
           item.href = appHref(subdomain);
           mApps.appendChild(item);
@@ -1042,7 +1042,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'ironfist' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
         item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
         item.href = appHref(subdomain);
         mApps.appendChild(item);
