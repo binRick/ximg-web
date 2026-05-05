@@ -1,5 +1,5 @@
 // Canvas arena: 100 monkeys, 100-cell ticker board, dart physics.
-// All vector — no sprite assets. Per-monkey hue tint for individuality.
+// Monkeys render from a 32x32 pixel-art spritesheet (10x10 cells).
 //
 // Coordinate system: logical 1600x900 internal canvas, scaled to fit container
 // while preserving aspect ratio.
@@ -17,6 +17,19 @@ const MONKEY_AREA = { x: 60, y: 690, w: 1480, h: 190 };
 const MONKEY_COLS = 20, MONKEY_ROWS = 5;
 const MONKEY_W = MONKEY_AREA.w / MONKEY_COLS;
 const MONKEY_H = MONKEY_AREA.h / MONKEY_ROWS;
+
+const SPRITE_CELL = 32;
+const SPRITE_COLS = 10;
+const MONKEY_SPRITE = (() => {
+  const img = new Image();
+  img.src = 'monkey-sprites.png';
+  return img;
+})();
+function spriteCell(id) {
+  // monkey ids are 1..100; sprite cells are zero-indexed 0..99
+  const i = (id - 1) | 0;
+  return { sx: (i % SPRITE_COLS) * SPRITE_CELL, sy: ((i / SPRITE_COLS) | 0) * SPRITE_CELL };
+}
 
 const COLOR_BG       = '#0a0a0f';
 const COLOR_GRID     = 'rgba(124,58,237,0.08)';
@@ -87,23 +100,6 @@ function monkeyHome(monkeyId) {
 function monkeyHue(monkeyId) {
   // golden-ratio hash for visually distinct distribution
   return ((monkeyId * 137.508) | 0) % 360;
-}
-
-// Per-monkey deterministic traits. Same monkey, same look, every render.
-// Mix of subtle (mouth, brow, look-direction) and rare loud accessories
-// (glasses, top hat, mustache) so leaderboard winners are visually memorable.
-function monkeyTraits(id) {
-  const r = ((id * 2654435761) >>> 0);
-  return {
-    hue:      ((id * 137.508) | 0) % 360,
-    mouth:    r        % 5,             // 0=smile 1=neutral 2=oh 3=smirk 4=teeth
-    brow:    ((r >>> 3) % 5) - 2,       // -2..2 tilt
-    look:    ((r >>> 5) % 5) - 2,       // -2..2 eye direction
-    earTilt: ((r >>> 7) % 3) - 1,       // -1..1
-    glasses:  ((r >>> 9)  & 0xff) < 18, // ~7%
-    tophat:   ((r >>> 13) & 0xff) < 13, // ~5%
-    mustache: ((r >>> 17) & 0xff) < 13  // ~5%
-  };
 }
 
 // ---- Dart physics ---------------------------------------------------------
@@ -261,182 +257,26 @@ function drawMonkeys(ctx, now) {
 
   for (let id = 1; id <= 100; id++) {
     const home = monkeyHome(id);
-    const t    = monkeyTraits(id);
     // sway: small per-monkey breathing motion
     const sway = Math.sin(now * 0.001 + id * 0.7) * 1.2;
-    drawMonkey(ctx, home.x, home.y + sway, t, id, now);
+    drawMonkey(ctx, home.x, home.y + sway, id, now);
   }
 }
 
-// Vector monkey at ~28-32px tall. Designed to read at small sizes:
-// strong silhouette, lighter heart-shaped face plate, prominent eyes,
-// subtle muzzle + mouth, optional accessories.
-function drawMonkey(ctx, cx, cy, t, id, now) {
-  const h = t.hue;
-  const fur     = `hsl(${h}, 40%, 30%)`;
-  const furDk   = `hsl(${h}, 45%, 20%)`;
-  const face    = `hsl(${(h + 8) % 360}, 32%, 62%)`;
-  const muzzle  = `hsl(${(h + 8) % 360}, 28%, 52%)`;
-  const earPink = `hsl(${(h + 350) % 360}, 45%, 55%)`;
-  const eyeWhite = '#f8fafc';
-  const eyeDark  = `hsl(${h}, 55%, 12%)`;
-  const sheen    = `hsla(${h}, 60%, 90%, 0.18)`;
-
-  // Shoulders / body — small rounded silhouette behind the head
-  ctx.fillStyle = furDk;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 16, 13, 9, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Ears (with subtle tilt) — outer fur, then inner pink concha
-  const earY = cy - 1;
-  const earOff = 11.5;
-  ctx.fillStyle = fur;
-  ctx.beginPath();
-  ctx.ellipse(cx - earOff, earY + t.earTilt, 5.2, 5.8, -0.2, 0, Math.PI * 2);
-  ctx.ellipse(cx + earOff, earY - t.earTilt, 5.2, 5.8,  0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = earPink;
-  ctx.beginPath();
-  ctx.ellipse(cx - earOff + 0.3, earY + 0.5 + t.earTilt, 2.3, 3.0, -0.2, 0, Math.PI * 2);
-  ctx.ellipse(cx + earOff - 0.3, earY + 0.5 - t.earTilt, 2.3, 3.0,  0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Head — slightly taller than wide, fur color
-  ctx.fillStyle = fur;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, 11.5, 12.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Top sheen — small white arc, sells "rounded 3D" feel
-  ctx.fillStyle = sheen;
-  ctx.beginPath();
-  ctx.ellipse(cx - 1.5, cy - 7, 5, 2.2, -0.4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Face plate — heart-shaped: round top, tapered bottom (drawn as one fill)
-  ctx.fillStyle = face;
-  ctx.beginPath();
-  // upper round part
-  ctx.ellipse(cx, cy + 1, 7.5, 7, 0, Math.PI, 0, false);
-  // lower tapered chin (Bezier)
-  ctx.bezierCurveTo(cx + 7.5, cy + 5,  cx + 2,  cy + 9,  cx, cy + 9);
-  ctx.bezierCurveTo(cx - 2,  cy + 9,   cx - 7.5, cy + 5, cx - 7.5, cy + 1);
-  ctx.closePath();
-  ctx.fill();
-
-  // Brow ridge — two short fur strokes above eyes; tilt encodes mood
-  ctx.strokeStyle = furDk;
-  ctx.lineWidth = 1.1;
-  ctx.lineCap = 'round';
-  const browTilt = t.brow * 0.12;
-  ctx.beginPath();
-  ctx.moveTo(cx - 4.4, cy - 2 + browTilt);
-  ctx.lineTo(cx - 1.6, cy - 2.6 - browTilt * 0.3);
-  ctx.moveTo(cx + 1.6, cy - 2.6 - browTilt * 0.3);
-  ctx.lineTo(cx + 4.4, cy - 2 + browTilt);
-  ctx.stroke();
-
-  // Eyes — sclera + iris (the iris also acts as the pupil at this scale)
-  const lookX = t.look * 0.35;
-  const lookY = (((id * 11) % 4) - 2) * 0.2;
-  ctx.fillStyle = eyeWhite;
-  ctx.beginPath();
-  ctx.ellipse(cx - 2.7, cy + 0.2, 1.7, 2.0, 0, 0, Math.PI * 2);
-  ctx.ellipse(cx + 2.7, cy + 0.2, 1.7, 2.0, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = eyeDark;
-  ctx.beginPath();
-  ctx.ellipse(cx - 2.7 + lookX, cy + 0.4 + lookY, 1.0, 1.3, 0, 0, Math.PI * 2);
-  ctx.ellipse(cx + 2.7 + lookX, cy + 0.4 + lookY, 1.0, 1.3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // tiny eye-shine
-  ctx.fillStyle = eyeWhite;
-  ctx.beginPath();
-  ctx.ellipse(cx - 2.4 + lookX, cy - 0.1 + lookY, 0.4, 0.5, 0, 0, Math.PI * 2);
-  ctx.ellipse(cx + 3.0 + lookX, cy - 0.1 + lookY, 0.4, 0.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Muzzle — slightly darker bulge under eyes
-  ctx.fillStyle = muzzle;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 4.4, 3.6, 2.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Nostrils
-  ctx.fillStyle = furDk;
-  ctx.beginPath();
-  ctx.ellipse(cx - 1.0, cy + 4.2, 0.35, 0.45, 0, 0, Math.PI * 2);
-  ctx.ellipse(cx + 1.0, cy + 4.2, 0.35, 0.45, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mustache (rare) — sits just above the mouth, hides nostril area
-  if (t.mustache) {
-    ctx.fillStyle = furDk;
-    ctx.beginPath();
-    ctx.ellipse(cx - 1.5, cy + 5.0, 1.6, 0.7, 0.3, 0, Math.PI * 2);
-    ctx.ellipse(cx + 1.5, cy + 5.0, 1.6, 0.7, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Mouth — variable per-monkey
-  ctx.strokeStyle = eyeDark;
-  ctx.lineWidth = 0.9;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  if (!t.mustache) {
-    if (t.mouth === 0) {
-      // smile
-      ctx.arc(cx, cy + 5.6, 1.6, 0.2 * Math.PI, 0.8 * Math.PI);
-    } else if (t.mouth === 1) {
-      // neutral line
-      ctx.moveTo(cx - 1.4, cy + 6.4);
-      ctx.lineTo(cx + 1.4, cy + 6.4);
-    } else if (t.mouth === 2) {
-      // open "oh" — small filled circle
-      ctx.fillStyle = eyeDark;
-      ctx.ellipse(cx, cy + 6.4, 0.8, 1.0, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (t.mouth === 3) {
-      // smirk — diagonal up-right
-      ctx.moveTo(cx - 1.2, cy + 6.6);
-      ctx.lineTo(cx + 1.4, cy + 6.0);
-    } else {
-      // teeth — short bracket
-      ctx.fillStyle = eyeWhite;
-      ctx.fillRect(cx - 1.2, cy + 5.6, 2.4, 1.0);
-      ctx.strokeStyle = eyeDark;
-      ctx.lineWidth = 0.4;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + 5.6); ctx.lineTo(cx, cy + 6.6);
-      ctx.stroke();
-      ctx.lineWidth = 0.9;
-      ctx.beginPath();
-      ctx.rect(cx - 1.2, cy + 5.6, 2.4, 1.0);
-    }
-    ctx.stroke();
-  }
-
-  // Top hat (rare) — small black cylinder + brim
-  if (t.tophat) {
-    ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(cx - 4.5, cy - 11.5, 9, 1.0);            // brim
-    ctx.fillRect(cx - 3.0, cy - 16, 6.0, 5);              // crown
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(cx - 3.0, cy - 12.6, 6.0, 0.6);          // gold band
-  }
-
-  // Glasses (rare) — thin gold rims around both eyes
-  if (t.glasses) {
-    ctx.strokeStyle = '#facc15';
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.arc(cx - 2.7, cy + 0.4, 2.4, 0, Math.PI * 2);
-    ctx.arc(cx + 2.7, cy + 0.4, 2.4, 0, Math.PI * 2);
-    ctx.moveTo(cx - 0.3, cy + 0.4);
-    ctx.lineTo(cx + 0.3, cy + 0.4);
-    ctx.stroke();
-  }
+// Pixel-art monkey blit from the spritesheet. Each id maps to one 32x32 cell.
+// Render slightly upscaled (38x38) so the body+head match the swarm grid cell.
+function drawMonkey(ctx, cx, cy, id, now) {
+  if (!MONKEY_SPRITE.complete || MONKEY_SPRITE.naturalWidth === 0) return;
+  const { sx, sy } = spriteCell(id);
+  const SIZE = 38;
+  const wasSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    MONKEY_SPRITE,
+    sx, sy, SPRITE_CELL, SPRITE_CELL,
+    cx - SIZE / 2, cy - SIZE / 2 + 4, SIZE, SIZE
+  );
+  ctx.imageSmoothingEnabled = wasSmoothing;
 }
 
 function drawDarts(ctx, now) {

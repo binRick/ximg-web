@@ -37,18 +37,56 @@
     th { font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); font-weight: 500; cursor: pointer; user-select: none; position: sticky; top: 0; background: rgba(8,11,14,.96); }
     th:first-child, td:first-child { text-align: center; width: 50px; }
     th:nth-child(2), td:nth-child(2) { text-align: left; }
+    th.spark-h, td.spark-c { text-align: center; width: 92px; padding-left: 0; padding-right: 0; }
+    .lb-row-spark { width: 84px; height: 22px; display: inline-block; vertical-align: middle; }
+    .lb-row-spark.gain path { stroke: var(--gain); }
+    .lb-row-spark.loss path { stroke: var(--loss); }
+    .lb-row-spark.flat path { stroke: var(--muted); }
+    .lb-row-spark path { fill: none; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+    .lb-row-spark .pending { stroke: var(--muted); opacity: .35; }
     th.sorted-asc::after  { content: ' ↑'; color: var(--accent2); }
     th.sorted-desc::after { content: ' ↓'; color: var(--accent2); }
     tr:hover td { background: rgba(255,255,255,0.025); }
-    a.monkey-link { color: var(--text); text-decoration: none; }
+    a.monkey-link { color: var(--text); text-decoration: none; display: inline-flex; align-items: center; gap: .6rem; }
     a.monkey-link:hover { color: var(--accent2); }
     a.monkey-link small { color: var(--muted); margin-left: .4rem; font-size: .7rem; }
+    .lb-avatar {
+      display: inline-block; width: 32px; height: 32px;
+      background-color: rgba(255,255,255,0.04);
+      background-image: url('monkey-sprites.png');
+      background-size: 320px 320px; /* native 32px cells, no scaling */
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
     .gain { color: var(--gain); }
     .loss { color: var(--loss); }
     .rank-1 { color: var(--gold); font-weight: 600; }
     .rank-2 { color: #cbd5e1; }
     .rank-3 { color: #d97706; }
     .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .cohort-bar { display: flex; gap: .4rem; margin-bottom: .9rem; align-items: center; flex-wrap: wrap; }
+    .cohort-bar .lbl { font-family: var(--mono); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-right: .2rem; }
+    .cohort-bar button {
+      font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--muted);
+      padding: .35rem .7rem; border-radius: 4px; cursor: pointer;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .cohort-bar button:hover { color: var(--text); }
+    .cohort-bar button.active { color: var(--accent2); border-color: rgba(6,182,212,.5); background: rgba(6,182,212,.08); }
+    .cohort-bar .summary { margin-left: auto; font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+    .cohort-bar .summary .gain { color: var(--gain); }
+    .cohort-bar .summary .loss { color: var(--loss); }
+    .cohort-cell { font-family: var(--mono); font-size: .65rem; letter-spacing: .1em; text-align: center; }
+    .cohort-cell .pill {
+      display: inline-block; padding: .08rem .45rem; border-radius: 3px;
+      border: 1px solid; line-height: 1.4;
+    }
+    .cohort-cell .pill.random  { color: var(--gold);   border-color: rgba(250,204,21,.4); background: rgba(250,204,21,.06); }
+    .cohort-cell .pill.persona { color: var(--accent); border-color: rgba(124,58,237,.45); background: rgba(124,58,237,.08); }
   </style>
 </head>
 <body>
@@ -59,9 +97,10 @@
     <a href="index.html">Arena</a>
     <a href="leaderboard.html">Leaderboard</a>
     <a href="market.html">Market</a>
-    <a href="winners.html">Winners/Losers</a>
+    <a href="winners.html">Market Performers</a>
     <a href="history.html">History</a>
-    <a href="monkey.html">Monkey</a>
+    <a href="distribution.html">Distribution</a>
+    <a href="monkey.html">Monkeys</a>
     <a href="status.html">Status</a>
     <a href="about.html">About</a>
   </nav>
@@ -70,12 +109,22 @@
     <h1>The <b>Leaderboard</b></h1>
     <div class="sub">Every monkey, every metric. Click a column to re-sort.</div>
 
+    <div class="cohort-bar">
+      <span class="lbl">Filter</span>
+      <button data-cohort="all"     class="active">All 100</button>
+      <button data-cohort="random">🎲 Random Cohort (1–50)</button>
+      <button data-cohort="persona">🎯 Persona Cohort (51–100)</button>
+      <span class="summary" id="cohort-summary">—</span>
+    </div>
+
     <div class="panel">
       <table id="lb">
         <thead>
           <tr>
             <th data-key="rank" class="sorted-asc">#</th>
             <th data-key="name">Monkey</th>
+            <th>Cohort</th>
+            <th class="spark-h">Trend</th>
             <th data-key="rounds">Rounds</th>
             <th data-key="cumPct">Cumulative</th>
             <th data-key="meanPct">Mean / round</th>
@@ -84,13 +133,32 @@
             <th data-key="winRate">Beat market</th>
           </tr>
         </thead>
-        <tbody><tr><td class="empty" colspan="8">loading…</td></tr></tbody>
+        <tbody><tr><td class="empty" colspan="10">loading…</td></tr></tbody>
       </table>
     </div>
   </main>
 
   <script type="module">
-    import { getLeaderboard } from './api.js';
+    import { getLeaderboard, getSparks } from './api.js';
+    import { cohort } from './persona.js';
+
+    let sparkData = new Map();
+    function buildRowSpark(rec) {
+      const W = 84, H = 22, padY = 2;
+      if (!rec || !rec.rounds || !rec.points || rec.points.length < 2) {
+        return `<svg class="lb-row-spark flat" viewBox="0 0 ${W} ${H}"><line x1="2" y1="${H/2}" x2="${W-2}" y2="${H/2}" class="pending" stroke-dasharray="2,2"></line></svg>`;
+      }
+      const pts = rec.points;
+      const last = pts[pts.length - 1];
+      const cls = last > 0.0005 ? 'gain' : last < -0.0005 ? 'loss' : 'flat';
+      let lo = Math.min(...pts, 0), hi = Math.max(...pts, 0);
+      if (hi - lo < 1e-6) { hi += 1e-6; lo -= 1e-6; }
+      const dx = (W - 4) / (pts.length - 1);
+      const yOf = v => padY + (1 - (v - lo) / (hi - lo)) * (H - padY * 2);
+      let d = `M 2 ${yOf(pts[0]).toFixed(2)}`;
+      for (let i = 1; i < pts.length; i++) d += ` L ${(2 + i * dx).toFixed(2)} ${yOf(pts[i]).toFixed(2)}`;
+      return `<svg class="lb-row-spark ${cls}" viewBox="0 0 ${W} ${H}"><path d="${d}"></path></svg>`;
+    }
 
     function pct(x, d=2) {
       if (x===null || x===undefined || !Number.isFinite(x)) return '—';
@@ -105,23 +173,34 @@
     let monkeys = [];
     let sortKey = 'cumPct';
     let sortAsc = false;
+    let cohortFilter = 'all';
 
     function render() {
-      const sorted = [...monkeys].sort((a,b) => {
+      const filtered = cohortFilter === 'all'
+        ? monkeys
+        : monkeys.filter(m => cohort(m.id) === cohortFilter);
+      const sorted = [...filtered].sort((a,b) => {
         const av = a[sortKey], bv = b[sortKey];
         if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
         return sortAsc ? av - bv : bv - av;
       });
+      renderCohortSummary();
       const tbody = document.querySelector('#lb tbody');
       if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td class="empty" colspan="8">No data yet — the first round may still be in flight.</td></tr>';
+        tbody.innerHTML = '<tr><td class="empty" colspan="10">No data yet — the first round may still be in flight.</td></tr>';
         return;
       }
       tbody.innerHTML = sorted.map((m, i) => {
         const rankCls = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+        const idx = m.id - 1;
+        const sx = (idx % 10) * 32, sy = ((idx / 10) | 0) * 32;
+        const c = cohort(m.id);
+        const cohortLabel = c === 'random' ? '🎲 R' : '🎯 P';
         return `<tr>
           <td class="${rankCls}">${i+1}</td>
-          <td><a class="monkey-link" href="monkey.html?id=${m.id}">${m.name}<small>#${m.id}</small></a></td>
+          <td><a class="monkey-link" href="monkey.html?id=${m.id}"><span class="lb-avatar" style="background-position:-${sx}px -${sy}px;"></span><span>${m.name}<small>#${m.id}</small></span></a></td>
+          <td class="cohort-cell"><span class="pill ${c}">${cohortLabel}</span></td>
+          <td class="spark-c">${buildRowSpark(sparkData.get(m.id))}</td>
           <td>${m.rounds}</td>
           <td class="${cls(m.cumPct)}">${pct(m.cumPct,2)}</td>
           <td class="${cls(m.meanPct)}">${pct(m.meanPct,3)}</td>
@@ -145,6 +224,31 @@
       });
     });
 
+    document.querySelectorAll('.cohort-bar button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cohortFilter = btn.dataset.cohort;
+        document.querySelectorAll('.cohort-bar button').forEach(b => b.classList.toggle('active', b === btn));
+        render();
+      });
+    });
+
+    function fmtPct(x) { return (x>=0?'+':'') + (x*100).toFixed(2) + '%'; }
+    function renderCohortSummary() {
+      if (!monkeys.length) return;
+      const r = monkeys.filter(m => cohort(m.id) === 'random');
+      const p = monkeys.filter(m => cohort(m.id) === 'persona');
+      const avg = arr => arr.reduce((s, m) => s + (m.cumPct || 0), 0) / Math.max(1, arr.length);
+      const rA = avg(r), pA = avg(p);
+      const rCls = rA >= 0 ? 'gain' : 'loss';
+      const pCls = pA >= 0 ? 'gain' : 'loss';
+      const lead = pA > rA ? 'Persona' : pA < rA ? 'Random' : 'Tied';
+      const gap  = Math.abs(pA - rA);
+      document.getElementById('cohort-summary').innerHTML =
+        `Random avg <span class="${rCls}">${fmtPct(rA)}</span> · ` +
+        `Persona avg <span class="${pCls}">${fmtPct(pA)}</span> · ` +
+        `<b>${lead}</b> ahead by ${(gap*100).toFixed(2)}%`;
+    }
+
     document.querySelectorAll('#subnav a').forEach(a => {
       const href = a.getAttribute('href');
       const path = location.pathname;
@@ -153,8 +257,9 @@
 
     async function refresh() {
       try {
-        const r = await getLeaderboard();
-        monkeys = r.monkeys;
+        const [lb, sp] = await Promise.all([getLeaderboard(), getSparks().catch(() => null)]);
+        monkeys = lb.monkeys;
+        if (sp && sp.monkeys) sparkData = new Map(sp.monkeys.map(m => [m.id, m]));
         render();
       } catch (e) { console.warn(e); }
     }

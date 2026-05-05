@@ -2,6 +2,7 @@ const http = require('http');
 const url  = require('url');
 const { stmts, asTx } = require('./db');
 const { TICKERS, fetchAllQuotes, fetchHistory, getApiStats } = require('./market');
+const { pickFor: strategyPick } = require('./strategy');
 
 const PORT             = +(process.env.PORT || 3015);
 const ROUND_INTERVAL_MS = +(process.env.ROUND_INTERVAL_MS || 60 * 1000);
@@ -54,13 +55,27 @@ async function runRound(kind) {
     let settledRoundId = null;
     let marketPct = 0, swarmPct = 0;
 
+    let prevPicks = [];
+    let tickerPnls = [];
+    let lastPickByMonkey = new Map();
+
     asTx(() => {
       // 1) Settle previous unsettled round (if any) using these new prices
       const prev = stmts.latestUnsettledRound.get();
       if (prev) {
-        const prevPicks = stmts.picksForRound.all(prev.id);
+        prevPicks = stmts.picksForRound.all(prev.id);
         const prevPrices = stmts.pricesForRound.all(prev.id);
         const prevPriceMap = new Map(prevPrices.map(r => [r.ticker, r.price]));
+
+        // Build per-ticker pnl snapshot for the strategy module's context
+        for (const [ticker, oldP] of prevPriceMap) {
+          const newP = priceMap[ticker];
+          if (typeof newP === 'number' && oldP > 0) {
+            tickerPnls.push({ ticker, pnl: (newP - oldP) / oldP });
+          }
+        }
+        tickerPnls.sort((a, b) => b.pnl - a.pnl);
+        for (const p of prevPicks) lastPickByMonkey.set(p.monkey_id, p.ticker);
 
         // Equal-weight market % change between prev and new prices
         let mSum = 0, mCount = 0;
@@ -111,10 +126,16 @@ async function runRound(kind) {
         stmts.insertPrice.run(roundId, t, priceMap[t]);
       }
 
-      // 4) Each monkey picks one ticker uniformly at random from those quoted
+      // 4) Each monkey picks one ticker. ids 1-50 use uniform random (the
+      //    control cohort); ids 51-100 use a strategy derived from their
+      //    deterministic archetype (the persona cohort).
       const monkeys = stmts.allMonkeys.all();
+      const ctx = { tickers: availableTickers, tickerPnls, lastPickByMonkey, roundId };
       for (const m of monkeys) {
-        const t = availableTickers[(Math.random() * availableTickers.length) | 0];
+        let t = strategyPick(m.id, ctx);
+        if (typeof priceMap[t] !== 'number') {
+          t = availableTickers[(Math.random() * availableTickers.length) | 0];
+        }
         stmts.insertPick.run(roundId, m.id, t, priceMap[t]);
       }
 
@@ -308,6 +329,25 @@ function buildState() {
   };
 }
 
+const sparksCache = (() => {
+  const TTL_MS = 30_000;
+  let payload = null, savedAt = 0;
+  return {
+    get() { return payload && (Date.now() - savedAt) < TTL_MS ? payload : null; },
+    set(p) { payload = p; savedAt = Date.now(); },
+    invalidate() { payload = null; }
+  };
+})();
+
+const beatingCache = (() => {
+  const TTL_MS = 60_000;
+  let payload = null, savedAt = 0;
+  return {
+    get() { return payload && (Date.now() - savedAt) < TTL_MS ? payload : null; },
+    set(p) { payload = p; savedAt = Date.now(); }
+  };
+})();
+
 const routes = {
   'GET /api/state': (req, res) => json(res, 200, buildState()),
 
@@ -347,14 +387,118 @@ const routes = {
     });
   },
 
+  'GET /api/sparks': (req, res) => {
+    // Cumulative log-return series for every monkey, downsampled to ~30 points
+    // each — small enough to ship in one round-trip for the dropdown sparklines.
+    const cached = sparksCache.get();
+    if (cached) return json(res, 200, cached);
+
+    const N_POINTS = 30;
+    const rows = stmts.allSettledPicksOrdered.all();
+    const series = new Map(); // monkey_id -> rolling cumulative log-return array
+
+    for (const r of rows) {
+      const arr = series.get(r.monkey_id) || [];
+      const prev = arr.length ? arr[arr.length - 1] : 0;
+      const safe = Math.max(-0.99, r.pnl_pct);
+      arr.push(prev + Math.log1p(safe));
+      series.set(r.monkey_id, arr);
+    }
+
+    const downsample = (arr, n) => {
+      if (arr.length <= n) return arr;
+      const step = (arr.length - 1) / (n - 1);
+      const out = new Array(n);
+      for (let i = 0; i < n; i++) out[i] = arr[Math.round(i * step)];
+      return out;
+    };
+
+    const monkeys = [];
+    for (let id = 1; id <= 100; id++) {
+      const s = series.get(id) || [];
+      monkeys.push({
+        id,
+        rounds: s.length,
+        // round to 6 sig figs to keep payload small
+        points: downsample(s, N_POINTS).map(v => +v.toFixed(6))
+      });
+    }
+    const payload = { asOf: Date.now(), monkeys };
+    sparksCache.set(payload);
+    json(res, 200, payload);
+  },
+
+  'GET /api/beating': (req, res) => {
+    // For each settled round, how many of the 100 monkeys had a cumulative
+    // log-return above the equal-weight market baseline at that point in
+    // time. The Malkiel hypothesis says this should oscillate near 50.
+    const cached = beatingCache.get();
+    if (cached) return json(res, 200, cached);
+
+    const marketRows = stmts.marketRoundsAsc.all();
+    if (!marketRows.length) {
+      const empty = { asOf: Date.now(), points: [] };
+      beatingCache.set(empty);
+      return json(res, 200, empty);
+    }
+
+    // Group all settled picks by round_id once.
+    const picksByRound = new Map();
+    for (const p of stmts.allSettledPicksByRound.all()) {
+      let arr = picksByRound.get(p.round_id);
+      if (!arr) { arr = []; picksByRound.set(p.round_id, arr); }
+      arr.push(p);
+    }
+
+    const monkeyLogCum = new Float64Array(101); // index 1..100
+    const points = new Array(marketRows.length);
+    for (let i = 0; i < marketRows.length; i++) {
+      const m = marketRows[i];
+      const picks = picksByRound.get(m.round_id);
+      if (picks) {
+        for (const p of picks) {
+          const safe = Math.max(-0.99, p.pnl_pct);
+          monkeyLogCum[p.monkey_id] += Math.log1p(safe);
+        }
+      }
+      const marketLog = Math.log1p(m.cum_market);
+      let above = 0;
+      for (let id = 1; id <= 100; id++) if (monkeyLogCum[id] > marketLog) above++;
+      points[i] = { roundId: m.round_id, settledAt: m.settled_at, beating: above };
+    }
+
+    // Downsample to keep payload small for very long histories
+    const MAX = 500;
+    const out = points.length <= MAX
+      ? points
+      : (() => {
+          const step = (points.length - 1) / (MAX - 1);
+          const r = new Array(MAX);
+          for (let i = 0; i < MAX; i++) r[i] = points[Math.round(i * step)];
+          return r;
+        })();
+
+    const payload = { asOf: Date.now(), points: out };
+    beatingCache.set(payload);
+    json(res, 200, payload);
+  },
+
   'GET /api/history': (req, res) => {
     const q = url.parse(req.url, true).query;
     const id = +q.monkey;
     if (!id || id < 1 || id > 100) return json(res, 400, { error: 'bad monkey id' });
     const m = stmts.monkeyById.get(id);
     if (!m) return json(res, 404, { error: 'no such monkey' });
-    const limit = +(q.limit || 200);
-    const rows = stmts.monkeyHistory.all(id, Math.min(2000, Math.max(1, limit)));
+    // `from` (ms epoch) lets the period dropdown ask for everything since
+    // a cutoff; without it we keep the original recent-N behaviour.
+    const from = q.from ? +q.from : null;
+    const defaultLimit = from ? 50000 : 200;
+    const limit = +(q.limit || defaultLimit);
+    const cap   = from ? 200000 : 2000;
+    const safeLimit = Math.min(cap, Math.max(1, limit));
+    const rows = (from && Number.isFinite(from))
+      ? stmts.monkeyHistorySince.all(id, from, safeLimit)
+      : stmts.monkeyHistory.all(id, safeLimit);
     json(res, 200, {
       monkey: m,
       picks: rows.map(r => ({

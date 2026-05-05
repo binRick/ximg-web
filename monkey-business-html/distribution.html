@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Distribution of cumulative returns across all 100 monkeys, with the equal-weight NASDAQ-100 baseline marked.">
+  <title>Distribution — monkey-business.ximg.app</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9; --muted: #64748b; --accent: #7c3aed; --accent2: #06b6d4;
+      --gain: #22c55e; --loss: #ef4444; --gold: #facc15;
+      --mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; }
+    body::before { content:''; position: fixed; inset: 0; background-image: linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px); background-size: 48px 48px; animation: gridMove 30s linear infinite; z-index: 0; pointer-events: none; }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    .orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.18; z-index: 0; pointer-events: none; }
+    .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -200px; }
+    .orb-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -150px; right: -150px; }
+
+    #subnav { position: sticky; top: 52px; z-index: 150; background: rgba(8,11,14,.97); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); display: flex; justify-content: center; flex-wrap: wrap; gap: .2rem; padding: .4rem 1rem; }
+    #subnav a { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5a6070; padding: .3rem .65rem; border-radius: 3px; text-decoration: none; transition: color .2s, background .2s; font-family: var(--mono); }
+    #subnav a:hover, #subnav a.active { color: var(--accent2); background: rgba(255,255,255,.06); }
+
+    main { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 1.4rem 1.4rem 4rem; }
+    h1 { font-size: 1.6rem; font-weight: 200; }
+    h1 b { font-weight: 600; background: linear-gradient(120deg, var(--accent2), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { color: var(--muted); font-size: .85rem; margin-top: .2rem; margin-bottom: 1.2rem; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; backdrop-filter: blur(10px); }
+
+    .legend { display: flex; gap: 1.5rem; margin-bottom: .8rem; font-family: var(--mono); font-size: .75rem; flex-wrap: wrap; }
+    .legend .swatch { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: .4rem; }
+    .swatch-bar    { background: var(--accent2); height: 10px; }
+    .swatch-market { background: var(--gold); }
+    .swatch-mean   { background: var(--accent); }
+
+    .delta-card { display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .65rem 1rem; }
+    .stat .lbl { font-family: var(--mono); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+    .stat .val { font-family: var(--mono); font-size: 1.3rem; margin-top: .15rem; }
+    .stat .val.gain { color: var(--gain); } .stat .val.loss { color: var(--loss); }
+
+    canvas { display: block; width: 100%; aspect-ratio: 16/7; }
+    .hover-tip {
+      position: absolute; pointer-events: none; background: rgba(0,0,0,.92);
+      border: 1px solid var(--border); padding: .45rem .6rem; border-radius: 4px;
+      font-family: var(--mono); font-size: .72rem; opacity: 0; transition: opacity .12s;
+      transform: translate(-50%, calc(-100% - 8px)); max-width: 260px; line-height: 1.45;
+    }
+    .hover-tip.on { opacity: 1; }
+    .hover-tip .names { color: var(--text); }
+    .hover-tip .more { color: var(--muted); }
+
+    .headline { font-family: var(--mono); font-size: .9rem; color: var(--text); margin-bottom: .9rem; }
+    .headline b { color: var(--gold); font-weight: 600; }
+
+    .tail-list { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.4rem; font-family: var(--mono); font-size: .8rem; }
+    .tail-list .col h3 { font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: .5rem; }
+    .tail-list .row { display: grid; grid-template-columns: 36px 1fr auto; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid var(--border); }
+    .tail-list .row a { color: var(--text); text-decoration: none; }
+    .tail-list .row a:hover { color: var(--accent2); }
+    .tail-list .row .pct.gain { color: var(--gain); }
+    .tail-list .row .pct.loss { color: var(--loss); }
+    @media (max-width: 700px) { .tail-list { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav id="subnav">
+    <a href="index.html">Arena</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="market.html">Market</a>
+    <a href="winners.html">Market Performers</a>
+    <a href="history.html">History</a>
+    <a href="distribution.html">Distribution</a>
+    <a href="monkey.html">Monkeys</a>
+    <a href="status.html">Status</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main>
+    <h1>The <b>Spread</b></h1>
+    <div class="sub">Where do the 100 monkeys land relative to the equal-weight NASDAQ-100? The Malkiel hypothesis says: bunched around the line.</div>
+
+    <div class="delta-card" id="delta"></div>
+
+    <div class="panel" style="position:relative;">
+      <div class="headline" id="headline">computing…</div>
+      <div class="legend">
+        <span><span class="swatch swatch-bar"></span>Monkeys per bin</span>
+        <span><span class="swatch swatch-market"></span>NASDAQ-100 baseline</span>
+        <span><span class="swatch swatch-mean"></span>Swarm mean</span>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="hover-tip" id="tip"></div>
+    </div>
+
+    <div class="tail-list">
+      <div class="col">
+        <h3>Top of the tape</h3>
+        <div id="winners"></div>
+      </div>
+      <div class="col">
+        <h3>Bottom of the tape</h3>
+        <div id="losers"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { getLeaderboard, getSwarm, connectStream } from './api.js';
+
+    const chart = document.getElementById('chart');
+    const tip   = document.getElementById('tip');
+
+    let monkeys = [];          // { id, name, cumPct }
+    let cumMarket = 0;
+    let bins = [];             // [{ lo, hi, members: [monkeys] }]
+    let lastDraw = null;
+
+    const N_BINS = 21;
+
+    function pct(x, d=2) {
+      if (!Number.isFinite(x)) return '—';
+      return (x>=0?'+':'') + (x*100).toFixed(d) + '%';
+    }
+
+    function fitCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const r = chart.getBoundingClientRect();
+      chart.width = r.width * dpr; chart.height = r.height * dpr;
+    }
+    window.addEventListener('resize', () => { fitCanvas(); draw(); });
+    fitCanvas();
+
+    function rebin() {
+      if (!monkeys.length) { bins = []; return; }
+      const vals = monkeys.map(m => m.cumPct);
+      let lo = Math.min(...vals, cumMarket);
+      let hi = Math.max(...vals, cumMarket);
+      // give the range a touch of breathing room, and a sensible floor when
+      // everything is bunched at zero (early days)
+      const span = Math.max(hi - lo, 1e-5);
+      const pad = span * 0.08;
+      lo -= pad; hi += pad;
+      const step = (hi - lo) / N_BINS;
+      bins = Array.from({ length: N_BINS }, (_, i) => ({
+        lo: lo + i * step,
+        hi: lo + (i + 1) * step,
+        members: []
+      }));
+      for (const m of monkeys) {
+        let idx = Math.floor((m.cumPct - lo) / step);
+        if (idx < 0) idx = 0;
+        if (idx >= N_BINS) idx = N_BINS - 1;
+        bins[idx].members.push(m);
+      }
+    }
+
+    function draw() {
+      const ctx = chart.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const W = chart.width, H = chart.height;
+      ctx.clearRect(0, 0, W, H);
+
+      if (!bins.length) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = `${14*dpr}px ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('waiting for the swarm…', W/2, H/2);
+        return;
+      }
+
+      const padL = 50 * dpr, padR = 24 * dpr, padT = 22 * dpr, padB = 38 * dpr;
+      const pw = W - padL - padR, ph = H - padT - padB;
+
+      const lo = bins[0].lo, hi = bins[bins.length - 1].hi;
+      const maxCount = Math.max(1, ...bins.map(b => b.members.length));
+
+      const xToPx = v => padL + ((v - lo) / (hi - lo)) * pw;
+      const countToH = c => (c / maxCount) * ph;
+
+      // Y grid + count labels
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      const yTicks = Math.min(5, maxCount);
+      for (let i = 0; i <= yTicks; i++) {
+        const c = (maxCount * i) / yTicks;
+        const y = padT + ph - countToH(c);
+        ctx.beginPath();
+        ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+        ctx.fillText(Math.round(c), padL - 6*dpr, y);
+      }
+
+      // Bars
+      const binPxW = pw / bins.length;
+      const gap = Math.max(1, binPxW * 0.08);
+      for (let i = 0; i < bins.length; i++) {
+        const b = bins[i];
+        if (!b.members.length) continue;
+        const bx = padL + i * binPxW + gap/2;
+        const bw = binPxW - gap;
+        const bh = countToH(b.members.length);
+        const by = padT + ph - bh;
+        const grd = ctx.createLinearGradient(0, by, 0, padT + ph);
+        grd.addColorStop(0, 'rgba(6,182,212,0.85)');
+        grd.addColorStop(1, 'rgba(6,182,212,0.25)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(bx, by, bw, bh);
+      }
+
+      // Vertical markers: market line + swarm mean line
+      const swarmMean = monkeys.reduce((s, m) => s + m.cumPct, 0) / Math.max(1, monkeys.length);
+      function vLine(x, color, label, labelAbove=true) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2 * dpr;
+        ctx.setLineDash([6*dpr, 4*dpr]);
+        ctx.beginPath();
+        ctx.moveTo(x, padT); ctx.lineTo(x, padT + ph);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.font = `${11*dpr}px ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = labelAbove ? 'bottom' : 'top';
+        const ly = labelAbove ? padT - 4*dpr : padT + ph + 4*dpr;
+        ctx.fillText(label, x, ly);
+      }
+      const mx = xToPx(cumMarket);
+      const sx = xToPx(swarmMean);
+      // draw the further-left one first so labels don't always overlap
+      const marketFirst = mx <= sx;
+      if (marketFirst) {
+        vLine(mx, '#facc15', 'MKT ' + pct(cumMarket, 2), true);
+        vLine(sx, '#7c3aed', 'MEAN ' + pct(swarmMean, 2), false);
+      } else {
+        vLine(sx, '#7c3aed', 'MEAN ' + pct(swarmMean, 2), false);
+        vLine(mx, '#facc15', 'MKT ' + pct(cumMarket, 2), true);
+      }
+
+      // X axis labels: bin edges (sparse)
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const labelEvery = Math.ceil(bins.length / 7);
+      for (let i = 0; i <= bins.length; i++) {
+        if (i % labelEvery !== 0 && i !== bins.length) continue;
+        const v = i < bins.length ? bins[i].lo : bins[bins.length - 1].hi;
+        const x = padL + i * binPxW;
+        ctx.fillText(pct(v, 2), x, padT + ph + 18*dpr);
+      }
+
+      lastDraw = {
+        dpr, padL: padL/dpr, padT: padT/dpr, pw: pw/dpr, ph: ph/dpr,
+        binPxW: binPxW/dpr, lo, hi
+      };
+    }
+
+    function renderHeadline() {
+      const headline = document.getElementById('headline');
+      if (!monkeys.length) { headline.textContent = 'waiting for the swarm…'; return; }
+      // bunching tolerance: half a bin's width, expressed in % return space
+      const span = (bins.length ? bins[bins.length-1].hi - bins[0].lo : 0);
+      const tol = span / N_BINS / 2;
+      const within = monkeys.filter(m => Math.abs(m.cumPct - cumMarket) <= tol).length;
+      const tolPct = (tol * 100).toFixed(2);
+      headline.innerHTML = `<b>${within} of ${monkeys.length}</b> monkeys are within ±${tolPct}% of the market.`;
+    }
+
+    function renderDelta() {
+      const wrap = document.getElementById('delta');
+      if (!monkeys.length) { wrap.innerHTML = ''; return; }
+      const vals = monkeys.map(m => m.cumPct).sort((a,b) => a-b);
+      const median = vals.length % 2
+        ? vals[(vals.length-1)/2]
+        : (vals[vals.length/2 - 1] + vals[vals.length/2]) / 2;
+      const swarmMean = vals.reduce((s,v) => s+v, 0) / vals.length;
+      const variance = vals.reduce((s,v) => s + (v - swarmMean)**2, 0) / Math.max(1, vals.length - 1);
+      const stdev = Math.sqrt(variance);
+      const beat = monkeys.filter(m => m.cumPct > cumMarket).length;
+      wrap.innerHTML = `
+        <div class="stat"><div class="lbl">Market</div><div class="val ${cumMarket>=0?'gain':'loss'}">${pct(cumMarket)}</div></div>
+        <div class="stat"><div class="lbl">Swarm mean</div><div class="val ${swarmMean>=0?'gain':'loss'}">${pct(swarmMean)}</div></div>
+        <div class="stat"><div class="lbl">Median monkey</div><div class="val ${median>=0?'gain':'loss'}">${pct(median)}</div></div>
+        <div class="stat"><div class="lbl">σ across monkeys</div><div class="val">${pct(stdev)}</div></div>
+        <div class="stat"><div class="lbl">Beating market</div><div class="val">${beat} / ${monkeys.length}</div></div>
+      `;
+    }
+
+    function renderTails() {
+      const sorted = [...monkeys].sort((a,b) => b.cumPct - a.cumPct);
+      const top = sorted.slice(0, 5);
+      const bot = sorted.slice(-5).reverse();
+      function row(m) {
+        const cls = m.cumPct > 0 ? 'gain' : m.cumPct < 0 ? 'loss' : '';
+        return `<div class="row">
+            <span>#${m.id}</span>
+            <a href="monkey.html?id=${m.id}">${m.name}</a>
+            <span class="pct ${cls}">${pct(m.cumPct, 3)}</span>
+          </div>`;
+      }
+      document.getElementById('winners').innerHTML = top.map(row).join('');
+      document.getElementById('losers').innerHTML  = bot.map(row).join('');
+    }
+
+    chart.addEventListener('mousemove', e => {
+      if (!lastDraw || !bins.length) return;
+      const rect = chart.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const { padL, padT, pw, ph, binPxW } = lastDraw;
+      if (x < padL || x > padL + pw || y < padT || y > padT + ph) {
+        tip.classList.remove('on'); return;
+      }
+      const i = Math.min(bins.length - 1, Math.max(0, Math.floor((x - padL) / binPxW)));
+      const b = bins[i];
+      if (!b || !b.members.length) { tip.classList.remove('on'); return; }
+      const cx = padL + (i + 0.5) * binPxW;
+      const cy = padT + ph - (b.members.length / Math.max(1, ...bins.map(bb => bb.members.length))) * ph;
+      tip.style.left = cx + 'px';
+      tip.style.top  = cy + 'px';
+      const showN = 6;
+      const names = b.members.slice(0, showN).map(m => `#${m.id} ${m.name}`).join('<br>');
+      const more = b.members.length > showN ? `<div class="more">+${b.members.length - showN} more</div>` : '';
+      tip.innerHTML =
+        `<div>${pct(b.lo, 2)} → ${pct(b.hi, 2)}</div>` +
+        `<div style="color:#64748b;margin-bottom:.25rem;">${b.members.length} monkey${b.members.length===1?'':'s'}</div>` +
+        `<div class="names">${names}</div>${more}`;
+      tip.classList.add('on');
+    });
+    chart.addEventListener('mouseleave', () => tip.classList.remove('on'));
+
+    document.querySelectorAll('#subnav a').forEach(a => {
+      const href = a.getAttribute('href'); if (location.pathname.endsWith(href)) a.classList.add('active');
+    });
+
+    async function refresh() {
+      try {
+        const [lb, sw] = await Promise.all([
+          getLeaderboard(),
+          getSwarm(1)
+        ]);
+        monkeys = lb.monkeys.map(m => ({ id: m.id, name: m.name, cumPct: m.cumPct }));
+        cumMarket = sw.points.length ? sw.points[sw.points.length - 1].cumMarket : 0;
+        rebin();
+        draw();
+        renderHeadline();
+        renderDelta();
+        renderTails();
+      } catch (e) { console.warn(e); }
+    }
+    refresh();
+
+    // Live updates: refresh as each round settles
+    connectStream({ onRound: () => refresh() });
+    // Belt-and-suspenders periodic refresh
+    setInterval(refresh, 60_000);
+  </script>
+
+  <script src="nav-sound.js"></script>
+  <script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

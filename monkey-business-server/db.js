@@ -161,6 +161,16 @@ const stmts = {
     ORDER BY p.round_id DESC
     LIMIT ?
   `),
+  monkeyHistorySince:  db.prepare(`
+    SELECT p.round_id, r.started_at, r.settled_at, p.ticker, p.entry_price,
+           p.exit_price, p.pnl_pct, mr.market_pct
+    FROM picks p
+    JOIN rounds r       ON r.id = p.round_id
+    LEFT JOIN market_returns mr ON mr.round_id = p.round_id
+    WHERE p.monkey_id = ? AND r.started_at >= ?
+    ORDER BY p.round_id DESC
+    LIMIT ?
+  `),
   firstPricedRound: db.prepare('SELECT MIN(round_id) AS round_id FROM prices'),
   prevSettledBefore: db.prepare(`
     SELECT id FROM rounds
@@ -169,6 +179,23 @@ const stmts = {
   `),
   pickCountsByTicker: db.prepare(`
     SELECT ticker, COUNT(*) AS hits FROM picks GROUP BY ticker
+  `),
+  allSettledPicksOrdered: db.prepare(`
+    SELECT monkey_id, pnl_pct
+    FROM picks
+    WHERE pnl_pct IS NOT NULL
+    ORDER BY monkey_id, round_id
+  `),
+  allSettledPicksByRound: db.prepare(`
+    SELECT round_id, monkey_id, pnl_pct
+    FROM picks
+    WHERE pnl_pct IS NOT NULL
+    ORDER BY round_id, monkey_id
+  `),
+  marketRoundsAsc: db.prepare(`
+    SELECT round_id, settled_at, cum_market
+    FROM market_returns
+    ORDER BY round_id ASC
   `)
 };
 

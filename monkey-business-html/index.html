@@ -138,6 +138,54 @@
       overflow: hidden;
       box-shadow: 0 0 60px rgba(124,58,237,0.08);
     }
+
+    /* Ticker tape — live round-results feed above the arena */
+    .ticker-tape {
+      position: relative;
+      overflow: hidden;
+      background: rgba(8,8,16,.55);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: .8rem;
+      height: 38px;
+    }
+    .ticker-tape::before, .ticker-tape::after {
+      content: ''; position: absolute; top: 0; bottom: 0; width: 60px; pointer-events: none; z-index: 2;
+    }
+    .ticker-tape::before { left: 0;  background: linear-gradient(to right, rgba(8,8,16,.95), transparent); }
+    .ticker-tape::after  { right: 0; background: linear-gradient(to left,  rgba(8,8,16,.95), transparent); }
+    .ticker-track {
+      display: flex; gap: 1.6rem; align-items: center; height: 100%;
+      padding: 0 1rem; white-space: nowrap; overflow-x: hidden;
+      font-family: var(--mono); font-size: .78rem;
+      transform: translateX(0);
+      transition: transform .35s ease-out;
+    }
+    .ticker-empty { color: var(--muted); font-style: italic; }
+    .ticker-item {
+      display: inline-flex; align-items: center; gap: .45rem;
+      flex-shrink: 0;
+      animation: tickerFadeIn .4s ease-out;
+    }
+    .ticker-item .av {
+      width: 18px; height: 18px; border-radius: 3px;
+      background-image: url('monkey-sprites.png');
+      background-size: 180px 180px;  /* 32px source × ~5.6 = 180; actually 18*10=180 */
+      background-repeat: no-repeat;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      flex-shrink: 0;
+    }
+    .ticker-item .nm  { color: var(--text); }
+    .ticker-item .pct { font-weight: 700; }
+    .ticker-item .pct.gain { color: var(--gain); }
+    .ticker-item .pct.loss { color: var(--loss); }
+    .ticker-item .pct.flat { color: var(--muted); }
+    .ticker-item .tk  { color: var(--muted); letter-spacing: .04em; }
+    .ticker-item .sep { color: rgba(255,255,255,.18); }
+    @keyframes tickerFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     canvas#arena {
       display: block; width: 100%;
       aspect-ratio: 16 / 9;
@@ -261,9 +309,10 @@
     <a href="index.html">Arena</a>
     <a href="leaderboard.html">Leaderboard</a>
     <a href="market.html">Market</a>
-    <a href="winners.html">Winners/Losers</a>
+    <a href="winners.html">Market Performers</a>
     <a href="history.html">History</a>
-    <a href="monkey.html">Monkey</a>
+    <a href="distribution.html">Distribution</a>
+    <a href="monkey.html">Monkeys</a>
     <a href="status.html">Status</a>
     <a href="about.html">About</a>
   </nav>
@@ -306,6 +355,12 @@
         <div class="val" id="hud-top" style="font-size:1rem">—</div>
       </div>
     </section>
+
+    <div class="ticker-tape" id="ticker-tape" aria-label="Live round results">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-empty">waiting for the next settlement…</span>
+      </div>
+    </div>
 
     <div class="arena-wrap">
       <canvas id="arena"></canvas>
@@ -486,6 +541,54 @@
       if (id) location.href = `monkey.html?id=${id}`;
     });
 
+    // ---- Live ticker tape: prepend new entries when each round settles
+    const tickerTrack = document.getElementById('ticker-track');
+    const TICKER_MAX_ITEMS = 40;
+    const TICKER_PER_ROUND = 8;     // top movers shown from each settlement
+    function pushTickerEntries(settled) {
+      if (!settled || !settled.picks || !settled.picks.length) return;
+      const picks = settled.picks
+        .filter(p => Number.isFinite(p.pnlPct))
+        .map(p => ({ ...p, abs: Math.abs(p.pnlPct) }))
+        .sort((a, b) => b.abs - a.abs);
+      const top = picks.slice(0, TICKER_PER_ROUND);
+      // Off-hours / closed market: every pick is 0%. Show a MARKET CLOSED stamp
+      // instead of flooding with flat zeroes.
+      const allFlat = picks.length > 0 && picks.every(p => p.pnlPct === 0);
+      const empty = tickerTrack.querySelector('.ticker-empty');
+      if (empty) empty.remove();
+      const frag = document.createDocumentFragment();
+      if (allFlat) {
+        const item = document.createElement('span');
+        item.className = 'ticker-item';
+        item.innerHTML = `<span class="tk">— MARKET CLOSED · round #${settled.roundId ?? ''} settled at 0% —</span>`;
+        frag.appendChild(item);
+      } else {
+        for (const p of top) {
+          const m = lbById.get(p.monkeyId);
+          const idx = p.monkeyId - 1;
+          const sx = (idx % 10) * 18, sy = ((idx / 10) | 0) * 18;
+          const cls = p.pnlPct > 0 ? 'gain' : p.pnlPct < 0 ? 'loss' : 'flat';
+          const sign = p.pnlPct >= 0 ? '+' : '';
+          const item = document.createElement('span');
+          item.className = 'ticker-item';
+          item.innerHTML =
+            `<span class="av" style="background-position:-${sx}px -${sy}px;"></span>` +
+            `<span class="nm">${m ? m.name : '#' + p.monkeyId}</span> ` +
+            `<span class="pct ${cls}">${sign}${(p.pnlPct * 100).toFixed(2)}%</span> ` +
+            `<span class="tk">${p.ticker}</span>`;
+          frag.appendChild(item);
+        }
+      }
+      const sep = document.createElement('span');
+      sep.className = 'ticker-item sep';
+      sep.textContent = '·';
+      frag.appendChild(sep);
+      // prepend so the newest is on the left, others slide right
+      tickerTrack.insertBefore(frag, tickerTrack.firstChild);
+      while (tickerTrack.children.length > TICKER_MAX_ITEMS) tickerTrack.lastChild.remove();
+    }
+
     // ---- Sub-nav active highlighter
     document.querySelectorAll('#subnav a').forEach(a => {
       const href = a.getAttribute('href');
@@ -502,6 +605,7 @@
         onState: (s) => {
           if (s.tickers) lastFullState = s;
           if (lastFullState) renderHud(lastFullState);
+          if (s.kind === 'round' && s.ev && s.ev.settled) pushTickerEntries(s.ev.settled);
         }
       });
 

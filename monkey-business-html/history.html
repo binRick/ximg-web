@@ -65,9 +65,10 @@
     <a href="index.html">Arena</a>
     <a href="leaderboard.html">Leaderboard</a>
     <a href="market.html">Market</a>
-    <a href="winners.html">Winners/Losers</a>
+    <a href="winners.html">Market Performers</a>
     <a href="history.html">History</a>
-    <a href="monkey.html">Monkey</a>
+    <a href="distribution.html">Distribution</a>
+    <a href="monkey.html">Monkeys</a>
     <a href="status.html">Status</a>
     <a href="about.html">About</a>
   </nav>
@@ -87,6 +88,24 @@
       <div class="hover-tip" id="tip"></div>
     </div>
 
+    <h2 style="margin-top:1.8rem; font-weight:200; font-size:1.1rem;">The Race · Random vs Persona cohort</h2>
+    <div class="sub" style="margin-top:.1rem; margin-bottom:.4rem;">Average cumulative return of the 50 random monkeys (control) against the 50 persona-driven monkeys (each running a strategy mapped from their archetype).</div>
+    <div class="panel" style="position:relative;">
+      <div class="legend">
+        <span><span class="swatch" style="background:#facc15;"></span>🎲 Random Cohort (1–50)</span>
+        <span><span class="swatch" style="background:#7c3aed;"></span>🎯 Persona Cohort (51–100)</span>
+      </div>
+      <canvas id="race-chart" style="aspect-ratio: 16/4;"></canvas>
+      <div class="race-summary" id="race-summary" style="font-family: var(--mono); font-size: .8rem; margin-top: .6rem; color: var(--muted);"></div>
+    </div>
+
+    <h2 style="margin-top:1.8rem; font-weight:200; font-size:1.1rem;">Monkeys above the market</h2>
+    <div class="sub" style="margin-top:.1rem; margin-bottom:.4rem;">How many of the 100 monkeys are currently sitting above the equal-weight baseline. The Malkiel hypothesis says this should oscillate around 50.</div>
+    <div class="panel" style="position:relative;">
+      <canvas id="beat-chart" style="aspect-ratio: 16/4;"></canvas>
+      <div class="hover-tip" id="beat-tip"></div>
+    </div>
+
     <h2 style="margin-top:1.8rem; font-weight:200; font-size:1.1rem;">Recent rounds</h2>
     <div class="panel" style="margin-top:.4rem;">
       <div class="recent-list" id="recent">
@@ -96,7 +115,8 @@
   </main>
 
   <script type="module">
-    import { getSwarm } from './api.js';
+    import { getSwarm, getBeating, getSparks } from './api.js';
+    import { cohort } from './persona.js';
 
     const chart = document.getElementById('chart');
     const tip   = document.getElementById('tip');
@@ -274,11 +294,204 @@
       const href = a.getAttribute('href'); if (location.pathname.endsWith(href)) a.classList.add('active');
     });
 
+    // ----- "Monkeys above market" chart -----
+    let beatPoints = [];
+    let beatLastDraw = null;
+    const beatCanvas = document.getElementById('beat-chart');
+    const beatTip    = document.getElementById('beat-tip');
+
+    function fitBeat() {
+      const dpr = window.devicePixelRatio || 1;
+      const r = beatCanvas.getBoundingClientRect();
+      beatCanvas.width = r.width * dpr; beatCanvas.height = r.height * dpr;
+    }
+    window.addEventListener('resize', () => { fitBeat(); drawBeat(); });
+    fitBeat();
+
+    function drawBeat() {
+      const ctx = beatCanvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const W = beatCanvas.width, H = beatCanvas.height;
+      ctx.clearRect(0, 0, W, H);
+      if (beatPoints.length < 2) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = `${13*dpr}px ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('not enough data yet', W/2, H/2);
+        return;
+      }
+      const padL = 70 * dpr, padR = 24 * dpr, padT = 14 * dpr, padB = 26 * dpr;
+      const pw = W - padL - padR, ph = H - padT - padB;
+      const xToPx = i => padL + (i / (beatPoints.length - 1)) * pw;
+      const yToPx = v => padT + (1 - v / 100) * ph;
+
+      // gridlines at 0, 25, 50, 75, 100
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (const v of [0, 25, 50, 75, 100]) {
+        const y = yToPx(v);
+        ctx.strokeStyle = v === 50 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = v === 50 ? 1 : 1;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+        ctx.fillText(v, padL - 8 * dpr, y);
+      }
+
+      // line — color by current value's distance from 50
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      for (let i = 0; i < beatPoints.length; i++) {
+        const x = xToPx(i), y = yToPx(beatPoints[i].beating);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // x-axis: first/middle/last round id
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const xLabels = [0, Math.floor((beatPoints.length-1)/2), beatPoints.length-1];
+      for (const i of xLabels) {
+        ctx.fillText('#' + beatPoints[i].roundId, xToPx(i), H - padB + 6 * dpr);
+      }
+
+      beatLastDraw = {
+        dpr, padL: padL/dpr, pw: pw/dpr, padT: padT/dpr, ph: ph/dpr,
+        xToPx: i => xToPx(i)/dpr, yToPx: v => yToPx(v)/dpr
+      };
+    }
+
+    beatCanvas.addEventListener('mousemove', e => {
+      if (!beatLastDraw || !beatPoints.length) return;
+      const rect = beatCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const { padL, pw } = beatLastDraw;
+      if (x < padL || x > padL + pw) { beatTip.classList.remove('on'); return; }
+      const i = Math.round(((x - padL) / pw) * (beatPoints.length - 1));
+      const p = beatPoints[i];
+      if (!p) { beatTip.classList.remove('on'); return; }
+      const px = beatLastDraw.xToPx(i), py = beatLastDraw.yToPx(p.beating);
+      beatTip.style.left = px + 'px';
+      beatTip.style.top  = py + 'px';
+      beatTip.innerHTML = `Round #${p.roundId}<br><b style="color:#7c3aed">${p.beating}</b> of 100 monkeys above market`;
+      beatTip.classList.add('on');
+    });
+    beatCanvas.addEventListener('mouseleave', () => beatTip.classList.remove('on'));
+
+    // ----- The Race chart (cohort vs cohort, computed from /api/sparks) -----
+    let raceRandom = [], racePersona = [];
+    const raceCanvas = document.getElementById('race-chart');
+    let raceLastDraw = null;
+    function fitRace() {
+      const dpr = window.devicePixelRatio || 1;
+      const r = raceCanvas.getBoundingClientRect();
+      raceCanvas.width = r.width * dpr; raceCanvas.height = r.height * dpr;
+    }
+    window.addEventListener('resize', () => { fitRace(); drawRace(); });
+    fitRace();
+
+    function drawRace() {
+      const ctx = raceCanvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const W = raceCanvas.width, H = raceCanvas.height;
+      ctx.clearRect(0, 0, W, H);
+      const series = [raceRandom, racePersona];
+      if (!raceRandom.length || !racePersona.length) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = `${13*dpr}px ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('not enough data yet', W/2, H/2);
+        return;
+      }
+      const padL = 70 * dpr, padR = 24 * dpr, padT = 16 * dpr, padB = 26 * dpr;
+      const pw = W - padL - padR, ph = H - padT - padB;
+
+      const all = raceRandom.concat(racePersona);
+      let lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+      const span = (hi - lo) || 0.001;
+      lo -= span * 0.08; hi += span * 0.08;
+
+      const xToPx = i => padL + (i / (raceRandom.length - 1)) * pw;
+      const yToPx = v => padT + (1 - (v - lo)/(hi - lo)) * ph;
+
+      // gridlines and labels
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11*dpr}px ui-monospace, monospace`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      const ticks = 4;
+      for (let i = 0; i <= ticks; i++) {
+        const v = lo + (hi - lo) * (i / ticks);
+        const y = yToPx(v);
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+        ctx.fillText((v >= 0 ? '+' : '') + (v*100).toFixed(2) + '%', padL - 8*dpr, y);
+      }
+      // zero line
+      if (lo < 0 && hi > 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        const y0 = yToPx(0);
+        ctx.beginPath(); ctx.moveTo(padL, y0); ctx.lineTo(W - padR, y0); ctx.stroke();
+      }
+      // lines
+      function line(arr, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2 * dpr;
+        ctx.beginPath();
+        for (let i = 0; i < arr.length; i++) {
+          const x = xToPx(i), y = yToPx(arr[i]);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      line(raceRandom,  '#facc15');
+      line(racePersona, '#7c3aed');
+
+      raceLastDraw = { dpr, padL: padL/dpr, pw: pw/dpr, padT: padT/dpr, ph: ph/dpr, lo, hi };
+    }
+
+    function fmtPct(x) { return (x>=0?'+':'') + (x*100).toFixed(2) + '%'; }
+
+    function ingestSparks(sp) {
+      // sp.monkeys: [{ id, rounds, points: [logCum...] }] — 30 points each.
+      // Average across each cohort, convert log-cum to simple % via expm1.
+      if (!sp || !sp.monkeys || !sp.monkeys.length) return;
+      const N = sp.monkeys[0].points.length;
+      const r = new Array(N).fill(0), p = new Array(N).fill(0);
+      let rN = 0, pN = 0;
+      for (const m of sp.monkeys) {
+        if (m.points.length !== N) continue;
+        const arr = cohort(m.id) === 'random' ? r : p;
+        for (let i = 0; i < N; i++) arr[i] += m.points[i];
+        if (cohort(m.id) === 'random') rN++; else pN++;
+      }
+      raceRandom  = rN ? r.map(v => Math.expm1(v / rN)) : [];
+      racePersona = pN ? p.map(v => Math.expm1(v / pN)) : [];
+      drawRace();
+
+      // summary
+      const rl = raceRandom[raceRandom.length - 1] ?? 0;
+      const pl = racePersona[racePersona.length - 1] ?? 0;
+      const lead = pl > rl ? 'Persona' : pl < rl ? 'Random' : 'Tied';
+      const gap  = Math.abs(pl - rl);
+      document.getElementById('race-summary').innerHTML =
+        `🎲 <b>${fmtPct(rl)}</b> &nbsp;·&nbsp; 🎯 <b>${fmtPct(pl)}</b> &nbsp;·&nbsp; ${lead === 'Tied' ? 'Dead heat' : '<b>' + lead + '</b> ahead by ' + (gap*100).toFixed(2) + '%'}`;
+    }
+
     async function refresh() {
       try {
-        const r = await getSwarm(2000);
+        const [r, b, sp] = await Promise.all([
+          getSwarm(2000),
+          getBeating().catch(() => null),
+          getSparks().catch(() => null)
+        ]);
         points = r.points;
         draw(); renderRecent(); renderDelta();
+        if (b && b.points) { beatPoints = b.points; drawBeat(); }
+        if (sp) ingestSparks(sp);
       } catch (e) { console.warn(e); }
     }
     refresh();
