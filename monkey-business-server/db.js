@@ -160,6 +160,15 @@ const stmts = {
     WHERE p.monkey_id = ?
     ORDER BY p.round_id DESC
     LIMIT ?
+  `),
+  firstPricedRound: db.prepare('SELECT MIN(round_id) AS round_id FROM prices'),
+  prevSettledBefore: db.prepare(`
+    SELECT id FROM rounds
+    WHERE id < ? AND settled_at IS NOT NULL
+    ORDER BY id DESC LIMIT 1
+  `),
+  pickCountsByTicker: db.prepare(`
+    SELECT ticker, COUNT(*) AS hits FROM picks GROUP BY ticker
   `)
 };
 
