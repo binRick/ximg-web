@@ -135,6 +135,86 @@ input, select {
 }
 DARKCSS
 
+# ── Write swaudit PIN entry page ──────────────────────────────────────────────
+# Server-side gate lives in nginx/nginx.conf (location /swaudit/ checks the
+# swaudit_pin cookie). This page is what the gate redirects to when the cookie
+# is missing or wrong; on correct PIN it sets the cookie and forwards to /swaudit/.
+cat > "${AWSTATS_OUTDIR}/swaudit-pin.html" << 'PINHTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>swaudit.net stats — PIN required</title>
+<link rel="stylesheet" href="/dark.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',monospace;background:#0a0a0f;color:#c9d1d9;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.box{width:100%;max-width:380px;padding:2rem 2rem 1.6rem;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;text-align:center}
+h1{font-size:1rem;color:#f1f5f9;margin-bottom:.4rem;letter-spacing:.05em}
+p.sub{color:#8b949e;font-size:.78rem;margin-bottom:1.4rem}
+input[type=password]{width:100%;padding:.7rem .9rem;font-family:inherit;font-size:1.1rem;
+  letter-spacing:.4em;text-align:center;color:#e6edf3;
+  background:#161b22;border:1px solid #30363d;border-radius:4px;outline:none;
+  transition:border-color .15s}
+input[type=password]:focus{border-color:#58a6ff}
+button{margin-top:.9rem;width:100%;padding:.65rem;font-family:inherit;font-size:.82rem;
+  letter-spacing:.18em;text-transform:uppercase;color:#0a0a0f;background:#58a6ff;
+  border:0;border-radius:4px;cursor:pointer;transition:background .15s}
+button:hover{background:#79c0ff}
+.err{margin-top:.8rem;min-height:1.1rem;font-size:.74rem;color:#f87171;letter-spacing:.05em}
+.back{margin-top:1.2rem;font-size:.72rem}
+.back a{color:#5a6070;text-decoration:none}
+.back a:hover{color:#8b949e}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>swaudit.net stats</h1>
+  <p class="sub">Enter PIN to view this report</p>
+  <form id="f" autocomplete="off">
+    <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*"
+           maxlength="8" autofocus aria-label="PIN">
+    <button type="submit">Unlock</button>
+    <div id="err" class="err"></div>
+  </form>
+  <div class="back"><a href="/">&larr; back to all stats</a></div>
+</div>
+<script src="/shared/nav.js?v=2"></script>
+<script>
+(function(){
+  var PIN = '666';
+  if (document.cookie.split(';').some(function(c){
+    return c.trim() === 'swaudit_pin=' + PIN;
+  })) {
+    location.replace('/swaudit/');
+    return;
+  }
+  var f = document.getElementById('f');
+  var pin = document.getElementById('pin');
+  var err = document.getElementById('err');
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (pin.value === PIN) {
+      var d = new Date(Date.now() + 7*24*3600*1000).toUTCString();
+      document.cookie = 'swaudit_pin=' + PIN + '; path=/; expires=' + d + '; SameSite=Lax';
+      location.replace('/swaudit/');
+    } else {
+      err.textContent = 'Incorrect PIN';
+      pin.value = '';
+      pin.focus();
+    }
+  });
+})();
+</script>
+</body>
+</html>
+PINHTML
+
 # ── Run initial stats update ──────────────────────────────────────────────────
 /usr/local/bin/awstats-update.sh
 

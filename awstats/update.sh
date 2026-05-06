@@ -217,7 +217,11 @@ for site in $SITES; do
     name=$(display_name "$site")
     desc=$(display_desc "$site")
     spark=$(sparkline_svg "$site")
-    echo "    <a class=\"site-card\" href=\"/${site}/\">" >> "${OUTDIR}/index.html"
+    case "$site" in
+        swaudit) href="/swaudit-pin.html" ;;
+        *)       href="/${site}/" ;;
+    esac
+    echo "    <a class=\"site-card\" href=\"${href}\">" >> "${OUTDIR}/index.html"
     echo "      ${spark}" >> "${OUTDIR}/index.html"
     echo "      <div class=\"site-name\">${name}</div>" >> "${OUTDIR}/index.html"
     echo "      <div class=\"site-desc\">${desc}</div>" >> "${OUTDIR}/index.html"
