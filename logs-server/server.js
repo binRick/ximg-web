@@ -1437,12 +1437,12 @@ const HTML = `<!DOCTYPE html>
     const sshCollapsed = new Set();
 
     function parseSessionDate(name) {
-      const m = name.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-/);
+      const m = name.match(/^(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})(\\d{2})-/);
       if (!m) return null;
       return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
     }
     function parseSessionIp(name) {
-      const m = name.match(/^\d{8}-\d{6}-(.+?)-\d+\.log$/);
+      const m = name.match(/^\\d{8}-\\d{6}-(.+?)-\\d+\\.log$/);
       return m ? m[1] : '';
     }
     function dayKey(d) {
