@@ -48,10 +48,11 @@ PLATFORMS = {
 # Linux needs the manylinux hierarchy so compiled packages (numpy, etc.) are found.
 # Multiple --platform flags tell pip to treat all listed tags as compatible.
 PLATFORM_TAGS = {
-    'linux_x86_64':       ['manylinux_2_17_x86_64', 'manylinux2014_x86_64',
-                           'manylinux1_x86_64', 'linux_x86_64'],
-    'linux_aarch64':      ['manylinux_2_17_aarch64', 'manylinux2014_aarch64',
-                           'linux_aarch64'],
+    'linux_x86_64':       ['manylinux_2_28_x86_64', 'manylinux_2_17_x86_64',
+                           'manylinux2014_x86_64', 'manylinux1_x86_64',
+                           'linux_x86_64'],
+    'linux_aarch64':      ['manylinux_2_28_aarch64', 'manylinux_2_17_aarch64',
+                           'manylinux2014_aarch64', 'linux_aarch64'],
     'win_amd64':          ['win_amd64'],
     'macosx_11_0_arm64':  ['macosx_11_0_arm64'],
     'macosx_10_9_x86_64': ['macosx_10_9_x86_64'],

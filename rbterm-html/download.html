@@ -89,18 +89,22 @@
       <div class="sub">Apple silicon (arm64)</div>
       <div class="badge signed">Signed &amp; Notarized</div>
       <div class="meta">
-        Self-contained app bundle. Ships every Homebrew dylib it links
-        against (libssh, libwebp, libharfbuzz, libsodium, raylib) inside
-        <strong>Contents/Frameworks/</strong>, so it runs on any arm64
-        Mac without `brew install` first. Hardened runtime, stapled
-        notarization ticket — Gatekeeper won't nag.
+        Drag-to-Applications disk image. Self-contained: every Homebrew
+        dylib it links against (libssh, libwebp, libharfbuzz, libsodium,
+        raylib) lives inside <strong>Contents/Frameworks/</strong>, so
+        it runs on any arm64 Mac without `brew install` first. Hardened
+        runtime, stapled notarization ticket on both the DMG and the
+        bundle inside — Gatekeeper won't nag.
       </div>
       <div class="actions">
-        <a class="dl" href="downloads/rbterm-macos-arm64-signed.zip">rbterm-macos-arm64-signed.zip <span style="opacity:.7;">(18 MB)</span></a>
+        <a class="dl" href="downloads/rbterm-macos-arm64.dmg">rbterm-macos-arm64.dmg <span style="opacity:.7;">(18 MB)</span></a>
+        <a class="dl dl-alt" href="downloads/rbterm-macos-arm64-signed.zip">raw .zip (no installer wrapper) <span style="opacity:.7;">(18 MB)</span></a>
       </div>
       <div class="verify">
-        sha256
-        <code>b8e27ef25d559aa0478ee286309a30fbcff8b02b0193c3ed0178c4c41cd0e5f9</code>
+        sha256 (dmg)
+        <code>ad9088962874da2541ef8540a937d47edd077c10f08092f4417795f7c7a0cc66</code><br>
+        sha256 (zip)
+        <code>46ce1069571a5d949722d16fc9487c74efb77b2fb7857448d69030f734ddf2ad</code>
       </div>
     </div>
 
@@ -153,18 +157,27 @@
 <section>
   <h2>Verifying the macOS build</h2>
   <p class="note">After downloading, you can confirm the signature, the
-  notarization ticket, and that Gatekeeper is happy:</p>
+  notarization ticket, and that Gatekeeper is happy. The DMG and the
+  .app bundle inside it are both signed and stapled separately:</p>
 <pre><code>cd ~/Downloads
-unzip rbterm-macos-arm64-signed.zip
 
-# 1. Signing identity + hardened runtime
+# 1. Gatekeeper accepts the DMG itself
+spctl --assess --type install --verbose=2 rbterm-macos-arm64.dmg
+#   accepted
+#   source=Notarized Developer ID
+
+# Mount it and assess the bundle inside.
+hdiutil attach rbterm-macos-arm64.dmg
+cd /Volumes/rbterm
+
+# 2. Signing identity + hardened runtime
 codesign -dv --verbose=4 rbterm.app 2&gt;&amp;1 | grep -E "Authority|flags"
 #   Authority=Developer ID Application: Richard Blundell (4L7XW5NPCX)
 #   Authority=Developer ID Certification Authority
 #   Authority=Apple Root CA
 #   CodeDirectory v=20500 size=… flags=0x10000(runtime) …
 
-# 2. Notarization ticket is stapled (works offline)
+# 3. Notarization ticket is stapled on the bundle (works offline)
 xcrun stapler validate rbterm.app
 #   The validate action worked!
 

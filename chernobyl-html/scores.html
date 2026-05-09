@@ -128,10 +128,18 @@ document.querySelectorAll('#subnav a').forEach(function(a){
   <p class="subtitle">Chernobyl leaderboard</p>
 
   <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all">All Time</button>
-    <button class="filter-btn" data-filter="month">This Month</button>
-    <button class="filter-btn" data-filter="week">This Week</button>
-    <button class="filter-btn" data-filter="today">Today</button>
+    <button class="filter-btn active" data-time="all">All Time</button>
+    <button class="filter-btn" data-time="month">This Month</button>
+    <button class="filter-btn" data-time="week">This Week</button>
+    <button class="filter-btn" data-time="today">Today</button>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-platform="all">All Platforms</button>
+    <button class="filter-btn" data-platform="macos">macOS</button>
+    <button class="filter-btn" data-platform="windows">Windows</button>
+    <button class="filter-btn" data-platform="web">Web</button>
+    <button class="filter-btn" data-platform="ios">iOS</button>
   </div>
 
   <div id="scores-body">
@@ -143,7 +151,12 @@ document.querySelectorAll('#subnav a').forEach(function(a){
 
 <script>
 var allScores = [];
-var currentFilter = 'all';
+var currentTime = 'all';
+var currentPlatform = 'all';
+
+var PLATFORM_LABELS = {
+  macos: 'macOS', windows: 'Windows', web: 'Web', ios: 'iOS', unknown: '-'
+};
 
 function getFilterCutoff(filter) {
   var now = new Date();
@@ -162,17 +175,21 @@ function getFilterCutoff(filter) {
   return null;
 }
 
-function renderScores(scores, filter) {
+function renderScores(scores, timeFilter, platformFilter) {
   var body = document.getElementById('scores-body');
-  var cutoff = getFilterCutoff(filter);
+  var cutoff = getFilterCutoff(timeFilter);
   var filtered = scores;
   if (cutoff) {
-    filtered = scores.filter(function(s) { return s.ts && s.ts >= cutoff; });
+    filtered = filtered.filter(function(s) { return s.ts && s.ts >= cutoff; });
+  }
+  if (platformFilter !== 'all') {
+    filtered = filtered.filter(function(s) { return (s.platform || 'unknown') === platformFilter; });
   }
 
   if (!filtered.length) {
-    var label = filter === 'all' ? '' : filter === 'today' ? ' today' : filter === 'week' ? ' this week' : ' this month';
-    body.innerHTML = '<div class="empty">No scores' + label + ' yet.</div>';
+    var timeLabel = timeFilter === 'all' ? '' : timeFilter === 'today' ? ' today' : timeFilter === 'week' ? ' this week' : ' this month';
+    var platLabel = platformFilter === 'all' ? '' : ' on ' + (PLATFORM_LABELS[platformFilter] || platformFilter);
+    body.innerHTML = '<div class="empty">No scores' + platLabel + timeLabel + ' yet.</div>';
     return;
   }
 
@@ -180,6 +197,7 @@ function renderScores(scores, filter) {
   var html = '<p class="result-count">' + countLabel + '</p>';
   html += '<table class="scores-table"><thead><tr>' +
     '<th>Rank</th><th>Name</th><th>Score</th><th>Kills</th><th>Wave</th>' +
+    '<th class="meta">Platform</th>' +
     '<th class="meta">Time</th><th class="meta">Shots</th><th class="meta">Dmg</th><th class="meta">Date</th>' +
     '<th>Replay</th>' +
     '</tr></thead><tbody>';
@@ -189,6 +207,8 @@ function renderScores(scores, filter) {
     var medal = i === 0 ? ' &#x1F947;' : i === 1 ? ' &#x1F948;' : i === 2 ? ' &#x1F949;' : '';
     var date = s.ts ? new Date(s.ts).toLocaleDateString() : '';
     var mins = s.time ? Math.floor(s.time / 60) + ':' + ('0' + Math.floor(s.time % 60)).slice(-2) : '-';
+    var platKey = s.platform || 'unknown';
+    var platLabel = PLATFORM_LABELS[platKey] || platKey;
     var replayCell;
     if (s.video_id) {
       replayCell = '<a class="watch-btn" href="watch.html?v=' + s.video_id + '" target="_blank" rel="noopener" title="Watch video replay">&#9654; Watch</a>';
@@ -196,7 +216,7 @@ function renderScores(scores, filter) {
       var gamePath = s.build_hash ? '/game/v/' + s.build_hash + '/index.html' : '/game/index.html';
       replayCell = '<a class="watch-btn" href="' + gamePath + '?replay=/api/replays/' + s.replay_id + '" target="_blank" rel="noopener" title="Watch .ifr replay">&#9654; Watch</a>';
     } else {
-      replayCell = '<span style="color:var(--dim);font-size:.7rem">—</span>';
+      replayCell = '<span style="color:var(--dim);font-size:.7rem">-</span>';
     }
     html += '<tr class="' + rankClass + '">' +
       '<td class="rank">#' + (i + 1) + medal + '</td>' +
@@ -204,6 +224,7 @@ function renderScores(scores, filter) {
       '<td class="score-val">' + s.score.toLocaleString() + '</td>' +
       '<td>' + s.kills + '</td>' +
       '<td><span class="wave-badge">W' + s.wave + '</span></td>' +
+      '<td class="meta">' + platLabel + '</td>' +
       '<td class="meta">' + mins + '</td>' +
       '<td class="meta">' + (s.shots || '-') + '</td>' +
       '<td class="meta">' + (s.damage ? s.damage.toLocaleString() : '-') + '</td>' +
@@ -224,7 +245,7 @@ function loadScores() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       allScores = data.scores || [];
-      renderScores(allScores, currentFilter);
+      renderScores(allScores, currentTime, currentPlatform);
     })
     .catch(function() {
       body.innerHTML = '<div class="empty">Failed to load scores. Try again.</div>';
@@ -233,10 +254,16 @@ function loadScores() {
 
 document.querySelectorAll('.filter-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
-    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    var time = btn.getAttribute('data-time');
+    var platform = btn.getAttribute('data-platform');
+    var groupAttr = time !== null ? 'data-time' : 'data-platform';
+    document.querySelectorAll('.filter-btn[' + groupAttr + ']').forEach(function(b) {
+      b.classList.remove('active');
+    });
     btn.classList.add('active');
-    currentFilter = btn.getAttribute('data-filter');
-    renderScores(allScores, currentFilter);
+    if (time !== null) currentTime = time;
+    if (platform !== null) currentPlatform = platform;
+    renderScores(allScores, currentTime, currentPlatform);
   });
 });
 
