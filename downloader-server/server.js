@@ -7,7 +7,16 @@ const url        = require('url');
 
 const PORT     = 3001;
 const LOG_FILE = '/data/dockerimagedownloader.log';
+const MIN_FREE_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB — reject pulls below this
 let imagesCache = null;
+
+// Free space on the host filesystem. /data is bind-mounted from the host
+// (./logs-data) and shares the same partition as /var/lib/docker, so its
+// statfs reflects the disk that pulls actually fill.
+function freeDiskBytes() {
+  try { return Number(fs.statfsSync('/data').bavail) * Number(fs.statfsSync('/data').bsize); }
+  catch (_) { return Infinity; }
+}
 
 // ── Geo lookup (server-side, avoids browser CORS) ─────────────────────────────
 const geoCache = new Map();
@@ -119,6 +128,14 @@ const server = http.createServer((req, res) => {
       if (!validImageRef(image)) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid image reference' }));
+        return;
+      }
+
+      const free = freeDiskBytes();
+      if (free < MIN_FREE_BYTES) {
+        const freeGB = (free / 1073741824).toFixed(1);
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Server is low on disk (' + freeGB + ' GB free). Try again later.' }));
         return;
       }
 
