@@ -3598,17 +3598,34 @@ const server = http.createServer(async (req, res) => {
         ? '<span style="color:#facc15;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);border-radius:4px;padding:.05rem .35rem;font-size:.62rem;letter-spacing:.06em">EXPOSURE</span>'
         : '';
       const toggleJs = "var d=document.getElementById('"+detail+"');d.style.display=d.style.display==='none'?'':'none';this.querySelector('.day-arrow').textContent=d.style.display==='none'?'\\u25B8':'\\u25BE'";
-      const summaryBlock  = s.hasSummary  ? '<div style="margin-bottom:.6rem"><div style="color:#00ff41;font-size:.6rem;letter-spacing:.14em;margin-bottom:.25rem;text-transform:uppercase">AI Summary</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;font-size:.72rem;line-height:1.5;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.15);border-radius:5px;padding:.6rem .75rem">'+esc2(s.summary)+'</pre></div>' : '';
-      const exposureBlock = s.hasExposure ? '<div style="margin-bottom:.6rem"><div style="color:#facc15;font-size:.6rem;letter-spacing:.14em;margin-bottom:.25rem;text-transform:uppercase">Exposure Analysis</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;font-size:.72rem;line-height:1.5;background:rgba(250,204,21,.04);border:1px solid rgba(250,204,21,.18);border-radius:5px;padding:.6rem .75rem">'+esc2(s.exposure)+'</pre></div>' : '';
       const logLink = '<a href="/ssh-session?file='+esc2(s.name)+'" target="_blank" rel="noopener" style="color:#79c0ff;text-decoration:none;font-size:.7rem">▸ view full log</a>';
-      const detailContent = (summaryBlock + exposureBlock) || '<div style="color:var(--dim);font-size:.72rem;padding:.5rem 0">no summary or exposure analysis available</div>';
+
+      const summaryPanel  = s.hasSummary
+        ? '<pre class="ssh-pre ssh-pre-summary">'+esc2(s.summary)+'</pre>'
+        : '<div class="ssh-empty-tab">no AI summary available for this session</div>';
+      const exposurePanel = s.hasExposure
+        ? '<pre class="ssh-pre ssh-pre-exposure">'+esc2(s.exposure)+'</pre>'
+        : '<div class="ssh-empty-tab">no exposure analysis available for this session</div>';
+      const terminalPanel = '<pre class="ssh-pre ssh-pre-terminal" data-loaded="0">click the &quot;Terminal Session&quot; tab to load the recording</pre>';
+
+      const tabBar =
+        '<div class="ssh-tabs">' +
+          '<button class="ssh-tab active" data-tab="summary"  data-detail="'+detail+'">AI Summary</button>' +
+          '<button class="ssh-tab"        data-tab="exposure" data-detail="'+detail+'">Exposure</button>' +
+          '<button class="ssh-tab"        data-tab="terminal" data-detail="'+detail+'" data-file="'+esc2(s.name)+'">Terminal Session</button>' +
+        '</div>';
+      const panels =
+        '<div class="ssh-tab-panel" data-panel="summary"  data-detail="'+detail+'">'+summaryPanel+'</div>' +
+        '<div class="ssh-tab-panel" data-panel="exposure" data-detail="'+detail+'" style="display:none">'+exposurePanel+'</div>' +
+        '<div class="ssh-tab-panel" data-panel="terminal" data-detail="'+detail+'" style="display:none">'+terminalPanel+'</div>';
+
       return '<tr id="'+sid+'" class="day-row" style="cursor:pointer" onclick="'+toggleJs+'">'
            + '<td style="white-space:nowrap"><span class="day-arrow" style="display:inline-block;width:1em;color:var(--dim)">▸</span> '+esc2(s.ts)+'</td>'
            + '<td style="color:#c9d1d9">'+kb+' KB</td>'
            + '<td><div style="display:flex;gap:.3rem;flex-wrap:wrap">'+sumBadge+expBadge+'</div></td>'
            + '<td onclick="event.stopPropagation()">'+logLink+'</td>'
            + '</tr>'
-           + '<tr id="'+detail+'" style="display:none"><td colspan="4" style="padding:.4rem .6rem .8rem;background:rgba(255,255,255,.015)">'+detailContent+'</td></tr>';
+           + '<tr id="'+detail+'" style="display:none"><td colspan="4" style="padding:.4rem .6rem .8rem;background:rgba(255,255,255,.015)">'+tabBar+panels+'</td></tr>';
     }).join('');
 
     const sshFirst = sshHits.length ? sshHits[sshHits.length - 1].ts : '';
@@ -3663,6 +3680,26 @@ const server = http.createServer(async (req, res) => {
     .s2xx{color:#00ff41}.s3xx{color:#06b6d4}.s4xx{color:#facc15}.s5xx{color:#ff7b72}.s0{color:var(--dim)}
     .empty{color:var(--dim);padding:1rem;text-align:center;font-size:.8rem}
     .recent-card{grid-column:1/-1}
+    .ssh-tabs{display:flex;gap:.2rem;margin-bottom:.6rem;border-bottom:1px solid rgba(255,255,255,.07);
+      padding-bottom:0}
+    .ssh-tab{font-family:inherit;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;
+      background:none;color:var(--dim);border:none;border-bottom:2px solid transparent;
+      padding:.45rem .7rem;cursor:pointer;transition:color .15s,border-color .15s,background .15s;
+      margin-bottom:-1px;border-radius:4px 4px 0 0}
+    .ssh-tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
+    .ssh-tab.active{color:var(--green);border-bottom-color:var(--green)}
+    .ssh-pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;
+      font-size:.72rem;line-height:1.5;padding:.6rem .75rem;border-radius:5px}
+    .ssh-pre-summary{background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.15)}
+    .ssh-pre-exposure{background:rgba(250,204,21,.04);border:1px solid rgba(250,204,21,.18)}
+    .ssh-pre-terminal{background:#070b12;border:1px solid rgba(0,255,65,.12);
+      max-height:520px;overflow:auto;font-family:'Courier New',monospace;color:#cfe9d4;
+      box-shadow:inset 0 0 30px rgba(0,255,65,.04)}
+    .ssh-pre-terminal::-webkit-scrollbar{width:8px;height:8px}
+    .ssh-pre-terminal::-webkit-scrollbar-track{background:transparent}
+    .ssh-pre-terminal::-webkit-scrollbar-thumb{background:rgba(0,255,65,.2);border-radius:4px}
+    .ssh-empty-tab{color:var(--dim);padding:1rem;text-align:center;font-size:.75rem;
+      background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.07);border-radius:5px}
   </style>
   ${mapLinkTag}
 </head>
@@ -3709,6 +3746,32 @@ const server = http.createServer(async (req, res) => {
     </div>
   </div>
   ${mapScript}
+  <script>
+    document.addEventListener('click', function(e) {
+      var tab = e.target.closest('.ssh-tab');
+      if (!tab) return;
+      e.stopPropagation();
+      var detail = tab.dataset.detail;
+      var which  = tab.dataset.tab;
+      document.querySelectorAll('.ssh-tab[data-detail="' + detail + '"]').forEach(function(t) {
+        t.classList.toggle('active', t === tab);
+      });
+      document.querySelectorAll('.ssh-tab-panel[data-detail="' + detail + '"]').forEach(function(p) {
+        p.style.display = p.dataset.panel === which ? '' : 'none';
+      });
+      if (which === 'terminal' && tab.dataset.file) {
+        var pre = document.querySelector('.ssh-tab-panel[data-detail="' + detail + '"][data-panel="terminal"] pre');
+        if (pre && pre.dataset.loaded === '0') {
+          pre.dataset.loaded = '1';
+          pre.textContent = 'Loading terminal session…';
+          fetch('/ssh-session?file=' + encodeURIComponent(tab.dataset.file))
+            .then(function(r) { return r.text(); })
+            .then(function(t) { pre.textContent = t || '(empty)'; })
+            .catch(function() { pre.textContent = 'Failed to load terminal session.'; pre.dataset.loaded = '0'; });
+        }
+      }
+    });
+  </script>
   <script src="/shared/nav.js?v=2"></script>
 </body>
 </html>`;
