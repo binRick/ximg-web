@@ -1454,7 +1454,7 @@ const HTML = `<!DOCTYPE html>
       m.setDate(m.getDate() - day + 1);
       return m;
     }
-    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const SSH_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     function fmtDayLabel(d) {
       const today = new Date(); today.setHours(0,0,0,0);
       const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -1462,14 +1462,14 @@ const HTML = `<!DOCTYPE html>
       if (diff === 0) return 'Today';
       if (diff === 1) return 'Yesterday';
       const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][target.getDay()];
-      return dow + ', ' + MONTHS[target.getMonth()] + ' ' + target.getDate() +
+      return dow + ', ' + SSH_MONTHS[target.getMonth()] + ' ' + target.getDate() +
         (target.getFullYear() !== today.getFullYear() ? ', ' + target.getFullYear() : '');
     }
     function fmtWeekLabel(start) {
       const end = new Date(start); end.setDate(end.getDate() + 6);
       const sameMonth = start.getMonth() === end.getMonth();
-      const left = MONTHS[start.getMonth()] + ' ' + start.getDate();
-      const right = (sameMonth ? '' : MONTHS[end.getMonth()] + ' ') + end.getDate();
+      const left = SSH_MONTHS[start.getMonth()] + ' ' + start.getDate();
+      const right = (sameMonth ? '' : SSH_MONTHS[end.getMonth()] + ' ') + end.getDate();
       return left + ' – ' + right;
     }
     function fmtTime(d) {
@@ -1607,7 +1607,7 @@ const HTML = `<!DOCTYPE html>
           // In attacker view, IP is in the header so show date+time. Otherwise show IP+time.
           let metaLeft, metaRight;
           if (sshGroupMode === 'attacker') {
-            metaLeft = '<span class="ssh-session-time">' + MONTHS[f.date.getMonth()] + ' ' + f.date.getDate() + ' · ' + fmtTime(f.date) + '</span>';
+            metaLeft = '<span class="ssh-session-time">' + SSH_MONTHS[f.date.getMonth()] + ' ' + f.date.getDate() + ' · ' + fmtTime(f.date) + '</span>';
             metaRight = '<span>' + kb + ' KB</span>';
           } else {
             metaLeft = '<span class="ssh-session-time">' + fmtTime(f.date) + '</span>' +
