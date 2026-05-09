@@ -572,6 +572,9 @@ const HTML = `<!DOCTYPE html>
     .ssh-group.collapsed .ssh-group-toggle{transform:rotate(-90deg)}
     .ssh-group-title{color:var(--text);flex:1;font-weight:600;letter-spacing:.03em;
       display:flex;align-items:center;gap:.4rem;min-width:0}
+    .ssh-ip-link{color:inherit;text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.18);
+      transition:color .15s,border-color .15s}
+    .ssh-ip-link:hover{color:var(--green);border-bottom-color:rgba(0,255,150,.5)}
     .ssh-group-title .ssh-flag{font-size:.95rem}
     .ssh-group-title-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .ssh-group-meta{color:var(--dim);font-size:.6rem;flex-shrink:0;letter-spacing:.05em}
@@ -602,14 +605,17 @@ const HTML = `<!DOCTYPE html>
     #ssh-globe-toplist{position:absolute;bottom:.85rem;left:.85rem;
       font-family:'Courier New',monospace;font-size:.66rem;color:#cdd5e1;
       padding:.5rem .7rem;border:1px solid rgba(255,255,255,.08);background:rgba(5,12,20,.6);
-      backdrop-filter:blur(6px);border-radius:4px;min-width:220px;max-width:300px;pointer-events:none;
+      backdrop-filter:blur(6px);border-radius:4px;min-width:220px;max-width:300px;
       box-shadow:0 6px 24px rgba(0,0,0,.6)}
     #ssh-globe-toplist h4{margin:0 0 .35rem;font-weight:600;font-size:.6rem;letter-spacing:.18em;
       color:rgba(0,255,150,.85);text-transform:uppercase}
-    .glb-row{display:flex;align-items:center;gap:.4rem;padding:.15rem 0;line-height:1.4}
+    a.glb-row{display:flex;align-items:center;gap:.4rem;padding:.2rem .35rem;line-height:1.4;
+      color:inherit;text-decoration:none;border-radius:3px;transition:background .15s}
+    a.glb-row:hover{background:rgba(0,255,150,.1)}
+    a.glb-row:hover .glb-ip{color:#00ffae}
     .glb-flag{font-size:.95rem;flex-shrink:0}
     .glb-ip{font-family:'Courier New',monospace;color:#fff;flex:1;min-width:0;
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s}
     .glb-loc{color:var(--dim);font-size:.6rem;flex-shrink:0;max-width:80px;
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .glb-bar{height:3px;border-radius:2px;background:linear-gradient(90deg,#0f0,#ff0,#f60,#f00);
@@ -625,9 +631,11 @@ const HTML = `<!DOCTYPE html>
       backdrop-filter:blur(6px);min-width:230px;max-width:340px;z-index:10;pointer-events:auto}
     .sg-tip-h{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,255,150,.85);
       margin-bottom:.35rem;padding-bottom:.3rem;border-bottom:1px solid rgba(255,255,255,.08)}
-    .sg-tip-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .35rem;border-radius:3px;
-      cursor:pointer;transition:background .15s}
-    .sg-tip-row:hover{background:rgba(0,255,150,.08)}
+    a.sg-tip-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .35rem;border-radius:3px;
+      cursor:pointer;transition:background .15s;color:inherit;text-decoration:none}
+    a.sg-tip-row:hover{background:rgba(0,255,150,.08)}
+    a.sg-tip-row:hover .sg-tip-ip{color:#00ffae}
+    .sg-tip-ip{transition:color .15s}
     .sg-tip-flag{font-size:1rem;flex-shrink:0}
     .sg-tip-ip{color:#fff;font-weight:600;flex:1;min-width:0;overflow:hidden;
       text-overflow:ellipsis;white-space:nowrap}
@@ -1635,7 +1643,7 @@ const HTML = `<!DOCTYPE html>
             groups.set(k, {
               key: k,
               sortKey: k,
-              labelHtml: flag + '<span class="ssh-group-title-text">' + esc(s.ip || 'unknown') + (where ? ' <span style="color:var(--dim);font-weight:400">— ' + esc(where) + '</span>' : '') + '</span>',
+              labelHtml: flag + '<span class="ssh-group-title-text"><a class="ssh-ip-link" href="/ip/' + encodeURIComponent(s.ip || '') + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open IP details">' + esc(s.ip || 'unknown') + '</a>' + (where ? ' <span style="color:var(--dim);font-weight:400">— ' + esc(where) + '</span>' : '') + '</span>',
               sessions: [],
               extra: '',
               count: 0,
@@ -1819,13 +1827,13 @@ const HTML = `<!DOCTYPE html>
         const barW = Math.max(8, Math.round(intensity * 60));
         const loc = [a.city, a.country].filter(Boolean).join(', ') || '';
         parts.push(
-          '<div class="glb-row">' +
+          '<a class="glb-row" href="/ip/' + encodeURIComponent(a.ip) + '" target="_blank" rel="noopener" title="Open IP details for ' + esc(a.ip) + '">' +
             '<span class="glb-flag">' + flag + '</span>' +
             '<span class="glb-ip">' + esc(a.ip) + '</span>' +
             '<span class="glb-loc">' + esc(loc) + '</span>' +
             '<span class="glb-bar" style="width:' + barW + 'px"></span>' +
             '<span class="glb-count">' + a.count + '</span>' +
-          '</div>'
+          '</a>'
         );
       });
       sshGlobeTopList.innerHTML = parts.join('');
@@ -2099,12 +2107,12 @@ const HTML = `<!DOCTYPE html>
       const rows = sorted.map(h => {
         const flag = h.countryCode ? countryFlag(h.countryCode) : '';
         const loc = [h.city, h.country].filter(Boolean).join(', ');
-        return '<div class="sg-tip-row" data-ip="' + esc(h.ip) + '">' +
+        return '<a class="sg-tip-row" href="/ip/' + encodeURIComponent(h.ip) + '" target="_blank" rel="noopener" data-ip="' + esc(h.ip) + '" title="Open IP details for ' + esc(h.ip) + '">' +
           '<span class="sg-tip-flag">' + flag + '</span>' +
           '<span class="sg-tip-ip">' + esc(h.ip) + '</span>' +
           '<span class="sg-tip-loc">' + esc(loc) + '</span>' +
           '<span class="sg-tip-count">' + h.count + '</span>' +
-        '</div>';
+        '</a>';
       }).join('');
       sshGlobeTooltip.innerHTML = header + rows;
       sshGlobeTooltip.style.display = 'block';
