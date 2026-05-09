@@ -1561,7 +1561,7 @@ const HTML = `<!DOCTYPE html>
           }).filter(f => f.date);
           updateSshStats();
           renderSshGroups();
-          if (sshGroupMode === 'attacker' && !currentSshFile && typeof showSshGlobe === 'function') {
+          if (sshGroupMode === 'attacker' && typeof showSshGlobe === 'function') {
             showSshGlobe();
           }
         })
@@ -1716,7 +1716,7 @@ const HTML = `<!DOCTYPE html>
         document.querySelectorAll('.ssh-view-tab').forEach(b => b.classList.toggle('active', b === btn));
         sshGroupMode = btn.dataset.group;
         renderSshGroups();
-        if (sshGroupMode === 'attacker' && !currentSshFile) showSshGlobe();
+        if (sshGroupMode === 'attacker') showSshGlobe();
         else hideSshGlobe();
       });
     });
@@ -1730,6 +1730,7 @@ const HTML = `<!DOCTYPE html>
     let sshServerGeo = null;
     let sshGlobePhase = 0;
     let sshGlobeArcs = [];
+    let sshLandRings = null;
 
     function sshProj(lon, lat) {
       const W = sshGlobeCanvas.width, H = sshGlobeCanvas.height;
@@ -1741,10 +1742,11 @@ const HTML = `<!DOCTYPE html>
     }
 
     function ensureSshLand(cb) {
-      if (typeof landRings !== 'undefined' && landRings) { cb(); return; }
+      if (sshLandRings) { cb(); return; }
+      if (typeof landRings !== 'undefined' && landRings) { sshLandRings = landRings; cb(); return; }
       fetch('/land-110m.json').then(r => r.json()).then(topo => {
         if (typeof decodeTopoRings === 'function') {
-          window.landRings = decodeTopoRings(topo);
+          sshLandRings = decodeTopoRings(topo);
         }
         cb();
       }).catch(cb);
@@ -1852,9 +1854,9 @@ const HTML = `<!DOCTYPE html>
       }
 
       // Land masses
-      if (typeof landRings !== 'undefined' && landRings) {
+      if (sshLandRings) {
         ctx.beginPath();
-        for (const ring of landRings) {
+        for (const ring of sshLandRings) {
           if (!ring.length) continue;
           const s = sshProj(ring[0][0], ring[0][1]);
           ctx.moveTo(s[0], s[1]);
