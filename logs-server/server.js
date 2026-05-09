@@ -3562,6 +3562,59 @@ const server = http.createServer(async (req, res) => {
     </tr>`).join('');
     const statusSummary = ['2xx','3xx','4xx','5xx'].map(k=>`<span class="${sc(parseInt(k)+'00')}">${k}: ${byStatus[k]||0}</span>`).join('  ');
 
+    // SSH honeypot sessions matching this IP
+    let sshHits = [];
+    try {
+      const sshFiles = fs.readdirSync(SSH_DIR)
+        .filter(f => f.endsWith('.log') && /^20\d{6}-/.test(f))
+        .filter(f => {
+          const m = f.match(/^\d{8}-\d{6}-(.+?)-\d+\.log$/);
+          return m && m[1] === targetIp;
+        })
+        .sort().reverse();
+      sshHits = sshFiles.map(f => {
+        const st = fs.statSync(path.join(SSH_DIR, f));
+        const summaryFile  = f.replace(/\.log$/, '.summary');
+        const exposureFile = f.replace(/\.log$/, '.exposure');
+        const hasSummary  = fs.existsSync(path.join(SSH_DIR, summaryFile));
+        const hasExposure = fs.existsSync(path.join(SSH_DIR, exposureFile));
+        let summary = '', exposure = '';
+        if (hasSummary)  { try { summary  = fs.readFileSync(path.join(SSH_DIR, summaryFile),  'utf8'); } catch (_) {} }
+        if (hasExposure) { try { exposure = fs.readFileSync(path.join(SSH_DIR, exposureFile), 'utf8'); } catch (_) {} }
+        const tm = f.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-/);
+        const ts = tm ? tm[1]+'-'+tm[2]+'-'+tm[3]+' '+tm[4]+':'+tm[5]+':'+tm[6] : '';
+        return { name: f, ts, size: st.size, hasSummary, hasExposure, summary, exposure };
+      });
+    } catch (_) {}
+
+    const sshRows = sshHits.map((s, i) => {
+      const sid    = 'ssh-row-' + i;
+      const detail = 'ssh-detail-' + i;
+      const kb = (s.size / 1024).toFixed(1);
+      const sumBadge = s.hasSummary
+        ? '<span style="color:#00ff41;background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);border-radius:4px;padding:.05rem .35rem;font-size:.62rem;letter-spacing:.06em">SUMMARY</span>'
+        : '';
+      const expBadge = s.hasExposure
+        ? '<span style="color:#facc15;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);border-radius:4px;padding:.05rem .35rem;font-size:.62rem;letter-spacing:.06em">EXPOSURE</span>'
+        : '';
+      const toggleJs = "var d=document.getElementById('"+detail+"');d.style.display=d.style.display==='none'?'':'none';this.querySelector('.day-arrow').textContent=d.style.display==='none'?'\\u25B8':'\\u25BE'";
+      const summaryBlock  = s.hasSummary  ? '<div style="margin-bottom:.6rem"><div style="color:#00ff41;font-size:.6rem;letter-spacing:.14em;margin-bottom:.25rem;text-transform:uppercase">AI Summary</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;font-size:.72rem;line-height:1.5;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.15);border-radius:5px;padding:.6rem .75rem">'+esc2(s.summary)+'</pre></div>' : '';
+      const exposureBlock = s.hasExposure ? '<div style="margin-bottom:.6rem"><div style="color:#facc15;font-size:.6rem;letter-spacing:.14em;margin-bottom:.25rem;text-transform:uppercase">Exposure Analysis</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;font-size:.72rem;line-height:1.5;background:rgba(250,204,21,.04);border:1px solid rgba(250,204,21,.18);border-radius:5px;padding:.6rem .75rem">'+esc2(s.exposure)+'</pre></div>' : '';
+      const logLink = '<a href="/ssh-session?file='+esc2(s.name)+'" target="_blank" rel="noopener" style="color:#79c0ff;text-decoration:none;font-size:.7rem">▸ view full log</a>';
+      const detailContent = (summaryBlock + exposureBlock) || '<div style="color:var(--dim);font-size:.72rem;padding:.5rem 0">no summary or exposure analysis available</div>';
+      return '<tr id="'+sid+'" class="day-row" style="cursor:pointer" onclick="'+toggleJs+'">'
+           + '<td style="white-space:nowrap"><span class="day-arrow" style="display:inline-block;width:1em;color:var(--dim)">▸</span> '+esc2(s.ts)+'</td>'
+           + '<td style="color:#c9d1d9">'+kb+' KB</td>'
+           + '<td><div style="display:flex;gap:.3rem;flex-wrap:wrap">'+sumBadge+expBadge+'</div></td>'
+           + '<td onclick="event.stopPropagation()">'+logLink+'</td>'
+           + '</tr>'
+           + '<tr id="'+detail+'" style="display:none"><td colspan="4" style="padding:.4rem .6rem .8rem;background:rgba(255,255,255,.015)">'+detailContent+'</td></tr>';
+    }).join('');
+
+    const sshFirst = sshHits.length ? sshHits[sshHits.length - 1].ts : '';
+    const sshLast  = sshHits.length ? sshHits[0].ts : '';
+    const sshTotalKB = (sshHits.reduce((a, s) => a + s.size, 0) / 1024).toFixed(1);
+
     const hasGeo = !!(geo.lat || geo.lon);
     const mapLinkTag = hasGeo ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>' : '';
     const mapDivCard = hasGeo ? '<div class="card" style="grid-column:1/-1;padding:0;overflow:hidden"><div id="ip-map" style="height:260px;width:100%"></div></div>' : '';
@@ -3626,6 +3679,8 @@ const server = http.createServer(async (req, res) => {
       <div class="stat-pill"><span class="label">first seen</span><span class="value">${esc2(firstSeen||'—')}</span></div>
       <div class="stat-pill"><span class="label">last seen</span><span class="value">${esc2(lastSeen||'—')}</span></div>
       <div class="stat-pill"><span class="label">status codes</span><span class="value">${statusSummary}</span></div>
+      ${sshHits.length ? '<div class="stat-pill" style="border-color:rgba(0,255,65,.3);background:rgba(0,255,65,.04)"><span class="label" style="color:#00ff41">honeypot sessions</span><span class="value">'+sshHits.length+'</span></div>' : ''}
+      ${sshHits.length ? '<div class="stat-pill" style="border-color:rgba(0,255,65,.3);background:rgba(0,255,65,.04)"><span class="label" style="color:#00ff41">honeypot bytes</span><span class="value">'+sshTotalKB+' KB</span></div>' : ''}
     </div>
     ${hits.length===0 ? '<div class="empty">no hits found for this IP in the last '+DAYS_BACK+' days</div>' : ''}
     <div class="grid">
@@ -3646,6 +3701,7 @@ const server = http.createServer(async (req, res) => {
         <h2>user agents</h2>
         ${topUA.length ? '<table><thead><tr><th>ua</th><th>hits</th></tr></thead><tbody>'+uaRows+'</tbody></table>' : '<div class="empty">—</div>'}
       </div>
+      ${sshHits.length ? '<div class="card recent-card" style="border-color:rgba(0,255,65,.25)"><h2 style="color:#00ff41">SSH honeypot sessions <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">('+sshHits.length+(sshFirst&&sshLast&&sshFirst!==sshLast?', '+esc2(sshFirst)+' → '+esc2(sshLast):sshLast?', '+esc2(sshLast):'')+')</span></h2><table><thead><tr><th>timestamp</th><th>size</th><th>artifacts</th><th>full log</th></tr></thead><tbody>'+sshRows+'</tbody></table></div>' : ''}
       <div class="card recent-card">
         <h2>recent requests (last 100)</h2>
         ${recentRows ? '<table><thead><tr><th>timestamp</th><th>site</th><th>status</th><th>request</th><th>client</th></tr></thead><tbody>'+recentRows+'</tbody></table>' : '<div class="empty">—</div>'}
