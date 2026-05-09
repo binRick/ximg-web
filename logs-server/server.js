@@ -517,17 +517,47 @@ const HTML = `<!DOCTYPE html>
     #log-container::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
 
     #ssh-container{flex:1;overflow:hidden;display:none;flex-direction:row}
-    #ssh-list{width:280px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);
-      overflow-y:auto;padding:.5rem}
+    #ssh-list{width:320px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);
+      overflow-y:auto;padding:0}
     #ssh-list::-webkit-scrollbar{width:4px}
     #ssh-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
-    .ssh-session-item{padding:.45rem .7rem;border-radius:5px;cursor:pointer;font-size:.75rem;
-      border:1px solid transparent;transition:all .15s;margin-bottom:3px}
+    #ssh-list-header{position:sticky;top:0;background:#0d0d16;z-index:2;padding:.5rem .5rem .4rem;
+      border-bottom:1px solid rgba(255,255,255,.06)}
+    .ssh-view-bar{display:flex;gap:.25rem;margin-bottom:.4rem}
+    .ssh-view-tab{flex:1;font-family:inherit;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+      background:none;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.3rem .25rem;
+      border-radius:3px;cursor:pointer;transition:all .15s}
+    .ssh-view-tab:hover{color:var(--text);background:rgba(255,255,255,.04)}
+    .ssh-view-tab.active{background:rgba(0,255,65,.06);color:var(--green);border-color:rgba(0,255,65,.3)}
+    .ssh-stats-bar{font-size:.65rem;color:var(--dim);letter-spacing:.04em;line-height:1.4;
+      display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}
+    .ssh-stats-bar b{color:var(--text);font-weight:600}
+    #ssh-list-body{padding:.4rem .5rem}
+    .ssh-group{margin-bottom:.45rem}
+    .ssh-group-header{display:flex;align-items:center;gap:.4rem;padding:.35rem .5rem;
+      background:rgba(255,255,255,.025);border-radius:4px;cursor:pointer;user-select:none;
+      font-size:.7rem;border:1px solid rgba(255,255,255,.05)}
+    .ssh-group-header:hover{background:rgba(255,255,255,.05)}
+    .ssh-group-toggle{color:var(--dim);font-size:.6rem;width:.7rem;display:inline-block;
+      transition:transform .15s;flex-shrink:0}
+    .ssh-group.collapsed .ssh-group-toggle{transform:rotate(-90deg)}
+    .ssh-group-title{color:var(--text);flex:1;font-weight:600;letter-spacing:.03em;
+      display:flex;align-items:center;gap:.4rem;min-width:0}
+    .ssh-group-title .ssh-flag{font-size:.95rem}
+    .ssh-group-title-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ssh-group-meta{color:var(--dim);font-size:.6rem;flex-shrink:0;letter-spacing:.05em}
+    .ssh-group-items{margin-top:.3rem;padding-left:.45rem;border-left:1px solid rgba(255,255,255,.05);
+      margin-left:.4rem}
+    .ssh-group.collapsed .ssh-group-items{display:none}
+    .ssh-session-item{padding:.4rem .6rem;border-radius:4px;cursor:pointer;font-size:.74rem;
+      border:1px solid transparent;transition:all .15s;margin-bottom:2px}
     .ssh-session-item:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
     .ssh-session-item.active{background:rgba(0,255,65,.06);border-color:rgba(0,255,65,.3);color:var(--green)}
     .ssh-session-name{color:var(--text);word-break:break-all;display:flex;align-items:baseline;gap:.4rem}
     .ssh-flag{font-size:1rem;line-height:1;flex-shrink:0}
-    .ssh-session-meta{color:var(--dim);font-size:.68rem;margin-top:1px}
+    .ssh-session-meta{color:var(--dim);font-size:.66rem;margin-top:1px;display:flex;gap:.5rem;flex-wrap:wrap}
+    .ssh-session-time{color:var(--dim)}
+    .ssh-session-ip{color:#8a93a3;font-family:'Courier New',monospace}
     #ssh-right{flex:1;overflow:hidden;display:flex;flex-direction:column}
     #ssh-content{flex:1;overflow-y:auto;padding:1rem;font-size:.76rem;line-height:1.6;
       white-space:pre-wrap;word-break:break-all}
@@ -1019,7 +1049,17 @@ const HTML = `<!DOCTYPE html>
   </div>
 
   <div id="ssh-container">
-    <div id="ssh-list"><div class="ssh-empty">Loading sessions…</div></div>
+    <div id="ssh-list">
+      <div id="ssh-list-header">
+        <div class="ssh-view-bar">
+          <button class="ssh-view-tab active" data-group="day">Day</button>
+          <button class="ssh-view-tab" data-group="week">Week</button>
+          <button class="ssh-view-tab" data-group="attacker">Attacker</button>
+        </div>
+        <div class="ssh-stats-bar" id="ssh-stats">Loading…</div>
+      </div>
+      <div id="ssh-list-body"><div class="ssh-empty">Loading sessions…</div></div>
+    </div>
     <div id="ssh-right">
       <div id="ssh-subnav" style="display:none;border-bottom:1px solid rgba(255,255,255,.07);padding:.35rem .7rem;display:none;gap:.3rem;flex-shrink:0">
         <button class="ssh-view-btn active" data-view="log" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(255,255,255,.06);color:var(--green);border:1px solid rgba(0,255,65,.3);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Session Log</button>
@@ -1392,37 +1432,221 @@ const HTML = `<!DOCTYPE html>
     }
 
     const sessionGeo = new Map(); // filename -> {lat, lon}
+    let sshSessions = [];
+    let sshGroupMode = 'day';
+    const sshCollapsed = new Set();
+
+    function parseSessionDate(name) {
+      const m = name.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-/);
+      if (!m) return null;
+      return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    }
+    function parseSessionIp(name) {
+      const m = name.match(/^\d{8}-\d{6}-(.+?)-\d+\.log$/);
+      return m ? m[1] : '';
+    }
+    function dayKey(d) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function weekStart(d) {
+      const day = d.getDay() || 7; // Sun → 7
+      const m = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      m.setDate(m.getDate() - day + 1);
+      return m;
+    }
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function fmtDayLabel(d) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const diff = Math.round((today - target) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][target.getDay()];
+      return dow + ', ' + MONTHS[target.getMonth()] + ' ' + target.getDate() +
+        (target.getFullYear() !== today.getFullYear() ? ', ' + target.getFullYear() : '');
+    }
+    function fmtWeekLabel(start) {
+      const end = new Date(start); end.setDate(end.getDate() + 6);
+      const sameMonth = start.getMonth() === end.getMonth();
+      const left = MONTHS[start.getMonth()] + ' ' + start.getDate();
+      const right = (sameMonth ? '' : MONTHS[end.getMonth()] + ' ') + end.getDate();
+      return left + ' – ' + right;
+    }
+    function fmtTime(d) {
+      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
 
     function loadSshSessions() {
-      sshList.innerHTML = '<div class="ssh-empty">Loading…</div>';
+      const body = document.getElementById('ssh-list-body');
+      const stats = document.getElementById('ssh-stats');
+      body.innerHTML = '<div class="ssh-empty">Loading…</div>';
+      stats.textContent = 'Loading…';
       fetch('/ssh-sessions')
         .then(r => r.json())
         .then(files => {
-          if (!files.length) {
-            sshList.innerHTML = '<div class="ssh-empty">No sessions yet.</div>';
-            return;
-          }
-          sshList.innerHTML = '';
-          files.forEach(f => {
+          sshSessions = files.map(f => {
             sessionGeo.set(f.name, { lat: f.lat || 0, lon: f.lon || 0 });
-            const el = document.createElement('div');
-            el.className = 'ssh-session-item';
-            const kb = (f.size / 1024).toFixed(1);
-            const flag = f.countryCode ? '<span class="ssh-flag">' + countryFlag(f.countryCode) + '</span>' : '';
-            const sumBadge = f.hasSummary ? ' <span style="color:var(--green);font-size:.6rem;opacity:.7" title="AI summary available">&#x2713;</span>' : '';
-            el.innerHTML =
-              '<div class="ssh-session-name">' + flag + '<span>' + esc(f.name) + '</span>' + sumBadge + '</div>' +
-              '<div class="ssh-session-meta">' + kb + ' KB</div>';
-            el.addEventListener('click', () => {
-              document.querySelectorAll('.ssh-session-item').forEach(i => i.classList.remove('active'));
-              el.classList.add('active');
-              loadSession(f.name, f.hasSummary, f.hasExposure);
+            return Object.assign({}, f, {
+              date: parseSessionDate(f.name),
+              ip: parseSessionIp(f.name),
             });
-            sshList.appendChild(el);
-          });
+          }).filter(f => f.date);
+          updateSshStats();
+          renderSshGroups();
         })
-        .catch(() => { sshList.innerHTML = '<div class="ssh-empty">Failed to load sessions.</div>'; });
+        .catch(() => { body.innerHTML = '<div class="ssh-empty">Failed to load sessions.</div>'; });
     }
+
+    function updateSshStats() {
+      const stats = document.getElementById('ssh-stats');
+      if (!sshSessions.length) { stats.textContent = 'No sessions yet.'; return; }
+      const ips = new Set(sshSessions.map(s => s.ip));
+      const countries = new Set(sshSessions.map(s => s.countryCode).filter(Boolean));
+      const today = new Date(); today.setHours(0,0,0,0);
+      const todayCount = sshSessions.filter(s => s.date >= today).length;
+      const weekStart7 = new Date(today); weekStart7.setDate(weekStart7.getDate() - 6);
+      const weekCount = sshSessions.filter(s => s.date >= weekStart7).length;
+      stats.innerHTML =
+        '<span><b>' + sshSessions.length + '</b> sessions · <b>' + ips.size + '</b> IPs · <b>' + countries.size + '</b> countries</span>' +
+        '<span><b>' + todayCount + '</b> today · <b>' + weekCount + '</b> this week</span>';
+    }
+
+    function renderSshGroups() {
+      const body = document.getElementById('ssh-list-body');
+      if (!sshSessions.length) { body.innerHTML = '<div class="ssh-empty">No sessions yet.</div>'; return; }
+
+      const groups = new Map(); // key -> { label, sortKey, sessions, meta }
+
+      if (sshGroupMode === 'day') {
+        sshSessions.forEach(s => {
+          const k = dayKey(s.date);
+          if (!groups.has(k)) groups.set(k, { key: k, sortKey: k, label: fmtDayLabel(s.date), sessions: [], extra: '' });
+          groups.get(k).sessions.push(s);
+        });
+        groups.forEach(g => {
+          const ips = new Set(g.sessions.map(s => s.ip));
+          g.extra = g.sessions.length + ' · ' + ips.size + ' IP' + (ips.size === 1 ? '' : 's');
+        });
+      } else if (sshGroupMode === 'week') {
+        sshSessions.forEach(s => {
+          const ws = weekStart(s.date);
+          const k = dayKey(ws);
+          if (!groups.has(k)) groups.set(k, { key: k, sortKey: k, label: 'Week of ' + fmtWeekLabel(ws), sessions: [], extra: '' });
+          groups.get(k).sessions.push(s);
+        });
+        groups.forEach(g => {
+          const ips = new Set(g.sessions.map(s => s.ip));
+          g.extra = g.sessions.length + ' · ' + ips.size + ' IP' + (ips.size === 1 ? '' : 's');
+        });
+      } else { // attacker
+        sshSessions.forEach(s => {
+          const k = s.ip || 'unknown';
+          if (!groups.has(k)) {
+            const flag = s.countryCode ? '<span class="ssh-flag">' + countryFlag(s.countryCode) + '</span>' : '';
+            const where = [s.city, s.country].filter(Boolean).join(', ');
+            groups.set(k, {
+              key: k,
+              sortKey: k,
+              labelHtml: flag + '<span class="ssh-group-title-text">' + esc(s.ip || 'unknown') + (where ? ' <span style="color:var(--dim);font-weight:400">— ' + esc(where) + '</span>' : '') + '</span>',
+              sessions: [],
+              extra: '',
+              count: 0,
+            });
+          }
+          groups.get(k).sessions.push(s);
+        });
+        groups.forEach(g => {
+          const last = g.sessions[0].date; // already reverse-sorted
+          const first = g.sessions[g.sessions.length - 1].date;
+          const span = first.toDateString() === last.toDateString()
+            ? fmtDayLabel(last)
+            : fmtDayLabel(first) + ' → ' + fmtDayLabel(last);
+          g.extra = g.sessions.length + ' · ' + span;
+          g.count = g.sessions.length;
+        });
+      }
+
+      // Order groups
+      let ordered;
+      if (sshGroupMode === 'attacker') {
+        ordered = [...groups.values()].sort((a, b) => b.count - a.count);
+      } else {
+        ordered = [...groups.values()].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+      }
+
+      body.innerHTML = '';
+      ordered.forEach((g, i) => {
+        const grp = document.createElement('div');
+        grp.className = 'ssh-group';
+        const isCollapsed = sshCollapsed.has(sshGroupMode + ':' + g.key) || (sshGroupMode === 'attacker' && i > 4);
+        if (isCollapsed) grp.classList.add('collapsed');
+
+        const header = document.createElement('div');
+        header.className = 'ssh-group-header';
+        const titleHtml = g.labelHtml || '<span class="ssh-group-title-text">' + esc(g.label) + '</span>';
+        header.innerHTML =
+          '<span class="ssh-group-toggle">▾</span>' +
+          '<span class="ssh-group-title">' + titleHtml + '</span>' +
+          '<span class="ssh-group-meta">' + esc(g.extra) + '</span>';
+        header.addEventListener('click', () => {
+          const key = sshGroupMode + ':' + g.key;
+          if (grp.classList.toggle('collapsed')) sshCollapsed.add(key);
+          else sshCollapsed.delete(key);
+        });
+        grp.appendChild(header);
+
+        const items = document.createElement('div');
+        items.className = 'ssh-group-items';
+        g.sessions.forEach(f => {
+          const el = document.createElement('div');
+          el.className = 'ssh-session-item';
+          el.dataset.file = f.name;
+          const kb = (f.size / 1024).toFixed(1);
+          const flag = f.countryCode ? '<span class="ssh-flag">' + countryFlag(f.countryCode) + '</span>' : '';
+          const sumBadge = f.hasSummary ? ' <span style="color:var(--green);font-size:.6rem;opacity:.7" title="AI summary available">&#x2713;</span>' : '';
+          // In attacker view, IP is in the header so show date+time. Otherwise show IP+time.
+          let metaLeft, metaRight;
+          if (sshGroupMode === 'attacker') {
+            metaLeft = '<span class="ssh-session-time">' + MONTHS[f.date.getMonth()] + ' ' + f.date.getDate() + ' · ' + fmtTime(f.date) + '</span>';
+            metaRight = '<span>' + kb + ' KB</span>';
+          } else {
+            metaLeft = '<span class="ssh-session-time">' + fmtTime(f.date) + '</span>' +
+                       '<span class="ssh-session-ip">' + esc(f.ip) + '</span>';
+            metaRight = '<span>' + kb + ' KB</span>';
+          }
+          const headerLine = sshGroupMode === 'attacker'
+            ? '<span>' + esc(f.name.replace(/\.log$/, '').split('-').slice(0,2).join('-')) + '</span>'
+            : flag + '<span>' + esc(f.ip) + '</span>';
+          el.innerHTML =
+            '<div class="ssh-session-name">' + headerLine + sumBadge + '</div>' +
+            '<div class="ssh-session-meta">' + metaLeft + metaRight + '</div>';
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.ssh-session-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            loadSession(f.name, f.hasSummary, f.hasExposure);
+          });
+          items.appendChild(el);
+        });
+        grp.appendChild(items);
+        body.appendChild(grp);
+      });
+
+      // Re-highlight currently-loaded session if any
+      if (currentSshFile) {
+        const active = body.querySelector('.ssh-session-item[data-file="' + CSS.escape(currentSshFile) + '"]');
+        if (active) active.classList.add('active');
+      }
+    }
+
+    // View toggle
+    document.querySelectorAll('.ssh-view-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.ssh-view-tab').forEach(b => b.classList.toggle('active', b === btn));
+        sshGroupMode = btn.dataset.group;
+        renderSshGroups();
+      });
+    });
 
     let currentSshFile = null;
     let currentSshHasSummary = false;
