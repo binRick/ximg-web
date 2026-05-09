@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs   = require('fs');
 const path = require('path');
 const zlib = require('zlib');
@@ -31,6 +32,34 @@ function lookupGeo(ip) {
   ipGeoCache.set(ip, geo);
   return Promise.resolve(geo);
 }
+
+// ── Server's own public-IP geo (for SSH attack-map "target") ─────────────────
+let serverGeoPromise = null;
+function getServerGeo() {
+  if (serverGeoPromise) return serverGeoPromise;
+  serverGeoPromise = new Promise(resolve => {
+    const req = https.get('https://api.ipify.org/?format=text', { timeout: 4000 }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        const ip = data.trim();
+        if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
+          serverGeoPromise = null;
+          resolve({ ip: '', lat: 38, lon: -97, countryCode: 'US', country: 'US', city: '' });
+          return;
+        }
+        lookupGeo(ip).then(geo => {
+          resolve(Object.assign({ ip, lat: 38, lon: -97 }, geo));
+        });
+      });
+    });
+    req.on('error', () => { serverGeoPromise = null; resolve({ ip: '', lat: 38, lon: -97, countryCode: 'US', country: 'US', city: '' }); });
+    req.on('timeout', () => { req.destroy(); serverGeoPromise = null; resolve({ ip: '', lat: 38, lon: -97, countryCode: 'US', country: 'US', city: '' }); });
+  });
+  return serverGeoPromise;
+}
+// Warm up on startup
+getServerGeo();
 
 // ── All-time IP map (persisted across log rotations) ─────────────────────────
 let mapAlltimeStore = { processedFiles: [], ips: {} };
@@ -558,7 +587,38 @@ const HTML = `<!DOCTYPE html>
     .ssh-session-meta{color:var(--dim);font-size:.66rem;margin-top:1px;display:flex;gap:.5rem;flex-wrap:wrap}
     .ssh-session-time{color:var(--dim)}
     .ssh-session-ip{color:#8a93a3;font-family:'Courier New',monospace}
-    #ssh-right{flex:1;overflow:hidden;display:flex;flex-direction:column}
+    #ssh-right{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
+    #ssh-globe-pane{flex:1;position:relative;overflow:hidden;background:#020610}
+    #ssh-globe-canvas{display:block;width:100%;height:100%}
+    #ssh-globe-title{position:absolute;top:.7rem;left:.85rem;font-family:'Courier New',monospace;
+      font-size:.7rem;letter-spacing:.18em;color:rgba(0,255,150,.85);text-shadow:0 0 12px rgba(0,255,150,.4);
+      padding:.35rem .7rem;border:1px solid rgba(0,255,150,.25);background:rgba(0,15,10,.55);
+      backdrop-filter:blur(4px);border-radius:3px;pointer-events:none}
+    #ssh-globe-target{position:absolute;top:.7rem;right:.85rem;font-family:'Courier New',monospace;
+      font-size:.65rem;letter-spacing:.15em;color:rgba(0,255,150,.7);
+      padding:.35rem .7rem;border:1px solid rgba(0,255,150,.18);background:rgba(0,15,10,.55);
+      backdrop-filter:blur(4px);border-radius:3px;pointer-events:none}
+    #ssh-globe-target span{color:#fff;text-shadow:0 0 8px rgba(0,255,150,.6)}
+    #ssh-globe-toplist{position:absolute;bottom:.85rem;left:.85rem;
+      font-family:'Courier New',monospace;font-size:.66rem;color:#cdd5e1;
+      padding:.5rem .7rem;border:1px solid rgba(255,255,255,.08);background:rgba(5,12,20,.6);
+      backdrop-filter:blur(6px);border-radius:4px;min-width:220px;max-width:300px;pointer-events:none;
+      box-shadow:0 6px 24px rgba(0,0,0,.6)}
+    #ssh-globe-toplist h4{margin:0 0 .35rem;font-weight:600;font-size:.6rem;letter-spacing:.18em;
+      color:rgba(0,255,150,.85);text-transform:uppercase}
+    .glb-row{display:flex;align-items:center;gap:.4rem;padding:.15rem 0;line-height:1.4}
+    .glb-flag{font-size:.95rem;flex-shrink:0}
+    .glb-ip{font-family:'Courier New',monospace;color:#fff;flex:1;min-width:0;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .glb-loc{color:var(--dim);font-size:.6rem;flex-shrink:0;max-width:80px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .glb-bar{height:3px;border-radius:2px;background:linear-gradient(90deg,#0f0,#ff0,#f60,#f00);
+      flex-shrink:0;align-self:center}
+    .glb-count{color:#fff;font-size:.62rem;width:1.8rem;text-align:right;flex-shrink:0;font-weight:600}
+    #ssh-globe-hint{position:absolute;bottom:.85rem;right:.85rem;
+      font-family:'Courier New',monospace;font-size:.6rem;letter-spacing:.1em;color:var(--dim);
+      padding:.35rem .6rem;border:1px solid rgba(255,255,255,.06);background:rgba(5,12,20,.5);
+      border-radius:3px;pointer-events:none}
     #ssh-content{flex:1;overflow-y:auto;padding:1rem;font-size:.76rem;line-height:1.6;
       white-space:pre-wrap;word-break:break-all}
     #ssh-content::-webkit-scrollbar{width:6px}
@@ -1066,6 +1126,13 @@ const HTML = `<!DOCTYPE html>
         <button class="ssh-view-btn" data-view="summary" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:none;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Summary</button>
         <button class="ssh-view-btn" data-view="exposure" style="font-family:inherit;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:none;color:var(--dim);border:1px solid rgba(255,255,255,.08);padding:.25rem .65rem;border-radius:3px;cursor:pointer">Exposure</button>
       </div>
+      <div id="ssh-globe-pane" style="display:none">
+        <canvas id="ssh-globe-canvas"></canvas>
+        <div id="ssh-globe-title">GLOBAL SSH HONEYPOT &middot; LIVE ATTACK MAP</div>
+        <div id="ssh-globe-target">TARGET <span id="ssh-globe-target-loc">…</span></div>
+        <div id="ssh-globe-toplist"></div>
+        <div id="ssh-globe-hint">Pick a session in the sidebar to read its log</div>
+      </div>
       <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
     </div>
   </div>
@@ -1422,6 +1489,7 @@ const HTML = `<!DOCTYPE html>
       document.querySelector('.stats').style.display = '';
       sshContainer.style.display = 'none';
       logContainer.style.display = '';
+      if (typeof hideSshGlobe === 'function') hideSshGlobe();
       selectSite('all');
     }
 
@@ -1493,6 +1561,9 @@ const HTML = `<!DOCTYPE html>
           }).filter(f => f.date);
           updateSshStats();
           renderSshGroups();
+          if (sshGroupMode === 'attacker' && !currentSshFile && typeof showSshGlobe === 'function') {
+            showSshGlobe();
+          }
         })
         .catch(() => { body.innerHTML = '<div class="ssh-empty">Failed to load sessions.</div>'; });
     }
@@ -1645,7 +1716,328 @@ const HTML = `<!DOCTYPE html>
         document.querySelectorAll('.ssh-view-tab').forEach(b => b.classList.toggle('active', b === btn));
         sshGroupMode = btn.dataset.group;
         renderSshGroups();
+        if (sshGroupMode === 'attacker' && !currentSshFile) showSshGlobe();
+        else hideSshGlobe();
       });
+    });
+
+    // ── Artistic attacker globe ───────────────────────────────────────────────
+    const sshGlobePane   = document.getElementById('ssh-globe-pane');
+    const sshGlobeCanvas = document.getElementById('ssh-globe-canvas');
+    const sshGlobeTopList = document.getElementById('ssh-globe-toplist');
+    const sshGlobeTargetLoc = document.getElementById('ssh-globe-target-loc');
+    let sshGlobeAnim = null;
+    let sshServerGeo = null;
+    let sshGlobePhase = 0;
+    let sshGlobeArcs = [];
+
+    function sshProj(lon, lat) {
+      const W = sshGlobeCanvas.width, H = sshGlobeCanvas.height;
+      // Pad map: 5% inset to avoid clipping
+      const pad = 0.04;
+      const x = (((lon + 180) / 360) * (1 - 2*pad) + pad) * W;
+      const y = (((90 - lat) / 180) * (1 - 2*pad) + pad) * H;
+      return [x, y];
+    }
+
+    function ensureSshLand(cb) {
+      if (typeof landRings !== 'undefined' && landRings) { cb(); return; }
+      fetch('/land-110m.json').then(r => r.json()).then(topo => {
+        if (typeof decodeTopoRings === 'function') {
+          window.landRings = decodeTopoRings(topo);
+        }
+        cb();
+      }).catch(cb);
+    }
+
+    function ensureSshServerGeo(cb) {
+      if (sshServerGeo) { cb(); return; }
+      fetch('/server-geo').then(r => r.json()).then(g => {
+        sshServerGeo = (g && (g.lat || g.lon)) ? g : { lat: 38, lon: -97, country: 'US', city: '' };
+        const loc = [sshServerGeo.city, sshServerGeo.country].filter(Boolean).join(', ') || sshServerGeo.ip || 'unknown';
+        sshGlobeTargetLoc.textContent = loc;
+        cb();
+      }).catch(() => {
+        sshServerGeo = { lat: 38, lon: -97, country: 'US', city: '' };
+        sshGlobeTargetLoc.textContent = 'unknown';
+        cb();
+      });
+    }
+
+    function buildSshGlobeArcs() {
+      const byIp = new Map();
+      sshSessions.forEach(s => {
+        if (!s.lat && !s.lon) return;
+        if (!byIp.has(s.ip)) byIp.set(s.ip, {
+          ip: s.ip, lat: s.lat, lon: s.lon,
+          country: s.country, countryCode: s.countryCode, city: s.city, count: 0,
+        });
+        byIp.get(s.ip).count++;
+      });
+      const all = [...byIp.values()].sort((a,b) => b.count - a.count);
+      const max = all[0] ? all[0].count : 1;
+      sshGlobeArcs = all.slice(0, 30).map((a, i) => ({
+        ip: a.ip, lat: a.lat, lon: a.lon, count: a.count,
+        country: a.country, countryCode: a.countryCode, city: a.city,
+        intensity: Math.log(a.count + 1) / Math.log(max + 1),
+        // 3 staggered traveling particles per arc
+        particles: [Math.random(), Math.random()*0.66 + 0.33, Math.random()*0.33].map(p => ({
+          t: p,
+          speed: 0.0035 + Math.random() * 0.004,
+        })),
+      }));
+      renderGlobeTopList(all, max);
+    }
+
+    function renderGlobeTopList(all, max) {
+      const top = all.slice(0, 8);
+      const parts = ['<h4>Top attackers</h4>'];
+      top.forEach(a => {
+        const flag = a.countryCode ? countryFlag(a.countryCode) : '🏴';
+        const intensity = Math.log(a.count + 1) / Math.log(max + 1);
+        const barW = Math.max(8, Math.round(intensity * 60));
+        const loc = [a.city, a.country].filter(Boolean).join(', ') || '';
+        parts.push(
+          '<div class="glb-row">' +
+            '<span class="glb-flag">' + flag + '</span>' +
+            '<span class="glb-ip">' + esc(a.ip) + '</span>' +
+            '<span class="glb-loc">' + esc(loc) + '</span>' +
+            '<span class="glb-bar" style="width:' + barW + 'px"></span>' +
+            '<span class="glb-count">' + a.count + '</span>' +
+          '</div>'
+        );
+      });
+      sshGlobeTopList.innerHTML = parts.join('');
+    }
+
+    function arcColor(t, alpha) {
+      // green → yellow → red as intensity rises
+      let r, g, b;
+      if (t < 0.5) { r = Math.round(t * 2 * 255); g = 255; b = 80; }
+      else { r = 255; g = Math.round((1 - (t - 0.5) * 2) * 255); b = 60; }
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    }
+
+    function drawSshGlobe() {
+      const ctx = sshGlobeCanvas.getContext('2d');
+      const W = sshGlobeCanvas.width, H = sshGlobeCanvas.height;
+
+      // Deep-space gradient
+      const bg = ctx.createRadialGradient(W*0.5, H*0.45, 0, W*0.5, H*0.5, Math.max(W, H)*0.7);
+      bg.addColorStop(0, '#0a1c2e');
+      bg.addColorStop(0.55, '#040b16');
+      bg.addColorStop(1, '#01030a');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Twinkling starfield (deterministic positions, time-varying alpha)
+      for (let i = 0; i < 120; i++) {
+        const x = ((i * 9301 + 49297) % 233280) / 233280 * W;
+        const y = ((i * 1973 + 7919) % 233280) / 233280 * H;
+        const tw = 0.25 + 0.75 * (Math.sin(sshGlobePhase * 1.5 + i * 0.7) * 0.5 + 0.5);
+        ctx.fillStyle = 'rgba(220,235,255,' + (tw * 0.5).toFixed(3) + ')';
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+      // Graticule
+      ctx.strokeStyle = 'rgba(80,180,255,0.05)';
+      ctx.lineWidth = 0.5;
+      for (let lon = -180; lon <= 180; lon += 30) {
+        const a = sshProj(lon, 85), b = sshProj(lon, -85);
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      }
+      for (let lat = -60; lat <= 60; lat += 30) {
+        const a = sshProj(-180, lat), b = sshProj(180, lat);
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      }
+
+      // Land masses
+      if (typeof landRings !== 'undefined' && landRings) {
+        ctx.beginPath();
+        for (const ring of landRings) {
+          if (!ring.length) continue;
+          const s = sshProj(ring[0][0], ring[0][1]);
+          ctx.moveTo(s[0], s[1]);
+          for (let i = 1; i < ring.length; i++) {
+            const p = sshProj(ring[i][0], ring[i][1]);
+            ctx.lineTo(p[0], p[1]);
+          }
+          ctx.closePath();
+        }
+        const lg = ctx.createLinearGradient(0, 0, 0, H);
+        lg.addColorStop(0, 'rgba(20,55,80,0.85)');
+        lg.addColorStop(1, 'rgba(8,28,42,0.85)');
+        ctx.fillStyle = lg;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,220,170,0.22)';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+
+      if (!sshServerGeo) return;
+      const target = sshProj(sshServerGeo.lon, sshServerGeo.lat);
+
+      // Arcs (drawn before dots and target so dots glow on top)
+      sshGlobeArcs.forEach((arc, i) => {
+        const start = sshProj(arc.lon, arc.lat);
+        // Bezier control point — lift the arc up by a fraction of the distance,
+        // so close arcs have small lift and intercontinental arcs have a big bow
+        const dx = target[0] - start[0], dy = target[1] - start[1];
+        const dist = Math.hypot(dx, dy);
+        const lift = Math.min(H * 0.55, dist * 0.45 + 30);
+        const cx = (start[0] + target[0]) / 2;
+        const cy = (start[1] + target[1]) / 2 - lift;
+
+        // Faint full arc line
+        ctx.strokeStyle = arcColor(arc.intensity, 0.18 + arc.intensity * 0.15);
+        ctx.lineWidth = 0.8 + arc.intensity * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(start[0], start[1]);
+        ctx.quadraticCurveTo(cx, cy, target[0], target[1]);
+        ctx.stroke();
+
+        // Traveling particles with comet trails
+        arc.particles.forEach(p => {
+          p.t += p.speed;
+          if (p.t > 1) p.t -= 1;
+          // 8 trail samples behind the head
+          for (let s = 0; s < 8; s++) {
+            const ts = p.t - s * 0.018;
+            if (ts < 0 || ts > 1) continue;
+            const omt = 1 - ts;
+            const x = omt*omt*start[0] + 2*omt*ts*cx + ts*ts*target[0];
+            const y = omt*omt*start[1] + 2*omt*ts*cy + ts*ts*target[1];
+            const fade = (1 - s/8) * (1 - s/8);
+            const r = (4 - s * 0.4);
+            const grd = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+            grd.addColorStop(0, arcColor(arc.intensity, 0.85 * fade));
+            grd.addColorStop(1, arcColor(arc.intensity, 0));
+            ctx.fillStyle = grd;
+            ctx.beginPath(); ctx.arc(x, y, r * 3, 0, Math.PI*2); ctx.fill();
+          }
+          // Bright head
+          const omt = 1 - p.t;
+          const hx = omt*omt*start[0] + 2*omt*p.t*cx + p.t*p.t*target[0];
+          const hy = omt*omt*start[1] + 2*omt*p.t*cy + p.t*p.t*target[1];
+          ctx.beginPath(); ctx.arc(hx, hy, 1.8, 0, Math.PI*2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+        });
+      });
+
+      // Attacker pulse dots
+      sshGlobeArcs.forEach((arc, i) => {
+        const p = sshProj(arc.lon, arc.lat);
+        const baseR = 2.5 + arc.intensity * 5;
+        const phase = sshGlobePhase * 1.4 + i * 0.6;
+        const fade = Math.sin(phase) * 0.5 + 0.5;
+        // Outer expanding ring
+        const ringR = baseR + 4 + fade * 18;
+        ctx.beginPath(); ctx.arc(p[0], p[1], ringR, 0, Math.PI*2);
+        ctx.strokeStyle = arcColor(arc.intensity, 0.05 + (1 - fade) * 0.18);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Glow
+        const grd = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], baseR * 4);
+        grd.addColorStop(0, arcColor(arc.intensity, 0.55));
+        grd.addColorStop(1, arcColor(arc.intensity, 0));
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(p[0], p[1], baseR * 4, 0, Math.PI*2); ctx.fill();
+        // Core
+        ctx.beginPath(); ctx.arc(p[0], p[1], baseR, 0, Math.PI*2);
+        ctx.fillStyle = arcColor(arc.intensity, 1);
+        ctx.fill();
+      });
+
+      // Target (server) — big animated bullseye with cross-hairs
+      // Concentric expanding rings
+      for (let k = 0; k < 4; k++) {
+        const ph = (sshGlobePhase * 0.6 + k * 0.5) % 2;
+        const r = ph * 50;
+        const a = Math.max(0, 0.55 - ph * 0.28);
+        ctx.beginPath();
+        ctx.arc(target[0], target[1], r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0,255,180,' + a.toFixed(3) + ')';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+      // Outer fixed ring
+      ctx.beginPath();
+      ctx.arc(target[0], target[1], 14, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,255,180,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(target[0], target[1], 9, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,255,180,0.3)';
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+      // Cross-hairs
+      ctx.strokeStyle = 'rgba(0,255,180,0.85)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(target[0] - 22, target[1]); ctx.lineTo(target[0] - 6, target[1]);
+      ctx.moveTo(target[0] + 6, target[1]);  ctx.lineTo(target[0] + 22, target[1]);
+      ctx.moveTo(target[0], target[1] - 22); ctx.lineTo(target[0], target[1] - 6);
+      ctx.moveTo(target[0], target[1] + 6);  ctx.lineTo(target[0], target[1] + 22);
+      ctx.stroke();
+      // Target glow
+      const tg = ctx.createRadialGradient(target[0], target[1], 0, target[0], target[1], 30);
+      tg.addColorStop(0, 'rgba(0,255,180,0.6)');
+      tg.addColorStop(1, 'rgba(0,255,180,0)');
+      ctx.fillStyle = tg;
+      ctx.beginPath(); ctx.arc(target[0], target[1], 30, 0, Math.PI*2); ctx.fill();
+      // Core
+      ctx.beginPath(); ctx.arc(target[0], target[1], 3.5, 0, Math.PI*2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    function resizeSshGlobe() {
+      if (!sshGlobePane.offsetWidth) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      sshGlobeCanvas.width  = Math.round(sshGlobePane.offsetWidth  * dpr);
+      sshGlobeCanvas.height = Math.round(sshGlobePane.offsetHeight * dpr);
+      sshGlobeCanvas.style.width  = sshGlobePane.offsetWidth + 'px';
+      sshGlobeCanvas.style.height = sshGlobePane.offsetHeight + 'px';
+    }
+
+    function startSshGlobeAnim() {
+      if (sshGlobeAnim) cancelAnimationFrame(sshGlobeAnim);
+      function frame() {
+        if (!sshMode || sshGroupMode !== 'attacker' || sshGlobePane.style.display === 'none') {
+          sshGlobeAnim = null;
+          return;
+        }
+        sshGlobePhase += 0.025;
+        drawSshGlobe();
+        sshGlobeAnim = requestAnimationFrame(frame);
+      }
+      sshGlobeAnim = requestAnimationFrame(frame);
+    }
+
+    function showSshGlobe() {
+      sshGlobePane.style.display = 'block';
+      document.getElementById('ssh-content').style.display = 'none';
+      sshSubnav.style.display = 'none';
+      resizeSshGlobe();
+      ensureSshLand(() => {
+        ensureSshServerGeo(() => {
+          buildSshGlobeArcs();
+          resizeSshGlobe();
+          startSshGlobeAnim();
+        });
+      });
+    }
+    function hideSshGlobe() {
+      sshGlobePane.style.display = 'none';
+      document.getElementById('ssh-content').style.display = '';
+      if (sshGlobeAnim) { cancelAnimationFrame(sshGlobeAnim); sshGlobeAnim = null; }
+    }
+    window.addEventListener('resize', () => {
+      if (sshMode && sshGroupMode === 'attacker' && sshGlobePane.style.display !== 'none') {
+        resizeSshGlobe();
+      }
     });
 
     let currentSshFile = null;
@@ -1658,6 +2050,7 @@ const HTML = `<!DOCTYPE html>
       currentSshFile = filename;
       currentSshHasSummary = hasSummary;
       currentSshHasExposure = hasExposure;
+      hideSshGlobe();
       // Show sub-nav and reset to log view
       sshSubnav.style.display = 'flex';
       sshViewBtns.forEach(b => {
@@ -2547,6 +2940,13 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/robots.txt') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('User-agent: *\nDisallow: /\n');
+    return;
+  }
+
+  if (req.url === '/server-geo') {
+    const geo = await getServerGeo();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(geo));
     return;
   }
 
