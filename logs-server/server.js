@@ -619,6 +619,22 @@ const HTML = `<!DOCTYPE html>
       font-family:'Courier New',monospace;font-size:.6rem;letter-spacing:.1em;color:var(--dim);
       padding:.35rem .6rem;border:1px solid rgba(255,255,255,.06);background:rgba(5,12,20,.5);
       border-radius:3px;pointer-events:none}
+    #ssh-globe-tooltip{position:absolute;display:none;font-family:'Courier New',monospace;
+      font-size:.7rem;color:#e6edf3;background:rgba(5,12,20,.92);border:1px solid rgba(0,255,150,.35);
+      border-radius:4px;padding:.4rem .55rem;box-shadow:0 8px 28px rgba(0,0,0,.7),0 0 12px rgba(0,255,150,.2);
+      backdrop-filter:blur(6px);min-width:230px;max-width:340px;z-index:10;pointer-events:auto}
+    .sg-tip-h{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(0,255,150,.85);
+      margin-bottom:.35rem;padding-bottom:.3rem;border-bottom:1px solid rgba(255,255,255,.08)}
+    .sg-tip-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .35rem;border-radius:3px;
+      cursor:pointer;transition:background .15s}
+    .sg-tip-row:hover{background:rgba(0,255,150,.08)}
+    .sg-tip-flag{font-size:1rem;flex-shrink:0}
+    .sg-tip-ip{color:#fff;font-weight:600;flex:1;min-width:0;overflow:hidden;
+      text-overflow:ellipsis;white-space:nowrap}
+    .sg-tip-loc{color:var(--dim);font-size:.62rem;flex-shrink:0;max-width:120px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sg-tip-count{color:#00ffae;font-weight:700;font-size:.7rem;flex-shrink:0;min-width:1.6rem;text-align:right}
+    .ssh-group.flash > .ssh-group-header{box-shadow:0 0 0 2px rgba(0,255,150,.7),0 0 18px rgba(0,255,150,.35)}
     #ssh-content{flex:1;overflow-y:auto;padding:1rem;font-size:.76rem;line-height:1.6;
       white-space:pre-wrap;word-break:break-all}
     #ssh-content::-webkit-scrollbar{width:6px}
@@ -1131,7 +1147,8 @@ const HTML = `<!DOCTYPE html>
         <div id="ssh-globe-title">GLOBAL SSH HONEYPOT &middot; LIVE ATTACK MAP</div>
         <div id="ssh-globe-target">TARGET <span id="ssh-globe-target-loc">…</span></div>
         <div id="ssh-globe-toplist"></div>
-        <div id="ssh-globe-hint">Pick a session in the sidebar to read its log</div>
+        <div id="ssh-globe-hint">Hover an attacker · click an IP to see its sessions</div>
+        <div id="ssh-globe-tooltip"></div>
       </div>
       <div id="ssh-content"><div class="ssh-placeholder">← Select a session to view</div></div>
     </div>
@@ -1731,6 +1748,8 @@ const HTML = `<!DOCTYPE html>
     let sshGlobePhase = 0;
     let sshGlobeArcs = [];
     let sshLandRings = null;
+    let sshHoveredIps = new Set();
+    const sshGlobeTooltip = document.getElementById('ssh-globe-tooltip');
 
     function sshProj(lon, lat) {
       const W = sshGlobeCanvas.width, H = sshGlobeCanvas.height;
@@ -1880,8 +1899,10 @@ const HTML = `<!DOCTYPE html>
       const target = sshProj(sshServerGeo.lon, sshServerGeo.lat);
 
       // Arcs (drawn before dots and target so dots glow on top)
+      const anyHover = sshHoveredIps.size > 0;
       sshGlobeArcs.forEach((arc, i) => {
         const start = sshProj(arc.lon, arc.lat);
+        const isHover = sshHoveredIps.has(arc.ip);
         // Bezier control point — lift the arc up by a fraction of the distance,
         // so close arcs have small lift and intercontinental arcs have a big bow
         const dx = target[0] - start[0], dy = target[1] - start[1];
@@ -1889,10 +1910,14 @@ const HTML = `<!DOCTYPE html>
         const lift = Math.min(H * 0.55, dist * 0.45 + 30);
         const cx = (start[0] + target[0]) / 2;
         const cy = (start[1] + target[1]) / 2 - lift;
+        arc._cp = [cx, cy, start[0], start[1]];
 
-        // Faint full arc line
-        ctx.strokeStyle = arcColor(arc.intensity, 0.18 + arc.intensity * 0.15);
-        ctx.lineWidth = 0.8 + arc.intensity * 0.8;
+        // Faint full arc line — dim non-hovered when something is hovered
+        const lineAlpha = isHover ? 0.85
+          : anyHover ? (0.06 + arc.intensity * 0.05)
+          : (0.18 + arc.intensity * 0.15);
+        ctx.strokeStyle = arcColor(arc.intensity, lineAlpha);
+        ctx.lineWidth = isHover ? (1.6 + arc.intensity * 1.2) : (0.8 + arc.intensity * 0.8);
         ctx.beginPath();
         ctx.moveTo(start[0], start[1]);
         ctx.quadraticCurveTo(cx, cy, target[0], target[1]);
@@ -1930,25 +1955,33 @@ const HTML = `<!DOCTYPE html>
       // Attacker pulse dots
       sshGlobeArcs.forEach((arc, i) => {
         const p = sshProj(arc.lon, arc.lat);
-        const baseR = 2.5 + arc.intensity * 5;
+        arc._screen = p;
+        const isHover = sshHoveredIps.has(arc.ip);
+        const baseR = (2.5 + arc.intensity * 5) * (isHover ? 1.6 : 1);
         const phase = sshGlobePhase * 1.4 + i * 0.6;
         const fade = Math.sin(phase) * 0.5 + 0.5;
         // Outer expanding ring
         const ringR = baseR + 4 + fade * 18;
         ctx.beginPath(); ctx.arc(p[0], p[1], ringR, 0, Math.PI*2);
-        ctx.strokeStyle = arcColor(arc.intensity, 0.05 + (1 - fade) * 0.18);
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = arcColor(arc.intensity, (isHover ? 0.5 : 0.05) + (1 - fade) * 0.18);
+        ctx.lineWidth = isHover ? 1.5 : 1;
         ctx.stroke();
         // Glow
         const grd = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], baseR * 4);
-        grd.addColorStop(0, arcColor(arc.intensity, 0.55));
+        grd.addColorStop(0, arcColor(arc.intensity, isHover ? 0.85 : 0.55));
         grd.addColorStop(1, arcColor(arc.intensity, 0));
         ctx.fillStyle = grd;
         ctx.beginPath(); ctx.arc(p[0], p[1], baseR * 4, 0, Math.PI*2); ctx.fill();
         // Core
         ctx.beginPath(); ctx.arc(p[0], p[1], baseR, 0, Math.PI*2);
-        ctx.fillStyle = arcColor(arc.intensity, 1);
+        ctx.fillStyle = isHover ? '#ffffff' : arcColor(arc.intensity, 1);
         ctx.fill();
+        if (isHover) {
+          ctx.beginPath(); ctx.arc(p[0], p[1], baseR + 2, 0, Math.PI*2);
+          ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       });
 
       // Target (server) — big animated bullseye with cross-hairs
@@ -2041,6 +2074,102 @@ const HTML = `<!DOCTYPE html>
         resizeSshGlobe();
       }
     });
+
+    // Pointer hover → highlight attacker(s) at this location and show clickable IP list
+    function pointerToCanvas(e) {
+      const rect = sshGlobeCanvas.getBoundingClientRect();
+      const sx = sshGlobeCanvas.width / Math.max(1, rect.width);
+      const sy = sshGlobeCanvas.height / Math.max(1, rect.height);
+      return [(e.clientX - rect.left) * sx, (e.clientY - rect.top) * sy, e.clientX - rect.left, e.clientY - rect.top];
+    }
+    function findHits(canvasX, canvasY) {
+      // Hit-radius: dot's drawn radius + slack, in canvas pixels
+      return sshGlobeArcs.filter(arc => {
+        if (!arc._screen) return false;
+        const baseR = 2.5 + arc.intensity * 5;
+        const hitR = baseR + 14;
+        return Math.hypot(arc._screen[0] - canvasX, arc._screen[1] - canvasY) <= hitR;
+      });
+    }
+    function showSshTooltip(localX, localY, hits) {
+      const sorted = [...hits].sort((a, b) => b.count - a.count);
+      const header = sorted.length > 1
+        ? '<div class="sg-tip-h">' + sorted.length + ' attackers at this location</div>'
+        : '<div class="sg-tip-h">Attacker</div>';
+      const rows = sorted.map(h => {
+        const flag = h.countryCode ? countryFlag(h.countryCode) : '';
+        const loc = [h.city, h.country].filter(Boolean).join(', ');
+        return '<div class="sg-tip-row" data-ip="' + esc(h.ip) + '">' +
+          '<span class="sg-tip-flag">' + flag + '</span>' +
+          '<span class="sg-tip-ip">' + esc(h.ip) + '</span>' +
+          '<span class="sg-tip-loc">' + esc(loc) + '</span>' +
+          '<span class="sg-tip-count">' + h.count + '</span>' +
+        '</div>';
+      }).join('');
+      sshGlobeTooltip.innerHTML = header + rows;
+      sshGlobeTooltip.style.display = 'block';
+      // Position: prefer right/below, flip if it would overflow
+      const tw = sshGlobeTooltip.offsetWidth, th = sshGlobeTooltip.offsetHeight;
+      const pw = sshGlobePane.offsetWidth, ph = sshGlobePane.offsetHeight;
+      let left = localX + 14, top = localY + 14;
+      if (left + tw > pw - 8) left = localX - tw - 14;
+      if (top  + th > ph - 8) top  = localY - th - 14;
+      if (left < 8) left = 8;
+      if (top  < 8) top  = 8;
+      sshGlobeTooltip.style.left = left + 'px';
+      sshGlobeTooltip.style.top  = top + 'px';
+    }
+    function hideSshTooltip() {
+      sshGlobeTooltip.style.display = 'none';
+      if (sshHoveredIps.size) sshHoveredIps = new Set();
+    }
+    sshGlobeCanvas.addEventListener('mousemove', (e) => {
+      const [cx, cy, lx, ly] = pointerToCanvas(e);
+      const hits = findHits(cx, cy);
+      if (hits.length) {
+        sshHoveredIps = new Set(hits.map(h => h.ip));
+        showSshTooltip(lx, ly, hits);
+        sshGlobeCanvas.style.cursor = 'pointer';
+      } else {
+        sshHoveredIps = new Set();
+        sshGlobeTooltip.style.display = 'none';
+        sshGlobeCanvas.style.cursor = '';
+      }
+    });
+    sshGlobeCanvas.addEventListener('mouseleave', () => {
+      // Don't hide if user is moving onto the tooltip itself
+      setTimeout(() => {
+        if (!sshGlobeTooltip.matches(':hover')) hideSshTooltip();
+      }, 50);
+    });
+    sshGlobeTooltip.addEventListener('mouseleave', hideSshTooltip);
+    sshGlobeCanvas.addEventListener('click', (e) => {
+      const [cx, cy] = pointerToCanvas(e);
+      const hits = findHits(cx, cy);
+      if (hits.length === 1) focusAttackerGroup(hits[0].ip);
+    });
+    sshGlobeTooltip.addEventListener('click', (e) => {
+      const row = e.target.closest('.sg-tip-row');
+      if (!row) return;
+      focusAttackerGroup(row.dataset.ip);
+    });
+
+    function focusAttackerGroup(ip) {
+      const body = document.getElementById('ssh-list-body');
+      const groups = body.querySelectorAll('.ssh-group');
+      for (const g of groups) {
+        const titleText = g.querySelector('.ssh-group-title-text');
+        if (!titleText) continue;
+        if (titleText.textContent.indexOf(ip) === 0 || titleText.textContent.split(' ')[0] === ip) {
+          g.classList.remove('collapsed');
+          sshCollapsed.delete('attacker:' + ip);
+          g.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          g.classList.add('flash');
+          setTimeout(() => g.classList.remove('flash'), 1600);
+          return;
+        }
+      }
+    }
 
     let currentSshFile = null;
     let currentSshHasSummary = false;
