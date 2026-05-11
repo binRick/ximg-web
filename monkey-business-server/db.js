@@ -196,6 +196,32 @@ const stmts = {
     SELECT round_id, settled_at, cum_market
     FROM market_returns
     ORDER BY round_id ASC
+  `),
+  recentMarketSince: db.prepare(`
+    SELECT round_id, settled_at, market_pct, swarm_pct, cum_market, cum_swarm
+    FROM market_returns
+    WHERE settled_at >= ?
+    ORDER BY round_id ASC
+  `),
+  marketRoundsAscSince: db.prepare(`
+    SELECT round_id, settled_at, market_pct, cum_market
+    FROM market_returns
+    WHERE settled_at >= ?
+    ORDER BY round_id ASC
+  `),
+  allSettledPicksOrderedSince: db.prepare(`
+    SELECT p.monkey_id, p.pnl_pct
+    FROM picks p
+    JOIN rounds r ON r.id = p.round_id
+    WHERE p.pnl_pct IS NOT NULL AND r.settled_at >= ?
+    ORDER BY p.monkey_id, p.round_id
+  `),
+  allSettledPicksByRoundSince: db.prepare(`
+    SELECT p.round_id, p.monkey_id, p.pnl_pct
+    FROM picks p
+    JOIN rounds r ON r.id = p.round_id
+    WHERE p.pnl_pct IS NOT NULL AND r.settled_at >= ?
+    ORDER BY p.round_id, p.monkey_id
   `)
 };
 

@@ -388,7 +388,7 @@
   </main>
 
   <script type="module">
-    import { initArena, fireBonus, getCurrentState, hitTestMonkey, chorus } from './arena.js';
+    import { initArena, getCurrentState, hitTestMonkey, chorus } from './arena.js';
     import { getState, getLeaderboard } from './api.js';
     import { playReleaseSound } from './release-sounds.js';
 
@@ -466,18 +466,13 @@
     });
     syncSoundToggle();
 
-    // ---- Bonus throw button — multi-click friendly. Never disabled; rapid
-    // clicks land as separate POSTs, gated by the server's tiny cooldown.
-    let throwCount = 0;
-    $('throw-btn').addEventListener('click', async (ev) => {
+    // ---- Bonus throw button — visual/audio only. Click plays the monkey
+    // chorus and the ripple animation; no server-side trade is triggered.
+    $('throw-btn').addEventListener('click', (ev) => {
       const btn = $('throw-btn');
-      const status = $('throw-status');
 
-      // Random monkey clip — always plays on click (independent of whether the
-      // server accepts the throw, so the button always feels alive).
       playReleaseSound();
 
-      // Visual ripple at click point
       const r = document.createElement('span');
       r.className = 'ripple';
       const rect = btn.getBoundingClientRect();
@@ -490,27 +485,6 @@
 
       btn.classList.add('cooling');
       setTimeout(() => btn.classList.remove('cooling'), 200);
-
-      try {
-        const { status: code, body } = await fireBonus();
-        if (code === 202) {
-          throwCount++;
-          status.className = 'throw-status ok';
-          status.textContent = `${throwCount} round${throwCount === 1 ? '' : 's'} launched.`;
-        } else if (code === 429) {
-          status.className = 'throw-status err';
-          status.textContent = `Easy — wait ${Math.ceil((body.retryAfterMs || 1000) / 1000)}s.`;
-        } else if (body?.reason === 'too_soon') {
-          status.className = 'throw-status err';
-          status.textContent = 'Server already mid-round — try again.';
-        } else {
-          status.className = 'throw-status err';
-          status.textContent = `Couldn't throw: ${body?.reason || code}`;
-        }
-      } catch (e) {
-        status.className = 'throw-status err';
-        status.textContent = 'Network error.';
-      }
     });
 
     // ---- Hover tooltip on monkeys (id + name + cumulative if known)

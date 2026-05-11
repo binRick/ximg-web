@@ -1,8 +1,44 @@
 const http = require('http');
 const url  = require('url');
 const { stmts, asTx } = require('./db');
-const { TICKERS, fetchAllQuotes, fetchHistory, getApiStats } = require('./market');
+const { TICKERS, fetchAllQuotes: yahooFetchAllQuotes, fetchHistory, getApiStats: getYahooStats } = require('./market');
+const alpaca = require('./alpaca');
 const { pickFor: strategyPick } = require('./strategy');
+
+const USE_ALPACA = process.env.USE_ALPACA === '1';
+
+// Unified quote shape across data sources:
+//   { [ticker]: { bid, ask, mid } }
+// Yahoo only returns a last-trade number, so we widen it to bid=ask=mid=last
+// (a zero-spread world — the legacy behaviour that produces the bogus
+// contrarian alpha). Alpaca returns real bid/ask from the IEX feed, which is
+// the whole point of this rewrite: ENTRY = ask, EXIT = bid, so the spread is
+// charged to the simulated trader exactly like a live broker would charge it.
+async function fetchQuotes() {
+  if (USE_ALPACA) {
+    const clock = await alpaca.getClock().catch(() => null);
+    if (clock && clock.is_open === false) {
+      // Off-hours: IEX freezes quotes at the close with wide bands. Return
+      // an empty map so the round-runner falls through to its skip path.
+      return { _isOpen: false };
+    }
+    const q = await alpaca.fetchAllQuotes();
+    q._isOpen = true;
+    return q;
+  }
+  const m = await yahooFetchAllQuotes();
+  const out = {};
+  for (const t of Object.keys(m)) {
+    const p = m[t];
+    out[t] = { bid: p, ask: p, mid: p };
+  }
+  out._isOpen = true;
+  return out;
+}
+
+function getApiStats() {
+  return USE_ALPACA ? alpaca.getApiStats() : getYahooStats();
+}
 
 const PORT             = +(process.env.PORT || 3015);
 const ROUND_INTERVAL_MS = +(process.env.ROUND_INTERVAL_MS || 60 * 1000);
@@ -40,14 +76,18 @@ async function runRound(kind) {
 
     let priceMap;
     try {
-      priceMap = await fetchAllQuotes();
+      priceMap = await fetchQuotes();
     } catch (err) {
       console.error('[round] price fetch failed:', err.message);
       return { ok: false, reason: 'fetch_failed' };
     }
+    if (priceMap._isOpen === false) {
+      return { ok: false, reason: 'market_closed' };
+    }
+    delete priceMap._isOpen;
     const availableTickers = Object.keys(priceMap);
     if (availableTickers.length < 50) {
-      // sanity floor — yahoo sometimes returns a half-empty response off-hours
+      // sanity floor — feed sometimes returns a half-empty response off-hours
       return { ok: false, reason: 'too_few_quotes', got: availableTickers.length };
     }
 
@@ -67,38 +107,46 @@ async function runRound(kind) {
         const prevPrices = stmts.pricesForRound.all(prev.id);
         const prevPriceMap = new Map(prevPrices.map(r => [r.ticker, r.price]));
 
-        // Build per-ticker pnl snapshot for the strategy module's context
-        for (const [ticker, oldP] of prevPriceMap) {
-          const newP = priceMap[ticker];
-          if (typeof newP === 'number' && oldP > 0) {
-            tickerPnls.push({ ticker, pnl: (newP - oldP) / oldP });
+        // Strategy signal uses mid-to-mid so the contrarian's "edge" can't
+        // come from bid-ask bounce noise; the realistic fill cost is charged
+        // separately via ask/bid below.
+        for (const [ticker, oldMid] of prevPriceMap) {
+          const cur = priceMap[ticker];
+          if (cur && oldMid > 0) {
+            tickerPnls.push({ ticker, pnl: (cur.mid - oldMid) / oldMid });
           }
         }
         tickerPnls.sort((a, b) => b.pnl - a.pnl);
         for (const p of prevPicks) lastPickByMonkey.set(p.monkey_id, p.ticker);
 
-        // Equal-weight market % change between prev and new prices
+        // Equal-weight market % change — also charged the spread (buy at ask,
+        // sell at bid) for an honest "you could have just held the basket"
+        // comparison. Under Yahoo (zero-spread shim) this collapses to the
+        // old mid-to-mid behaviour.
         let mSum = 0, mCount = 0;
-        for (const { ticker, price: oldP } of prevPrices) {
-          const newP = priceMap[ticker];
-          if (typeof newP === 'number') {
-            mSum += (newP - oldP) / oldP;
+        for (const { ticker, price: oldMid } of prevPrices) {
+          const cur = priceMap[ticker];
+          if (cur) {
+            mSum += (cur.bid - oldMid) / oldMid;  // entered at prev mid, sold at current bid — conservative
             mCount++;
           }
         }
         marketPct = mCount ? mSum / mCount : 0;
 
-        // Per-pick P&L
+        // Per-pick P&L — entry was the ask paid last round; exit is the bid
+        // received this round. Spread cost is charged automatically.
         let swarmSum = 0;
         for (const pick of prevPicks) {
-          const exit = priceMap[pick.ticker];
-          let pnl;
-          if (typeof exit === 'number') {
-            pnl = (exit - pick.entry_price) / pick.entry_price;
+          const cur = priceMap[pick.ticker];
+          let pnl, exitPrice;
+          if (cur) {
+            exitPrice = cur.bid;
+            pnl = (exitPrice - pick.entry_price) / pick.entry_price;
           } else {
+            exitPrice = pick.entry_price;
             pnl = 0; // ticker missing this round — treat as flat
           }
-          stmts.settlePick.run(typeof exit === 'number' ? exit : pick.entry_price, pnl, prev.id, pick.monkey_id);
+          stmts.settlePick.run(exitPrice, pnl, prev.id, pick.monkey_id);
 
           // Update rolling per-monkey stats
           const beatMarket = pnl > marketPct ? 1 : 0;
@@ -121,9 +169,12 @@ async function runRound(kind) {
       // 2) Open new round
       const roundId = stmts.insertRound.run(startedAt, kind).lastInsertRowid;
 
-      // 3) Snapshot prices
+      // 3) Snapshot prices — we store the mid (used as the strategy signal
+      //    on the next round). The bid/ask aren't persisted in `prices` for
+      //    now; they're only needed live, and re-storing them every round
+      //    bloats the DB for little gain.
       for (const t of availableTickers) {
-        stmts.insertPrice.run(roundId, t, priceMap[t]);
+        stmts.insertPrice.run(roundId, t, priceMap[t].mid);
       }
 
       // 4) Each monkey picks one ticker. ids 1-50 use uniform random (the
@@ -133,10 +184,11 @@ async function runRound(kind) {
       const ctx = { tickers: availableTickers, tickerPnls, lastPickByMonkey, roundId };
       for (const m of monkeys) {
         let t = strategyPick(m.id, ctx);
-        if (typeof priceMap[t] !== 'number') {
+        if (!priceMap[t]) {
           t = availableTickers[(Math.random() * availableTickers.length) | 0];
         }
-        stmts.insertPick.run(roundId, m.id, t, priceMap[t]);
+        // entry_price = ASK (what a buyer actually pays this round)
+        stmts.insertPick.run(roundId, m.id, t, priceMap[t].ask);
       }
 
       lastRoundStartedAt = startedAt;
@@ -373,8 +425,23 @@ const routes = {
   },
 
   'GET /api/swarm': (req, res) => {
-    const limit = +(url.parse(req.url, true).query.limit || 500);
-    const rows = stmts.recentMarket.all(Math.min(5000, Math.max(1, limit))).reverse();
+    const q = url.parse(req.url, true).query;
+    const fromRaw = q.from ? +q.from : null;
+    const from = Number.isFinite(fromRaw) ? fromRaw : null;
+    let rows;
+    if (from != null) {
+      rows = stmts.recentMarketSince.all(from);
+      const MAX = 1000;
+      if (rows.length > MAX) {
+        const step = (rows.length - 1) / (MAX - 1);
+        const out = new Array(MAX);
+        for (let i = 0; i < MAX; i++) out[i] = rows[Math.round(i * step)];
+        rows = out;
+      }
+    } else {
+      const limit = +(q.limit || 500);
+      rows = stmts.recentMarket.all(Math.min(5000, Math.max(1, limit))).reverse();
+    }
     json(res, 200, {
       points: rows.map(r => ({
         roundId:    r.round_id,
@@ -390,11 +457,19 @@ const routes = {
   'GET /api/sparks': (req, res) => {
     // Cumulative log-return series for every monkey, downsampled to ~30 points
     // each — small enough to ship in one round-trip for the dropdown sparklines.
-    const cached = sparksCache.get();
-    if (cached) return json(res, 200, cached);
+    const q = url.parse(req.url, true).query;
+    const fromRaw = q.from ? +q.from : null;
+    const from = Number.isFinite(fromRaw) ? fromRaw : null;
+
+    if (from == null) {
+      const cached = sparksCache.get();
+      if (cached) return json(res, 200, cached);
+    }
 
     const N_POINTS = 30;
-    const rows = stmts.allSettledPicksOrdered.all();
+    const rows = from != null
+      ? stmts.allSettledPicksOrderedSince.all(from)
+      : stmts.allSettledPicksOrdered.all();
     const series = new Map(); // monkey_id -> rolling cumulative log-return array
 
     for (const r of rows) {
@@ -424,7 +499,7 @@ const routes = {
       });
     }
     const payload = { asOf: Date.now(), monkeys };
-    sparksCache.set(payload);
+    if (from == null) sparksCache.set(payload);
     json(res, 200, payload);
   },
 
@@ -432,25 +507,40 @@ const routes = {
     // For each settled round, how many of the 100 monkeys had a cumulative
     // log-return above the equal-weight market baseline at that point in
     // time. The Malkiel hypothesis says this should oscillate near 50.
-    const cached = beatingCache.get();
-    if (cached) return json(res, 200, cached);
+    // When `from` is provided, both the monkey cumulatives and the market
+    // baseline restart at zero at the window start so the count reflects
+    // performance within the window rather than lifetime.
+    const q = url.parse(req.url, true).query;
+    const fromRaw = q.from ? +q.from : null;
+    const from = Number.isFinite(fromRaw) ? fromRaw : null;
 
-    const marketRows = stmts.marketRoundsAsc.all();
+    if (from == null) {
+      const cached = beatingCache.get();
+      if (cached) return json(res, 200, cached);
+    }
+
+    const marketRows = from != null
+      ? stmts.marketRoundsAscSince.all(from)
+      : stmts.marketRoundsAsc.all();
     if (!marketRows.length) {
       const empty = { asOf: Date.now(), points: [] };
-      beatingCache.set(empty);
+      if (from == null) beatingCache.set(empty);
       return json(res, 200, empty);
     }
 
     // Group all settled picks by round_id once.
     const picksByRound = new Map();
-    for (const p of stmts.allSettledPicksByRound.all()) {
+    const pickRows = from != null
+      ? stmts.allSettledPicksByRoundSince.all(from)
+      : stmts.allSettledPicksByRound.all();
+    for (const p of pickRows) {
       let arr = picksByRound.get(p.round_id);
       if (!arr) { arr = []; picksByRound.set(p.round_id, arr); }
       arr.push(p);
     }
 
     const monkeyLogCum = new Float64Array(101); // index 1..100
+    let windowedMarketCum = 0;
     const points = new Array(marketRows.length);
     for (let i = 0; i < marketRows.length; i++) {
       const m = marketRows[i];
@@ -461,7 +551,14 @@ const routes = {
           monkeyLogCum[p.monkey_id] += Math.log1p(safe);
         }
       }
-      const marketLog = Math.log1p(m.cum_market);
+      let marketCum;
+      if (from != null) {
+        windowedMarketCum += m.market_pct;
+        marketCum = windowedMarketCum;
+      } else {
+        marketCum = m.cum_market;
+      }
+      const marketLog = Math.log1p(marketCum);
       let above = 0;
       for (let id = 1; id <= 100; id++) if (monkeyLogCum[id] > marketLog) above++;
       points[i] = { roundId: m.round_id, settledAt: m.settled_at, beating: above };
@@ -479,7 +576,7 @@ const routes = {
         })();
 
     const payload = { asOf: Date.now(), points: out };
-    beatingCache.set(payload);
+    if (from == null) beatingCache.set(payload);
     json(res, 200, payload);
   },
 

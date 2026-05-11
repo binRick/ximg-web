@@ -1,16 +1,20 @@
-// NASDAQ-100 constituents (as of 2026 reconstitution).
-// Source: Nasdaq index methodology — top 100 non-financial companies on Nasdaq by mkt cap.
-// 100 entries; if a ticker is delisted yahoo-finance2 will return null and the
-// server treats that round's pick as flat (0% pnl) for that monkey.
+// S&P 500 large caps — ~top 100 by market cap, sampled across sectors.
+// Mix of NYSE and NASDAQ listings; chosen for high liquidity and good IEX
+// coverage on Alpaca's free feed. If a ticker is delisted or the feed
+// returns no bid/ask, the round runner treats that monkey's pick as flat.
+//
+// We intentionally avoid dotted tickers (e.g. BRK.B) — symbol-with-dot
+// support varies across data providers and isn't worth the special-casing
+// for this many sample names.
 module.exports = [
-  'AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'GOOGL', 'GOOG', 'AVGO', 'TSLA', 'COST',
-  'NFLX', 'TMUS', 'ASML', 'AZN', 'CSCO', 'AMD', 'PEP', 'LIN', 'ADBE', 'INTU',
-  'TXN', 'ARM', 'QCOM', 'ISRG', 'AMGN', 'PDD', 'BKNG', 'AMAT', 'PANW', 'HON',
-  'CMCSA', 'GILD', 'ADP', 'VRTX', 'MELI', 'LRCX', 'MU', 'ADI', 'KLAC', 'APP',
-  'SBUX', 'INTC', 'CRWD', 'CEG', 'MDLZ', 'CTAS', 'PYPL', 'MAR', 'PLTR', 'SNPS',
-  'MRVL', 'CDNS', 'REGN', 'FTNT', 'ORLY', 'ABNB', 'CSX', 'TRI', 'WDAY', 'ROP',
-  'NXPI', 'AEP', 'CHTR', 'PCAR', 'MNST', 'PAYX', 'ROST', 'ADSK', 'KDP', 'FAST',
-  'DASH', 'TEAM', 'ODFL', 'CPRT', 'BKR', 'KHC', 'DDOG', 'EA', 'GEHC', 'EXC',
-  'XEL', 'CTSH', 'VRSK', 'LULU', 'CCEP', 'IDXX', 'ZS', 'ANSS', 'TTWO', 'AXON',
-  'CSGP', 'WBD', 'FANG', 'ON', 'BIIB', 'MDB', 'GFS', 'DXCM', 'ILMN', 'MRNA'
+  'AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'GOOG',  'META',  'TSLA', 'AVGO', 'LLY',
+  'JPM',  'V',    'WMT',  'MA',   'UNH',   'XOM',   'COST',  'JNJ',  'HD',   'NFLX',
+  'BAC',  'PG',   'ORCL', 'ABBV', 'KO',    'CRM',   'CVX',   'MRK',  'AMD',  'CSCO',
+  'PEP',  'ACN',  'ADBE', 'TMO',  'DHR',   'ABT',   'LIN',   'MCD',  'WFC',  'DIS',
+  'INTC', 'IBM',  'QCOM', 'GE',   'CAT',   'AXP',   'VZ',    'PFE',  'NOW',  'TXN',
+  'INTU', 'T',    'MS',   'AMGN', 'NEE',   'ISRG',  'GS',    'AMAT', 'BKNG', 'SCHW',
+  'BLK',  'RTX',  'HON',  'SPGI', 'LOW',   'UNP',   'PLD',   'COP',  'NKE',  'SYK',
+  'BX',   'UBER', 'ETN',  'C',    'BSX',   'ADP',   'MDT',   'ANET', 'DE',   'LMT',
+  'MMC',  'FI',   'GILD', 'VRTX', 'REGN',  'ELV',   'MU',    'CB',   'BMY',  'PGR',
+  'ADI',  'SBUX', 'MDLZ', 'ZTS',  'PANW',  'EQIX',  'MMM',   'CMCSA','BA',   'TJX'
 ];

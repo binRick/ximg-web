@@ -55,6 +55,17 @@
     .recent-list { font-family: var(--mono); font-size: .8rem; }
     .recent-list .row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 1rem; padding: .4rem 0; border-bottom: 1px solid var(--border); }
     .recent-list .head { color: var(--muted); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: .55rem; }
+
+    .period-bar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .8rem; }
+    .period-bar .lbl { font-family: var(--mono); font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-right: .2rem; }
+    .period-btn {
+      font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+      color: #5a6070; background: transparent; border: 1px solid var(--border); border-radius: 3px;
+      padding: .3rem .65rem; cursor: pointer; transition: color .15s, background .15s, border-color .15s;
+    }
+    .period-btn:hover { color: var(--accent2); background: rgba(255,255,255,.04); }
+    .period-btn.active { color: var(--accent2); background: rgba(6,182,212,.10); border-color: rgba(6,182,212,.35); }
+    .period-bar .hint { font-family: var(--mono); font-size: .65rem; color: var(--muted); margin-left: auto; }
   </style>
 </head>
 <body>
@@ -80,6 +91,16 @@
     <div class="delta-card" id="delta"></div>
 
     <div class="panel" style="position:relative;">
+      <div class="period-bar" id="period-bar">
+        <span class="lbl">Period</span>
+        <button class="period-btn" data-period="1h">1H</button>
+        <button class="period-btn" data-period="1d">1D</button>
+        <button class="period-btn" data-period="1w">1W</button>
+        <button class="period-btn" data-period="1m">1M</button>
+        <button class="period-btn" data-period="3m">3M</button>
+        <button class="period-btn active" data-period="all">All</button>
+        <span class="hint" id="period-hint">applies to all charts below</span>
+      </div>
       <div class="legend">
         <span><span class="swatch swatch-swarm"></span>Monkey swarm (equal-weight 100 picks/round)</span>
         <span><span class="swatch swatch-market"></span>NASDAQ-100 baseline (equal-weight)</span>
@@ -121,6 +142,17 @@
     const chart = document.getElementById('chart');
     const tip   = document.getElementById('tip');
 
+    const PERIOD_MS = {
+      '1h':  60 * 60 * 1000,
+      '1d':  24 * 60 * 60 * 1000,
+      '1w':  7  * 24 * 60 * 60 * 1000,
+      '1m':  30 * 24 * 60 * 60 * 1000,
+      '3m':  90 * 24 * 60 * 60 * 1000,
+      'all': null
+    };
+    const PERIOD_LABEL = { '1h':'last hour', '1d':'last 24h', '1w':'last 7 days', '1m':'last 30 days', '3m':'last 90 days', 'all':'all time' };
+    let currentPeriod = 'all';
+
     let points = [];
 
     function pct(x, d=2) {
@@ -130,6 +162,18 @@
     function fmtTime(ts) {
       const d = new Date(ts);
       return d.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+
+    function rebaseOffsets() {
+      // For periods other than 'all', shift both lines so they start at 0 at
+      // the window's first point — this turns the chart into "returns within
+      // the window" rather than "cumulative since launch".
+      if (currentPeriod === 'all' || !points.length) return { baseSwarm: 0, baseMarket: 0 };
+      const first = points[0];
+      return {
+        baseSwarm:  first.cumSwarm  - first.swarmPct,
+        baseMarket: first.cumMarket - first.marketPct
+      };
     }
 
     function fitCanvas() {
@@ -163,8 +207,9 @@
       plotRect = { x: padL/dpr, y: padT/dpr, w: pw/dpr, h: ph/dpr };
 
       const xs = points.map((_, i) => i);
-      const ysSwarm  = points.map(p => p.cumSwarm);
-      const ysMarket = points.map(p => p.cumMarket);
+      const { baseSwarm, baseMarket } = rebaseOffsets();
+      const ysSwarm  = points.map(p => p.cumSwarm  - baseSwarm);
+      const ysMarket = points.map(p => p.cumMarket - baseMarket);
       const ymin = Math.min(0, ...ysSwarm, ...ysMarket);
       const ymax = Math.max(0, ...ysSwarm, ...ysMarket);
       const yspan = (ymax - ymin) || 0.01;
@@ -250,10 +295,13 @@
       const i = Math.round(((x - padL) / pw) * (points.length - 1));
       const p = points[i];
       if (!p) { tip.classList.remove('on'); return; }
-      const px = lastDraw.xToPx(i), py = lastDraw.yToPx(p.cumSwarm);
+      const { baseSwarm, baseMarket } = rebaseOffsets();
+      const sVal = p.cumSwarm  - baseSwarm;
+      const mVal = p.cumMarket - baseMarket;
+      const px = lastDraw.xToPx(i), py = lastDraw.yToPx(sVal);
       tip.style.left = (px) + 'px';
       tip.style.top  = (py) + 'px';
-      tip.innerHTML = `Round #${p.roundId}<br>${fmtTime(p.settledAt)}<br>Swarm <b style="color:#06b6d4">${pct(p.cumSwarm)}</b><br>Market <b style="color:#facc15">${pct(p.cumMarket)}</b>`;
+      tip.innerHTML = `Round #${p.roundId}<br>${fmtTime(p.settledAt)}<br>Swarm <b style="color:#06b6d4">${pct(sVal)}</b><br>Market <b style="color:#facc15">${pct(mVal)}</b>`;
       tip.classList.add('on');
     });
     chart.addEventListener('mouseleave', () => tip.classList.remove('on'));
@@ -280,11 +328,15 @@
       const last = points[points.length - 1];
       const wrap = document.getElementById('delta');
       if (!last) { wrap.innerHTML = ''; return; }
-      const diff = last.cumSwarm - last.cumMarket;
+      const { baseSwarm, baseMarket } = rebaseOffsets();
+      const sCum = last.cumSwarm  - baseSwarm;
+      const mCum = last.cumMarket - baseMarket;
+      const diff = sCum - mCum;
       const dCls = diff > 0 ? 'gain' : diff < 0 ? 'loss' : '';
+      const scope = currentPeriod === 'all' ? 'cumulative' : `${PERIOD_LABEL[currentPeriod]}`;
       wrap.innerHTML = `
-        <div class="stat"><div class="lbl">Swarm cumulative</div><div class="val ${last.cumSwarm>=0?'gain':'loss'}">${pct(last.cumSwarm)}</div></div>
-        <div class="stat"><div class="lbl">Market cumulative</div><div class="val ${last.cumMarket>=0?'gain':'loss'}">${pct(last.cumMarket)}</div></div>
+        <div class="stat"><div class="lbl">Swarm ${scope}</div><div class="val ${sCum>=0?'gain':'loss'}">${pct(sCum)}</div></div>
+        <div class="stat"><div class="lbl">Market ${scope}</div><div class="val ${mCum>=0?'gain':'loss'}">${pct(mCum)}</div></div>
         <div class="stat"><div class="lbl">Swarm − Market</div><div class="val ${dCls}">${pct(diff)}</div></div>
         <div class="stat"><div class="lbl">Settled rounds</div><div class="val">${points.length}</div></div>
       `;
@@ -483,10 +535,12 @@
 
     async function refresh() {
       try {
+        const ms = PERIOD_MS[currentPeriod];
+        const from = ms == null ? null : Date.now() - ms;
         const [r, b, sp] = await Promise.all([
-          getSwarm(2000),
-          getBeating().catch(() => null),
-          getSparks().catch(() => null)
+          from == null ? getSwarm(2000) : getSwarm(2000, from),
+          getBeating(from).catch(() => null),
+          getSparks(from).catch(() => null)
         ]);
         points = r.points;
         draw(); renderRecent(); renderDelta();
@@ -494,6 +548,17 @@
         if (sp) ingestSparks(sp);
       } catch (e) { console.warn(e); }
     }
+
+    document.getElementById('period-bar').addEventListener('click', e => {
+      const btn = e.target.closest('.period-btn');
+      if (!btn) return;
+      const next = btn.dataset.period;
+      if (next === currentPeriod) return;
+      currentPeriod = next;
+      for (const b of document.querySelectorAll('.period-btn')) b.classList.toggle('active', b.dataset.period === next);
+      refresh();
+    });
+
     refresh();
     setInterval(refresh, 30_000);
   </script>

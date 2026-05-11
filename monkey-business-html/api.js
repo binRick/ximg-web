@@ -13,7 +13,10 @@ const API_BASE = (() => {
 
 export async function getState()       { return jget('/api/state'); }
 export async function getLeaderboard() { return jget('/api/leaderboard'); }
-export async function getSwarm(limit=500) { return jget(`/api/swarm?limit=${limit}`); }
+export async function getSwarm(limit=500, from=null) {
+  if (from != null) return jget(`/api/swarm?from=${from}`);
+  return jget(`/api/swarm?limit=${limit}`);
+}
 export async function getHistory(monkeyId, limit=200, from=null) {
   let qs = `monkey=${monkeyId}&limit=${limit}`;
   if (from != null) qs += `&from=${from}`;
@@ -27,8 +30,12 @@ export async function getWinners(range='1mo', interval='1d') {
   return jget(`/api/winners?range=${range}&interval=${interval}`);
 }
 export async function getStats()       { return jget('/api/stats'); }
-export async function getSparks()      { return jget('/api/sparks'); }
-export async function getBeating()     { return jget('/api/beating'); }
+export async function getSparks(from=null) {
+  return jget(from != null ? `/api/sparks?from=${from}` : '/api/sparks');
+}
+export async function getBeating(from=null) {
+  return jget(from != null ? `/api/beating?from=${from}` : '/api/beating');
+}
 
 export async function throwBonusRound() {
   const res = await fetch(API_BASE + '/api/throw', { method: 'POST' });
