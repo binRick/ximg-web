@@ -256,6 +256,7 @@ const LOG_FILES = {
   rbterm:       'rbterm.access.log',
   scumm:        'scumm.access.log',
   'monkey-business': 'monkey-business.access.log',
+  droneposition: 'droneposition.access.log',
   uapd:         'uapd.access.log',
   raylib:       'raylib.access.log',
   c99:          'c99.access.log',
@@ -875,6 +876,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="rbterm">rbterm</button>
           <button class="site-opt" data-site="scumm">scumm</button>
           <button class="site-opt" data-site="monkey-business">monkey-business</button>
+          <button class="site-opt" data-site="droneposition">droneposition</button>
           <button class="site-opt" data-site="uapd">uapd</button>
           <button class="site-opt" data-site="raylib">raylib</button>
           <button class="site-opt" data-site="c99">c99</button>

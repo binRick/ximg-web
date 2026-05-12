@@ -84,6 +84,7 @@
       ['proc-trace-dns','proc-trace-dns'],
       ['proc-trace-tls','proc-trace-tls'],
       ['app-audit','&#x1F6E1; app-audit'],
+      ['droneposition','&#x1F50A; Drone Position'],
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch'],
       ['github-stats','github stats'],
@@ -159,6 +160,9 @@
       '@keyframes navaudit{0%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}50%{color:#ff2d2d;text-shadow:0 0 12px rgba(255,45,45,.8)}100%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}}' +
       '.nav-audit{animation:navaudit 1.5s ease-in-out infinite;font-weight:700!important;}' +
       '.nav-audit .nav-dd-dot,.nav-audit .nav-mobile-dot{animation:navaudit 1.5s ease-in-out infinite;background:currentColor!important;}' +
+      '@keyframes navalien{0%{color:#39ff14;text-shadow:0 0 6px rgba(57,255,20,.6)}50%{color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.9),0 0 24px rgba(57,255,20,.5)}100%{color:#39ff14;text-shadow:0 0 6px rgba(57,255,20,.6)}}' +
+      '.nav-alien{animation:navalien 2.2s ease-in-out infinite;font-weight:700!important;}' +
+      '.nav-alien .nav-dd-dot,.nav-alien .nav-mobile-dot{animation:navalien 2.2s ease-in-out infinite;background:currentColor!important;}' +
 
       '.nav-flyout{position:absolute;top:calc(100% + 4px);left:0;display:flex;' +
       'background:' + (c.ddbg || c.bg) + ';border:' + c.ddbord + ';border-radius:' + r + ';' +
@@ -320,6 +324,9 @@
       '@keyframes navaudit{0%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}50%{color:#ff2d2d;text-shadow:0 0 12px rgba(255,45,45,.8)}100%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}}' +
       '.nav-audit{animation:navaudit 1.5s ease-in-out infinite;font-weight:700!important;}' +
       '.nav-audit .nav-dd-dot,.nav-audit .nav-mobile-dot{animation:navaudit 1.5s ease-in-out infinite;background:currentColor!important;}' +
+      '@keyframes navalien{0%{color:#39ff14;text-shadow:0 0 6px rgba(57,255,20,.6)}50%{color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.9),0 0 24px rgba(57,255,20,.5)}100%{color:#39ff14;text-shadow:0 0 6px rgba(57,255,20,.6)}}' +
+      '.nav-alien{animation:navalien 2.2s ease-in-out infinite;font-weight:700!important;}' +
+      '.nav-alien .nav-dd-dot,.nav-alien .nav-mobile-dot{animation:navalien 2.2s ease-in-out infinite;background:currentColor!important;}' +
     '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
     'background:#c0c0c0;border:2px solid;border-top-color:#fff;border-left-color:#fff;' +
     'border-bottom-color:#000;border-right-color:#000;' +
@@ -671,6 +678,9 @@
       '@keyframes navaudit{0%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}50%{color:#ff2d2d;text-shadow:0 0 12px rgba(255,45,45,.8)}100%{color:#e74c3c;text-shadow:0 0 6px rgba(231,76,60,.6)}}' +
       '.nav-audit{animation:navaudit 1.5s ease-in-out infinite;font-weight:700!important;}' +
       '.nav-audit .nav-dd-dot,.nav-audit .nav-mobile-dot{animation:navaudit 1.5s ease-in-out infinite;background:currentColor!important;}' +
+      '@keyframes navalien{0%{color:#39ff14;text-shadow:0 0 6px rgba(57,255,20,.6)}50%{color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.9),0 0 24px rgba(57,255,20,.5)}100%{color:#39ff14;text-shadow:0 0 6px rgba(57,255,20,.6)}}' +
+      '.nav-alien{animation:navalien 2.2s ease-in-out infinite;font-weight:700!important;}' +
+      '.nav-alien .nav-dd-dot,.nav-alien .nav-mobile-dot{animation:navalien 2.2s ease-in-out infinite;background:currentColor!important;}' +
     '.nav-flyout{position:absolute;top:calc(100% + 2px);left:0;display:flex;' +
     'background:#000;border:2px solid #fff;z-index:300;opacity:0;pointer-events:none;transition:none;}' +
     '.nav-flyout.open{opacity:1;pointer-events:all;}' +
@@ -845,7 +855,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : subdomain === 'uapd' ? ' nav-alien' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         flat.appendChild(item);
@@ -883,7 +893,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+          item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : subdomain === 'uapd' ? ' nav-alien' : '');
           item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
           item.href = appHref(subdomain);
           panel.appendChild(item);
@@ -910,7 +920,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+        item.className = 'nav-dd-item' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : subdomain === 'uapd' ? ' nav-alien' : '');
         item.innerHTML = '<span class="nav-dd-dot"></span>' + label;
         item.href = appHref(subdomain);
         dd.appendChild(item);
@@ -1031,7 +1041,7 @@
           var isActive = subdomain + '.ximg.app' === curHost ||
                          (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
           var item = document.createElement('a');
-          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+          item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : subdomain === 'uapd' ? ' nav-alien' : '');
           item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
           item.href = appHref(subdomain);
           mApps.appendChild(item);
@@ -1043,7 +1053,7 @@
         var isActive = subdomain + '.ximg.app' === curHost ||
                        (PATH_APPS[subdomain] && curHost === 'ximg.app' && curPath === subdomain);
         var item = document.createElement('a');
-        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : '');
+        item.className = 'nav-mobile-app' + (isActive ? ' active' : '') + (subdomain === 'bundler-info' || subdomain === 'devtools-info' || subdomain === 'projects-info' ? ' nav-dd-featured' : '') + (subdomain === 'rbterm' ? ' nav-rainbow' : subdomain === 'chernobyl' ? ' nav-fire' : subdomain === 'app-audit' ? ' nav-audit' : subdomain === 'uapd' ? ' nav-alien' : '');
         item.innerHTML = '<span class="nav-mobile-dot"></span>' + label;
         item.href = appHref(subdomain);
         mApps.appendChild(item);

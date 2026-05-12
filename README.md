@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-232 virtual hosts (root + 231 subdomains), all static sites served by a single nginx container.
+233 virtual hosts (root + 232 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -246,6 +246,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [rbterm.ximg.app](https://rbterm.ximg.app) | rbterm — cross-platform terminal emulator in C with raylib. 16 tabs, 5000-line scrollback, truecolor, mouse selection, emoji, OSC palette support. |
 | [scumm.ximg.app](https://scumm.ximg.app) | scumm-game — SCUMM-style point-and-click adventure engine in C with raylib. Dijkstra pathfinding, animated sprites, verb bar, walk-behind foregrounds. |
 | [monkey-business.ximg.app](https://monkey-business.ximg.app) | monkey-business — 100 monkeys throw darts at the NASDAQ-100 every 5 minutes; cumulative swarm-vs-market scoreboard, full pick history per monkey. |
+| [droneposition.ximg.app](https://droneposition.ximg.app) | Drone Position — TRON-themed FPV drone racer in C with raylib 6 + Clay UI. Wireframe grid, stacked-bar sun, neon score/bonus/hazard gates. macOS native today, WebAssembly planned. |
 | [uapd.ximg.app](https://uapd.ximg.app) | UAP/D — top-down stealth UFO game in single-file C with raylib (native macOS + iOS). Three flyable saucers, vision-cone civilian AI, helicopter patrols, procedural crop circles, public leaderboard. |
 | [raylib.ximg.app](https://raylib.ximg.app) | raylib deep dive — the simple C99 game library by Ramon Santamaria. Features, architecture, code examples, gallery, and design philosophy. |
 | [c99.ximg.app](https://c99.ximg.app) | C99 deep dive — history from Bell Labs to C23, advantages, pioneers (Ritchie, Thompson, Kernighan), use cases, and statistics. |
