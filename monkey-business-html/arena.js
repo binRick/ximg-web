@@ -187,7 +187,7 @@ function drawBoard(ctx, now) {
   ctx.fillStyle = COLOR_MUTED;
   ctx.font = '10px ui-monospace, "SFMono-Regular", "Menlo", monospace';
   ctx.textAlign = 'left';
-  ctx.fillText('NASDAQ-100 · 10×10 DARTBOARD', BOARD.x, BOARD.y - 16);
+  ctx.fillText('TOP 100 US STOCKS · 10×10 DARTBOARD', BOARD.x, BOARD.y - 16);
 
   // cells
   for (let i = 0; i < COLS * ROWS; i++) {

@@ -1,4 +1,4 @@
-// Static metadata for the 100 NASDAQ-100 constituents.
+// Static metadata for the 100 US large-caps the monkeys throw darts at.
 // Fields: { name, sector, industry, hq, color, desc }
 // `color` is the brand's signature hex — used for the monogram fallback when a
 // PNG logo isn't on disk, and as a tint accent in the row.
