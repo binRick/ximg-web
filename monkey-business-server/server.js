@@ -3,7 +3,11 @@ const url  = require('url');
 const { stmts, asTx } = require('./db');
 const { TICKERS, fetchAllQuotes: yahooFetchAllQuotes, fetchHistory, getApiStats: getYahooStats } = require('./market');
 const alpaca = require('./alpaca');
-const { pickFor: strategyPick } = require('./strategy');
+const { evaluate: strategyEvaluate, strategyOf, CFG: STRAT_CFG } = require('./strategy');
+
+// Mid-price history depth we expose to strategies via ctx.history. Picked to
+// comfortably cover the longest lookback we use (breakout = 20 rounds).
+const HISTORY_DEPTH = 24;
 
 const USE_ALPACA = process.env.USE_ALPACA === '1';
 
@@ -95,62 +99,122 @@ async function runRound(kind) {
     let settledRoundId = null;
     let marketPct = 0, swarmPct = 0;
 
-    let prevPicks = [];
-    let tickerPnls = [];
-    let lastPickByMonkey = new Map();
-
     asTx(() => {
-      // 1) Settle previous unsettled round (if any) using these new prices
+      // 1) Load prev-round state + the per-ticker mid history strategies need
+      //    for lookbacks (momentum, contrarian, breakout). Open positions tell
+      //    us which monkeys are mid-thesis.
       const prev = stmts.latestUnsettledRound.get();
+      let prevPicks = [];
+      let prevPrices = [];
+      const tickerPnls = [];
+      const prevPickByMonkey = new Map();
       if (prev) {
         prevPicks = stmts.picksForRound.all(prev.id);
-        const prevPrices = stmts.pricesForRound.all(prev.id);
-        const prevPriceMap = new Map(prevPrices.map(r => [r.ticker, r.price]));
-
-        // Strategy signal uses mid-to-mid so the contrarian's "edge" can't
-        // come from bid-ask bounce noise; the realistic fill cost is charged
-        // separately via ask/bid below.
-        for (const [ticker, oldMid] of prevPriceMap) {
+        prevPrices = stmts.pricesForRound.all(prev.id);
+        for (const { ticker, price: oldMid } of prevPrices) {
           const cur = priceMap[ticker];
           if (cur && oldMid > 0) {
             tickerPnls.push({ ticker, pnl: (cur.mid - oldMid) / oldMid });
           }
         }
         tickerPnls.sort((a, b) => b.pnl - a.pnl);
-        for (const p of prevPicks) lastPickByMonkey.set(p.monkey_id, p.ticker);
+        for (const p of prevPicks) prevPickByMonkey.set(p.monkey_id, p);
+      }
 
-        // Equal-weight market % change — also charged the spread (buy at ask,
-        // sell at bid) for an honest "you could have just held the basket"
-        // comparison. Under Yahoo (zero-spread shim) this collapses to the
-        // old mid-to-mid behaviour.
+      // 2) Open new round + snapshot mids. The bid/ask aren't persisted —
+      //    they're only needed live for fill pricing.
+      const roundId = stmts.insertRound.run(startedAt, kind).lastInsertRowid;
+      for (const t of availableTickers) {
+        stmts.insertPrice.run(roundId, t, priceMap[t].mid);
+      }
+
+      // 3) Build ticker history (last N rounds of mids, ordered oldest→newest
+      //    with this round's mid as the last element) so strategies can
+      //    compute lookback returns and N-round highs.
+      const history = new Map();
+      const histRows = stmts.recentPricesForLookback.all(HISTORY_DEPTH);
+      for (const row of histRows) {
+        let arr = history.get(row.ticker);
+        if (!arr) { arr = []; history.set(row.ticker, arr); }
+        arr.push(row.price);
+      }
+      // recentPricesForLookback already includes this round (we just inserted
+      // its prices above), so each array ends with the current mid.
+
+      // 4) Compute each monkey's strategy decision. Persona monkeys may have
+      //    an open position to inform exit logic; random monkeys never do.
+      const monkeys = stmts.allMonkeys.all();
+      const openPositions = new Map();
+      for (const p of stmts.openPositionsAll.all()) openPositions.set(p.monkey_id, p);
+
+      const ctx = {
+        tickers: availableTickers,
+        prices: priceMap,
+        tickerPnls,
+        history,
+        roundId
+      };
+
+      // Pre-compute exit/entry per monkey so settle and insert agree.
+      const plans = new Map(); // monkey_id → { closePos, openPos, intent, holding }
+      for (const m of monkeys) {
+        const openPos = openPositions.get(m.id) || null;
+        const { signal_break, intent } = strategyEvaluate(m.id, ctx, openPos);
+
+        // Normalize: ensure the chosen ticker is actually quoted this round.
+        let target = intent.ticker;
+        if (!priceMap[target]) target = availableTickers[(Math.random() * availableTickers.length) | 0];
+
+        let holding = false;
+        let closePos = null;
+        let closeReason = null;
+        if (openPos) {
+          const cur = priceMap[openPos.ticker];
+          const pnl = cur ? (cur.mid - openPos.entry_price) / openPos.entry_price : 0;
+          const timeoutHit = roundId >= openPos.target_exit_round_id;
+          const stopHit    = openPos.stop_pct != null && cur && pnl <= openPos.stop_pct;
+          const rotated    = target !== openPos.ticker;
+          if (signal_break)     closeReason = 'signal_break';
+          else if (stopHit)     closeReason = 'stop';
+          else if (timeoutHit)  closeReason = 'timeout';
+          else if (rotated)     closeReason = 'rotate';
+          if (closeReason)      closePos = openPos;
+          else                  holding = true;
+        }
+        plans.set(m.id, { closePos, closeReason, intent: { ...intent, ticker: target }, holding, openPos });
+      }
+
+      // 5) Settle prev round. For monkeys whose plan keeps the position, mark
+      //    to mid; otherwise sell at bid. Same spread mechanic as yesterday.
+      if (prev) {
         let mSum = 0, mCount = 0;
         for (const { ticker, price: oldMid } of prevPrices) {
           const cur = priceMap[ticker];
-          if (cur) {
-            mSum += (cur.bid - oldMid) / oldMid;  // entered at prev mid, sold at current bid — conservative
-            mCount++;
-          }
+          if (cur) { mSum += (cur.mid - oldMid) / oldMid; mCount++; }
         }
         marketPct = mCount ? mSum / mCount : 0;
 
-        // Per-pick P&L — entry was the ask paid last round; exit is the bid
-        // received this round. Spread cost is charged automatically.
         let swarmSum = 0;
         for (const pick of prevPicks) {
           const cur = priceMap[pick.ticker];
+          const plan = plans.get(pick.monkey_id);
           let pnl, exitPrice;
           if (cur) {
-            exitPrice = cur.bid;
+            // A persona monkey "holds" when their plan keeps the prev pick's
+            // ticker AND keeps the position. A random monkey holds iff its
+            // new intent happens to land on the prev ticker (rare).
+            const sameTicker = plan.intent.ticker === pick.ticker;
+            const positionKept = plan.openPos && !plan.closePos;
+            const holding = positionKept || (!plan.openPos && sameTicker);
+            exitPrice = holding ? cur.mid : cur.bid;
             pnl = (exitPrice - pick.entry_price) / pick.entry_price;
           } else {
             exitPrice = pick.entry_price;
-            pnl = 0; // ticker missing this round — treat as flat
+            pnl = 0;
           }
           stmts.settlePick.run(exitPrice, pnl, prev.id, pick.monkey_id);
 
-          // Update rolling per-monkey stats
           const beatMarket = pnl > marketPct ? 1 : 0;
-          // log return — robust to the occasional bad quote (cap denom)
           const logRet = Math.log(1 + Math.max(-0.95, pnl));
           stmts.bumpStat.run(logRet, pnl, pnl * pnl, beatMarket, prev.id, pick.monkey_id);
           swarmSum += pnl;
@@ -166,29 +230,43 @@ async function runRound(kind) {
         stmts.insertMarket.run(prev.id, startedAt, marketPct, swarmPct, cumMarket, cumSwarm);
       }
 
-      // 2) Open new round
-      const roundId = stmts.insertRound.run(startedAt, kind).lastInsertRowid;
-
-      // 3) Snapshot prices — we store the mid (used as the strategy signal
-      //    on the next round). The bid/ask aren't persisted in `prices` for
-      //    now; they're only needed live, and re-storing them every round
-      //    bloats the DB for little gain.
-      for (const t of availableTickers) {
-        stmts.insertPrice.run(roundId, t, priceMap[t].mid);
+      // 6) Close positions that the plan says to close. Realized P&L is the
+      //    ratio of the exit bid to the original entry ask — multi-round
+      //    spread paid exactly once on entry and once on exit, regardless of
+      //    how many rounds the thesis lasted.
+      for (const m of monkeys) {
+        const plan = plans.get(m.id);
+        if (!plan.closePos) continue;
+        const cur = priceMap[plan.closePos.ticker];
+        const exitPrice = cur ? cur.bid : plan.closePos.entry_price;
+        const realizedPnl = (exitPrice - plan.closePos.entry_price) / plan.closePos.entry_price;
+        stmts.closePosition.run(roundId, exitPrice, realizedPnl, plan.closeReason, plan.closePos.id);
       }
 
-      // 4) Each monkey picks one ticker. ids 1-50 use uniform random (the
-      //    control cohort); ids 51-100 use a strategy derived from their
-      //    deterministic archetype (the persona cohort).
-      const monkeys = stmts.allMonkeys.all();
-      const ctx = { tickers: availableTickers, tickerPnls, lastPickByMonkey, roundId };
+      // 7) Insert this round's pick per monkey. Holding rolls in at mid (no
+      //    spread); a transition or fresh entry pays the ask. Persona
+      //    monkeys also get a new positions row when they're not holding.
       for (const m of monkeys) {
-        let t = strategyPick(m.id, ctx);
-        if (!priceMap[t]) {
-          t = availableTickers[(Math.random() * availableTickers.length) | 0];
+        const plan = plans.get(m.id);
+        const isRandom = strategyOf(m.id) === 'random';
+        if (plan.holding) {
+          const entry = priceMap[plan.openPos.ticker].mid;
+          stmts.insertPick.run(roundId, m.id, plan.openPos.ticker, entry, plan.openPos.id);
+          continue;
         }
-        // entry_price = ASK (what a buyer actually pays this round)
-        stmts.insertPick.run(roundId, m.id, t, priceMap[t].ask);
+        // Open new pick (and, for persona, new position) at ask.
+        const t = plan.intent.ticker;
+        const cur = priceMap[t];
+        const entry = cur.ask;
+        let positionId = null;
+        if (!isRandom) {
+          const targetExit = roundId + (plan.intent.hold_rounds || 1);
+          positionId = stmts.insertPosition.run(
+            m.id, strategyOf(m.id), t, roundId, entry,
+            plan.intent.signal ?? null, targetExit, plan.intent.stop_pct ?? null
+          ).lastInsertRowid;
+        }
+        stmts.insertPick.run(roundId, m.id, t, entry, positionId);
       }
 
       lastRoundStartedAt = startedAt;

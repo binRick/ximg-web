@@ -21,21 +21,28 @@ const DB_PATH = path.join(DB_DIR, 'monkey-business.db');
 const db = new Database(DB_PATH);
 db.pragma('foreign_keys = ON');
 
+// The positions table may not exist in older deploys; tolerate that.
+let positionsCount = 0;
+try { positionsCount = db.prepare('SELECT COUNT(*) AS c FROM positions').get().c; } catch {}
+
 const before = {
-  rounds:  db.prepare('SELECT COUNT(*) AS c FROM rounds').get().c,
-  picks:   db.prepare('SELECT COUNT(*) AS c FROM picks').get().c,
-  prices:  db.prepare('SELECT COUNT(*) AS c FROM prices').get().c,
-  market:  db.prepare('SELECT COUNT(*) AS c FROM market_returns').get().c,
-  monkeys: db.prepare('SELECT COUNT(*) AS c FROM monkeys').get().c
+  rounds:    db.prepare('SELECT COUNT(*) AS c FROM rounds').get().c,
+  picks:     db.prepare('SELECT COUNT(*) AS c FROM picks').get().c,
+  prices:    db.prepare('SELECT COUNT(*) AS c FROM prices').get().c,
+  market:    db.prepare('SELECT COUNT(*) AS c FROM market_returns').get().c,
+  positions: positionsCount,
+  monkeys:   db.prepare('SELECT COUNT(*) AS c FROM monkeys').get().c
 };
 
 const tx = db.transaction(() => {
+  // Order matters for FK constraints: picks → positions → rounds, market → rounds.
+  db.exec('DELETE FROM market_returns;');
+  db.exec('DELETE FROM picks;');
+  try { db.exec('DELETE FROM positions'); } catch {}
+  db.exec('DELETE FROM prices;');
+  db.exec('DELETE FROM rounds;');
   db.exec(`
-    DELETE FROM market_returns;
-    DELETE FROM picks;
-    DELETE FROM prices;
-    DELETE FROM rounds;
-    DELETE FROM sqlite_sequence WHERE name = 'rounds';
+    DELETE FROM sqlite_sequence WHERE name IN ('rounds','positions');
     UPDATE monkey_stats SET
       rounds_settled = 0,
       cum_log_return = 0,
@@ -48,8 +55,9 @@ const tx = db.transaction(() => {
 tx();
 
 console.log('reset complete.');
-console.log('  rounds:         ', before.rounds, '→ 0');
-console.log('  picks:          ', before.picks,  '→ 0');
-console.log('  prices:         ', before.prices, '→ 0');
-console.log('  market_returns: ', before.market, '→ 0');
+console.log('  rounds:         ', before.rounds,    '→ 0');
+console.log('  picks:          ', before.picks,     '→ 0');
+console.log('  prices:         ', before.prices,    '→ 0');
+console.log('  market_returns: ', before.market,    '→ 0');
+console.log('  positions:      ', before.positions, '→ 0');
 console.log('  monkeys kept:   ', before.monkeys);

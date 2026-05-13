@@ -59,8 +59,8 @@ db.exec(`
     last_round_id    INTEGER
   );
 
-  -- Per-round market baseline (equal-weight Nasdaq-100 % change) so we can
-  -- plot swarm-vs-market without re-deriving it.
+  -- Per-round market baseline (equal-weight % change across the universe)
+  -- so we can plot swarm-vs-market without re-deriving it.
   CREATE TABLE IF NOT EXISTS market_returns (
     round_id     INTEGER PRIMARY KEY REFERENCES rounds(id),
     settled_at   INTEGER NOT NULL,
@@ -69,7 +69,34 @@ db.exec(`
     cum_market   REAL    NOT NULL,
     cum_swarm    REAL    NOT NULL
   );
+
+  -- Strategy-driven theses: one row per opened position. A position spans
+  -- multiple picks (one per round it's held). The runner enforces timeout
+  -- and stop_pct mechanically; strategies can also signal an early close
+  -- via signal_break.
+  CREATE TABLE IF NOT EXISTS positions (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    monkey_id            INTEGER NOT NULL REFERENCES monkeys(id),
+    strategy             TEXT    NOT NULL,
+    ticker               TEXT    NOT NULL,
+    entry_round_id       INTEGER NOT NULL REFERENCES rounds(id),
+    entry_price          REAL    NOT NULL,
+    signal               REAL,
+    target_exit_round_id INTEGER NOT NULL,
+    stop_pct             REAL,
+    exit_round_id        INTEGER REFERENCES rounds(id),
+    exit_price           REAL,
+    pnl_pct              REAL,
+    exit_reason          TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_positions_monkey_open
+    ON positions(monkey_id, exit_round_id);
 `);
+
+// picks predates the positions table — only persona monkeys link to one,
+// random-cohort picks leave it NULL.
+try { db.exec('ALTER TABLE picks ADD COLUMN position_id INTEGER REFERENCES positions(id)'); }
+catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
 
 // Seed monkeys (idempotent — runs once on first boot)
 {
@@ -93,7 +120,7 @@ const stmts = {
   insertRound:    db.prepare('INSERT INTO rounds (started_at, kind) VALUES (?, ?)'),
   settleRound:    db.prepare('UPDATE rounds SET settled_at = ? WHERE id = ?'),
   insertPrice:    db.prepare('INSERT INTO prices (round_id, ticker, price) VALUES (?, ?, ?)'),
-  insertPick:     db.prepare('INSERT INTO picks (round_id, monkey_id, ticker, entry_price) VALUES (?, ?, ?, ?)'),
+  insertPick:     db.prepare('INSERT INTO picks (round_id, monkey_id, ticker, entry_price, position_id) VALUES (?, ?, ?, ?, ?)'),
   settlePick:     db.prepare('UPDATE picks SET exit_price = ?, pnl_pct = ? WHERE round_id = ? AND monkey_id = ?'),
   insertMarket:   db.prepare(`
     INSERT INTO market_returns (round_id, settled_at, market_pct, swarm_pct, cum_market, cum_swarm)
@@ -222,6 +249,33 @@ const stmts = {
     JOIN rounds r ON r.id = p.round_id
     WHERE p.pnl_pct IS NOT NULL AND r.settled_at >= ?
     ORDER BY p.round_id, p.monkey_id
+  `),
+
+  // --- positions (theses held across rounds) ---------------------------------
+  openPositionsAll: db.prepare(`
+    SELECT id, monkey_id, strategy, ticker, entry_round_id, entry_price, signal,
+           target_exit_round_id, stop_pct
+    FROM positions
+    WHERE exit_round_id IS NULL
+  `),
+  insertPosition: db.prepare(`
+    INSERT INTO positions
+      (monkey_id, strategy, ticker, entry_round_id, entry_price, signal,
+       target_exit_round_id, stop_pct)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `),
+  closePosition: db.prepare(`
+    UPDATE positions
+       SET exit_round_id = ?, exit_price = ?, pnl_pct = ?, exit_reason = ?
+     WHERE id = ?
+  `),
+  // N-round mid-price history per ticker for strategy lookbacks. Limit at the
+  // SQL level so a long-running prod DB doesn't pull a gigabyte.
+  recentPricesForLookback: db.prepare(`
+    SELECT round_id, ticker, price
+    FROM prices
+    WHERE round_id IN (SELECT id FROM rounds ORDER BY id DESC LIMIT ?)
+    ORDER BY round_id ASC, ticker
   `)
 };
 
