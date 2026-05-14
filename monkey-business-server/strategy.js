@@ -22,12 +22,16 @@ const ARCHETYPES = [
   'The Sceptical Optimist'
 ];
 
+// signature has no archetype mapping — only Wanderer Knock (#95) runs it,
+// via an explicit override in strategyOf below. He's the proven winner; we
+// keep him at the same algorithm and let every other persona try something
+// fresher.
 const ARCHETYPE_STRATEGY = {
   'The Reluctant Contrarian':  'contrarian',
-  'The Closet Indexer':        'signature',
+  'The Closet Indexer':        'lazy',
   'The Recovering YOLOer':     'top_chaser',
   'The Vibe Trader':           'top_chaser',
-  'The Trend Whisperer':       'momentum',
+  'The Trend Whisperer':       'trend_follow',
   'The Risk-Off Specialist':   'lazy',
   'The Volatility Tourist':    'breakout',
   'The Quiet Quant':           'momentum',
@@ -36,43 +40,48 @@ const ARCHETYPE_STRATEGY = {
   'The Mean Reverter':         'contrarian',
   'The Late Adopter':          'momentum',
   'The Gut-Feel Maximalist':   'breakout',
-  'The 5-Year Plan':           'signature',
+  'The 5-Year Plan':           'lazy',
   'The Dip Buyer':             'contrarian',
-  'The Top-Caller':            'contrarian',
+  'The Top-Caller':            'breakout',
   'The Insomniac Daytrader':   'top_chaser',
   'The Recovering Goldbug':    'contrarian',
-  'The Earnings Whisperer':    'signature',
+  'The Earnings Whisperer':    'trend_follow',
   'The Backtest Believer':     'momentum',
   'The Random Walker':         'lazy',
-  'The Indicator Stacker':     'momentum',
+  'The Indicator Stacker':     'trend_follow',
   'The Macro Tourist':         'alphabetical',
   'The Lunchtime Trader':      'top_chaser',
-  'The Conviction Trader':     'signature',
+  'The Conviction Trader':     'trend_follow',
   'The Position Builder':      'lazy',
   'The Reformed Maximalist':   'lazy',
   'The Sceptical Optimist':    'breakout'
 };
 
 const STRATEGY_DESC = {
-  random:       'Uniform random pick every round. No positions, just churn.',
-  momentum:     'Buys top decile by 5-round return; exits on timeout or signal break.',
-  contrarian:   'Buys bottom decile by 5-round return; exits on timeout, bounce, or stop.',
-  top_chaser:   'Buys top 5 of last round; quick 3-round holds.',
-  breakout:     'Buys new 20-round highs; trails on price-based stop, no timeout.',
-  alphabetical: 'Cycles tickers alphabetically; rotates roughly hourly.',
-  lazy:         'Buys once and holds; only exits on deep stop loss.',
-  signature:    'Always holds the same favourite ticker — never sells.'
+  random:       'Uniform random pick every round. The control group — pays the spread on every trade by design.',
+  momentum:     'Buys top decile by 5-round return; holds until it drops out of the bottom decile or 30 rounds pass.',
+  contrarian:   'Buys bottom decile by 5-round return; exits on a climb into the top quartile, a -15% stop, or 30 rounds.',
+  top_chaser:   'Buys top 5 movers of the last round; holds 15 rounds.',
+  breakout:     'Buys new 20-round highs; -5% stop or +5% target.',
+  alphabetical: 'Cycles tickers alphabetically; one rotation per trading day (~390 rounds).',
+  lazy:         'Buys once and holds; only exits on a -20% stop.',
+  signature:    'Always holds the same favourite ticker — never sells. (Wanderer Knock only.)',
+  trend_follow: 'Buys top decile by 20-round return that is also above its 20-round MA; holds with a -15% stop.'
 };
 
 // Hold/exit constants. Tweakable here; the runner respects them.
+//
+// Across the board: longer holds, wider exit bands. Yesterday's strategies
+// flipped on noise-level moves and paid the spread on most of them.
 const CFG = {
-  momentum:    { lookback: 5,  topN: 10, holdRounds: 10, mediansize: 50 },
-  contrarian:  { lookback: 5,  botN: 10, holdRounds: 10, stopPct: -0.10 },
-  top_chaser:  { topN: 5,      holdRounds: 3 },
-  breakout:    { lookback: 20, stopPct: -0.03, targetPct: 0.05, maxHold: 240 },
-  alphabetical:{ holdRounds: 60 },
+  momentum:    { lookback: 5,  topN: 10, holdRounds: 30 },
+  contrarian:  { lookback: 5,  botN: 10, holdRounds: 30, stopPct: -0.15 },
+  top_chaser:  { topN: 5,      holdRounds: 15 },
+  breakout:    { lookback: 20, stopPct: -0.05, targetPct: 0.05, maxHold: 240 },
+  alphabetical:{ holdRounds: 390 },
   lazy:        { stopPct: -0.20, maxHold: 100000 },
-  signature:   { maxHold: 100000 }
+  signature:   { maxHold: 100000 },
+  trend_follow:{ lookback: 20, stopPct: -0.15, maxHold: 100000 }
 };
 
 function hash(a, b) {
@@ -82,7 +91,10 @@ function archetypeOf(id) { return ARCHETYPES[hash(id, 1) % ARCHETYPES.length]; }
 function cohort(id) { return id <= 50 ? 'random' : 'persona'; }
 function strategyOf(id) {
   if (cohort(id) === 'random') return 'random';
-  return ARCHETYPE_STRATEGY[archetypeOf(id)] || 'random';
+  // Wanderer Knock (#95) earned the only signature slot by being the lone
+  // green monkey on 2026-05-14. Locked-in pick, never sells.
+  if (id === 95) return 'signature';
+  return ARCHETYPE_STRATEGY[archetypeOf(id)] || 'lazy';
 }
 
 // ---- helpers --------------------------------------------------------------
@@ -171,13 +183,13 @@ const strategies = {
     const c = CFG.momentum;
     const ranked = rankByLookback(ctx, c.lookback);
     const top = ranked.slice(0, c.topN).map(r => r.ticker);
-    const median = ranked.length ? ranked[Math.floor(ranked.length / 2)].ret : 0;
+    // Exit only when our pick has fallen all the way to the bottom decile —
+    // the entry condition's inverse. Avoids whipsaw flips around the median.
+    const bottomDecileIdx = Math.max(0, ranked.length - c.topN);
+    const bottomDecile = new Set(ranked.slice(bottomDecileIdx).map(r => r.ticker));
 
     if (openPos) {
-      const cur = lookbackReturn(ctx, openPos.ticker, c.lookback);
-      // Exit if our pick has fallen below the universe median.
-      if (cur != null && cur < median) {
-        // signal_break: close, then enter a fresh top-decile pick this round.
+      if (bottomDecile.has(openPos.ticker)) {
         const t = top.length ? pickFromGroup(top, monkeyId, ctx.roundId, ctx) : randomTicker(ctx);
         return {
           signal_break: true,
@@ -185,11 +197,9 @@ const strategies = {
                     hold_rounds: c.holdRounds, stop_pct: null }
         };
       }
-      // Still above the line — keep riding.
       return { signal_break: false, intent: holdIntent(openPos) };
     }
 
-    // No position → enter top decile.
     const t = top.length ? pickFromGroup(top, monkeyId, ctx.roundId, ctx) : randomTicker(ctx);
     return {
       signal_break: false,
@@ -202,12 +212,13 @@ const strategies = {
     const c = CFG.contrarian;
     const ranked = rankByLookback(ctx, c.lookback);
     const bot = ranked.slice(-c.botN).map(r => r.ticker);
-    const median = ranked.length ? ranked[Math.floor(ranked.length / 2)].ret : 0;
+    // Exit only on a clear reversion — climbed into the top quartile, not
+    // just edged above the median.
+    const topQuartileSize = Math.max(c.botN, Math.ceil(ranked.length / 4));
+    const topQuartile = new Set(ranked.slice(0, topQuartileSize).map(r => r.ticker));
 
     if (openPos) {
-      const cur = lookbackReturn(ctx, openPos.ticker, c.lookback);
-      // Reversion thesis fulfilled: the beaten-down pick climbed above median.
-      if (cur != null && cur > median) {
+      if (topQuartile.has(openPos.ticker)) {
         const t = bot.length ? pickFromGroup(bot, monkeyId, ctx.roundId, ctx) : randomTicker(ctx);
         return {
           signal_break: true,
@@ -223,6 +234,33 @@ const strategies = {
       signal_break: false,
       intent: { ticker: t, signal: ranked.find(r => r.ticker === t)?.ret ?? null,
                 hold_rounds: c.holdRounds, stop_pct: c.stopPct }
+    };
+  },
+
+  // Concentration play — buy the strongest 20-round trend that is also still
+  // above its 20-round MA, then hold with a wide stop. Designed to ride a
+  // sustained move and minimise turnover. No timeout — only exits on stop.
+  trend_follow(ctx, monkeyId, openPos) {
+    const c = CFG.trend_follow;
+    if (openPos) return { signal_break: false, intent: holdIntent(openPos) };
+
+    const ranked = rankByLookback(ctx, c.lookback);
+    const top = ranked.slice(0, 10).map(r => r.ticker);
+    const eligible = top.filter(t => {
+      const arr = ctx.history.get(t);
+      if (!arr || arr.length < c.lookback) return false;
+      const cur = arr[arr.length - 1];
+      const window = arr.slice(-c.lookback);
+      const ma = window.reduce((s, p) => s + p, 0) / window.length;
+      return cur > ma;
+    });
+    const t = eligible.length
+      ? pickFromGroup(eligible, monkeyId, ctx.roundId, ctx)
+      : (top.length ? pickFromGroup(top, monkeyId, ctx.roundId, ctx) : randomTicker(ctx));
+    return {
+      signal_break: false,
+      intent: { ticker: t, signal: ranked.find(r => r.ticker === t)?.ret ?? null,
+                hold_rounds: c.maxHold, stop_pct: c.stopPct }
     };
   },
 

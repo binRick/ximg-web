@@ -98,49 +98,52 @@ const RISK = ['Conservative', 'Measured', 'Spirited', 'Aggressive', 'Reckless', 
 // Keep in sync.
 const ARCHETYPE_STRATEGY = {
   'The Reluctant Contrarian':   'contrarian',
-  'The Closet Indexer':         'random',
+  'The Closet Indexer':         'lazy',
   'The Recovering YOLOer':      'top_chaser',
-  'The Vibe Trader':            'random',
-  'The Trend Whisperer':        'momentum',
-  'The Risk-Off Specialist':    'contrarian',
-  'The Volatility Tourist':     'contrarian',
+  'The Vibe Trader':            'top_chaser',
+  'The Trend Whisperer':        'trend_follow',
+  'The Risk-Off Specialist':    'lazy',
+  'The Volatility Tourist':     'breakout',
   'The Quiet Quant':            'momentum',
   'The Tape Reader':            'momentum',
   'The Sector Rotator':         'alphabetical',
   'The Mean Reverter':          'contrarian',
   'The Late Adopter':           'momentum',
-  'The Gut-Feel Maximalist':    'random',
+  'The Gut-Feel Maximalist':    'breakout',
   'The 5-Year Plan':            'lazy',
   'The Dip Buyer':              'contrarian',
-  'The Top-Caller':             'contrarian',
+  'The Top-Caller':             'breakout',
   'The Insomniac Daytrader':    'top_chaser',
   'The Recovering Goldbug':     'contrarian',
-  'The Earnings Whisperer':     'signature',
+  'The Earnings Whisperer':     'trend_follow',
   'The Backtest Believer':      'momentum',
-  'The Random Walker':          'random',
-  'The Indicator Stacker':      'momentum',
+  'The Random Walker':          'lazy',
+  'The Indicator Stacker':      'trend_follow',
   'The Macro Tourist':          'alphabetical',
-  'The Lunchtime Trader':       'momentum',
-  'The Conviction Trader':      'signature',
+  'The Lunchtime Trader':       'top_chaser',
+  'The Conviction Trader':      'trend_follow',
   'The Position Builder':       'lazy',
-  'The Reformed Maximalist':    'momentum',
-  'The Sceptical Optimist':     'contrarian'
+  'The Reformed Maximalist':    'lazy',
+  'The Sceptical Optimist':     'breakout'
 };
 const STRATEGY_DESC = {
-  random:       'Uniform random pick from available tickers.',
-  momentum:     'Picks from the top decile by previous-round return.',
-  contrarian:   'Picks from the bottom decile by previous-round return.',
-  top_chaser:   'Picks from the top 5 movers of the last round.',
-  lazy:         'Holds last round\'s pick, or random on first round.',
-  signature:    'Always picks the same ticker — their fixed favourite.',
-  alphabetical: 'Cycles through tickers alphabetically by round.'
+  random:       'Uniform random pick every round. Pays the spread on every trade by design.',
+  momentum:     'Top decile by 5-round return; holds until it drops to the bottom decile or 30 rounds pass.',
+  contrarian:   'Bottom decile by 5-round return; exits on a top-quartile rebound, a -15% stop, or 30 rounds.',
+  top_chaser:   'Top 5 movers of the last round; holds 15 rounds.',
+  breakout:     'New 20-round highs with a -5% stop and +5% target.',
+  alphabetical: 'Cycles tickers alphabetically; rotates once per trading day.',
+  lazy:         'Buys once and holds; only sells on a -20% stop.',
+  signature:    'Holds one favourite ticker forever. (Wanderer Knock only.)',
+  trend_follow: 'Top decile by 20-round return + above 20-round MA; held with a -15% stop, no timeout.'
 };
 
 export function cohort(id) { return id <= 50 ? 'random' : 'persona'; }
 export function strategyOf(id) {
   if (cohort(id) === 'random') return 'random';
+  if (id === 95) return 'signature'; // Wanderer Knock — locked-in winner.
   const archetype = pick(id, 1, ARCHETYPES);
-  return ARCHETYPE_STRATEGY[archetype] || 'random';
+  return ARCHETYPE_STRATEGY[archetype] || 'lazy';
 }
 export function strategyDesc(name) {
   return STRATEGY_DESC[name] || STRATEGY_DESC.random;
