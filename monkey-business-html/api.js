@@ -22,6 +22,9 @@ export async function getHistory(monkeyId, limit=200, from=null) {
   if (from != null) qs += `&from=${from}`;
   return jget(`/api/history?${qs}`);
 }
+export async function getPositions(monkeyId, limit=500) {
+  return jget(`/api/positions?monkey=${monkeyId}&limit=${limit}`);
+}
 export async function getMarket()      { return jget('/api/market'); }
 export async function getTicker(symbol, range='7d', interval='1d') {
   return jget(`/api/ticker?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`);

@@ -164,7 +164,17 @@
     .stat .val { font-family: var(--mono); font-size: 1.25rem; margin-top: .15rem; }
     .stat .val.gain { color: var(--gain); } .stat .val.loss { color: var(--loss); }
 
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; backdrop-filter: blur(10px); }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; backdrop-filter: blur(10px); margin-bottom: 1rem; }
+    .panel-title { font-size: .9rem; font-weight: 500; margin-bottom: .65rem; color: var(--text); letter-spacing: .02em; }
+    .panel-title .panel-sub { color: var(--muted); font-family: var(--mono); font-size: .7rem; font-weight: 400; margin-left: .5rem; letter-spacing: .06em; }
+    .trades-note { color: var(--muted); font-family: var(--mono); font-size: .78rem; padding: .65rem .9rem; border: 1px dashed var(--border); border-radius: 6px; }
+    .trades-panel .ticker-cell { font-family: var(--mono); font-weight: 600; color: var(--gold); }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; font-family: var(--mono); border: 1px solid currentColor; }
+    .pill.open    { color: var(--accent2); }
+    .pill.closed  { color: var(--muted); }
+    .pill.reason  { color: var(--muted); }
+    .pill.reason.stop, .pill.reason.signal_break { color: var(--loss); }
+    .pill.reason.timeout, .pill.reason.rotate    { color: var(--gold); }
 
     canvas#spark { display: block; width: 100%; aspect-ratio: 16/5; margin-bottom: 1rem; }
     canvas#spark[hidden] { display: none; }
@@ -255,7 +265,23 @@
 
       <div class="stats" id="stats"></div>
 
+      <div class="panel trades-panel" id="trades-panel">
+        <h2 class="panel-title">Trades</h2>
+        <div class="trades-note" id="trades-note" hidden></div>
+        <table id="trades-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Ticker</th><th>Strategy</th>
+              <th>Entered</th><th>Exited</th><th>Held</th>
+              <th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="trades"></tbody>
+        </table>
+      </div>
+
       <div class="panel">
+        <h2 class="panel-title">Mark-to-market tape <span class="panel-sub">(one row per round)</span></h2>
         <canvas id="spark"></canvas>
         <div id="spark-empty" class="spark-empty" hidden>Not enough settled rounds yet — chart appears after a few minutes of trading.</div>
         <table>
@@ -271,7 +297,7 @@
   </main>
 
   <script type="module">
-    import { getHistory, getLeaderboard, getSparks } from './api.js';
+    import { getHistory, getLeaderboard, getSparks, getPositions } from './api.js';
     import { persona, mood, signatureTicker } from './persona.js';
 
     function pct(x, d=2) {
@@ -325,6 +351,63 @@
         sigEl.innerHTML = `<span class="ticker">${sig.ticker}</span> · picked <span class="accent">${sig.picks}</span>x · ${wrPart}`;
       }
       document.getElementById('tc-mood').textContent = mood(picks || []);
+    }
+
+    function fmtHold(entryAt, exitAt) {
+      if (!entryAt) return '—';
+      const end = exitAt || Date.now();
+      const s = Math.max(0, Math.floor((end - entryAt) / 1000));
+      if (s < 60)    return s + 's';
+      if (s < 3600)  return Math.floor(s/60) + 'm';
+      if (s < 86400) return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
+      return Math.floor(s/86400) + 'd ' + Math.floor((s%86400)/3600) + 'h';
+    }
+
+    async function renderTrades(id, cohort) {
+      const tbody = document.getElementById('trades');
+      const note  = document.getElementById('trades-note');
+      const table = document.getElementById('trades-table');
+      // Random monkeys don't have positions — every pick is its own trade by
+      // design. Direct the viewer to the tape below rather than render 400
+      // single-round trades.
+      if (cohort === 'random') {
+        tbody.innerHTML = '';
+        table.hidden = true;
+        note.hidden = false;
+        note.textContent = 'Random cohort — every minute is a fresh trade. No positions held across rounds; see the per-round tape below.';
+        return;
+      }
+      table.hidden = false;
+      note.hidden = true;
+      let r;
+      try { r = await getPositions(id, 500); }
+      catch { tbody.innerHTML = `<tr><td colspan="10" class="empty">trades unavailable</td></tr>`; return; }
+      const ps = r.positions;
+      if (!ps.length) {
+        tbody.innerHTML = `<tr><td colspan="10" class="empty">no positions yet — strategy hasn't opened one this period.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = ps.map(p => {
+        const open  = p.exitRoundId == null;
+        const cls   = open ? '' : (p.pnlPct > 0 ? 'gain' : p.pnlPct < 0 ? 'loss' : '');
+        const pnl   = open ? '—' : pct(p.pnlPct, 2);
+        const exitT = open ? '—' : fmtTime(p.exitStartedAt);
+        const exitP = open ? '—' : (p.exitPrice != null ? p.exitPrice.toFixed(2) : '—');
+        const reason = open ? '<span class="pill open">OPEN</span>'
+                            : `<span class="pill reason ${p.exitReason||''}">${p.exitReason || 'closed'}</span>`;
+        return `<tr>
+          <td>${p.id}</td>
+          <td class="ticker-cell">${p.ticker}</td>
+          <td style="text-align:left;">${p.strategy}</td>
+          <td>${fmtTime(p.entryStartedAt)}</td>
+          <td>${exitT}</td>
+          <td>${fmtHold(p.entryStartedAt, p.exitStartedAt)}</td>
+          <td>${p.entryPrice.toFixed(2)}</td>
+          <td>${exitP}</td>
+          <td class="${cls}">${pnl}</td>
+          <td>${reason}</td>
+        </tr>`;
+      }).join('');
     }
 
     let monkeyMap = new Map();
@@ -507,6 +590,7 @@
         document.getElementById('m-id').textContent = `MONKEY #${id} · ${pickLabel}`;
         drawAvatar(id);
         renderTraderCard(id, r.picks);
+        renderTrades(id, persona(id).cohort);
 
         // For All-time, lean on the rolling counters in /api/leaderboard.
         // For a period, derive the same five stats from the picks in window.

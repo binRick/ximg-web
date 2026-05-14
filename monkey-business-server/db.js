@@ -258,6 +258,19 @@ const stmts = {
     FROM positions
     WHERE exit_round_id IS NULL
   `),
+  positionsForMonkey: db.prepare(`
+    SELECT p.id, p.strategy, p.ticker, p.entry_round_id,
+           er.started_at AS entry_started_at,
+           p.entry_price, p.signal, p.target_exit_round_id, p.stop_pct,
+           p.exit_round_id, xr.started_at AS exit_started_at,
+           p.exit_price, p.pnl_pct, p.exit_reason
+    FROM positions p
+    JOIN rounds er ON er.id = p.entry_round_id
+    LEFT JOIN rounds xr ON xr.id = p.exit_round_id
+    WHERE p.monkey_id = ?
+    ORDER BY p.id DESC
+    LIMIT ?
+  `),
   insertPosition: db.prepare(`
     INSERT INTO positions
       (monkey_id, strategy, ticker, entry_round_id, entry_price, signal,

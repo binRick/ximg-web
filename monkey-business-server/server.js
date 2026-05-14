@@ -689,6 +689,38 @@ const routes = {
     });
   },
 
+  // One row per actual position (entry → close), so the monkey-detail page
+  // can show real trades rather than per-round mark-to-market ticks. Random
+  // cohort never has positions rows — their picks row IS their trade.
+  'GET /api/positions': (req, res) => {
+    const q = url.parse(req.url, true).query;
+    const id = +q.monkey;
+    if (!id || id < 1 || id > 100) return json(res, 400, { error: 'bad monkey id' });
+    const m = stmts.monkeyById.get(id);
+    if (!m) return json(res, 404, { error: 'no such monkey' });
+    const limit = Math.min(2000, Math.max(1, +(q.limit || 500)));
+    const rows = stmts.positionsForMonkey.all(id, limit);
+    json(res, 200, {
+      monkey: m,
+      positions: rows.map(r => ({
+        id:                 r.id,
+        strategy:           r.strategy,
+        ticker:             r.ticker,
+        entryRoundId:       r.entry_round_id,
+        entryStartedAt:     r.entry_started_at,
+        entryPrice:         r.entry_price,
+        signal:             r.signal,
+        targetExitRoundId:  r.target_exit_round_id,
+        stopPct:            r.stop_pct,
+        exitRoundId:        r.exit_round_id,
+        exitStartedAt:      r.exit_started_at,
+        exitPrice:          r.exit_price,
+        pnlPct:             r.pnl_pct,
+        exitReason:         r.exit_reason
+      }))
+    });
+  },
+
   'POST /api/throw': async (req, res) => {
     const ip = clientIp(req);
     const now = Date.now();
