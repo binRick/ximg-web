@@ -92,7 +92,8 @@
       ['monkey-business','&#x1F412; <span style="background:linear-gradient(90deg,#ff5e62,#ffaa00,#39ad48,#00c2c7,#a855f7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:600">monkey-business</span> &#x1F34C;'],
       ['rbterm','&#x1F4DF; rbterm'],
       ['scumm','scumm-game'],
-      ['uapd','&#x1F6F8; UAP/D']
+      ['uapd','&#x1F6F8; UAP/D'],
+      ['kaiju','&#x1F996; KAIJU']
     ]},
     { label: 'System', apps: [
       ['apps','apps'],['change','change'],['claudemd','CLAUDE.md'],['honeypot','honeypot'],['logs','logs'],['mail','mail'],['nav','nav'],['readme','README.md'],['stats','stats'],['video','video'],['ximg','ximg']
