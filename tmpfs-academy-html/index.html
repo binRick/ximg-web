@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tmpfs-academy — hands-on Linux skills in a real terminal</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#06100b;--bg2:#0a1812;--bg3:#0f2419;
+  --green:#3ddc84;--green2:#1f9c5c;--lime:#a3e635;--amber:#fbbf24;
+  --text:#cfe9da;--dim:#5f8472;--mono:'Courier New',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);line-height:1.6;overflow-x:hidden}
+a{color:var(--green);text-decoration:none;transition:color .2s}
+a:hover{color:var(--lime)}
+
+body::after{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);
+  pointer-events:none;z-index:9998;
+}
+
+/* ── PIN gate ── */
+#gate{
+  position:fixed;inset:0;z-index:10000;
+  background:radial-gradient(ellipse at 50% 40%,#0c2418,#040a07 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:2rem 1rem;
+}
+#gate.hidden{display:none}
+.gate-glyph{font-size:3rem;margin-bottom:1rem;filter:drop-shadow(0 0 18px rgba(61,220,132,.5))}
+.gate-title{
+  font-size:clamp(1.4rem,5vw,2.2rem);color:#fff;letter-spacing:.18em;
+  text-transform:uppercase;text-shadow:0 0 24px rgba(61,220,132,.4)
+}
+.gate-sub{color:var(--dim);font-size:.82rem;letter-spacing:.18em;text-transform:uppercase;margin-top:.6rem}
+.gate-box{
+  margin-top:2rem;background:var(--bg2);border:1px solid rgba(61,220,132,.3);
+  border-radius:6px;padding:1.6rem;max-width:340px;width:100%
+}
+.gate-prompt{font-size:.78rem;color:var(--green);letter-spacing:.1em;margin-bottom:.9rem;text-align:left}
+.gate-prompt::before{content:'$ ';color:var(--dim)}
+#pin{
+  width:100%;background:#040a07;border:1px solid rgba(61,220,132,.35);
+  color:var(--green);font-family:var(--mono);font-size:1.5rem;letter-spacing:.5em;
+  text-align:center;padding:.7rem;border-radius:4px;outline:none
+}
+#pin:focus{border-color:var(--green);box-shadow:0 0 16px rgba(61,220,132,.3)}
+.gate-btn{
+  margin-top:1rem;width:100%;background:rgba(61,220,132,.1);
+  border:1px solid var(--green);color:var(--green);font-family:var(--mono);
+  font-size:.82rem;letter-spacing:.18em;text-transform:uppercase;padding:.7rem;
+  border-radius:4px;cursor:pointer;transition:all .2s
+}
+.gate-btn:hover{background:var(--green);color:#04140b;box-shadow:0 0 20px rgba(61,220,132,.5)}
+#gate-err{color:#f87171;font-size:.78rem;letter-spacing:.1em;margin-top:.9rem;min-height:1rem}
+.gate-foot{color:var(--dim);font-size:.7rem;letter-spacing:.14em;margin-top:1.6rem}
+
+/* ── content (revealed) ── */
+#site{display:none}
+#site.unlocked{display:block}
+
+#subnav{
+  position:sticky;top:52px;z-index:150;
+  background:rgba(6,16,11,.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex;justify-content:center;flex-wrap:wrap;gap:.2rem;padding:.4rem 1rem;
+}
+#subnav a{
+  font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+  color:#4f7363;padding:.3rem .65rem;border-radius:3px;
+  transition:color .2s,background .2s;font-family:var(--mono)
+}
+#subnav a:hover,#subnav a.active{color:var(--green);background:rgba(61,220,132,.08)}
+
+.hero{
+  position:relative;min-height:72vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  padding:5rem 1rem 4rem;overflow:hidden
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse at 50% 75%,rgba(61,220,132,.16),transparent 60%),
+    radial-gradient(ellipse at 20% 25%,rgba(163,230,53,.08),transparent 55%);
+  pointer-events:none
+}
+.hero-glyph{font-size:5rem;margin-bottom:1.2rem;filter:drop-shadow(0 0 26px rgba(61,220,132,.45));animation:bob 4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.hero-title{
+  font-size:clamp(2.2rem,8vw,5rem);font-weight:900;letter-spacing:.06em;
+  color:#fff;text-shadow:0 0 36px rgba(61,220,132,.5),0 4px 0 #03100a
+}
+.hero-tag{font-size:clamp(.78rem,1.7vw,1rem);color:var(--dim);margin-top:1rem;letter-spacing:.18em;text-transform:uppercase}
+.hero-tag span{color:var(--green)}
+.hero-blurb{margin-top:1.6rem;max-width:680px;color:#9ab8a8;font-size:.95rem;letter-spacing:.03em}
+.hero-badges{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center;margin-top:2rem}
+.hero-badge{
+  padding:.45rem 1rem;border:1px solid rgba(61,220,132,.5);border-radius:2px;
+  color:var(--green);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;
+  background:rgba(61,220,132,.05)
+}
+.hero-badge.lime{border-color:rgba(163,230,53,.5);color:var(--lime);background:rgba(163,230,53,.05)}
+.hero-badge.amber{border-color:rgba(251,191,36,.5);color:var(--amber);background:rgba(251,191,36,.05)}
+
+section{padding:4rem 1rem;max-width:1080px;margin:0 auto}
+.section-title{
+  font-size:clamp(1.4rem,4vw,2rem);font-weight:700;color:#fff;
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem;
+  border-left:4px solid var(--green);padding-left:1rem
+}
+.section-rule{width:80px;height:2px;background:linear-gradient(90deg,var(--green),transparent);margin:0 0 2rem 1.2rem}
+
+.briefing{
+  background:var(--bg2);border:1px solid rgba(61,220,132,.18);border-radius:4px;
+  padding:1.8rem 2rem;font-size:.95rem;color:#b5d2c3
+}
+.briefing strong{color:var(--green)}
+
+.steps{counter-reset:step;display:grid;gap:.9rem}
+.step{
+  background:var(--bg2);border:1px solid rgba(61,220,132,.16);border-radius:4px;
+  padding:1.1rem 1.3rem 1.1rem 3.4rem;position:relative;font-size:.9rem;color:#b5d2c3
+}
+.step::before{
+  counter-increment:step;content:counter(step);
+  position:absolute;left:1rem;top:1rem;width:1.6rem;height:1.6rem;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(61,220,132,.12);border:1px solid var(--green);border-radius:50%;
+  color:var(--green);font-size:.8rem;font-weight:700
+}
+.step strong{color:var(--green)}
+
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.1rem}
+.feature{
+  background:var(--bg2);border:1px solid rgba(61,220,132,.2);border-radius:4px;
+  padding:1.4rem;position:relative;overflow:hidden;transition:border-color .25s,transform .25s
+}
+.feature:hover{border-color:var(--green);transform:translateY(-3px)}
+.feature::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.feature h3{font-size:.95rem;color:var(--green);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem}
+.feature p{font-size:.85rem;color:#a0bdad}
+
+.tech-table{width:100%;border-collapse:collapse;font-size:.86rem}
+.tech-table th{
+  text-align:left;padding:.6rem .8rem;font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);border-bottom:2px solid rgba(61,220,132,.3)
+}
+.tech-table td{padding:.6rem .8rem;border-bottom:1px solid rgba(255,255,255,.04);color:#a8c6b6;vertical-align:top}
+.tech-table tr:hover td{background:rgba(255,255,255,.02)}
+.tech-table td:first-child{color:var(--green);font-weight:700;white-space:nowrap}
+
+.open-list{list-style:none;display:grid;gap:.6rem}
+.open-list li{
+  background:var(--bg2);border-left:3px solid var(--amber);
+  padding:.8rem 1rem;font-size:.86rem;color:#b5d2c3;border-radius:0 4px 4px 0
+}
+
+.statusbar{
+  background:var(--bg2);border:1px dashed rgba(251,191,36,.4);border-radius:4px;
+  padding:1.2rem 1.6rem;font-size:.88rem;color:var(--amber);letter-spacing:.04em;text-align:center
+}
+
+.cta{margin:3rem auto;text-align:center;padding:3rem 1rem;background:linear-gradient(180deg,transparent,rgba(61,220,132,.07))}
+.cta h2{font-size:1.5rem;letter-spacing:.14em;text-transform:uppercase;color:#fff;margin-bottom:.6rem}
+.cta p{color:var(--dim);margin-bottom:1.4rem;font-size:.85rem;letter-spacing:.06em}
+.cta-btn{
+  display:inline-block;padding:.7rem 1.4rem;margin:.3rem;
+  border:1px solid var(--green);color:var(--green);letter-spacing:.14em;
+  text-transform:uppercase;font-size:.78rem;border-radius:2px;
+  transition:all .25s;background:rgba(61,220,132,.05)
+}
+.cta-btn:hover{background:var(--green);color:#04140b;box-shadow:0 0 20px rgba(61,220,132,.5)}
+
+footer{padding:2rem 1rem;text-align:center;color:var(--dim);font-size:.75rem;letter-spacing:.1em}
+footer a{color:var(--green)}
+
+@media(max-width:600px){
+  .hero{padding:3rem 1rem 2.5rem;min-height:58vh}
+  section{padding:3rem 1rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ── PIN gate ── -->
+<div id="gate">
+  <div class="gate-glyph">&#x1F512;</div>
+  <h1 class="gate-title">tmpfs&#8209;academy</h1>
+  <p class="gate-sub">Private preview &middot; access restricted</p>
+  <form class="gate-box" id="gate-form" autocomplete="off">
+    <div class="gate-prompt">enter access pin</div>
+    <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autofocus>
+    <button class="gate-btn" type="submit">Unlock</button>
+    <div id="gate-err"></div>
+  </form>
+  <p class="gate-foot">This page describes an early-stage project shared under wraps.</p>
+</div>
+
+<!-- ── site content ── -->
+<div id="site">
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="#experience">Experience</a>
+  <a href="#themes">Challenges</a>
+  <a href="#tech">Technology</a>
+  <a href="#status">Status</a>
+  <a href="https://github.com/binRick/tmpfs-academy">Source</a>
+</nav>
+
+<header class="hero">
+  <div class="hero-glyph">&#x1F4DF;</div>
+  <h1 class="hero-title">tmpfs-academy</h1>
+  <p class="hero-tag">Hands-on Linux skills, learned in a <span>real terminal</span> — not a quiz</p>
+  <p class="hero-blurb">
+    A web platform for practicing real system administration, application
+    deployment, and troubleshooting. Instead of multiple-choice questions,
+    learners are dropped into a live, disposable Linux environment and given a
+    task to actually complete — validated against the real system state.
+  </p>
+  <div class="hero-badges">
+    <span class="hero-badge">Linux</span>
+    <span class="hero-badge lime">open source</span>
+    <span class="hero-badge">in-browser + SSH</span>
+    <span class="hero-badge amber">early design</span>
+  </div>
+</header>
+
+<section>
+  <h2 class="section-title">The Idea</h2>
+  <div class="section-rule"></div>
+  <div class="briefing">
+    Most "learn Linux" platforms test whether you can <strong>recall a fact</strong>.
+    tmpfs-academy tests whether you can <strong>do the work</strong>. A learner goes
+    from "visit the site" to "working in a shell" in seconds, with nothing to
+    install. Every challenge is solved by performing real work on a real system —
+    and success is determined by inspecting the actual machine state (files,
+    services, processes, network), not by self-reporting.
+    <br><br>
+    Environments are sandboxed and ephemeral, so mistakes are expected and have
+    no lasting consequences. <strong>Safe to break, objective to grade.</strong>
+  </div>
+</section>
+
+<section id="experience">
+  <h2 class="section-title">User Experience</h2>
+  <div class="section-rule"></div>
+  <div class="steps">
+    <div class="step"><strong>Browse challenges.</strong> Pick one organized by theme (sysadmin, app deployment, troubleshooting) and difficulty.</div>
+    <div class="step"><strong>Start a session.</strong> A fresh, isolated environment is provisioned on demand.</div>
+    <div class="step"><strong>Connect.</strong> Work in the in-browser terminal, or over SSH from your own terminal using the credentials shown in the UI.</div>
+    <div class="step"><strong>Solve the task.</strong> e.g. "the web app on port 8080 is down — bring it back up and make it survive a reboot." Investigate and fix it with standard Linux tooling.</div>
+    <div class="step"><strong>Get graded.</strong> A validator checks the live system against the success criteria and reports pass/fail with actionable detail.</div>
+    <div class="step"><strong>Session ends.</strong> The environment is torn down; progress is recorded against your account.</div>
+  </div>
+</section>
+
+<section id="themes">
+  <h2 class="section-title">Challenge Themes</h2>
+  <div class="section-rule"></div>
+  <div class="feature-grid">
+    <div class="feature">
+      <h3>System Administration</h3>
+      <p>Users and permissions, services, storage, networking, scheduled jobs, log analysis.</p>
+    </div>
+    <div class="feature">
+      <h3>Application Deployment</h3>
+      <p>Installing and configuring apps, reverse proxying, TLS, environment configuration, persistence across restarts.</p>
+    </div>
+    <div class="feature">
+      <h3>Troubleshooting</h3>
+      <p>Diagnosing broken services, resource exhaustion, misconfiguration, and connectivity failures from a degraded starting state.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tech">
+  <h2 class="section-title">Technology</h2>
+  <div class="section-rule"></div>
+  <p style="color:var(--dim);font-size:.82rem;margin-bottom:1.4rem;letter-spacing:.04em">
+    Built entirely on Linux and open-source technologies. This describes intended
+    direction, not committed implementations.
+  </p>
+  <table class="tech-table">
+    <thead><tr><th>Layer</th><th>Purpose</th><th>Direction</th></tr></thead>
+    <tbody>
+      <tr><td>Sandboxed environments</td><td>Isolated, ephemeral per-session Linux instances</td><td>Containers / VMs — isolation model TBD</td></tr>
+      <tr><td>Browser terminal</td><td>In-page interactive shell</td><td>Web terminal frontend (e.g. xterm.js) over a WebSocket PTY bridge</td></tr>
+      <tr><td>SSH gateway</td><td>Reach the same session from a native terminal</td><td>SSH front-end routing per-session credentials to the sandbox</td></tr>
+      <tr><td>Challenge engine</td><td>Defines briefs, seeds state, runs validators</td><td>Declarative challenge definitions + automated grading scripts</td></tr>
+      <tr><td>Web app &amp; API</td><td>Catalog, session lifecycle, auth, progress</td><td>Standard web stack (TBD)</td></tr>
+      <tr><td>Hosting</td><td>Public-facing deployment</td><td>Server <code>mia</code>; reverse proxy at <code>/root/ximg-web</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2 class="section-title">Open Questions</h2>
+  <div class="section-rule"></div>
+  <ul class="open-list">
+    <li>Sandbox / isolation mechanism (containers vs. VMs vs. ephemeral hosts) and the security boundary it provides.</li>
+    <li>Browser terminal technology and the SSH gateway design.</li>
+    <li>Challenge definition format and the automated grading / validation model.</li>
+    <li>Authentication, persistence, and progress tracking.</li>
+  </ul>
+</section>
+
+<section id="status">
+  <h2 class="section-title">Status</h2>
+  <div class="section-rule"></div>
+  <div class="statusbar">
+    Early design stage. The concept and infrastructure target are defined;
+    the architecture and stack are being decided.
+  </div>
+</section>
+
+<div class="cta">
+  <h2>Follow Along</h2>
+  <p>Concept and infrastructure notes live in the repo.</p>
+  <a href="https://github.com/binRick/tmpfs-academy" class="cta-btn">Source on GitHub</a>
+  <a href="https://projects-info.ximg.app" class="cta-btn">All projects</a>
+</div>
+
+<footer>
+  <p>&copy; 2026 &nbsp;&middot;&nbsp; <a href="https://ximg.app">ximg.app</a> portfolio &nbsp;&middot;&nbsp; private preview</p>
+</footer>
+
+</div><!-- /#site -->
+
+<script>
+(function(){
+  var PIN='202605', KEY='tmpfs-academy-unlocked';
+  var gate=document.getElementById('gate'), site=document.getElementById('site');
+  function unlock(){
+    gate.classList.add('hidden');
+    site.classList.add('unlocked');
+    initSubnav();
+  }
+  if(sessionStorage.getItem(KEY)==='1'){ unlock(); }
+  document.getElementById('gate-form').addEventListener('submit',function(e){
+    e.preventDefault();
+    var v=document.getElementById('pin').value.trim();
+    if(v===PIN){
+      try{ sessionStorage.setItem(KEY,'1'); }catch(_){}
+      unlock();
+    }else{
+      document.getElementById('gate-err').textContent='Incorrect PIN — access denied.';
+      document.getElementById('pin').value='';
+      document.getElementById('pin').focus();
+    }
+  });
+  function initSubnav(){
+    document.querySelectorAll('#subnav a').forEach(function(a){
+      var href=a.getAttribute('href'), path=location.pathname;
+      if(href==='index.html'&&(path.endsWith('/')||path.endsWith('index.html'))){
+        a.classList.add('active');
+      }
+    });
+  }
+})();
+</script>
+<script src="/shared/nav.js?v=5"></script>
+</body>
+</html>

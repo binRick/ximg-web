@@ -4,7 +4,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 
 ## Live Sites
 
-234 virtual hosts (root + 233 subdomains), all static sites served by a single nginx container.
+235 virtual hosts (root + 234 subdomains), all static sites served by a single nginx container.
 
 | Subdomain | Description |
 |-----------|-------------|
@@ -249,6 +249,7 @@ Production multi-site web portfolio stack running on a single Linux VM at `172.2
 | [droneposition.ximg.app](https://droneposition.ximg.app) | Drone Position — TRON-themed FPV drone racer in C with raylib 6 + Clay UI. Wireframe grid, stacked-bar sun, neon score/bonus/hazard gates. macOS native today, WebAssembly planned. |
 | [uapd.ximg.app](https://uapd.ximg.app) | UAP/D — top-down stealth UFO game in single-file C with raylib (native macOS + iOS). Three flyable saucers, vision-cone civilian AI, helicopter patrols, procedural crop circles, public leaderboard. |
 | [kaiju.ximg.app](https://kaiju.ximg.app) | KAIJU — top-down isometric rampage in single-file C with raylib. You are the monster, eat the city before the military puts you down. Three kaiju archetypes, MASS-driven scaling, escalating waves through mech and rival-kaiju bosses. |
+| [tmpfs-academy.ximg.app](https://tmpfs-academy.ximg.app) | tmpfs-academy — hands-on Linux skills learned in a real disposable terminal, not a quiz. Real sysadmin / deployment / troubleshooting tasks graded against live system state, reachable in-browser or over SSH. Private preview (PIN-gated). |
 | [raylib.ximg.app](https://raylib.ximg.app) | raylib deep dive — the simple C99 game library by Ramon Santamaria. Features, architecture, code examples, gallery, and design philosophy. |
 | [c99.ximg.app](https://c99.ximg.app) | C99 deep dive — history from Bell Labs to C23, advantages, pioneers (Ritchie, Thompson, Kernighan), use cases, and statistics. |
 | [golang.ximg.app](https://golang.ximg.app) | Go deep dive — Google's language for cloud infrastructure. History, goroutines, pioneers (Pike, Thompson, Griesemer), use cases, and statistics. |

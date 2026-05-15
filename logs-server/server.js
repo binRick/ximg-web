@@ -259,6 +259,7 @@ const LOG_FILES = {
   droneposition: 'droneposition.access.log',
   uapd:         'uapd.access.log',
   kaiju:        'kaiju.access.log',
+  'tmpfs-academy': 'tmpfs-academy.access.log',
   raylib:       'raylib.access.log',
   c99:          'c99.access.log',
   golang:       'golang.access.log',
@@ -880,6 +881,7 @@ const HTML = `<!DOCTYPE html>
           <button class="site-opt" data-site="droneposition">droneposition</button>
           <button class="site-opt" data-site="uapd">uapd</button>
           <button class="site-opt" data-site="kaiju">kaiju</button>
+          <button class="site-opt" data-site="tmpfs-academy">tmpfs-academy</button>
           <button class="site-opt" data-site="raylib">raylib</button>
           <button class="site-opt" data-site="c99">c99</button>
           <button class="site-opt" data-site="golang">golang</button>

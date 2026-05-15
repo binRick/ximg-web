@@ -87,6 +87,7 @@
       ['droneposition','&#x1F50A; Drone Position'],
       ['pal','pal'],
       ['tls-ca-fetch','tls-ca-fetch'],
+      ['tmpfs-academy','&#x1F4DF; tmpfs-academy'],
       ['github-stats','github stats'],
       ['chernobyl','&#x2622; Chernobyl (iron fist)'],
       ['monkey-business','&#x1F412; <span style="background:linear-gradient(90deg,#ff5e62,#ffaa00,#39ad48,#00c2c7,#a855f7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:600">monkey-business</span> &#x1F34C;'],
