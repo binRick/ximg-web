@@ -4,8 +4,9 @@
 #   ximg-all      → ximg.app (all subdomains merged)
 #   dockerimage-dev → dockerimage.dev
 #   swaudit       → swaudit.net
+#   tmpfs         → tmpfs.tech
 
-SITES="ximg-all dockerimage-dev swaudit"
+SITES="ximg-all dockerimage-dev swaudit tmpfs"
 
 CONFDIR=/configs
 DATADIR=/data
@@ -33,6 +34,7 @@ display_name() {
         ximg-all)        echo "ximg.app" ;;
         dockerimage-dev) echo "dockerimage.dev" ;;
         swaudit)         echo "swaudit.net" ;;
+        tmpfs)           echo "tmpfs.tech" ;;
         *)               echo "$1" ;;
     esac
 }
@@ -42,6 +44,7 @@ display_desc() {
         ximg-all)        echo "All ximg.app subdomains combined" ;;
         dockerimage-dev) echo "Docker image tools" ;;
         swaudit)         echo "Software audit platform" ;;
+        tmpfs)           echo "Hands-on Linux skills platform" ;;
         *)               echo "$1" ;;
     esac
 }
@@ -110,7 +113,7 @@ sparkline_svg() {
     case "$site" in
         ximg-all)
             find /logs -maxdepth 1 -name '*.access.log*' -mtime -8 2>/dev/null \
-                | grep -v -E '/(dockerimage\.dev|swaudit|access\.log)' \
+                | grep -v -E '/(dockerimage\.dev|swaudit|tmpfs-academy|access\.log)' \
                 | perl "$SPARK_PL"
             ;;
         dockerimage-dev)
@@ -119,6 +122,10 @@ sparkline_svg() {
             ;;
         swaudit)
             find /logs -maxdepth 1 -name 'swaudit.access.log*' -mtime -8 2>/dev/null \
+                | perl "$SPARK_PL"
+            ;;
+        tmpfs)
+            find /logs -maxdepth 1 -name 'tmpfs-academy.access.log*' -mtime -8 2>/dev/null \
                 | perl "$SPARK_PL"
             ;;
     esac
@@ -219,6 +226,7 @@ for site in $SITES; do
     spark=$(sparkline_svg "$site")
     case "$site" in
         swaudit) href="/swaudit-pin.html" ;;
+        tmpfs)   href="/tmpfs-pin.html" ;;
         *)       href="/${site}/" ;;
     esac
     echo "    <a class=\"site-card\" href=\"${href}\">" >> "${OUTDIR}/index.html"
