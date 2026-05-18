@@ -541,6 +541,7 @@
   <div class="tab" data-panel="summary">📋 Summary</div>
   <div class="tab" data-panel="resources">📚 Resources</div>
   <div class="tab" data-panel="provider">🔒 Provider</div>
+  <div class="tab" data-panel="portal">👤 Client Portal</div>
 </div>
 
 <!-- ════════════════════════════════ DASHBOARD ═══════════════════════════════ -->
@@ -2184,6 +2185,484 @@ Loading summary...
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════ -->
+<!--  CLIENT PROGRESS PORTAL (per-client PIN, server-backed) -->
+<!-- ═══════════════════════════════════════════════════ -->
+<style>
+  .cp-wrap { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  .cp-hide { display: none !important; }
+  .cp-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: .7rem; }
+  .cp-client {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem; cursor: pointer; transition: border-color .15s, transform .1s;
+  }
+  .cp-client:hover { border-color: var(--teal2); transform: translateY(-2px); }
+  .cp-client-name { font-weight: 800; color: var(--teal3); font-size: 1rem; }
+  .cp-client-meta { font-size: .72rem; color: var(--muted); margin-top: .3rem; }
+  .cp-field { margin-bottom: .8rem; }
+  .cp-field label { display:block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:.3rem; }
+  .cp-field input, .cp-field textarea {
+    width: 100%; box-sizing: border-box; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    padding: .55rem .7rem; font-size: .85rem; font-family: inherit;
+  }
+  .cp-field input:focus, .cp-field textarea:focus { outline: none; border-color: var(--teal2); }
+  .cp-btn {
+    background: linear-gradient(135deg, var(--teal), var(--teal2)); color: #04110f;
+    border: none; border-radius: 8px; padding: .6rem 1.2rem; font-size: .82rem;
+    font-weight: 800; cursor: pointer;
+  }
+  .cp-btn:hover { filter: brightness(1.1); }
+  .cp-btn-ghost {
+    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+    color: #f87171; border-radius: 8px; padding: .4rem .9rem; font-size: .72rem;
+    font-weight: 700; cursor: pointer;
+  }
+  .cp-link { background:none; border:none; color:var(--teal3); font-size:.74rem; cursor:pointer; text-decoration:underline; padding:0; margin-top:.6rem; }
+  .cp-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+  .cp-subtabs { display:flex; gap:.4rem; border-bottom:1px solid var(--border); margin:1rem 0 1.2rem; flex-wrap:wrap; }
+  .cp-subtab { font-size:.76rem; font-weight:700; color:var(--muted); padding:.5rem .9rem; cursor:pointer; border-bottom:2px solid transparent; }
+  .cp-subtab.active { color:var(--teal2); border-bottom-color:var(--teal2); }
+  .cp-stat { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:.9rem; text-align:center; }
+  .cp-stat-val { font-size:1.5rem; font-weight:800; color:var(--teal3); }
+  .cp-stat-label { font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:.2rem; }
+  .cp-entry { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:.8rem 1rem; margin-bottom:.6rem; }
+  .cp-entry-date { font-weight:800; color:var(--teal3); font-size:.85rem; }
+  .cp-entry-metrics { font-size:.74rem; color:var(--text); margin-top:.4rem; line-height:1.6; }
+  .cp-entry-notes { font-size:.74rem; color:var(--muted); margin-top:.4rem; font-style:italic; }
+  .cp-err { color:#f87171; font-size:.76rem; margin-top:.6rem; min-height:1rem; }
+  .cp-ok { color:var(--teal3); font-size:.76rem; margin-top:.6rem; min-height:1rem; }
+  .cp-pinrow { display:flex; gap:.5rem; justify-content:center; margin:1rem 0; }
+  .cp-pinrow input { width:46px; height:54px; text-align:center; font-size:1.4rem; background:var(--bg2); border:1px solid var(--border); border-radius:8px; color:var(--text); }
+  .cp-pinrow input:focus { outline:none; border-color:var(--teal2); }
+</style>
+<div class="panel" id="panel-portal">
+  <div class="cp-wrap">
+
+    <!-- ─── View: client list ─── -->
+    <div id="cp-view-list">
+      <div class="section-label">Client Progress Portal</div>
+      <div class="card">
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">
+          Secure, date-by-date progress tracking. Pick your profile to log in with your personal PIN,
+          or add a new client below. Data is stored on the server and syncs across devices.
+        </div>
+        <div class="cp-grid" id="cp-client-grid"></div>
+        <div id="cp-empty" style="font-size:.78rem;color:var(--muted);display:none">No clients yet — add the first one below.</div>
+      </div>
+
+      <div class="section-label" style="margin-top:1.5rem">Add New Client</div>
+      <div class="card">
+        <div class="cp-field"><label>Client name</label><input id="cp-new-name" placeholder="Full name"></div>
+        <div class="cp-row2">
+          <div class="cp-field"><label>Start weight (lbs)</label><input id="cp-new-start" type="number" inputmode="decimal" placeholder="e.g. 210"></div>
+          <div class="cp-field"><label>Goal weight (lbs)</label><input id="cp-new-goal" type="number" inputmode="decimal" placeholder="e.g. 180"></div>
+        </div>
+        <div class="cp-field"><label>Program</label><input id="cp-new-program" placeholder="e.g. GLP-1 + Resistance Training"></div>
+        <button class="cp-btn" onclick="cpCreateClient()">+ Add Client</button>
+        <div class="cp-err" id="cp-new-err"></div>
+      </div>
+    </div>
+
+    <!-- ─── View: auth (login / set PIN) ─── -->
+    <div id="cp-view-auth" class="cp-hide">
+      <button class="cp-link" onclick="cpShowList()">← Back to clients</button>
+      <div class="card" style="margin-top:.8rem;text-align:center">
+        <div style="font-size:2rem">🔒</div>
+        <div class="card-heading" id="cp-auth-name" style="font-size:1.1rem;margin:.4rem 0"></div>
+        <div id="cp-auth-prompt" style="font-size:.8rem;color:var(--muted)"></div>
+        <div class="cp-pinrow" id="cp-pin1">
+          <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+          <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+          <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+          <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+        </div>
+        <div id="cp-confirm-wrap" class="cp-hide">
+          <div style="font-size:.72rem;color:var(--muted)">Confirm PIN</div>
+          <div class="cp-pinrow" id="cp-pin2">
+            <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+            <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+            <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+            <input type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+          </div>
+        </div>
+        <button class="cp-btn" id="cp-auth-btn" onclick="cpSubmitAuth()">Unlock</button>
+        <button class="cp-link" id="cp-forgot" onclick="cpForgotPin()">Forgot PIN?</button>
+        <div class="cp-err" id="cp-auth-err"></div>
+      </div>
+    </div>
+
+    <!-- ─── View: dashboard ─── -->
+    <div id="cp-view-dash" class="cp-hide">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div class="card-heading" id="cp-dash-name" style="font-size:1.1rem;color:var(--teal3)"></div>
+          <div style="font-size:.74rem;color:var(--muted)" id="cp-dash-program"></div>
+        </div>
+        <button class="cp-btn-ghost" onclick="cpLock()">🔒 Lock</button>
+      </div>
+
+      <div class="cp-subtabs">
+        <div class="cp-subtab active" data-cpsub="overview">Overview</div>
+        <div class="cp-subtab" data-cpsub="log">Log Entry</div>
+        <div class="cp-subtab" data-cpsub="history">History</div>
+      </div>
+
+      <!-- Overview -->
+      <div id="cp-sub-overview">
+        <div class="cp-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:1rem">
+          <div class="cp-stat"><div class="cp-stat-val" id="cp-ov-lost">—</div><div class="cp-stat-label">lbs changed</div></div>
+          <div class="cp-stat"><div class="cp-stat-val" id="cp-ov-current">—</div><div class="cp-stat-label">current wt</div></div>
+          <div class="cp-stat"><div class="cp-stat-val" id="cp-ov-energy">—</div><div class="cp-stat-label">avg energy</div></div>
+          <div class="cp-stat"><div class="cp-stat-val" id="cp-ov-sleep">—</div><div class="cp-stat-label">avg sleep</div></div>
+          <div class="cp-stat"><div class="cp-stat-val" id="cp-ov-workouts">—</div><div class="cp-stat-label">total workouts</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Progress to Goal</div>
+          <div class="progress-label"><span id="cp-pg-start">Start</span><span id="cp-pg-goal">Goal</span></div>
+          <div style="height:14px;background:var(--bg2);border-radius:7px;overflow:hidden;border:1px solid var(--border)">
+            <div id="cp-pg-fill" class="fill-teal" style="height:100%;width:0%;border-radius:7px;transition:width .5s"></div>
+          </div>
+          <div style="font-size:.74rem;color:var(--muted);margin-top:.4rem" id="cp-pg-text"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Weight Trend</div>
+          <canvas id="cp-chart" height="180" style="width:100%;display:block"></canvas>
+          <div style="font-size:.72rem;color:var(--muted);text-align:center" id="cp-chart-empty">Log at least 2 check-ins to see your trend.</div>
+        </div>
+      </div>
+
+      <!-- Log Entry -->
+      <div id="cp-sub-log" class="cp-hide">
+        <div class="card">
+          <div class="card-title">Add / Update Check-In</div>
+          <div class="cp-row2">
+            <div class="cp-field"><label>Date</label><input id="cp-e-date" type="date"></div>
+            <div class="cp-field"><label>Weight (lbs)</label><input id="cp-e-weight" type="number" inputmode="decimal"></div>
+          </div>
+          <div class="cp-row2">
+            <div class="cp-field"><label>Body fat %</label><input id="cp-e-bodyfat" type="number" inputmode="decimal"></div>
+            <div class="cp-field"><label>Energy (1–10)</label><input id="cp-e-energy" type="number" min="1" max="10"></div>
+          </div>
+          <div class="cp-row2">
+            <div class="cp-field"><label>Sleep (hrs)</label><input id="cp-e-sleep" type="number" inputmode="decimal"></div>
+            <div class="cp-field"><label>Workouts</label><input id="cp-e-workouts" type="number" min="0"></div>
+          </div>
+          <div class="cp-row2">
+            <div class="cp-field"><label>Calories</label><input id="cp-e-calories" type="number" min="0"></div>
+            <div class="cp-field"><label>Mood</label><input id="cp-e-mood" placeholder="e.g. Strong"></div>
+          </div>
+          <div class="cp-field"><label>Notes</label><textarea id="cp-e-notes" rows="3" placeholder="How the week went…"></textarea></div>
+          <button class="cp-btn" onclick="cpSaveEntry()">Save Check-In</button>
+          <div class="cp-ok" id="cp-e-msg"></div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div id="cp-sub-history" class="cp-hide">
+        <div id="cp-history-list"></div>
+        <div id="cp-history-empty" style="font-size:.78rem;color:var(--muted)">No check-ins logged yet.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ════════ Client Progress Portal ════════
+  (function () {
+    var API = '/api';
+    var state = { client: null, token: null, entries: [] };
+
+    function $(id) { return document.getElementById(id); }
+    function show(view) {
+      ['list', 'auth', 'dash'].forEach(function (v) {
+        $('cp-view-' + v).classList.toggle('cp-hide', v !== view);
+      });
+    }
+    function api(path, opts) {
+      opts = opts || {};
+      opts.headers = opts.headers || {};
+      if (opts.body) opts.headers['Content-Type'] = 'application/json';
+      if (state.token) opts.headers['X-Token'] = state.token;
+      return fetch(API + path, opts).then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
+        });
+      });
+    }
+    function pinVal(rowId) {
+      var s = '';
+      $(rowId).querySelectorAll('input').forEach(function (i) { s += i.value; });
+      return s;
+    }
+    function clearPins() {
+      document.querySelectorAll('#cp-pin1 input,#cp-pin2 input').forEach(function (i) { i.value = ''; });
+    }
+    // auto-advance PIN boxes
+    document.querySelectorAll('#cp-pin1 input,#cp-pin2 input').forEach(function (inp, idx, all) {
+      inp.addEventListener('input', function () {
+        if (this.value && idx + 1 < all.length) all[idx + 1].focus();
+      });
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !this.value && idx > 0) all[idx - 1].focus();
+        if (e.key === 'Enter') cpSubmitAuth();
+      });
+    });
+
+    // ── Client list ──
+    function loadClients() {
+      api('/clients').then(function (j) {
+        var grid = $('cp-client-grid');
+        grid.innerHTML = '';
+        $('cp-empty').style.display = j.clients.length ? 'none' : 'block';
+        j.clients.forEach(function (c) {
+          var d = document.createElement('div');
+          d.className = 'cp-client';
+          d.innerHTML = '<div class="cp-client-name">' + esc(c.name) + '</div>' +
+            '<div class="cp-client-meta">' + (c.program ? esc(c.program) : 'No program set') + '</div>' +
+            '<div class="cp-client-meta">' + (c.hasPin ? '🔒 PIN set' : '🆕 set PIN on first login') + '</div>';
+          d.onclick = function () { openAuth(c); };
+          grid.appendChild(d);
+        });
+      }).catch(function (e) { $('cp-new-err').textContent = e.message; });
+    }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    window.cpCreateClient = function () {
+      var name = $('cp-new-name').value.trim();
+      $('cp-new-err').textContent = '';
+      if (!name) { $('cp-new-err').textContent = 'Name is required.'; return; }
+      api('/clients', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: name,
+          startWeight: $('cp-new-start').value,
+          goalWeight: $('cp-new-goal').value,
+          program: $('cp-new-program').value.trim()
+        })
+      }).then(function () {
+        $('cp-new-name').value = $('cp-new-start').value = $('cp-new-goal').value = $('cp-new-program').value = '';
+        loadClients();
+      }).catch(function (e) { $('cp-new-err').textContent = e.message; });
+    };
+
+    window.cpShowList = function () { show('list'); loadClients(); };
+
+    // ── Auth ──
+    var pending = null;
+    function openAuth(c) {
+      pending = c;
+      clearPins();
+      $('cp-auth-err').textContent = '';
+      $('cp-auth-name').textContent = c.name;
+      var setting = !c.hasPin;
+      $('cp-confirm-wrap').classList.toggle('cp-hide', !setting);
+      $('cp-forgot').classList.toggle('cp-hide', setting);
+      $('cp-auth-prompt').textContent = setting
+        ? 'First login — choose a 4-digit PIN to secure your progress log.'
+        : 'Enter your 4-digit PIN.';
+      $('cp-auth-btn').textContent = setting ? 'Set PIN & Enter' : 'Unlock';
+      show('auth');
+      setTimeout(function () { $('cp-pin1').querySelector('input').focus(); }, 50);
+    }
+
+    window.cpSubmitAuth = function () {
+      var c = pending, pin = pinVal('cp-pin1');
+      $('cp-auth-err').textContent = '';
+      if (!/^\d{4}$/.test(pin)) { $('cp-auth-err').textContent = 'Enter a 4-digit PIN.'; return; }
+      var setting = !c.hasPin;
+      if (setting && pin !== pinVal('cp-pin2')) {
+        $('cp-auth-err').textContent = 'PINs do not match.'; clearPins(); return;
+      }
+      var ep = setting ? '/set-pin' : '/login';
+      api('/clients/' + c.id + ep, { method: 'POST', body: JSON.stringify({ pin: pin }) })
+        .then(function (j) {
+          state.token = j.token;
+          state.client = j.client || c;
+          state.client.hasPin = true;
+          enterDash();
+        })
+        .catch(function (e) { $('cp-auth-err').textContent = e.message; clearPins(); });
+    };
+
+    window.cpForgotPin = function () {
+      if (!pending) return;
+      if (!confirm('Reset the PIN for ' + pending.name + '? They will set a new PIN on next login. Progress data is kept.')) return;
+      api('/clients/' + pending.id + '/reset-pin', { method: 'POST' }).then(function () {
+        pending.hasPin = false;
+        openAuth(pending);
+      }).catch(function (e) { $('cp-auth-err').textContent = e.message; });
+    };
+
+    // ── Dashboard ──
+    function enterDash() {
+      $('cp-dash-name').textContent = state.client.name;
+      var bits = [];
+      if (state.client.program) bits.push(state.client.program);
+      if (state.client.startWeight != null) bits.push('Start ' + state.client.startWeight + ' lbs');
+      if (state.client.goalWeight != null) bits.push('Goal ' + state.client.goalWeight + ' lbs');
+      $('cp-dash-program').textContent = bits.join('  ·  ');
+      $('cp-e-date').value = new Date().toISOString().slice(0, 10);
+      cpSwitchSub('overview');
+      show('dash');
+      loadEntries();
+    }
+
+    window.cpLock = function () {
+      state.token = state.client = null; state.entries = [];
+      clearPins();
+      cpShowList();
+    };
+
+    function cpSwitchSub(name) {
+      document.querySelectorAll('.cp-subtab').forEach(function (t) {
+        t.classList.toggle('active', t.dataset.cpsub === name);
+      });
+      ['overview', 'log', 'history'].forEach(function (n) {
+        $('cp-sub-' + n).classList.toggle('cp-hide', n !== name);
+      });
+      if (name === 'overview') renderOverview();
+    }
+    document.querySelectorAll('.cp-subtab').forEach(function (t) {
+      t.addEventListener('click', function () { cpSwitchSub(this.dataset.cpsub); });
+    });
+
+    function loadEntries() {
+      api('/clients/' + state.client.id + '/entries').then(function (j) {
+        state.entries = j.entries || [];
+        renderOverview();
+        renderHistory();
+      }).catch(function (e) { $('cp-e-msg').textContent = e.message; });
+    }
+
+    window.cpSaveEntry = function () {
+      var body = {
+        date: $('cp-e-date').value,
+        weight: $('cp-e-weight').value, bodyfat: $('cp-e-bodyfat').value,
+        energy: $('cp-e-energy').value, sleep: $('cp-e-sleep').value,
+        workouts: $('cp-e-workouts').value, calories: $('cp-e-calories').value,
+        mood: $('cp-e-mood').value, notes: $('cp-e-notes').value
+      };
+      $('cp-e-msg').textContent = '';
+      api('/clients/' + state.client.id + '/entries', { method: 'POST', body: JSON.stringify(body) })
+        .then(function () {
+          $('cp-e-msg').textContent = '✓ Saved for ' + body.date;
+          ['weight', 'bodyfat', 'energy', 'sleep', 'workouts', 'calories', 'mood', 'notes'].forEach(function (k) {
+            $('cp-e-' + k).value = '';
+          });
+          loadEntries();
+        })
+        .catch(function (e) { $('cp-e-msg').style.color = '#f87171'; $('cp-e-msg').textContent = e.message; });
+    };
+
+    window.cpDeleteEntry = function (date) {
+      if (!confirm('Delete the check-in for ' + date + '?')) return;
+      api('/clients/' + state.client.id + '/entries/' + date, { method: 'DELETE' })
+        .then(loadEntries).catch(function (e) { alert(e.message); });
+    };
+
+    function avg(arr) {
+      var v = arr.filter(function (x) { return x != null; });
+      return v.length ? (v.reduce(function (a, b) { return a + b; }, 0) / v.length) : null;
+    }
+
+    function renderOverview() {
+      var e = state.entries.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      var weights = e.filter(function (x) { return x.weight != null; });
+      var start = state.client.startWeight != null ? state.client.startWeight
+        : (weights.length ? weights[0].weight : null);
+      var current = weights.length ? weights[weights.length - 1].weight : null;
+      var goal = state.client.goalWeight;
+
+      $('cp-ov-lost').textContent = (start != null && current != null)
+        ? (start - current).toFixed(1) : '—';
+      $('cp-ov-current').textContent = current != null ? current : '—';
+      var ae = avg(e.map(function (x) { return x.energy; }));
+      var as = avg(e.map(function (x) { return x.sleep; }));
+      $('cp-ov-energy').textContent = ae != null ? ae.toFixed(1) : '—';
+      $('cp-ov-sleep').textContent = as != null ? as.toFixed(1) + 'h' : '—';
+      $('cp-ov-workouts').textContent = e.reduce(function (a, x) { return a + (x.workouts || 0); }, 0);
+
+      if (start != null && goal != null && current != null) {
+        var pct = Math.max(0, Math.min(100, (start - current) / (start - goal) * 100));
+        $('cp-pg-fill').style.width = pct.toFixed(0) + '%';
+        $('cp-pg-start').textContent = 'Start ' + start + ' lbs';
+        $('cp-pg-goal').textContent = 'Goal ' + goal + ' lbs';
+        $('cp-pg-text').textContent = pct.toFixed(0) + '% of the way to goal · '
+          + (current - goal).toFixed(1) + ' lbs to go';
+      } else {
+        $('cp-pg-fill').style.width = '0%';
+        $('cp-pg-text').textContent = 'Set start & goal weights and log a weight to track progress.';
+      }
+      drawChart(weights);
+    }
+
+    function drawChart(weights) {
+      var cv = $('cp-chart'), empty = $('cp-chart-empty');
+      if (weights.length < 2) { cv.style.display = 'none'; empty.style.display = 'block'; return; }
+      cv.style.display = 'block'; empty.style.display = 'none';
+      var w = cv.clientWidth || 680, h = 180, pad = 28;
+      cv.width = w; cv.height = h;
+      var ctx = cv.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      var vals = weights.map(function (x) { return x.weight; });
+      var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+      if (mn === mx) { mn -= 1; mx += 1; }
+      function X(i) { return pad + i * (w - 2 * pad) / (weights.length - 1); }
+      function Y(v) { return h - pad - (v - mn) / (mx - mn) * (h - 2 * pad); }
+      ctx.strokeStyle = 'rgba(255,255,255,.08)';
+      ctx.beginPath(); ctx.moveTo(pad, h - pad); ctx.lineTo(w - pad, h - pad); ctx.stroke();
+      ctx.strokeStyle = '#14b8a6'; ctx.lineWidth = 2; ctx.beginPath();
+      weights.forEach(function (p, i) { i ? ctx.lineTo(X(i), Y(p.weight)) : ctx.moveTo(X(i), Y(p.weight)); });
+      ctx.stroke();
+      ctx.fillStyle = '#5eead4';
+      weights.forEach(function (p, i) { ctx.beginPath(); ctx.arc(X(i), Y(p.weight), 3, 0, 7); ctx.fill(); });
+      ctx.fillStyle = '#6b9e98'; ctx.font = '10px sans-serif';
+      ctx.fillText(mx.toFixed(0), 2, Y(mx) + 4);
+      ctx.fillText(mn.toFixed(0), 2, Y(mn) + 4);
+    }
+
+    function renderHistory() {
+      var box = $('cp-history-list'), e = state.entries;
+      $('cp-history-empty').style.display = e.length ? 'none' : 'block';
+      box.innerHTML = '';
+      e.forEach(function (x) {
+        var m = [];
+        if (x.weight != null) m.push('Weight <b>' + x.weight + '</b> lbs');
+        if (x.bodyfat != null) m.push('BF <b>' + x.bodyfat + '%</b>');
+        if (x.energy != null) m.push('Energy <b>' + x.energy + '/10</b>');
+        if (x.sleep != null) m.push('Sleep <b>' + x.sleep + 'h</b>');
+        if (x.workouts != null) m.push('Workouts <b>' + x.workouts + '</b>');
+        if (x.calories != null) m.push('Cals <b>' + x.calories + '</b>');
+        if (x.mood) m.push('Mood <b>' + esc(x.mood) + '</b>');
+        var d = document.createElement('div');
+        d.className = 'cp-entry';
+        d.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<div class="cp-entry-date">' + esc(x.date) + '</div>' +
+          '<button class="cp-btn-ghost" onclick="cpDeleteEntry(\'' + esc(x.date) + '\')">Delete</button></div>' +
+          '<div class="cp-entry-metrics">' + (m.join(' &nbsp;·&nbsp; ') || '—') + '</div>' +
+          (x.notes ? '<div class="cp-entry-notes">“' + esc(x.notes) + '”</div>' : '');
+        box.appendChild(d);
+      });
+    }
+
+    // Load roster when the portal tab is first opened
+    var loaded = false;
+    document.querySelectorAll('.tab').forEach(function (t) {
+      if (t.dataset.panel === 'portal') t.addEventListener('click', function () {
+        if (!loaded) { loaded = true; loadClients(); }
+      });
+    });
+  })();
+</script>
+
 <script>
   // ── Tab switching ──
   document.querySelectorAll('.tab').forEach(function(tab) {
@@ -2439,6 +2918,9 @@ Loading summary...
         {id:'f17', name:'Casein Protein',          srv:'1 scoop (34 g)',   cal:120, p:24,   c:4,  f:1   },
         {id:'f18', name:'Plant Protein Blend',     srv:'1 scoop (33 g)',   cal:120, p:22,   c:5,  f:2   },
         {id:'f19', name:'Mass Gainer Shake',       srv:'1 scoop (100 g)',  cal:380, p:30,   c:55, f:5   },
+        {id:'f20', name:'Al Pastor (pork)',        srv:'4 oz cooked',      cal:230, p:22,   c:3,  f:14  },
+        {id:'f21', name:'Carnitas (pork)',         srv:'4 oz cooked',      cal:280, p:24,   c:1,  f:20  },
+        {id:'f22', name:'Adobada (pork)',          srv:'4 oz cooked',      cal:250, p:23,   c:4,  f:15  },
       ]},
       { cat: '🥦 Vegetables', items: [
         {id:'v01', name:'Broccoli',                srv:'1 cup chopped',    cal:55,  p:4,    c:11, f:0   },
